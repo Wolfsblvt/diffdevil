@@ -1,0 +1,90 @@
+<!-- SPDX-License-Identifier: AGPL-3.0-only -->
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Inspect a public GitHub pull request with diffdevil's real measurement engine.">
+  <title>diffdevil playground</title>
+  <link rel="stylesheet" href="/assets/styles.css">
+  <script type="module" src="/assets/app.js"></script>
+</head>
+<body>
+  <header class="shell hero">
+    <p class="eyebrow">diffdevil playground</p>
+    <h1>The devil is in the diff.</h1>
+    <p class="lede">Inspect a public pull request through the same deterministic engine used by the CLI, library, and Actions. Read-only means read-only: this page applies no labels, comments, or repository changes.</p>
+  </header>
+
+  <main class="shell">
+    <section class="panel" aria-labelledby="analyze-heading">
+      <h2 id="analyze-heading">Analyze a public pull request</h2>
+      <form id="analyze-form">
+        <label for="pull-request-url">GitHub pull-request URL</label>
+        <div class="input-row">
+          <input id="pull-request-url" name="url" type="url" required spellcheck="false" autocomplete="url" value="https://github.com/Wolfsblvt/diffdevil/pull/1">
+          <button type="submit">Analyze</button>
+        </div>
+        <p class="hint">Public <code>github.com</code> pull requests only. The first local tranche uses GitHub's unauthenticated read API and stores nothing.</p>
+      </form>
+      <p id="status" class="status" role="status" aria-live="polite"></p>
+    </section>
+
+    <section id="result" hidden>
+      <div class="result-heading">
+        <div>
+          <p class="eyebrow">Current comparison</p>
+          <h2 id="result-title">Analysis</h2>
+        </div>
+        <a id="pull-request-link" class="text-link" rel="noreferrer">Open pull request</a>
+      </div>
+
+      <div id="metric-grid" class="metric-grid" aria-label="Diff measurements"></div>
+
+      <section class="panel evidence-panel" aria-labelledby="evidence-heading">
+        <h3 id="evidence-heading">Evidence</h3>
+        <p id="evidence-summary"></p>
+      </section>
+
+      <section class="panel" aria-labelledby="files-heading">
+        <div class="section-heading">
+          <h3 id="files-heading">Files</h3>
+          <p id="files-summary" class="muted"></p>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr><th>Path</th><th>Kind</th><th>Changed</th><th>Raw churn</th><th>Evidence</th></tr>
+            </thead>
+            <tbody id="files-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <details class="panel projection">
+        <summary>Machine-readable projection</summary>
+        <pre id="projection"></pre>
+      </details>
+    </section>
+
+    <section class="docs-grid" aria-labelledby="docs-heading">
+      <div>
+        <p class="eyebrow">Repository-backed help</p>
+        <h2 id="docs-heading">Go from inspection to automation</h2>
+        <p>The website front door points at the same maintained Markdown and executable examples contributors update with the product. No shadow wiki, because one stale documentation universe is already plenty for humanity.</p>
+      </div>
+      <nav class="link-grid" aria-label="diffdevil documentation">
+        <a href="https://github.com/Wolfsblvt/diffdevil/blob/main/docs/guides/auto-label-pull-requests.md" rel="noreferrer">Label pull requests</a>
+        <a href="https://github.com/Wolfsblvt/diffdevil/blob/main/docs/guides/local-automation.md" rel="noreferrer">Automate locally</a>
+        <a href="https://github.com/Wolfsblvt/diffdevil/blob/main/docs/guides/policy-recipes.md" rel="noreferrer">Write policy</a>
+        <a href="https://github.com/Wolfsblvt/diffdevil/blob/main/docs/integration/typescript-api.md" rel="noreferrer">Use the TypeScript API</a>
+        <a href="https://github.com/Wolfsblvt/diffdevil/blob/main/docs/README.md" rel="noreferrer">Browse all documentation</a>
+      </nav>
+    </section>
+  </main>
+
+  <footer class="shell footer">
+    <p>A Wolfsblvt Works product. Playground application code is AGPL-3.0-only; the reusable diffdevil engine remains MIT.</p>
+  </footer>
+</body>
+</html>
