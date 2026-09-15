@@ -7,7 +7,38 @@ historical runtime results and unobserved external effects. A schema specimen is
 not execution, a green unit suite is not a packaged consumer, and mock HTTP is not
 live GitHub permission evidence.
 
-## Current environment and boundary
+## September 16 v1 release candidate — native Windows evidence
+
+The selected local candidate is `@wolfsblvt/diffdevil@1.0.0`, with root lock
+metadata updated and `private: true` removed. On Windows 11, the scoped native
+toolchain was **Node v24.19.0, npm 11.17.0, PowerShell 7.6.5**. A process-scoped
+PATH selected that Node executable for npm script children as well as the explicit
+npm launcher; the ambient `C:\Program Files\nodejs\node.exe` was v26.7.0. One
+earlier verification attempt inherited that ambient runtime and was cancelled
+before a verdict. It is not Node 24 evidence.
+
+The exact candidate restored **15 locked packages** with `npm ci --offline`
+from `artifacts/dependencies/npm-cache`, without new dependency versions. The
+release-sensitive paths then passed:
+
+| Boundary | Current Node 24 result |
+| --- | --- |
+| `npm run build:actions` and `npm run verify` | 1,141 generated files over 12 locked runtime packages; parity current; **461 passed, 0 failed, 0 skipped**. |
+| `npm run test:conformance` | **189 passed, 0 failed, 0 not executed, 0 harness failures**. |
+| `npm run test:package` | **485-file** `1.0.0` tarball installed offline outside the checkout; actual Windows npm launcher dispatch, installed PowerShell launcher version/scalar query, CLI, ESM API, schemas and TypeScript declarations passed. |
+| `npm run test:actions` | **10 isolated Node 24 executions** across root and three sub-actions, with no consumer install; mock HTTP only. |
+| Exact-lock advisory check | `npm audit --json` against `https://registry.npmjs.org/` returned **0** reported advisories at this check. It is advisory evidence, not a guarantee against undisclosed defects. |
+
+The tested source changes are release identity, content/licence scope, package
+qualification expectations, and the copied Action licence/metadata hashes; no
+semantic engine or provider mutation behavior changed. GitHub private
+vulnerability reporting was read back as enabled for the public repository, and
+the local `SECURITY.md` points to that existing route. The hosted policy file,
+the exact-head CI matrix for this new candidate, independent cold trust review,
+real provider permissions/effects, npm publication, and `v1` refs are separate
+readbacks.
+
+## Prior environment and boundary
 
 The September 15, 2026 native pass ran on **Windows 11, Node v24.19.0, npm
 12.0.2, PowerShell 7.6.5**. All **15 locked packages** restored offline from the
@@ -153,11 +184,11 @@ substantive prior returns live once under [the reference map](reference/README.m
 Historical artifact paths there identify their old runs, not files guaranteed to
 be present in today's checkout.
 
-The current native Windows/Node 24 boundary is complete for this candidate. A
-release-identity or source change needs the affected [release qualification
-commands](PUBLICATION-BOUNDARY.md) again. Independent trust/effect review and an
-explicitly authorized disposable live canary remain. Wolf and Nyxara settled the
-[software licence split](DECISIONS.md), and Wolf granted public-source publication
-after licence preparation. npm publication, release tags, Marketplace, security
-intake and website delivery are separate effects. Non-software content rights
-remain unsettled.
+The preceding September 15 Windows pass qualified its earlier exact tree. The
+September 16 section above qualifies the local `1.0.0` candidate. Independent
+trust/effect review and disposable live provider canary remain, while hosted CI
+for the newly committed head must be read separately. Wolf and Nyxara settled the
+[software licence split](DECISIONS.md); the [component map](../LICENSES/README.md)
+now also assigns original documentation prose and runnable examples while
+reserving brand/visual assets. npm publication, release tags, Marketplace,
+hosted security-policy exposure, and website delivery are separate effects.

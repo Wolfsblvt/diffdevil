@@ -127,8 +127,8 @@
     }
   ],
   "sources": {
-    "package-lock.json": "163ff2ffa51382efb4173643890afc79755f89fc40fd17df041a76a9b3e13e79",
-    "package.json": "f384f3965eae0c4911228644c79cdd1575728ad7650122a4c200c66f1bbbfcf2",
+    "package-lock.json": "38cc84cf6065ebcdf531e386997bd37ef227d0745978c82f68621f9002b1edb9",
+    "package.json": "2c2aa8ff1f47038f533fad1eee349ff30bded85ca4712bf734a2c6115019a996",
     "src/diffdevil/actions/analyze.ts": "e16cafafd0b0f3a142b33f9cab366fe395d97aec3da43f83eb40449735f0a14f",
     "src/diffdevil/actions/apply.ts": "40be2ca7e38568d269f612a2cd395575a4d3dac8a599aaacb16012f4cae548d5",
     "src/diffdevil/actions/inputs.ts": "d4d4a2ede4eb954c74fb540e5c8d92bd93737efb768c2246d81aa6681a5f6f51",
@@ -222,7 +222,7 @@
     "actions/apply/index.mjs": "10c11454aa6ebc9b9c0d98ebd53e02cfdcbf28ed803a817df12219904ee0ee4a",
     "actions/runtime/LICENSES/AGPL-3.0-only.txt": "0d96a4ff68ad6d4b6f1f30f713b18d5184912ba8dd389f86aa7710db079abcb0",
     "actions/runtime/LICENSES/MIT.txt": "e4a1d35cf5f6df9e2279fda467a76ee4f972ef4576ba047253425e85924d7876",
-    "actions/runtime/LICENSES/README.md": "dca73f34af163c521e717efc66a91b265c206496b807a93a37d64766ddc72897",
+    "actions/runtime/LICENSES/README.md": "0d17a5a64ca6d40dd099e3536c8603414e2238fe52c75ec8b55a84e0d2d538e8",
     "actions/runtime/README.md": "04969695fca45d5559a95871128b419d4af32af9325faacd7d794d8c5c6e341c",
     "actions/runtime/lib/actions/analyze.js": "4e4b5b4e79a5628040ba478b5f614d6f844cfade24e54fa1a6785f014d311b27",
     "actions/runtime/lib/actions/analyze.js.map": "9dd3ae50a3eeab35b5c6b79e4d6479d7d5030186a090eaf915c5f7551723bf13",
@@ -1351,7 +1351,7 @@
     "actions/runtime/node_modules/yaml/dist/visit.js": "a757e3b924af184b25e2386d1678b1fe341805a516ebf9bccee219b47aebd5e7",
     "actions/runtime/node_modules/yaml/package.json": "1c6441703d8204a23ded0d37ddf57c3b69d821dc392f20852d1f605bb9b8861c",
     "actions/runtime/node_modules/yaml/util.js": "2f1db26f6cc426ef698210b592f40cec49be1b6c4b34e7f2d61904786242bd85",
-    "actions/runtime/package.json": "d017a19bbdd8c9bb90fbf6fc69c40b065c85bac7d6f03c9219037dc43b74eba0",
+    "actions/runtime/package.json": "b5f610f31aab44b3ab886ff460e47f6289d551ca07fd4eb8c3daef8610448ec3",
     "actions/sync-labels/action.yml": "218a73daaa767c9689a2edc262dba7d66b2f01fa5030b1675a0d857d53826350",
     "actions/sync-labels/index.mjs": "7a067e453728ec5a69d5951048662d13192a208af692673f00de2a03cc41ae32",
     "src/diffdevil/contracts/detail/v1/action-surface.json": "f77d20da1847cfb9d55ecec74585357fb185a919951d14bae702bc509799ef04"

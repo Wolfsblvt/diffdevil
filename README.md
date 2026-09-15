@@ -13,13 +13,14 @@ queryable facts, configured rules, and inspectable label/comment effects. Raw ch
 three-line replacement as six lines. Replacement-aware changed lines count it
 once, while keeping both sets of facts available.
 
-This **source-available development candidate** supports local Git, unified diffs,
+This **public-source v1 release candidate** supports local Git, unified diffs,
 saved reports, detail expressions, YAML/JSON policies, GitHub acquisition, and
 explicit label/comment reconciliation. All four Actions ship executable JavaScript
 and their dependencies, with no workflow installation step. Their consumer paths are
 qualified locally on Node 22 and 24 against mock HTTP, not a live GitHub canary.
 Reusable software is MIT; application and hosted-service software is selected for
-AGPL-3.0-only. Non-software content rights remain unsettled. npm and `@v1` are not
+AGPL-3.0-only. Original documentation prose is CC BY 4.0; runnable examples are
+MIT; brand and visual assets remain reserved. npm and `@v1` are not
 published yet. A plan remains data, not an applied change.
 
 ```sh
@@ -268,11 +269,16 @@ The ordinary source verification command is `npm run verify`. Installed-package,
 conformance, and runtime evidence are separate commands and claims:
 [Development](docs/DEVELOPMENT.md) · [Qualification](docs/QUALIFICATION.md).
 
+Suspected vulnerabilities can be [reported privately](SECURITY.md) through
+GitHub's enabled repository reporting route.
+
 ## License
 
 A Wolfsblvt Works product. Reusable engine, API, CLI and Action software is
 [MIT](LICENSES/MIT.txt); website and hosted application/service software is selected
-for [AGPL-3.0-only](LICENSES/AGPL-3.0-only.txt). The current checkout ships the
-reusable software, with no hosted application runtime yet. [Component scope and
-unsettled non-software rights](LICENSES/README.md) are explicit; neither licence
-applies to the entire repository.
+for [AGPL-3.0-only](LICENSES/AGPL-3.0-only.txt). Original documentation prose is
+[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/legalcode), runnable
+integration examples are MIT, and brand/visual assets are reserved. The current
+checkout ships the reusable software, with no hosted application runtime yet.
+[The component licence map](LICENSES/README.md) gives exact scope; no single
+licence applies to the entire repository or npm tarball.

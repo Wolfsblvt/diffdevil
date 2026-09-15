@@ -50,19 +50,19 @@ partial write journals, output transport, and the install-free dependency tree.
 The code can be reviewed directly; no reconstruction or new implementation is
 expected for those boundaries.
 
-## Use the selected licences and select release identity
+## Use the selected licences and candidate release identity
 
 Wolf and Nyxara selected **MIT** for the reusable engine, package, CLI and Actions,
 and **AGPL-3.0-only** for application and hosted-service software. The [licence
 map](../LICENSES/README.md), both full texts, and matching package/Action SPDX
-metadata are in this checkout. Content and asset rights remain a separate open
-decision. The npm package remains `private: true`, version
-`0.0.0-development`. Select the release version and intentionally change
-`private` before npm publication. Dependency licences are preserved separately
-in the Action distribution.
+metadata are in this checkout. Original documentation prose is CC BY 4.0,
+runnable examples are MIT, and brand/visual assets remain reserved. The selected
+first stable npm candidate is `@wolfsblvt/diffdevil@1.0.0`; `private: true` was
+removed from local metadata. This is not an npm publication or release ref.
+Dependency licences are preserved separately in the Action distribution.
 
-Use npm's version command without creating a Git tag, or update `package.json`
-and the root lockfile metadata together. Rebuild the generated distribution with
+The local candidate used npm's version command without creating a Git tag,
+updating `package.json` and root lockfile metadata together. Rebuild the generated distribution with
 `npm run build:actions`; then run the four qualification commands again. The CLI
 version follows installed package metadata. The package test includes a different
 release-version specimen to prevent a frozen development banner from surviving.
@@ -103,7 +103,9 @@ provider publication instructions at execution time rather than relying on this
 local cut to authorize or perform them.
 
 Confirm the real npm install, all remote Action coordinates, and release assets
-from an outside consumer. Establish a real private security-reporting route and
-responsible receiver before promising one. The website, wiki-like help rendering,
+from an outside consumer. GitHub private vulnerability reporting was read back
+as enabled for this public repository; `SECURITY.md` now names its administrator
+receiver and reporting route. Read back the hosted policy after the source update
+before claiming that file is exposed. The website, wiki-like help rendering,
 logo/social preview, and Marketplace visuals may follow; repository user guides
 already work as the canonical documentation source.

@@ -78,4 +78,4 @@ work and attributable history. Public tags, releases, package publication, live
 provider effects, and security settings are not side effects of running tests.
 Follow the explicit release procedure in `docs/PUBLICATION-BOUNDARY.md` when those
 operations are authorized. Reusable software is MIT; application/service software is
-AGPL-3.0-only. The exact scope and unsettled non-software rights are in `LICENSES/README.md`.
+AGPL-3.0-only. Documentation, examples, and reserved brand/visual rights are mapped in `LICENSES/README.md`.

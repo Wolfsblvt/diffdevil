@@ -70,8 +70,11 @@ historical runtime/consumer evidence is separated in
 [Qualification](QUALIFICATION.md); mock HTTP is not live permission evidence.
 
 Wolf and Nyxara selected MIT for reusable software and AGPL-3.0-only for
-application/service code. The [licence map](../LICENSES/README.md) distinguishes
-those surfaces and holds non-software content rights open. Wolf authorized the
+application/service code. Original documentation prose is now CC BY 4.0,
+runnable examples are MIT, and brand/visual assets remain reserved. The
+[licence map](../LICENSES/README.md) distinguishes those surfaces. The selected
+first stable package identity is `@wolfsblvt/diffdevil@1.0.0`; local package and
+lock metadata now carry that candidate without creating npm or Action refs. Wolf authorized the
 public source repository after this preparation; public source/Action availability,
 npm availability, Marketplace listing, security intake,
 and a documentation website are separate observable outcomes. Do not imply all of

@@ -48,7 +48,7 @@ const bin = join(home, 'node_modules/.bin/diffdevil');
 const packageVersion = JSON.parse(await readFile(join(packageRoot, 'package.json'), 'utf8')).version;
 assert.equal(JSON.parse(await readFile(join(packageRoot, 'package.json'), 'utf8')).license, 'MIT');
 assert.equal(JSON.parse(await readFile(join(packageRoot, 'package.json'), 'utf8')).author, 'Wolfsblvt Works');
-assert.match(await readFile(join(packageRoot, 'LICENSES/README.md'), 'utf8'), /documentation prose.*no selected public content licence/is);
+assert.match(await readFile(join(packageRoot, 'LICENSES/README.md'), 'utf8'), /documentation prose.*Creative Commons Attribution 4\.0/is);
 // npm owns platform-specific launcher selection and escaping on Windows. Do not
 // pass the POSIX .bin shell file directly to CreateProcess or invent cmd quoting.
 const runBin = args => process.platform === 'win32'
