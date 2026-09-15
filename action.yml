@@ -1,4 +1,4 @@
-# Generated from src/actions/surface.ts by npm run build:actions.
+# Generated from src/diffdevil/actions/surface.ts by npm run build:actions.
 name: diffdevil
 description: Measure pull-request changes, evaluate rules, and reconcile selected labels and comments.
 author: Wolfsblvt
@@ -247,7 +247,7 @@ outputs:
     description: effects-path; see the Action manual for exact, bounded, unavailable and not-applied values.
 runs:
   using: node24
-  main: action-runtime/lib/actions/root.js
+  main: actions/runtime/lib/actions/root.js
 branding:
   icon: check-circle
   color: gray-dark

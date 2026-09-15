@@ -22,7 +22,7 @@ There is no public licence or published npm/`@v1` release yet. A plan remains da
 not an applied change.
 
 ```sh
-node dist/lib/cli/main.js query --report examples/reports/exact.json \
+node dist/lib/cli/main.js query --report docs/examples/reports/exact.json \
   --expr 'totals.lines.changed' --format value
 # 178
 ```
@@ -71,7 +71,7 @@ source checkout:
 ```sh
 npm ci --ignore-scripts --no-audit --no-fund
 npm run build
-node dist/lib/cli/main.js analyze --diff-file examples/diffs/review.diff --format human
+node dist/lib/cli/main.js analyze --diff-file docs/examples/diffs/review.diff --format human
 ```
 
 The four-file teaching patch reports **10 changed lines** and **16 raw churn**.
@@ -86,7 +86,7 @@ Analyze tracked working-tree changes, compare two revisions, or read a patch:
 ```sh
 node dist/lib/cli/main.js analyze
 node dist/lib/cli/main.js analyze --base main --head HEAD --format json
-node dist/lib/cli/main.js analyze --diff-file examples/diffs/review.diff --format json
+node dist/lib/cli/main.js analyze --diff-file docs/examples/diffs/review.diff --format json
 ```
 
 `--base main --head HEAD` uses the selected merge-base comparison. Reports retain
@@ -143,16 +143,16 @@ rules:
         removeWhenFalse: true
 ```
 
-The [complete weighted example](examples/policies/weighted.yml) also defines a
+The [complete weighted example](docs/examples/policies/weighted.yml) also defines a
 typed threshold and its label definition. Query it or inspect its desired effects:
 
 ```sh
-node dist/lib/cli/main.js query --report examples/reports/exact.json \
-  --config examples/policies/weighted.yml --name weighted --format value
+node dist/lib/cli/main.js query --report docs/examples/reports/exact.json \
+  --config docs/examples/policies/weighted.yml --name weighted --format value
 # 248
 
-node dist/lib/cli/main.js plan --report examples/reports/exact.json \
-  --config examples/policies/weighted.yml --target-repo example/repository \
+node dist/lib/cli/main.js plan --report docs/examples/reports/exact.json \
+  --config docs/examples/policies/weighted.yml --target-repo example/repository \
   --target-pr 42 --definitions ensure --format json
 ```
 

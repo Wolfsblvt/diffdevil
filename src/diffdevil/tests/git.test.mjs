@@ -1,0 +1,33 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdtemp, writeFile, rm, rename } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { execFileSync } from 'node:child_process';
+import { analyzeGit } from '../../../dist/lib/sources/git.js';
+import { unwrap } from '../../../dist/lib/errors.js';
+
+test('real Git: final tracked worktree, index, direct and merge-base, renames, and no external diff', async t => {
+  const cwd = await mkdtemp(join(tmpdir(), 'diffdevil-git-'));
+  t.after(() => rm(cwd, { recursive: true, force: true }));
+  const git = (...args) => execFileSync('git', args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+  git('init', '-b', 'main'); git('config', 'user.name', 'Fixture'); git('config', 'user.email', 'fixture@example.invalid');
+  await writeFile(join(cwd, 'file.txt'), 'one\ntwo\nthree\n'); git('add', '.'); git('commit', '-m', 'base');
+  const base = git('rev-parse', 'HEAD');
+  await writeFile(join(cwd, 'file.txt'), 'ONE\ntwo\nthree\n'); git('add', 'file.txt');
+  await writeFile(join(cwd, 'file.txt'), 'ONE\ntwo\nTHREE\n');
+  await writeFile(join(cwd, 'untracked.txt'), 'not part of tracked worktree\n');
+  assert.equal(unwrap(await analyzeGit({ cwd })).totals.lines.changed.value, 2);
+  assert.equal(unwrap(await analyzeGit({ cwd, staged: true })).totals.lines.changed.value, 1);
+  git('add', 'file.txt'); git('commit', '-m', 'two locations');
+  const head = git('rev-parse', 'HEAD');
+  assert.equal(unwrap(await analyzeGit({ cwd, base, head, comparison: 'direct' })).totals.lines.changed.value, 2);
+  assert.equal(unwrap(await analyzeGit({ cwd, base, head })).source.base, base);
+  await rename(join(cwd, 'file.txt'), join(cwd, 'renamed.txt')); git('add', '-A', 'file.txt', 'renamed.txt');
+  const renamed = unwrap(await analyzeGit({ cwd, staged: true }));
+  assert.equal(renamed.files[0].changeType, 'renamed'); assert.equal(renamed.totals.lines.changed.value, 0);
+  git('config', 'diff.external', 'THIS_MUST_NOT_EXECUTE');
+  assert.equal(unwrap(await analyzeGit({ cwd })).totals.lines.changed.value, 0);
+  assert.equal((await analyzeGit({ cwd, base })).diagnostics[0].code, 'E_SOURCE');
+  assert.equal((await analyzeGit({ cwd, base: '--output=/tmp/no', head })).diagnostics[0].code, 'E_SOURCE');
+});

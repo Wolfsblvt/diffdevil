@@ -42,7 +42,7 @@ Those transport/consumer boundaries are not proved by the six computational task
 
 The specimen below uses the exact report fixture with 178 changed lines. Prefix
 commands with `node dist/lib/cli/main.js` in the checkout, or use `diffdevil` after
-installing the built tarball. Add `--report examples/reports/exact.json` to replay
+installing the built tarball. Add `--report docs/examples/reports/exact.json` to replay
 that same input. Omitting the source analyzes current tracked worktree changes.
 
 ## 1. Retrieve total replacement-aware changed lines
@@ -124,12 +124,12 @@ diffdevil query --expr 'metrics.weighted' --format value
 Do not add `--deleted-weight`, `--modified-weight`, or a second mini-formula
 syntax. The normal grammar is the concise definition. The runnable demonstration
 compiles this exact detail source through the public API and the executable
-[weighted JSON policy](../examples/policies/weighted.json). It retrieves `248`
+[weighted JSON policy](examples/policies/weighted.json). It retrieves `248`
 through both `--metric metrics.weighted` and `--expr 'metrics.weighted'`:
 
 ```sh
-diffdevil query --report examples/reports/exact.json \
-  --config examples/policies/weighted.json --metric metrics.weighted --format value
+diffdevil query --report docs/examples/reports/exact.json \
+  --config docs/examples/policies/weighted.json --metric metrics.weighted --format value
 ```
 
 That policy explicitly excludes `package-lock.json` to match the fixture's saved

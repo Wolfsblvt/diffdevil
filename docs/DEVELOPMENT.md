@@ -10,8 +10,9 @@ actually proves. Live GitHub, native Windows and publication are different bound
 ## Prerequisites and selected versions
 
 Use Node.js 22 or later and npm; local comparisons also require Git. This candidate
-has been exercised on Linux x64 with Node **22.16.0** and **24.11.1**, npm **10.9.2**,
-and Git **2.47.3**. Action metadata selects **node24** independently of the npm
+is currently exercised on Linux x64 with Node **22.16.0**, npm **10.9.2**,
+and Git **2.47.3**. Its predecessor also ran on Node **24.11.1**, but that binary
+was not available for this layout pass; earlier execution is not current proof. Action metadata selects **node24** independently of the npm
 package's `>=22` floor. No native Windows or macOS execution is claimed.
 
 The lockfile pins TypeScript 5.8.3, Node typings 22.15.33, Chevrotain 13.2.0,
@@ -45,18 +46,17 @@ and standalone Ajv validators under ignored `dist/lib`. It removes only that
 wholly generated output first, so deleted source cannot survive in a package.
 The ordinary npm build uses normal package dependencies; it is not bundled.
 
-The older `build:offline` and `verify:offline` commands select an explicitly
-restored compiler under `artifacts/toolchain`. They do not install runtime
-packages and are not the recommended recovery path. Both verification routes
-check the generated Action distribution. Neither silently substitutes a global
-compiler or uses the network.
+`build:offline` and `verify:offline` remain compatibility aliases to the same build
+and verification commands. There is no separate compiler installation under
+`artifacts/toolchain`. Restore the exact lock offline first; the build and tests
+perform no registry installation themselves. One dependency closure is sufficient.
 
 ## Verification commands and boundaries
 
 | Command | What it proves |
 | --- | --- |
 | `npm run check:prep` | Parses machine assets and checks unique, nonempty declared case IDs. It does not execute cases or judge prose. |
-| `npm run verify` | Preparation, ordinary build, all registered `tests/**/*.test.mjs` cases, and exact Action regeneration parity. |
+| `npm run verify` | Preparation, ordinary build, all registered `src/diffdevil/tests/**/*.test.mjs` cases, and exact Action regeneration parity. |
 | `npm test` | Ordinary tests against the existing build; build first after source edits. |
 | `npm run test:conformance` | Actual production test events for every supplied conformance case, with separate failed/not-executed/harness totals. |
 | `npm run demo:shortcuts` | Four CLI pairs, a custom formula/named query, and pure Action-shorthand/full-policy parity. Not an Action host test. |
@@ -109,12 +109,12 @@ detail and policy compilation perform no filesystem or provider I/O; hosts
 supply validated data. Compiled handles and correlation frames are process-local,
 while reports and plans are versioned inert data.
 
-`src/actions/` owns host inputs, event targeting, policy/source selection, runner
-orchestration, output files, summaries and process exits. `src/hosts/` shares
-trusted policy acquisition with the CLI. `src/github/` owns provider acquisition
+`src/diffdevil/actions/` owns host inputs, event targeting, policy/source selection, runner
+orchestration, output files, summaries and process exits. `src/diffdevil/hosts/` shares
+trusted policy acquisition with the CLI. `src/diffdevil/github/` owns provider acquisition
 and reconciliation, not another evaluator.
 
-`action-runtime/` is the committed native-ESM closure: compiled code, static
+`actions/runtime/` is the committed native-ESM closure: compiled code, static
 validators, 12 locked runtime package trees, original third-party notices and a
 source/file hash manifest. It has its own `package.json`; root development
 `node_modules` is not consulted. It is not a single-file minified bundle.
@@ -128,14 +128,14 @@ Action distribution have different file boundaries and different tests.
 ## Focused tests
 
 ```sh
-node --test tests/actions.test.mjs tests/action-metadata.test.mjs
-node --test tests/cli-effects.test.mjs tests/github-git.test.mjs
-node --test tests/github-*.test.mjs
-node --test tests/policy-yaml.test.mjs tests/schema.test.mjs
+node --test src/diffdevil/tests/actions.test.mjs src/diffdevil/tests/action-metadata.test.mjs
+node --test src/diffdevil/tests/cli-effects.test.mjs src/diffdevil/tests/github-git.test.mjs
+node --test src/diffdevil/tests/github-*.test.mjs
+node --test src/diffdevil/tests/policy-yaml.test.mjs src/diffdevil/tests/schema.test.mjs
 ```
 
 The GitHub fixture is an explicit in-memory HTTP implementation under
-`tests/helpers/`. Action consumer execution preloads it outside the copied
+`src/diffdevil/tests/helpers/`. Action consumer execution preloads it outside the copied
 production distribution; production runner files are not patched. No test needs
 real credentials or performs live GitHub mutations.
 
@@ -148,20 +148,21 @@ boundary, not a general sandbox for running arbitrary PR programs.
 
 ## Evidence and local Git
 
-Current final-pass transcripts live in `artifacts/verification/final-pass/`. Earlier Action/source transcripts and runtime-specific consumer evidence are in
-`artifacts/verification/actions/`. Per-case observations live in
-`artifacts/conformance/results.json`; package qualification and tarball bytes are
-under `artifacts/package/`. Earlier YAML, language, policy and provider transcripts
-remain historical evidence. A passed test on earlier bytes does not certify a
-subsequently changed artifact.
+The current command logs are under `artifacts/verification/layout/` when supplied
+with a local qualification return. Commands write their own results to
+`artifacts/conformance/results.json`, `artifacts/package/`,
+`artifacts/verification/actions/consumer.json` and `artifacts/shortcut-demo/`.
+Generated tarballs and build/install directories are reproducible; a transfer need
+not retain them. Earlier runtime evidence is preserved as dated technical records
+under `docs/reference/`, not duplicated into each new return.
 
 Inspect `git status --short --branch` and recent commits before mutation.
 Root `node_modules/`, `artifacts/`, and `dist/` stay ignored. The deliberate
-exception is the shipped dependency closure **inside** `action-runtime/`.
-`action-runtime/MANIFEST.json` binds generated files and source inputs. Preserve
+exception is the shipped dependency closure **inside** `actions/runtime/`.
+`actions/runtime/MANIFEST.json` binds generated files and source inputs. Preserve
 original dependency bytes; do not normalize their line endings.
 
-`tests/examples.test.mjs` executes the actual task-guide CLI command specimens,
+`src/diffdevil/tests/examples.test.mjs` executes the actual task-guide CLI command specimens,
 policies, and parsed workflow inputs. It does not freeze narrative text. The
 package journey checks an alternative version in the installed manifest and uses
 npm's installed launcher dispatch on Windows instead of executing a POSIX shell

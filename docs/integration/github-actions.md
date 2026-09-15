@@ -8,11 +8,12 @@ These entry points are implemented and locally qualified, but unpublished. `@v1`
 
 ## Current executable boundary
 
-Shared Action runners now implement root, analyze, apply and sync-labels through
-`src/actions/run.ts`. Forty-nine focused Action tests execute runner inputs,
-event files, output/summary files, policy trust, artifact revalidation, controlled
-Git, and provider readback against fake GitHub HTTP. Root verification currently
-passes 453 tests. No live provider or hosted workflow has been exercised.
+Shared Action runners implement root, analyze, apply and sync-labels through
+`src/diffdevil/actions/run.ts`. Focused tests execute runner inputs, event files,
+output/summary files, policy trust, artifact revalidation, controlled Git, and
+provider readback against fake GitHub HTTP. [Qualification](../QUALIFICATION.md)
+owns current executed totals and runtime standing. No live provider or hosted
+workflow has been exercised.
 
 The runners use the same policy compiler as CLI/API. Generated threshold rules
 opt out of hidden size rules. Analyze rejects effect inputs. A full policy may
@@ -21,22 +22,23 @@ generated condition/threshold/effect shorthand instead requires a standalone
 inline rule. Workspace policy remains read-only in Actions.
 
 The native-ESM distribution ships all four metadata-selected paths without an
-installation step. Twenty isolated executions passed on Node 22.16.0 and
-Node 24.11.1; the full ordinary suite also passed on Node 24.
-Workflow examples remain unpublished interfaces, not evidence of an existing `@v1`.
+installation step. The current nested paths have Linux Node 22 consumer evidence;
+Node 24 execution of the predecessor is historical until this layout is rerun on
+that runtime. Workflow examples remain unpublished interfaces, not evidence of
+an existing `@v1`.
 
 ## Entry points
 
 | Action | Default operation |
 | --- | --- |
 | `Wolfsblvt/diffdevil@v1` | Analyze PR, evaluate `size@1`, ensure missing required labels, reconcile size assignment, no comments. |
-| `Wolfsblvt/diffdevil/analyze@v1` | Read-only facts, metrics, band and optional threshold decision. |
-| `Wolfsblvt/diffdevil/apply@v1` | Acquire fresh evidence, revalidate supplied report/plan, and apply selected policy. |
-| `Wolfsblvt/diffdevil/sync-labels@v1` | Verify or apply explicitly managed repository label definitions. |
+| `Wolfsblvt/diffdevil/actions/analyze@v1` | Read-only facts, metrics, band and optional threshold decision. |
+| `Wolfsblvt/diffdevil/actions/apply@v1` | Acquire fresh evidence, revalidate supplied report/plan, and apply selected policy. |
+| `Wolfsblvt/diffdevil/actions/sync-labels@v1` | Verify or apply explicitly managed repository label definitions. |
 
 Root `mode` may be `analyze`, `plan`, or `apply`; it defaults to `apply`. Sub-actions have their explicit operation and reject contradictory mode/effect inputs. Choosing the root Action is a deliberate selection of its documented size-label effects. Merely possessing a token never changes a read-only entry point into a writer.
 
-The current GitHub metadata contract supports subdirectory Action references and a Node 24 JavaScript runtime. The local Action distribution includes its required implementation; consumer jobs do not run `npm install`. See [G3](../../reference/2026-09-09/sources-and-research.md#g3).
+The current GitHub metadata contract supports subdirectory Action references and a Node 24 JavaScript runtime. The local Action distribution includes its required implementation; consumer jobs do not run `npm install`. See [G3](../reference/2026-09-09/sources-and-research.md#g3).
 
 ## Minimal complete workflow
 
@@ -62,13 +64,13 @@ jobs:
 
 This is intentionally a complete workflow rather than a misleading five-line fragment. No checkout, configuration file, formula, threshold map, label setup, comment template, or token boilerplate is required. The Action's metadata supplies its ordinary `${{ github.token }}` default; a caller can provide an App token through `github-token` when appropriate for their repository.
 
-Current REST label operations accept Issues-write or Pull-requests-write permission. This no-config API-only route does not need repository-content reads. A custom configuration loaded from the base ref additionally needs `contents: read`. Organization/repository token restrictions and Action policies can still deny the operation; diagnostics must identify the missing capability rather than advise unsafe head-code execution. See [G1](../../reference/2026-09-09/sources-and-research.md#g1).
+Current REST label operations accept Issues-write or Pull-requests-write permission. This no-config API-only route does not need repository-content reads. A custom configuration loaded from the base ref additionally needs `contents: read`. Organization/repository token restrictions and Action policies can still deny the operation; diagnostics must identify the missing capability rather than advise unsafe head-code execution. See [G1](../reference/2026-09-09/sources-and-research.md#g1).
 
-Use an immutable release commit SHA in security-sensitive workflows once a real release exists. `@v1` remains the compact documented major-version route; this package invents no release SHA. See [G2](../../reference/2026-09-09/sources-and-research.md#g2).
+Use an immutable release commit SHA in security-sensitive workflows once a real release exists. `@v1` remains the compact documented major-version route; this package invents no release SHA. See [G2](../reference/2026-09-09/sources-and-research.md#g2).
 
 ## What the size default manages
 
-The owned group is `size/XS`, `size/S`, `size/M`, `size/L`, `size/XL`, and `size/Unknown`. Thresholds and colors are in the [preset asset](../../presets/size-v1.yml). A proven band selects exactly one group member, including the explicitly configured unknown label when needed.
+The owned group is `size/XS`, `size/S`, `size/M`, `size/L`, `size/XL`, and `size/Unknown`. Thresholds and colors are in the [preset asset](../../src/diffdevil/presets/size-v1.yml). A proven band selects exactly one group member, including the explicitly configured unknown label when needed.
 
 Definition mode defaults to `ensure`: create a missing definition, preserve existing colors/descriptions, and never delete an unrelated definition. A definition created concurrently is reconciled by re-reading it, not treated as an unexplained failure.
 
@@ -113,7 +115,7 @@ That input shape selects a generated single-rule policy. It does not also run si
 For a per-file threshold:
 
 ```yaml
-- uses: Wolfsblvt/diffdevil/analyze@v1
+- uses: Wolfsblvt/diffdevil/actions/analyze@v1
   id: large_file
   with:
     metric: changed
@@ -187,7 +189,7 @@ plan-json, plan-path
 effects-changed, effects-status, effects-path
 ```
 
-Every exposed numeric scalar follows the same status/min/max companion convention, including raw/file counts where evidence can be incomplete. The compact catalog is abbreviated above; the [Action surface asset](../../spec/detail/v1/action-surface.json) declares the generation rule.
+Every exposed numeric scalar follows the same status/min/max companion convention, including raw/file counts where evidence can be incomplete. The compact catalog is abbreviated above; the [Action surface asset](../../src/diffdevil/contracts/detail/v1/action-surface.json) declares the generation rule.
 
 `*-value` or the plain numeric output is nonempty only for an exact value. Available bounds are emitted independently. `decision` is `true`, `false`, or `unknown` for one selected rule with a decision; otherwise it is empty. `band` is empty when unresolved (with `band-status: unknown`) or when no single band-bearing rule is selected. Selecting numeric output independently does not change either rule result. Do not force unknown into zero or omit its status.
 
@@ -200,7 +202,7 @@ retain status and available bounds plus `reasonCount`; unknown bands also carry
 `candidateCount`. Full reasons, candidates, per-file facts and operations remain
 in the full artifacts. The plan envelope carries desired operation/hold counts,
 not an instruction list. The complete output-command batch is limited to 512 KiB
-(UTF-16 approximation) before mutations. [Distribution evidence](../../reference/2026-09-14/action-distribution.md)
+(UTF-16 approximation) before mutations. [Distribution evidence](../reference/2026-09-14/action-distribution.md)
 records the platform boundary.
 
 Root/apply additionally expose effect status, changed-operation count and journal
@@ -221,9 +223,9 @@ repository data when selecting workflow uploads and retention.
 ## Analyze, then revalidate and apply explicitly
 
 ```yaml
-- uses: Wolfsblvt/diffdevil/analyze@v1
+- uses: Wolfsblvt/diffdevil/actions/analyze@v1
   id: changes
-- uses: Wolfsblvt/diffdevil/apply@v1
+- uses: Wolfsblvt/diffdevil/actions/apply@v1
   with:
     input-report: ${{ steps.changes.outputs.report-path }}
 ```
@@ -240,7 +242,7 @@ The apply adapter validates semantic versions, source comparison identity, selec
 ## Definition synchronization
 
 ```yaml
-- uses: Wolfsblvt/diffdevil/sync-labels@v1
+- uses: Wolfsblvt/diffdevil/actions/sync-labels@v1
   with:
     operation: verify
 ```
@@ -258,7 +260,7 @@ workspace selection remains read-only, and its policy/template reads are confine
 to the selected workspace, including symlink targets. Relative template paths may
 leave the config subdirectory only while remaining inside that workspace.
 
-The default root workflow uses `pull_request_target` and no checkout. Read-only `pull_request` workflows may analyze a checkout normally. A local-Git source in a privileged job remains an explicit route with controlled Git commands and no execution of repository scripts. The boundary is not “checkout is forbidden”; it is “untrusted executable content does not receive privileged credentials.” See [G2](../../reference/2026-09-09/sources-and-research.md#g2).
+The default root workflow uses `pull_request_target` and no checkout. Read-only `pull_request` workflows may analyze a checkout normally. A local-Git source in a privileged job remains an explicit route with controlled Git commands and no execution of repository scripts. The boundary is not “checkout is forbidden”; it is “untrusted executable content does not receive privileged credentials.” See [G2](../reference/2026-09-09/sources-and-research.md#g2).
 
 GitHub interpolation runs before diffdevil. Do not insert PR titles or branch names into a `formula`/`condition` string. Bind values through the `parameters` JSON input or a trusted parameter file, with correct host serialization. A raw expression template is not a safe data channel.
 
@@ -279,7 +281,7 @@ Workflow summaries carry measurement detail independently of PR comments. Disabl
 
 ## Existing labels that cannot be assigned
 
-The definition adapter must distinguish an existing assignable label from a label that exists but cannot currently be assigned, including an archived label where supported by the provider. Default `ensure` creates missing definitions but does not silently undo deliberate existing definition state. An unusable required definition produces `E_LABEL_UNAVAILABLE` before assignment changes. Explicit definition synchronization may restore the required managed label to assignable state as part of its stated reconciliation. This exception must report the exact label and the explicit `labels apply` repair route; it must not pretend first-run setup succeeded. Provider capability and permissions must be checked against the current API [G1](../../reference/2026-09-09/sources-and-research.md).
+The definition adapter must distinguish an existing assignable label from a label that exists but cannot currently be assigned, including an archived label where supported by the provider. Default `ensure` creates missing definitions but does not silently undo deliberate existing definition state. An unusable required definition produces `E_LABEL_UNAVAILABLE` before assignment changes. Explicit definition synchronization may restore the required managed label to assignable state as part of its stated reconciliation. This exception must report the exact label and the explicit `labels apply` repair route; it must not pretend first-run setup succeeded. Provider capability and permissions must be checked against the current API [G1](../reference/2026-09-09/sources-and-research.md).
 
 ## Process result and error transport
 

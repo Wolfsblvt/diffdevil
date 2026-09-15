@@ -7,21 +7,18 @@ public release. It keeps the source tree, npm package, distributed Actions, host
 canary, licence, and public availability distinct. It does not authorize those
 external effects or claim that they have happened.
 
-## Use the publication repository, not the private development archive
+## Start in this checkout
 
-The final private development return preserves full earlier history, caches, raw
-references, and recovery material. It is not a public upload. The separately
-prepared **public repository carrier** contains the reviewed tracked tree and a
-clean-root Git history. Start the public repository from that carrier; do not push
-all branches from the private development repository. No historical development
-commit has been destroyed to prepare the clean publication root.
+This repository is the public-source candidate. Its `main` begins at a clean public
+root and retains subsequent public refactoring commits. There is no second checkout
+to select, no private ancestor to push, and no nested public-source ZIP to unpack.
+Before the first push, inspect `git status --short --branch`, `git log --all --oneline`,
+`git remote -v`, and `git ls-files`. No remote was configured during preparation.
 
-The public edition of `reference/` keeps substantive research and qualification
-returns. It does not depend on private source-input links. Before the first push,
-inspect `git status --short --branch`, `git log --all --oneline`, `git remote -v`,
-and `git ls-files`. No remote is configured in the prepared carrier. A Git history
-can disclose material absent from today's files; a clean worktree is not a history
-privacy check.
+`docs/reference/` preserves cleaned technical research and substantive returned
+evidence. Private originals are not public source. Local transfer material under
+ignored paths is never a release asset: push the reviewed Git history, not a ZIP of
+the entire working directory. A clean worktree alone does not prove history privacy.
 
 ## Local qualification
 
@@ -35,7 +32,9 @@ npm run test:actions
 ```
 
 Run under Node 24 on native Windows to close the outstanding platform boundary.
-Node 22 remains the CLI/library floor; both Node 22 and 24 are exercised on Linux.
+Node 22 remains the CLI/library floor. The reorganized checkout has current Linux
+Node 22 evidence; its predecessor also ran on Linux Node 24. Requalify the changed
+paths under Node 24 rather than treating that earlier run as fresh evidence.
 `test:package` exercises installed CLI dispatch, declarations, and package metadata;
 `test:actions` exercises all four distributed paths outside the checkout. Neither
 needs a real token or live GitHub. Retain the JSON evidence and logs for the exact

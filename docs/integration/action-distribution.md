@@ -11,10 +11,10 @@ input/output contract remain in [GitHub Actions](github-actions.md).
 
 | Metadata | Executed path, relative to that metadata | Shared implementation |
 | --- | --- | --- |
-| `/action.yml` | `action-runtime/lib/actions/root.js` | `actionMain('root')` → `runAction` |
-| `/analyze/action.yml` | `index.mjs` | imports `../action-runtime/lib/actions/analyze.js` |
-| `/apply/action.yml` | `index.mjs` | imports `../action-runtime/lib/actions/apply.js` |
-| `/sync-labels/action.yml` | `index.mjs` | imports `../action-runtime/lib/actions/sync-labels.js` |
+| `/action.yml` | `actions/runtime/lib/actions/root.js` | `actionMain('root')` → `runAction` |
+| `/actions/analyze/action.yml` | `index.mjs` | imports `../runtime/lib/actions/analyze.js` |
+| `/actions/apply/action.yml` | `index.mjs` | imports `../runtime/lib/actions/apply.js` |
+| `/actions/sync-labels/action.yml` | `index.mjs` | imports `../runtime/lib/actions/sync-labels.js` |
 
 Every metadata file selects `runs.using: node24`. No `pre` script, package install,
 compiler invocation, network download or global tool is needed in the consumer
@@ -57,7 +57,7 @@ runtime or changing semantics. Its visible cost is a larger generated tree;
 original upstream sources/readmes shipped in package trees are retained rather
 than guessing which files are dispensable.
 
-The exit cost is small: replace `scripts/build-actions.mjs` and the generated
+The exit cost is small: replace `tools/build-actions.mjs` and the generated
 entry paths, retain the shared runners and the same isolated consumer journey.
 Revisit packaging when measured startup/download cost, a changed dependency shape
 or maintenance experience makes bundling materially preferable. No performance
@@ -66,7 +66,7 @@ advantage, native Windows result or supply-chain audit is inferred from this cho
 ## Dependency and rights boundary
 
 Exact package versions, lock integrity strings, package licence fields and notice
-paths are in `action-runtime/MANIFEST.json`. The current closure contains the
+paths are in `actions/runtime/MANIFEST.json`. The current closure contains the
 Chevrotain family under Apache-2.0, Ajv and several small helpers under MIT,
 fast-uri under BSD-3-Clause and YAML under ISC, as identified by their supplied
 packages. Original notices are included; these labels are not a fresh legal or
@@ -89,7 +89,7 @@ npm run test:actions
 `check:actions` reconstructs it in temporary storage and compares exact bytes;
 ordinary `verify` includes that comparison. The generator owns the runtime,
 metadata, sub-action wrappers and generated surface fields in the catalog.
-Authored behavior and input/output definitions live under `src/actions/`.
+Authored behavior and input/output definitions live under `src/diffdevil/actions/`.
 
 The manifest binds input source files and generated output hashes. It is evidence
 of content/parity, **not** a signature or authentication scheme. Restore the exact
@@ -110,7 +110,8 @@ The journey exercises root no-config labeling, bounded read-only analysis,
 root planning, saved-report/plan application, stale report refusal, base policy,
 explicit multiline comments, definition verification/reconciliation and partial
 write journals. Each successful or partial result checks every declared output.
-Node 22.16.0 and Node 24.11.1 have actually executed all four paths. These local
+The current nested paths have executed under Node 22.16.0. The preceding layout
+also executed under Node 24.11.1; repeat that runtime boundary after this move. These local
 processes do not emulate every GitHub-runner behavior or certify live permissions,
 secret masking, Marketplace retrieval, fork execution or the summary UI.
 
@@ -124,7 +125,7 @@ separate unobserved or unauthorized boundaries. Full standing is in
 ## Primary sources
 
 Consulted on September 14, 2026; the dated reasoning and exact boundaries are
-preserved in [Action distribution evidence](../../reference/2026-09-14/action-distribution.md).
+preserved in [Action distribution evidence](../reference/2026-09-14/action-distribution.md).
 
 - [Action metadata](https://docs.github.com/en/actions/reference/workflows-and-actions/metadata-syntax)
 - [Creating a JavaScript Action](https://docs.github.com/en/actions/tutorials/create-actions/create-a-javascript-action)

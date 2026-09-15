@@ -25,7 +25,7 @@ version: 1
 presets: []
 ```
 
-The expanded asset [size-v1.yml](../../presets/size-v1.yml) uses `presets: []` because it already contains the full policy. It must not recursively include itself.
+The expanded asset [size-v1.yml](../../src/diffdevil/presets/size-v1.yml) uses `presets: []` because it already contains the full policy. It must not recursively include itself.
 
 Only bundled known preset IDs are accepted. Configuration cannot fetch a URL, npm package, or repository module as a preset. Future external preset distribution would need an explicit data/trust contract, not a dynamic import hidden in this field.
 

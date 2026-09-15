@@ -79,9 +79,9 @@ Do not maintain separate “friendly” and “technical” spellings. The lower
 | CLI command | `diffdevil` |
 | Default configuration file | `.diffdevil.yml` |
 | Root GitHub Action | `Wolfsblvt/diffdevil@v1` |
-| Analyze sub-action | `Wolfsblvt/diffdevil/analyze@v1` |
-| Apply sub-action | `Wolfsblvt/diffdevil/apply@v1` |
-| Label synchronization sub-action | `Wolfsblvt/diffdevil/sync-labels@v1` |
+| Analyze sub-action | `Wolfsblvt/diffdevil/actions/analyze@v1` |
+| Apply sub-action | `Wolfsblvt/diffdevil/actions/apply@v1` |
+| Label synchronization sub-action | `Wolfsblvt/diffdevil/actions/sync-labels@v1` |
 | Environment-variable prefix | `DIFFDEVIL_*` |
 | Human report heading | `diffdevil analysis` |
 | Example owned-comment marker | `<!-- diffdevil:rule=<id> -->` |

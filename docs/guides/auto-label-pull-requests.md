@@ -14,7 +14,7 @@ explains the result, the permissions, and the first useful customizations.
 exists, the file is ready to copy unchanged. Before publication, use the local
 Action qualification described in [Development](../DEVELOPMENT.md), not a
 nonexistent remote ref. The copyable source is
-[`examples/workflows/size.yml`](../../examples/workflows/size.yml).
+[`examples/workflows/size.yml`](../examples/workflows/size.yml).
 
 Save this as `.github/workflows/diffdevil.yml` in the repository whose PRs you want
 to label, then merge it into that repository's **default branch**:
@@ -91,7 +91,7 @@ Keep this job free of PR-head checkout, install, build, tests, or scripts. The
 Action reads patches as data and runs its shipped JavaScript. Put ordinary PR
 build/test work in a separate `pull_request` workflow with read-only permissions.
 Repository or organization restrictions may still prevent the run or its writes.
-The [dated provider notes](../../reference/2026-09-15/github-workflows.md) link the
+The [dated provider notes](../reference/2026-09-15/github-workflows.md) link the
 official event, permission, and runtime contracts.
 
 ## Make one useful change
@@ -120,9 +120,9 @@ just to exclude one file.
 
 ## Read-only instead
 
-Use `Wolfsblvt/diffdevil/analyze@v1` with `pull-requests: read`. It emits the same
+Use `Wolfsblvt/diffdevil/actions/analyze@v1` with `pull-requests: read`. It emits the same
 facts and a summary but never writes labels or comments, even if a write-capable
-token is supplied. [The analyze workflow](../../examples/workflows/analyze.yml)
+token is supplied. [The analyze workflow](../examples/workflows/analyze.yml)
 is a complete example. Do not assume the root Action is read-only: choosing it
 selects the documented size-label application unless `mode` says otherwise.
 

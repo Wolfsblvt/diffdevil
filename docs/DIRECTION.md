@@ -35,8 +35,8 @@ website should render these sources, not introduce a competing wiki.
 
 Public technical references retain the founding choices, alternatives, research,
 and earlier implementation evidence. Private activation instructions and raw
-conversations are excluded from the publication history. Local development history
-and exact raw evidence remain preserved in the private development carrier.
+conversations are excluded from the publication history. Unique original records remain in the private transfer archive; the earlier complete
+development-history carrier is historical, not the checkout to publish.
 
 The CLI version reads installed package metadata instead of a hardcoded development
 string. Package qualification uses npm's Windows launcher dispatch on Windows and
@@ -44,11 +44,24 @@ checks an alternative release-version specimen. Workflow summaries now include
 source revisions, individual raw/replacement facts, file counts, and policy metrics.
 These changes do not alter measurement semantics.
 
+## Repository layout and delivery
+
+The product, including tests/contracts/presets, is under `src/diffdevil/`.
+`actions/` owns distribution; `docs/` owns manuals/examples/research; `tools/` owns
+build and qualification scripts. One package and shared semantic engine remain.
+The root Action address is unchanged; sub-actions now use `/actions/analyze`,
+`/actions/apply`, and `/actions/sync-labels`. Old prerelease subdirectory addresses
+are intentionally not retained as duplicate root wrappers.
+
+The public checkout itself is the delivery root. Ignored private transfer material
+is not another source tree and is not needed to build or publish the tracked tree.
+[The project map](PROJECT-MAP.md) locates current ownership.
+
 ## Next release movement
 
 Run the compact [release procedure](PUBLICATION-BOUNDARY.md) on the exact candidate:
 native Windows qualification, an independent trust/effects read, and a separately
-authorized hosted canary. Local Node 22/24 and consumer evidence belongs in
+authorized hosted canary. Current and historical runtime/consumer evidence is separated in
 [Qualification](QUALIFICATION.md); mock HTTP is not live permission evidence.
 
 The owner still selects the project licence and publication authority. Public

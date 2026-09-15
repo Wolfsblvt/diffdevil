@@ -9,7 +9,7 @@
     "declaration": true,
     "sourceMap": true,
     "declarationMap": true,
-    "rootDir": "src",
+    "rootDir": "src/diffdevil",
     "outDir": "dist/lib",
     "verbatimModuleSyntax": true,
     "skipLibCheck": true,
@@ -19,6 +19,10 @@
     "inlineSources": true
   },
   "include": [
-    "src/**/*.ts"
+    "src/diffdevil/**/*.ts"
+  ],
+  "exclude": [
+    "src/diffdevil/contracts",
+    "src/diffdevil/tests"
   ]
 }

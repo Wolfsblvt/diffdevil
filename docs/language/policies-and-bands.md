@@ -207,7 +207,7 @@ Plan hashes are integrity/identity tools, not authentication. An untrusted repor
 
 ## Complete specimens and evolution
 
-The [expanded default policy](../../presets/size-v1.yml), [minimal customization](../../examples/policies/minimal.yml), and [complete custom policy](../../examples/policies/full.yml) show all layers without requiring every user to author them.
+The [expanded default policy](../../src/diffdevil/presets/size-v1.yml), [minimal customization](../examples/policies/minimal.yml), and [complete custom policy](../examples/policies/full.yml) show all layers without requiring every user to author them.
 
 Preset replacement, explicit opt-out, merge precedence, and migration are defined alongside [shortcut lowering](../integration/presets-and-shortcuts.md) and [versioning](versioning-and-interchange.md). Once released, changing a formula's meaning or a preset's thresholds requires explicit semantic/version selection, not a quiet dependency update.
 

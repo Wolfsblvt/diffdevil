@@ -4,6 +4,15 @@
 
 This document explains the shared facts, detail, policy, host and provider boundaries implemented by diffdevil, together with the package and Action distribution that expose them. It preserves the complete product architecture without turning the current folder layout into a permanent class hierarchy or delivery sequence.
 
+## Source and delivery placement
+
+`src/diffdevil/` is one product boundary: its engine, CLI, provider and Action
+hosts, tests, executable contracts and presets move together. Module-relative
+paths below are within that directory unless explicitly rooted. `actions/` owns
+committed distribution; `docs/` owns manuals/examples/research; `tools/` owns
+repository builds and qualification. This is not an npm workspace or release split.
+[The project map](PROJECT-MAP.md) provides exact current paths.
+
 ## Data movement
 
 ```text
@@ -133,13 +142,13 @@ provided those choices preserve the contracts above and are recorded when their 
 
 The shared TypeScript core now has actual modules:
 
-- `src/sources/patch.ts`: strict unified-diff and provider-fragment normalization.
-- `src/sources/git.ts`: tracked worktree, staged, direct, and merge-base acquisition.
-- `src/numeric.ts`: finite numeric domains and validated affine replacement families.
-- `src/paths.ts`: the selected Unicode-scalar glob and rename-selection semantics.
-- `src/report.ts`: normalization, aggregation, scopes, and saved-report validation.
-- `src/inert.ts`: inert boundary copying, immutable results, canonical identities.
-- `src/model.ts`, `errors.ts`, and `limits.ts`: shared data, diagnostics, and budgets.
+- `src/diffdevil/sources/patch.ts`: strict unified-diff and provider-fragment normalization.
+- `src/diffdevil/sources/git.ts`: tracked worktree, staged, direct, and merge-base acquisition.
+- `src/diffdevil/numeric.ts`: finite numeric domains and validated affine replacement families.
+- `src/diffdevil/paths.ts`: the selected Unicode-scalar glob and rename-selection semantics.
+- `src/diffdevil/report.ts`: normalization, aggregation, scopes, and saved-report validation.
+- `src/diffdevil/inert.ts`: inert boundary copying, immutable results, canonical identities.
+- `src/diffdevil/model.ts`, `errors.ts`, and `limits.ts`: shared data, diagnostics, and budgets.
 
 These modules are shared production code. The CLI and detail front end now consume
 them. The policy compiler and desired-plan join are now implemented; provider
@@ -147,7 +156,7 @@ acquisition and effects remain separate work.
 
 ### Typed semantic execution
 
-`src/language/` separates AST builders, schema/type operations, static binding,
+`src/diffdevil/language/` separates AST builders, schema/type operations, static binding,
 validated environments, collection operations and interpretation. Compiled
 programs and environments are process-local branded objects. A program is bound
 to a schema, not one report's values; reuse requires the same schema. Runtime
@@ -218,7 +227,7 @@ argument or result shapes.
 `policy/validation.ts` validates inert version-1 authoring structure.
 `normalize.ts` composes the bundled preset, whole named declaration replacements,
 size overrides and append/replace path policy, retaining override origins.
-`size-preset.ts` is generated from `presets/size-v1.yml`, not a second normative
+`size-preset.ts` is generated from `src/diffdevil/presets/size-v1.yml`, not a second normative
 preset. Tests bind both its source bytes and independently derived canonical
 value digest. No YAML runtime is hidden inside this generated data.
 
@@ -277,7 +286,7 @@ checks its decoded projection against that value. An unhandled form reports a
 scalar range and decoded coordinates rather than fabricating a character caret.
 Alias diagnostics identify the anchored declaration and the alias use separately.
 
-`scripts/schema-build.mjs` compiles only repository-owned Draft 2020-12 schemas
+`tools/schema-build.mjs` compiles only repository-owned Draft 2020-12 schemas
 with Ajv into `dist/lib/validation/schemas.cjs`. Runtime `schema.ts` performs no
 schema compilation. Structural validation supplements the semantic invariants
 owned by report/policy/plan readers; schema success is not authorization or a
@@ -386,9 +395,9 @@ comparison, raw and replacement-aware facts, file-list completeness and bounded
 policy metrics without turning unavailable scalars into zero. The display has a
 fixed budget; full report and journal files retain the detail.
 
-`scripts/build-actions.mjs` packages ordinary ESM without rewriting imports or
+`tools/build-actions.mjs` packages ordinary ESM without rewriting imports or
 introducing a bundler. It carries the complete locked runtime package trees and
-static Ajv validators in `action-runtime/`. The 4 metadata files and 3 sub-action
+static Ajv validators in `actions/runtime/`. The 4 metadata files and 3 sub-action
 wrappers are generated from the same surface. A manifest binds source and shipped
 file bytes; regeneration parity belongs to ordinary verification. Isolated
 metadata-selected process execution belongs to `test:actions`. Original vendor
@@ -402,6 +411,6 @@ and exact consumer paths are in [Action distribution](integration/action-distrib
 
 `docs/guides/` owns task-oriented user journeys; `docs/DOCUMENTATION.md` owns the
 teaching order and future website/help source boundary. Executable examples under
-`examples/` feed the same compiler and host, and ordinary tests read the actual
+`docs/examples/` feed the same compiler and host, and ordinary tests read the actual
 workflow and CLI specimens. These assets are shipped with the npm package. They
 are not a second runtime or a separately maintained website implementation.

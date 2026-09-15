@@ -10,16 +10,13 @@ coverage/
 !.env.example
 
 # Repository-local artifacts and editor noise
-artifacts/
+# Leitsatz: product-owned generated output
+/artifacts/
 .DS_Store
 Thumbs.db
 .vscode/
 .idea/
 
-# Local implementation handoff and private founding inputs
-.handoff/
-reference/2026-09-09/source-inputs/
-
 # Deliberately shipped native-ESM Action closure, not the developer install.
-!action-runtime/
-!action-runtime/**
+!actions/runtime/
+!actions/runtime/**

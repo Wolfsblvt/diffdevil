@@ -2,7 +2,7 @@
 
 ## Meaning
 
-This document defines the fixed standard-library surface of `diffdevil-expr/1`. Each function has a declared signature, evaluation strategy, and evidence behavior. The [function catalog](../../spec/detail/v1/functions.json) is its machine-readable signature companion. Function registration from user configuration or arbitrary JavaScript callbacks is not supported.
+This document defines the fixed standard-library surface of `diffdevil-expr/1`. Each function has a declared signature, evaluation strategy, and evidence behavior. The [function catalog](../../src/diffdevil/contracts/detail/v1/functions.json) is its machine-readable signature companion. Function registration from user configuration or arbitrary JavaScript callbacks is not supported.
 
 `C<T>` means a logical collection of T, `Optional<T>` includes structural missing/null, and `N` means integer or float. Numeric results carry measurement evidence. Boolean results are decisions. Unless stated otherwise, arguments are evaluated left-to-right and errors propagate.
 

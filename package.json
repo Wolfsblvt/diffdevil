@@ -5,19 +5,19 @@
   "description": "Composable Git diff analysis and policy for Node.js, CI pipelines, and GitHub Actions.",
   "type": "module",
   "scripts": {
-    "check:prep": "node ./scripts/check-prep.mjs",
-    "build": "node scripts/build.mjs",
-    "build:offline": "node scripts/build.mjs --offline-toolchain",
-    "test": "node scripts/test.mjs",
+    "check:prep": "node ./tools/check-prep.mjs",
+    "build": "node tools/build.mjs",
+    "build:offline": "npm run build",
+    "test": "node tools/test.mjs",
     "verify": "npm run check:prep && npm run build && npm test && npm run check:actions",
-    "verify:offline": "npm run check:prep && npm run build:offline && npm test && npm run check:actions",
-    "test:package": "node scripts/package-smoke.mjs",
+    "verify:offline": "npm run verify",
+    "test:package": "node tools/package-smoke.mjs",
     "prepack": "npm run build",
-    "demo:shortcuts": "node scripts/shortcut-demo.mjs",
-    "test:conformance": "node scripts/conformance.mjs",
-    "build:actions": "npm run build && node scripts/build-actions.mjs",
-    "check:actions": "node scripts/build-actions.mjs --check",
-    "test:actions": "node scripts/action-smoke.mjs"
+    "demo:shortcuts": "node tools/shortcut-demo.mjs",
+    "test:conformance": "node tools/conformance.mjs",
+    "build:actions": "npm run build && node tools/build-actions.mjs",
+    "check:actions": "node tools/build-actions.mjs --check",
+    "test:actions": "node tools/action-smoke.mjs"
   },
   "keywords": [
     "git",
@@ -64,15 +64,10 @@
   },
   "files": [
     "dist/lib",
-    "src",
-    "schemas/*.json",
-    "spec/detail/v1",
-    "presets/*.yml",
-    "docs",
-    "examples",
-    "reference/*.md",
-    "reference/2026-*/*.md",
-    "reference/2026-*/*.json"
+    "src/diffdevil/**/*.ts",
+    "src/diffdevil/contracts",
+    "src/diffdevil/presets/*.yml",
+    "docs"
   ],
   "engines": {
     "node": ">=22"

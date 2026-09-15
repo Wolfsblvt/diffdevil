@@ -37,7 +37,7 @@ A suggestion is advisory text, never an automatic correction. No production pars
 
 ## Stable codes, not frozen sentences
 
-The [diagnostic catalog](../../spec/detail/v1/diagnostics.json) lists the stable codes selected for version 1. Consumers branch on codes and structured details, not message wording. Messages may improve without changing the meaning of a code.
+The [diagnostic catalog](../../src/diffdevil/contracts/detail/v1/diagnostics.json) lists the stable codes selected for version 1. Consumers branch on codes and structured details, not message wording. Messages may improve without changing the meaning of a code.
 
 Unknown field and function diagnostics include the bound subject type and nearby names when a suggestion is unambiguous. Wrong argument counts identify the selected function signatures. Band failures identify the two adjacent cut points or conflicting IDs. Metric cycles identify the dependency path and declaration locations. Invalid patterns report the pattern span, not an arbitrary file that happened to be checked first.
 
@@ -47,7 +47,7 @@ Unexpected internal exceptions become `E_INTERNAL` with a correlation identifier
 
 The canonical range is `{source, start, end}` with zero-based UTF-16 offsets and an exclusive end. Display locations are derived one-based line/column pairs. EOF has a zero-width span at the decoded source length. Unavailable coordinates are omitted, not set to zero or fabricated.
 
-Chevrotain token endpoints are adapted at the parser boundary. Its current major version uses `-1` for unavailable token/CST positions. Do not retain old NaN checks as the only unavailable-position test. See the dated [implementation guide](../../reference/2026-09-09/chevrotain-implementation-guide.md) and [C1](../../reference/2026-09-09/sources-and-research.md#c1).
+Chevrotain token endpoints are adapted at the parser boundary. Its current major version uses `-1` for unavailable token/CST positions. Do not retain old NaN checks as the only unavailable-position test. See the dated [implementation guide](../reference/2026-09-09/chevrotain-implementation-guide.md) and [C1](../reference/2026-09-09/sources-and-research.md#c1).
 
 YAML expression scalars need two coordinate spaces: decoded expression text and the source YAML token. Escapes, folding, indentation, and aliases can make these different. The loader retains a source map. If exact character mapping is not available, it reports the correct scalar range and explicit `precision: scalar`, plus the accurate decoded-expression offset. It must not display a misleading caret on a guessed source column. Full mapping is the desired release contract and is part of qualification.
 
@@ -99,7 +99,7 @@ The catalog defines the exact unit schedule. Short-circuited subtrees consume no
 
 Metrics are evaluated once per request under a deterministic dependency graph. Result reuse charges the documented logical reference cost, independent of whether a physical cache happened to be warm. An implementation may optimize execution without changing the logical charge trace. Changing the charge schedule belongs to a limit-profile revision.
 
-Nested collection operations are legal. Their multiplicative work is charged. A million-by-million comparison is not allowed to run indefinitely merely because each primitive is harmless. Production systems such as Kubernetes use deterministic CEL cost budgeting; our chosen budget values remain product-specific proposals. See [K1](../../reference/2026-09-09/sources-and-research.md#k1).
+Nested collection operations are legal. Their multiplicative work is charged. A million-by-million comparison is not allowed to run indefinitely merely because each primitive is harmless. Production systems such as Kubernetes use deterministic CEL cost budgeting; our chosen budget values remain product-specific proposals. See [K1](../reference/2026-09-09/sources-and-research.md#k1).
 
 ## Parser and matcher complexity
 
@@ -121,7 +121,7 @@ Forbidden keys, frozen records, and schema checks supplement this design. They a
 
 There is no expression route to `eval`, `new Function`, shell execution, filesystem reads/writes, network calls, environment variables, timers, randomness, dynamic imports, reflection, or user-provided JavaScript callbacks. Standard-library dispatch resolves only fixed internal operation identifiers.
 
-A parser generated or configured from trusted product source is not the same as executing user expression text. This implementation selects Chevrotain rather than a user-supplied grammar. Fixed JSON Schemas may be compiled into standalone validators at build time; user schemas are not dynamically compiled during evaluation. See [J1](../../reference/2026-09-09/sources-and-research.md#j1).
+A parser generated or configured from trusted product source is not the same as executing user expression text. This implementation selects Chevrotain rather than a user-supplied grammar. Fixed JSON Schemas may be compiled into standalone validators at build time; user schemas are not dynamically compiled during evaluation. See [J1](../reference/2026-09-09/sources-and-research.md#j1).
 
 ## Effects and hostile inputs
 

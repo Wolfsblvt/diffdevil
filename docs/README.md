@@ -11,7 +11,7 @@ This is the documentation map for diffdevil. It separates current product direct
 | Automatically label PR size with one workflow | [Auto-labeling quickstart](guides/auto-label-pull-requests.md) |
 | Get a scalar, path list, or reliable shell condition | [Local automation](guides/local-automation.md) |
 | Add a source/test signal or one updated comment | [Policy recipes](guides/policy-recipes.md) |
-| Copy a complete tested input | [Example map](../examples/README.md) |
+| Copy a complete tested input | [Example map](examples/README.md) |
 
 No expression-language study is required for the size workflow. Go deeper only
 when a custom formula, scope, or policy needs it.
@@ -61,18 +61,18 @@ Start with [`language.md`](language.md).
 | Parser architecture | [`language/parser-architecture.md`](language/parser-architecture.md) |
 | Versioning and interchange | [`language/versioning-and-interchange.md`](language/versioning-and-interchange.md) |
 
-Machine contracts live under [`../spec/detail/v1/`](../spec/detail/v1/), [`../schemas/`](../schemas/), and [`../presets/`](../presets/).
+Machine contracts live under [`../src/diffdevil/contracts/detail/v1/`](../src/diffdevil/contracts/detail/v1/), [`../src/diffdevil/contracts/schemas/`](../src/diffdevil/contracts/schemas/), and [`../src/diffdevil/presets/`](../src/diffdevil/presets/).
 
 ## Examples
 
-[`../examples/README.md`](../examples/README.md) maps expressions, policies, reports, scripts, and workflow specimens. Workflow remote references remain unpublished specimens rather than live evidence;
+[`../examples/README.md`](examples/README.md) maps expressions, policies, reports, scripts, and workflow specimens. Workflow remote references remain unpublished specimens rather than live evidence;
 expression/policy execution is identified in Qualification.
-`examples/policies/weighted.json` is now executed by the shortcut demonstration
+`docs/examples/policies/weighted.json` is now executed by the shortcut demonstration
 and configured CLI tests; Qualification names the remaining unobserved routes.
 
 ## Dated evidence
 
-[The reference map](../reference/README.md) identifies historical public editions and current source precedence. [`../reference/2026-09-09/`](../reference/2026-09-09/) preserves:
+[The reference map](reference/README.md) identifies historical public editions and current source precedence. [`reference/2026-09-09/`](reference/2026-09-09/) preserves:
 
 - founding and decisions;
 - source research;
@@ -82,6 +82,6 @@ and configured CLI tests; Qualification names the remaining unobserved routes.
 
 Dated references explain the selected design. Maintained product and language documents remain current authority.
 
-The [September 14 references](../reference/2026-09-14/) add provider and Action
+The [September 14 references](reference/2026-09-14/) add provider and Action
 distribution evidence. npm and Action consumer journeys are separately exercised;
 neither establishes live GitHub or publication standing.

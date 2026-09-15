@@ -2,7 +2,7 @@
 
 ## Meaning
 
-This document records durable product and repository choices whose rationale would be expensive to reconstruct from code alone. It separates settled direction from genuinely open choices. Dated research and founding evidence remain in `reference/`; this file carries the current usable decision.
+This document records durable product and repository choices whose rationale would be expensive to reconstruct from code alone. It separates settled direction from genuinely open choices. Dated research and founding evidence remain in `docs/reference/`; this file carries the current usable decision.
 
 ## Current decisions
 
@@ -282,7 +282,7 @@ scalar precision and decoded coordinates rather than claiming a character map.
 The private recovery archive carries the fifteen-package offline closure.
 
 **Sources:** Locked YAML/Ajv package closure; the maintained diagnostics/source-map
-contract; `scripts/schema-build.mjs`; executed YAML, schema and package evidence in
+contract; `tools/schema-build.mjs`; executed YAML, schema and package evidence in
 `docs/QUALIFICATION.md`.
 
 ## D024: Verify executable contracts without freezing narrative
@@ -303,7 +303,7 @@ part of this decision; they remain independently executed by the runtime.
 summaries determine registration; actual failures and zero discovery stay red.
 Documentation quality and brand consistency remain contextual review judgments.
 
-**Evidence.** The empty-file specimen and regression in `tests/repository-runner.test.mjs`, observed on September 14, 2026.
+**Evidence.** The empty-file specimen and regression in `src/diffdevil/tests/repository-runner.test.mjs`, observed on September 14, 2026.
 
 ## D025: Keep GitHub transport small and effect evidence explicit
 
@@ -330,7 +330,7 @@ Public consumers choose their own GitHub principal; repository-specific actor ru
 are not embedded as a product restriction.
 
 **Sources.** The accepted complete-product assignment; maintained GitHub and
-interchange contracts; [current API evidence](../reference/2026-09-14/github-api.md);
+interchange contracts; [current API evidence](reference/2026-09-14/github-api.md);
 mocked provider and installed-package tests in `docs/QUALIFICATION.md`.
 
 ## D026: Keep local Git data-only without losing PR comparison identity
@@ -353,7 +353,7 @@ Action source. The host can load trusted policy independently of hostile diff
 content and binds base-loaded policy to the base observed at acquisition.
 
 **Sources.** Accepted local-Git/trust boundary; executed filter and diverged-branch
-specimens in `tests/github-git.test.mjs`; shared before-write validation.
+specimens in `src/diffdevil/tests/github-git.test.mjs`; shared before-write validation.
 
 ## D027: Ship a complete native-ESM Action closure without workflow installation
 
@@ -384,5 +384,30 @@ maintenance evidence, or a dependency shape that no longer fits native resolutio
 
 **Sources.** The accepted install-free Action frontier;
 [distribution manual](integration/action-distribution.md);
-[dated primary-source evidence](../reference/2026-09-14/action-distribution.md);
+[dated primary-source evidence](reference/2026-09-14/action-distribution.md);
 executed consumer and parity results in [Qualification](QUALIFICATION.md).
+
+## D028: Group the single product and nest prerelease sub-actions
+
+**Decision.** Keep one package. Product code, tests, schemas, language contracts
+and presets share `src/diffdevil/`. Documentation, runnable examples and dated
+research share `docs/`. Repository tools share `tools/`. Shipped Action code and
+sub-action entry points share `actions/`; only the one-step `action.yml` remains
+at the root as a provider entry convention.
+
+**Why.** The previous root exposed implementation details, examples, presets,
+schemas, language contracts, tests, build scripts and three small wrappers as
+separate peers. That made ownership and handoff harder without creating any real
+independent product or release boundary.
+
+**Consumer consequence.** Root Action, CLI command and public library imports are
+unchanged. The three sub-action addresses become `/actions/analyze`,
+`/actions/apply`, and `/actions/sync-labels`. This is an intentional prerelease path
+change; no published compatibility is claimed and no duplicate old-root wrappers
+are maintained. Metadata, generators, tests, tarball paths and user examples move
+together. Generated runtime dependencies remain complete and notices are preserved.
+
+**Limits.** This is a responsibility grouping, not an npm workspace split, a new
+build system, or a directory-count enforcement rule. Current consumers are proved
+by the ordinary suite, installed-package journey and isolated distributed Actions.
+See [the project map](PROJECT-MAP.md) and [Qualification](QUALIFICATION.md).

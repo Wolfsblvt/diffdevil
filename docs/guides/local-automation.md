@@ -14,7 +14,7 @@ From the source checkout, with Node 22 or later and npm installed:
 ```sh
 npm ci --ignore-scripts --no-audit --no-fund
 npm run build
-node dist/lib/cli/main.js analyze --diff-file examples/diffs/review.diff --format human
+node dist/lib/cli/main.js analyze --diff-file docs/examples/diffs/review.diff --format human
 ```
 
 No token or network provider is involved in the analysis. The supplied four-file
@@ -30,14 +30,14 @@ source checkouts do not contain that private cache.
 ## Return one number
 
 ```sh
-node dist/lib/cli/main.js query --diff-file examples/diffs/review.diff --expr 'totals.lines.changed' --format value
+node dist/lib/cli/main.js query --diff-file docs/examples/diffs/review.diff --expr 'totals.lines.changed' --format value
 ```
 
 Output is exactly `10` followed by a newline. Human explanations and diagnostics
 do not appear in the scalar. Simple arithmetic uses ordinary detail expressions:
 
 ```sh
-node dist/lib/cli/main.js query --diff-file examples/diffs/review.diff --expr 'totals.lines.deleted + 2 * totals.lines.modified' --format value
+node dist/lib/cli/main.js query --diff-file docs/examples/diffs/review.diff --expr 'totals.lines.deleted + 2 * totals.lines.modified' --format value
 ```
 
 That returns `12`: this formula deliberately weights modified lines twice. It is
@@ -47,7 +47,7 @@ PowerShell can consume a scalar after checking that the command actually returne
 one:
 
 ```powershell
-$value = & node dist/lib/cli/main.js query --diff-file examples/diffs/review.diff --expr 'totals.lines.changed' --format value
+$value = & node dist/lib/cli/main.js query --diff-file docs/examples/diffs/review.diff --expr 'totals.lines.changed' --format value
 if ($LASTEXITCODE -ne 0) { throw 'The exact changed-line value is unavailable.' }
 $changed = [long]$value
 Write-Output "Changed lines: $changed"
@@ -59,7 +59,7 @@ The file shortcut removes a filter, a lambda, and a projection without changing
 the evaluator:
 
 ```sh
-node dist/lib/cli/main.js query --diff-file examples/diffs/review.diff --files --metric changed --gt 2 --select path --format lines
+node dist/lib/cli/main.js query --diff-file docs/examples/diffs/review.diff --files --metric changed --gt 2 --select path --format lines
 ```
 
 This emits `package-lock.json` and `src/payments.ts`, one path per line in canonical path order. Use `--gt
@@ -70,7 +70,7 @@ line output when consuming arbitrary filenames that may contain line breaks.
 To test for any such file rather than list it:
 
 ```sh
-node dist/lib/cli/main.js check --diff-file examples/diffs/review.diff --files any --metric changed --gt 100
+node dist/lib/cli/main.js check --diff-file docs/examples/diffs/review.diff --files any --metric changed --gt 100
 ```
 
 The supplied small patch exits **1**, meaning valid and false. The command does
@@ -86,7 +86,7 @@ not fail because the patch is small. Exit meanings are:
 A Bash gate that must not silently accept unknown evidence:
 
 ```bash
-if node dist/lib/cli/main.js check --diff-file examples/diffs/review.diff --files any --metric changed --gt 100; then
+if node dist/lib/cli/main.js check --diff-file docs/examples/diffs/review.diff --files any --metric changed --gt 100; then
   printf '%s\n' 'At least one file exceeds 100 changed lines.'
 else
   result=$?
@@ -128,7 +128,7 @@ comparison instead of three-dot semantics.
 ## Analyze once, query several times
 
 ```sh
-node dist/lib/cli/main.js analyze --diff-file examples/diffs/review.diff --format json --output review-report.json
+node dist/lib/cli/main.js analyze --diff-file docs/examples/diffs/review.diff --format json --output review-report.json
 node dist/lib/cli/main.js query --report review-report.json --expr 'totals.raw.churn' --format value
 node dist/lib/cli/main.js query --report review-report.json --files --metric changed --gt 2 --select path --format json
 ```

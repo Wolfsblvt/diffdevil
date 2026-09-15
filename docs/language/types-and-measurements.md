@@ -20,7 +20,7 @@ Floats are finite IEEE-754 binary64 values. A decimal point or exponent in a lit
 
 Reject non-finite results and unsafe integer literals. Normalize negative zero to zero in observable values. Floating underflow follows binary64 behavior. No hidden tolerance is added to equality, thresholds, or band boundaries.
 
-The safe-integer boundary and numeric representation follow ECMAScript's numeric model; the prohibition on unsafe counts and the evidence rules here are diffdevil design choices. See [N1](../../reference/2026-09-09/sources-and-research.md#n1).
+The safe-integer boundary and numeric representation follow ECMAScript's numeric model; the prohibition on unsafe counts and the evidence rules here are diffdevil design choices. See [N1](../reference/2026-09-09/sources-and-research.md#n1).
 
 “Exact” means one determined value under this model. It does not mean arbitrary-precision decimal or real arithmetic. For example, `0.1 + 0.2 == 0.3` is false under the selected float model. For exact integral policy weighting, prefer `3 * metrics.source + metrics.tests` over unnecessary decimal factors.
 

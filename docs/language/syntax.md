@@ -2,7 +2,7 @@
 
 ## Meaning
 
-This document defines the source syntax of `diffdevil-expr/1`: lexical forms, expression structure, operator precedence, member access, binders, and static syntactic restrictions. Its companion [EBNF](../../spec/detail/v1/grammar.ebnf) is the grammar asset. Runtime evidence, arithmetic, and collection behavior live in their separate references rather than being implicit parser behavior.
+This document defines the source syntax of `diffdevil-expr/1`: lexical forms, expression structure, operator precedence, member access, binders, and static syntactic restrictions. Its companion [EBNF](../../src/diffdevil/contracts/detail/v1/grammar.ebnf) is the grammar asset. Runtime evidence, arithmetic, and collection behavior live in their separate references rather than being implicit parser behavior.
 
 ## Source unit and character model
 
@@ -198,7 +198,7 @@ The condition must be boolean. Only the selected branch is evaluated for a known
 
 ## Complete grammar and AST contract
 
-The [EBNF](../../spec/detail/v1/grammar.ebnf) defines the grammar independently of Chevrotain's implementation DSL. The [AST schema](../../spec/detail/v1/ast.schema.json) defines the implementation-facing syntax model used by binder and conformance tests. It is not a public persisted-program format.
+The [EBNF](../../src/diffdevil/contracts/detail/v1/grammar.ebnf) defines the grammar independently of Chevrotain's implementation DSL. The [AST schema](../../src/diffdevil/contracts/detail/v1/ast.schema.json) defines the implementation-facing syntax model used by binder and conformance tests. It is not a public persisted-program format.
 
 The parser may preserve redundant parentheses as source spans without adding a semantic node. It must retain operator locations, decoded literals plus raw spelling, call and argument spans, member-key spans, record field order, and binder declarations. These are needed for source-positioned errors and explanations.
 

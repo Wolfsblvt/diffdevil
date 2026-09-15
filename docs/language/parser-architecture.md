@@ -23,7 +23,7 @@ Source adapters produce a normalized report independently. The evaluator reads t
 
 Chevrotain is the selected parser toolkit. Its ordinary TypeScript/JavaScript grammar code and explicit CST/visitor boundary fit a testable, extensible implementation and existing maintainer familiarity. No material requirement here makes Peggy a better product choice. The earlier Peggy recommendation is superseded, not retained as a second engine.
 
-The selection does not outsource the language's types, numeric evidence, collection semantics, or security to Chevrotain. Those are diffdevil-owned contracts. Relevant toolkit sources are recorded in [Research](../../reference/2026-09-09/sources-and-research.md#c2).
+The selection does not outsource the language's types, numeric evidence, collection semantics, or security to Chevrotain. Those are diffdevil-owned contracts. Relevant toolkit sources are recorded in [Research](../reference/2026-09-09/sources-and-research.md#c2).
 
 ## Lexer
 
@@ -49,9 +49,9 @@ Use a dedicated visitor to produce immutable AST nodes. Do not evaluate expressi
 
 Supported node kinds are literal, identifier, member, unary, binary, conditional, call, lambda, list, and record. Parentheses affect spans and precedence but need no semantic node. Lambdas remain internal AST syntax and cannot become runtime values.
 
-Visit repeated CST children explicitly. A convenience `visit` call on an array is not assumed to map every child. Keep visitor coverage checks and AST-shape tests separate so missing handling cannot quietly become an empty value. Toolkit visitor behavior is documented in [C2](../../reference/2026-09-09/sources-and-research.md#c2).
+Visit repeated CST children explicitly. A convenience `visit` call on an array is not assumed to map every child. Keep visitor coverage checks and AST-shape tests separate so missing handling cannot quietly become an empty value. Toolkit visitor behavior is documented in [C2](../reference/2026-09-09/sources-and-research.md#c2).
 
-The [AST schema](../../spec/detail/v1/ast.schema.json) is an internal contract for construction and tests. It is not a serialized public program format. Parser toolkit nodes and token classes must not leak through the public API.
+The [AST schema](../../src/diffdevil/contracts/detail/v1/ast.schema.json) is an internal contract for construction and tests. It is not a serialized public program format. Parser toolkit nodes and token classes must not leak through the public API.
 
 ## Binder and type checker
 
@@ -83,14 +83,14 @@ All shortcut-generated AST passes the same binder and checker. This is what make
 
 Use a document-preserving YAML parser. Retain nodes, source tokens, alias relationships, scalar style, and source ranges. Reject duplicate keys, invalid tags, cyclic aliases, and parse errors before policy compilation. Validate unsafe integer values without first losing precision.
 
-Decoded expression source carries a mapping to YAML characters. Block indentation, folded newlines, quote escapes, and aliases require deliberate tests. Exact error locations are an implementation feature, not something automatically supplied by choosing a parser library. The YAML library's available mechanisms are noted in [Y1](../../reference/2026-09-09/sources-and-research.md#y1).
+Decoded expression source carries a mapping to YAML characters. Block indentation, folded newlines, quote escapes, and aliases require deliberate tests. Exact error locations are an implementation feature, not something automatically supplied by choosing a parser library. The YAML library's available mechanisms are noted in [Y1](../reference/2026-09-09/sources-and-research.md#y1).
 
 ## Module neighborhood
 
 A reasonable source shape is:
 
 ```text
-src/language/
+src/diffdevil/language/
   tokens.ts
   lexer.ts
   parser.ts
@@ -104,7 +104,7 @@ src/language/
   numeric-domain.ts
   collections.ts
   diagnostics.ts
-src/policy/
+src/diffdevil/policy/
   load.ts
   compile.ts
   presets.ts

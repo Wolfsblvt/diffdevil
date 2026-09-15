@@ -5,13 +5,13 @@
 These complete policies extend diffdevil beyond size labels: explicit exclusions,
 source/test scopes, a repository-defined signal, scalar queries, and an opt-in
 comment updated in place. Each recipe names its files, observable results, and
-limits. Policies and workflows under `examples/` are the executable source.
+limits. Policies and workflows under `docs/examples/` are the executable source.
 
 ## Signal source changes without test-path changes
 
-Copy [`review-signals.yml`](../../examples/policies/review-signals.yml) to
+Copy [`review-signals.yml`](../examples/policies/review-signals.yml) to
 `.github/diffdevil.yml` in the consuming repository. Copy the matching
-[`review-signals` workflow](../../examples/workflows/review-signals.yml) to
+[`review-signals` workflow](../examples/workflows/review-signals.yml) to
 `.github/workflows/diffdevil.yml`. As with the
 [quickstart](auto-label-pull-requests.md), the remote `@v1` coordinate becomes
 usable when the first release is published.
@@ -60,9 +60,9 @@ policy source.
 ### Try the same policy locally
 
 ```sh
-node dist/lib/cli/main.js validate --config examples/policies/review-signals.yml
-node dist/lib/cli/main.js query --diff-file examples/diffs/review.diff --config examples/policies/review-signals.yml --name sourceReview --format value
-node dist/lib/cli/main.js plan --diff-file examples/diffs/review.diff --config examples/policies/review-signals.yml --target-repo example/repository --target-pr 42 --format json
+node dist/lib/cli/main.js validate --config docs/examples/policies/review-signals.yml
+node dist/lib/cli/main.js query --diff-file docs/examples/diffs/review.diff --config docs/examples/policies/review-signals.yml --name sourceReview --format value
+node dist/lib/cli/main.js plan --diff-file docs/examples/diffs/review.diff --config docs/examples/policies/review-signals.yml --target-repo example/repository --target-pr 42 --format json
 ```
 
 The named query returns **3**. The policy counts **6 changed lines** across three
@@ -76,9 +76,9 @@ The example tests exercise that transition and label removal through fake HTTP.
 
 ## Keep one useful comment up to date
 
-Copy [`review-comment.yml`](../../examples/policies/review-comment.yml) to
+Copy [`review-comment.yml`](../examples/policies/review-comment.yml) to
 `.github/diffdevil-comment.yml`, and its
-[workflow](../../examples/workflows/review-comment.yml) to
+[workflow](../examples/workflows/review-comment.yml) to
 `.github/workflows/diffdevil-comment.yml`.
 
 This independent recipe uses `presets: []`: it posts a summary but does not select
@@ -111,7 +111,7 @@ source, never the PR worktree.
 
 ## Use a threshold without a policy file
 
-The [destructive-change workflow](../../examples/workflows/destructive.yml) shows
+The [destructive-change workflow](../examples/workflows/destructive.yml) shows
 an inline formula and label. The formula `totals.lines.deleted +
 totals.lines.modified` counts positions removed or rewritten, not raw churn.
 The threshold is ordinary repository policy; naming it “destructive” does not
@@ -130,7 +130,7 @@ For the bundled size definitions, these are complete steps within a workflow job
 with Pull requests write permission:
 
 ```yaml
-- uses: Wolfsblvt/diffdevil/sync-labels@v1
+- uses: Wolfsblvt/diffdevil/actions/sync-labels@v1
   with:
     operation: apply
     definitions: ensure

@@ -43,12 +43,12 @@ for naming and operational vocabulary, not a mascot voice in examples.
 
 ## Own examples as executable assets
 
-`examples/diffs/review.diff` is the small transparent teaching specimen. Its source,
+`docs/examples/diffs/review.diff` is the small transparent teaching specimen. Its source,
 test, documentation, and lockfile blocks deliberately demonstrate replacement
 accounting and explicit exclusion. The two smaller policies teach a custom signal
 and a comment without requiring the larger complete policy specimen.
 
-`tests/examples.test.mjs` consumes the actual patch, policy files, workflow YAML,
+`src/diffdevil/tests/examples.test.mjs` consumes the actual patch, policy files, workflow YAML,
 and command examples. It exercises the production CLI and shared Action runner
 against fake HTTP. These tests prove executable behavior, not the prose around
 it, GitHub event delivery, or real permission grants. `test:actions` separately
@@ -72,7 +72,7 @@ Help navigation can group **Get started**, **Recipes**, **CLI**, **Actions**,
 **Policies and detail**, **Library API**, and **Troubleshooting**. Use repository
 Markdown as source and consume the same example files. Contribution links should
 edit those sources. Do not copy maintained pages into a separately edited GitHub
-Wiki or CMS. Historical `reference/` records may remain repository-only unless a
+Wiki or CMS. Historical `docs/reference/` records may remain repository-only unless a
 specific article benefits from the rationale.
 
 A static docs adapter, search, redirect policy, domain, visual assets, and hosting

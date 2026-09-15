@@ -68,7 +68,7 @@ Size is orientation, not risk, quality, importance, or a merge recommendation. X
 ## Read-only GitHub analysis
 
 ```yaml
-- uses: Wolfsblvt/diffdevil/analyze@v1
+- uses: Wolfsblvt/diffdevil/actions/analyze@v1
   id: diff
 ```
 
@@ -85,7 +85,7 @@ Read common results directly:
 The status check is necessary when manually reading a scalar output. A more convenient single measurement-and-threshold step is:
 
 ```yaml
-- uses: Wolfsblvt/diffdevil/analyze@v1
+- uses: Wolfsblvt/diffdevil/actions/analyze@v1
   id: broad
   with:
     metric: changed

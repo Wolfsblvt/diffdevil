@@ -215,7 +215,7 @@ diffdevil check --expr "any(files, f => f.included && pathMatches(f, 'src/**'))"
 
 There are no `$` identifiers in detail. Nevertheless, arbitrary data should be a parameter, not inserted into that double-quoted expression. For complex expression text use `--expr-file`.
 
-PowerShell's native argument transport changed in 7.3, and `.cmd`/`.bat` wrappers have special behavior. An npm launcher may traverse that path. The examples need qualification on Windows PowerShell 5.1 and current PowerShell 7 with the actual installed CLI shim, not just direct `node` invocation. See [P1](../../reference/2026-09-09/sources-and-research.md#p1).
+PowerShell's native argument transport changed in 7.3, and `.cmd`/`.bat` wrappers have special behavior. An npm launcher may traverse that path. The examples need qualification on Windows PowerShell 5.1 and current PowerShell 7 with the actual installed CLI shim, not just direct `node` invocation. See [P1](../reference/2026-09-09/sources-and-research.md#p1).
 
 ## Bash examples
 
@@ -238,7 +238,7 @@ Use outer single quotes and inner double quotes for expression strings:
 diffdevil query --expr 'map(filter(files, f => f.included && pathMatches(f, "src/**")), f => f.path)' --format lines
 ```
 
-Bash cannot include a literal single quote inside a single-quoted string. Expression files and typed parameters avoid escalating quote complexity. See [B1](../../reference/2026-09-09/sources-and-research.md#b1).
+Bash cannot include a literal single quote inside a single-quoted string. Expression files and typed parameters avoid escalating quote complexity. See [B1](../reference/2026-09-09/sources-and-research.md#b1).
 
 ## Label definitions and explicit application
 

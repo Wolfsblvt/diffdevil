@@ -44,7 +44,7 @@ Standard numeric facts are tagged measurements:
 }
 ```
 
-This excerpt omits required fields to show the measurement encoding. Complete valid examples are in [reports](../../examples/reports/exact.json).
+This excerpt omits required fields to show the measurement encoding. Complete valid examples are in [reports](../examples/reports/exact.json).
 
 Inside detail, `totals.lines.changed` denotes the typed measurement itself. External JSON consumers inspect `.status`, `.value`, `.lower`, or `.upper`. The wire format never switches unpredictably between a number and null. Convenience scalar output unwraps an exact measurement only when that projection is valid.
 
@@ -145,7 +145,7 @@ Older released language profiles remain supported while real consumers depend on
 
 ## Schema scope and qualification
 
-The supplied Draft 2020-12 schemas cover the selected structural contracts. Semantic validation additionally checks bounds/order, integer categories, metric graphs, references, scope membership, primitive identities, plan freshness, and ownership. JSON Schema alone does not prove any of those relational claims. See [S1](../../reference/2026-09-09/sources-and-research.md#s1).
+The supplied Draft 2020-12 schemas cover the selected structural contracts. Semantic validation additionally checks bounds/order, integer categories, metric graphs, references, scope membership, primitive identities, plan freshness, and ownership. JSON Schema alone does not prove any of those relational claims. See [S1](../reference/2026-09-09/sources-and-research.md#s1).
 
 The package qualification report distinguishes schema/example checks from unexecuted parser, evaluator, shell, and GitHub behavior. A well-formed schema is useful groundwork, not evidence of a working Action.
 

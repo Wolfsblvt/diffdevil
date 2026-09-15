@@ -156,7 +156,7 @@ The reference is intentionally split by the question being answered:
 | [Parser architecture](language/parser-architecture.md) | Chevrotain, CST/AST/bound-program boundaries, and testing seams. |
 | [Versioning and interchange](language/versioning-and-interchange.md) | Saved reports, result encoding, compatibility, and migration. |
 
-The [grammar](../spec/detail/v1/grammar.ebnf), [catalogs](../spec/detail/v1/README.md), and [conformance cases](../spec/detail/v1/conformance/README.md) provide implementable companion assets. They do not require end users to understand parser internals.
+The [grammar](../src/diffdevil/contracts/detail/v1/grammar.ebnf), [catalogs](../src/diffdevil/contracts/detail/v1/README.md), and [conformance cases](../src/diffdevil/contracts/detail/v1/conformance/README.md) provide implementable companion assets. They do not require end users to understand parser internals.
 
 ## Design limits
 

@@ -1,0 +1,19 @@
+name: Analyze pull-request diff
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+permissions:
+  pull-requests: read
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: Wolfsblvt/diffdevil/actions/analyze@v1
+        id: diff
+        with:
+          metric: changed
+          threshold: '100'
+          comparison: gt
+      - name: Report a resolved threshold
+        if: steps.diff.outputs.decision == 'true'
+        run: echo "The comparison exceeds 100 replacement-aware changed lines."

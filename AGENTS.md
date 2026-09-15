@@ -11,8 +11,8 @@ instructions to understand or contribute to diffdevil.
 
 Read `docs/VISION.md`, `docs/DIRECTION.md`, and `docs/BRANDING.md` for product intent
 and naming, then use `docs/README.md` to enter the subject being changed. Maintained
-manuals plus `schemas/`, `spec/detail/v1/`, and `presets/` own executable contracts.
-`reference/` retains dated rationale and evidence, not newer authority over those
+manuals plus `src/diffdevil/contracts/schemas/`, `src/diffdevil/contracts/detail/v1/`, and `src/diffdevil/presets/` own executable contracts.
+`docs/reference/` retains dated rationale and evidence, not newer authority over those
 contracts. A disagreement among code, schema, catalog, examples, and prose is a
 specific defect to reconcile, not permission to choose the easiest behavior.
 
@@ -22,7 +22,7 @@ specific defect to reconcile, not permission to choose the easiest behavior.
 npm ci --ignore-scripts --no-audit --no-fund
 npm run build
 npm run verify
-node dist/lib/cli/main.js analyze --diff-file examples/diffs/review.diff --format human
+node dist/lib/cli/main.js analyze --diff-file docs/examples/diffs/review.diff --format human
 ```
 
 `verify` checks machine assets, builds source/declarations, runs registered tests,
@@ -41,7 +41,7 @@ zero, empty, or a generic configuration error. Expressions never execute as
 JavaScript. Preserve all working aliases and useful collection/path shortcuts;
 teach simple arithmetic using ordinary formulas.
 
-`/analyze` stays read-only. The root Action selects the documented size-label
+`/actions/analyze` stays read-only. The root Action selects the documented size-label
 application by default. Privileged writes use trusted policy, never PR-head
 configuration or code. Reconcile only declared labels and owned comments, check
 freshness, and retain partial request/readback observations. Tests use fake HTTP,
@@ -49,7 +49,7 @@ not real credentials or live repository mutation.
 
 ## Generated and public boundaries
 
-Edit `src/`, not the generated `action-runtime/` implementation or `action.yml`
+Edit `src/diffdevil/`, not the generated `actions/runtime/` implementation or `action.yml`
 files. Commit reviewed Action distribution output because consumers do not install
 dependencies. Root `dist/`, `node_modules/`, and `artifacts/` are generated or local;
 do not force-add them. Never commit credentials, private raw conversations,

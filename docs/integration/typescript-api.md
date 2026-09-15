@@ -2,7 +2,7 @@
 
 ## Meaning
 
-This document defines how the single `@wolfsblvt/diffdevil` package exposes detail compilation, structured shortcuts, policy evaluation, and typed results without requiring GitHub Actions or shell execution. The [declaration asset](../../spec/detail/v1/public-api.d.ts) is a concrete proposed interface contract, not an implemented package export.
+This document defines how the single `@wolfsblvt/diffdevil` package exposes detail compilation, structured shortcuts, policy evaluation, and typed results without requiring GitHub Actions or shell execution. The [declaration asset](../../src/diffdevil/contracts/detail/v1/public-api.d.ts) is a concrete proposed interface contract, not an implemented package export.
 
 ## Current implemented API
 
@@ -86,7 +86,7 @@ correlations.
 `explainPolicy` returns normalized declarations, semantic profiles and replacement
 origins. `compileActionShortcut` accepts supported single-rule string inputs and
 lowers them to that same compiler; it is not a GitHub Action runner or arbitrary
-Action-input dispatcher. The supplied [weighted JSON example](../../examples/policies/weighted.json)
+Action-input dispatcher. The supplied [weighted JSON example](../examples/policies/weighted.json)
 and package-consumer tests exercise these current functions. The proposed API
 specimens below remain design context wherever they differ from the generated
 declarations.
@@ -196,7 +196,7 @@ Do not expose `registerFunction(name, arbitraryCallback)` as portable detail. A 
 
 ## Runtime/tooling choices
 
-Chevrotain 13.2.0 is the parser dependency, YAML 2.9.1 is the loader, and Ajv 8.20.0 generates fixed-schema validators at build time. Their current primary-source details are in the [research register](../../reference/2026-09-09/sources-and-research.md). TypeScript/module configuration must be aligned with the actual maintained repository and the selected supported Node runtime at implementation time.
+Chevrotain 13.2.0 is the parser dependency, YAML 2.9.1 is the loader, and Ajv 8.20.0 generates fixed-schema validators at build time. Their current primary-source details are in the [research register](../reference/2026-09-09/sources-and-research.md). TypeScript/module configuration must be aligned with the actual maintained repository and the selected supported Node runtime at implementation time.
 
 The package should publish declarations for the public subpaths, maintain a pure language import, and include schemas as static assets. The Action bundles its execution path separately. This package does not prescribe a frontend framework, dependency-injection container, code-generation framework, or separate release train for the language.
 

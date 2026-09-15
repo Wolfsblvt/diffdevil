@@ -90,7 +90,7 @@ A process restart must not manufacture a new transition. A retry after ambiguous
 
 ## Provider boundaries
 
-GitHub issue-comment operations support the PR comment surface, but multi-operation label/comment application is not transactional. The adapter records successful operations, re-reads ambiguous outcomes, and reports failures without pretending the whole plan rolled back. The current REST contract is documented at [G4](../../reference/2026-09-09/sources-and-research.md#g4).
+GitHub issue-comment operations support the PR comment surface, but multi-operation label/comment application is not transactional. The adapter records successful operations, re-reads ambiguous outcomes, and reports failures without pretending the whole plan rolled back. The current REST contract is documented at [G4](../reference/2026-09-09/sources-and-research.md#g4).
 
 Templates and policy must be trusted in a privileged apply path. Diff contents and filenames remain hostile data even when they appear inside a templated comment. Rendering never executes Markdown, HTML, or source text. Mention neutralization and bounded output preserve the default safe data path without preventing a repository from writing its own deliberate policy prose.
 
