@@ -3,7 +3,7 @@ import { cp, mkdir, mkdtemp, readFile, writeFile, rm, stat } from 'node:fs/promi
 import { existsSync } from 'node:fs';
 import { resolve, join, relative } from 'node:path';
 import { tmpdir, platform, arch } from 'node:os';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { parse } from 'yaml';
 
@@ -36,6 +36,9 @@ function readOutputs(text) {
 try {
   await mkdir(workspace, { recursive: true }); await mkdir(distribution, { recursive: true });
   await cp(join(root, 'actions/runtime'), join(distribution, 'actions/runtime'), { recursive: true });
+  assert.equal(JSON.parse(await readFile(join(distribution, 'actions/runtime/package.json'), 'utf8')).license, 'MIT');
+  assert.match(await readFile(join(distribution, 'actions/runtime/LICENSES/MIT.txt'), 'utf8'), /Copyright \(c\) 2026 Wolfsblvt Works/u);
+  assert.match(await readFile(join(distribution, 'actions/runtime/LICENSES/AGPL-3.0-only.txt'), 'utf8'), /GNU AFFERO GENERAL PUBLIC LICENSE/u);
   const metadata = {};
   for (const entry of entries) {
     const source = entry === 'root' ? root : join(root, 'actions', entry), destination = entry === 'root' ? distribution : join(distribution, 'actions', entry);
@@ -43,6 +46,7 @@ try {
     await cp(join(source, 'action.yml'), join(destination, 'action.yml'));
     if (entry !== 'root') await cp(join(source, 'index.mjs'), join(destination, 'index.mjs'));
     metadata[entry] = parse(await readFile(join(destination, 'action.yml'), 'utf8'));
+    assert.equal(metadata[entry].author, 'Wolfsblvt Works');
     assert.equal(metadata[entry].runs.using, 'node24');
     assert.ok((await stat(resolve(destination, metadata[entry].runs.main))).isFile());
   }
@@ -78,7 +82,7 @@ process.on('exit',()=>writeFileSync(process.env.FIXTURE_STATE,JSON.stringify({la
     for (const [name, value] of Object.entries(inputs)) env[`INPUT_${name.toUpperCase()}`] = value;
     const entryRoot = entry === 'root' ? distribution : join(distribution, 'actions', entry);
     const main = resolve(entryRoot, metadata[entry].runs.main);
-    const result = execute(node, ['--import', join(home, 'wire-preload.mjs'), main], { env });
+    const result = execute(node, ['--import', pathToFileURL(join(home, 'wire-preload.mjs')).href, main], { env });
     assert.equal(result.status, expectedExit, `${entry}: ${result.stdout}\n${result.stderr}`);
     assert.equal(result.stderr, '', 'Action does not mix raw exception stacks or progress into transport');
     assert.ok(result.stdout.split('\n').filter(Boolean).every(line => /^::(?:add-mask|error)::/u.test(line)), 'only controlled workflow commands on stdout');

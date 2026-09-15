@@ -112,12 +112,27 @@ through flags. Both routes continue to use one compiler with parity tests.
 
 **Evidence:** The retained shortcut comparison and executable parity cases separate ergonomics from semantic equivalence.
 
-### D014 — Public licence
+### D014 — License reusable components under MIT and application/service components under AGPL-3.0-only (2026-09-15)
 
-**Status:** Open owner decision
-**Question:** Which licence will govern the public repository and npm package?
+**Status:** Settled by Wolf and Nyxara for the current implementation and public-source preparation. Content and asset licensing remains open.
 
-**Current repository standing:** `UNLICENSED`, private local candidate. No public publication until selected.
+**Decision:** `diffdevil` uses different open-source licences according to the role of each product surface. Reusable components intended for unrestricted embedding and downstream integration are licensed under the **MIT License**. This includes the portable diff engine, public TypeScript API/npm package, CLI, GitHub Action, and comparable reusable integration surfaces. Application and hosted-service components are licensed under **GNU AGPL-3.0-only**. This includes the website application, interactive hosted functionality, GitHub App runtime, hosted service backend, and comparable product/application surfaces. These components may remain in the same repository and release lifecycle. Repository topology is not determined by licence boundaries.
+
+**Why:** `diffdevil` is deliberately designed as infrastructure that other developers and companies can embed in CI, scripts, GitHub Actions, coding-agent workflows, internal tooling, and other software. A permissive licence materially reduces adoption and integration friction for those reusable surfaces. The website and hosted runtime serve a different purpose. They are applications rather than embedding primitives, and there is no product requirement to enable proprietary modified forks of those applications. AGPL-3.0-only preserves source reciprocity for modified network-operated derivatives while allowing the MIT-licensed engine to remain broadly reusable. A single repository-wide licence would optimize one product surface at the expense of the other.
+
+**Consequences:**
+
+- The repository is intentionally multi-licensed by component. [The licence map](../LICENSES/README.md) names current paths and their material standing.
+- MIT-covered reusable code may be consumed by AGPL-covered diffdevil application code while retaining its MIT notices.
+- Consumers embedding the reusable engine, CLI, package, or GitHub Action receive the permissive MIT terms applicable to those components.
+- Modified derivatives of AGPL-covered application/service components remain subject to AGPL-3.0-only, including its network-use source-availability requirements where applicable.
+- The website and documentation remain colocated with the product when that serves contribution and release coherence; licensing does not require a repository split.
+- Package metadata, licence notices, and ambiguous source files must make their applicable licence explicit.
+- Non-software documentation, branding, artwork, logos, screenshots, and similar assets are outside this decision and require their own explicit licensing/content-policy decision rather than inheriting a software licence accidentally.
+
+**Rejected alternatives:** Licensing the entire repository under AGPL-3.0-only would create unnecessary adoption and legal-review friction for the public library, CLI, and GitHub Action surfaces explicitly intended for broad integration. Licensing the entire repository under MIT would enable proprietary modified forks of the website and hosted application/runtime where reciprocal open-source terms better match the product model.
+
+**Source:** Wolf's 2026-09-15 licensing instruction in this named diffdevil release conversation; Nyxara joined the decision. Reopen only for a concrete legal incompatibility or a product surface that does not cleanly fit either category.
 
 ### D015 — Visual identity
 

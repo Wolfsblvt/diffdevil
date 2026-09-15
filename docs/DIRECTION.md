@@ -59,13 +59,17 @@ is not another source tree and is not needed to build or publish the tracked tre
 
 ## Next release movement
 
-Run the compact [release procedure](PUBLICATION-BOUNDARY.md) on the exact candidate:
-native Windows qualification, an independent trust/effects read, and a separately
-authorized hosted canary. Current and historical runtime/consumer evidence is separated in
+The native Windows/Node 24 qualification is recorded in
+[Qualification](QUALIFICATION.md). The next release seams are an independent
+trust/effects read and a separately authorized hosted canary. Current and
+historical runtime/consumer evidence is separated in
 [Qualification](QUALIFICATION.md); mock HTTP is not live permission evidence.
 
-The owner still selects the project licence and publication authority. Public
-source/Action availability, npm availability, Marketplace listing, security intake,
+Wolf and Nyxara selected MIT for reusable software and AGPL-3.0-only for
+application/service code. The [licence map](../LICENSES/README.md) distinguishes
+those surfaces and holds non-software content rights open. Wolf authorized the
+public source repository after this preparation; public source/Action availability,
+npm availability, Marketplace listing, security intake,
 and a documentation website are separate observable outcomes. Do not imply all of
 them happened because one Git push succeeded. No package installation, public
 repository, token, label change, or publication should be silently delegated to a

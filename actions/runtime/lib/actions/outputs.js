@@ -189,7 +189,9 @@ export class ActionOutputSession {
         try {
             if (context.summary) {
                 summary = await commandFile(environment.GITHUB_STEP_SUMMARY, 'GITHUB_STEP_SUMMARY');
-                const [outStat, summaryStat] = await Promise.all([output.stat(), summary.stat()]);
+                // Windows file IDs can exceed Number.MAX_SAFE_INTEGER; rounded Number
+                // inodes can make two distinct runner files appear identical.
+                const [outStat, summaryStat] = await Promise.all([output.stat({ bigint: true }), summary.stat({ bigint: true })]);
                 if (outStat.dev === summaryStat.dev && outStat.ino === summaryStat.ino)
                     fail('E_ACTION_PATH', 'GITHUB_OUTPUT and GITHUB_STEP_SUMMARY must be distinct files.', 'config');
             }

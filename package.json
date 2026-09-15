@@ -28,8 +28,8 @@
     "pull-request",
     "typescript"
   ],
-  "author": "Wolf",
-  "license": "UNLICENSED",
+  "author": "Wolfsblvt Works",
+  "license": "MIT",
   "main": "./dist/lib/index.js",
   "types": "./dist/lib/index.d.ts",
   "bin": {
@@ -67,7 +67,8 @@
     "src/diffdevil/**/*.ts",
     "src/diffdevil/contracts",
     "src/diffdevil/presets/*.yml",
-    "docs"
+    "docs",
+    "LICENSES"
   ],
   "engines": {
     "node": ">=22"

@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Uses the proposed diffdevil CLI. False, unresolved, and invalid remain distinct.
+# SPDX-License-Identifier: MIT
+# Uses the diffdevil CLI. False, unresolved, and invalid remain distinct.
 set -u
 if diffdevil check --files any --metric changed --gt 100; then
   printf '%s\n' 'At least one included file exceeds the threshold.'

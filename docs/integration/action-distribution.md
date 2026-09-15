@@ -25,7 +25,7 @@ or Git archive containing all tracked files carries the necessary siblings.
 The runtime contains compiled ESM/CJS, source maps, standalone schema validators,
 its own ESM package boundary, 12 exact locked runtime package trees, their original
 redistribution notices, and `MANIFEST.json`. Including metadata, wrappers, the
-surface catalog and manifest, this cut has **1,138 generated files**. This is a
+surface catalog and manifest, this cut has **1,141 generated files**. This is a
 **multi-file native-ESM distribution**, not a single-file minified bundle.
 
 The root npm package is separate: its tarball installs normal runtime dependencies
@@ -73,9 +73,11 @@ packages. Original notices are included; these labels are not a fresh legal or
 vulnerability review. TypeScript, Node typings and their development-only closure
 are not runtime dependencies in the distribution.
 
-The project's own `UNLICENSED`/private standing is unchanged. Third-party licence
-files do not select a licence for diffdevil, authorize a public release, or cover
-all future branding/documentation/contributor rights.
+Reusable diffdevil Action code is [MIT](../../LICENSES/MIT.txt), with its
+[scope notice](../../LICENSES/README.md) copied into `actions/runtime/LICENSES/`.
+The Action runtime package metadata records `MIT`; original third-party notices
+remain distinct. The npm package is still `private: true` and development-versioned.
+Neither software licence covers unsettled branding, documentation, or asset rights.
 
 ## Regenerate and inspect
 

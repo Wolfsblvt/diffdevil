@@ -7,6 +7,24 @@ the product invariants, maintained sources, executable commands, generated files
 and boundaries around provider writes. It does not require private organizational
 instructions to understand or contribute to diffdevil.
 
+## Durable branch
+
+`main` is the durable source branch for this development candidate. The first
+official release or material public reliance is the occasion to reconsider its
+maintainer integration posture. Current GitHub settings must be read separately.
+
+```text
+main:
+  maintainer integration: direct allowed
+  external contributions: PR required
+  required pre-integration evidence: none
+  required approval/review: none
+  resolved conversations: no
+  automatic CI: Verify on main push and pull request (Linux Node 22/24, Windows Node 24)
+  automatic retained branch effects: none
+  other pre-update evidence: none
+```
+
 ## Start with the relevant source
 
 Read `docs/VISION.md`, `docs/DIRECTION.md`, and `docs/BRANDING.md` for product intent
@@ -59,4 +77,5 @@ Inspect Git status and the exact staged diff before committing. Preserve unrelat
 work and attributable history. Public tags, releases, package publication, live
 provider effects, and security settings are not side effects of running tests.
 Follow the explicit release procedure in `docs/PUBLICATION-BOUNDARY.md` when those
-operations are authorized. The project licence is not selected in this candidate.
+operations are authorized. Reusable software is MIT; application/service software is
+AGPL-3.0-only. The exact scope and unsettled non-software rights are in `LICENSES/README.md`.

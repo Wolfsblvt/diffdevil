@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, writeFile, readFile, rm, symlink } from 'node:fs/promises';
+import { mkdtemp, mkdir, writeFile, readFile, rm, symlink, link } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
@@ -334,9 +334,14 @@ test('workspace policy/template reads are confined to the checkout, including sy
   assert.doesNotMatch(await readFile(result.outputs['plan-path'], 'utf8'), /EXTERNAL FIXTURE/);
 });
 
-test('workflow output and summary cannot share a command file', async t => {
+test('workflow output and summary distinguish files but reject one shared file or hardlink', async t => {
   const f = await fixture(t);
+  const summary = f.environment.GITHUB_STEP_SUMMARY;
+  assert.equal(unwrap(await f.run('analyze')).exitCode, 0);
   f.environment.GITHUB_STEP_SUMMARY = f.environment.GITHUB_OUTPUT;
+  rejected(await f.run('root'), 'E_ACTION_PATH'); noWrites(f);
+  await rm(summary); await link(f.environment.GITHUB_OUTPUT, summary);
+  f.environment.GITHUB_STEP_SUMMARY = summary;
   rejected(await f.run('root'), 'E_ACTION_PATH'); noWrites(f);
 });
 

@@ -31,10 +31,10 @@ npm run test:package
 npm run test:actions
 ```
 
-Run under Node 24 on native Windows to close the outstanding platform boundary.
-Node 22 remains the CLI/library floor. The reorganized checkout has current Linux
-Node 22 evidence; its predecessor also ran on Linux Node 24. Requalify the changed
-paths under Node 24 rather than treating that earlier run as fresh evidence.
+The [current qualification](QUALIFICATION.md) records a native Windows/Node 24
+pass for this candidate. Node 22 remains the CLI/library floor, with earlier
+Linux Node 22 evidence. Re-run affected commands after a source or release-identity
+change rather than treating an earlier runtime result as fresh evidence.
 `test:package` exercises installed CLI dispatch, declarations, and package metadata;
 `test:actions` exercises all four distributed paths outside the checkout. Neither
 needs a real token or live GitHub. Retain the JSON evidence and logs for the exact
@@ -47,14 +47,16 @@ partial write journals, output transport, and the install-free dependency tree.
 The code can be reviewed directly; no reconstruction or new implementation is
 expected for those boundaries.
 
-## Select licence and release identity
+## Use the selected licences and select release identity
 
-The current package remains `private: true`, `license: UNLICENSED`, version
-`0.0.0-development`. No project licence has been selected. An authorized release
-change must add the owner's chosen licence text and matching package metadata,
-select the release version, and intentionally change `private` before npm
-publication. Dependency licences are preserved in the Action distribution and do
-not choose a project licence.
+Wolf and Nyxara selected **MIT** for the reusable engine, package, CLI and Actions,
+and **AGPL-3.0-only** for application and hosted-service software. The [licence
+map](../LICENSES/README.md), both full texts, and matching package/Action SPDX
+metadata are in this checkout. Content and asset rights remain a separate open
+decision. The npm package remains `private: true`, version
+`0.0.0-development`. Select the release version and intentionally change
+`private` before npm publication. Dependency licences are preserved separately
+in the Action distribution.
 
 Use npm's version command without creating a Git tag, or update `package.json`
 and the root lockfile metadata together. Rebuild the generated distribution with

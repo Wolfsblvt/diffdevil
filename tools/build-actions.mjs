@@ -49,7 +49,9 @@ try {
   }
   await writeFile(join(runtime, 'package.json'), JSON.stringify({ name: 'diffdevil-action-runtime', private: true, type: 'module', version: project.version,
     license: project.license, engines: { node: '>=24' }, description: 'Generated install-free native ESM distribution for all four diffdevil Actions.' }, null, 2) + '\n');
-  await writeFile(join(runtime, 'README.md'), '# diffdevil Action runtime\n\n## Meaning\n\nGenerated, install-free native ESM distribution shared by all four Actions. It contains compiled diffdevil code, standalone schema validators, and the exact locked runtime package trees with their redistribution notices. It is not a single-file minified bundle.\n\nRegenerate with `npm run build:actions`; verify tracked bytes with `npm run check:actions`. Do not edit generated files here. The root project licence remains unselected; dependency notices do not select one. See `../../docs/integration/action-distribution.md` for the build and consumer boundaries.\n');
+  await mkdir(join(runtime, 'LICENSES'), { recursive: true });
+  for (const name of ['MIT.txt', 'AGPL-3.0-only.txt', 'README.md']) await cp(join(root, 'LICENSES', name), join(runtime, 'LICENSES', name));
+  await writeFile(join(runtime, 'README.md'), '# diffdevil Action runtime\n\n## Meaning\n\nGenerated, install-free native ESM distribution shared by all four Actions. It contains compiled diffdevil code, standalone schema validators, and the exact locked runtime package trees with their redistribution notices. It is not a single-file minified bundle.\n\nRegenerate with `npm run build:actions`; verify tracked bytes with `npm run check:actions`. Do not edit generated files here. Reusable diffdevil Action code is MIT; see `LICENSES/README.md` and `LICENSES/MIT.txt`. Vendored dependencies retain their own notices. See `../../docs/integration/action-distribution.md` for the build and consumer boundaries.\n');
   for (const entry of ENTRY_POINTS) {
     const directory = entry === 'root' ? temporary : join(temporary, 'actions', entry);
     await mkdir(directory, { recursive: true });
@@ -57,7 +59,7 @@ try {
     const metadata = {
       name: entry === 'root' ? 'diffdevil' : `diffdevil — ${entry}`,
       description: entry === 'root' ? 'Measure pull-request changes, evaluate rules, and reconcile selected labels and comments.' : entry === 'analyze' ? 'Read-only pull-request facts, metrics, bands and decisions.' : entry === 'apply' ? 'Revalidate trusted policy and fresh facts before applying selected pull-request effects.' : 'Verify or explicitly reconcile declared repository label definitions.',
-      author: 'Wolfsblvt',
+      author: 'Wolfsblvt Works',
       inputs: Object.fromEntries(inputNames(entry).map(name => { const { description, default: fallback } = ACTION_INPUTS[name]; return [name, { description, required: false, ...(fallback === undefined ? {} : { default: fallback }) }]; })),
       outputs: Object.fromEntries(outputNames(entry).map(name => [name, { description: name === 'report-json' ? 'Compact diffdevil.action-report-summary, not a full report. Full JSON is at report-path.' : name === 'plan-json' ? 'Compact diffdevil.action-plan-summary, not an executable plan. Full JSON is at plan-path.' : name === 'effects-changed' ? 'Count of operations with verified changed readback; empty when effects were not applied.' : `${name}; see the Action manual for exact, bounded, unavailable and not-applied values.` }])),
       runs: { using: 'node24', main: entry === 'root' ? 'actions/runtime/lib/actions/root.js' : 'index.mjs' },

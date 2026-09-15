@@ -5,15 +5,17 @@
 This guide owns reproducible restoration, local builds, ordinary verification,
 and the separate npm and Action consumer journeys. It explains which files are
 maintained source, which distribution bytes are committed, and what each command
-actually proves. Live GitHub, native Windows and publication are different boundaries.
+actually proves. Local Windows execution, live GitHub and publication are different boundaries.
 
 ## Prerequisites and selected versions
 
-Use Node.js 22 or later and npm; local comparisons also require Git. This candidate
-is currently exercised on Linux x64 with Node **22.16.0**, npm **10.9.2**,
-and Git **2.47.3**. Its predecessor also ran on Node **24.11.1**, but that binary
-was not available for this layout pass; earlier execution is not current proof. Action metadata selects **node24** independently of the npm
-package's `>=22` floor. No native Windows or macOS execution is claimed.
+Use Node.js 22 or later and npm; local comparisons also require Git. The current
+native pass exercised Windows 11 with Node **24.19.0**, npm **12.0.2**, and
+PowerShell **7.6.5**. The preceding layout pass exercised Linux x64 with Node
+**22.16.0**, npm **10.9.2**, and Git **2.47.3** at `main@fe3d8b22`. Action
+metadata selects **node24** independently of the npm package's `>=22` floor.
+Native macOS remains unobserved; [Qualification](QUALIFICATION.md) binds each
+result to its candidate and boundary.
 
 The lockfile pins TypeScript 5.8.3, Node typings 22.15.33, Chevrotain 13.2.0,
 YAML 2.9.1 and Ajv 8.20.0. The complete closure contains 15 packages, of which
@@ -164,15 +166,16 @@ original dependency bytes; do not normalize their line endings.
 
 `src/diffdevil/tests/examples.test.mjs` executes the actual task-guide CLI command specimens,
 policies, and parsed workflow inputs. It does not freeze narrative text. The
-package journey checks an alternative version in the installed manifest and uses
-npm's installed launcher dispatch on Windows instead of executing a POSIX shell
-shim through Windows CreateProcess. Linux runs do not qualify that Windows branch.
+package journey checks an alternative version in the installed manifest. On
+Windows it uses npm's installed dispatch and executes the installed PowerShell
+launcher for version and scalar query. It inspects the installed CMD and
+PowerShell launcher files separately. The Linux POSIX path remains its own result.
 
 The read-only repository CI runs these same commands on Linux Node 22/24 and
-Windows Node 24. A source-authored matrix is not a passed hosted run. The next
-Windows execution must report its actual outcome, including unavailable symlink
-permissions or tools rather than quietly skipping consumer proof.
+Windows Node 24. A source-authored matrix is not a passed hosted run. The native
+Windows result is recorded in [Qualification](QUALIFICATION.md); hosted Windows
+and Linux checks still require exact-head observation after publication.
 
-Publication, licence selection, real credentials, live settings and provider
-writes require their own authority. See [release procedure](PUBLICATION-BOUNDARY.md)
+Publication, release identity, real credentials, live settings and provider
+writes require their own authority. See [licence boundaries](../LICENSES/README.md), [release procedure](PUBLICATION-BOUNDARY.md)
 and exact current [Qualification](QUALIFICATION.md).

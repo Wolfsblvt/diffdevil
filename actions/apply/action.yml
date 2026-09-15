@@ -1,7 +1,7 @@
 # Generated from src/diffdevil/actions/surface.ts by npm run build:actions.
 name: diffdevil — apply
 description: Revalidate trusted policy and fresh facts before applying selected pull-request effects.
-author: Wolfsblvt
+author: Wolfsblvt Works
 inputs:
   github-token:
     description: GitHub credential for the selected repository. A token does not enable writes.

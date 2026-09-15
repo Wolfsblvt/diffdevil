@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "version": "0.0.0-development",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "engines": {
     "node": ">=24"
   },

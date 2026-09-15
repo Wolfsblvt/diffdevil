@@ -13,13 +13,14 @@ queryable facts, configured rules, and inspectable label/comment effects. Raw ch
 three-line replacement as six lines. Replacement-aware changed lines count it
 once, while keeping both sets of facts available.
 
-This **unpublished local release candidate** supports local Git, unified diffs,
+This **source-available development candidate** supports local Git, unified diffs,
 saved reports, detail expressions, YAML/JSON policies, GitHub acquisition, and
 explicit label/comment reconciliation. All four Actions ship executable JavaScript
 and their dependencies, with no workflow installation step. Their consumer paths are
 qualified locally on Node 22 and 24 against mock HTTP, not a live GitHub canary.
-There is no public licence or published npm/`@v1` release yet. A plan remains data,
-not an applied change.
+Reusable software is MIT; application and hosted-service software is selected for
+AGPL-3.0-only. Non-software content rights remain unsettled. npm and `@v1` are not
+published yet. A plan remains data, not an applied change.
 
 ```sh
 node dist/lib/cli/main.js query --report docs/examples/reports/exact.json \
@@ -268,11 +269,9 @@ conformance, and runtime evidence are separate commands and claims:
 
 ## License
 
-A Wolfsblvt Works product.
-
-Copyright © Wolfsblvt. All rights reserved.
-
-This candidate has no selected public licence. It is not yet offered under a public or general licence. Its
-contents may be used, copied, modified, disclosed, or distributed only within
-permission explicitly granted by the copyright holder. Access to the repository
-or receipt of a copy grants no additional rights.
+A Wolfsblvt Works product. Reusable engine, API, CLI and Action software is
+[MIT](LICENSES/MIT.txt); website and hosted application/service software is selected
+for [AGPL-3.0-only](LICENSES/AGPL-3.0-only.txt). The current checkout ships the
+reusable software, with no hosted application runtime yet. [Component scope and
+unsettled non-software rights](LICENSES/README.md) are explicit; neither licence
+applies to the entire repository.

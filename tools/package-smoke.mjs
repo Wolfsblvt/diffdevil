@@ -5,7 +5,6 @@ import { resolve, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
-import { createRequire } from 'node:module';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const artifacts = resolve(root, 'artifacts/package');
@@ -20,12 +19,17 @@ const run = (command, args, cwd = root) => {
 const npmScript = process.env.npm_execpath;
 assert.ok(npmScript, 'Run package qualification through npm run test:package.');
 const npm = (args, cwd = root) => run(process.execPath, [npmScript, ...args], cwd);
-const [packed] = JSON.parse(npm(['pack', '--ignore-scripts', '--json', '--pack-destination', artifacts]));
+const packResult = JSON.parse(npm(['pack', '--ignore-scripts', '--json', '--pack-destination', artifacts]));
+const packageName = JSON.parse(await readFile(join(root, 'package.json'), 'utf8')).name;
+// npm 12 keys pack JSON by package name; earlier versions return an array.
+const packed = Array.isArray(packResult) ? packResult[0] : packResult[packageName];
+assert.ok(packed?.filename && Array.isArray(packed.files), 'npm pack did not return this package and its file list.');
 const tarball = resolve(artifacts, packed.filename);
 const paths = packed.files.map(file => file.path);
 assert.ok(paths.includes('dist/lib/cli/main.js'));
 assert.ok(paths.includes('dist/lib/index.d.ts'));
 assert.ok(paths.includes('src/diffdevil/contracts/schemas/report-v1.schema.json'));
+for (const path of ['LICENSES/README.md', 'LICENSES/MIT.txt', 'LICENSES/AGPL-3.0-only.txt']) assert.ok(paths.includes(path), `Missing package licence boundary: ${path}`);
 for (const path of ['docs/guides/auto-label-pull-requests.md', 'docs/guides/local-automation.md', 'docs/examples/diffs/review.diff', 'docs/examples/policies/review-signals.yml', 'docs/reference/README.md']) {
   assert.ok(paths.includes(path), `Missing consumer documentation asset: ${path}`);
 }
@@ -39,14 +43,19 @@ npm(['install', '--offline', '--ignore-scripts', '--no-audit', '--no-fund', ...(
 const packageRoot = join(home, 'node_modules/@wolfsblvt/diffdevil');
 const bin = join(home, 'node_modules/.bin/diffdevil');
 const packageVersion = JSON.parse(await readFile(join(packageRoot, 'package.json'), 'utf8')).version;
+assert.equal(JSON.parse(await readFile(join(packageRoot, 'package.json'), 'utf8')).license, 'MIT');
+assert.equal(JSON.parse(await readFile(join(packageRoot, 'package.json'), 'utf8')).author, 'Wolfsblvt Works');
+assert.match(await readFile(join(packageRoot, 'LICENSES/README.md'), 'utf8'), /documentation prose.*no selected public content licence/is);
 // npm owns platform-specific launcher selection and escaping on Windows. Do not
 // pass the POSIX .bin shell file directly to CreateProcess or invent cmd quoting.
 const runBin = args => process.platform === 'win32'
   ? npm(['exec', '--offline', '--no', '--', 'diffdevil', ...args], home)
   : run(bin, args, home);
+const runBinPowerShell = args => run('pwsh', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', bin + '.ps1', ...args], home);
 const patch = 'diff --git a/a.txt b/a.txt\n--- a/a.txt\n+++ b/a.txt\n@@ -1,2 +1,3 @@\n-old\n+new\n+added\n context\n';
 await writeFile(join(home, 'change.diff'), patch);
 assert.equal(runBin(['--version']), packageVersion + '\n');
+if (process.platform === 'win32') assert.equal(runBinPowerShell(['--version']), packageVersion + '\n');
 // Exercise a release version different from the checkout's development version.
 const installedManifestPath = join(packageRoot, 'package.json');
 const installedManifest = await readFile(installedManifestPath, 'utf8');
@@ -55,6 +64,7 @@ try {
   assert.equal(runBin(['--version']), '9.8.7-qualification\n');
 } finally { await writeFile(installedManifestPath, installedManifest); }
 assert.equal(runBin(['query', '--diff-file', 'change.diff', '--metric', 'changed', '--format', 'value']), '2\n');
+if (process.platform === 'win32') assert.equal(runBinPowerShell(['query', '--diff-file', 'change.diff', '--metric', 'changed', '--format', 'value']), '2\n');
 assert.equal(runBin(['query', '--diff-file', 'change.diff', '--expr', 'totals.lines.changed', '--format', 'value']), '2\n');
 await writeFile(join(home, 'expression.ddexpr'), '\uFEFFtotals.lines.changed');
 assert.equal(runBin(['query', '--diff-file', 'change.diff', '--expr-file', 'expression.ddexpr', '--format', 'value']), '2\n');
@@ -162,20 +172,18 @@ const actionInput: CompiledPolicy = unwrap(compileActionShortcut({metric:'change
 void result; void classified; void textProgram; void syntax; void transported; void selected; void actionInput;\n`);
 const compiler = resolve(root, 'node_modules/typescript/bin/tsc');
 run(process.execPath, [compiler, '--noEmit', '--strict', '--skipLibCheck', 'false', '--target', 'ES2022', '--module', 'NodeNext', '--moduleResolution', 'NodeNext', '--typeRoots', resolve(root, 'node_modules/@types'), 'consumer.ts'], home);
-// npm's Windows launcher generator is inspected here, not executed on Windows.
-const requireNpm = createRequire(npmScript);
-const cmdShim = requireNpm('cmd-shim');
-const shim = join(home, 'generated windows', 'diffdevil');
-await cmdShim(join(packageRoot, 'dist/lib/cli/main.js'), shim);
-const cmd = await readFile(shim + '.cmd', 'utf8');
-const ps1 = await readFile(shim + '.ps1', 'utf8');
-assert.match(cmd, /cli[/\\]main\.js/);assert.match(cmd, /%\*/);
-assert.match(ps1, /cli[/\\]main\.js/);assert.match(ps1, /\$args/);
+if (process.platform === 'win32') {
+  // Inspect the launchers generated by this actual offline installation.
+  const cmd = await readFile(bin + '.cmd', 'utf8');
+  const ps1 = await readFile(bin + '.ps1', 'utf8');
+  assert.match(cmd, /cli[/\\]main\.js/); assert.match(cmd, /%\*/);
+  assert.match(ps1, /cli[/\\]main\.js/); assert.match(ps1, /\$args/);
+}
 const observation = {
   node: process.version, platform: process.platform, arch: process.arch, npm: npm(['--version']).trim(), tarball,
   integrity: packed.integrity, shasum: packed.shasum, fileCount: paths.length,
   bytes: (await stat(tarball)).size,
-  checks: ['tarball file boundary', 'offline installation into a path containing spaces outside the checkout', 'consumer-local Chevrotain resolution', process.platform === 'win32' ? 'installed CLI through npm Windows launcher dispatch' : 'installed POSIX CLI bin', 'installed explicit CLI apply through fixture HTTP', 'installed version follows package metadata, including a different release-version specimen', 'installed shortcut, inline detail and BOM expression-file scalar queries', 'installed schema asset', 'root/core/language/policy/git/github ESM exports', 'closed internal export paths', 'shared AST, detail text and shortcut execution', 'band and template API', 'installed YAML/JSON source/compiler/evaluator/query/plan round-trip', 'build-time standalone schemas' , 'installed named query and typed-parameter CLI check', 'installed desired label/definition/comment plan', 'pure Action shorthand compiler', 'installed GitHub acquisition and label/comment/definition reconciliation against mock HTTP', 'strict TypeScript consumer declarations', 'npm-generated CMD and PowerShell launcher contents'],
+  checks: ['tarball file boundary', 'offline installation into a path containing spaces outside the checkout', 'consumer-local Chevrotain resolution', process.platform === 'win32' ? 'installed CLI through npm Windows launcher dispatch' : 'installed POSIX CLI bin', ...(process.platform === 'win32' ? ['installed PowerShell launcher version and scalar query'] : []), 'installed explicit CLI apply through fixture HTTP', 'installed version follows package metadata, including a different release-version specimen', 'installed shortcut, inline detail and BOM expression-file scalar queries', 'installed schema asset', 'root/core/language/policy/git/github ESM exports', 'closed internal export paths', 'shared AST, detail text and shortcut execution', 'band and template API', 'installed YAML/JSON source/compiler/evaluator/query/plan round-trip', 'build-time standalone schemas' , 'installed named query and typed-parameter CLI check', 'installed desired label/definition/comment plan', 'pure Action shorthand compiler', 'installed GitHub acquisition and label/comment/definition reconciliation against mock HTTP', 'strict TypeScript consumer declarations', ...(process.platform === 'win32' ? ['installed CMD and PowerShell launcher contents'] : [])],
   unobserved: [...(process.platform === 'win32' ? [] : ['native Windows execution']), ...(process.versions.node.startsWith('24.') ? [] : ['Node 24 execution in this package run']), 'Action distribution (separate test:actions boundary)', 'live GitHub effects']
 };
 await writeFile(join(artifacts, 'qualification.json'), JSON.stringify(observation, null, 2) + '\n');
