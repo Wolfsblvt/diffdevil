@@ -6,7 +6,7 @@ This is the authoritative component map for software, documentation, examples, a
 
 ## Reusable software — MIT
 
-The portable diff engine, public TypeScript API and npm package, CLI, GitHub Action and its reusable entry points, schemas, adapters, presets, and comparable integration code are offered under [MIT](MIT.txt). This includes the software under `src/diffdevil/`, the Action implementation and metadata under `actions/`, and software build/qualification tools under `tools/`. The npm package's SPDX metadata is `MIT`. Keep the MIT copyright and permission notice in copies or substantial portions of this software.
+The portable diff engine, public TypeScript API and npm package, CLI, GitHub Action and its reusable entry points, schemas, adapters, presets, and comparable integration code are offered under [MIT](MIT.txt). This includes the software under `src/diffdevil/`, the Action implementation and metadata under `actions/`, and software build/qualification tools under `tools/`. The reusable software remains MIT. Because the npm artifact also includes CC BY documentation and reserved identifiers, its package metadata uses `SEE LICENSE IN LICENSE.md` and the top-level dispatch points here instead of describing the whole artifact as MIT. Keep the MIT copyright and permission notice in copies or substantial portions of this software.
 
 ## Application and hosted-service software — AGPL-3.0-only
 
@@ -20,7 +20,7 @@ Runnable code, workflows, shell scripts, expression files, and policy/configurat
 
 The product name, slogans, logos, mascot, artwork, screenshots, and other brand or visual assets remain reserved. Their appearance in CC-licensed prose does not grant trademark or asset rights. `docs/BRANDING.md` describes the textual brand; it is not a licence for the brand identifiers it describes. No website or hosted application software is present in this source checkout.
 
-The npm artifact includes MIT software, the CC BY 4.0 root README and documentation, and this component map. Its `MIT` SPDX metadata names the reusable software, not a repository-wide licence for the included prose or reserved identifiers.
+The npm artifact includes MIT software, the CC BY 4.0 root README and documentation, reserved identifiers, the top-level `LICENSE.md` dispatch, and this component map. Its package metadata uses `SEE LICENSE IN LICENSE.md`; the Action runtime package remains MIT because that separate distribution contains reusable software and third-party notices rather than the mixed npm documentation surface.
 
 ## Third parties
 
