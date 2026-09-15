@@ -34,9 +34,11 @@ test('root size behavior ensures definitions, reconciles its group, preserves un
   assert.equal(fake.definitions.size, 6); assert.equal(fake.definitions.get('size/l').color, '123456');
   assert.equal(fake.comments.length, 0); assert.equal(fake.calls.some(c => c.path.includes('comments')), false);
   assert.equal(fake.writes().some(c => c.method === 'PUT'), false);
+  assert.equal(result.observations.some(row => row.kind === 'label.assignment' && row.subject === 'size/XS'), false);
   const previous = fake.writes().length;
   const second = unwrap(await apply(fake, policy({ version: 1 })));
   assert.equal(second.changed, 0); assert.equal(fake.writes().length, previous);
+  assert.equal(second.observations.some(row => row.kind === 'label.assignment' && row.subject === 'size/XS' && row.outcome === 'unchanged'), true);
 });
 test('definition verification is read-only and explicit sync changes only selected definitions', async () => {
   const fake = new FakeGitHub(), desired = { 'review/main': { color: 'aabbcc', description: 'Selected definition' } };

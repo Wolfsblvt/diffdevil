@@ -3,6 +3,8 @@ import { DiffdevilError, fail } from '../errors.js';
 import { DEFAULT_LIMITS } from '../limits.js';
 import type { Diagnostic } from '../model.js';
 
+const MAX_RETRY_DELAY_MS = 5 * 60 * 1000;
+
 export interface GitHubClientOptions {
   readonly token?: string;
   readonly apiUrl?: string;
@@ -28,8 +30,8 @@ export interface RequestOptions {
 }
 /** No response body or credential is retained in an error or its message. */
 export class GitHubRequestError extends DiffdevilError {
-  constructor(readonly status: number | undefined, readonly ambiguous: boolean, message: string, phase: Diagnostic['phase']) {
-    super({ code: ambiguous ? 'E_GITHUB_AMBIGUOUS' : status === 401 || status === 403 ? 'E_GITHUB_PERMISSION' : 'E_GITHUB_REQUEST',
+  constructor(readonly status: number | undefined, readonly ambiguous: boolean, message: string, phase: Diagnostic['phase'], rateLimited = false) {
+    super({ code: ambiguous ? 'E_GITHUB_AMBIGUOUS' : rateLimited ? 'E_GITHUB_RATE_LIMIT' : status === 401 || status === 403 ? 'E_GITHUB_PERMISSION' : 'E_GITHUB_REQUEST',
       phase, severity: 'error', message, ...(status === undefined ? {} : { details: { status } }) });
   }
 }
@@ -96,12 +98,13 @@ export class GitHubClient {
       }
       if (response.status < 200 || response.status >= 300) {
         await response.body?.cancel();
-        const detail = response.status === 403 || response.status === 401
-          ? method === 'GET' ? 'Check token and repository access; PR reads need Pull-requests-read, and policy-file reads need Contents-read.' : 'Check token and repository access; labels/comments need Issues-write or Pull-requests-write.'
-          : response.status === 404 ? 'The resource may be missing or inaccessible; 404 does not prove absence in a private repository.'
-          : rateLimited ? 'GitHub rate limited the request. Honor Retry-After or the reset time before retrying.'
-          : response.status >= 300 && response.status < 400 ? 'Redirects are not followed with a credential. Select the canonical API target.' : 'Inspect the selected target and request data.';
-        throw new GitHubRequestError(response.status, method !== 'GET' && response.status >= 500, `GitHub returned HTTP ${response.status} for ${method}. ${detail}`, phase);
+        const detail = rateLimited
+          ? 'GitHub rate limited the request. Honor Retry-After or the reset time before retrying.'
+          : response.status === 403 || response.status === 401
+            ? method === 'GET' ? 'Check token and repository access; PR reads need Pull-requests-read, and policy-file reads need Contents-read.' : 'Check token and repository access; labels/comments need Issues-write or Pull-requests-write.'
+            : response.status === 404 ? 'The resource may be missing or inaccessible; 404 does not prove absence in a private repository.'
+            : response.status >= 300 && response.status < 400 ? 'Redirects are not followed with a credential. Select the canonical API target.' : 'Inspect the selected target and request data.';
+        throw new GitHubRequestError(response.status, method !== 'GET' && response.status >= 500, `GitHub returned HTTP ${response.status} for ${method}. ${detail}`, phase, rateLimited);
       }
       const chunks: Uint8Array[] = []; let bytes = 0;
       const reader = response.body?.getReader();
@@ -127,14 +130,17 @@ export class GitHubClient {
     const retry = headers.get('retry-after');
     if (retry !== null) {
       const value = /^\d+(?:\.\d+)?$/u.test(retry) ? Number(retry) * 1000 : Date.parse(retry) - this.#now();
-      if (Number.isFinite(value) && value >= 0 && value <= 2147483647) return Math.ceil(value);
-      fail('E_GITHUB_REQUEST', 'GitHub supplied an unsupported Retry-After duration; no early retry was made.', 'source');
+      if (Number.isFinite(value) && value >= 0 && value <= MAX_RETRY_DELAY_MS) return Math.ceil(value);
+      fail(rateLimited ? 'E_GITHUB_RATE_LIMIT' : 'E_GITHUB_REQUEST', `GitHub requested a retry delay outside the five-minute operating budget; no early retry was made.`, 'source');
     }
     if (headers.get('x-ratelimit-remaining') === '0') {
       const reset = Number(headers.get('x-ratelimit-reset')) * 1000 - this.#now();
-      if (Number.isFinite(reset) && reset >= 0 && reset <= 2147483647) return Math.ceil(reset);
+      if (Number.isFinite(reset) && reset >= 0 && reset <= MAX_RETRY_DELAY_MS) return Math.ceil(reset);
+      fail('E_GITHUB_RATE_LIMIT', 'GitHub rate-limit reset is outside the five-minute operating budget; no early retry was made.', 'source');
     }
-    return rateLimited ? 60000 * 2 ** attempt : 1000 * 2 ** attempt;
+    const fallback = (rateLimited ? 60000 : 1000) * 2 ** attempt;
+    if (!Number.isFinite(fallback) || fallback > MAX_RETRY_DELAY_MS) fail(rateLimited ? 'E_GITHUB_RATE_LIMIT' : 'E_GITHUB_REQUEST', 'GitHub retry backoff exceeds the five-minute operating budget; no early retry was made.', 'source');
+    return fallback;
   }
   async json(route: string, options: RequestOptions = {}): Promise<unknown> {
     const response = await this.request(route, options);
