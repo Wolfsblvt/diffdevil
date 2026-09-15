@@ -83,11 +83,20 @@ export function projectPlaygroundReport(report, options = {}) {
 }
 
 function errorStatus(code) {
+  if (code === 'E_INTERNAL' || code === 'E_CONFIG') return 500;
   if (code === 'E_SOURCE_STALE') return 409;
   if (code === 'E_LIMIT') return 413;
   if (code === 'E_GITHUB_PERMISSION') return 403;
-  if (code === 'E_GITHUB_REQUEST' || code === 'E_GITHUB_AMBIGUOUS' || code === 'E_GITHUB_RESPONSE') return 502;
+  if (code === 'E_GITHUB_REQUEST' || code === 'E_GITHUB_AMBIGUOUS' || code === 'E_GITHUB_RESPONSE'
+    || code === 'E_GITHUB_ROUTE' || code === 'E_GITHUB_PAGINATION' || code === 'E_PLAN_TARGET') return 502;
   return 422;
+}
+
+function publicAnalysisError(diagnostic) {
+  if (diagnostic.code === 'E_INTERNAL') {
+    return { code: 'E_INTERNAL', message: 'Analysis failed unexpectedly.' };
+  }
+  return { code: diagnostic.code, message: diagnostic.message };
 }
 
 export async function analyzePublicPullRequest(input, options = {}) {
@@ -101,7 +110,7 @@ export async function analyzePublicPullRequest(input, options = {}) {
     return {
       ok: false,
       status: errorStatus(diagnostic.code),
-      error: { code: diagnostic.code, message: diagnostic.message, diagnostics: result.diagnostics }
+      error: publicAnalysisError(diagnostic)
     };
   }
 
@@ -190,13 +199,14 @@ async function handleRequest(request, response, options) {
 export function createPlaygroundServer(options = {}) {
   return createServer((request, response) => {
     void handleRequest(request, response, options).catch(error => {
+      try { options.onError?.(error); } catch { /* Error reporting must not replace the original response boundary. */ }
       if (response.headersSent) {
         response.destroy(error instanceof Error ? error : undefined);
         return;
       }
       sendJson(response, 500, {
         ok: false,
-        error: { code: 'E_INTERNAL', message: error instanceof Error ? error.message : 'Unexpected server failure.' }
+        error: { code: 'E_INTERNAL', message: 'Unexpected server failure.' }
       }, request.method ?? 'GET');
     });
   });
@@ -216,7 +226,9 @@ if (main) {
   const host = process.env.DIFFDEVIL_PLAYGROUND_HOST ?? DEFAULT_HOST;
   const port = parsePort(process.env.DIFFDEVIL_PLAYGROUND_PORT ?? process.env.PORT ?? String(DEFAULT_PORT));
   if (port !== undefined) {
-    const server = createPlaygroundServer();
+    const server = createPlaygroundServer({
+      onError: error => console.error('diffdevil playground request failed:', error)
+    });
     server.listen(port, host, () => {
       console.log(`diffdevil playground: http://${host}:${port}`);
       console.log('Public GitHub pull requests only. This server performs no provider writes.');
