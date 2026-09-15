@@ -14,7 +14,7 @@ Website and interactive demo application code, hosted runtime, GitHub App backen
 
 ## Documentation and examples
 
-Original documentation prose and reusable explanatory content, including the root `README.md`, guides, manuals, and documentation maps under `docs/`, are licensed under [Creative Commons Attribution 4.0 International (CC BY 4.0)](https://creativecommons.org/licenses/by/4.0/legalcode). Credit **Wolfsblvt Works**, identify changes, and link the licence when reusing that content. This licence does not grant rights in quoted or linked third-party material.
+Original documentation prose and reusable explanatory content, including the root `README.md`, guides, manuals, documentation maps, and original diffdevil-authored prose in `docs/reference/`, are licensed under [Creative Commons Attribution 4.0 International (CC BY 4.0)](https://creativecommons.org/licenses/by/4.0/legalcode). Credit **Wolfsblvt Works**, identify changes, and link the licence when reusing that content. This licence does not grant rights in quoted, linked, or otherwise incorporated third-party material; those portions retain their original terms.
 
 Runnable code, workflows, shell scripts, expression files, and policy/configuration examples under `docs/examples/` are MIT-licensed software or reusable integration specimens. The scripts already carry SPDX headers. Synthetic diff and report specimens are explanatory content under CC BY 4.0; they are not authenticated provider records.
 
