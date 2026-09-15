@@ -426,3 +426,38 @@ together. Generated runtime dependencies remain complete and notices are preserv
 build system, or a directory-count enforcement rule. Current consumers are proved
 by the ordinary suite, installed-package journey and isolated distributed Actions.
 See [the project map](PROJECT-MAP.md) and [Qualification](QUALIFICATION.md).
+
+## D029: Keep one engine across reusable and managed application surfaces
+
+**Status:** Settled product destination, 2026-09-15. Implementation sequence remains current Work.
+
+**Decision.** The complete diffdevil product includes the public npm package and
+TypeScript API, CLI, root and three sub-actions, managed GitHub App, public read-only
+PR playground, and website/documentation experience. Every surface uses the same
+deterministic engine, policy semantics, report and plan contracts, and effect
+boundaries. Repository-owned policy remains authoritative over hosted defaults.
+The application surfaces remain in the same repository and release lifecycle; this
+decision does not freeze their exact directory layout.
+
+**Why.** A repository should be able to move from local scripts to Actions and then
+to managed operation without changing what a measurement, policy, decision, or
+effect means. The playground should demonstrate the real product rather than a
+hand-maintained approximation, and the GitHub App should remove operating burden
+rather than introduce a second engine or hidden policy system. Keeping the joined
+surfaces together also preserves contribution and documentation coherence.
+
+**Rejected.** Treating the current CLI/library/Action cut as the complete product;
+classifying the website, playground, or App as optional presentation; building a
+second hosted measurement or policy implementation; splitting application code
+into another repository before an independent lifecycle requires it; or reducing
+the open product to create artificial hosted-service value.
+
+**Current consequence.** The MIT package, API, CLI, and Actions remain fully capable.
+Website, playground, GitHub App runtime, hosted configuration, orchestration, and
+service software use AGPL-3.0-only under D014. Hosted value comes from operation,
+administration, continuity, scheduling, history, scale, and support. Application
+implementation proceeds inside out from useful vertical behavior and shared
+contracts rather than beginning with a generic hosting control plane.
+
+**Sources.** [Vision](VISION.md), [Direction](DIRECTION.md), D014, and
+[emergency-meeting #457](https://github.com/Wolfsblvt/emergency-meeting/issues/457).
