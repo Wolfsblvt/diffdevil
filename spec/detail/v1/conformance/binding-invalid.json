@@ -1,0 +1,111 @@
+{
+  "language": "diffdevil-expr/1",
+  "suite": "binding-invalid",
+  "cases": [
+    {
+      "id": "unknown-root",
+      "source": "lines.changed",
+      "context": "query",
+      "code": "E_UNKNOWN_NAME",
+      "environment": "report-exact"
+    },
+    {
+      "id": "unknown-field",
+      "source": "totals.lines.modifed",
+      "context": "query",
+      "code": "E_UNKNOWN_FIELD",
+      "environment": "report-exact"
+    },
+    {
+      "id": "string-add",
+      "source": "\"1\" + 2",
+      "context": "query",
+      "code": "E_TYPE",
+      "environment": "report-exact"
+    },
+    {
+      "id": "truthy-number",
+      "source": "1 && true",
+      "context": "condition",
+      "code": "E_TYPE",
+      "environment": "report-exact"
+    },
+    {
+      "id": "metric-record",
+      "source": "{changed: 1}",
+      "context": "metric",
+      "code": "E_TYPE",
+      "environment": "report-exact"
+    },
+    {
+      "id": "mixed-list",
+      "source": "[1, \"2\"]",
+      "context": "query",
+      "code": "E_TYPE",
+      "environment": "report-exact"
+    },
+    {
+      "id": "unknown-call",
+      "source": "eval(\"1\")",
+      "context": "query",
+      "code": "E_UNKNOWN_FUNCTION",
+      "environment": "report-exact"
+    },
+    {
+      "id": "wrong-arity",
+      "source": "abs(1,2)",
+      "context": "query",
+      "code": "E_ARITY",
+      "environment": "report-exact"
+    },
+    {
+      "id": "lambda-position",
+      "source": "abs(f => 1)",
+      "context": "query",
+      "code": "E_BINDER_POSITION",
+      "environment": "report-exact"
+    },
+    {
+      "id": "root-shadow",
+      "source": "map(files, files => files.path)",
+      "context": "query",
+      "code": "E_SHADOWING",
+      "environment": "report-exact"
+    },
+    {
+      "id": "duplicate-key",
+      "source": "{a:1,\"a\":2}",
+      "context": "query",
+      "code": "E_DUPLICATE_FIELD",
+      "environment": "report-exact"
+    },
+    {
+      "id": "prototype",
+      "source": "{constructor: 1}",
+      "context": "query",
+      "code": "E_FORBIDDEN_NAME",
+      "environment": "report-exact"
+    },
+    {
+      "id": "optional-path",
+      "source": "map(files, f => startsWith(f.oldPath, \"src/\"))",
+      "context": "query",
+      "code": "E_OPTIONAL_VALUE",
+      "environment": "report-exact"
+    },
+    {
+      "id": "unreachable-name",
+      "source": "false && missingSymbol",
+      "context": "condition",
+      "code": "E_UNKNOWN_NAME",
+      "environment": "report-exact"
+    },
+    {
+      "id": "float-remainder",
+      "source": "1.5 % 1",
+      "context": "query",
+      "code": "E_TYPE",
+      "environment": "report-exact"
+    }
+  ]
+}

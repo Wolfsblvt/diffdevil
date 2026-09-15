@@ -1,0 +1,11 @@
+{
+  "name": "diffdevil-action-runtime",
+  "private": true,
+  "type": "module",
+  "version": "0.0.0-development",
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=24"
+  },
+  "description": "Generated install-free native ESM distribution for all four diffdevil Actions."
+}

@@ -1,0 +1,30 @@
+version: 1
+presets: []
+defaults:
+  paths:
+    exclude:
+      - package-lock.json
+parameters:
+  threshold:
+    type: integer
+    default: 200
+metrics:
+  weighted:
+    formula: totals.lines.deleted + 2 * totals.lines.modified
+queries:
+  weighted:
+    expression: metrics.weighted
+  over-limit:
+    expression: requirePresent(rules.weighted.decision)
+labelDefinitions:
+  review/weighted:
+    color: D1D5DB
+    description: Matched the configured weighted-change threshold
+rules:
+  weighted:
+    when: metrics.weighted > params.threshold
+    effects:
+      labels:
+        add:
+          - review/weighted
+        removeWhenFalse: true

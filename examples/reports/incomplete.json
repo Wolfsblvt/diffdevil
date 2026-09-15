@@ -1,0 +1,204 @@
+{
+  "kind": "diffdevil.report",
+  "schemaVersion": "1.0",
+  "semantics": {
+    "language": "diffdevil-expr/1",
+    "numbers": "diffdevil-number/1",
+    "replacementLines": "replacement-lines-v1",
+    "paths": "diffdevil-glob/1",
+    "presets": [
+      "size@1"
+    ],
+    "limits": "diffdevil-limits/1"
+  },
+  "source": {
+    "kind": "github-api",
+    "comparisonId": "fixture-incomplete-comparison",
+    "repository": "example/repository",
+    "pullRequest": 43
+  },
+  "measurement": {
+    "status": "unknown",
+    "reasons": [
+      {
+        "code": "FILE_SET_INCOMPLETE"
+      }
+    ]
+  },
+  "fileSet": {
+    "complete": false,
+    "total": {
+      "status": "exact",
+      "value": 3
+    }
+  },
+  "totals": {
+    "raw": {
+      "added": {
+        "status": "unknown",
+        "reasons": [
+          {
+            "code": "FILE_SET_INCOMPLETE"
+          }
+        ],
+        "lower": 5
+      },
+      "deleted": {
+        "status": "unknown",
+        "reasons": [
+          {
+            "code": "FILE_SET_INCOMPLETE"
+          }
+        ],
+        "lower": 0
+      },
+      "churn": {
+        "status": "unknown",
+        "reasons": [
+          {
+            "code": "FILE_SET_INCOMPLETE"
+          }
+        ],
+        "lower": 5
+      }
+    },
+    "lines": {
+      "added": {
+        "status": "unknown",
+        "reasons": [
+          {
+            "code": "FILE_SET_INCOMPLETE"
+          }
+        ],
+        "lower": 5
+      },
+      "deleted": {
+        "status": "unknown",
+        "reasons": [
+          {
+            "code": "FILE_SET_INCOMPLETE"
+          }
+        ],
+        "lower": 0
+      },
+      "modified": {
+        "status": "unknown",
+        "reasons": [
+          {
+            "code": "FILE_SET_INCOMPLETE"
+          }
+        ],
+        "lower": 0
+      },
+      "changed": {
+        "status": "unknown",
+        "reasons": [
+          {
+            "code": "FILE_SET_INCOMPLETE"
+          }
+        ],
+        "lower": 5
+      }
+    },
+    "files": {
+      "total": {
+        "status": "exact",
+        "value": 3
+      },
+      "included": {
+        "status": "exact",
+        "value": 3
+      },
+      "excluded": {
+        "status": "exact",
+        "value": 0
+      },
+      "added": {
+        "status": "bounded",
+        "lower": 0,
+        "upper": 2
+      },
+      "deleted": {
+        "status": "bounded",
+        "lower": 0,
+        "upper": 2
+      },
+      "modified": {
+        "status": "bounded",
+        "lower": 1,
+        "upper": 3
+      },
+      "renamed": {
+        "status": "bounded",
+        "lower": 0,
+        "upper": 2
+      },
+      "copied": {
+        "status": "bounded",
+        "lower": 0,
+        "upper": 2
+      },
+      "binary": {
+        "status": "bounded",
+        "lower": 0,
+        "upper": 2
+      },
+      "unmeasurable": {
+        "status": "bounded",
+        "lower": 0,
+        "upper": 2
+      }
+    }
+  },
+  "files": [
+    {
+      "id": "f-observed",
+      "path": "src/Observed.cs",
+      "changeType": "modified",
+      "kind": "text",
+      "included": true,
+      "raw": {
+        "added": {
+          "status": "exact",
+          "value": 5
+        },
+        "deleted": {
+          "status": "exact",
+          "value": 0
+        },
+        "churn": {
+          "status": "exact",
+          "value": 5
+        }
+      },
+      "lines": {
+        "added": {
+          "status": "exact",
+          "value": 5
+        },
+        "deleted": {
+          "status": "exact",
+          "value": 0
+        },
+        "modified": {
+          "status": "exact",
+          "value": 0
+        },
+        "changed": {
+          "status": "exact",
+          "value": 5
+        }
+      },
+      "measurement": {
+        "status": "exact",
+        "reasons": []
+      },
+      "family": {
+        "id": "f-observed-family",
+        "rawCountsExact": true,
+        "blocksComplete": true
+      }
+    }
+  ],
+  "reportId": "fixture-report-incomplete"
+}

@@ -1,0 +1,76 @@
+{
+  "language": "diffdevil-expr/1",
+  "suite": "source-positions",
+  "cases": [
+    {
+      "id": "utf16-after-astral",
+      "source": "\"😀\" + missing",
+      "selectedText": "missing",
+      "expectRange": {
+        "start": 7,
+        "end": 14
+      }
+    },
+    {
+      "id": "crlf-line-start",
+      "source": "1 +\r\nmissing",
+      "selectedText": "missing",
+      "expectRange": {
+        "start": 5,
+        "end": 12
+      },
+      "expectLine": 2,
+      "expectColumn": 1
+    },
+    {
+      "id": "eof-empty",
+      "source": "",
+      "selectedText": "",
+      "expectRange": {
+        "start": 0,
+        "end": 0
+      },
+      "expectLine": 1,
+      "expectColumn": 1
+    },
+    {
+      "id": "eof-after-incomplete",
+      "source": "1 +",
+      "selectedText": "",
+      "expectRange": {
+        "start": 3,
+        "end": 3
+      },
+      "expectLine": 1,
+      "expectColumn": 4
+    },
+    {
+      "id": "yaml-plain-member",
+      "container": "formula: totals.lines.modifed\n",
+      "decoded": "totals.lines.modifed",
+      "selectedText": "modifed",
+      "expectDecodedRange": {
+        "start": 13,
+        "end": 20
+      },
+      "expectOriginalRange": {
+        "start": 22,
+        "end": 29
+      }
+    },
+    {
+      "id": "yaml-quoted-escape",
+      "container": "expression: \"\\u0061 + 1\"\n",
+      "decoded": "a + 1",
+      "selectedText": "a",
+      "expectDecodedRange": {
+        "start": 0,
+        "end": 1
+      },
+      "expectOriginalRange": {
+        "start": 13,
+        "end": 19
+      }
+    }
+  ]
+}

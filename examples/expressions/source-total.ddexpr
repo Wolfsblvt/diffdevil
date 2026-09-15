@@ -1,0 +1,1 @@
+sum(filter(files, f => f.included && pathMatches(f, "src/**")), f => f.lines.changed)

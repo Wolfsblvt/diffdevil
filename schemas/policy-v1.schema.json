@@ -1,0 +1,787 @@
+{
+  "type": "object",
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "language": {
+      "const": "diffdevil-expr/1"
+    },
+    "presets": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "size@1"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "size": {
+      "type": "object",
+      "properties": {
+        "metric": {
+          "type": "string",
+          "minLength": 1
+        },
+        "thresholds": {
+          "type": "object",
+          "properties": {
+            "xs": {
+              "type": "number",
+              "minimum": -1.7976931348623157e+308,
+              "maximum": 1.7976931348623157e+308
+            },
+            "s": {
+              "type": "number",
+              "minimum": -1.7976931348623157e+308,
+              "maximum": 1.7976931348623157e+308
+            },
+            "m": {
+              "type": "number",
+              "minimum": -1.7976931348623157e+308,
+              "maximum": 1.7976931348623157e+308
+            },
+            "l": {
+              "type": "number",
+              "minimum": -1.7976931348623157e+308,
+              "maximum": 1.7976931348623157e+308
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "xs",
+            "s",
+            "m",
+            "l"
+          ]
+        },
+        "labels": {
+          "type": "object",
+          "properties": {
+            "xs": {
+              "type": "string",
+              "minLength": 1
+            },
+            "s": {
+              "type": "string",
+              "minLength": 1
+            },
+            "m": {
+              "type": "string",
+              "minLength": 1
+            },
+            "l": {
+              "type": "string",
+              "minLength": 1
+            },
+            "xl": {
+              "type": "string",
+              "minLength": 1
+            },
+            "unknown": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "xs",
+            "s",
+            "m",
+            "l",
+            "xl",
+            "unknown"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "measurement": {
+      "type": "object",
+      "properties": {
+        "replacementLines": {
+          "const": "replacement-lines-v1"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "replacementLines"
+      ]
+    },
+    "defaults": {
+      "type": "object",
+      "properties": {
+        "paths": {
+          "type": "object",
+          "properties": {
+            "includeOnly": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "uniqueItems": true
+            },
+            "exclude": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "uniqueItems": true
+            },
+            "forceInclude": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "uniqueItems": true
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "scopes": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "includeOnly": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "uniqueItems": true
+          },
+          "exclude": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "uniqueItems": true
+          },
+          "forceInclude": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "uniqueItems": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "propertyNames": {
+        "minLength": 1,
+        "not": {
+          "enum": [
+            "__proto__",
+            "constructor",
+            "prototype"
+          ]
+        }
+      }
+    },
+    "parameters": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "enum": [
+              "integer",
+              "float",
+              "boolean",
+              "string"
+            ]
+          },
+          "default": {
+            "type": [
+              "number",
+              "boolean",
+              "string"
+            ]
+          },
+          "required": {
+            "const": true
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "type"
+        ],
+        "oneOf": [
+          {
+            "required": [
+              "default"
+            ],
+            "not": {
+              "required": [
+                "required"
+              ]
+            }
+          },
+          {
+            "required": [
+              "required"
+            ],
+            "not": {
+              "required": [
+                "default"
+              ]
+            }
+          }
+        ],
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "type": {
+                  "const": "integer"
+                }
+              },
+              "required": [
+                "type"
+              ]
+            },
+            "then": {
+              "properties": {
+                "default": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "type": {
+                  "const": "float"
+                }
+              },
+              "required": [
+                "type"
+              ]
+            },
+            "then": {
+              "properties": {
+                "default": {
+                  "type": "number",
+                  "minimum": -1.7976931348623157e+308,
+                  "maximum": 1.7976931348623157e+308
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "type": {
+                  "const": "boolean"
+                }
+              },
+              "required": [
+                "type"
+              ]
+            },
+            "then": {
+              "properties": {
+                "default": {
+                  "type": "boolean"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "type": {
+                  "const": "string"
+                }
+              },
+              "required": [
+                "type"
+              ]
+            },
+            "then": {
+              "properties": {
+                "default": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "propertyNames": {
+        "minLength": 1,
+        "not": {
+          "enum": [
+            "__proto__",
+            "constructor",
+            "prototype"
+          ]
+        }
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "measure": {
+                "enum": [
+                  "raw.added",
+                  "raw.deleted",
+                  "raw.churn",
+                  "lines.added",
+                  "lines.deleted",
+                  "lines.modified",
+                  "lines.changed",
+                  "files.total",
+                  "files.included",
+                  "files.excluded",
+                  "files.added",
+                  "files.deleted",
+                  "files.modified",
+                  "files.renamed",
+                  "files.copied",
+                  "files.binary",
+                  "files.unmeasurable"
+                ]
+              },
+              "scope": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false,
+            "required": [
+              "measure"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "formula": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false,
+            "required": [
+              "formula"
+            ]
+          }
+        ]
+      },
+      "propertyNames": {
+        "minLength": 1,
+        "not": {
+          "enum": [
+            "__proto__",
+            "constructor",
+            "prototype"
+          ]
+        }
+      }
+    },
+    "bands": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minimum": {
+            "type": "number",
+            "minimum": -1.7976931348623157e+308,
+            "maximum": 1.7976931348623157e+308
+          },
+          "ranges": {
+            "type": "array",
+            "items": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "lt": {
+                      "type": "number",
+                      "minimum": -1.7976931348623157e+308,
+                      "maximum": 1.7976931348623157e+308
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "id",
+                    "lt"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "otherwise": {
+                      "const": true
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "id",
+                    "otherwise"
+                  ]
+                }
+              ]
+            },
+            "minItems": 1
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "value",
+          "ranges"
+        ]
+      },
+      "propertyNames": {
+        "minLength": 1,
+        "not": {
+          "enum": [
+            "__proto__",
+            "constructor",
+            "prototype"
+          ]
+        }
+      }
+    },
+    "queries": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "expression": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "expression"
+        ]
+      },
+      "propertyNames": {
+        "minLength": 1,
+        "not": {
+          "enum": [
+            "__proto__",
+            "constructor",
+            "prototype"
+          ]
+        }
+      }
+    },
+    "labelGroups": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "minLength": 1
+        },
+        "minItems": 1,
+        "uniqueItems": true
+      },
+      "propertyNames": {
+        "minLength": 1,
+        "not": {
+          "enum": [
+            "__proto__",
+            "constructor",
+            "prototype"
+          ]
+        }
+      }
+    },
+    "labelDefinitions": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "color": {
+            "type": "string",
+            "pattern": "^[0-9a-fA-F]{6}$"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 100
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "color",
+          "description"
+        ]
+      },
+      "propertyNames": {
+        "minLength": 1,
+        "not": {
+          "enum": [
+            "__proto__",
+            "constructor",
+            "prototype"
+          ]
+        }
+      }
+    },
+    "rules": {
+      "type": "object",
+      "additionalProperties": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "when": {
+                "type": "string",
+                "minLength": 1
+              },
+              "onUnknown": {
+                "enum": [
+                  "hold",
+                  "fail"
+                ]
+              },
+              "effects": {
+                "type": "object",
+                "properties": {
+                  "labels": {
+                    "type": "object",
+                    "properties": {
+                      "add": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "minItems": 1,
+                        "uniqueItems": true
+                      },
+                      "removeWhenFalse": {
+                        "type": "boolean"
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "add"
+                    ]
+                  },
+                  "comment": {
+                    "type": "object",
+                    "properties": {
+                      "mode": {
+                        "enum": [
+                          "create",
+                          "once",
+                          "upsert",
+                          "once-per-transition"
+                        ]
+                      },
+                      "trigger": {
+                        "enum": [
+                          "always",
+                          "matched",
+                          "band-changed"
+                        ]
+                      },
+                      "template": {
+                        "type": "string"
+                      },
+                      "templateFile": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "mode"
+                    ],
+                    "oneOf": [
+                      {
+                        "required": [
+                          "template"
+                        ],
+                        "not": {
+                          "required": [
+                            "templateFile"
+                          ]
+                        }
+                      },
+                      {
+                        "required": [
+                          "templateFile"
+                        ],
+                        "not": {
+                          "required": [
+                            "template"
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "required": []
+              }
+            },
+            "additionalProperties": false,
+            "required": [
+              "when"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "band": {
+                "type": "string",
+                "minLength": 1
+              },
+              "onUnknown": {
+                "enum": [
+                  "hold",
+                  "fail"
+                ]
+              },
+              "effects": {
+                "type": "object",
+                "properties": {
+                  "labels": {
+                    "type": "object",
+                    "properties": {
+                      "group": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "byBand": {
+                        "type": "object",
+                        "additionalProperties": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "propertyNames": {
+                          "minLength": 1,
+                          "not": {
+                            "enum": [
+                              "__proto__",
+                              "constructor",
+                              "prototype"
+                            ]
+                          }
+                        }
+                      },
+                      "unknown": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "group",
+                      "byBand"
+                    ]
+                  },
+                  "comment": {
+                    "type": "object",
+                    "properties": {
+                      "mode": {
+                        "enum": [
+                          "create",
+                          "once",
+                          "upsert",
+                          "once-per-transition"
+                        ]
+                      },
+                      "trigger": {
+                        "enum": [
+                          "always",
+                          "matched",
+                          "band-changed"
+                        ]
+                      },
+                      "template": {
+                        "type": "string"
+                      },
+                      "templateFile": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "mode"
+                    ],
+                    "oneOf": [
+                      {
+                        "required": [
+                          "template"
+                        ],
+                        "not": {
+                          "required": [
+                            "templateFile"
+                          ]
+                        }
+                      },
+                      {
+                        "required": [
+                          "templateFile"
+                        ],
+                        "not": {
+                          "required": [
+                            "template"
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "required": []
+              }
+            },
+            "additionalProperties": false,
+            "required": [
+              "band"
+            ]
+          }
+        ]
+      },
+      "propertyNames": {
+        "minLength": 1,
+        "not": {
+          "enum": [
+            "__proto__",
+            "constructor",
+            "prototype"
+          ]
+        }
+      }
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "version"
+  ],
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:diffdevil:policy:1",
+  "title": "diffdevil policy version 1",
+  "description": "Strict authoring schema. Semantic validation additionally checks names, types, metric cycles, path patterns, band ordering, cross references, preset overrides, and effect conflicts."
+}

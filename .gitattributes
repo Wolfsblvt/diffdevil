@@ -1,0 +1,17 @@
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.gif binary
+*.ico binary
+*.zip binary
+
+# Generated Action distribution is reviewed through its deterministic build and manifest.
+action-runtime/** -text linguist-generated=true
+# Preserve original vendor notices and formatting instead of rewriting dependency bytes.
+action-runtime/node_modules/** -whitespace linguist-vendored=true
+analyze/index.mjs linguist-generated=true
+apply/index.mjs linguist-generated=true
+sync-labels/index.mjs linguist-generated=true

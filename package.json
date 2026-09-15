@@ -1,0 +1,93 @@
+{
+  "name": "@wolfsblvt/diffdevil",
+  "version": "0.0.0-development",
+  "private": true,
+  "description": "Composable Git diff analysis and policy for Node.js, CI pipelines, and GitHub Actions.",
+  "type": "module",
+  "scripts": {
+    "check:prep": "node ./scripts/check-prep.mjs",
+    "build": "node scripts/build.mjs",
+    "build:offline": "node scripts/build.mjs --offline-toolchain",
+    "test": "node scripts/test.mjs",
+    "verify": "npm run check:prep && npm run build && npm test && npm run check:actions",
+    "verify:offline": "npm run check:prep && npm run build:offline && npm test && npm run check:actions",
+    "test:package": "node scripts/package-smoke.mjs",
+    "prepack": "npm run build",
+    "demo:shortcuts": "node scripts/shortcut-demo.mjs",
+    "test:conformance": "node scripts/conformance.mjs",
+    "build:actions": "npm run build && node scripts/build-actions.mjs",
+    "check:actions": "node scripts/build-actions.mjs --check",
+    "test:actions": "node scripts/action-smoke.mjs"
+  },
+  "keywords": [
+    "git",
+    "diff",
+    "github-actions",
+    "ci",
+    "policy",
+    "pull-request",
+    "typescript"
+  ],
+  "author": "Wolf",
+  "license": "UNLICENSED",
+  "main": "./dist/lib/index.js",
+  "types": "./dist/lib/index.d.ts",
+  "bin": {
+    "diffdevil": "./dist/lib/cli/main.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/lib/index.d.ts",
+      "import": "./dist/lib/index.js"
+    },
+    "./core": {
+      "types": "./dist/lib/core.d.ts",
+      "import": "./dist/lib/core.js"
+    },
+    "./language": {
+      "types": "./dist/lib/language/index.d.ts",
+      "import": "./dist/lib/language/index.js"
+    },
+    "./policy": {
+      "types": "./dist/lib/policy/index.d.ts",
+      "import": "./dist/lib/policy/index.js"
+    },
+    "./git": {
+      "types": "./dist/lib/sources/git.d.ts",
+      "import": "./dist/lib/sources/git.js"
+    },
+    "./package.json": "./package.json",
+    "./github": {
+      "types": "./dist/lib/github/index.d.ts",
+      "import": "./dist/lib/github/index.js"
+    }
+  },
+  "files": [
+    "dist/lib",
+    "src",
+    "schemas/*.json",
+    "spec/detail/v1",
+    "presets/*.yml",
+    "docs",
+    "examples",
+    "reference/*.md",
+    "reference/2026-*/*.md",
+    "reference/2026-*/*.json"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "devDependencies": {
+    "@types/node": "22.15.33",
+    "typescript": "5.8.3"
+  },
+  "dependencies": {
+    "ajv": "8.20.0",
+    "chevrotain": "13.2.0",
+    "yaml": "2.9.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Wolfsblvt/diffdevil.git"
+  }
+}

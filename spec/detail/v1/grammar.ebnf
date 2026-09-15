@@ -1,0 +1,32 @@
+(* detail / diffdevil-expr/1. Normative syntax; binding restrictions are additional. *)
+source       = expression, EOF ;
+expression   = conditional ;
+conditional  = disjunction, [ "?", conditional, ":", conditional ] ;
+disjunction  = conjunction, { "||", conjunction } ;
+conjunction  = equality, { "&&", equality } ;
+equality     = comparison, [ ( "==" | "!=" ), comparison ] ;
+comparison   = additive, [ ( "<" | "<=" | ">" | ">=" | "in" ), additive ] ;
+additive     = product, { ( "+" | "-" ), product } ;
+product      = unary, { ( "*" | "/" | "%" ), unary } ;
+unary        = ( "!" | "+" | "-" ), unary | access ;
+access       = primary, { member } ;
+member       = ".", Identifier | "[", String, "]" ;
+primary      = literal
+             | Identifier, [ callSuffix ]
+             | list
+             | record
+             | "(", expression, ")" ;
+callSuffix   = "(", [ argument, { ",", argument } ], ")" ;
+argument     = lambda | expression ;
+lambda       = Identifier, "=>", expression ;
+list         = "[", [ expression, { ",", expression } ], "]" ;
+record       = "{", [ field, { ",", field } ], "}" ;
+field        = ( Identifier | String ), ":", expression ;
+literal      = Number | String | "true" | "false" | "null" ;
+
+(* Lexical forms and longest-prefix behavior are in lexical.json.
+   Argument lambda recognition uses Identifier then Arrow lookahead.
+   Keywords do not match identifier prefixes. No comments or trailing commas.
+   Only bare-name calls; only literal-string bracket members; no numeric indexing.
+   Lambdas are allowed only in catalog-declared binder arguments.
+   Parser must consume EOF and reject recovered trees for evaluation. *)

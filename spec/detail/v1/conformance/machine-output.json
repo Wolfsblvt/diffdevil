@@ -1,0 +1,160 @@
+{
+  "language": "diffdevil-expr/1",
+  "suite": "machine-output",
+  "cases": [
+    {
+      "id": "scalar",
+      "command": "query",
+      "format": "value",
+      "value": {
+        "kind": "number",
+        "numericType": "integer",
+        "measurement": {
+          "status": "exact",
+          "value": 173
+        }
+      },
+      "stdout": "173\n",
+      "exit": 0
+    },
+    {
+      "id": "bounded-scalar",
+      "command": "query",
+      "format": "value",
+      "value": {
+        "kind": "number",
+        "numericType": "integer",
+        "measurement": {
+          "status": "bounded",
+          "lower": 60,
+          "upper": 70
+        }
+      },
+      "stdout": "",
+      "exit": 3
+    },
+    {
+      "id": "false-check",
+      "command": "check",
+      "value": {
+        "kind": "boolean",
+        "decision": {
+          "status": "resolved",
+          "value": false
+        }
+      },
+      "stdout": "",
+      "exit": 1
+    },
+    {
+      "id": "unknown-check",
+      "command": "check",
+      "value": {
+        "kind": "boolean",
+        "decision": {
+          "status": "unknown",
+          "reasons": [
+            {
+              "code": "INSUFFICIENT_EVIDENCE"
+            }
+          ]
+        }
+      },
+      "stdout": "",
+      "exit": 3
+    },
+    {
+      "id": "empty-lines",
+      "command": "query",
+      "format": "lines",
+      "value": {
+        "kind": "collection",
+        "items": [],
+        "unseen": {
+          "possible": false,
+          "minimum": 0,
+          "maximum": 0
+        },
+        "order": "known"
+      },
+      "stdout": "",
+      "exit": 0
+    },
+    {
+      "id": "newline-path",
+      "command": "query",
+      "format": "lines",
+      "value": {
+        "kind": "collection",
+        "items": [
+          {
+            "membership": "definite",
+            "value": {
+              "kind": "string",
+              "value": "a\nb.cs"
+            }
+          }
+        ],
+        "unseen": {
+          "possible": false,
+          "minimum": 0,
+          "maximum": 0
+        },
+        "order": "known"
+      },
+      "stdout": "",
+      "exit": 2,
+      "error": "E_FORMAT_DELIMITER"
+    },
+    {
+      "id": "newline-path-nul",
+      "command": "query",
+      "format": "nul",
+      "value": {
+        "kind": "collection",
+        "items": [
+          {
+            "membership": "definite",
+            "value": {
+              "kind": "string",
+              "value": "a\nb.cs"
+            }
+          }
+        ],
+        "unseen": {
+          "possible": false,
+          "minimum": 0,
+          "maximum": 0
+        },
+        "order": "known"
+      },
+      "stdout": "a\nb.cs\u0000",
+      "exit": 0
+    },
+    {
+      "id": "possible-path",
+      "command": "query",
+      "format": "lines",
+      "value": {
+        "kind": "collection",
+        "items": [
+          {
+            "membership": "possible",
+            "value": {
+              "kind": "string",
+              "value": "a.cs"
+            }
+          }
+        ],
+        "unseen": {
+          "possible": false,
+          "minimum": 0,
+          "maximum": 0
+        },
+        "order": "known"
+      },
+      "stdout": "",
+      "exit": 3
+    }
+  ]
+}

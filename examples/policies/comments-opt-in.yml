@@ -1,0 +1,115 @@
+# Deliberate comment opt-in; not the default preset.
+version: 1
+language: diffdevil-expr/1
+presets: []
+measurement:
+  replacementLines: replacement-lines-v1
+defaults:
+  paths:
+    exclude:
+    - '**/package-lock.json'
+    - '**/bin/**'
+    - '**/obj/**'
+    forceInclude:
+    - src/generated/README.md
+metrics:
+  review:
+    measure: lines.changed
+  churn:
+    measure: raw.churn
+  productionReview:
+    measure: lines.changed
+    scope: production
+  destructive:
+    formula: totals.lines.deleted + totals.lines.modified
+  weighted:
+    formula: metrics.review + 2 * metrics.productionReview
+bands:
+  size:
+    value: metrics.review
+    minimum: 0
+    ranges:
+    - id: xs
+      lt: 20
+    - id: s
+      lt: 100
+    - id: m
+      lt: 500
+    - id: l
+      lt: 1000
+    - id: xl
+      otherwise: true
+labelGroups:
+  size:
+  - size/XS
+  - size/S
+  - size/M
+  - size/L
+  - size/XL
+  - size/Unknown
+labelDefinitions:
+  size/XS:
+    color: C2E0C6
+    description: 0–19 replacement-aware changed lines
+  size/S:
+    color: BFDADC
+    description: 20–99 replacement-aware changed lines
+  size/M:
+    color: C5DEF5
+    description: 100–499 replacement-aware changed lines
+  size/L:
+    color: D4C5F9
+    description: 500–999 replacement-aware changed lines
+  size/XL:
+    color: DCC6E0
+    description: 1,000 or more replacement-aware changed lines
+  size/Unknown:
+    color: D1D5DB
+    description: Available evidence cannot establish one size band
+  review/destructive:
+    color: C5DEF5
+    description: At least the configured number of deleted-only or modified lines
+rules:
+  size:
+    band: size
+    onUnknown: hold
+    effects:
+      labels:
+        group: size
+        byBand:
+          xs: size/XS
+          s: size/S
+          m: size/M
+          l: size/L
+          xl: size/XL
+        unknown: size/Unknown
+      comment:
+        mode: upsert
+        trigger: band-changed
+        template: "**Pull-request size: {{ bands.size }}**\n\nReplacement-aware changed lines: {{ metrics.review
+          }}\nRaw churn: {{ metrics.churn }}\n"
+  destructive:
+    when: metrics.destructive >= params.destructiveLimit && totals.files.included >= 5
+    onUnknown: hold
+    effects:
+      labels:
+        add:
+        - review/destructive
+        removeWhenFalse: true
+scopes:
+  production:
+    includeOnly:
+    - src/**
+  tests:
+    includeOnly:
+    - tests/**
+    - '**/*.Tests/**'
+parameters:
+  destructiveLimit:
+    type: integer
+    default: 500
+queries:
+  changed:
+    expression: metrics.review
+  largeFiles:
+    expression: 'map(filter(files, f => f.included && f.lines.changed > 100), f => {path: f.path, changed: f.lines.changed})'

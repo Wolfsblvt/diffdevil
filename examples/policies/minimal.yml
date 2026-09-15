@@ -1,0 +1,7 @@
+version: 1
+size:
+  metric: raw-churn
+defaults:
+  paths:
+    exclude:
+    - '**/package-lock.json'

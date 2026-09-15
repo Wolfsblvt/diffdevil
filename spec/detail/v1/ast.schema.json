@@ -1,0 +1,353 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:diffdevil:ast:1",
+  "title": "detail internal syntax tree",
+  "description": "Internal construction/conformance asset. Not a public persisted compiled-program format.",
+  "$defs": {
+    "span": {
+      "type": "object",
+      "properties": {
+        "source": {
+          "type": "string"
+        },
+        "start": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "end": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "start",
+        "end"
+      ]
+    },
+    "node": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "literal"
+            },
+            "span": {
+              "$ref": "#/$defs/span"
+            },
+            "literalType": {
+              "enum": [
+                "integer",
+                "float",
+                "string",
+                "boolean",
+                "null"
+              ]
+            },
+            "raw": {
+              "type": "string"
+            },
+            "value": {
+              "type": [
+                "number",
+                "string",
+                "boolean",
+                "null"
+              ]
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "span",
+            "literalType",
+            "raw",
+            "value"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "identifier"
+            },
+            "span": {
+              "$ref": "#/$defs/span"
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "span",
+            "name"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "member"
+            },
+            "span": {
+              "$ref": "#/$defs/span"
+            },
+            "object": {
+              "$ref": "#/$defs/node"
+            },
+            "key": {
+              "type": "string"
+            },
+            "keySpan": {
+              "$ref": "#/$defs/span"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "span",
+            "object",
+            "key",
+            "keySpan"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "unary"
+            },
+            "span": {
+              "$ref": "#/$defs/span"
+            },
+            "operator": {
+              "enum": [
+                "!",
+                "+",
+                "-"
+              ]
+            },
+            "operatorSpan": {
+              "$ref": "#/$defs/span"
+            },
+            "operand": {
+              "$ref": "#/$defs/node"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "span",
+            "operator",
+            "operatorSpan",
+            "operand"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "binary"
+            },
+            "span": {
+              "$ref": "#/$defs/span"
+            },
+            "operator": {
+              "enum": [
+                "+",
+                "-",
+                "*",
+                "/",
+                "%",
+                "<",
+                "<=",
+                ">",
+                ">=",
+                "==",
+                "!=",
+                "in",
+                "&&",
+                "||"
+              ]
+            },
+            "operatorSpan": {
+              "$ref": "#/$defs/span"
+            },
+            "left": {
+              "$ref": "#/$defs/node"
+            },
+            "right": {
+              "$ref": "#/$defs/node"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "span",
+            "operator",
+            "operatorSpan",
+            "left",
+            "right"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "conditional"
+            },
+            "span": {
+              "$ref": "#/$defs/span"
+            },
+            "condition": {
+              "$ref": "#/$defs/node"
+            },
+            "whenTrue": {
+              "$ref": "#/$defs/node"
+            },
+            "whenFalse": {
+              "$ref": "#/$defs/node"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "span",
+            "condition",
+            "whenTrue",
+            "whenFalse"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "call"
+            },
+            "span": {
+              "$ref": "#/$defs/span"
+            },
+            "name": {
+              "type": "string"
+            },
+            "nameSpan": {
+              "$ref": "#/$defs/span"
+            },
+            "arguments": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/node"
+              }
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "span",
+            "name",
+            "nameSpan",
+            "arguments"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "lambda"
+            },
+            "span": {
+              "$ref": "#/$defs/span"
+            },
+            "parameter": {
+              "type": "string"
+            },
+            "parameterSpan": {
+              "$ref": "#/$defs/span"
+            },
+            "body": {
+              "$ref": "#/$defs/node"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "span",
+            "parameter",
+            "parameterSpan",
+            "body"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "list"
+            },
+            "span": {
+              "$ref": "#/$defs/span"
+            },
+            "items": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/node"
+              }
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "span",
+            "items"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "record"
+            },
+            "span": {
+              "$ref": "#/$defs/span"
+            },
+            "fields": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "key": {
+                    "type": "string"
+                  },
+                  "keySpan": {
+                    "$ref": "#/$defs/span"
+                  },
+                  "value": {
+                    "$ref": "#/$defs/node"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "key",
+                  "keySpan",
+                  "value"
+                ]
+              }
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "span",
+            "fields"
+          ]
+        }
+      ]
+    }
+  },
+  "$ref": "#/$defs/node"
+}

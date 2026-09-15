@@ -1,0 +1,116 @@
+{
+  "language": "diffdevil-expr/1",
+  "roots": {
+    "totals": "Included raw/line aggregates and global file counts",
+    "files": "Observed all-files logical collection with remainder evidence",
+    "scopes": "Named scope collections and selected aggregates",
+    "metrics": "Named numeric measurements",
+    "bands": "Named band resolution records",
+    "rules": "Completed rule results, query/template phase only",
+    "params": "Declared inert typed parameter data",
+    "measurement": "Overall evidence diagnostics",
+    "source": "Read-only comparison identity"
+  },
+  "lineFields": [
+    "added",
+    "deleted",
+    "modified",
+    "changed"
+  ],
+  "rawFields": [
+    "added",
+    "deleted",
+    "churn"
+  ],
+  "fileFields": {
+    "id": "string",
+    "path": "string",
+    "oldPath": "optional<string>",
+    "changeType": "string",
+    "kind": "string",
+    "included": "boolean",
+    "raw": "RawMeasurements",
+    "lines": "LineMeasurements",
+    "measurement": "MeasurementSummary"
+  },
+  "changeTypes": [
+    "added",
+    "deleted",
+    "modified",
+    "renamed",
+    "copied",
+    "type-changed",
+    "unmerged"
+  ],
+  "materialKinds": [
+    "text",
+    "binary",
+    "submodule",
+    "unknown"
+  ],
+  "fileCounts": [
+    "total",
+    "included",
+    "excluded",
+    "added",
+    "deleted",
+    "modified",
+    "renamed",
+    "copied",
+    "binary",
+    "unmeasurable"
+  ],
+  "scopeFileCounts": [
+    "included",
+    "added",
+    "deleted",
+    "modified",
+    "renamed",
+    "copied",
+    "binary",
+    "unmeasurable"
+  ],
+  "contextRoots": {
+    "metric": [
+      "totals",
+      "files",
+      "scopes",
+      "metrics",
+      "params",
+      "measurement",
+      "source"
+    ],
+    "band": [
+      "totals",
+      "files",
+      "scopes",
+      "metrics",
+      "params",
+      "measurement",
+      "source"
+    ],
+    "condition": [
+      "totals",
+      "files",
+      "scopes",
+      "metrics",
+      "bands",
+      "params",
+      "measurement",
+      "source"
+    ],
+    "query": [
+      "totals",
+      "files",
+      "scopes",
+      "metrics",
+      "bands",
+      "rules",
+      "params",
+      "measurement",
+      "source"
+    ]
+  },
+  "stringOrder": "Unicode scalar lexicographic; locale independent",
+  "noImplicitCurrentFile": true
+}

@@ -1,0 +1,86 @@
+{
+  "language": "diffdevil-expr/1",
+  "encoding": "UTF-8",
+  "offsetUnit": "UTF-16 code units",
+  "rangeEnd": "exclusive",
+  "whitespace": [
+    "U+0020",
+    "U+0009",
+    "U+000D",
+    "U+000A"
+  ],
+  "identifierPattern": "[A-Za-z_][A-Za-z0-9_]*",
+  "keywords": [
+    "true",
+    "false",
+    "null",
+    "in"
+  ],
+  "keywordLongerAlternative": "Identifier",
+  "forbiddenKeys": [
+    "__proto__",
+    "prototype",
+    "constructor"
+  ],
+  "numberPattern": "(0|[1-9][0-9]*)(\\.[0-9]+)?([eE][+-]?[0-9]+)?",
+  "integerWhen": "No decimal point or exponent",
+  "integerMinimum": -9007199254740991,
+  "integerMaximum": 9007199254740991,
+  "stringQuotes": [
+    "\"",
+    "'"
+  ],
+  "stringEscapes": [
+    "\\",
+    "/",
+    "'",
+    "\"",
+    "b",
+    "f",
+    "n",
+    "r",
+    "t",
+    "uXXXX"
+  ],
+  "stringUnicode": "Unicode scalar values; escaped surrogate pairs required; reject lone surrogates",
+  "comments": false,
+  "trailingCommas": false,
+  "interpolation": false,
+  "punctuationOrder": [
+    "=>",
+    ">=",
+    "<=",
+    "==",
+    "!=",
+    "&&",
+    "||",
+    ">",
+    "<",
+    "!",
+    "+",
+    "-",
+    "*",
+    "/",
+    "%",
+    "?",
+    ":",
+    ".",
+    ",",
+    "(",
+    ")",
+    "[",
+    "]",
+    "{",
+    "}"
+  ],
+  "literalTokens": [
+    "Number",
+    "String",
+    "True",
+    "False",
+    "Null"
+  ],
+  "fullInputRequired": true,
+  "productionRecovery": false,
+  "sourceBOM": "One leading UTF-8 BOM may be removed by host with source mapping"
+}

@@ -1,0 +1,126 @@
+{
+  "language": "diffdevil-expr/1",
+  "suite": "syntax-invalid",
+  "cases": [
+    {
+      "id": "empty",
+      "source": "",
+      "phase": "parse",
+      "code": "E_PARSE"
+    },
+    {
+      "id": "trailing",
+      "source": "1 2",
+      "phase": "parse",
+      "code": "E_TRAILING_INPUT"
+    },
+    {
+      "id": "chain",
+      "source": "0 < 1 < 2",
+      "phase": "parse",
+      "code": "E_PARSE"
+    },
+    {
+      "id": "assignment",
+      "source": "x = 1",
+      "phase": "lex",
+      "code": "E_LEX_CHARACTER"
+    },
+    {
+      "id": "leading-zero",
+      "source": "01",
+      "phase": "lex",
+      "code": "E_NUMBER_LITERAL"
+    },
+    {
+      "id": "incomplete-exponent",
+      "source": "1e",
+      "phase": "lex",
+      "code": "E_NUMBER_LITERAL"
+    },
+    {
+      "id": "fraction-dot",
+      "source": ".5",
+      "phase": "parse",
+      "code": "E_PARSE"
+    },
+    {
+      "id": "fraction-tail",
+      "source": "1.",
+      "phase": "lex",
+      "code": "E_NUMBER_LITERAL"
+    },
+    {
+      "id": "trailing-comma",
+      "source": "[1,]",
+      "phase": "parse",
+      "code": "E_PARSE"
+    },
+    {
+      "id": "method-call",
+      "source": "f.path.startsWith(\"src/\")",
+      "phase": "parse",
+      "code": "E_TRAILING_INPUT"
+    },
+    {
+      "id": "dynamic-index",
+      "source": "files[0]",
+      "phase": "parse",
+      "code": "E_PARSE"
+    },
+    {
+      "id": "quoted-newline",
+      "source": "\"a\nb\"",
+      "phase": "lex",
+      "code": "E_STRING"
+    },
+    {
+      "id": "invalid-escape",
+      "source": "\"\\x41\"",
+      "phase": "lex",
+      "code": "E_STRING"
+    },
+    {
+      "id": "lone-surrogate",
+      "source": "\"\\uD800\"",
+      "phase": "lex",
+      "code": "E_STRING"
+    },
+    {
+      "id": "unterminated",
+      "source": "\"a",
+      "phase": "lex",
+      "code": "E_STRING"
+    },
+    {
+      "id": "arrow-parenthesized",
+      "source": "map(files, (f) => f.path)",
+      "phase": "parse",
+      "code": "E_PARSE"
+    },
+    {
+      "id": "multi-binder",
+      "source": "map(files, (a,b) => a.path)",
+      "phase": "parse",
+      "code": "E_PARSE"
+    },
+    {
+      "id": "missing-close",
+      "source": "sum([1, 2]",
+      "phase": "parse",
+      "code": "E_PARSE"
+    },
+    {
+      "id": "comment",
+      "source": "1 // note",
+      "phase": "parse",
+      "code": "E_PARSE"
+    },
+    {
+      "id": "template-wrapper",
+      "source": "{{ metrics.review }}",
+      "phase": "parse",
+      "code": "E_PARSE"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+# One opt-in report comment, updated in place. No automatic size labels.
+version: 1
+presets: []
+metrics:
+  removedOrRewritten:
+    formula: totals.lines.deleted + totals.lines.modified
+rules:
+  reviewSummary:
+    when: 'true'
+    effects:
+      comment:
+        mode: upsert
+        trigger: always
+        template: |
+          **Change summary**
+
+          Replacement-aware changed lines: {{ totals.lines.changed }}
+          Raw churn: {{ totals.raw.churn }}
+          Deleted-only or modified lines: {{ metrics.removedOrRewritten }}
+          Included files: {{ totals.files.included }}
+
+          These are diff measurements, not a judgment of code quality or risk.

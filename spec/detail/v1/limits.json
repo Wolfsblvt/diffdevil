@@ -1,0 +1,32 @@
+{
+  "id": "diffdevil-limits/1",
+  "standing": "Proposed defaults; calibrate on real workloads before release without changing language meaning.",
+  "expressionBytes": 65536,
+  "tokens": 32768,
+  "astNodes": 16384,
+  "nestingDepth": 64,
+  "stringBytes": 65536,
+  "configBytes": 1048576,
+  "expandedYamlAliases": 100,
+  "expressionWork": 10000000,
+  "policyWork": 100000000,
+  "resultBytes": 67108864,
+  "diagnostics": 100,
+  "charges": {
+    "astNode": 1,
+    "primitiveOperation": 1,
+    "collectionEntry": 1,
+    "inspectedUnicodeScalar": 1,
+    "globState": 1,
+    "sortComparison": 1,
+    "recordFieldCreated": 1,
+    "collectionEntryCreated": 1,
+    "serializationChunkBytes": 256,
+    "serializationChunk": 1,
+    "metricReference": 1
+  },
+  "cachePolicy": "Logical trace independent of physical cache warmth; named metric evaluated once per request.",
+  "overrides": "Trusted host only; policy cannot raise own limits",
+  "exhaustionCode": "E_LIMIT",
+  "exhaustionExit": 2
+}

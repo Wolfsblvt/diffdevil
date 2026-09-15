@@ -1,0 +1,242 @@
+{
+  "language": "diffdevil-expr/1",
+  "operators": [
+    {
+      "symbol": "!",
+      "arity": 1,
+      "precedence": 8,
+      "associativity": "right",
+      "arguments": [
+        "boolean"
+      ],
+      "result": "boolean",
+      "dispatch": "not",
+      "lazy": false
+    },
+    {
+      "symbol": "+",
+      "arity": 1,
+      "precedence": 8,
+      "associativity": "right",
+      "arguments": [
+        "number"
+      ],
+      "result": "number",
+      "dispatch": "positive",
+      "lazy": false
+    },
+    {
+      "symbol": "-",
+      "arity": 1,
+      "precedence": 8,
+      "associativity": "right",
+      "arguments": [
+        "number"
+      ],
+      "result": "number",
+      "dispatch": "negate",
+      "lazy": false
+    },
+    {
+      "symbol": "*",
+      "arity": 2,
+      "precedence": 7,
+      "associativity": "left",
+      "arguments": [
+        "number",
+        "number"
+      ],
+      "result": "number",
+      "dispatch": "multiply",
+      "lazy": false
+    },
+    {
+      "symbol": "/",
+      "arity": 2,
+      "precedence": 7,
+      "associativity": "left",
+      "arguments": [
+        "number",
+        "number"
+      ],
+      "result": "float",
+      "dispatch": "divide",
+      "lazy": false
+    },
+    {
+      "symbol": "%",
+      "arity": 2,
+      "precedence": 7,
+      "associativity": "left",
+      "arguments": [
+        "integer",
+        "integer"
+      ],
+      "result": "integer",
+      "dispatch": "remainder",
+      "lazy": false
+    },
+    {
+      "symbol": "+",
+      "arity": 2,
+      "precedence": 6,
+      "associativity": "left",
+      "arguments": [
+        "number",
+        "number"
+      ],
+      "result": "number",
+      "dispatch": "add",
+      "lazy": false
+    },
+    {
+      "symbol": "-",
+      "arity": 2,
+      "precedence": 6,
+      "associativity": "left",
+      "arguments": [
+        "number",
+        "number"
+      ],
+      "result": "number",
+      "dispatch": "subtract",
+      "lazy": false
+    },
+    {
+      "symbol": "<",
+      "arity": 2,
+      "precedence": 5,
+      "associativity": "none",
+      "arguments": [
+        "ordered-scalar",
+        "same"
+      ],
+      "result": "boolean",
+      "dispatch": "less",
+      "lazy": false
+    },
+    {
+      "symbol": "<=",
+      "arity": 2,
+      "precedence": 5,
+      "associativity": "none",
+      "arguments": [
+        "ordered-scalar",
+        "same"
+      ],
+      "result": "boolean",
+      "dispatch": "lessOrEqual",
+      "lazy": false
+    },
+    {
+      "symbol": ">",
+      "arity": 2,
+      "precedence": 5,
+      "associativity": "none",
+      "arguments": [
+        "ordered-scalar",
+        "same"
+      ],
+      "result": "boolean",
+      "dispatch": "greater",
+      "lazy": false
+    },
+    {
+      "symbol": ">=",
+      "arity": 2,
+      "precedence": 5,
+      "associativity": "none",
+      "arguments": [
+        "ordered-scalar",
+        "same"
+      ],
+      "result": "boolean",
+      "dispatch": "greaterOrEqual",
+      "lazy": false
+    },
+    {
+      "symbol": "in",
+      "arity": 2,
+      "precedence": 5,
+      "associativity": "none",
+      "arguments": [
+        "scalar",
+        "collection<same>"
+      ],
+      "result": "boolean",
+      "dispatch": "membership",
+      "lazy": false
+    },
+    {
+      "symbol": "==",
+      "arity": 2,
+      "precedence": 4,
+      "associativity": "none",
+      "arguments": [
+        "scalar",
+        "compatible-scalar"
+      ],
+      "result": "boolean",
+      "dispatch": "equal",
+      "lazy": false
+    },
+    {
+      "symbol": "!=",
+      "arity": 2,
+      "precedence": 4,
+      "associativity": "none",
+      "arguments": [
+        "scalar",
+        "compatible-scalar"
+      ],
+      "result": "boolean",
+      "dispatch": "notEqual",
+      "lazy": false
+    },
+    {
+      "symbol": "&&",
+      "arity": 2,
+      "precedence": 3,
+      "associativity": "left",
+      "arguments": [
+        "boolean",
+        "boolean"
+      ],
+      "result": "boolean",
+      "dispatch": "and",
+      "lazy": true
+    },
+    {
+      "symbol": "||",
+      "arity": 2,
+      "precedence": 2,
+      "associativity": "left",
+      "arguments": [
+        "boolean",
+        "boolean"
+      ],
+      "result": "boolean",
+      "dispatch": "or",
+      "lazy": true
+    },
+    {
+      "symbol": "?:",
+      "arity": 3,
+      "precedence": 1,
+      "associativity": "right",
+      "arguments": [
+        "boolean",
+        "T",
+        "T"
+      ],
+      "result": "T",
+      "dispatch": "conditional",
+      "lazy": true
+    }
+  ],
+  "orderedScalarTypes": [
+    "number",
+    "string"
+  ],
+  "noImplicitCoercion": true
+}

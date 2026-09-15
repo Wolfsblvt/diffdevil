@@ -1,0 +1,618 @@
+{
+  "language": "diffdevil-expr/1",
+  "suite": "boolean-truth-tables",
+  "cases": [
+    {
+      "id": "True-&&-True",
+      "source": "params.a && params.b",
+      "environment": "boolean-parameters",
+      "bindings": {
+        "a": {
+          "kind": "boolean",
+          "decision": {
+            "status": "resolved",
+            "value": true
+          }
+        },
+        "b": {
+          "kind": "boolean",
+          "decision": {
+            "status": "resolved",
+            "value": true
+          }
+        }
+      },
+      "expect": {
+        "value": {
+          "kind": "boolean",
+          "decision": {
+            "status": "resolved",
+            "value": true
+          }
+        }
+      }
+    },
+    {
+      "id": "True-||-True",
+      "source": "params.a || params.b",
+      "environment": "boolean-parameters",
+      "bindings": {
+        "a": {
+          "kind": "boolean",
+          "decision": {
+            "status": "resolved",
+            "value": true
+          }
+        },
+        "b": {
+          "kind": "boolean",
+          "decision": {
+            "status": "resolved",
+            "value": true
+          }
+        }
+      },
+      "expect": {
+        "value": {
+          "kind": "boolean",
+          "decision": {
+            "status": "resolved",
+            "value": true
+          }
+        }
+      }
+    },
+    {
+      "id": "True-&&-False",
+      "source": "params.a && params.b",
+      "environment": "boolean-parameters",
+      "bindings": {
+        "a": {
+          "kind": "boolean",
+          "decision": {
+            "status": "resolved",
+            "value": true
+          }
+        },
+        "b": {
+          "kind": "boolean",
+          "decision": {
+            "status": "resolved",
+            "value": false
+          }
+        }
+      },
+      "expect": {
+        "value": {
+          "kind": "boolean",
+          "decision": {
+            "status": "resolved",
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "id": "True-||-False",
+      "source": "params.a || params.b",
+      "environment": "boolean-parameters",
+      "bindings": {
+        "a": {
+          "kind": "boolean",
+          "decision": {
+            "status": "resolved",
+            "value": true
+          }
+        },
+        "b": {
+          "kind": "boolean",
+          "decision": {
+            "status": "resolved",
+            "value": false
+          }
+        }
+      },
+      "expect": {
+        "value": {
+          "kind": "boolean",
+          "decision": {
+            "status": "resolved",
+            "value": true
+          }
+        }
+      }
+    },
+    {
+      "id": "True-&&-None",
+      "source": "params.a && params.b",
+      "environment": "boolean-parameters",
+      "bindings": {
+        "a": {
+          "kind": "boolean",
+          "decision": {
+            "status": "resolved",
+            "value": true
+          }
+        },
+        "b": {
+          "kind": "boolean",
+          "decision": {
+            "status": "unknown",
+            "reasons": [
+              {
+                "code": "INSUFFICIENT_EVIDENCE"
+              }
+            ]
+          }
+        }
+      },
+      "expect": {
+        "value": {
+          "kind": "boolean",
+          "decision": {
+            "status": "unknown",
+            "reasons": [
+              {
+                "code": "INSUFFICIENT_EVIDENCE"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "True-||-None",
+      "source": "params.a || params.b",
+      "environment": "boolean-parameters",
+      "bindings": {
+        "a": {
+          "kind": "boolean",
+          "decision": {
+            "status": "resolved",
+            "value": true
+          }
+        },
+        "b": {
+          "kind": "boolean",
+          "decision": {
+            "status": "unknown",
+            "reasons": [
+              {
+                "code": "INSUFFICIENT_EVIDENCE"
+              }
+            ]
+          }
+        }
+      },
+      "expect": {
+        "value": {
+          "kind": "boolean",
+          "decision": {
+            "status": "resolved",
+            "value": true
+          }
+        }
+      }
+    },
+    {
+      "id": "False-&&-True",
+      "source": "params.a && params.b",
+      "environment": "boolean-parameters",
+      "bindings": {
+        "a": {
+          "kind": "boolean",
+          "decision": {
+            "status": "resolved",
+            "value": false
+          }
+        },
+        "b": {
+          "kind": "boolean",
+          "decision": {
+            "status": "resolved",
+            "value": true
+          }
+        }
+      },
+      "expect": {
+        "value": {
+          "kind": "boolean",
+          "decision": {
+            "status": "resolved",
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "id": "False-||-True",
+      "source": "params.a || params.b",
+      "environment": "boolean-parameters",
+      "bindings": {
+        "a": {
+          "kind": "boolean",
+          "decision": {
+            "status": "resolved",
+            "value": false
+          }
+        },
+        "b": {
+          "kind": "boolean",
+          "decision": {
+            "status": "resolved",
+            "value": true
+          }
+        }
+      },
+      "expect": {
+        "value": {
+          "kind": "boolean",
+          "decision": {
+            "status": "resolved",
+            "value": true
+          }
+        }
+      }
+    },
+    {
+      "id": "False-&&-False",
+      "source": "params.a && params.b",
+      "environment": "boolean-parameters",
+      "bindings": {
+        "a": {
+          "kind": "boolean",
+          "decision": {
+            "status": "resolved",
+            "value": false
+          }
+        },
+        "b": {
+          "kind": "boolean",
+          "decision": {
+            "status": "resolved",
+            "value": false
+          }
+        }
+      },
+      "expect": {
+        "value": {
+          "kind": "boolean",
+          "decision": {
+            "status": "resolved",
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "id": "False-||-False",
+      "source": "params.a || params.b",
+      "environment": "boolean-parameters",
+      "bindings": {
+        "a": {
+          "kind": "boolean",
+          "decision": {
+            "status": "resolved",
+            "value": false
+          }
+        },
+        "b": {
+          "kind": "boolean",
+          "decision": {
+            "status": "resolved",
+            "value": false
+          }
+        }
+      },
+      "expect": {
+        "value": {
+          "kind": "boolean",
+          "decision": {
+            "status": "resolved",
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "id": "False-&&-None",
+      "source": "params.a && params.b",
+      "environment": "boolean-parameters",
+      "bindings": {
+        "a": {
+          "kind": "boolean",
+          "decision": {
+            "status": "resolved",
+            "value": false
+          }
+        },
+        "b": {
+          "kind": "boolean",
+          "decision": {
+            "status": "unknown",
+            "reasons": [
+              {
+                "code": "INSUFFICIENT_EVIDENCE"
+              }
+            ]
+          }
+        }
+      },
+      "expect": {
+        "value": {
+          "kind": "boolean",
+          "decision": {
+            "status": "resolved",
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "id": "False-||-None",
+      "source": "params.a || params.b",
+      "environment": "boolean-parameters",
+      "bindings": {
+        "a": {
+          "kind": "boolean",
+          "decision": {
+            "status": "resolved",
+            "value": false
+          }
+        },
+        "b": {
+          "kind": "boolean",
+          "decision": {
+            "status": "unknown",
+            "reasons": [
+              {
+                "code": "INSUFFICIENT_EVIDENCE"
+              }
+            ]
+          }
+        }
+      },
+      "expect": {
+        "value": {
+          "kind": "boolean",
+          "decision": {
+            "status": "unknown",
+            "reasons": [
+              {
+                "code": "INSUFFICIENT_EVIDENCE"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "None-&&-True",
+      "source": "params.a && params.b",
+      "environment": "boolean-parameters",
+      "bindings": {
+        "a": {
+          "kind": "boolean",
+          "decision": {
+            "status": "unknown",
+            "reasons": [
+              {
+                "code": "INSUFFICIENT_EVIDENCE"
+              }
+            ]
+          }
+        },
+        "b": {
+          "kind": "boolean",
+          "decision": {
+            "status": "resolved",
+            "value": true
+          }
+        }
+      },
+      "expect": {
+        "value": {
+          "kind": "boolean",
+          "decision": {
+            "status": "unknown",
+            "reasons": [
+              {
+                "code": "INSUFFICIENT_EVIDENCE"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "None-||-True",
+      "source": "params.a || params.b",
+      "environment": "boolean-parameters",
+      "bindings": {
+        "a": {
+          "kind": "boolean",
+          "decision": {
+            "status": "unknown",
+            "reasons": [
+              {
+                "code": "INSUFFICIENT_EVIDENCE"
+              }
+            ]
+          }
+        },
+        "b": {
+          "kind": "boolean",
+          "decision": {
+            "status": "resolved",
+            "value": true
+          }
+        }
+      },
+      "expect": {
+        "value": {
+          "kind": "boolean",
+          "decision": {
+            "status": "resolved",
+            "value": true
+          }
+        }
+      }
+    },
+    {
+      "id": "None-&&-False",
+      "source": "params.a && params.b",
+      "environment": "boolean-parameters",
+      "bindings": {
+        "a": {
+          "kind": "boolean",
+          "decision": {
+            "status": "unknown",
+            "reasons": [
+              {
+                "code": "INSUFFICIENT_EVIDENCE"
+              }
+            ]
+          }
+        },
+        "b": {
+          "kind": "boolean",
+          "decision": {
+            "status": "resolved",
+            "value": false
+          }
+        }
+      },
+      "expect": {
+        "value": {
+          "kind": "boolean",
+          "decision": {
+            "status": "resolved",
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "id": "None-||-False",
+      "source": "params.a || params.b",
+      "environment": "boolean-parameters",
+      "bindings": {
+        "a": {
+          "kind": "boolean",
+          "decision": {
+            "status": "unknown",
+            "reasons": [
+              {
+                "code": "INSUFFICIENT_EVIDENCE"
+              }
+            ]
+          }
+        },
+        "b": {
+          "kind": "boolean",
+          "decision": {
+            "status": "resolved",
+            "value": false
+          }
+        }
+      },
+      "expect": {
+        "value": {
+          "kind": "boolean",
+          "decision": {
+            "status": "unknown",
+            "reasons": [
+              {
+                "code": "INSUFFICIENT_EVIDENCE"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "None-&&-None",
+      "source": "params.a && params.b",
+      "environment": "boolean-parameters",
+      "bindings": {
+        "a": {
+          "kind": "boolean",
+          "decision": {
+            "status": "unknown",
+            "reasons": [
+              {
+                "code": "INSUFFICIENT_EVIDENCE"
+              }
+            ]
+          }
+        },
+        "b": {
+          "kind": "boolean",
+          "decision": {
+            "status": "unknown",
+            "reasons": [
+              {
+                "code": "INSUFFICIENT_EVIDENCE"
+              }
+            ]
+          }
+        }
+      },
+      "expect": {
+        "value": {
+          "kind": "boolean",
+          "decision": {
+            "status": "unknown",
+            "reasons": [
+              {
+                "code": "INSUFFICIENT_EVIDENCE"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "None-||-None",
+      "source": "params.a || params.b",
+      "environment": "boolean-parameters",
+      "bindings": {
+        "a": {
+          "kind": "boolean",
+          "decision": {
+            "status": "unknown",
+            "reasons": [
+              {
+                "code": "INSUFFICIENT_EVIDENCE"
+              }
+            ]
+          }
+        },
+        "b": {
+          "kind": "boolean",
+          "decision": {
+            "status": "unknown",
+            "reasons": [
+              {
+                "code": "INSUFFICIENT_EVIDENCE"
+              }
+            ]
+          }
+        }
+      },
+      "expect": {
+        "value": {
+          "kind": "boolean",
+          "decision": {
+            "status": "unknown",
+            "reasons": [
+              {
+                "code": "INSUFFICIENT_EVIDENCE"
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

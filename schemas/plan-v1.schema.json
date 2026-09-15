@@ -1,0 +1,504 @@
+{
+  "type": "object",
+  "properties": {
+    "kind": {
+      "const": "diffdevil.plan"
+    },
+    "schemaVersion": {
+      "const": "1.0"
+    },
+    "semantics": {
+      "type": "object",
+      "properties": {
+        "language": {
+          "const": "diffdevil-expr/1"
+        },
+        "numbers": {
+          "const": "diffdevil-number/1"
+        },
+        "replacementLines": {
+          "const": "replacement-lines-v1"
+        },
+        "paths": {
+          "const": "diffdevil-glob/1"
+        },
+        "presets": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "limits": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": true,
+      "required": [
+        "language",
+        "numbers",
+        "replacementLines",
+        "paths"
+      ]
+    },
+    "stage": {
+      "enum": [
+        "desired",
+        "materialized"
+      ]
+    },
+    "source": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "enum": [
+            "git",
+            "unified-diff",
+            "github-api"
+          ]
+        },
+        "comparisonId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "base": {
+          "type": "string"
+        },
+        "head": {
+          "type": "string"
+        },
+        "comparison": {
+          "enum": [
+            "three-dot",
+            "direct",
+            "worktree",
+            "staged",
+            "supplied"
+          ]
+        },
+        "repository": {
+          "type": "string"
+        },
+        "pullRequest": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "baseTip": {
+          "type": "string",
+          "description": "Current pull-request base tip when a Git three-dot diff begins at an older merge base."
+        }
+      },
+      "additionalProperties": true,
+      "required": [
+        "kind",
+        "comparisonId"
+      ]
+    },
+    "reportId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "policyId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "target": {
+      "type": "object",
+      "properties": {
+        "repository": {
+          "type": "string",
+          "minLength": 1
+        },
+        "pullRequest": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "repository",
+        "pullRequest"
+      ]
+    },
+    "rules": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "decision": {
+            "$ref": "urn:diffdevil:values:1#/$defs/decision"
+          },
+          "band": {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "const": "resolved"
+                  },
+                  "id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "lower": {
+                    "type": "number",
+                    "minimum": -1.7976931348623157e+308,
+                    "maximum": 1.7976931348623157e+308
+                  },
+                  "upper": {
+                    "type": "number",
+                    "minimum": -1.7976931348623157e+308,
+                    "maximum": 1.7976931348623157e+308
+                  }
+                },
+                "additionalProperties": true,
+                "required": [
+                  "status",
+                  "id"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "const": "unknown"
+                  },
+                  "candidates": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "reasons": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "subject": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        }
+                      },
+                      "additionalProperties": true,
+                      "required": [
+                        "code"
+                      ]
+                    },
+                    "minItems": 1
+                  }
+                },
+                "additionalProperties": true,
+                "required": [
+                  "status",
+                  "candidates",
+                  "reasons"
+                ],
+                "not": {
+                  "required": [
+                    "id"
+                  ]
+                }
+              }
+            ]
+          },
+          "disposition": {
+            "enum": [
+              "matched",
+              "unmatched",
+              "held",
+              "fallback"
+            ]
+          }
+        },
+        "additionalProperties": true,
+        "required": [
+          "disposition"
+        ]
+      },
+      "propertyNames": {
+        "minLength": 1,
+        "not": {
+          "enum": [
+            "__proto__",
+            "constructor",
+            "prototype"
+          ]
+        }
+      }
+    },
+    "held": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "rule": {
+            "type": "string"
+          },
+          "reasons": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "code": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "subject": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": true,
+              "required": [
+                "code"
+              ]
+            },
+            "minItems": 1
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "rule",
+          "reasons"
+        ]
+      }
+    },
+    "operations": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "const": "label.ensure"
+              },
+              "rule": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "definition": {
+                "type": "object",
+                "properties": {
+                  "color": {
+                    "type": "string",
+                    "pattern": "^[0-9a-fA-F]{6}$"
+                  },
+                  "description": {
+                    "type": "string",
+                    "maxLength": 100
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "color",
+                  "description"
+                ]
+              }
+            },
+            "additionalProperties": false,
+            "required": [
+              "kind",
+              "name",
+              "definition"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "const": "label.sync"
+              },
+              "rule": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "definition": {
+                "type": "object",
+                "properties": {
+                  "color": {
+                    "type": "string",
+                    "pattern": "^[0-9a-fA-F]{6}$"
+                  },
+                  "description": {
+                    "type": "string",
+                    "maxLength": 100
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "color",
+                  "description"
+                ]
+              }
+            },
+            "additionalProperties": false,
+            "required": [
+              "kind",
+              "name",
+              "definition"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "const": "label.add"
+              },
+              "rule": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false,
+            "required": [
+              "kind",
+              "rule",
+              "name"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "const": "label.remove"
+              },
+              "rule": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false,
+            "required": [
+              "kind",
+              "rule",
+              "name"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "const": "label.select"
+              },
+              "rule": {
+                "type": "string"
+              },
+              "group": {
+                "type": "string"
+              },
+              "members": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "selected": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false,
+            "required": [
+              "kind",
+              "rule",
+              "group",
+              "members",
+              "selected"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "const": "comment.reconcile"
+              },
+              "rule": {
+                "type": "string"
+              },
+              "mode": {
+                "enum": [
+                  "create",
+                  "once",
+                  "upsert",
+                  "once-per-transition"
+                ]
+              },
+              "trigger": {
+                "enum": [
+                  "always",
+                  "matched",
+                  "band-changed"
+                ]
+              },
+              "body": {
+                "type": "string"
+              },
+              "occasionId": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false,
+            "required": [
+              "kind",
+              "rule",
+              "mode",
+              "trigger",
+              "body"
+            ]
+          }
+        ]
+      }
+    },
+    "preconditions": {
+      "type": "object",
+      "properties": {
+        "head": {
+          "type": "string"
+        },
+        "base": {
+          "type": "string"
+        },
+        "providerStateId": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": []
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "kind",
+    "schemaVersion",
+    "semantics",
+    "stage",
+    "source",
+    "reportId",
+    "policyId",
+    "target",
+    "rules",
+    "held",
+    "operations"
+  ],
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:diffdevil:plan:1",
+  "title": "diffdevil effect plan 1.0",
+  "description": "Closed operation union; freshness, ownership, group membership and trusted provenance require adapter validation. A hash does not authenticate an artifact."
+}

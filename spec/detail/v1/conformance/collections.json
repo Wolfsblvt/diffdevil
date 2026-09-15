@@ -1,0 +1,540 @@
+{
+  "language": "diffdevil-expr/1",
+  "suite": "collections",
+  "cases": [
+    {
+      "id": "empty-any",
+      "source": "any([], x => true)",
+      "environment": "empty",
+      "expect": {
+        "value": {
+          "kind": "boolean",
+          "decision": {
+            "status": "resolved",
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "id": "empty-all",
+      "source": "all([], x => false)",
+      "environment": "empty",
+      "expect": {
+        "value": {
+          "kind": "boolean",
+          "decision": {
+            "status": "resolved",
+            "value": true
+          }
+        }
+      }
+    },
+    {
+      "id": "possible-count",
+      "source": "count(params.items)",
+      "environment": "collection-parameter",
+      "bindings": {
+        "items": {
+          "kind": "collection",
+          "items": [
+            {
+              "membership": "definite",
+              "value": {
+                "kind": "number",
+                "numericType": "integer",
+                "measurement": {
+                  "status": "exact",
+                  "value": 2
+                }
+              }
+            },
+            {
+              "membership": "possible",
+              "value": {
+                "kind": "number",
+                "numericType": "integer",
+                "measurement": {
+                  "status": "exact",
+                  "value": 5
+                }
+              }
+            }
+          ],
+          "unseen": {
+            "possible": false,
+            "minimum": 0,
+            "maximum": 0
+          },
+          "order": "known"
+        }
+      },
+      "expect": {
+        "value": {
+          "kind": "number",
+          "numericType": "integer",
+          "measurement": {
+            "status": "bounded",
+            "lower": 1,
+            "upper": 2
+          }
+        }
+      }
+    },
+    {
+      "id": "possible-negative-sum",
+      "source": "sum(params.items)",
+      "environment": "collection-parameter",
+      "bindings": {
+        "items": {
+          "kind": "collection",
+          "items": [
+            {
+              "membership": "definite",
+              "value": {
+                "kind": "number",
+                "numericType": "integer",
+                "measurement": {
+                  "status": "exact",
+                  "value": 3
+                }
+              }
+            },
+            {
+              "membership": "possible",
+              "value": {
+                "kind": "number",
+                "numericType": "integer",
+                "measurement": {
+                  "status": "bounded",
+                  "lower": -10,
+                  "upper": -5
+                }
+              }
+            }
+          ],
+          "unseen": {
+            "possible": false,
+            "minimum": 0,
+            "maximum": 0
+          },
+          "order": "known"
+        }
+      },
+      "expect": {
+        "value": {
+          "kind": "number",
+          "numericType": "integer",
+          "measurement": {
+            "status": "bounded",
+            "lower": -7,
+            "upper": 3
+          }
+        }
+      }
+    },
+    {
+      "id": "incomplete-any-witness",
+      "source": "any(files, f => f.included && f.lines.changed > 2)",
+      "environment": "report-incomplete",
+      "expect": {
+        "value": {
+          "kind": "boolean",
+          "decision": {
+            "status": "resolved",
+            "value": true
+          }
+        }
+      }
+    },
+    {
+      "id": "incomplete-all-not-proven",
+      "source": "all(files, f => f.lines.changed < 100)",
+      "environment": "report-incomplete",
+      "expect": {
+        "value": {
+          "kind": "boolean",
+          "decision": {
+            "status": "unknown",
+            "reasons": [
+              {
+                "code": "FILE_SET_INCOMPLETE"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "unknown-filter-member",
+      "source": "map(filter(files, f => f.lines.changed >= 65), f => f.path)",
+      "environment": "report-bounded",
+      "expect": {
+        "value": {
+          "kind": "collection",
+          "items": [
+            {
+              "membership": "possible",
+              "value": {
+                "kind": "string",
+                "value": "src/Partial.cs"
+              }
+            }
+          ],
+          "unseen": {
+            "possible": false,
+            "minimum": 0,
+            "maximum": 0
+          },
+          "order": "known"
+        }
+      }
+    },
+    {
+      "id": "certain-empty",
+      "source": "map(certain(filter(files, f => f.lines.changed >= 65)), f => f.path)",
+      "environment": "report-bounded",
+      "expect": {
+        "value": {
+          "kind": "collection",
+          "items": [],
+          "unseen": {
+            "possible": false,
+            "minimum": 0,
+            "maximum": 0
+          },
+          "order": "known"
+        },
+        "requiredEvidenceCodes": [
+          "DEFINITE_OBSERVED_ONLY"
+        ]
+      }
+    },
+    {
+      "id": "map-does-not-drop-missing",
+      "source": "map(files, f => f.oldPath)",
+      "environment": "report-bounded",
+      "expect": {
+        "value": {
+          "kind": "collection",
+          "items": [
+            {
+              "membership": "definite",
+              "value": {
+                "kind": "missing"
+              }
+            }
+          ],
+          "unseen": {
+            "possible": false,
+            "minimum": 0,
+            "maximum": 0
+          },
+          "order": "known"
+        }
+      }
+    },
+    {
+      "id": "any-possible-witness",
+      "source": "any(params.items, x => x > 100)",
+      "environment": "collection-parameter",
+      "bindings": {
+        "items": {
+          "kind": "collection",
+          "items": [
+            {
+              "membership": "possible",
+              "value": {
+                "kind": "number",
+                "numericType": "integer",
+                "measurement": {
+                  "status": "exact",
+                  "value": 200
+                }
+              }
+            }
+          ],
+          "unseen": {
+            "possible": false,
+            "minimum": 0,
+            "maximum": 0
+          },
+          "order": "known"
+        }
+      },
+      "expect": {
+        "value": {
+          "kind": "boolean",
+          "decision": {
+            "status": "unknown",
+            "reasons": [
+              {
+                "code": "POSSIBLE_MEMBERSHIP"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "average-uncertain-empty",
+      "source": "avg(params.items)",
+      "environment": "collection-parameter",
+      "bindings": {
+        "items": {
+          "kind": "collection",
+          "items": [
+            {
+              "membership": "possible",
+              "value": {
+                "kind": "number",
+                "numericType": "integer",
+                "measurement": {
+                  "status": "exact",
+                  "value": 5
+                }
+              }
+            }
+          ],
+          "unseen": {
+            "possible": false,
+            "minimum": 0,
+            "maximum": 0
+          },
+          "order": "known"
+        }
+      },
+      "expect": {
+        "value": {
+          "kind": "unknown",
+          "type": {
+            "kind": "optional",
+            "item": "float"
+          },
+          "reasons": [
+            {
+              "code": "POSSIBLE_EMPTY_COLLECTION"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "take-zero",
+      "source": "take(files, 0)",
+      "environment": "report-incomplete",
+      "expect": {
+        "value": {
+          "kind": "collection",
+          "items": [],
+          "unseen": {
+            "possible": false,
+            "minimum": 0,
+            "maximum": 0
+          },
+          "order": "known"
+        }
+      }
+    },
+    {
+      "id": "sort-exact",
+      "source": "sortBy([3, 1, 2], x => x)",
+      "environment": "empty",
+      "expect": {
+        "value": {
+          "kind": "collection",
+          "items": [
+            {
+              "membership": "definite",
+              "value": {
+                "kind": "number",
+                "numericType": "integer",
+                "measurement": {
+                  "status": "exact",
+                  "value": 1
+                }
+              }
+            },
+            {
+              "membership": "definite",
+              "value": {
+                "kind": "number",
+                "numericType": "integer",
+                "measurement": {
+                  "status": "exact",
+                  "value": 2
+                }
+              }
+            },
+            {
+              "membership": "definite",
+              "value": {
+                "kind": "number",
+                "numericType": "integer",
+                "measurement": {
+                  "status": "exact",
+                  "value": 3
+                }
+              }
+            }
+          ],
+          "unseen": {
+            "possible": false,
+            "minimum": 0,
+            "maximum": 0
+          },
+          "order": "known"
+        }
+      }
+    },
+    {
+      "id": "record-projection",
+      "source": "map(filter(files, f => f.included && f.lines.changed > 100), f => {path: f.path, changed: f.lines.changed})",
+      "environment": "report-exact",
+      "expect": {
+        "value": {
+          "kind": "collection",
+          "items": [
+            {
+              "membership": "definite",
+              "value": {
+                "kind": "record",
+                "fields": {
+                  "path": {
+                    "kind": "string",
+                    "value": "src/Foo.cs"
+                  },
+                  "changed": {
+                    "kind": "number",
+                    "numericType": "integer",
+                    "measurement": {
+                      "status": "exact",
+                      "value": 173
+                    }
+                  }
+                }
+              }
+            }
+          ],
+          "unseen": {
+            "possible": false,
+            "minimum": 0,
+            "maximum": 0
+          },
+          "order": "known"
+        }
+      }
+    },
+    {
+      "id": "cardinality-with-unknown-identities",
+      "source": "count(params.items)",
+      "environment": "collection-parameter",
+      "bindings": {
+        "items": {
+          "kind": "collection",
+          "items": [
+            {
+              "membership": "possible",
+              "value": {
+                "kind": "number",
+                "numericType": "integer",
+                "measurement": {
+                  "status": "exact",
+                  "value": 2
+                }
+              }
+            },
+            {
+              "membership": "possible",
+              "value": {
+                "kind": "number",
+                "numericType": "integer",
+                "measurement": {
+                  "status": "exact",
+                  "value": 5
+                }
+              }
+            }
+          ],
+          "unseen": {
+            "possible": false,
+            "minimum": 0,
+            "maximum": 0
+          },
+          "order": "unknown",
+          "cardinality": {
+            "status": "exact",
+            "value": 1
+          }
+        }
+      },
+      "expect": {
+        "value": {
+          "kind": "number",
+          "numericType": "integer",
+          "measurement": {
+            "status": "exact",
+            "value": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "certain-drops-cardinality-claim",
+      "source": "count(certain(params.items))",
+      "environment": "collection-parameter",
+      "bindings": {
+        "items": {
+          "kind": "collection",
+          "items": [
+            {
+              "membership": "possible",
+              "value": {
+                "kind": "number",
+                "numericType": "integer",
+                "measurement": {
+                  "status": "exact",
+                  "value": 2
+                }
+              }
+            },
+            {
+              "membership": "possible",
+              "value": {
+                "kind": "number",
+                "numericType": "integer",
+                "measurement": {
+                  "status": "exact",
+                  "value": 5
+                }
+              }
+            }
+          ],
+          "unseen": {
+            "possible": false,
+            "minimum": 0,
+            "maximum": 0
+          },
+          "order": "unknown",
+          "cardinality": {
+            "status": "exact",
+            "value": 1
+          }
+        }
+      },
+      "expect": {
+        "value": {
+          "kind": "number",
+          "numericType": "integer",
+          "measurement": {
+            "status": "exact",
+            "value": 0
+          }
+        },
+        "requiredEvidenceCodes": [
+          "DEFINITE_OBSERVED_ONLY"
+        ]
+      }
+    }
+  ]
+}

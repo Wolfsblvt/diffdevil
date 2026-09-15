@@ -1,0 +1,519 @@
+{
+  "standing": "Implemented shared Action surface; local qualification is recorded in docs/QUALIFICATION.md. No publication or live-GitHub claim.",
+  "entryPoints": {
+    "root": {
+      "defaultMode": "apply",
+      "defaultPreset": "size@1",
+      "definitions": "ensure",
+      "comments": false
+    },
+    "analyze": {
+      "defaultMode": "analyze",
+      "effectsAllowed": false
+    },
+    "apply": {
+      "defaultMode": "apply",
+      "inputArtifacts": [
+        "input-report",
+        "input-plan"
+      ]
+    },
+    "sync-labels": {
+      "operations": [
+        "verify",
+        "apply"
+      ],
+      "defaultOperation": "verify",
+      "defaultApplyDefinitions": "sync"
+    }
+  },
+  "outputArtifactDestinations": [
+    "report-path",
+    "plan-path",
+    "effects-path"
+  ],
+  "inputs": [
+    "github-token",
+    "repository",
+    "pull-request",
+    "source",
+    "git-cwd",
+    "mode",
+    "preset",
+    "config",
+    "policy",
+    "policy-source",
+    "policy-ref",
+    "policy-repository",
+    "rule",
+    "metric",
+    "threshold",
+    "comparison",
+    "files",
+    "scope",
+    "path",
+    "exclude",
+    "include-only",
+    "force-include",
+    "exclude-mode",
+    "include-only-mode",
+    "force-include-mode",
+    "label",
+    "remove-label-when-false",
+    "definitions",
+    "formula",
+    "condition",
+    "parameters",
+    "report-path",
+    "plan-path",
+    "effects-path",
+    "summary",
+    "input-report",
+    "input-plan",
+    "operation",
+    "comment-template",
+    "comment-mode",
+    "comment-author",
+    "comment-author-id",
+    "occasion-id"
+  ],
+  "numericOutputBases": [
+    "lines-added",
+    "lines-deleted",
+    "lines-modified",
+    "lines-changed",
+    "raw-added",
+    "raw-deleted",
+    "raw-churn",
+    "files-total",
+    "files-included",
+    "files-excluded",
+    "files-unmeasurable"
+  ],
+  "numericOutputRule": {
+    "exactValue": "<base>",
+    "status": "<base>-status",
+    "lower": "<base>-min",
+    "upper": "<base>-max",
+    "notExactValue": ""
+  },
+  "otherOutputs": [
+    "measurement-status",
+    "metric-value",
+    "metric-status",
+    "metric-min",
+    "metric-max",
+    "decision",
+    "band",
+    "band-status",
+    "report-json",
+    "report-path",
+    "plan-json",
+    "plan-path",
+    "effects-changed",
+    "effects-status",
+    "effects-path"
+  ],
+  "inputEntryPoints": {
+    "github-token": [
+      "root",
+      "analyze",
+      "apply",
+      "sync-labels"
+    ],
+    "repository": [
+      "root",
+      "analyze",
+      "apply",
+      "sync-labels"
+    ],
+    "pull-request": [
+      "root",
+      "analyze",
+      "apply"
+    ],
+    "source": [
+      "root",
+      "analyze",
+      "apply"
+    ],
+    "git-cwd": [
+      "root",
+      "analyze",
+      "apply"
+    ],
+    "mode": [
+      "root"
+    ],
+    "preset": [
+      "root",
+      "analyze",
+      "apply",
+      "sync-labels"
+    ],
+    "config": [
+      "root",
+      "analyze",
+      "apply",
+      "sync-labels"
+    ],
+    "policy": [
+      "root",
+      "analyze",
+      "apply",
+      "sync-labels"
+    ],
+    "policy-source": [
+      "root",
+      "analyze",
+      "apply",
+      "sync-labels"
+    ],
+    "policy-ref": [
+      "root",
+      "analyze",
+      "apply",
+      "sync-labels"
+    ],
+    "policy-repository": [
+      "root",
+      "analyze",
+      "apply",
+      "sync-labels"
+    ],
+    "rule": [
+      "root",
+      "analyze",
+      "apply",
+      "sync-labels"
+    ],
+    "metric": [
+      "root",
+      "analyze",
+      "apply"
+    ],
+    "threshold": [
+      "root",
+      "analyze",
+      "apply"
+    ],
+    "comparison": [
+      "root",
+      "analyze",
+      "apply"
+    ],
+    "files": [
+      "root",
+      "analyze",
+      "apply"
+    ],
+    "scope": [
+      "root",
+      "analyze",
+      "apply"
+    ],
+    "path": [
+      "root",
+      "analyze",
+      "apply"
+    ],
+    "exclude": [
+      "root",
+      "analyze",
+      "apply",
+      "sync-labels"
+    ],
+    "include-only": [
+      "root",
+      "analyze",
+      "apply",
+      "sync-labels"
+    ],
+    "force-include": [
+      "root",
+      "analyze",
+      "apply",
+      "sync-labels"
+    ],
+    "exclude-mode": [
+      "root",
+      "analyze",
+      "apply",
+      "sync-labels"
+    ],
+    "include-only-mode": [
+      "root",
+      "analyze",
+      "apply",
+      "sync-labels"
+    ],
+    "force-include-mode": [
+      "root",
+      "analyze",
+      "apply",
+      "sync-labels"
+    ],
+    "label": [
+      "root",
+      "apply"
+    ],
+    "remove-label-when-false": [
+      "root",
+      "apply"
+    ],
+    "definitions": [
+      "root",
+      "apply",
+      "sync-labels"
+    ],
+    "formula": [
+      "root",
+      "analyze",
+      "apply"
+    ],
+    "condition": [
+      "root",
+      "analyze",
+      "apply"
+    ],
+    "parameters": [
+      "root",
+      "analyze",
+      "apply"
+    ],
+    "report-path": [
+      "root",
+      "analyze",
+      "apply"
+    ],
+    "plan-path": [
+      "root",
+      "apply"
+    ],
+    "effects-path": [
+      "root",
+      "apply",
+      "sync-labels"
+    ],
+    "summary": [
+      "root",
+      "analyze",
+      "apply",
+      "sync-labels"
+    ],
+    "input-report": [
+      "apply"
+    ],
+    "input-plan": [
+      "apply"
+    ],
+    "operation": [
+      "sync-labels"
+    ],
+    "comment-template": [
+      "root",
+      "apply"
+    ],
+    "comment-mode": [
+      "root",
+      "apply"
+    ],
+    "comment-author": [
+      "root",
+      "apply"
+    ],
+    "comment-author-id": [
+      "root",
+      "apply"
+    ],
+    "occasion-id": [
+      "root",
+      "apply"
+    ]
+  },
+  "entryPointOutputs": {
+    "root": [
+      "lines-added",
+      "lines-added-status",
+      "lines-added-min",
+      "lines-added-max",
+      "lines-deleted",
+      "lines-deleted-status",
+      "lines-deleted-min",
+      "lines-deleted-max",
+      "lines-modified",
+      "lines-modified-status",
+      "lines-modified-min",
+      "lines-modified-max",
+      "lines-changed",
+      "lines-changed-status",
+      "lines-changed-min",
+      "lines-changed-max",
+      "raw-added",
+      "raw-added-status",
+      "raw-added-min",
+      "raw-added-max",
+      "raw-deleted",
+      "raw-deleted-status",
+      "raw-deleted-min",
+      "raw-deleted-max",
+      "raw-churn",
+      "raw-churn-status",
+      "raw-churn-min",
+      "raw-churn-max",
+      "files-total",
+      "files-total-status",
+      "files-total-min",
+      "files-total-max",
+      "files-included",
+      "files-included-status",
+      "files-included-min",
+      "files-included-max",
+      "files-excluded",
+      "files-excluded-status",
+      "files-excluded-min",
+      "files-excluded-max",
+      "files-unmeasurable",
+      "files-unmeasurable-status",
+      "files-unmeasurable-min",
+      "files-unmeasurable-max",
+      "measurement-status",
+      "metric-value",
+      "metric-status",
+      "metric-min",
+      "metric-max",
+      "decision",
+      "band",
+      "band-status",
+      "report-json",
+      "report-path",
+      "plan-json",
+      "plan-path",
+      "effects-changed",
+      "effects-status",
+      "effects-path"
+    ],
+    "analyze": [
+      "lines-added",
+      "lines-added-status",
+      "lines-added-min",
+      "lines-added-max",
+      "lines-deleted",
+      "lines-deleted-status",
+      "lines-deleted-min",
+      "lines-deleted-max",
+      "lines-modified",
+      "lines-modified-status",
+      "lines-modified-min",
+      "lines-modified-max",
+      "lines-changed",
+      "lines-changed-status",
+      "lines-changed-min",
+      "lines-changed-max",
+      "raw-added",
+      "raw-added-status",
+      "raw-added-min",
+      "raw-added-max",
+      "raw-deleted",
+      "raw-deleted-status",
+      "raw-deleted-min",
+      "raw-deleted-max",
+      "raw-churn",
+      "raw-churn-status",
+      "raw-churn-min",
+      "raw-churn-max",
+      "files-total",
+      "files-total-status",
+      "files-total-min",
+      "files-total-max",
+      "files-included",
+      "files-included-status",
+      "files-included-min",
+      "files-included-max",
+      "files-excluded",
+      "files-excluded-status",
+      "files-excluded-min",
+      "files-excluded-max",
+      "files-unmeasurable",
+      "files-unmeasurable-status",
+      "files-unmeasurable-min",
+      "files-unmeasurable-max",
+      "measurement-status",
+      "metric-value",
+      "metric-status",
+      "metric-min",
+      "metric-max",
+      "decision",
+      "band",
+      "band-status",
+      "report-json",
+      "report-path"
+    ],
+    "apply": [
+      "lines-added",
+      "lines-added-status",
+      "lines-added-min",
+      "lines-added-max",
+      "lines-deleted",
+      "lines-deleted-status",
+      "lines-deleted-min",
+      "lines-deleted-max",
+      "lines-modified",
+      "lines-modified-status",
+      "lines-modified-min",
+      "lines-modified-max",
+      "lines-changed",
+      "lines-changed-status",
+      "lines-changed-min",
+      "lines-changed-max",
+      "raw-added",
+      "raw-added-status",
+      "raw-added-min",
+      "raw-added-max",
+      "raw-deleted",
+      "raw-deleted-status",
+      "raw-deleted-min",
+      "raw-deleted-max",
+      "raw-churn",
+      "raw-churn-status",
+      "raw-churn-min",
+      "raw-churn-max",
+      "files-total",
+      "files-total-status",
+      "files-total-min",
+      "files-total-max",
+      "files-included",
+      "files-included-status",
+      "files-included-min",
+      "files-included-max",
+      "files-excluded",
+      "files-excluded-status",
+      "files-excluded-min",
+      "files-excluded-max",
+      "files-unmeasurable",
+      "files-unmeasurable-status",
+      "files-unmeasurable-min",
+      "files-unmeasurable-max",
+      "measurement-status",
+      "metric-value",
+      "metric-status",
+      "metric-min",
+      "metric-max",
+      "decision",
+      "band",
+      "band-status",
+      "report-json",
+      "report-path",
+      "plan-json",
+      "plan-path",
+      "effects-changed",
+      "effects-status",
+      "effects-path"
+    ],
+    "sync-labels": [
+      "effects-changed",
+      "effects-status",
+      "effects-path"
+    ]
+  }
+}

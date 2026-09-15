@@ -1,0 +1,7 @@
+version: 1
+size:
+  thresholds:
+    xs: 10
+    s: 80
+    m: 300
+    l: 800

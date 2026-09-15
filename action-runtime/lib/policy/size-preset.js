@@ -1,0 +1,101 @@
+/** Generated from presets/size-v1.yml; source SHA-256 7845d09d9e8d6b0a60f272c4a8447bdfa78eedc7110ef9ab494c2bb35ddd3783. */
+export const SIZE_PRESET = {
+    "version": 1,
+    "language": "diffdevil-expr/1",
+    "presets": [],
+    "measurement": {
+        "replacementLines": "replacement-lines-v1"
+    },
+    "defaults": {
+        "paths": {}
+    },
+    "metrics": {
+        "review": {
+            "measure": "lines.changed"
+        }
+    },
+    "bands": {
+        "size": {
+            "value": "metrics.review",
+            "minimum": 0,
+            "ranges": [
+                {
+                    "id": "xs",
+                    "lt": 20
+                },
+                {
+                    "id": "s",
+                    "lt": 100
+                },
+                {
+                    "id": "m",
+                    "lt": 500
+                },
+                {
+                    "id": "l",
+                    "lt": 1000
+                },
+                {
+                    "id": "xl",
+                    "otherwise": true
+                }
+            ]
+        }
+    },
+    "labelGroups": {
+        "size": [
+            "size/XS",
+            "size/S",
+            "size/M",
+            "size/L",
+            "size/XL",
+            "size/Unknown"
+        ]
+    },
+    "labelDefinitions": {
+        "size/XS": {
+            "color": "C2E0C6",
+            "description": "0–19 replacement-aware changed lines"
+        },
+        "size/S": {
+            "color": "BFDADC",
+            "description": "20–99 replacement-aware changed lines"
+        },
+        "size/M": {
+            "color": "C5DEF5",
+            "description": "100–499 replacement-aware changed lines"
+        },
+        "size/L": {
+            "color": "D4C5F9",
+            "description": "500–999 replacement-aware changed lines"
+        },
+        "size/XL": {
+            "color": "DCC6E0",
+            "description": "1,000 or more replacement-aware changed lines"
+        },
+        "size/Unknown": {
+            "color": "D1D5DB",
+            "description": "Available evidence cannot establish one size band"
+        }
+    },
+    "rules": {
+        "size": {
+            "band": "size",
+            "onUnknown": "hold",
+            "effects": {
+                "labels": {
+                    "group": "size",
+                    "byBand": {
+                        "xs": "size/XS",
+                        "s": "size/S",
+                        "m": "size/M",
+                        "l": "size/L",
+                        "xl": "size/XL"
+                    },
+                    "unknown": "size/Unknown"
+                }
+            }
+        }
+    }
+};
+//# sourceMappingURL=size-preset.js.map

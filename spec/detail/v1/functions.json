@@ -1,0 +1,309 @@
+{
+  "language": "diffdevil-expr/1",
+  "functions": [
+    {
+      "name": "status",
+      "signatures": [
+        "(number) -> string"
+      ],
+      "evaluation": "eager",
+      "semanticReference": "../../../../docs/language/standard-library.md",
+      "notes": ""
+    },
+    {
+      "name": "isExact",
+      "signatures": [
+        "(number) -> boolean"
+      ],
+      "evaluation": "eager",
+      "semanticReference": "../../../../docs/language/standard-library.md",
+      "notes": ""
+    },
+    {
+      "name": "lowerBound",
+      "signatures": [
+        "(N:number) -> N"
+      ],
+      "evaluation": "eager",
+      "semanticReference": "../../../../docs/language/standard-library.md",
+      "notes": ""
+    },
+    {
+      "name": "upperBound",
+      "signatures": [
+        "(N:number) -> N"
+      ],
+      "evaluation": "eager",
+      "semanticReference": "../../../../docs/language/standard-library.md",
+      "notes": ""
+    },
+    {
+      "name": "requireExact",
+      "signatures": [
+        "(N:number) -> N"
+      ],
+      "evaluation": "eager",
+      "semanticReference": "../../../../docs/language/standard-library.md",
+      "notes": ""
+    },
+    {
+      "name": "isMissing",
+      "signatures": [
+        "(Optional<T>) -> boolean"
+      ],
+      "evaluation": "eager",
+      "semanticReference": "../../../../docs/language/standard-library.md",
+      "notes": ""
+    },
+    {
+      "name": "isNull",
+      "signatures": [
+        "(Optional<T>) -> boolean"
+      ],
+      "evaluation": "eager",
+      "semanticReference": "../../../../docs/language/standard-library.md",
+      "notes": ""
+    },
+    {
+      "name": "requirePresent",
+      "signatures": [
+        "(Optional<T>) -> T"
+      ],
+      "evaluation": "eager",
+      "semanticReference": "../../../../docs/language/standard-library.md",
+      "notes": ""
+    },
+    {
+      "name": "abs",
+      "signatures": [
+        "(N:number) -> N"
+      ],
+      "evaluation": "eager",
+      "semanticReference": "../../../../docs/language/standard-library.md",
+      "notes": ""
+    },
+    {
+      "name": "floor",
+      "signatures": [
+        "(number) -> integer"
+      ],
+      "evaluation": "eager",
+      "semanticReference": "../../../../docs/language/standard-library.md",
+      "notes": ""
+    },
+    {
+      "name": "ceil",
+      "signatures": [
+        "(number) -> integer"
+      ],
+      "evaluation": "eager",
+      "semanticReference": "../../../../docs/language/standard-library.md",
+      "notes": ""
+    },
+    {
+      "name": "orElse",
+      "signatures": [
+        "(Optional<T>, T) -> T"
+      ],
+      "evaluation": "lazy-fallback",
+      "semanticReference": "../../../../docs/language/standard-library.md",
+      "notes": "Fallback only for structural missing/null; not numeric unknown/unmeasurable."
+    },
+    {
+      "name": "filter",
+      "signatures": [
+        "(collection<T>, (T) -> boolean) -> collection<T>"
+      ],
+      "evaluation": "ordered-binder",
+      "semanticReference": "../../../../docs/language/standard-library.md",
+      "notes": "",
+      "binderArgumentIndices": [
+        1
+      ]
+    },
+    {
+      "name": "map",
+      "signatures": [
+        "(collection<T>, (T) -> U) -> collection<U>"
+      ],
+      "evaluation": "ordered-binder",
+      "semanticReference": "../../../../docs/language/standard-library.md",
+      "notes": "",
+      "binderArgumentIndices": [
+        1
+      ]
+    },
+    {
+      "name": "any",
+      "signatures": [
+        "(collection<T>, (T) -> boolean) -> boolean"
+      ],
+      "evaluation": "ordered-short-circuit",
+      "semanticReference": "../../../../docs/language/standard-library.md",
+      "notes": "",
+      "binderArgumentIndices": [
+        1
+      ]
+    },
+    {
+      "name": "all",
+      "signatures": [
+        "(collection<T>, (T) -> boolean) -> boolean"
+      ],
+      "evaluation": "ordered-short-circuit",
+      "semanticReference": "../../../../docs/language/standard-library.md",
+      "notes": "",
+      "binderArgumentIndices": [
+        1
+      ]
+    },
+    {
+      "name": "count",
+      "signatures": [
+        "(collection<T>) -> integer"
+      ],
+      "evaluation": "eager",
+      "semanticReference": "../../../../docs/language/standard-library.md",
+      "notes": ""
+    },
+    {
+      "name": "sum",
+      "signatures": [
+        "(collection<N:number>) -> N",
+        "(collection<T>, (T) -> N:number) -> N"
+      ],
+      "evaluation": "ordered-binder",
+      "semanticReference": "../../../../docs/language/standard-library.md",
+      "notes": "",
+      "binderArgumentIndices": [
+        1
+      ]
+    },
+    {
+      "name": "min",
+      "signatures": [
+        "(collection<N:number>) -> Optional<N>",
+        "(collection<T>, (T) -> N:number) -> Optional<N>"
+      ],
+      "evaluation": "ordered-binder",
+      "semanticReference": "../../../../docs/language/standard-library.md",
+      "notes": "",
+      "binderArgumentIndices": [
+        1
+      ]
+    },
+    {
+      "name": "max",
+      "signatures": [
+        "(collection<N:number>) -> Optional<N>",
+        "(collection<T>, (T) -> N:number) -> Optional<N>"
+      ],
+      "evaluation": "ordered-binder",
+      "semanticReference": "../../../../docs/language/standard-library.md",
+      "notes": "",
+      "binderArgumentIndices": [
+        1
+      ]
+    },
+    {
+      "name": "avg",
+      "signatures": [
+        "(collection<N:number>) -> Optional<float>",
+        "(collection<T>, (T) -> N:number) -> Optional<float>"
+      ],
+      "evaluation": "ordered-binder",
+      "semanticReference": "../../../../docs/language/standard-library.md",
+      "notes": "",
+      "binderArgumentIndices": [
+        1
+      ]
+    },
+    {
+      "name": "sortBy",
+      "signatures": [
+        "(collection<T>, (T) -> K:present-sort-key) -> collection<T>",
+        "(collection<T>, (T) -> K:present-sort-key, \"asc\"|\"desc\") -> collection<T>"
+      ],
+      "evaluation": "ordered-binder",
+      "semanticReference": "../../../../docs/language/standard-library.md",
+      "notes": "Stable keys; unresolved keys retain unresolved ordering.",
+      "binderArgumentIndices": [
+        1
+      ]
+    },
+    {
+      "name": "take",
+      "signatures": [
+        "(collection<T>, exact-nonnegative-integer) -> collection<T>"
+      ],
+      "evaluation": "eager",
+      "semanticReference": "../../../../docs/language/standard-library.md",
+      "notes": ""
+    },
+    {
+      "name": "certain",
+      "signatures": [
+        "(collection<T>) -> collection<T>"
+      ],
+      "evaluation": "eager",
+      "semanticReference": "../../../../docs/language/standard-library.md",
+      "notes": "Explicit definite-observed-only evidence projection."
+    },
+    {
+      "name": "startsWith",
+      "signatures": [
+        "(string, string) -> boolean"
+      ],
+      "evaluation": "eager",
+      "semanticReference": "../../../../docs/language/standard-library.md",
+      "notes": ""
+    },
+    {
+      "name": "endsWith",
+      "signatures": [
+        "(string, string) -> boolean"
+      ],
+      "evaluation": "eager",
+      "semanticReference": "../../../../docs/language/standard-library.md",
+      "notes": ""
+    },
+    {
+      "name": "contains",
+      "signatures": [
+        "(string, string) -> boolean"
+      ],
+      "evaluation": "eager",
+      "semanticReference": "../../../../docs/language/standard-library.md",
+      "notes": ""
+    },
+    {
+      "name": "length",
+      "signatures": [
+        "(string) -> integer"
+      ],
+      "evaluation": "eager",
+      "semanticReference": "../../../../docs/language/standard-library.md",
+      "notes": "Unicode scalar count, not UTF-16 units."
+    },
+    {
+      "name": "glob",
+      "signatures": [
+        "(string, string) -> boolean"
+      ],
+      "evaluation": "eager",
+      "semanticReference": "../../../../docs/language/standard-library.md",
+      "notes": "diffdevil-glob/1; malformed pattern is error."
+    },
+    {
+      "name": "pathMatches",
+      "signatures": [
+        "(File, string) -> boolean"
+      ],
+      "evaluation": "eager",
+      "semanticReference": "../../../../docs/language/standard-library.md",
+      "notes": "Match either available rename endpoint."
+    }
+  ],
+  "userCallbacks": false,
+  "semanticReference": "../../../docs/language/standard-library.md"
+}

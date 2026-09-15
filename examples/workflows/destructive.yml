@@ -1,0 +1,19 @@
+name: Label a configured threshold
+on:
+  pull_request_target:
+    types: [opened, reopened, synchronize, edited]
+permissions:
+  pull-requests: write
+concurrency:
+  group: diffdevil-threshold-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+jobs:
+  threshold:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: Wolfsblvt/diffdevil@v1
+        with:
+          formula: totals.lines.deleted + totals.lines.modified
+          threshold: '500'
+          comparison: gte
+          label: review/destructive

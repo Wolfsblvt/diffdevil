@@ -1,0 +1,48 @@
+{
+  "language": "diffdevil-expr/1",
+  "suite": "templates",
+  "cases": [
+    {
+      "id": "exact-display",
+      "template": "Changed: {{ metrics.review }}",
+      "environment": "report-exact",
+      "expect": "Changed: 178"
+    },
+    {
+      "id": "bounded-display",
+      "template": "Changed: {{ metrics.review }}",
+      "environment": "report-bounded",
+      "expect": "Changed: 60–70"
+    },
+    {
+      "id": "band-display",
+      "template": "Size: {{ bands.size }}",
+      "environment": "report-bounded",
+      "expect": "Size: s"
+    },
+    {
+      "id": "unknown-placeholder",
+      "template": "{{ metrics.reveiw }}",
+      "environment": "report-exact",
+      "error": "E_TEMPLATE_PLACEHOLDER"
+    },
+    {
+      "id": "expression-not-template",
+      "template": "{{ metrics.review + 1 }}",
+      "environment": "report-exact",
+      "error": "E_TEMPLATE_PLACEHOLDER"
+    },
+    {
+      "id": "escaped-open",
+      "template": "\\{{ metrics.review }}",
+      "environment": "report-exact",
+      "expect": "{{ metrics.review }}"
+    },
+    {
+      "id": "invalid-formatter",
+      "template": "{{ metrics.review | execute }}",
+      "environment": "report-exact",
+      "error": "E_TEMPLATE_FORMAT"
+    }
+  ]
+}

@@ -1,0 +1,455 @@
+{
+  "kind": "diffdevil.report",
+  "schemaVersion": "1.0",
+  "semantics": {
+    "language": "diffdevil-expr/1",
+    "numbers": "diffdevil-number/1",
+    "replacementLines": "replacement-lines-v1",
+    "paths": "diffdevil-glob/1",
+    "presets": [
+      "size@1"
+    ],
+    "limits": "diffdevil-limits/1"
+  },
+  "source": {
+    "kind": "git",
+    "comparisonId": "fixture-exact-comparison",
+    "base": "fixture-base",
+    "head": "fixture-head",
+    "comparison": "direct"
+  },
+  "measurement": {
+    "status": "exact",
+    "reasons": []
+  },
+  "fileSet": {
+    "complete": true,
+    "total": {
+      "status": "exact",
+      "value": 3
+    }
+  },
+  "totals": {
+    "raw": {
+      "added": {
+        "status": "exact",
+        "value": 160
+      },
+      "deleted": {
+        "status": "exact",
+        "value": 133
+      },
+      "churn": {
+        "status": "exact",
+        "value": 293
+      }
+    },
+    "lines": {
+      "added": {
+        "status": "exact",
+        "value": 45
+      },
+      "deleted": {
+        "status": "exact",
+        "value": 18
+      },
+      "modified": {
+        "status": "exact",
+        "value": 115
+      },
+      "changed": {
+        "status": "exact",
+        "value": 178
+      }
+    },
+    "files": {
+      "total": {
+        "status": "exact",
+        "value": 3
+      },
+      "included": {
+        "status": "exact",
+        "value": 2
+      },
+      "excluded": {
+        "status": "exact",
+        "value": 1
+      },
+      "added": {
+        "status": "exact",
+        "value": 0
+      },
+      "deleted": {
+        "status": "exact",
+        "value": 0
+      },
+      "modified": {
+        "status": "exact",
+        "value": 2
+      },
+      "renamed": {
+        "status": "exact",
+        "value": 0
+      },
+      "copied": {
+        "status": "exact",
+        "value": 0
+      },
+      "binary": {
+        "status": "exact",
+        "value": 0
+      },
+      "unmeasurable": {
+        "status": "exact",
+        "value": 0
+      }
+    }
+  },
+  "files": [
+    {
+      "id": "f-lock",
+      "path": "package-lock.json",
+      "changeType": "modified",
+      "kind": "text",
+      "included": false,
+      "raw": {
+        "added": {
+          "status": "exact",
+          "value": 500
+        },
+        "deleted": {
+          "status": "exact",
+          "value": 400
+        },
+        "churn": {
+          "status": "exact",
+          "value": 900
+        }
+      },
+      "lines": {
+        "added": {
+          "status": "exact",
+          "value": 100
+        },
+        "deleted": {
+          "status": "exact",
+          "value": 0
+        },
+        "modified": {
+          "status": "exact",
+          "value": 400
+        },
+        "changed": {
+          "status": "exact",
+          "value": 500
+        }
+      },
+      "measurement": {
+        "status": "exact",
+        "reasons": []
+      },
+      "family": {
+        "id": "f-lock-family",
+        "rawCountsExact": true,
+        "blocksComplete": true
+      }
+    },
+    {
+      "id": "f-source",
+      "path": "src/Foo.cs",
+      "changeType": "modified",
+      "kind": "text",
+      "included": true,
+      "raw": {
+        "added": {
+          "status": "exact",
+          "value": 155
+        },
+        "deleted": {
+          "status": "exact",
+          "value": 131
+        },
+        "churn": {
+          "status": "exact",
+          "value": 286
+        }
+      },
+      "lines": {
+        "added": {
+          "status": "exact",
+          "value": 42
+        },
+        "deleted": {
+          "status": "exact",
+          "value": 18
+        },
+        "modified": {
+          "status": "exact",
+          "value": 113
+        },
+        "changed": {
+          "status": "exact",
+          "value": 173
+        }
+      },
+      "measurement": {
+        "status": "exact",
+        "reasons": []
+      },
+      "family": {
+        "id": "f-source-family",
+        "rawCountsExact": true,
+        "blocksComplete": true
+      }
+    },
+    {
+      "id": "f-tests",
+      "path": "tests/Foo.Tests.cs",
+      "changeType": "modified",
+      "kind": "text",
+      "included": true,
+      "raw": {
+        "added": {
+          "status": "exact",
+          "value": 5
+        },
+        "deleted": {
+          "status": "exact",
+          "value": 2
+        },
+        "churn": {
+          "status": "exact",
+          "value": 7
+        }
+      },
+      "lines": {
+        "added": {
+          "status": "exact",
+          "value": 3
+        },
+        "deleted": {
+          "status": "exact",
+          "value": 0
+        },
+        "modified": {
+          "status": "exact",
+          "value": 2
+        },
+        "changed": {
+          "status": "exact",
+          "value": 5
+        }
+      },
+      "measurement": {
+        "status": "exact",
+        "reasons": []
+      },
+      "family": {
+        "id": "f-tests-family",
+        "rawCountsExact": true,
+        "blocksComplete": true
+      }
+    }
+  ],
+  "metrics": {
+    "review": {
+      "status": "exact",
+      "value": 178
+    },
+    "churn": {
+      "status": "exact",
+      "value": 293
+    },
+    "destructive": {
+      "status": "exact",
+      "value": 133
+    },
+    "productionReview": {
+      "status": "exact",
+      "value": 173
+    },
+    "weighted": {
+      "status": "exact",
+      "value": 524
+    }
+  },
+  "bands": {
+    "size": {
+      "status": "resolved",
+      "id": "m",
+      "lower": 100,
+      "upper": 500
+    }
+  },
+  "reportId": "fixture-report-exact",
+  "policyId": "fixture-policy-full",
+  "scopes": {
+    "production": {
+      "fileIds": [
+        "f-source"
+      ],
+      "fileSet": {
+        "complete": true,
+        "total": {
+          "status": "exact",
+          "value": 1
+        }
+      },
+      "totals": {
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 155
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 131
+          },
+          "churn": {
+            "status": "exact",
+            "value": 286
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 42
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 18
+          },
+          "modified": {
+            "status": "exact",
+            "value": 113
+          },
+          "changed": {
+            "status": "exact",
+            "value": 173
+          }
+        },
+        "files": {
+          "included": {
+            "status": "exact",
+            "value": 1
+          },
+          "added": {
+            "status": "exact",
+            "value": 0
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 1
+          },
+          "renamed": {
+            "status": "exact",
+            "value": 0
+          },
+          "copied": {
+            "status": "exact",
+            "value": 0
+          },
+          "binary": {
+            "status": "exact",
+            "value": 0
+          },
+          "unmeasurable": {
+            "status": "exact",
+            "value": 0
+          }
+        }
+      }
+    },
+    "tests": {
+      "fileIds": [
+        "f-tests"
+      ],
+      "fileSet": {
+        "complete": true,
+        "total": {
+          "status": "exact",
+          "value": 1
+        }
+      },
+      "totals": {
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 5
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 2
+          },
+          "churn": {
+            "status": "exact",
+            "value": 7
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 3
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 2
+          },
+          "changed": {
+            "status": "exact",
+            "value": 5
+          }
+        },
+        "files": {
+          "included": {
+            "status": "exact",
+            "value": 1
+          },
+          "added": {
+            "status": "exact",
+            "value": 0
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 1
+          },
+          "renamed": {
+            "status": "exact",
+            "value": 0
+          },
+          "copied": {
+            "status": "exact",
+            "value": 0
+          },
+          "binary": {
+            "status": "exact",
+            "value": 0
+          },
+          "unmeasurable": {
+            "status": "exact",
+            "value": 0
+          }
+        }
+      }
+    }
+  },
+  "metricTypes": {
+    "review": "integer",
+    "churn": "integer",
+    "destructive": "integer",
+    "productionReview": "integer",
+    "weighted": "integer"
+  }
+}

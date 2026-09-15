@@ -1,0 +1,80 @@
+{
+  "language": "diffdevil-expr/1",
+  "suite": "band-invalid",
+  "cases": [
+    {
+      "id": "overlap-cut",
+      "ranges": [
+        {
+          "id": "s",
+          "lt": 20
+        },
+        {
+          "id": "m",
+          "lt": 20
+        },
+        {
+          "id": "l",
+          "otherwise": true
+        }
+      ],
+      "code": "E_BAND_ORDER"
+    },
+    {
+      "id": "descending",
+      "ranges": [
+        {
+          "id": "s",
+          "lt": 100
+        },
+        {
+          "id": "m",
+          "lt": 20
+        },
+        {
+          "id": "l",
+          "otherwise": true
+        }
+      ],
+      "code": "E_BAND_ORDER"
+    },
+    {
+      "id": "duplicate-id",
+      "ranges": [
+        {
+          "id": "s",
+          "lt": 20
+        },
+        {
+          "id": "s",
+          "otherwise": true
+        }
+      ],
+      "code": "E_BAND_IDS"
+    },
+    {
+      "id": "missing-tail",
+      "ranges": [
+        {
+          "id": "s",
+          "lt": 20
+        }
+      ],
+      "code": "E_BAND_OTHERWISE"
+    },
+    {
+      "id": "nonfinal-tail",
+      "ranges": [
+        {
+          "id": "s",
+          "otherwise": true
+        },
+        {
+          "id": "m",
+          "lt": 20
+        }
+      ],
+      "code": "E_BAND_OTHERWISE"
+    }
+  ]
+}

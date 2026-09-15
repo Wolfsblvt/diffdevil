@@ -1,0 +1,101 @@
+{
+  "language": "diffdevil-expr/1",
+  "defaultPreset": "size@1",
+  "aliases": {
+    "changed": "lines.changed",
+    "added-only": "lines.added",
+    "deleted-only": "lines.deleted",
+    "modified": "lines.modified",
+    "raw-added": "raw.added",
+    "raw-deleted": "raw.deleted",
+    "raw-churn": "raw.churn",
+    "destructive": "lines.deleted + lines.modified",
+    "files": "files.included",
+    "files-added": "files.added",
+    "files-deleted": "files.deleted",
+    "files-modified": "files.modified",
+    "files-renamed": "files.renamed",
+    "files-copied": "files.copied",
+    "files-binary": "files.binary",
+    "files-unmeasurable": "files.unmeasurable"
+  },
+  "canonicalMeasureIds": [
+    "raw.added",
+    "raw.deleted",
+    "raw.churn",
+    "lines.added",
+    "lines.deleted",
+    "lines.modified",
+    "lines.changed",
+    "files.total",
+    "files.included",
+    "files.excluded",
+    "files.added",
+    "files.deleted",
+    "files.modified",
+    "files.renamed",
+    "files.copied",
+    "files.binary",
+    "files.unmeasurable"
+  ],
+  "comparators": {
+    "gt": ">",
+    "gte": ">=",
+    "lt": "<",
+    "lte": "<=",
+    "eq": "==",
+    "ne": "!="
+  },
+  "defaultFileFilter": "included",
+  "pathFunction": "pathMatches",
+  "pathAlternatives": "or",
+  "expressionSelectors": [
+    "expr",
+    "expr-file",
+    "expr-stdin",
+    "name"
+  ],
+  "projectionFields": {
+    "path": "path",
+    "old-path": "oldPath",
+    "change-type": "changeType",
+    "changed": "lines.changed",
+    "modified": "lines.modified",
+    "added-only": "lines.added",
+    "deleted-only": "lines.deleted",
+    "raw-added": "raw.added",
+    "raw-deleted": "raw.deleted",
+    "raw-churn": "raw.churn"
+  },
+  "conflicts": [
+    [
+      "expressionSelector",
+      "shortcutFamily"
+    ],
+    [
+      "namedMetric",
+      "invocationScopeOrPath"
+    ],
+    [
+      "scope",
+      "all-files"
+    ],
+    [
+      "certain",
+      "check"
+    ],
+    [
+      "status",
+      "numericComparator"
+    ],
+    [
+      "band",
+      "metric"
+    ],
+    [
+      "diffStdin",
+      "expressionStdin"
+    ]
+  ],
+  "compilation": "Construct typed AST and bind values; never interpolate arguments into source."
+}

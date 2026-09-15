@@ -1,0 +1,114 @@
+{
+  "language": "diffdevil-expr/1",
+  "suite": "shortcuts",
+  "cases": [
+    {
+      "id": "scalar",
+      "argv": [
+        "query",
+        "--metric",
+        "changed"
+      ],
+      "equivalentExpression": "totals.lines.changed",
+      "assert": "Same typed semantic result and required evidence for each applicable environment."
+    },
+    {
+      "id": "threshold",
+      "argv": [
+        "check",
+        "--metric",
+        "changed",
+        "--gt",
+        "100"
+      ],
+      "equivalentExpression": "totals.lines.changed > 100",
+      "assert": "Same typed semantic result and required evidence for each applicable environment."
+    },
+    {
+      "id": "file-any",
+      "argv": [
+        "check",
+        "--files",
+        "any",
+        "--metric",
+        "changed",
+        "--gt",
+        "100"
+      ],
+      "equivalentExpression": "any(filter(files, f => f.included), f => f.lines.changed > 100)",
+      "assert": "Same typed semantic result and required evidence for each applicable environment."
+    },
+    {
+      "id": "paths",
+      "argv": [
+        "query",
+        "--files",
+        "--metric",
+        "modified",
+        "--gt",
+        "20",
+        "--select",
+        "path"
+      ],
+      "equivalentExpression": "map(filter(files, f => f.included && f.lines.modified > 20), f => f.path)",
+      "assert": "Same typed semantic result and required evidence for each applicable environment."
+    },
+    {
+      "id": "scope",
+      "argv": [
+        "query",
+        "--scope",
+        "tests",
+        "--metric",
+        "changed"
+      ],
+      "equivalentExpression": "scopes.tests.totals.lines.changed",
+      "assert": "Same typed semantic result and required evidence for each applicable environment."
+    },
+    {
+      "id": "destructive",
+      "argv": [
+        "check",
+        "--metric",
+        "destructive",
+        "--gte",
+        "500"
+      ],
+      "equivalentExpression": "totals.lines.deleted + totals.lines.modified >= 500",
+      "assert": "Same typed semantic result and required evidence for each applicable environment."
+    },
+    {
+      "id": "expr-shortcut-conflict",
+      "argv": [
+        "check",
+        "--expr",
+        "true",
+        "--metric",
+        "changed"
+      ],
+      "error": "E_CONFIG_CONFLICT"
+    },
+    {
+      "id": "double-comparator",
+      "argv": [
+        "check",
+        "--metric",
+        "changed",
+        "--gt",
+        "1",
+        "--lt",
+        "3"
+      ],
+      "error": "E_CONFIG_CONFLICT"
+    },
+    {
+      "id": "stdin-conflict",
+      "argv": [
+        "check",
+        "--stdin",
+        "--expr-stdin"
+      ],
+      "error": "E_CONFIG_CONFLICT"
+    }
+  ]
+}

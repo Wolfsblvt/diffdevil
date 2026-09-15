@@ -1,0 +1,2 @@
+export const SEMANTICS = Object.freeze({ language: 'diffdevil-expr/1', numbers: 'diffdevil-number/1', replacementLines: 'replacement-lines-v1', paths: 'diffdevil-glob/1' });
+//# sourceMappingURL=model.js.map

@@ -1,0 +1,218 @@
+{
+  "language": "diffdevil-expr/1",
+  "suite": "bands",
+  "cases": [
+    {
+      "id": "boundary-0",
+      "band": "default-size",
+      "input": {
+        "status": "exact",
+        "value": 0
+      },
+      "expect": {
+        "status": "resolved",
+        "id": "xs"
+      }
+    },
+    {
+      "id": "boundary-19",
+      "band": "default-size",
+      "input": {
+        "status": "exact",
+        "value": 19
+      },
+      "expect": {
+        "status": "resolved",
+        "id": "xs"
+      }
+    },
+    {
+      "id": "boundary-20",
+      "band": "default-size",
+      "input": {
+        "status": "exact",
+        "value": 20
+      },
+      "expect": {
+        "status": "resolved",
+        "id": "s"
+      }
+    },
+    {
+      "id": "boundary-99",
+      "band": "default-size",
+      "input": {
+        "status": "exact",
+        "value": 99
+      },
+      "expect": {
+        "status": "resolved",
+        "id": "s"
+      }
+    },
+    {
+      "id": "boundary-100",
+      "band": "default-size",
+      "input": {
+        "status": "exact",
+        "value": 100
+      },
+      "expect": {
+        "status": "resolved",
+        "id": "m"
+      }
+    },
+    {
+      "id": "boundary-499",
+      "band": "default-size",
+      "input": {
+        "status": "exact",
+        "value": 499
+      },
+      "expect": {
+        "status": "resolved",
+        "id": "m"
+      }
+    },
+    {
+      "id": "boundary-500",
+      "band": "default-size",
+      "input": {
+        "status": "exact",
+        "value": 500
+      },
+      "expect": {
+        "status": "resolved",
+        "id": "l"
+      }
+    },
+    {
+      "id": "boundary-999",
+      "band": "default-size",
+      "input": {
+        "status": "exact",
+        "value": 999
+      },
+      "expect": {
+        "status": "resolved",
+        "id": "l"
+      }
+    },
+    {
+      "id": "boundary-1000",
+      "band": "default-size",
+      "input": {
+        "status": "exact",
+        "value": 1000
+      },
+      "expect": {
+        "status": "resolved",
+        "id": "xl"
+      }
+    },
+    {
+      "id": "boundary-9000",
+      "band": "default-size",
+      "input": {
+        "status": "exact",
+        "value": 9000
+      },
+      "expect": {
+        "status": "resolved",
+        "id": "xl"
+      }
+    },
+    {
+      "id": "bounded-small",
+      "band": "default-size",
+      "input": {
+        "status": "bounded",
+        "lower": 60,
+        "upper": 70
+      },
+      "expect": {
+        "status": "resolved",
+        "id": "s"
+      }
+    },
+    {
+      "id": "bounded-cross",
+      "band": "default-size",
+      "input": {
+        "status": "bounded",
+        "lower": 15,
+        "upper": 30
+      },
+      "expect": {
+        "status": "unknown",
+        "candidates": [
+          "xs",
+          "s"
+        ]
+      }
+    },
+    {
+      "id": "bounded-tail",
+      "band": "default-size",
+      "input": {
+        "status": "bounded",
+        "lower": 1200,
+        "upper": 2100
+      },
+      "expect": {
+        "status": "resolved",
+        "id": "xl"
+      }
+    },
+    {
+      "id": "lower-only-tail",
+      "band": "default-size",
+      "input": {
+        "status": "unknown",
+        "reasons": [
+          {
+            "code": "INSUFFICIENT_EVIDENCE"
+          }
+        ],
+        "lower": 1200
+      },
+      "expect": {
+        "status": "resolved",
+        "id": "xl"
+      }
+    },
+    {
+      "id": "negative",
+      "band": "default-size",
+      "input": {
+        "status": "exact",
+        "value": -1
+      },
+      "expect": {
+        "error": "E_BAND_DOMAIN"
+      }
+    },
+    {
+      "id": "binary",
+      "band": "default-size",
+      "input": {
+        "status": "unmeasurable",
+        "reasons": [
+          {
+            "code": "BINARY_LINES_UNDEFINED"
+          }
+        ]
+      },
+      "expect": {
+        "status": "unknown",
+        "candidates": [
+          "xs",
+          "s",
+          "m",
+          "l",
+          "xl"
+        ]
+      }
+    }
+  ]
+}

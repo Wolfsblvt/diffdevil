@@ -1,0 +1,250 @@
+{
+  "kind": "diffdevil.report",
+  "schemaVersion": "1.0",
+  "semantics": {
+    "language": "diffdevil-expr/1",
+    "numbers": "diffdevil-number/1",
+    "replacementLines": "replacement-lines-v1",
+    "paths": "diffdevil-glob/1",
+    "presets": [
+      "size@1"
+    ],
+    "limits": "diffdevil-limits/1"
+  },
+  "source": {
+    "kind": "github-api",
+    "comparisonId": "fixture-binary-comparison",
+    "base": "fixture-base",
+    "head": "fixture-head",
+    "repository": "example/repository",
+    "pullRequest": 42
+  },
+  "measurement": {
+    "status": "unmeasurable",
+    "reasons": [
+      {
+        "code": "BINARY_LINES_UNDEFINED"
+      }
+    ]
+  },
+  "fileSet": {
+    "complete": true,
+    "total": {
+      "status": "exact",
+      "value": 1
+    }
+  },
+  "totals": {
+    "raw": {
+      "added": {
+        "status": "unmeasurable",
+        "reasons": [
+          {
+            "code": "BINARY_LINES_UNDEFINED"
+          }
+        ]
+      },
+      "deleted": {
+        "status": "unmeasurable",
+        "reasons": [
+          {
+            "code": "BINARY_LINES_UNDEFINED"
+          }
+        ]
+      },
+      "churn": {
+        "status": "unmeasurable",
+        "reasons": [
+          {
+            "code": "BINARY_LINES_UNDEFINED"
+          }
+        ]
+      }
+    },
+    "lines": {
+      "added": {
+        "status": "unmeasurable",
+        "reasons": [
+          {
+            "code": "BINARY_LINES_UNDEFINED"
+          }
+        ]
+      },
+      "deleted": {
+        "status": "unmeasurable",
+        "reasons": [
+          {
+            "code": "BINARY_LINES_UNDEFINED"
+          }
+        ]
+      },
+      "modified": {
+        "status": "unmeasurable",
+        "reasons": [
+          {
+            "code": "BINARY_LINES_UNDEFINED"
+          }
+        ]
+      },
+      "changed": {
+        "status": "unmeasurable",
+        "reasons": [
+          {
+            "code": "BINARY_LINES_UNDEFINED"
+          }
+        ]
+      }
+    },
+    "files": {
+      "total": {
+        "status": "exact",
+        "value": 1
+      },
+      "included": {
+        "status": "exact",
+        "value": 1
+      },
+      "excluded": {
+        "status": "exact",
+        "value": 0
+      },
+      "added": {
+        "status": "exact",
+        "value": 0
+      },
+      "deleted": {
+        "status": "exact",
+        "value": 0
+      },
+      "modified": {
+        "status": "exact",
+        "value": 1
+      },
+      "renamed": {
+        "status": "exact",
+        "value": 0
+      },
+      "copied": {
+        "status": "exact",
+        "value": 0
+      },
+      "binary": {
+        "status": "exact",
+        "value": 1
+      },
+      "unmeasurable": {
+        "status": "exact",
+        "value": 1
+      }
+    }
+  },
+  "files": [
+    {
+      "id": "f-binary",
+      "path": "assets/icon.png",
+      "changeType": "modified",
+      "kind": "binary",
+      "included": true,
+      "raw": {
+        "added": {
+          "status": "unmeasurable",
+          "reasons": [
+            {
+              "code": "BINARY_LINES_UNDEFINED"
+            }
+          ]
+        },
+        "deleted": {
+          "status": "unmeasurable",
+          "reasons": [
+            {
+              "code": "BINARY_LINES_UNDEFINED"
+            }
+          ]
+        },
+        "churn": {
+          "status": "unmeasurable",
+          "reasons": [
+            {
+              "code": "BINARY_LINES_UNDEFINED"
+            }
+          ]
+        }
+      },
+      "lines": {
+        "added": {
+          "status": "unmeasurable",
+          "reasons": [
+            {
+              "code": "BINARY_LINES_UNDEFINED"
+            }
+          ]
+        },
+        "deleted": {
+          "status": "unmeasurable",
+          "reasons": [
+            {
+              "code": "BINARY_LINES_UNDEFINED"
+            }
+          ]
+        },
+        "modified": {
+          "status": "unmeasurable",
+          "reasons": [
+            {
+              "code": "BINARY_LINES_UNDEFINED"
+            }
+          ]
+        },
+        "changed": {
+          "status": "unmeasurable",
+          "reasons": [
+            {
+              "code": "BINARY_LINES_UNDEFINED"
+            }
+          ]
+        }
+      },
+      "measurement": {
+        "status": "unmeasurable",
+        "reasons": [
+          {
+            "code": "BINARY_LINES_UNDEFINED"
+          }
+        ]
+      }
+    }
+  ],
+  "metrics": {
+    "review": {
+      "status": "unmeasurable",
+      "reasons": [
+        {
+          "code": "BINARY_LINES_UNDEFINED"
+        }
+      ]
+    }
+  },
+  "bands": {
+    "size": {
+      "status": "unknown",
+      "candidates": [
+        "xs",
+        "s",
+        "m",
+        "l",
+        "xl"
+      ],
+      "reasons": [
+        {
+          "code": "BINARY_LINES_UNDEFINED"
+        }
+      ]
+    }
+  },
+  "reportId": "fixture-report-binary",
+  "policyId": "fixture-policy-size",
+  "metricTypes": {
+    "review": "integer"
+  }
+}

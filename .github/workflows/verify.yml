@@ -1,0 +1,49 @@
+name: Verify
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: verify-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  verify:
+    name: ${{ matrix.os }} / Node ${{ matrix.node }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            node: '22'
+          - os: ubuntu-latest
+            node: '24'
+          - os: windows-latest
+            node: '24'
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6, reviewed metadata 2026-09-15
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6, reviewed metadata 2026-09-15
+        with:
+          node-version: ${{ matrix.node }}
+          package-manager-cache: false
+      - name: Show actual toolchain
+        run: |
+          node --version
+          npm --version
+          git --version
+      - name: Restore locked packages and prepare the offline consumer cache
+        run: npm ci --cache artifacts/dependencies/npm-cache --ignore-scripts --no-audit --no-fund
+      - name: Ordinary verification and generated Action parity
+        run: npm run verify
+      - name: Complete supplied conformance
+        run: npm run test:conformance
+      - name: Installed npm consumer
+        run: npm run test:package
+      - name: Install-free Action consumers
+        run: npm run test:actions

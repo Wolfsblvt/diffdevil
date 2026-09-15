@@ -1,0 +1,30 @@
+{
+  "kind": "diffdevil.query",
+  "schemaVersion": "1.0",
+  "semantics": {
+    "language": "diffdevil-expr/1",
+    "numbers": "diffdevil-number/1",
+    "replacementLines": "replacement-lines-v1",
+    "paths": "diffdevil-glob/1",
+    "presets": [
+      "size@1"
+    ],
+    "limits": "diffdevil-limits/1"
+  },
+  "reportId": "fixture-report-incomplete",
+  "value": {
+    "kind": "collection",
+    "items": [],
+    "unseen": {
+      "possible": true,
+      "minimum": 0,
+      "maximum": 2
+    },
+    "order": "unknown"
+  },
+  "evidence": [
+    {
+      "code": "FILE_SET_INCOMPLETE"
+    }
+  ]
+}

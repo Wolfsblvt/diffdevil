@@ -1,0 +1,127 @@
+{
+  "type": "object",
+  "properties": {
+    "kind": {
+      "const": "diffdevil.query"
+    },
+    "schemaVersion": {
+      "const": "1.0"
+    },
+    "semantics": {
+      "type": "object",
+      "properties": {
+        "language": {
+          "const": "diffdevil-expr/1"
+        },
+        "numbers": {
+          "const": "diffdevil-number/1"
+        },
+        "replacementLines": {
+          "const": "replacement-lines-v1"
+        },
+        "paths": {
+          "const": "diffdevil-glob/1"
+        },
+        "presets": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "limits": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": true,
+      "required": [
+        "language",
+        "numbers",
+        "replacementLines",
+        "paths"
+      ]
+    },
+    "reportId": {
+      "type": "string"
+    },
+    "source": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "enum": [
+            "git",
+            "unified-diff",
+            "github-api"
+          ]
+        },
+        "comparisonId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "base": {
+          "type": "string"
+        },
+        "head": {
+          "type": "string"
+        },
+        "comparison": {
+          "enum": [
+            "three-dot",
+            "direct",
+            "worktree",
+            "staged",
+            "supplied"
+          ]
+        },
+        "repository": {
+          "type": "string"
+        },
+        "pullRequest": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "additionalProperties": true,
+      "required": [
+        "kind",
+        "comparisonId"
+      ]
+    },
+    "value": {
+      "$ref": "urn:diffdevil:values:1#/$defs/value"
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "minLength": 1
+          },
+          "subject": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": true,
+        "required": [
+          "code"
+        ]
+      }
+    }
+  },
+  "additionalProperties": true,
+  "required": [
+    "kind",
+    "schemaVersion",
+    "semantics",
+    "value",
+    "evidence"
+  ],
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:diffdevil:query:1",
+  "title": "diffdevil query result 1.0"
+}

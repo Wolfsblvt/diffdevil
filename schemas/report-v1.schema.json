@@ -1,0 +1,843 @@
+{
+  "type": "object",
+  "properties": {
+    "kind": {
+      "const": "diffdevil.report"
+    },
+    "schemaVersion": {
+      "const": "1.0"
+    },
+    "semantics": {
+      "type": "object",
+      "properties": {
+        "language": {
+          "const": "diffdevil-expr/1"
+        },
+        "numbers": {
+          "const": "diffdevil-number/1"
+        },
+        "replacementLines": {
+          "const": "replacement-lines-v1"
+        },
+        "paths": {
+          "const": "diffdevil-glob/1"
+        },
+        "presets": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "limits": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": true,
+      "required": [
+        "language",
+        "numbers",
+        "replacementLines",
+        "paths"
+      ]
+    },
+    "source": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "enum": [
+            "git",
+            "unified-diff",
+            "github-api"
+          ]
+        },
+        "comparisonId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "base": {
+          "type": "string"
+        },
+        "head": {
+          "type": "string"
+        },
+        "comparison": {
+          "enum": [
+            "three-dot",
+            "direct",
+            "worktree",
+            "staged",
+            "supplied"
+          ]
+        },
+        "repository": {
+          "type": "string"
+        },
+        "pullRequest": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "baseTip": {
+          "type": "string",
+          "description": "Current pull-request base tip when a Git three-dot diff begins at an older merge base."
+        }
+      },
+      "additionalProperties": true,
+      "required": [
+        "kind",
+        "comparisonId"
+      ]
+    },
+    "measurement": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "enum": [
+            "exact",
+            "bounded",
+            "unknown",
+            "unmeasurable"
+          ]
+        },
+        "reasons": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string",
+                "minLength": 1
+              },
+              "subject": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": true,
+            "required": [
+              "code"
+            ]
+          }
+        }
+      },
+      "additionalProperties": true,
+      "required": [
+        "status",
+        "reasons"
+      ]
+    },
+    "fileSet": {
+      "type": "object",
+      "properties": {
+        "complete": {
+          "type": "boolean"
+        },
+        "total": {
+          "$ref": "urn:diffdevil:values:1#/$defs/measurement"
+        }
+      },
+      "additionalProperties": true,
+      "required": [
+        "complete",
+        "total"
+      ]
+    },
+    "totals": {
+      "type": "object",
+      "properties": {
+        "raw": {
+          "type": "object",
+          "properties": {
+            "added": {
+              "$ref": "urn:diffdevil:values:1#/$defs/measurement"
+            },
+            "deleted": {
+              "$ref": "urn:diffdevil:values:1#/$defs/measurement"
+            },
+            "churn": {
+              "$ref": "urn:diffdevil:values:1#/$defs/measurement"
+            }
+          },
+          "additionalProperties": true,
+          "required": [
+            "added",
+            "deleted",
+            "churn"
+          ]
+        },
+        "lines": {
+          "type": "object",
+          "properties": {
+            "added": {
+              "$ref": "urn:diffdevil:values:1#/$defs/measurement"
+            },
+            "deleted": {
+              "$ref": "urn:diffdevil:values:1#/$defs/measurement"
+            },
+            "modified": {
+              "$ref": "urn:diffdevil:values:1#/$defs/measurement"
+            },
+            "changed": {
+              "$ref": "urn:diffdevil:values:1#/$defs/measurement"
+            }
+          },
+          "additionalProperties": true,
+          "required": [
+            "added",
+            "deleted",
+            "modified",
+            "changed"
+          ]
+        },
+        "files": {
+          "type": "object",
+          "properties": {
+            "total": {
+              "$ref": "urn:diffdevil:values:1#/$defs/measurement"
+            },
+            "included": {
+              "$ref": "urn:diffdevil:values:1#/$defs/measurement"
+            },
+            "excluded": {
+              "$ref": "urn:diffdevil:values:1#/$defs/measurement"
+            },
+            "added": {
+              "$ref": "urn:diffdevil:values:1#/$defs/measurement"
+            },
+            "deleted": {
+              "$ref": "urn:diffdevil:values:1#/$defs/measurement"
+            },
+            "modified": {
+              "$ref": "urn:diffdevil:values:1#/$defs/measurement"
+            },
+            "renamed": {
+              "$ref": "urn:diffdevil:values:1#/$defs/measurement"
+            },
+            "copied": {
+              "$ref": "urn:diffdevil:values:1#/$defs/measurement"
+            },
+            "binary": {
+              "$ref": "urn:diffdevil:values:1#/$defs/measurement"
+            },
+            "unmeasurable": {
+              "$ref": "urn:diffdevil:values:1#/$defs/measurement"
+            }
+          },
+          "additionalProperties": true,
+          "required": [
+            "total",
+            "included",
+            "excluded",
+            "added",
+            "deleted",
+            "modified",
+            "renamed",
+            "copied",
+            "binary",
+            "unmeasurable"
+          ]
+        }
+      },
+      "additionalProperties": true,
+      "required": [
+        "raw",
+        "lines",
+        "files"
+      ]
+    },
+    "files": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "oldPath": {
+            "type": "string"
+          },
+          "changeType": {
+            "enum": [
+              "added",
+              "deleted",
+              "modified",
+              "renamed",
+              "copied",
+              "type-changed",
+              "unmerged"
+            ]
+          },
+          "kind": {
+            "enum": [
+              "text",
+              "binary",
+              "submodule",
+              "unknown"
+            ]
+          },
+          "included": {
+            "type": "boolean"
+          },
+          "raw": {
+            "type": "object",
+            "properties": {
+              "added": {
+                "$ref": "urn:diffdevil:values:1#/$defs/measurement"
+              },
+              "deleted": {
+                "$ref": "urn:diffdevil:values:1#/$defs/measurement"
+              },
+              "churn": {
+                "$ref": "urn:diffdevil:values:1#/$defs/measurement"
+              }
+            },
+            "additionalProperties": true,
+            "required": [
+              "added",
+              "deleted",
+              "churn"
+            ]
+          },
+          "lines": {
+            "type": "object",
+            "properties": {
+              "added": {
+                "$ref": "urn:diffdevil:values:1#/$defs/measurement"
+              },
+              "deleted": {
+                "$ref": "urn:diffdevil:values:1#/$defs/measurement"
+              },
+              "modified": {
+                "$ref": "urn:diffdevil:values:1#/$defs/measurement"
+              },
+              "changed": {
+                "$ref": "urn:diffdevil:values:1#/$defs/measurement"
+              }
+            },
+            "additionalProperties": true,
+            "required": [
+              "added",
+              "deleted",
+              "modified",
+              "changed"
+            ]
+          },
+          "measurement": {
+            "type": "object",
+            "properties": {
+              "status": {
+                "enum": [
+                  "exact",
+                  "bounded",
+                  "unknown",
+                  "unmeasurable"
+                ]
+              },
+              "reasons": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "subject": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": true,
+                  "required": [
+                    "code"
+                  ]
+                }
+              }
+            },
+            "additionalProperties": true,
+            "required": [
+              "status",
+              "reasons"
+            ]
+          },
+          "inclusionReasons": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "code": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "subject": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": true,
+              "required": [
+                "code"
+              ]
+            }
+          },
+          "family": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "rawCountsExact": {
+                "type": "boolean"
+              },
+              "blocksComplete": {
+                "type": "boolean"
+              }
+            },
+            "additionalProperties": true,
+            "required": [
+              "id",
+              "rawCountsExact",
+              "blocksComplete"
+            ]
+          }
+        },
+        "additionalProperties": true,
+        "required": [
+          "id",
+          "path",
+          "changeType",
+          "kind",
+          "included",
+          "raw",
+          "lines",
+          "measurement"
+        ]
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "urn:diffdevil:values:1#/$defs/measurement"
+      },
+      "propertyNames": {
+        "minLength": 1,
+        "not": {
+          "enum": [
+            "__proto__",
+            "constructor",
+            "prototype"
+          ]
+        }
+      }
+    },
+    "bands": {
+      "type": "object",
+      "additionalProperties": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "status": {
+                "const": "resolved"
+              },
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "lower": {
+                "type": "number",
+                "minimum": -1.7976931348623157e+308,
+                "maximum": 1.7976931348623157e+308
+              },
+              "upper": {
+                "type": "number",
+                "minimum": -1.7976931348623157e+308,
+                "maximum": 1.7976931348623157e+308
+              }
+            },
+            "additionalProperties": true,
+            "required": [
+              "status",
+              "id"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "status": {
+                "const": "unknown"
+              },
+              "candidates": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "reasons": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "subject": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": true,
+                  "required": [
+                    "code"
+                  ]
+                },
+                "minItems": 1
+              }
+            },
+            "additionalProperties": true,
+            "required": [
+              "status",
+              "candidates",
+              "reasons"
+            ],
+            "not": {
+              "required": [
+                "id"
+              ]
+            }
+          }
+        ]
+      },
+      "propertyNames": {
+        "minLength": 1,
+        "not": {
+          "enum": [
+            "__proto__",
+            "constructor",
+            "prototype"
+          ]
+        }
+      }
+    },
+    "rules": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "decision": {
+            "$ref": "urn:diffdevil:values:1#/$defs/decision"
+          },
+          "band": {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "const": "resolved"
+                  },
+                  "id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "lower": {
+                    "type": "number",
+                    "minimum": -1.7976931348623157e+308,
+                    "maximum": 1.7976931348623157e+308
+                  },
+                  "upper": {
+                    "type": "number",
+                    "minimum": -1.7976931348623157e+308,
+                    "maximum": 1.7976931348623157e+308
+                  }
+                },
+                "additionalProperties": true,
+                "required": [
+                  "status",
+                  "id"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "const": "unknown"
+                  },
+                  "candidates": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "reasons": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "subject": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        }
+                      },
+                      "additionalProperties": true,
+                      "required": [
+                        "code"
+                      ]
+                    },
+                    "minItems": 1
+                  }
+                },
+                "additionalProperties": true,
+                "required": [
+                  "status",
+                  "candidates",
+                  "reasons"
+                ],
+                "not": {
+                  "required": [
+                    "id"
+                  ]
+                }
+              }
+            ]
+          },
+          "disposition": {
+            "enum": [
+              "matched",
+              "unmatched",
+              "held",
+              "fallback"
+            ]
+          }
+        },
+        "additionalProperties": true,
+        "required": [
+          "disposition"
+        ]
+      },
+      "propertyNames": {
+        "minLength": 1,
+        "not": {
+          "enum": [
+            "__proto__",
+            "constructor",
+            "prototype"
+          ]
+        }
+      }
+    },
+    "scopes": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "fileIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "uniqueItems": true
+          },
+          "fileSet": {
+            "type": "object",
+            "properties": {
+              "complete": {
+                "type": "boolean"
+              },
+              "total": {
+                "$ref": "urn:diffdevil:values:1#/$defs/measurement"
+              }
+            },
+            "additionalProperties": true,
+            "required": [
+              "complete",
+              "total"
+            ]
+          },
+          "totals": {
+            "type": "object",
+            "properties": {
+              "raw": {
+                "type": "object",
+                "properties": {
+                  "added": {
+                    "$ref": "urn:diffdevil:values:1#/$defs/measurement"
+                  },
+                  "deleted": {
+                    "$ref": "urn:diffdevil:values:1#/$defs/measurement"
+                  },
+                  "churn": {
+                    "$ref": "urn:diffdevil:values:1#/$defs/measurement"
+                  }
+                },
+                "additionalProperties": true,
+                "required": [
+                  "added",
+                  "deleted",
+                  "churn"
+                ]
+              },
+              "lines": {
+                "type": "object",
+                "properties": {
+                  "added": {
+                    "$ref": "urn:diffdevil:values:1#/$defs/measurement"
+                  },
+                  "deleted": {
+                    "$ref": "urn:diffdevil:values:1#/$defs/measurement"
+                  },
+                  "modified": {
+                    "$ref": "urn:diffdevil:values:1#/$defs/measurement"
+                  },
+                  "changed": {
+                    "$ref": "urn:diffdevil:values:1#/$defs/measurement"
+                  }
+                },
+                "additionalProperties": true,
+                "required": [
+                  "added",
+                  "deleted",
+                  "modified",
+                  "changed"
+                ]
+              },
+              "files": {
+                "type": "object",
+                "properties": {
+                  "included": {
+                    "$ref": "urn:diffdevil:values:1#/$defs/measurement"
+                  },
+                  "added": {
+                    "$ref": "urn:diffdevil:values:1#/$defs/measurement"
+                  },
+                  "deleted": {
+                    "$ref": "urn:diffdevil:values:1#/$defs/measurement"
+                  },
+                  "modified": {
+                    "$ref": "urn:diffdevil:values:1#/$defs/measurement"
+                  },
+                  "renamed": {
+                    "$ref": "urn:diffdevil:values:1#/$defs/measurement"
+                  },
+                  "copied": {
+                    "$ref": "urn:diffdevil:values:1#/$defs/measurement"
+                  },
+                  "binary": {
+                    "$ref": "urn:diffdevil:values:1#/$defs/measurement"
+                  },
+                  "unmeasurable": {
+                    "$ref": "urn:diffdevil:values:1#/$defs/measurement"
+                  }
+                },
+                "additionalProperties": true,
+                "required": [
+                  "included",
+                  "added",
+                  "deleted",
+                  "modified",
+                  "renamed",
+                  "copied",
+                  "binary",
+                  "unmeasurable"
+                ]
+              }
+            },
+            "additionalProperties": true,
+            "required": [
+              "raw",
+              "lines",
+              "files"
+            ]
+          }
+        },
+        "additionalProperties": true,
+        "required": [
+          "fileIds",
+          "fileSet",
+          "totals"
+        ]
+      },
+      "propertyNames": {
+        "minLength": 1,
+        "not": {
+          "enum": [
+            "__proto__",
+            "constructor",
+            "prototype"
+          ]
+        }
+      }
+    },
+    "policyId": {
+      "type": "string"
+    },
+    "reportId": {
+      "type": "string"
+    },
+    "producer": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": true,
+      "required": []
+    },
+    "metricTypes": {
+      "type": "object",
+      "additionalProperties": {
+        "enum": [
+          "integer",
+          "float"
+        ]
+      }
+    }
+  },
+  "additionalProperties": true,
+  "required": [
+    "kind",
+    "schemaVersion",
+    "semantics",
+    "source",
+    "measurement",
+    "fileSet",
+    "totals",
+    "files"
+  ],
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:diffdevil:report:1",
+  "title": "diffdevil full report 1.0",
+  "description": "Reader accepts additive fields; executable reader must additionally validate supported semantics, integer counts, paths, evidence identities, completeness, and references.",
+  "dependentRequired": {
+    "metrics": [
+      "metricTypes"
+    ],
+    "metricTypes": [
+      "metrics"
+    ]
+  }
+}

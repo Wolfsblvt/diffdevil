@@ -1,0 +1,126 @@
+{
+  "language": "diffdevil-expr/1",
+  "suite": "syntax-valid",
+  "cases": [
+    {
+      "id": "integer",
+      "source": "42",
+      "expectRoot": "literal"
+    },
+    {
+      "id": "negative",
+      "source": "-42",
+      "expectRoot": "unary"
+    },
+    {
+      "id": "float",
+      "source": "2.5e-2",
+      "expectRoot": "literal"
+    },
+    {
+      "id": "string-double",
+      "source": "\"src/**\"",
+      "expectRoot": "literal"
+    },
+    {
+      "id": "string-single",
+      "source": "'src/**'",
+      "expectRoot": "literal"
+    },
+    {
+      "id": "unicode",
+      "source": "\"\\uD83D\\uDE00\"",
+      "expectRoot": "literal"
+    },
+    {
+      "id": "add-precedence",
+      "source": "1 + 2 * 3",
+      "expectRoot": "binary"
+    },
+    {
+      "id": "parentheses",
+      "source": "(1 + 2) * 3",
+      "expectRoot": "binary"
+    },
+    {
+      "id": "sub-left",
+      "source": "10 - 3 - 2",
+      "expectRoot": "binary"
+    },
+    {
+      "id": "unary-chain",
+      "source": "!!true",
+      "expectRoot": "unary"
+    },
+    {
+      "id": "conditional-right",
+      "source": "true ? 1 : false ? 2 : 3",
+      "expectRoot": "conditional"
+    },
+    {
+      "id": "member",
+      "source": "totals.lines.changed",
+      "expectRoot": "member"
+    },
+    {
+      "id": "quoted-member",
+      "source": "metrics[\"production-review\"]",
+      "expectRoot": "member"
+    },
+    {
+      "id": "list",
+      "source": "[1, 2, 3]",
+      "expectRoot": "list"
+    },
+    {
+      "id": "empty-list",
+      "source": "[]",
+      "expectRoot": "list"
+    },
+    {
+      "id": "record",
+      "source": "{path: \"a\", changed: 1}",
+      "expectRoot": "record"
+    },
+    {
+      "id": "empty-record",
+      "source": "{}",
+      "expectRoot": "record"
+    },
+    {
+      "id": "keyword-key",
+      "source": "{\"in\": 1}[\"in\"]",
+      "expectRoot": "member"
+    },
+    {
+      "id": "keyword-prefix",
+      "source": "inside",
+      "expectRoot": "identifier"
+    },
+    {
+      "id": "call",
+      "source": "abs(-3)",
+      "expectRoot": "call"
+    },
+    {
+      "id": "filter",
+      "source": "filter(files, f => f.included)",
+      "expectRoot": "call"
+    },
+    {
+      "id": "nested",
+      "source": "any(files, outer => any(files, inner => outer.path == inner.path))",
+      "expectRoot": "call"
+    },
+    {
+      "id": "membership",
+      "source": "\"renamed\" in [\"added\", \"renamed\"]",
+      "expectRoot": "binary"
+    },
+    {
+      "id": "ternary-in-call",
+      "source": "abs(true ? -1 : -2)",
+      "expectRoot": "call"
+    }
+  ]
+}

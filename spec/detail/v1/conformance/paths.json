@@ -1,0 +1,94 @@
+{
+  "language": "diffdevil-expr/1",
+  "suite": "paths",
+  "cases": [
+    {
+      "id": "root-markdown",
+      "path": "README.md",
+      "pattern": "**/*.md",
+      "expect": true
+    },
+    {
+      "id": "nested",
+      "path": "src/deep/Foo.cs",
+      "pattern": "src/**",
+      "expect": true
+    },
+    {
+      "id": "case",
+      "path": "SRC/Foo.cs",
+      "pattern": "src/**",
+      "expect": false
+    },
+    {
+      "id": "dotfile",
+      "path": ".github/workflows/a.yml",
+      "pattern": "**/*.yml",
+      "expect": true
+    },
+    {
+      "id": "single-star",
+      "path": "src/deep/a.cs",
+      "pattern": "src/*.cs",
+      "expect": false
+    },
+    {
+      "id": "one-char",
+      "path": "src/a.cs",
+      "pattern": "src/?.cs",
+      "expect": true
+    },
+    {
+      "id": "class",
+      "path": "src/a.cs",
+      "pattern": "src/[a-z].cs",
+      "expect": true
+    },
+    {
+      "id": "neg-class",
+      "path": "src/1.cs",
+      "pattern": "src/[!a-z].cs",
+      "expect": true
+    },
+    {
+      "id": "literal-star",
+      "path": "a*.txt",
+      "pattern": "a[*].txt",
+      "expect": true
+    },
+    {
+      "id": "literal-bracket",
+      "path": "[a.txt",
+      "pattern": "[[]a.txt",
+      "expect": true
+    },
+    {
+      "id": "backslash-not-separator",
+      "path": "src\\a.cs",
+      "pattern": "src/**",
+      "expect": false
+    },
+    {
+      "id": "bad-globstar",
+      "path": "src/a.cs",
+      "pattern": "src/a**b",
+      "error": "E_GLOB_PATTERN"
+    },
+    {
+      "id": "bad-class",
+      "path": "a",
+      "pattern": "[z-a]",
+      "error": "E_GLOB_PATTERN"
+    },
+    {
+      "id": "rename-endpoints",
+      "file": {
+        "path": "generated/a.cs",
+        "oldPath": "src/a.cs"
+      },
+      "pattern": "src/**",
+      "function": "pathMatches",
+      "expect": true
+    }
+  ]
+}

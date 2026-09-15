@@ -1,0 +1,423 @@
+{
+  "language": "diffdevil-expr/1",
+  "suite": "evaluation",
+  "cases": [
+    {
+      "id": "precedence",
+      "source": "1+2*3",
+      "environment": "empty",
+      "expect": {
+        "value": {
+          "kind": "number",
+          "numericType": "integer",
+          "measurement": {
+            "status": "exact",
+            "value": 7
+          }
+        }
+      }
+    },
+    {
+      "id": "parentheses",
+      "source": "(1+2)*3",
+      "environment": "empty",
+      "expect": {
+        "value": {
+          "kind": "number",
+          "numericType": "integer",
+          "measurement": {
+            "status": "exact",
+            "value": 9
+          }
+        }
+      }
+    },
+    {
+      "id": "left-assoc",
+      "source": "10-3-2",
+      "environment": "empty",
+      "expect": {
+        "value": {
+          "kind": "number",
+          "numericType": "integer",
+          "measurement": {
+            "status": "exact",
+            "value": 5
+          }
+        }
+      }
+    },
+    {
+      "id": "negative-remainder",
+      "source": "-5 % 3",
+      "environment": "empty",
+      "expect": {
+        "value": {
+          "kind": "number",
+          "numericType": "integer",
+          "measurement": {
+            "status": "exact",
+            "value": -2
+          }
+        }
+      }
+    },
+    {
+      "id": "empty-sum",
+      "source": "sum([])",
+      "environment": "empty",
+      "expect": {
+        "value": {
+          "kind": "number",
+          "numericType": "integer",
+          "measurement": {
+            "status": "exact",
+            "value": 0
+          }
+        }
+      }
+    },
+    {
+      "id": "abs",
+      "source": "abs(-7)",
+      "environment": "empty",
+      "expect": {
+        "value": {
+          "kind": "number",
+          "numericType": "integer",
+          "measurement": {
+            "status": "exact",
+            "value": 7
+          }
+        }
+      }
+    },
+    {
+      "id": "floor",
+      "source": "floor(-1.2)",
+      "environment": "empty",
+      "expect": {
+        "value": {
+          "kind": "number",
+          "numericType": "integer",
+          "measurement": {
+            "status": "exact",
+            "value": -2
+          }
+        }
+      }
+    },
+    {
+      "id": "ceil",
+      "source": "ceil(-1.2)",
+      "environment": "empty",
+      "expect": {
+        "value": {
+          "kind": "number",
+          "numericType": "integer",
+          "measurement": {
+            "status": "exact",
+            "value": -1
+          }
+        }
+      }
+    },
+    {
+      "id": "unicode-length",
+      "source": "length(\"😀\")",
+      "environment": "empty",
+      "expect": {
+        "value": {
+          "kind": "number",
+          "numericType": "integer",
+          "measurement": {
+            "status": "exact",
+            "value": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "division",
+      "source": "5 / 2",
+      "environment": "empty",
+      "expect": {
+        "value": {
+          "kind": "number",
+          "numericType": "float",
+          "measurement": {
+            "status": "exact",
+            "value": 2.5
+          }
+        }
+      }
+    },
+    {
+      "id": "binary64",
+      "source": "0.1 + 0.2 == 0.3",
+      "environment": "empty",
+      "expect": {
+        "value": {
+          "kind": "boolean",
+          "decision": {
+            "status": "resolved",
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "id": "short-circuit-and",
+      "source": "false && (1 / 0 > 0)",
+      "environment": "empty",
+      "expect": {
+        "value": {
+          "kind": "boolean",
+          "decision": {
+            "status": "resolved",
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "id": "short-circuit-or",
+      "source": "true || (1 / 0 > 0)",
+      "environment": "empty",
+      "expect": {
+        "value": {
+          "kind": "boolean",
+          "decision": {
+            "status": "resolved",
+            "value": true
+          }
+        }
+      }
+    },
+    {
+      "id": "encountered-error",
+      "source": "(1 / 0 > 0) || true",
+      "environment": "empty",
+      "expect": {
+        "error": "E_DIVIDE_ZERO"
+      }
+    },
+    {
+      "id": "overflow",
+      "source": "9007199254740991 + 1",
+      "environment": "empty",
+      "expect": {
+        "error": "E_NUMERIC_OVERFLOW"
+      }
+    },
+    {
+      "id": "band-small-test",
+      "source": "totals.lines.changed >= 50",
+      "environment": "report-bounded",
+      "expect": {
+        "value": {
+          "kind": "boolean",
+          "decision": {
+            "status": "resolved",
+            "value": true
+          }
+        }
+      }
+    },
+    {
+      "id": "band-crossing-test",
+      "source": "totals.lines.changed >= 65",
+      "environment": "report-bounded",
+      "expect": {
+        "value": {
+          "kind": "boolean",
+          "decision": {
+            "status": "unknown",
+            "reasons": [
+              {
+                "code": "INTERVAL_COMPARISON"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "band-false-test",
+      "source": "totals.lines.changed > 100",
+      "environment": "report-bounded",
+      "expect": {
+        "value": {
+          "kind": "boolean",
+          "decision": {
+            "status": "resolved",
+            "value": false
+          }
+        }
+      }
+    },
+    {
+      "id": "correlation-destructive",
+      "source": "totals.lines.deleted + totals.lines.modified",
+      "environment": "report-bounded",
+      "expect": {
+        "value": {
+          "kind": "number",
+          "numericType": "integer",
+          "measurement": {
+            "status": "exact",
+            "value": 10
+          }
+        }
+      }
+    },
+    {
+      "id": "correlation-changed",
+      "source": "totals.lines.added + totals.lines.deleted + totals.lines.modified",
+      "environment": "report-bounded",
+      "expect": {
+        "value": {
+          "kind": "number",
+          "numericType": "integer",
+          "measurement": {
+            "status": "bounded",
+            "lower": 60,
+            "upper": 70
+          }
+        }
+      }
+    },
+    {
+      "id": "require-exact-bounded",
+      "source": "requireExact(totals.lines.changed)",
+      "environment": "report-bounded",
+      "expect": {
+        "error": "E_EXACT_REQUIRED"
+      }
+    },
+    {
+      "id": "bound-projection",
+      "source": "upperBound(totals.lines.changed)",
+      "environment": "report-bounded",
+      "expect": {
+        "value": {
+          "kind": "number",
+          "numericType": "integer",
+          "measurement": {
+            "status": "exact",
+            "value": 70
+          }
+        },
+        "requiredEvidenceCodes": [
+          "BOUND_PROJECTION"
+        ]
+      }
+    },
+    {
+      "id": "status-bounded",
+      "source": "status(totals.lines.changed)",
+      "environment": "report-bounded",
+      "expect": {
+        "value": {
+          "kind": "string",
+          "value": "bounded"
+        }
+      }
+    },
+    {
+      "id": "unmeasurable-zero",
+      "source": "totals.lines.changed * 0",
+      "environment": "report-unmeasurable",
+      "expect": {
+        "value": {
+          "kind": "number",
+          "numericType": "integer",
+          "measurement": {
+            "status": "unmeasurable",
+            "reasons": [
+              {
+                "code": "BINARY_LINES_UNDEFINED"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "exact-default-review",
+      "source": "metrics.review",
+      "environment": "report-exact",
+      "expect": {
+        "value": {
+          "kind": "number",
+          "numericType": "integer",
+          "measurement": {
+            "status": "exact",
+            "value": 178
+          }
+        }
+      }
+    },
+    {
+      "id": "empty-min",
+      "source": "min([])",
+      "environment": "empty",
+      "expect": {
+        "value": {
+          "kind": "missing"
+        }
+      }
+    },
+    {
+      "id": "missing-fallback",
+      "source": "orElse(min([]), 0)",
+      "environment": "empty",
+      "expect": {
+        "value": {
+          "kind": "number",
+          "numericType": "integer",
+          "measurement": {
+            "status": "exact",
+            "value": 0
+          }
+        }
+      }
+    },
+    {
+      "id": "nonempty-fallback-lazy",
+      "source": "orElse(1, 1 / 0)",
+      "environment": "empty",
+      "expect": {
+        "value": {
+          "kind": "number",
+          "numericType": "float",
+          "measurement": {
+            "status": "exact",
+            "value": 1
+          }
+        }
+      },
+      "notes": "Joined static result type is float; fallback is not evaluated."
+    },
+    {
+      "id": "unknown-not-fallback",
+      "source": "orElse(totals.lines.changed, 0)",
+      "environment": "report-incomplete",
+      "expect": {
+        "value": {
+          "kind": "number",
+          "numericType": "integer",
+          "measurement": {
+            "status": "unknown",
+            "reasons": [
+              {
+                "code": "FILE_SET_INCOMPLETE"
+              }
+            ],
+            "lower": 5
+          }
+        }
+      }
+    }
+  ]
+}

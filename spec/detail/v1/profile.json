@@ -1,0 +1,15 @@
+{
+  "displayName": "detail",
+  "description": "The diffdevil expression language",
+  "language": "diffdevil-expr/1",
+  "expressionExtension": ".ddexpr",
+  "numbers": "diffdevil-number/1",
+  "paths": "diffdevil-glob/1",
+  "replacementLines": "replacement-lines-v1",
+  "limits": "diffdevil-limits/1",
+  "defaultPreset": "size@1",
+  "parserToolkit": "Chevrotain",
+  "toolkitCandidateVersion": "13.2.0",
+  "contractDate": "2026-09-09",
+  "standing": "selected design; no runtime implementation supplied"
+}

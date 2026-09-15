@@ -1,0 +1,258 @@
+{
+  "language": "diffdevil-expr/1",
+  "codes": [
+    {
+      "code": "E_SOURCE",
+      "defaultPhase": "source",
+      "meaning": "Source acquisition or comparison failed."
+    },
+    {
+      "code": "E_CONFIG",
+      "defaultPhase": "config",
+      "meaning": "Configuration violates structural or required semantic constraints."
+    },
+    {
+      "code": "E_CONFIG_CONFLICT",
+      "defaultPhase": "config",
+      "meaning": "Mutually exclusive authoring paths or conflicting override layers."
+    },
+    {
+      "code": "E_PARAMETER_REQUIRED",
+      "defaultPhase": "config",
+      "meaning": "Required declared parameter missing."
+    },
+    {
+      "code": "E_PARAMETER_TYPE",
+      "defaultPhase": "config",
+      "meaning": "Binding does not match declared parameter type."
+    },
+    {
+      "code": "E_LEX_CHARACTER",
+      "defaultPhase": "lex",
+      "meaning": "Unexpected character."
+    },
+    {
+      "code": "E_STRING",
+      "defaultPhase": "lex",
+      "meaning": "Invalid string spelling or escape."
+    },
+    {
+      "code": "E_NUMBER_LITERAL",
+      "defaultPhase": "lex",
+      "meaning": "Invalid or unsafe numeric literal."
+    },
+    {
+      "code": "E_PARSE",
+      "defaultPhase": "parse",
+      "meaning": "Invalid expression structure or incomplete input."
+    },
+    {
+      "code": "E_TRAILING_INPUT",
+      "defaultPhase": "parse",
+      "meaning": "Tokens remain after the complete expression."
+    },
+    {
+      "code": "E_UNKNOWN_NAME",
+      "defaultPhase": "bind",
+      "meaning": "Name is not declared in this context."
+    },
+    {
+      "code": "E_UNKNOWN_FIELD",
+      "defaultPhase": "bind",
+      "meaning": "Field is not in the bound schema."
+    },
+    {
+      "code": "E_UNKNOWN_FUNCTION",
+      "defaultPhase": "bind",
+      "meaning": "Function is not in the versioned catalog."
+    },
+    {
+      "code": "E_FORBIDDEN_NAME",
+      "defaultPhase": "bind",
+      "meaning": "Forbidden object key or name."
+    },
+    {
+      "code": "E_DUPLICATE_FIELD",
+      "defaultPhase": "bind",
+      "meaning": "Record keys duplicate after decoding."
+    },
+    {
+      "code": "E_BINDER_POSITION",
+      "defaultPhase": "bind",
+      "meaning": "Lambda in a non-binder position."
+    },
+    {
+      "code": "E_SHADOWING",
+      "defaultPhase": "bind",
+      "meaning": "Lambda shadows a root, builtin, or active outer binding."
+    },
+    {
+      "code": "E_TYPE",
+      "defaultPhase": "type",
+      "meaning": "Incompatible operand, collection, branch, or context type."
+    },
+    {
+      "code": "E_ARITY",
+      "defaultPhase": "type",
+      "meaning": "Wrong number of arguments."
+    },
+    {
+      "code": "E_OPTIONAL_VALUE",
+      "defaultPhase": "type",
+      "meaning": "Optional value requires a presence guard or helper."
+    },
+    {
+      "code": "E_METRIC_CYCLE",
+      "defaultPhase": "config",
+      "meaning": "Named metric dependency graph contains a cycle."
+    },
+    {
+      "code": "E_DIVIDE_ZERO",
+      "defaultPhase": "evaluate",
+      "meaning": "Exact zero divisor."
+    },
+    {
+      "code": "E_POSSIBLE_DOMAIN",
+      "defaultPhase": "evaluate",
+      "meaning": "Some admissible applicable inputs make an operation invalid."
+    },
+    {
+      "code": "E_NUMERIC_OVERFLOW",
+      "defaultPhase": "evaluate",
+      "meaning": "Numeric result violates the selected domain."
+    },
+    {
+      "code": "E_BOUND_UNAVAILABLE",
+      "defaultPhase": "evaluate",
+      "meaning": "Requested justified endpoint is absent."
+    },
+    {
+      "code": "E_EXACT_REQUIRED",
+      "defaultPhase": "evaluate",
+      "meaning": "Explicit exactness requirement not met."
+    },
+    {
+      "code": "E_PRESENT_REQUIRED",
+      "defaultPhase": "evaluate",
+      "meaning": "Explicit presence requirement not met."
+    },
+    {
+      "code": "E_GLOB_PATTERN",
+      "defaultPhase": "evaluate",
+      "meaning": "Malformed path pattern; literal cases reported at compile time."
+    },
+    {
+      "code": "E_LIMIT",
+      "defaultPhase": "evaluate",
+      "meaning": "A selected size, parsing, or evaluation budget was exhausted."
+    },
+    {
+      "code": "E_BAND_ORDER",
+      "defaultPhase": "config",
+      "meaning": "Band thresholds not strictly increasing."
+    },
+    {
+      "code": "E_BAND_IDS",
+      "defaultPhase": "config",
+      "meaning": "Duplicate band IDs."
+    },
+    {
+      "code": "E_BAND_OTHERWISE",
+      "defaultPhase": "config",
+      "meaning": "Missing, duplicate, or misplaced final otherwise."
+    },
+    {
+      "code": "E_BAND_DOMAIN",
+      "defaultPhase": "evaluate",
+      "meaning": "Input lies outside the declared band domain."
+    },
+    {
+      "code": "E_RULE_UNRESOLVED",
+      "defaultPhase": "plan",
+      "meaning": "Rule requires a resolved result but evidence cannot establish it."
+    },
+    {
+      "code": "E_EFFECT_CONFLICT",
+      "defaultPhase": "plan",
+      "meaning": "Incompatible desired operations on the same managed target."
+    },
+    {
+      "code": "E_TEMPLATE_PLACEHOLDER",
+      "defaultPhase": "config",
+      "meaning": "Invalid or unknown template placeholder."
+    },
+    {
+      "code": "E_TEMPLATE_FORMAT",
+      "defaultPhase": "config",
+      "meaning": "Unsupported template formatter or incompatible type."
+    },
+    {
+      "code": "E_REPORT_INVALID",
+      "defaultPhase": "source",
+      "meaning": "Report structure or evidence is inconsistent."
+    },
+    {
+      "code": "E_REPORT_CONTEXT",
+      "defaultPhase": "bind",
+      "meaning": "Required policy/environment context is unavailable."
+    },
+    {
+      "code": "E_VERSION",
+      "defaultPhase": "source",
+      "meaning": "Unsupported schema or semantic profile."
+    },
+    {
+      "code": "E_FORMAT_TYPE",
+      "defaultPhase": "format",
+      "meaning": "Selected result is incompatible with the output format."
+    },
+    {
+      "code": "E_FORMAT_DELIMITER",
+      "defaultPhase": "format",
+      "meaning": "Scalar text cannot be represented in selected delimiter format."
+    },
+    {
+      "code": "E_RESULT_UNRESOLVED",
+      "defaultPhase": "format",
+      "meaning": "Strict output or decision cannot be established."
+    },
+    {
+      "code": "E_PLAN_STALE",
+      "defaultPhase": "apply",
+      "meaning": "Current comparison/provider preconditions differ."
+    },
+    {
+      "code": "E_PLAN_UNTRUSTED",
+      "defaultPhase": "apply",
+      "meaning": "Plan/report lacks trusted provenance for the intended privileged effect."
+    },
+    {
+      "code": "E_PERMISSION",
+      "defaultPhase": "apply",
+      "meaning": "Provider permission does not allow the selected operation."
+    },
+    {
+      "code": "E_LABEL_UNAVAILABLE",
+      "defaultPhase": "apply",
+      "meaning": "Managed label exists but cannot be assigned under current provider standing."
+    },
+    {
+      "code": "E_PROVIDER",
+      "defaultPhase": "apply",
+      "meaning": "Provider operation failed or remains unreconciled."
+    },
+    {
+      "code": "E_IO",
+      "defaultPhase": "source",
+      "meaning": "Input/output transport failure."
+    },
+    {
+      "code": "E_INTERNAL",
+      "defaultPhase": "evaluate",
+      "meaning": "Unexpected implementation failure."
+    }
+  ],
+  "messageTextStable": false,
+  "codeStable": true,
+  "phaseMayRefineToDetectionStage": true
+}

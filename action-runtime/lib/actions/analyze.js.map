@@ -1,0 +1,1 @@
+{"version":3,"file":"analyze.js","sourceRoot":"","sources":["../../../src/actions/analyze.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,UAAU,EAAE,MAAM,WAAW,CAAC;AACvC,MAAM,UAAU,CAAC,SAAS,CAAC,CAAC","sourcesContent":["import { actionMain } from './main.js';\nawait actionMain('analyze');\n"]}

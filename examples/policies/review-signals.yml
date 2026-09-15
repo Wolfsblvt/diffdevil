@@ -1,0 +1,37 @@
+# Retain size labels, exclude a known generated input, and add a source/test signal.
+version: 1
+presets: [size@1]
+defaults:
+  paths:
+    exclude: ['**/package-lock.json']
+scopes:
+  source:
+    includeOnly: ['src/**']
+  tests:
+    includeOnly: ['tests/**', '**/*.Tests/**']
+metrics:
+  sourceReview:
+    measure: lines.changed
+    scope: source
+  testsReview:
+    measure: lines.changed
+    scope: tests
+  removedOrRewritten:
+    formula: totals.lines.deleted + totals.lines.modified
+queries:
+  sourceReview:
+    expression: metrics.sourceReview
+  changedPaths:
+    expression: 'map(filter(files, f => f.included), f => f.path)'
+labelDefinitions:
+  review/source-without-tests:
+    color: C5DEF5
+    description: Source files changed without changes in the configured test paths
+rules:
+  sourceWithoutTests:
+    when: metrics.sourceReview > 0 && metrics.testsReview == 0
+    onUnknown: hold
+    effects:
+      labels:
+        add: [review/source-without-tests]
+        removeWhenFalse: true

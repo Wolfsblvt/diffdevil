@@ -1,0 +1,105 @@
+{
+  "kind": "diffdevil.plan",
+  "schemaVersion": "1.0",
+  "semantics": {
+    "language": "diffdevil-expr/1",
+    "numbers": "diffdevil-number/1",
+    "replacementLines": "replacement-lines-v1",
+    "paths": "diffdevil-glob/1",
+    "presets": [
+      "size@1"
+    ],
+    "limits": "diffdevil-limits/1"
+  },
+  "stage": "desired",
+  "source": {
+    "kind": "github-api",
+    "comparisonId": "fixture-bounded-comparison",
+    "base": "fixture-base",
+    "head": "fixture-head",
+    "repository": "example/repository",
+    "pullRequest": 42
+  },
+  "reportId": "fixture-report-bounded",
+  "policyId": "fixture-policy-size",
+  "target": {
+    "repository": "example/repository",
+    "pullRequest": 42
+  },
+  "rules": {
+    "size": {
+      "band": {
+        "status": "resolved",
+        "id": "s",
+        "lower": 20,
+        "upper": 100
+      },
+      "disposition": "matched"
+    }
+  },
+  "held": [],
+  "operations": [
+    {
+      "kind": "label.ensure",
+      "name": "size/XS",
+      "definition": {
+        "color": "C2E0C6",
+        "description": "0–19 replacement-aware changed lines"
+      }
+    },
+    {
+      "kind": "label.ensure",
+      "name": "size/S",
+      "definition": {
+        "color": "BFDADC",
+        "description": "20–99 replacement-aware changed lines"
+      }
+    },
+    {
+      "kind": "label.ensure",
+      "name": "size/M",
+      "definition": {
+        "color": "C5DEF5",
+        "description": "100–499 replacement-aware changed lines"
+      }
+    },
+    {
+      "kind": "label.ensure",
+      "name": "size/L",
+      "definition": {
+        "color": "D4C5F9",
+        "description": "500–999 replacement-aware changed lines"
+      }
+    },
+    {
+      "kind": "label.ensure",
+      "name": "size/XL",
+      "definition": {
+        "color": "DCC6E0",
+        "description": "1,000 or more replacement-aware changed lines"
+      }
+    },
+    {
+      "kind": "label.ensure",
+      "name": "size/Unknown",
+      "definition": {
+        "color": "D1D5DB",
+        "description": "Available evidence cannot establish one size band"
+      }
+    },
+    {
+      "kind": "label.select",
+      "rule": "size",
+      "group": "size",
+      "members": [
+        "size/XS",
+        "size/S",
+        "size/M",
+        "size/L",
+        "size/XL",
+        "size/Unknown"
+      ],
+      "selected": "size/S"
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+name: Review signals
+on:
+  pull_request_target:
+    types: [opened, reopened, synchronize, edited]
+permissions:
+  contents: read
+  pull-requests: write
+concurrency:
+  group: diffdevil-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: Wolfsblvt/diffdevil@v1
+        with:
+          config: .github/diffdevil.yml
+          policy-source: base

@@ -1,0 +1,63 @@
+{
+  "language": "diffdevil-expr/1",
+  "environments": {
+    "empty": {
+      "description": "No roots are required beyond fixed functions and literal typing."
+    },
+    "report-exact": {
+      "report": "../../../../examples/reports/exact.json"
+    },
+    "report-bounded": {
+      "report": "../../../../examples/reports/bounded.json"
+    },
+    "report-incomplete": {
+      "report": "../../../../examples/reports/incomplete.json"
+    },
+    "report-unmeasurable": {
+      "report": "../../../../examples/reports/unmeasurable.json"
+    },
+    "boolean-parameters": {
+      "rootTypes": {
+        "params": {
+          "a": "boolean",
+          "b": "boolean"
+        }
+      }
+    },
+    "collection-parameter": {
+      "rootTypes": {
+        "params": {
+          "items": "collection<number>"
+        }
+      }
+    }
+  },
+  "bandDefinitions": {
+    "default-size": {
+      "value": "metrics.review",
+      "minimum": 0,
+      "ranges": [
+        {
+          "id": "xs",
+          "lt": 20
+        },
+        {
+          "id": "s",
+          "lt": 100
+        },
+        {
+          "id": "m",
+          "lt": 500
+        },
+        {
+          "id": "l",
+          "lt": 1000
+        },
+        {
+          "id": "xl",
+          "otherwise": true
+        }
+      ]
+    }
+  }
+}
