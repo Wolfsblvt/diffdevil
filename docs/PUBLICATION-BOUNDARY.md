@@ -9,11 +9,14 @@ external effects or claim that they have happened.
 
 ## Start in this checkout
 
-This repository is the public-source candidate. Its `main` begins at a clean public
-root and retains subsequent public refactoring commits. There is no second checkout
-to select, no private ancestor to push, and no nested public-source ZIP to unpack.
-Before the first push, inspect `git status --short --branch`, `git log --all --oneline`,
-`git remote -v`, and `git ls-files`. No remote was configured during preparation.
+This repository is the [public source checkout](https://github.com/Wolfsblvt/diffdevil).
+Its `main` begins at a clean public root and retains subsequent public refactoring
+commits. There is no second checkout to select, no private ancestor to push, and
+no nested public-source ZIP to unpack. The reviewed source was pushed to
+`origin/main` after Wolf's grant; [Verify at `26a2d7e`](https://github.com/Wolfsblvt/diffdevil/actions/runs/35020088812)
+passed Linux Node 22/24 and Windows Node 24. For another push, inspect current
+`git status --short --branch`, `git log --all --oneline`, `git remote -v`, and
+`git ls-files` rather than relying on this recorded state.
 
 `docs/reference/` preserves cleaned technical research and substantive returned
 evidence. Private originals are not public source. Local transfer material under
@@ -71,11 +74,11 @@ quickstart intentionally targets `Wolfsblvt/diffdevil@v1` but does not claim the
 exists yet. An immutable reviewed SHA can be used instead. Do not invent a SHA,
 CI badge, package version badge, or a private security contact.
 
-## Create source and qualify hosted behavior when authorized
+## Qualify hosted behavior when authorized
 
-Create/connect the public repository and push the clean publication history only
-under the separate publication grant. Shipped Action code must be present in that
-commit; GitHub consumers do not run `npm install`. A push can activate included
+The public repository was created and the reviewed source history pushed under
+Wolf's separate publication grant. Keep shipped Action code in each source commit;
+GitHub consumers do not run `npm install`. A later push can activate included
 workflows and repository settings, so inspect those effects first.
 
 Use an authorized disposable repository for the canary. Copy the quickstart with

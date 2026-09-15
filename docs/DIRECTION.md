@@ -35,8 +35,11 @@ website should render these sources, not introduce a competing wiki.
 
 Public technical references retain the founding choices, alternatives, research,
 and earlier implementation evidence. Private activation instructions and raw
-conversations are excluded from the publication history. Unique original records remain in the private transfer archive; the earlier complete
-development-history carrier is historical, not the checkout to publish.
+conversations are excluded from the publication history. Unique original records
+were admitted once to `wolf-agents-data@de658c3` under
+`workbench/diffdevil/2026-09-15/`; the consumed transfer archive is not a product
+asset. The earlier complete development-history carrier is historical, not this
+public source checkout.
 
 The CLI version reads installed package metadata instead of a hardcoded development
 string. Package qualification uses npm's Windows launcher dispatch on Windows and
@@ -53,8 +56,9 @@ The root Action address is unchanged; sub-actions now use `/actions/analyze`,
 `/actions/apply`, and `/actions/sync-labels`. Old prerelease subdirectory addresses
 are intentionally not retained as duplicate root wrappers.
 
-The public checkout itself is the delivery root. Ignored private transfer material
-is not another source tree and is not needed to build or publish the tracked tree.
+The public checkout itself is the delivery root. The private transfer was
+consumed after durable target readback and is not needed to build or publish the
+tracked tree.
 [The project map](PROJECT-MAP.md) locates current ownership.
 
 ## Next release movement

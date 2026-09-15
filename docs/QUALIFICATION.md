@@ -25,7 +25,7 @@ and [final pre-layout review](reference/2026-09-15/final-review.md).
 Those earlier executions did **not** qualify the moved paths under Node 24; the
 native pass below now does. Native macOS, live provider effects and independent
 security review remain unobserved. Hosted CI is described below; its first run
-was not green.
+failed and its repaired run passed.
 
 No real credentials, hosted workflow, public tag/release, npm publication or live
 provider effect was part of this local qualification. The licence decision and
@@ -134,7 +134,12 @@ failed `ENOTCACHED`: fresh CI `npm ci` had cached locked project tarballs but
 not the registry metadata needed by a lockless tarball consumer. Action smoke
 was skipped in that run. CI now selects an explicit registry install for the
 hosted package journey while local package qualification remains offline.
-The failed run is not a hosted matrix pass; the repaired head needs its own run.
+The failed run is not a hosted matrix pass. [Verify run 35020088812](https://github.com/Wolfsblvt/diffdevil/actions/runs/35020088812)
+at exact `main@26a2d7e70bb4acceac2b72ca6ee3512f9ad5d395` then passed all
+three jobs: Linux Node 22, Linux Node 24, and Windows Node 24. Each job passed
+ordinary verification, full conformance, the registry-backed installed package
+consumer, and install-free Action consumers. This establishes those hosted
+consumer paths at that source head, not live GitHub write permissions or events.
 
 ## Evidence location and next execution
 

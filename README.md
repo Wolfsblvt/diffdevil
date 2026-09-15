@@ -201,8 +201,9 @@ The shipped metadata selects **Node 24**. Given this exact trusted checkout at
 
 `steps.changes.outputs.decision` is `true`, `false`, or `unknown`. This local path
 requires the **complete trusted checkout**, not just its `analyze` subdirectory.
-There is not yet a public repository/release from which to obtain it with a remote
-`uses:` coordinate.
+The [public source repository](https://github.com/Wolfsblvt/diffdevil) exists.
+Pin a reviewed immutable source commit for a remote `uses:` coordinate; the
+versioned `@v1` release ref does not exist yet.
 
 | Entry | Behavior |
 | --- | --- |
