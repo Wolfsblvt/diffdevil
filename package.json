@@ -1,7 +1,6 @@
 {
   "name": "@wolfsblvt/diffdevil",
-  "version": "0.0.0-development",
-  "private": true,
+  "version": "1.0.0",
   "description": "Composable Git diff analysis and policy for Node.js, CI pipelines, and GitHub Actions.",
   "type": "module",
   "scripts": {

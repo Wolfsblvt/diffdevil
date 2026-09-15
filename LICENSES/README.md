@@ -2,7 +2,7 @@
 
 ## Meaning
 
-This is the authoritative component map for the two software licences in this repository. It grants rights to the named software surfaces only; placement beside a licensed component does not silently license unrelated content.
+This is the authoritative component map for software, documentation, examples, and reserved product assets in this repository and the npm package. Placement beside a licensed component does not silently license unrelated content.
 
 ## Reusable software — MIT
 
@@ -12,8 +12,16 @@ The portable diff engine, public TypeScript API and npm package, CLI, GitHub Act
 
 Website and interactive demo application code, hosted runtime, GitHub App backend, hosted configuration, orchestration and management UI, and comparable service-side product code are selected for [GNU AGPL-3.0-only](AGPL-3.0-only.txt). These application/service surfaces may live in this same repository. The first application surface is `apps/playground/`: its local server, browser code, styles, and page assets explicitly carry `AGPL-3.0-only`. MIT-covered engine code incorporated into an AGPL-covered application keeps its MIT notices. Future application paths must name their licence just as explicitly rather than inheriting it from a neighboring directory.
 
-## Content and third parties
+## Documentation and examples
 
-Documentation prose, branding, names, logos, artwork, screenshots and other non-software assets have **no selected public content licence** under this decision. The runnable shell scripts under `docs/examples/scripts/` are MIT software and carry SPDX headers. Other `docs/` examples are configuration/data or prose, with no selected public content licence; nearby prose or imagery does not inherit MIT or AGPL. Do not redistribute non-software content under an assumed software licence. A separate content-policy decision is still needed.
+Original documentation prose and reusable explanatory content, including the root `README.md`, guides, manuals, and documentation maps under `docs/`, are licensed under [Creative Commons Attribution 4.0 International (CC BY 4.0)](https://creativecommons.org/licenses/by/4.0/legalcode). Credit **Wolfsblvt Works**, identify changes, and link the licence when reusing that content. This licence does not grant rights in quoted or linked third-party material.
+
+Runnable code, workflows, shell scripts, expression files, and policy/configuration examples under `docs/examples/` are MIT-licensed software or reusable integration specimens. The scripts already carry SPDX headers. Synthetic diff and report specimens are explanatory content under CC BY 4.0; they are not authenticated provider records.
+
+The product name, slogans, logos, mascot, artwork, screenshots, and other brand or visual assets remain reserved. Their appearance in CC-licensed prose does not grant trademark or asset rights. `docs/BRANDING.md` describes the textual brand; it is not a licence for the brand identifiers it describes. The local playground application is present in source; no hosted deployment or GitHub App runtime is claimed yet.
+
+The npm artifact includes MIT software, the CC BY 4.0 root README and documentation, and this component map. Its `MIT` SPDX metadata names the reusable software, not a repository-wide licence for the included prose or reserved identifiers.
+
+## Third parties
 
 Vendored runtime dependencies in `actions/runtime/node_modules/` retain their own licences and notices, recorded in `actions/runtime/MANIFEST.json`; diffdevil's MIT notice does not replace them. Historical evidence in `docs/reference/` describes its original subject and date, not a newly licensed software component.

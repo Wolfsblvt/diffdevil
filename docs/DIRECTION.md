@@ -30,8 +30,10 @@ release-candidate paths.
 
 The complete selected product also includes a managed GitHub App, a public
 read-only PR playground, and the website/documentation experience. These are now
-active product Work rather than unnamed later presentation. None is implemented
-in the current checkout yet.
+active product Work rather than unnamed later presentation. The current candidate
+now contains the first local, read-only playground and documentation-front-door
+vertical under `apps/playground/`; the hosted site and GitHub App runtime are not
+yet implemented or deployed.
 
 All three surfaces use the same engine and contracts:
 
@@ -47,9 +49,11 @@ from operation, administration, continuity, scheduling, history, scale and suppo
 not from removing engine or policy capability from the open product. Reusable
 software remains MIT; application and service software remains AGPL-3.0-only.
 
-The first coherent implementation tranche should establish these application
-boundaries and one useful vertical experience without inventing a second semantic
-engine, a repository split, or generic hosted machinery before real behavior.
+The first coherent implementation tranche establishes these application boundaries
+through one useful local vertical without inventing a second semantic engine, a
+repository split, or generic hosted machinery before real behavior. Its tests use
+the existing fake-provider boundary; live public GitHub and browser use remain
+separate qualification.
 
 ## Current release preparation
 
@@ -99,10 +103,13 @@ and historical runtime/consumer evidence is separated in
 [Qualification](QUALIFICATION.md); mock HTTP is not live permission evidence.
 
 Wolf and Nyxara selected MIT for reusable software and AGPL-3.0-only for
-application/service code. The [licence map](../LICENSES/README.md) distinguishes
-those surfaces and holds non-software content rights open. Wolf authorized the
-public source repository after this preparation; public source/Action availability,
-npm availability, Marketplace listing, security intake,
+application/service code. Original documentation prose is CC BY 4.0, runnable
+examples are MIT, and brand/visual assets remain reserved. The
+[licence map](../LICENSES/README.md) distinguishes those surfaces. The selected
+first stable package identity is `@wolfsblvt/diffdevil@1.0.0`; local package and
+lock metadata carry that candidate without creating npm or Action refs. Wolf
+authorized the public source repository after this preparation; public
+source/Action availability, npm availability, Marketplace listing, security intake,
 and the website, playground, and GitHub App are separate observable outcomes. Do
 not imply all of them happened because one Git push succeeded. Release preparation
 and application implementation may move in parallel while publication remains
