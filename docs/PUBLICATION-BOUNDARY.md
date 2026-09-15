@@ -11,8 +11,8 @@ external effects or claim that they have happened.
 
 This repository is the [public source checkout](https://github.com/Wolfsblvt/diffdevil).
 Its `main` begins at a clean public root and retains subsequent public refactoring
-commits. There is no second checkout to select, no private ancestor to push, and
-no nested public-source ZIP to unpack. The reviewed source was pushed to
+commits. There is no second checkout to select, no private ancestor to push, and no
+nested public-source ZIP to unpack. The reviewed source was pushed to
 `origin/main` after Wolf's grant; [Verify at `26a2d7e`](https://github.com/Wolfsblvt/diffdevil/actions/runs/35020088812)
 passed Linux Node 22/24 and Windows Node 24. For another push, inspect current
 `git status --short --branch`, `git log --all --oneline`, `git remote -v`, and
@@ -54,12 +54,15 @@ expected for those boundaries.
 
 Wolf and Nyxara selected **MIT** for the reusable engine, package, CLI and Actions,
 and **AGPL-3.0-only** for application and hosted-service software. The [licence
-map](../LICENSES/README.md), both full texts, and matching package/Action SPDX
+map](../LICENSES/README.md), both software-licence texts, and matching component
 metadata are in this checkout. Original documentation prose is CC BY 4.0,
-runnable examples are MIT, and brand/visual assets remain reserved. The selected
-first stable npm candidate is `@wolfsblvt/diffdevil@1.0.0`; `private: true` was
-removed from local metadata. This is not an npm publication or release ref.
-Dependency licences are preserved separately in the Action distribution.
+runnable examples are MIT, and brand/visual assets remain reserved. Because the
+npm artifact contains more than MIT software, its root metadata uses
+`SEE LICENSE IN LICENSE.md`; the named top-level dispatch points to the complete
+component map. The separate Action runtime package remains MIT plus its retained
+third-party notices. The selected first stable npm candidate is
+`@wolfsblvt/diffdevil@1.0.0`; `private: true` was removed from local metadata.
+This is not an npm publication or release ref.
 
 The local candidate used npm's version command without creating a Git tag,
 updating `package.json` and root lockfile metadata together. Rebuild the generated distribution with
