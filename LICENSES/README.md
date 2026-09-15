@@ -10,7 +10,7 @@ The portable diff engine, public TypeScript API and npm package, CLI, GitHub Act
 
 ## Application and hosted-service software — AGPL-3.0-only
 
-Website and interactive demo application code, hosted runtime, GitHub App backend, hosted configuration, orchestration and management UI, and comparable service-side product code are selected for [GNU AGPL-3.0-only](AGPL-3.0-only.txt). These application/service surfaces may live in this same repository. **The present source checkout does not yet contain a website application or hosted service runtime.** When they arrive, their files and package metadata must explicitly name `AGPL-3.0-only`. MIT-covered engine code incorporated into an AGPL-covered application keeps its MIT notices.
+Website and interactive demo application code, hosted runtime, GitHub App backend, hosted configuration, orchestration and management UI, and comparable service-side product code are selected for [GNU AGPL-3.0-only](AGPL-3.0-only.txt). These application/service surfaces may live in this same repository. The first application surface is `apps/playground/`: its local server, browser code, styles, and page assets explicitly carry `AGPL-3.0-only`. MIT-covered engine code incorporated into an AGPL-covered application keeps its MIT notices. Future application paths must name their licence just as explicitly rather than inheriting it from a neighboring directory.
 
 ## Documentation and examples
 

@@ -10,7 +10,8 @@ and disposable outputs without introducing independently versioned packages.
 
 | Path | Responsibility |
 | --- | --- |
-| `src/diffdevil/` | One product: shared engine, CLI, provider/Action hosts, tests, contracts and presets. |
+| `src/diffdevil/` | Reusable MIT product core: shared engine, CLI, provider/Action hosts, tests, contracts and presets. |
+| `apps/playground/` | AGPL application adapter: local public-PR playground and repository-backed website/docs front door. |
 | `actions/` | Three sub-action entry points and their shared, committed runtime. |
 | `docs/` | Maintained manuals, runnable examples and dated technical research. |
 | `tools/` | Builds, generation and repository/consumer qualification. |
@@ -18,6 +19,8 @@ and disposable outputs without introducing independently versioned packages.
 | `action.yml` | One-step root Action, forwarding to the shared runtime. |
 | `package.json`, `package-lock.json`, `tsconfig.json` | One package, one lock and one compiler boundary. |
 | `README.md`, `AGENTS.md` | Public product front door and repository-local contribution contract. |
+
+`apps/playground/` consumes the built reusable engine from `dist/lib`; it does not duplicate measurement, policy, or provider semantics. Its browser assets and local server are application code, not npm-package contents.
 
 `dist/`, root `node_modules/` and `artifacts/` are ignored generated/local material,
 not extra products. They are recreated by documented commands and are not part of
