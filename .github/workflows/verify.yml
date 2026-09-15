@@ -37,13 +37,15 @@ jobs:
           node --version
           npm --version
           git --version
-      - name: Restore locked packages and prepare the offline consumer cache
+      - name: Restore locked project packages
         run: npm ci --cache artifacts/dependencies/npm-cache --ignore-scripts --no-audit --no-fund
       - name: Ordinary verification and generated Action parity
         run: npm run verify
       - name: Complete supplied conformance
         run: npm run test:conformance
-      - name: Installed npm consumer
+      - name: Installed npm consumer from registry
+        env:
+          DIFFDEVIL_PACKAGE_INSTALL_ONLINE: '1'
         run: npm run test:package
       - name: Install-free Action consumers
         run: npm run test:actions

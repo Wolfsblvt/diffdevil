@@ -23,8 +23,9 @@ Node 24.11.1 actually ran in the previous environment, as recorded in the
 [previous Action qualification](reference/2026-09-15/previous-action-qualification.md)
 and [final pre-layout review](reference/2026-09-15/final-review.md).
 Those earlier executions did **not** qualify the moved paths under Node 24; the
-native pass below now does. Native macOS, hosted workflow, live provider effects
-and independent security review remain unobserved for this candidate.
+native pass below now does. Native macOS, live provider effects and independent
+security review remain unobserved. Hosted CI is described below; its first run
+was not green.
 
 No real credentials, hosted workflow, public tag/release, npm publication or live
 provider effect was part of this local qualification. The licence decision and
@@ -126,7 +127,14 @@ execute the real CLI and shared Action host rather than a transcription of their
 intended syntax. The teaching patch yields 10 replacement-aware changed lines and
 16 raw churn; its policy exclusion yields 6 changed lines.
 
-The read-only Linux/Windows CI matrix is authored, not an observed hosted run.
+The first public-source [hosted run](https://github.com/Wolfsblvt/diffdevil/actions/runs/35018780115)
+at `main@3e8e9a4` exercised Linux Node 22/24 and Windows Node 24. Every job
+passed ordinary verification and conformance, then the installed package step
+failed `ENOTCACHED`: fresh CI `npm ci` had cached locked project tarballs but
+not the registry metadata needed by a lockless tarball consumer. Action smoke
+was skipped in that run. CI now selects an explicit registry install for the
+hosted package journey while local package qualification remains offline.
+The failed run is not a hosted matrix pass; the repaired head needs its own run.
 
 ## Evidence location and next execution
 

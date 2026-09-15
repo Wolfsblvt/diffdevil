@@ -39,7 +39,10 @@ assert.equal(paths.some(path => ['src/diffdevil/tests/', 'tools/', 'actions/'].s
 const home = mkdtempSync(join(tmpdir(), 'diffdevil consumer with spaces '));
 await writeFile(join(home, 'package.json'), JSON.stringify({ private: true, type: 'module' }) + '\n');
 const cache = resolve(root, 'artifacts/dependencies/npm-cache');
-npm(['install', '--offline', '--ignore-scripts', '--no-audit', '--no-fund', ...(existsSync(cache) ? ['--cache', cache] : []), tarball], home);
+// The supplied local cache has lockless consumer registry metadata. Fresh CI
+// npm ci caches tarballs but not those packuments; CI tests registry installation.
+const installMode = process.env.DIFFDEVIL_PACKAGE_INSTALL_ONLINE === '1' ? 'registry' : 'offline';
+npm(['install', ...(installMode === 'offline' ? ['--offline'] : []), '--ignore-scripts', '--no-audit', '--no-fund', ...(existsSync(cache) ? ['--cache', cache] : []), tarball], home);
 const packageRoot = join(home, 'node_modules/@wolfsblvt/diffdevil');
 const bin = join(home, 'node_modules/.bin/diffdevil');
 const packageVersion = JSON.parse(await readFile(join(packageRoot, 'package.json'), 'utf8')).version;
@@ -181,10 +184,10 @@ if (process.platform === 'win32') {
 }
 const observation = {
   node: process.version, platform: process.platform, arch: process.arch, npm: npm(['--version']).trim(), tarball,
-  integrity: packed.integrity, shasum: packed.shasum, fileCount: paths.length,
+  integrity: packed.integrity, shasum: packed.shasum, fileCount: paths.length, installMode,
   bytes: (await stat(tarball)).size,
-  checks: ['tarball file boundary', 'offline installation into a path containing spaces outside the checkout', 'consumer-local Chevrotain resolution', process.platform === 'win32' ? 'installed CLI through npm Windows launcher dispatch' : 'installed POSIX CLI bin', ...(process.platform === 'win32' ? ['installed PowerShell launcher version and scalar query'] : []), 'installed explicit CLI apply through fixture HTTP', 'installed version follows package metadata, including a different release-version specimen', 'installed shortcut, inline detail and BOM expression-file scalar queries', 'installed schema asset', 'root/core/language/policy/git/github ESM exports', 'closed internal export paths', 'shared AST, detail text and shortcut execution', 'band and template API', 'installed YAML/JSON source/compiler/evaluator/query/plan round-trip', 'build-time standalone schemas' , 'installed named query and typed-parameter CLI check', 'installed desired label/definition/comment plan', 'pure Action shorthand compiler', 'installed GitHub acquisition and label/comment/definition reconciliation against mock HTTP', 'strict TypeScript consumer declarations', ...(process.platform === 'win32' ? ['installed CMD and PowerShell launcher contents'] : [])],
-  unobserved: [...(process.platform === 'win32' ? [] : ['native Windows execution']), ...(process.versions.node.startsWith('24.') ? [] : ['Node 24 execution in this package run']), 'Action distribution (separate test:actions boundary)', 'live GitHub effects']
+  checks: ['tarball file boundary', `${installMode} installation into a path containing spaces outside the checkout`, 'consumer-local Chevrotain resolution', process.platform === 'win32' ? 'installed CLI through npm Windows launcher dispatch' : 'installed POSIX CLI bin', ...(process.platform === 'win32' ? ['installed PowerShell launcher version and scalar query'] : []), 'installed explicit CLI apply through fixture HTTP', 'installed version follows package metadata, including a different release-version specimen', 'installed shortcut, inline detail and BOM expression-file scalar queries', 'installed schema asset', 'root/core/language/policy/git/github ESM exports', 'closed internal export paths', 'shared AST, detail text and shortcut execution', 'band and template API', 'installed YAML/JSON source/compiler/evaluator/query/plan round-trip', 'build-time standalone schemas' , 'installed named query and typed-parameter CLI check', 'installed desired label/definition/comment plan', 'pure Action shorthand compiler', 'installed GitHub acquisition and label/comment/definition reconciliation against mock HTTP', 'strict TypeScript consumer declarations', ...(process.platform === 'win32' ? ['installed CMD and PowerShell launcher contents'] : [])],
+  unobserved: [...(installMode === 'registry' ? ['offline lockless consumer installation in this run'] : []), ...(process.platform === 'win32' ? [] : ['native Windows execution']), ...(process.versions.node.startsWith('24.') ? [] : ['Node 24 execution in this package run']), 'Action distribution (separate test:actions boundary)', 'live GitHub effects']
 };
 await writeFile(join(artifacts, 'qualification.json'), JSON.stringify(observation, null, 2) + '\n');
 console.log(JSON.stringify(observation, null, 2));
