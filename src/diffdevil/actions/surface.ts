@@ -6,6 +6,7 @@ const all = ENTRY_POINTS, pr = ['root', 'analyze', 'apply'] as const, effects = 
 const input = (description: string, entries: readonly ActionEntryPoint[] = all): InputDefinition => ({ description, entries });
 export const ACTION_INPUTS: Readonly<Record<string, InputDefinition>> = Object.freeze({
   'github-token': { ...input('GitHub credential for the selected repository. A token does not enable writes.'), default: '${{ github.token }}' },
+  'policy-token': input('Optional read credential used only for trusted base/pinned policy and repository-relative template acquisition.'),
   repository: input('Target owner/repository. Defaults to the workflow repository.'),
   'pull-request': input('Positive PR number. Defaults to a PR event or PR issue-comment event.', pr),
   source: input('github-api (default), or git for controlled local comparison of the live PR revisions.', pr),

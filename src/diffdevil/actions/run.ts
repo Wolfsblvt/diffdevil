@@ -19,6 +19,8 @@ export interface ActionRunOptions {
   readonly environment?: NodeJS.ProcessEnv; readonly cwd?: string;
   /** Tests and embedding hosts may supply a transport; distributed entry points use the real client. */
   readonly client?: GitHubClient;
+  /** A separate read transport may acquire trusted repository policy without gaining effect authority. */
+  readonly policyClient?: GitHubClient;
 }
 export interface ActionRunResult extends ActionResult { readonly outputs: Readonly<Record<string, string>> }
 function selectedDisplay(policy: CompiledPolicy, report: Report, context: ActionContext): Pick<ActionResult, 'metric' | 'decision' | 'band'> {
@@ -41,10 +43,14 @@ export function runAction(entryPoint: ActionEntryPoint, options: ActionRunOption
     const environment = options.environment ?? process.env;
     const context = await actionContext(entryPoint, environment, options.cwd);
     const { inputs, mode } = context;
-    const client = options.client ?? new GitHubClient({ ...(inputs['github-token'] === undefined ? {} : { token: inputs['github-token'] }), ...(environment.GITHUB_API_URL === undefined ? {} : { apiUrl: environment.GITHUB_API_URL }) });
+    const clientOptions = environment.GITHUB_API_URL === undefined ? {} : { apiUrl: environment.GITHUB_API_URL };
+    const client = options.client ?? new GitHubClient({ ...clientOptions, ...(inputs['github-token'] === undefined ? {} : { token: inputs['github-token'] }) });
+    const policyClient = options.policyClient ?? (inputs['policy-token'] === undefined
+      ? client
+      : new GitHubClient({ ...clientOptions, token: inputs['policy-token'] }));
     const artifacts = await ActionOutputSession.open(context, environment);
     try {
-      const hosted = await loadActionPolicy(context, client), policy = hosted.policy;
+      const hosted = await loadActionPolicy(context, policyClient), policy = hosted.policy;
       const rules = inputs.rule === undefined ? undefined : [inputs.rule];
       selectedRuleIds(explainPolicy(policy).document, rules);
       let result: ActionResult;

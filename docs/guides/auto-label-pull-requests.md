@@ -81,6 +81,38 @@ Pull requests write permission, which also covers reading the PR. The bundled
 preset needs no repository file read. Adding `config:` or a repository template
 also requires `contents: read`.
 
+When one credential deliberately owns writes without Contents access, keep the
+roles separate instead of broadening it. Pass the read-only workflow credential as
+`policy-token` and the write credential as `github-token`:
+
+```yaml
+permissions:
+  contents: read
+  pull-requests: read
+jobs:
+  size:
+    runs-on: ubuntu-latest
+    steps:
+      - id: app-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          app-id: ${{ vars.DIFFDEVIL_APP_ID }}
+          private-key: ${{ secrets.DIFFDEVIL_APP_PRIVATE_KEY }}
+          permission-pull-requests: write
+      - uses: Wolfsblvt/diffdevil@v1
+        with:
+          config: .diffdevil.yml
+          policy-source: base
+          policy-token: ${{ github.token }}
+          github-token: ${{ steps.app-token.outputs.token }}
+```
+
+`policy-token` can only acquire trusted base/pinned policy and its relative
+templates. PR acquisition and every label/comment effect still use
+`github-token`. Omitting `policy-token` preserves the original single-credential
+behavior. GitHub App creation and key custody are deployment concerns; the
+example shows the credential boundary rather than granting or provisioning an App.
+
 `pull_request_target` lets this workflow label PRs from forks. GitHub runs this
 workflow from the base repository's **default branch**; diffdevil's separate
 `policy-source: base` setting reads a configured policy from the PR's current
@@ -132,7 +164,7 @@ selects the documented size-label application unless `mode` says otherwise.
 | --- | --- |
 | The Action ref cannot be resolved | The release must exist. Pin a reviewed published commit SHA for an immutable deployment instead of inventing a SHA. |
 | No workflow run appears | Put the workflow on the default branch, trigger a listed event, and inspect repository/organization Actions restrictions. |
-| Permission or inaccessible-resource error | Check effective Pull requests write permission. Custom policy files need Contents read; a private-resource 404 is not proof that the file does not exist. |
+| Permission or inaccessible-resource error | Check effective Pull requests write permission. Custom policy files need Contents read; use `policy-token` when that read belongs to a different credential. A private-resource 404 is not proof that the file does not exist. |
 | An existing size label has a different color | Default ensure mode deliberately preserves existing metadata. Use explicit definition sync to change it. |
 | A required label is archived | Unarchive it deliberately or run explicit definition sync. Ensure mode does not silently undo an archive. |
 | `size/Unknown` | Inspect status, bounds, included unmeasurable files, and file-list completeness in the report. Never substitute zero for unavailable evidence. |
