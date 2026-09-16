@@ -115,6 +115,7 @@ export async function reconcileAssignments(client, plan, wanted, current, defini
         if (!definition || definition.archived)
             fail('E_LABEL_UNAVAILABLE', `Required label ${entry.name} is missing or archived. Ensure missing definitions or explicitly synchronize archived definitions before assignment.`, 'apply');
     }
+    const initiallyAssigned = new Set(current.keys());
     const additions = [...wanted].filter(([key, item]) => item.wanted && !current.has(key)).map(([, item]) => item.name);
     const root = `${repositoryPath(plan.target.repository)}/issues/${plan.target.pullRequest}/labels`;
     if (additions.length) {
@@ -130,7 +131,12 @@ export async function reconcileAssignments(client, plan, wanted, current, defini
     }
     // All desired additions have been observed before removing an old group member.
     for (const [key, entry] of wanted) {
-        if (entry.wanted || !current.has(key)) {
+        if (entry.wanted) {
+            if (initiallyAssigned.has(key))
+                session.unchanged('label.assignment', entry.name);
+            continue;
+        }
+        if (!current.has(key)) {
             session.unchanged('label.assignment', entry.name);
             continue;
         }

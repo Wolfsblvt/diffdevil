@@ -34,6 +34,19 @@ test('GitHub client honors server delays and does not retry permission denials',
   await assert.rejects(denied.json('/repos/test/repo'), e => e.diagnostic.code === 'E_GITHUB_PERMISSION' && !e.message.includes('fixture-token'));
   assert.equal(calls, before + 1);
 });
+test('GitHub client distinguishes write rate limits from permission denials', async () => {
+  const client = new GitHubClient({ readRetries: 0, fetch: async () => json({}, 403, { 'retry-after': '2' }) });
+  await assert.rejects(
+    client.json('/repos/test/repo/issues/1/labels', { method: 'POST', body: { labels: ['test'] }, phase: 'apply' }),
+    error => error.diagnostic.code === 'E_GITHUB_RATE_LIMIT' && /rate limited/u.test(error.message) && !/permission/u.test(error.message)
+  );
+});
+test('GitHub client refuses provider retry delays beyond its operating budget', async () => {
+  let slept = false;
+  const client = new GitHubClient({ sleep: async () => { slept = true; }, fetch: async () => json({}, 429, { 'retry-after': '301' }) });
+  await assert.rejects(client.json('/repos/test/repo'), error => error.diagnostic.code === 'E_GITHUB_RATE_LIMIT' && /five-minute/u.test(error.message));
+  assert.equal(slept, false);
+});
 test('GitHub client never blindly repeats a possibly completed POST', async () => {
   let calls = 0;
   const client = new GitHubClient({ fetch: async () => { calls++; throw Error('fixture-token'); } });
