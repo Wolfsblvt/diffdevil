@@ -110,7 +110,9 @@ process.on('exit',()=>writeFileSync(process.env.FIXTURE_STATE,JSON.stringify({la
     assert.deepEqual(applied.state.labels, ['size/XS']); assert.equal(applied.outputs['effects-status'], 'verified');
     const stale = await action(node, 'apply', { 'input-report': planned.outputs['report-path'] }, { scenario: 'stale', expectedExit: 2, expectOutputs: false });
     assert.equal(stale.state.calls.some(call => call.method !== 'GET'), false); assert.match(stale.stdout, /E_REPORT_STALE/);
-    const custom = await action(node, 'root', { config: '.diffdevil.yml' }); assert.deepEqual(custom.state.labels, ['review/custom']);
+    const custom = await action(node, 'root', { config: '.diffdevil.yml', 'policy-token': 'fixture-policy-token-not-a-credential' });
+    assert.deepEqual(custom.state.labels, ['review/custom']);
+    assert.match(custom.stdout, /::add-mask::fixture-policy-token-not-a-credential/u);
     const comment = await action(node, 'root', { condition: 'totals.lines.changed > 1', 'comment-template': 'Changed: {{ totals.lines.changed }}\nSecond line', 'comment-mode': 'upsert', 'comment-author': 'fixture-app[bot]' });
     assert.equal(comment.state.comments.length, 1); assert.match(comment.state.comments[0].body, /^Changed: 3\nSecond line/);
     const verified = await action(node, 'sync-labels', {}, { expectedExit: 1 });
