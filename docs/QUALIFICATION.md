@@ -7,33 +7,59 @@ historical runtime results and unobserved external effects. A schema specimen is
 not execution, a green unit suite is not a packaged consumer, and mock HTTP is not
 live GitHub permission evidence.
 
-## September 16 split-policy credential candidate — native Windows Node 24
+## September 16 split-policy credential — accepted v1 source
 
-The optional `policy-token` source cut at `ec5b95c1` keeps pull-request
-acquisition and every label/comment effect on `github-token`, while confining
-trusted base/pinned policy and relative-template reads to the separate credential
-when one is supplied. Omitting it reuses the existing one-client route. The four
-Action metadata files and install-free runtime were regenerated from source before
-qualification.
+The optional `policy-token` result is durable on public
+[`main@a20cb537`](https://github.com/Wolfsblvt/diffdevil/commit/a20cb53762a7543f1e9e196aa5b3712030240d2b).
+The landed squash tree exactly matches accepted PR #5 head
+[`f1af221`](https://github.com/Wolfsblvt/diffdevil/commit/f1af221697435f7ec00a6026a43fb6c382e23328).
+It keeps pull-request acquisition and every label/comment effect on
+`github-token`, while confining trusted base/pinned policy and
+relative-template reads to `policy-token` when one is supplied. Omitting the
+input reuses the existing one-client route. Both credentials are masked and
+redacted; the policy credential is never used as an alternate writer.
 
-On Windows 11 the candidate used **Node v24.19.0, npm 11.17.0, and PowerShell
-7.6.5** with the existing locked offline dependency closure. The first attempted
-launcher path was an incorrect guessed location and failed before npm or a project
-command started; the successful runs used the existing scoped Node 24 toolchain at
-`C:\Users\Wolfsblvt\AppData\Local\WolfLeitsatz\Toolchains\node-v24.19.0-win-x64`.
+On Windows 11 the final candidate used **Node v24.19.0, npm 11.17.0, and
+PowerShell 7.6.5** with the existing locked offline dependency closure. The
+source was rebuilt and the install-free Action distribution regenerated from
+source before qualification.
 
-| Boundary | Split-credential native result |
+| Boundary | Accepted split-credential result |
 | --- | --- |
 | `npm run verify` | **474 passed, 0 failed, 0 cancelled, 0 skipped**; exact parity over 1,141 generated Action files and 12 locked runtime packages. |
 | `npm run test:conformance` | **189 passed, 0 failed, 0 not executed, 0 harness failures**. |
-| `npm run test:package` | **486-file**, **786,683-byte** `1.0.0` tarball installed offline outside the checkout. Integrity and shasum readback, actual Windows npm CMD dispatch, direct installed PowerShell launcher, CLI, ESM exports, schemas, package assets, and strict TypeScript declarations passed. |
+| `npm run test:package` | **486-file**, **787,276-byte** `1.0.0` tarball installed offline outside the checkout. Integrity and shasum readback, actual Windows npm CMD dispatch, direct installed PowerShell launcher, CLI, ESM exports, schemas, package assets, and strict TypeScript declarations passed. |
 | `npm run test:actions` | **10 isolated Node 24 executions** over the root Action and all three sub-actions; the distributed transport exercised distinct policy and effect credentials, with no consumer install and mock HTTP only. |
 
-These checks establish source, generated-distribution, installed-package, and
-mock-provider consumer behavior. Hosted exact-head CI and the real base-file
-application canary with a read-only policy credential plus Automaton Pull requests
-write remain separate evidence and are required before this cut becomes the v1
-release source.
+[Verify run 35158147074](https://github.com/Wolfsblvt/diffdevil/actions/runs/35158147074)
+passed Linux Node 22, Linux Node 24, and Windows Node 24 at exact accepted head
+`f1af221`. Every job passed ordinary verification and generated parity, the
+189-case conformance suite, the registry-backed installed-package consumer, and
+all four install-free Action consumers.
+
+The final live canary used meeting workflow source
+[`main@373f82a`](https://github.com/Wolfsblvt/emergency-meeting/commit/373f82a190454f5fa2255c3a9eda0ce6cf514de2),
+pinned to `f1af221`. In
+[run 35158381591](https://github.com/Wolfsblvt/emergency-meeting/actions/runs/35158381591),
+the ordinary repository-read-only `GITHUB_TOKEN` supplied `policy-token` and
+loaded `.github/diffdevil-canary-policy.yml` from the trusted pull-request base.
+A separate short-lived Automaton token requested current-repository **Pull
+requests write only** and supplied `github-token` for pull-request acquisition
+and every effect. Analyze and apply both selected `xs`; effect readback was
+`verified` with `effects-changed=0`.
+
+Independent provider readback found the comparison unchanged, all six declared
+size definitions present, only `size/XS` assigned, and the existing owned
+Automaton comment unchanged. Earlier runs with the same Automaton permission
+shape had already created definitions, changed the managed assignment, and
+updated that owned comment, so this was a real convergent no-op rather than
+absence of write reach.
+
+This closes the base-file and split-credential permission ambiguity for the v1
+source. A genuine external-fork event and a live partial-write failure remain
+unobserved and are not promoted into release claims or blockers. npm publication,
+release refs, Marketplace availability, and outside-consumer readback remain
+separate effects.
 
 ## September 16 joined v1/playground candidate — native Windows Node 24
 
