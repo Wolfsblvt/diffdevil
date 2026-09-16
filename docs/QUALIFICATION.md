@@ -37,16 +37,15 @@ passed Linux Node 22, Linux Node 24, and Windows Node 24 at exact accepted head
 189-case conformance suite, the registry-backed installed-package consumer, and
 all four install-free Action consumers.
 
-The final live canary used meeting workflow source
-[`main@373f82a`](https://github.com/Wolfsblvt/emergency-meeting/commit/373f82a190454f5fa2255c3a9eda0ce6cf514de2),
-pinned to `f1af221`. In
-[run 35158381591](https://github.com/Wolfsblvt/emergency-meeting/actions/runs/35158381591),
-the ordinary repository-read-only `GITHUB_TOKEN` supplied `policy-token` and
-loaded `.github/diffdevil-canary-policy.yml` from the trusted pull-request base.
-A separate short-lived Automaton token requested current-repository **Pull
-requests write only** and supplied `github-token` for pull-request acquisition
-and every effect. Analyze and apply both selected `xs`; effect readback was
-`verified` with `effects-changed=0`.
+The final live canary used a private disposable workflow pinned to exact accepted
+head `f1af221`. Its ordinary repository-read-only `GITHUB_TOKEN` supplied
+`policy-token` and loaded the canary policy from the trusted pull-request base. A
+separate short-lived Automaton token requested current-repository **Pull requests
+write only** and supplied `github-token` for pull-request acquisition and every
+effect. Analyze and apply both selected `xs`; effect readback was `verified` with
+`effects-changed=0`. The private owning Work record retains the exact workflow,
+run, actor, installation, comparison and provider readback coordinates without
+publishing Company-room or canary-repository locators in this public package.
 
 Independent provider readback found the comparison unchanged, all six declared
 size definitions present, only `size/XS` assigned, and the existing owned
@@ -264,13 +263,15 @@ macOS execution.
 
 ## Security and external effects
 
-Current automated tests use fake GitHub HTTP and no real credential. Before a
-write-capable canary or publication, independently inspect trusted policy
-acquisition, stale head/base detection, provider permissions, owned-comment
-reconciliation, output escaping, source/artifact trust and the install-free
-runtime closure. Then run the authorized hosted canary against the exact reviewed
-candidate, recording the actual actor, event type, effective permissions,
-read/write revisions, selected policy, provider changes and readback.
+Current automated tests use fake GitHub HTTP and no real credential. The accepted
+v1 source also has the separately recorded live canary evidence above; that does
+not turn fake-provider tests into live tests or erase their cheaper regression
+value. Before publication, independently re-read trusted policy acquisition,
+stale head/base detection, provider permissions, owned-comment reconciliation,
+output escaping, source/artifact trust and the install-free runtime closure against
+the exact release candidate. Preserve the actual actor, event type, effective
+permissions, read/write revisions, selected policy, provider changes and readback
+for every later live journey.
 
 The current design keeps apply policy on the PR base revision or an explicitly
 pinned commit. Workspace policy is rejected for Action apply/definitions because
@@ -341,11 +342,14 @@ The preceding September 15 Windows pass qualified its earlier exact tree. The
 September 16 source-baseline section qualifies `main@cb3ac562`, and run
 35034503781 qualifies its hosted consumer paths at that exact head. The
 application section records the separately reviewed `18378fe` playground head.
-Public `main` subsequently acquired provider repairs at `d60ae9f6`. The joined
-application/release candidate at exact PR head `1d1af11` has regenerated Action
-bytes, the fresh native qualification above, and exact-head hosted qualification
-in run 35050421883. None of the earlier green results is borrowed for this joined
-head. Live-provider canary evidence remains a separate boundary.
+Public `main` subsequently acquired provider repairs at `d60ae9f6`; the joined
+application/release candidate at `1d1af11` has its own regenerated Action bytes,
+native qualification and exact-head hosted run 35050421883. The accepted split-
+credential v1 source at `f1af221` then received the final native, exact-head hosted
+and private live-provider evidence recorded at the top of this document before its
+tree landed on `main@a20cb537`. None of those executable results is borrowed across
+a changed source tree. Documentation-only release candidates still consume their
+own hosted package/documentation checks before landing.
 Wolf and Nyxara settled the [software licence split](DECISIONS.md); the
 [component map](../LICENSES/README.md) assigns original documentation prose and
 runnable examples while reserving brand/visual assets. npm publication, release
