@@ -10,7 +10,7 @@ actually proves. Local Windows execution, live GitHub and publication are differ
 ## Prerequisites and selected versions
 
 Use Node.js 22 or later and npm; local comparisons also require Git. The current
-native pass exercised Windows 11 with Node **24.19.0**, npm **12.0.2**, and
+native pass exercised Windows 11 with Node **24.19.0**, npm **11.17.0**, and
 PowerShell **7.6.5**. The preceding layout pass exercised Linux x64 with Node
 **22.16.0**, npm **10.9.2**, and Git **2.47.3** at `main@fe3d8b22`. Action
 metadata selects **node24** independently of the npm package's `>=22` floor.

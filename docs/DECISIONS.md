@@ -427,18 +427,6 @@ build system, or a directory-count enforcement rule. Current consumers are prove
 by the ordinary suite, installed-package journey and isolated distributed Actions.
 See [the project map](PROJECT-MAP.md) and [Qualification](QUALIFICATION.md).
 
-## D030: License original documentation openly while reserving product identity
-
-**Decision.** Original documentation prose and reusable explanation are CC BY 4.0. Runnable code, workflow, shell, expression, and policy/configuration examples are MIT. The product name, slogans, logo, mascot, artwork, screenshots, and comparable brand or visual assets remain reserved unless an asset-specific decision later changes that boundary. The [component map](../LICENSES/README.md) states the file and npm-artifact scope.
-
-**Why.** The first stable npm artifact includes the root README and user documentation beside MIT engine code. Readers need permission to reuse teaching material without being told that all package content is MIT, while the identity and future visual presentation need their own deliberate policy. The selected licences follow what each surface is meant to do, not its proximity in the repository or tarball.
-
-**Rejected.** Treating all npm contents as MIT would misstate the prose and brand boundary. Leaving original docs without a public reuse grant would make the released manual less useful. Applying a software licence to marks and artwork merely because they appear in docs is not selected.
-
-**Current consequence.** `package.json` keeps `MIT` SPDX metadata for reusable software; the always-included root README and included `docs/` content point to their CC BY 4.0 scope. Quoted or linked third-party material does not receive a diffdevil grant. The first stable identity `@wolfsblvt/diffdevil@1.0.0` is a candidate until npm and release refs are actually published and read back.
-
-**Sources.** [Release Work #459](https://github.com/Wolfsblvt/emergency-meeting/issues/459), the existing MIT/AGPL component decision, the inspected npm file list, and [Creative Commons legal code](https://creativecommons.org/licenses/by/4.0/legalcode).
-
 ## D029: Keep one engine across reusable and managed application surfaces
 
 **Status:** Settled product destination, 2026-09-15. Implementation sequence remains current Work.

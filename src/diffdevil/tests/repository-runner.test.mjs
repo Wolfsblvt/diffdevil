@@ -11,6 +11,7 @@ function runFixture(files) {
   const directory = mkdtempSync(join(tmpdir(), 'diffdevil-runner-'));
   try {
     mkdirSync(join(directory, 'src/diffdevil/tests/nested'), { recursive: true });
+    mkdirSync(join(directory, 'apps'), { recursive: true });
     for (const [name, body] of Object.entries(files)) writeFileSync(join(directory, 'src/diffdevil/tests', name), body);
     const env = { ...process.env }; delete env.NODE_TEST_CONTEXT;
     return spawnSync(process.execPath, [script], { cwd: directory, env, encoding: 'utf8', windowsHide: true });
