@@ -127,8 +127,8 @@
     }
   ],
   "sources": {
-    "package-lock.json": "38cc84cf6065ebcdf531e386997bd37ef227d0745978c82f68621f9002b1edb9",
-    "package.json": "2c2aa8ff1f47038f533fad1eee349ff30bded85ca4712bf734a2c6115019a996",
+    "package-lock.json": "ef1ce54fcc8f3725ad23c6e423480c731bf0ec77993c0deb46f2cea953729566",
+    "package.json": "337bccacf57ec1e12e264af567dc943f7df39bd938be66c180808474a5988c50",
     "src/diffdevil/actions/analyze.ts": "e16cafafd0b0f3a142b33f9cab366fe395d97aec3da43f83eb40449735f0a14f",
     "src/diffdevil/actions/apply.ts": "40be2ca7e38568d269f612a2cd395575a4d3dac8a599aaacb16012f4cae548d5",
     "src/diffdevil/actions/inputs.ts": "d4d4a2ede4eb954c74fb540e5c8d92bd93737efb768c2246d81aa6681a5f6f51",
@@ -209,7 +209,7 @@
     "src/diffdevil/schema.ts": "b6e6a6e26b7bfa197c271eb3f64e9da6f1b397435bb41f531e2cfcd7b0daf3d0",
     "src/diffdevil/sources/git.ts": "acfe6763fee61a2194c24cbdca562a6a61241b8f743af0ff5b2de62ffc322b41",
     "src/diffdevil/sources/patch.ts": "89b44e4c4048095d30de8dc3775654e89ab42857b00ad701fa8950336a72a266",
-    "tools/build-actions.mjs": "68e956203e9f4af8fbd78ec33bf84bbde52161aeccfec2f9fca30c47ce1aebf3",
+    "tools/build-actions.mjs": "6f1392fbdf85a9428679413d57e9f033d295f7b8f9ea74d64adafa3bd2b9f787",
     "tools/build.mjs": "512be7fc660ea4d2c89e2a98e627b7068a9038fb299162716e8a75e0694d209c",
     "tools/schema-build.mjs": "1d8a071fade319370cae25c4e2a2970c20f47a46e80b1c88a1379495a8b32151",
     "tsconfig.json": "3467925f201122c2aa9df0d750263792dcc629410fb201b99d8e76bc46473f75"
@@ -222,7 +222,7 @@
     "actions/apply/index.mjs": "10c11454aa6ebc9b9c0d98ebd53e02cfdcbf28ed803a817df12219904ee0ee4a",
     "actions/runtime/LICENSES/AGPL-3.0-only.txt": "0d96a4ff68ad6d4b6f1f30f713b18d5184912ba8dd389f86aa7710db079abcb0",
     "actions/runtime/LICENSES/MIT.txt": "e4a1d35cf5f6df9e2279fda467a76ee4f972ef4576ba047253425e85924d7876",
-    "actions/runtime/LICENSES/README.md": "0d17a5a64ca6d40dd099e3536c8603414e2238fe52c75ec8b55a84e0d2d538e8",
+    "actions/runtime/LICENSES/README.md": "5a8767a8ed078dae7da26d5b05680dafda48528d18bf864ce1f0ef498961c63b",
     "actions/runtime/README.md": "04969695fca45d5559a95871128b419d4af32af9325faacd7d794d8c5c6e341c",
     "actions/runtime/lib/actions/analyze.js": "4e4b5b4e79a5628040ba478b5f614d6f844cfade24e54fa1a6785f014d311b27",
     "actions/runtime/lib/actions/analyze.js.map": "9dd3ae50a3eeab35b5c6b79e4d6479d7d5030186a090eaf915c5f7551723bf13",

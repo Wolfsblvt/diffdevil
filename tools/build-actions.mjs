@@ -48,7 +48,8 @@ try {
       integrity: resolved.integrity, path, notices: notices.map(file => relative(packageRoot, file).replaceAll('\\', '/')) });
   }
   await writeFile(join(runtime, 'package.json'), JSON.stringify({ name: 'diffdevil-action-runtime', private: true, type: 'module', version: project.version,
-    license: project.license, engines: { node: '>=24' }, description: 'Generated install-free native ESM distribution for all four diffdevil Actions.' }, null, 2) + '\n');
+    // The Action closure is MIT software; the npm package additionally ships CC BY documentation.
+    license: 'MIT', engines: { node: '>=24' }, description: 'Generated install-free native ESM distribution for all four diffdevil Actions.' }, null, 2) + '\n');
   await mkdir(join(runtime, 'LICENSES'), { recursive: true });
   for (const name of ['MIT.txt', 'AGPL-3.0-only.txt', 'README.md']) await cp(join(root, 'LICENSES', name), join(runtime, 'LICENSES', name));
   await writeFile(join(runtime, 'README.md'), '# diffdevil Action runtime\n\n## Meaning\n\nGenerated, install-free native ESM distribution shared by all four Actions. It contains compiled diffdevil code, standalone schema validators, and the exact locked runtime package trees with their redistribution notices. It is not a single-file minified bundle.\n\nRegenerate with `npm run build:actions`; verify tracked bytes with `npm run check:actions`. Do not edit generated files here. Reusable diffdevil Action code is MIT; see `LICENSES/README.md` and `LICENSES/MIT.txt`. Vendored dependencies retain their own notices. See `../../docs/integration/action-distribution.md` for the build and consumer boundaries.\n');
