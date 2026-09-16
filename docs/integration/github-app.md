@@ -200,7 +200,7 @@ Source tests, local emulation, preview deployment, production deployment, GitHub
 
 ## Current standing
 
-The local public-PR playground exists in source. The hosted playground and managed App are active product Work and are not yet deployed. The current engine's generated schema-validator load must become statically bundler-visible before either Worker runtime is accepted. The optional Action `policy-token` is separate release Work and is not a hidden prerequisite for the App, which mints its own installation-scoped credential.
+The local public-PR playground exists in source. The hosted playground and managed App are active product Work and are not yet deployed. The current engine's generated schema-validator load must become statically bundler-visible before either Worker runtime is accepted. The optional Action `policy-token` is available in current source and is not a hidden prerequisite for the App, which mints its own installation-scoped credential.
 
 Public release, Workers-plan standing, live Cloudflare resources, GitHub App registration, secrets, installation, production retention, and user-facing history remain unperformed or explicitly separate until their exact readbacks exist.
 
