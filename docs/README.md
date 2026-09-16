@@ -12,6 +12,7 @@ This is the documentation map for diffdevil. It separates current product direct
 | Get a scalar, path list, or reliable shell condition | [Local automation](guides/local-automation.md) |
 | Add a source/test signal or one updated comment | [Policy recipes](guides/policy-recipes.md) |
 | Copy a complete tested input | [Example map](examples/README.md) |
+| Inspect one public PR in a local browser | [Playground application](../apps/playground/README.md) |
 
 No expression-language study is required for the size workflow. Go deeper only
 when a custom formula, scope, or policy needs it.
@@ -32,6 +33,7 @@ when a custom formula, scope, or policy needs it.
 | Publication boundary | [`PUBLICATION-BOUNDARY.md`](PUBLICATION-BOUNDARY.md) |
 | Documentation teaching and future site source | [`DOCUMENTATION.md`](DOCUMENTATION.md) |
 | Canonical textual brand | [`BRANDING.md`](BRANDING.md) |
+| Local public-PR playground | [`../apps/playground/README.md`](../apps/playground/README.md) |
 
 ## Use diffdevil
 
@@ -45,6 +47,7 @@ when a custom formula, scope, or policy needs it.
 | Presets and shortcut lowering | [`integration/presets-and-shortcuts.md`](integration/presets-and-shortcuts.md) |
 | Templates and comment lifecycle | [`integration/templates.md`](integration/templates.md) |
 | TypeScript embedding | [`integration/typescript-api.md`](integration/typescript-api.md) |
+| Playground response schema | [`../apps/playground/contracts/response-v1.schema.json`](../apps/playground/contracts/response-v1.schema.json) |
 
 ## detail language
 
@@ -61,7 +64,7 @@ Start with [`language.md`](language.md).
 | Parser architecture | [`language/parser-architecture.md`](language/parser-architecture.md) |
 | Versioning and interchange | [`language/versioning-and-interchange.md`](language/versioning-and-interchange.md) |
 
-Machine contracts live under [`../src/diffdevil/contracts/detail/v1/`](../src/diffdevil/contracts/detail/v1/), [`../src/diffdevil/contracts/schemas/`](../src/diffdevil/contracts/schemas/), and [`../src/diffdevil/presets/`](../src/diffdevil/presets/).
+Core machine contracts live under [`../src/diffdevil/contracts/detail/v1/`](../src/diffdevil/contracts/detail/v1/), [`../src/diffdevil/contracts/schemas/`](../src/diffdevil/contracts/schemas/), and [`../src/diffdevil/presets/`](../src/diffdevil/presets/). Application-specific transport contracts stay with their application, including the [playground response schema](../apps/playground/contracts/response-v1.schema.json).
 
 ## Examples
 
