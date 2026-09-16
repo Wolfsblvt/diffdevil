@@ -11,10 +11,10 @@ explains the result, the permissions, and the first useful customizations.
 
 **Release-candidate note:** the workflow below targets the intended first public
 `v1` release. That ref has not been published in this candidate. Once the release
-exists, the file is ready to copy unchanged. Before publication, use the local
-Action qualification described in [Development](../DEVELOPMENT.md), not a
-nonexistent remote ref. The copyable source is
-[`examples/workflows/size.yml`](../examples/workflows/size.yml).
+exists, the file is ready to copy unchanged. Before publication, use an accepted
+immutable source commit or the local Action qualification described in
+[Development](../DEVELOPMENT.md), not a nonexistent remote ref. The copyable source
+is [`examples/workflows/size.yml`](../examples/workflows/size.yml).
 
 Save this as `.github/workflows/diffdevil.yml` in the repository whose PRs you want
 to label, then merge it into that repository's **default branch**:
@@ -77,9 +77,11 @@ A configuration error instead fails the run; it is not an unknown-size result.
 ## Why these permissions and this event
 
 The root Action uses the workflow token automatically. The label endpoints accept
-Pull requests write permission, which also covers reading the PR. The bundled
-preset needs no repository file read. Adding `config:` or a repository template
-also requires `contents: read`.
+Pull requests write permission, which also covers reading the PR. A private live
+canary exercised both repository-level definition creation and later definition
+readback under exactly that permission, without Issues write. The bundled preset
+needs no repository file read. Adding `config:` or a repository template also
+requires `contents: read`.
 
 When one credential deliberately owns writes without Contents access, keep the
 roles separate instead of broadening it. Pass the read-only workflow credential as
@@ -110,8 +112,11 @@ jobs:
 `policy-token` can only acquire trusted base/pinned policy and its relative
 templates. PR acquisition and every label/comment effect still use
 `github-token`. Omitting `policy-token` preserves the original single-credential
-behavior. GitHub App creation and key custody are deployment concerns; the
-example shows the credential boundary rather than granting or provisioning an App.
+behavior. This split was exercised live with a read-only workflow credential and
+a Pull requests write-only App token; exact provider coordinates remain in the
+private qualification record. GitHub App creation and key custody are deployment
+concerns; the example shows the credential boundary rather than granting or
+provisioning an App.
 
 `pull_request_target` lets this workflow label PRs from forks. GitHub runs this
 workflow from the base repository's **default branch**; diffdevil's separate
@@ -171,6 +176,8 @@ selects the documented size-label application unless `mode` says otherwise.
 | A stale-source error | Rerun against the current head/base/policy. Saved artifacts are evidence to revalidate, not permission to apply old effects. |
 | The run reports partial effects | Inspect the effects journal and current provider state. Earlier observed changes are not rolled back. Rerun only after reconciling the uncertainty. |
 
-This recipe is exercised locally against fake HTTP by the example and distributed
-Action tests. Hosted event delivery and real permission behavior remain separate
-release-canary evidence.
+This recipe is exercised against fake HTTP by the example and distributed Action
+tests. The accepted source also has a separate private live canary for definition
+creation/readback, managed assignment and no-op, trusted policy, freshness refusal,
+owned-comment update, and split credentials. A genuine external-fork event and live
+partial-write failure remain unobserved.
