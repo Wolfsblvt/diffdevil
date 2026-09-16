@@ -15,7 +15,7 @@ const projection = document.querySelector('#projection');
 function measurementText(measurement) {
   if (!measurement) return 'Unavailable';
   if (measurement.status === 'exact') return new Intl.NumberFormat().format(measurement.value);
-  if (measurement.status === 'bounded') return `${new Intl.NumberFormat().format(measurement.lower)}–${new Intl.NumberFormat().format(measurement.upper)}`;
+  if (measurement.status === 'bounded') return `${new Intl.NumberFormat().format(measurement.lower)}–${new Intl.NumberFormat().format(measurement.upper)} (bounded)`;
   if (measurement.status === 'unknown') {
     if (measurement.lower !== undefined && measurement.upper !== undefined) return `${measurement.lower}–${measurement.upper} (unknown)`;
     if (measurement.lower !== undefined) return `≥ ${measurement.lower} (unknown)`;

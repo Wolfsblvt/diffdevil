@@ -9,18 +9,31 @@ const DEFAULT_PORT = 4173;
 const DEFAULT_HOST = '127.0.0.1';
 const DEFAULT_FILE_LIMIT = 250;
 const MAX_INPUT_LENGTH = 2048;
+const RESPONSE_KIND = 'diffdevil.playground-response';
+const RESPONSE_VERSION = '1.0';
 const PUBLIC_ASSETS = new Map([
   ['/', { file: new URL('./public/index.html', import.meta.url), type: 'text/html; charset=utf-8' }],
   ['/assets/app.js', { file: new URL('./public/app.js', import.meta.url), type: 'text/javascript; charset=utf-8' }],
   ['/assets/styles.css', { file: new URL('./public/styles.css', import.meta.url), type: 'text/css; charset=utf-8' }]
 ]);
-const assetCache = new Map();
 
 function parsePositiveInteger(value, label) {
   if (!/^\d+$/u.test(value)) throw new Error(`${label} must be a positive integer.`);
   const parsed = Number(value);
   if (!Number.isSafeInteger(parsed) || parsed < 1) throw new Error(`${label} must be a positive safe integer.`);
   return parsed;
+}
+
+function playgroundError(status, code, message) {
+  return { kind: RESPONSE_KIND, schemaVersion: RESPONSE_VERSION, ok: false, status, error: { code, message } };
+}
+
+function playgroundSuccess(canonicalUrl, analysis) {
+  return { kind: RESPONSE_KIND, schemaVersion: RESPONSE_VERSION, ok: true, status: 200, canonicalUrl, analysis };
+}
+
+function createPublicGitHubClient() {
+  return new GitHubClient({ readRetries: 1, timeoutMs: 15000 });
 }
 
 export function parsePublicPullRequestUrl(input) {
@@ -70,7 +83,7 @@ export function projectPlaygroundReport(report, options = {}) {
   const files = report.files.slice(0, maximumFiles).map(projectFile);
   return {
     kind: 'diffdevil.playground-analysis',
-    schemaVersion: '1.0',
+    schemaVersion: RESPONSE_VERSION,
     semantics: report.semantics,
     source: report.source,
     reportId: report.reportId,
@@ -87,6 +100,7 @@ function errorStatus(code) {
   if (code === 'E_SOURCE_STALE') return 409;
   if (code === 'E_LIMIT') return 413;
   if (code === 'E_GITHUB_PERMISSION') return 403;
+  if (code === 'E_GITHUB_RATE_LIMIT') return 429;
   if (code === 'E_GITHUB_REQUEST' || code === 'E_GITHUB_AMBIGUOUS' || code === 'E_GITHUB_RESPONSE'
     || code === 'E_GITHUB_ROUTE' || code === 'E_GITHUB_PAGINATION' || code === 'E_PLAN_TARGET') return 502;
   return 422;
@@ -101,25 +115,17 @@ function publicAnalysisError(diagnostic) {
 
 export async function analyzePublicPullRequest(input, options = {}) {
   const parsed = parsePublicPullRequestUrl(input);
-  if (!parsed.ok) return { ok: false, status: 400, error: { code: 'E_PLAYGROUND_URL', message: parsed.message } };
+  if (!parsed.ok) return playgroundError(400, 'E_PLAYGROUND_URL', parsed.message);
 
-  const client = options.client ?? new GitHubClient({ readRetries: 1, timeoutMs: 15000 });
+  const client = options.client ?? createPublicGitHubClient();
   const result = await analyzeGitHub(client, parsed.target);
   if (!result.ok) {
     const diagnostic = result.diagnostics[0] ?? { code: 'E_INTERNAL', message: 'Analysis failed without a diagnostic.' };
-    return {
-      ok: false,
-      status: errorStatus(diagnostic.code),
-      error: publicAnalysisError(diagnostic)
-    };
+    const error = publicAnalysisError(diagnostic);
+    return playgroundError(errorStatus(diagnostic.code), error.code, error.message);
   }
 
-  return {
-    ok: true,
-    status: 200,
-    canonicalUrl: parsed.canonicalUrl,
-    analysis: projectPlaygroundReport(result.value, { maximumFiles: options.maximumFiles })
-  };
+  return playgroundSuccess(parsed.canonicalUrl, projectPlaygroundReport(result.value, { maximumFiles: options.maximumFiles }));
 }
 
 function commonHeaders(contentType) {
@@ -148,22 +154,27 @@ function sendJson(response, status, value, method = 'GET') {
   send(response, status, 'application/json; charset=utf-8', JSON.stringify(value), method, { 'cache-control': 'no-store' });
 }
 
-async function loadAsset(route) {
-  let promise = assetCache.get(route);
-  if (!promise) {
+function createAssetLoader(readAsset = readFile) {
+  const cache = new Map();
+  return async route => {
     const asset = PUBLIC_ASSETS.get(route);
     if (!asset) return undefined;
-    promise = readFile(asset.file);
-    assetCache.set(route, promise);
-  }
-  const asset = PUBLIC_ASSETS.get(route);
-  return asset ? { body: await promise, type: asset.type } : undefined;
+    let promise = cache.get(route);
+    if (!promise) {
+      promise = readAsset(asset.file).catch(error => {
+        if (cache.get(route) === promise) cache.delete(route);
+        throw error;
+      });
+      cache.set(route, promise);
+    }
+    return { body: await promise, type: asset.type };
+  };
 }
 
 async function handleRequest(request, response, options) {
   const method = request.method ?? 'GET';
   if (method !== 'GET' && method !== 'HEAD') {
-    sendJson(response, 405, { ok: false, error: { code: 'E_METHOD', message: 'Only GET and HEAD are supported.' } }, method);
+    sendJson(response, 405, playgroundError(405, 'E_METHOD', 'Only GET and HEAD are supported.'), method);
     return;
   }
 
@@ -175,11 +186,11 @@ async function handleRequest(request, response, options) {
 
   if (url.pathname === '/api/analyze') {
     if (method === 'HEAD') {
-      sendJson(response, 405, { ok: false, error: { code: 'E_METHOD', message: 'Analyze with GET.' } }, method);
+      sendJson(response, 405, playgroundError(405, 'E_METHOD', 'Analyze with GET.'), method);
       return;
     }
     const analyze = options.analyze ?? (value => analyzePublicPullRequest(value, {
-      client: options.clientFactory?.() ?? new GitHubClient({ readRetries: 1, timeoutMs: 15000 }),
+      client: options.clientFactory?.() ?? createPublicGitHubClient(),
       maximumFiles: options.maximumFiles
     }));
     const result = await analyze(url.searchParams.get('url') ?? '');
@@ -187,27 +198,25 @@ async function handleRequest(request, response, options) {
     return;
   }
 
-  const asset = await loadAsset(url.pathname);
+  const asset = await options.loadAsset(url.pathname);
   if (asset) {
     send(response, 200, asset.type, asset.body, method, { 'cache-control': 'public, max-age=300' });
     return;
   }
 
-  sendJson(response, 404, { ok: false, error: { code: 'E_NOT_FOUND', message: 'Not found.' } }, method);
+  sendJson(response, 404, playgroundError(404, 'E_NOT_FOUND', 'Not found.'), method);
 }
 
 export function createPlaygroundServer(options = {}) {
+  const requestOptions = { ...options, loadAsset: createAssetLoader(options.readAsset) };
   return createServer((request, response) => {
-    void handleRequest(request, response, options).catch(error => {
+    void handleRequest(request, response, requestOptions).catch(error => {
       try { options.onError?.(error); } catch { /* Error reporting must not replace the original response boundary. */ }
       if (response.headersSent) {
         response.destroy(error instanceof Error ? error : undefined);
         return;
       }
-      sendJson(response, 500, {
-        ok: false,
-        error: { code: 'E_INTERNAL', message: 'Unexpected server failure.' }
-      }, request.method ?? 'GET');
+      sendJson(response, 500, playgroundError(500, 'E_INTERNAL', 'Unexpected server failure.'), request.method ?? 'GET');
     });
   });
 }
