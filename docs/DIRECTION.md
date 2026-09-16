@@ -30,8 +30,10 @@ release-candidate paths.
 
 The complete selected product also includes a managed GitHub App, a public
 read-only PR playground, and the website/documentation experience. These are now
-active product Work rather than unnamed later presentation. None is implemented
-in the current checkout yet.
+active product Work rather than unnamed later presentation. The current candidate
+contains the first local read-only playground and documentation-front-door vertical
+under `apps/playground/`; the hosted site and GitHub App runtime are not yet
+implemented or deployed.
 
 All three surfaces use the same engine and contracts:
 
@@ -47,9 +49,11 @@ from operation, administration, continuity, scheduling, history, scale and suppo
 not from removing engine or policy capability from the open product. Reusable
 software remains MIT; application and service software remains AGPL-3.0-only.
 
-The first coherent implementation tranche should establish these application
-boundaries and one useful vertical experience without inventing a second semantic
-engine, a repository split, or generic hosted machinery before real behavior.
+The first coherent implementation tranche establishes these application
+boundaries through one useful local vertical without inventing a second semantic
+engine, a repository split, or generic hosted machinery before real behavior. Its
+versioned JSON response is an application contract, backed by a schema and contract
+tests; live public-GitHub and browser use remain distinct qualification boundaries.
 
 ## Current release preparation
 
@@ -75,9 +79,11 @@ These changes do not alter measurement semantics.
 
 ## Repository layout and delivery
 
-The product, including tests/contracts/presets, is under `src/diffdevil/`.
-`actions/` owns distribution; `docs/` owns manuals/examples/research; `tools/` owns
-build and qualification scripts. One package and shared semantic engine remain.
+The reusable product core, including its tests/contracts/presets, is under
+`src/diffdevil/`. `apps/playground/` owns the AGPL application adapter, public assets,
+application response contract and focused tests. `actions/` owns distribution;
+`docs/` owns manuals/examples/research; `tools/` owns build and qualification scripts.
+One package and shared semantic engine remain.
 The root Action address is unchanged; sub-actions now use `/actions/analyze`,
 `/actions/apply`, and `/actions/sync-labels`. Old prerelease subdirectory addresses
 are intentionally not retained as duplicate root wrappers.
@@ -99,8 +105,9 @@ and historical runtime/consumer evidence is separated in
 [Qualification](QUALIFICATION.md); mock HTTP is not live permission evidence.
 
 Wolf and Nyxara selected MIT for reusable software and AGPL-3.0-only for
-application/service code. The [licence map](../LICENSES/README.md) distinguishes
-those surfaces and holds non-software content rights open. Wolf authorized the
+application/service code. Original documentation prose is CC BY 4.0, runnable
+examples are MIT, and brand/visual assets remain reserved. The
+[licence map](../LICENSES/README.md) distinguishes those surfaces. Wolf authorized the
 public source repository after this preparation; public source/Action availability,
 npm availability, Marketplace listing, security intake,
 and the website, playground, and GitHub App are separate observable outcomes. Do

@@ -7,9 +7,33 @@ historical runtime results and unobserved external effects. A schema specimen is
 not execution, a green unit suite is not a packaged consumer, and mock HTTP is not
 live GitHub permission evidence.
 
-## September 16 v1 release candidate — native Windows evidence
+## September 16 playground application evidence
 
-The selected local candidate is `@wolfsblvt/diffdevil@1.0.0`, with root lock
+The first executable playground candidate was independently reviewed at exact
+[`18378fe`](https://github.com/Wolfsblvt/diffdevil/commit/18378fe3b5db8fc6fe7a1c5248a461f24d6b1aea).
+[Verify run 35040133174](https://github.com/Wolfsblvt/diffdevil/actions/runs/35040133174)
+passed Linux Node 22, Linux Node 24 and Windows Node 24 at that head, including
+ordinary verification, full conformance, the registry-backed installed-package
+consumer and all four install-free Action consumers.
+
+The fresh cold application review also started the local server on Windows 11 /
+Node 26.7.0, exercised malformed input and HTTP error routes, and completed one
+unauthenticated live analysis of public diffdevil PR #1. That read returned a
+complete 14-file comparison whose raw and replacement-aware totals reconciled with
+Git. The reviewer's local `npm test` observed **467 passed** at `18378fe`; that
+ambient Node 26 run is useful count and operator-path evidence, not Node 22/24
+runtime qualification.
+
+The review found stale current-frontier copy, an unguarded versioned response
+contract, a missing executable npm/application exclusion, and a rejected static
+asset read that could remain cached for the process lifetime. The current branch
+repairs those findings and its final exact-head hosted result must be consumed
+separately before integration. No hosted deployment, credential, private-repository
+read, or provider write is established by this application evidence.
+
+## September 16 v1 source baseline — native Windows evidence
+
+The release-source baseline at exact `main@cb3ac562` is `@wolfsblvt/diffdevil@1.0.0`, with root lock
 metadata updated and `private: true` removed. On Windows 11, the scoped native
 toolchain was **Node v24.19.0, npm 11.17.0, PowerShell 7.6.5**. A process-scoped
 PATH selected that Node executable for npm script children as well as the explicit
@@ -17,7 +41,7 @@ npm launcher; the ambient `C:\Program Files\nodejs\node.exe` was v26.7.0. One
 earlier verification attempt inherited that ambient runtime and was cancelled
 before a verdict. It is not Node 24 evidence.
 
-The exact candidate restored **15 locked packages** with `npm ci --offline`
+That exact baseline restored **15 locked packages** with `npm ci --offline`
 from `artifacts/dependencies/npm-cache`, without new dependency versions. The
 release-sensitive paths then passed:
 
@@ -82,7 +106,7 @@ public-source grant are subsequent to the first native pass reported below.
 | Supplied conformance | `npm run test:conformance` | **189 passed, 0 failed, 0 not executed, 0 harness failures**. |
 | Installed npm consumer | `npm run test:package` | **485-file tarball**, installed offline outside the checkout; actual Windows npm dispatch and installed PowerShell launcher version/query, CLI/API/schema/type consumers passed. |
 | Distributed Actions | `npm run test:actions` | **10 isolated executions**, all four current metadata-selected paths, Node 24, no consumer install, mock HTTP only. |
-| Shortcut/formula comparison on preceding Linux layout | `npm run demo:shortcuts` | Four CLI pairs, named/custom formula and pure Action shorthand/policy parity passed. |
+| Shortcut/formula comparison on preceding Linux layout | `npm run demo:shortcuts` | Four CLI pairs, named/custom formula and pure Action shorthand/policy parity passed. Not an Action host test. |
 | Example relocation regression on preceding Linux layout | Focused `examples.test.mjs` | All eight example/CI-contract tests passed after repairing old root-copy and subpath assumptions. |
 
 The 189 supplied conformance cases are a separately reported part of production
@@ -195,11 +219,13 @@ Historical artifact paths there identify their old runs, not files guaranteed to
 be present in today's checkout.
 
 The preceding September 15 Windows pass qualified its earlier exact tree. The
-September 16 section above qualifies the local `1.0.0` source candidate, and run
-35034503781 qualifies its hosted consumer paths at exact `cb3ac562`. The later
-accepted cold-review repairs change the next candidate, so none of this evidence
-is borrowed for their joined head. That head requires regenerated Action bytes,
-affected native and hosted qualification, and the disposable live provider canary.
+September 16 source-baseline section qualifies `main@cb3ac562`, and run
+35034503781 qualifies its hosted consumer paths at that exact head. The
+application section records the separately reviewed `18378fe` playground head.
+Public `main` subsequently acquired provider repairs at `d60ae9f6`. The replayed
+application and release candidate must have regenerated Action bytes and fresh
+native and hosted qualification; none of the earlier green results is borrowed
+for that joined head. Live-provider canary evidence remains a separate boundary.
 Wolf and Nyxara settled the [software licence split](DECISIONS.md); the
 [component map](../LICENSES/README.md) assigns original documentation prose and
 runnable examples while reserving brand/visual assets. npm publication, release
