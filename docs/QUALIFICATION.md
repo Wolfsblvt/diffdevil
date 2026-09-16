@@ -7,6 +7,43 @@ historical runtime results and unobserved external effects. A schema specimen is
 not execution, a green unit suite is not a packaged consumer, and mock HTTP is not
 live GitHub permission evidence.
 
+## September 16 joined v1/playground candidate — native Windows Node 24
+
+The preserving replay of playground PR #1's observed remote head `12eeaa262`
+onto public `main@d60ae9f6`, plus the focused join at `0e027327`, kept the
+current release metadata, provider repairs, and the application's AGPL boundary.
+On Windows 11 the joined source used **Node v24.19.0, npm 11.17.0, and
+PowerShell 7.6.5**. The project restored all **15 locked packages** with
+`npm ci --offline --cache D:\code\diffdevil\artifacts\dependencies\npm-cache`
+and no new dependency or machine-wide toolchain. The source was rebuilt and the
+reviewed, install-free Action distribution regenerated before the final checks.
+
+| Boundary | Joined native result |
+| --- | --- |
+| `npm run verify` | **472 passed, 0 failed, 0 skipped**; exact parity over 1,141 generated Action files and 12 locked runtime packages. |
+| `npm run test:conformance` | **189 passed, 0 failed, 0 not executed, 0 harness failures**. |
+| `npm run test:package` | **486-file** `1.0.0` tarball installed offline outside the checkout. Actual Windows npm CMD dispatch, installed PowerShell launcher version/scalar query, CLI, ESM API, schemas, and strict TypeScript declarations passed. The journey passed again with `npm_config_cache` bound to the one supplied cache; `installMode` was `offline`. |
+| `npm run test:actions` | **10 isolated Node 24 executions** over root, analyze, apply, and sync-labels metadata-selected entries; no consumer install, mock HTTP only. |
+
+The first ordinary run on the replayed local tree found **469 passing and 3
+failing** cases, all in the miniature repository-runner fixture: test discovery
+now includes `apps/`, but that fixture lacked the empty application root.
+Creating the directory reproduced the supported repository shape; its three
+focused cases passed and the full ordinary result above then passed. The Action
+manifest changed only source hashes required by the joined package and licence
+inputs; generated executable paths remained current. The stale duplicate D030
+licence entry was removed while retaining the current mixed-content decision.
+
+These are native source and installed-consumer results for the joined tree at
+`0e027327`. The final PR head and its Linux Node 22/24 and Windows Node 24
+hosted Verify matrix must be read separately after push. The prior private
+canary exercised public `main@d60ae9f6` Actions; its actual provider writes,
+freshness refusal, and owned-comment readbacks are recorded in the current
+private Work room, not promoted into live evidence for an unpushed PR head.
+The local playground server's reviewed public-GitHub read at `18378fe` remains
+an earlier application specimen; a hosted website, GitHub App runtime, npm
+publication, release refs, and a genuine external-fork event remain unobserved.
+
 ## September 16 playground application evidence
 
 The first executable playground candidate was independently reviewed at exact
@@ -222,10 +259,11 @@ The preceding September 15 Windows pass qualified its earlier exact tree. The
 September 16 source-baseline section qualifies `main@cb3ac562`, and run
 35034503781 qualifies its hosted consumer paths at that exact head. The
 application section records the separately reviewed `18378fe` playground head.
-Public `main` subsequently acquired provider repairs at `d60ae9f6`. The replayed
-application and release candidate must have regenerated Action bytes and fresh
-native and hosted qualification; none of the earlier green results is borrowed
-for that joined head. Live-provider canary evidence remains a separate boundary.
+Public `main` subsequently acquired provider repairs at `d60ae9f6`. The joined
+application/release candidate now has regenerated Action bytes and the fresh
+native qualification above; final-head hosted qualification remains distinct.
+None of the earlier green results is borrowed for the joined head.
+Live-provider canary evidence remains a separate boundary.
 Wolf and Nyxara settled the [software licence split](DECISIONS.md); the
 [component map](../LICENSES/README.md) assigns original documentation prose and
 runnable examples while reserving brand/visual assets. npm publication, release
