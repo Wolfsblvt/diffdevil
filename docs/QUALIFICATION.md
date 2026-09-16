@@ -33,10 +33,20 @@ The tested source changes are release identity, content/licence scope, package
 qualification expectations, and the copied Action licence/metadata hashes; no
 semantic engine or provider mutation behavior changed. GitHub private
 vulnerability reporting was read back as enabled for the public repository, and
-the local `SECURITY.md` points to that existing route. The hosted policy file,
-the exact-head CI matrix for this new candidate, independent cold trust review,
-real provider permissions/effects, npm publication, and `v1` refs are separate
-readbacks.
+the hosted `SECURITY.md` bytes matched the local source.
+
+After the source push, [Verify run 35034503781](https://github.com/Wolfsblvt/diffdevil/actions/runs/35034503781)
+at exact `main@cb3ac562224c7c9d80cefaf87d0ab94f62a5117d` passed Linux
+Node 22, Linux Node 24, and Windows Node 24. Each job passed ordinary verification,
+full conformance, the registry-backed installed-package consumer, and the
+install-free Action consumers. This establishes those hosted consumer paths for
+that exact source head, not live GitHub write permissions or events.
+
+The subsequent independent cold source review returned seven findings. The
+accepted permission question requires live provider evidence; accepted source and
+licence repairs require a newly joined candidate and fresh affected qualification.
+npm publication, immutable and major Action refs, Marketplace, and real provider
+effects remain separate readbacks.
 
 ## Prior environment and boundary
 
@@ -185,10 +195,12 @@ Historical artifact paths there identify their old runs, not files guaranteed to
 be present in today's checkout.
 
 The preceding September 15 Windows pass qualified its earlier exact tree. The
-September 16 section above qualifies the local `1.0.0` candidate. Independent
-trust/effect review and disposable live provider canary remain, while hosted CI
-for the newly committed head must be read separately. Wolf and Nyxara settled the
-[software licence split](DECISIONS.md); the [component map](../LICENSES/README.md)
-now also assigns original documentation prose and runnable examples while
-reserving brand/visual assets. npm publication, release tags, Marketplace,
-hosted security-policy exposure, and website delivery are separate effects.
+September 16 section above qualifies the local `1.0.0` source candidate, and run
+35034503781 qualifies its hosted consumer paths at exact `cb3ac562`. The later
+accepted cold-review repairs change the next candidate, so none of this evidence
+is borrowed for their joined head. That head requires regenerated Action bytes,
+affected native and hosted qualification, and the disposable live provider canary.
+Wolf and Nyxara settled the [software licence split](DECISIONS.md); the
+[component map](../LICENSES/README.md) assigns original documentation prose and
+runnable examples while reserving brand/visual assets. npm publication, release
+tags, Marketplace, live effects, and website delivery are separate effects.
