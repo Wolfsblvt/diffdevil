@@ -6,10 +6,8 @@ import { tap } from 'node:test/reporters';
 // Node may report a file without test() registrations as a passing file wrapper.
 // Per-file summaries, unlike that wrapper, count actual registered tests.
 const roots = ['src/diffdevil/tests', 'apps'];
-const retiredPlaygroundTest = 'src/diffdevil/tests/playground.test.mjs';
 const files = roots.flatMap(root => readdirSync(root, { recursive: true })
-  .filter(path => path.endsWith('.test.mjs')).map(path => join(root, path)))
-  .filter(path => path !== retiredPlaygroundTest).sort();
+  .filter(path => path.endsWith('.test.mjs')).map(path => join(root, path))).sort();
 if (files.length === 0) {
   console.error(`No ordinary test files were discovered under ${roots.join(' or ')}.`);
   process.exit(2);
