@@ -90,7 +90,7 @@ jobs:
       - id: app-token
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         with:
-          app-id: ${{ vars.DIFFDEVIL_APP_ID }}
+          client-id: ${{ vars.DIFFDEVIL_APP_CLIENT_ID }}
           private-key: ${{ secrets.DIFFDEVIL_APP_PRIVATE_KEY }}
           permission-pull-requests: write
       - uses: Wolfsblvt/diffdevil@v1
