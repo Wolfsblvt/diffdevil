@@ -16,7 +16,8 @@
     "test:conformance": "node tools/conformance.mjs",
     "build:actions": "npm run build && node tools/build-actions.mjs",
     "check:actions": "node tools/build-actions.mjs --check",
-    "test:actions": "node tools/action-smoke.mjs"
+    "test:actions": "node tools/action-smoke.mjs",
+    "playground": "npm run build && node apps/playground/server.mjs"
   },
   "keywords": [
     "git",

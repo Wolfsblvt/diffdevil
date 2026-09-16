@@ -27,7 +27,7 @@ diffdevil provides one deterministic core that can:
 7. emit versioned reports and inspectable effect plans;
 8. optionally apply only the GitHub labels and owned comments selected by policy.
 
-The same meaning should survive local CLI use, shell composition, library embedding, GitHub Actions, saved reports, and coding-agent workflows.
+The same meaning should survive local CLI use, shell composition, library embedding, GitHub Actions, a managed GitHub App, a public read-only PR playground, saved reports, the website/documentation experience, and coding-agent workflows.
 
 ## The experience
 
@@ -84,6 +84,22 @@ Analysis, policy evaluation, planning, and mutation are distinct.
 
 A token does not turn reading into writing. An effect plan can be inspected before application. Label reconciliation may remove only declared managed members. Comment lifecycle must identify its own comments. Unrelated metadata remains untouched.
 
+### Try it before installing it
+
+A public read-only playground should let somebody enter a public pull-request URL and inspect what diffdevil sees: normalized files, raw and replacement-aware measurements, evidence quality, selected metrics, policy results, and the compact projection an automation or coding agent would consume.
+
+The playground is a real product surface, not a hand-maintained demo. It uses the same engine and public contracts, applies no repository effects, and never turns a public PR into permission to inspect private data.
+
+### Use it without becoming its operator
+
+The managed GitHub App should provide the useful repository experience without requiring every adopter to assemble and maintain workflows, credentials, runners, upgrades, and hosted configuration themselves. It uses the same engine, policy model, reports, plans, and effect boundaries as the package and Actions.
+
+Repository-owned policy remains authoritative. Hosted defaults may help a repository begin, but the service must not create a second hidden policy system that eventually disagrees with source-controlled configuration.
+
+### Keep the open product complete
+
+The open package, CLI, API, and Actions remain fully capable product surfaces. Hosted value comes from operation, administration, continuity, scheduling, history, scale, and support rather than withholding the useful engine or policy language. A self-hosted application or service can remain possible without forcing ordinary users to become infrastructure maintainers.
+
 ## Product shape
 
 The selected complete shape is:
@@ -98,7 +114,11 @@ The selected complete shape is:
 - the optional detail expression language;
 - presets and convenience authoring that compile into the same policy model;
 - human, scalar, lines, NUL, JSON, JSONL, environment, Markdown, and compact agent-facing projections where each earns its use;
-- managed labels, owned comments, and label-definition validation/synchronization.
+- managed labels, owned comments, and label-definition validation/synchronization;
+- a managed GitHub App that operates the same engine and repository-owned policy;
+- a public read-only PR playground backed by the same reports and projections;
+- a website and documentation experience rendered from repository-owned product and manual sources;
+- application and service code that may remain in this repository and release lifecycle without changing the reusable package boundary.
 
 ## Product character
 
@@ -134,4 +154,8 @@ diffdevil succeeds when:
 - the zero-config Action is useful without trapping advanced users;
 - the full package, CLI, and Action all consume the same semantics;
 - applied GitHub effects are convenient, scoped, and explainable;
+- a developer can understand a public PR through the playground before installing anything;
+- a repository can move between CLI, Actions, and the managed App without changing measurement or policy meaning;
+- the website teaches the product from the same maintained sources contributors update with the code;
+- hosted convenience adds operational value without making the open product deliberately incomplete;
 - the tool feels distinctive without making a production workflow look unserious.

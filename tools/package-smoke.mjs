@@ -34,7 +34,7 @@ for (const path of ['docs/guides/auto-label-pull-requests.md', 'docs/guides/loca
   assert.ok(paths.includes(path), `Missing consumer documentation asset: ${path}`);
 }
 assert.equal(paths.some(path => /(^|\/)(\.git|\.handoff|artifacts|node_modules|source-inputs)(\/|$)/.test(path)), false);
-assert.equal(paths.some(path => ['src/diffdevil/tests/', 'tools/', 'actions/'].some(prefix => path.startsWith(prefix))), false, 'The npm artifact must not include repository tests/tooling or the separate Action distribution.');
+assert.equal(paths.some(path => ['src/diffdevil/tests/', 'tools/', 'actions/', 'apps/'].some(prefix => path.startsWith(prefix))), false, 'The npm artifact must not include tests/tooling, AGPL applications, or the separate Action distribution.');
 // Keep the consumer outside the checkout so Node cannot borrow its dependencies.
 const home = mkdtempSync(join(tmpdir(), 'diffdevil consumer with spaces '));
 await writeFile(join(home, 'package.json'), JSON.stringify({ private: true, type: 'module' }) + '\n');

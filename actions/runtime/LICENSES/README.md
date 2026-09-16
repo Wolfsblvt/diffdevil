@@ -10,7 +10,7 @@ The portable diff engine, public TypeScript API and npm package, CLI, GitHub Act
 
 ## Application and hosted-service software — AGPL-3.0-only
 
-Website and interactive demo application code, hosted runtime, GitHub App backend, hosted configuration, orchestration and management UI, and comparable service-side product code are selected for [GNU AGPL-3.0-only](AGPL-3.0-only.txt). These application/service surfaces may live in this same repository. **The present source checkout does not yet contain a website application or hosted service runtime.** When they arrive, their files and package metadata must explicitly name `AGPL-3.0-only`. MIT-covered engine code incorporated into an AGPL-covered application keeps its MIT notices.
+Website and interactive demo application code, hosted runtime, GitHub App backend, hosted configuration, orchestration and management UI, and comparable service-side product code are selected for [GNU AGPL-3.0-only](AGPL-3.0-only.txt). These application/service surfaces may live in this same repository. The first application surface is `apps/playground/`: its local server, browser code, styles, and page assets explicitly carry `AGPL-3.0-only`. MIT-covered engine code incorporated into an AGPL-covered application keeps its MIT notices. Future application paths must name their licence just as explicitly rather than inheriting it from a neighboring directory.
 
 ## Documentation and examples
 
@@ -18,7 +18,7 @@ Original documentation prose and reusable explanatory content, including the roo
 
 Runnable code, workflows, shell scripts, expression files, and policy/configuration examples under `docs/examples/` are MIT-licensed software or reusable integration specimens. The scripts already carry SPDX headers. Synthetic diff and report specimens are explanatory content under CC BY 4.0; they are not authenticated provider records.
 
-The product name, slogans, logos, mascot, artwork, screenshots, and other brand or visual assets remain reserved. Their appearance in CC-licensed prose does not grant trademark or asset rights. `docs/BRANDING.md` describes the textual brand; it is not a licence for the brand identifiers it describes. No website or hosted application software is present in this source checkout.
+The product name, slogans, logos, mascot, artwork, screenshots, and other brand or visual assets remain reserved. Their appearance in CC-licensed prose does not grant trademark or asset rights. `docs/BRANDING.md` describes the textual brand; it is not a licence for the brand identifiers it describes. The local playground application is present in source; no hosted deployment or GitHub App runtime is claimed yet.
 
 The npm artifact includes MIT software, the CC BY 4.0 root README and documentation, reserved identifiers, the top-level `LICENSE.md` dispatch, and this component map. Its package metadata uses `SEE LICENSE IN LICENSE.md`; the Action runtime package remains MIT because that separate distribution contains reusable software and third-party notices rather than the mixed npm documentation surface.
 

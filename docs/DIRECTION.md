@@ -4,8 +4,8 @@
 
 The complete destination remains a portable diff-policy engine, with useful
 language-free entry points and full detail depth when needed. This document owns
-the current implemented frontier and remaining release work. The Vision is not
-redefined as whichever first example was easiest to ship.
+the current implemented frontier and the active release and application work.
+The Vision is not redefined as whichever first example was easiest to ship.
 
 ## Current product frontier
 
@@ -26,12 +26,42 @@ detail formulas; file selection and quantifier shortcuts retain their useful job
 [The complete horizon](IMPLEMENTATION-HORIZON.md) remains selected beyond these
 release-candidate paths.
 
+## Active application frontier
+
+The complete selected product also includes a managed GitHub App, a public
+read-only PR playground, and the website/documentation experience. These are now
+active product Work rather than unnamed later presentation. The current candidate
+contains the first local read-only playground and documentation-front-door vertical
+under `apps/playground/`; the hosted site and GitHub App runtime are not yet
+implemented or deployed.
+
+All three surfaces use the same engine and contracts:
+
+- the playground analyzes public PRs without applying repository effects;
+- the GitHub App provides hosted operation around the same reports, plans, policy,
+  and effect boundaries;
+- repository-owned policy remains authoritative over hosted defaults; and
+- the website renders repository-owned product and documentation sources rather
+  than creating a competing wiki or semantic copy.
+
+The open package, CLI, API and Actions remain fully capable. Hosted value comes
+from operation, administration, continuity, scheduling, history, scale and support,
+not from removing engine or policy capability from the open product. Reusable
+software remains MIT; application and service software remains AGPL-3.0-only.
+
+The first coherent implementation tranche establishes these application
+boundaries through one useful local vertical without inventing a second semantic
+engine, a repository split, or generic hosted machinery before real behavior. Its
+versioned JSON response is an application contract, backed by a schema and contract
+tests; live public-GitHub and browser use remain distinct qualification boundaries.
+
 ## Current release preparation
 
 The final pass adds task-first guides and tested examples for one-file PR labeling,
 local scripts, source/test signals, and opt-in comments. User documentation has a
-durable editorial/source home in [Documentation design](DOCUMENTATION.md). A later
-website should render these sources, not introduce a competing wiki.
+durable editorial/source home in [Documentation design](DOCUMENTATION.md). The
+selected website/documentation tranche renders these sources rather than
+introducing a competing wiki.
 
 Public technical references retain the founding choices, alternatives, research,
 and earlier implementation evidence. Private activation instructions and raw
@@ -49,44 +79,52 @@ These changes do not alter measurement semantics.
 
 ## Repository layout and delivery
 
-The product, including tests/contracts/presets, is under `src/diffdevil/`.
-`actions/` owns distribution; `docs/` owns manuals/examples/research; `tools/` owns
-build and qualification scripts. One package and shared semantic engine remain.
+The reusable product core, including its tests/contracts/presets, is under
+`src/diffdevil/`. `apps/playground/` owns the AGPL application adapter, public assets,
+application response contract and focused tests. `actions/` owns distribution;
+`docs/` owns manuals/examples/research; `tools/` owns build and qualification scripts.
+One package and shared semantic engine remain.
 The root Action address is unchanged; sub-actions now use `/actions/analyze`,
 `/actions/apply`, and `/actions/sync-labels`. Old prerelease subdirectory addresses
 are intentionally not retained as duplicate root wrappers.
 
 The public checkout itself is the delivery root. The private transfer was
 consumed after durable target readback and is not needed to build or publish the
-tracked tree.
+tracked tree. Application surfaces stay in the same repository and release
+lifecycle, but their exact directory layout is selected by the implementation
+tranche rather than frozen by this document.
 [The project map](PROJECT-MAP.md) locates current ownership.
 
 ## Next release movement
 
 The native Windows/Node 24 qualification is recorded in
 [Qualification](QUALIFICATION.md). The next release seams are an independent
-trust/effects read and a separately authorized hosted canary. Current and
-historical runtime/consumer evidence is separated in
+trust/effects read, a hosted provider canary, the first-consumer no-dual-writer
+contract, and the `v1.0.0` publication path with outside-consumer proof. Current
+and historical runtime/consumer evidence is separated in
 [Qualification](QUALIFICATION.md); mock HTTP is not live permission evidence.
 
 Wolf and Nyxara selected MIT for reusable software and AGPL-3.0-only for
-application/service code. Original documentation prose is now CC BY 4.0,
-runnable examples are MIT, and brand/visual assets remain reserved. The
-[licence map](../LICENSES/README.md) distinguishes those surfaces. The selected
-first stable package identity is `@wolfsblvt/diffdevil@1.0.0`; local package and
-lock metadata now carry that candidate without creating npm or Action refs. Wolf authorized the
+application/service code. Original documentation prose is CC BY 4.0, runnable
+examples are MIT, and brand/visual assets remain reserved. The
+[licence map](../LICENSES/README.md) distinguishes those surfaces. Wolf authorized the
 public source repository after this preparation; public source/Action availability,
 npm availability, Marketplace listing, security intake,
-and a documentation website are separate observable outcomes. Do not imply all of
-them happened because one Git push succeeded. No package installation, public
-repository, token, label change, or publication should be silently delegated to a
-user to compensate for an unfinished local implementation.
+and the website, playground, and GitHub App are separate observable outcomes. Do
+not imply all of them happened because one Git push succeeded. Release preparation
+and application implementation may move in parallel while publication remains
+bound to the accepted reviewed and live-qualified candidate. No package
+installation, public repository, token, label change, or publication should be
+silently delegated to a user to compensate for an unfinished local implementation.
 
 ## Preserve the remaining horizon
 
 Keep richer explanation/discovery, further measured usability improvements,
-additional qualified platforms, visual identity, and the documentation site in
-their natural product homes. Do not add a bundler merely to hide the generated
-file count; reconsider packaging when it has a demonstrated consumer benefit.
-Do not replace selected source, query, policy, or effect capabilities with a size
-labeler to make the release checklist shorter.
+additional qualified platforms, visual identity, the website, playground, and
+GitHub App in their natural product homes. The application surfaces are active
+selected product, not optional polish, but their implementation still works inside
+out from useful behavior rather than beginning with a hosting control plane. Do
+not add a bundler merely to hide the generated file count; reconsider packaging
+when it has a demonstrated consumer benefit. Do not replace selected source,
+query, policy, effect, or hosted-application capabilities with a size labeler to
+make the release checklist shorter.

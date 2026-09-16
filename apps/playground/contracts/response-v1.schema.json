@@ -1,0 +1,242 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:diffdevil:playground-response:1",
+  "$comment": "SPDX-License-Identifier: AGPL-3.0-only",
+  "title": "diffdevil playground response v1",
+  "description": "Versioned JSON response for the public pull-request playground. The health endpoint is a separate operator contract.",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/success"
+    },
+    {
+      "$ref": "#/$defs/failure"
+    }
+  ],
+  "$defs": {
+    "envelope": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "diffdevil.playground-response"
+        },
+        "schemaVersion": {
+          "const": "1.0"
+        }
+      },
+      "required": [
+        "kind",
+        "schemaVersion"
+      ]
+    },
+    "success": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "diffdevil.playground-response"
+            },
+            "schemaVersion": {
+              "const": "1.0"
+            },
+            "ok": {
+              "const": true
+            },
+            "status": {
+              "const": 200
+            },
+            "canonicalUrl": {
+              "type": "string",
+              "pattern": "^https://github\\.com/[^/]+/[^/]+/pull/[1-9][0-9]*$"
+            },
+            "analysis": {
+              "$ref": "#/$defs/analysis"
+            }
+          },
+          "required": [
+            "kind",
+            "schemaVersion",
+            "ok",
+            "status",
+            "canonicalUrl",
+            "analysis"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "failure": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "diffdevil.playground-response"
+            },
+            "schemaVersion": {
+              "const": "1.0"
+            },
+            "ok": {
+              "const": false
+            },
+            "status": {
+              "type": "integer",
+              "minimum": 400,
+              "maximum": 599
+            },
+            "error": {
+              "type": "object",
+              "properties": {
+                "code": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "message": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "code",
+                "message"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "kind",
+            "schemaVersion",
+            "ok",
+            "status",
+            "error"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "analysis": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "diffdevil.playground-analysis"
+        },
+        "schemaVersion": {
+          "const": "1.0"
+        },
+        "semantics": {
+          "$ref": "urn:diffdevil:report:1#/properties/semantics"
+        },
+        "source": {
+          "allOf": [
+            {
+              "$ref": "urn:diffdevil:report:1#/properties/source"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "const": "github-api"
+                },
+                "repository": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "pullRequest": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "kind",
+                "repository",
+                "pullRequest"
+              ]
+            }
+          ]
+        },
+        "reportId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "measurement": {
+          "$ref": "urn:diffdevil:report:1#/properties/measurement"
+        },
+        "fileSet": {
+          "$ref": "urn:diffdevil:report:1#/properties/fileSet"
+        },
+        "totals": {
+          "$ref": "urn:diffdevil:report:1#/properties/totals"
+        },
+        "files": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/file"
+          }
+        },
+        "filesOmitted": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "kind",
+        "schemaVersion",
+        "semantics",
+        "source",
+        "measurement",
+        "fileSet",
+        "totals",
+        "files",
+        "filesOmitted"
+      ],
+      "additionalProperties": false
+    },
+    "file": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "$ref": "urn:diffdevil:report:1#/properties/files/items/properties/path"
+        },
+        "oldPath": {
+          "$ref": "urn:diffdevil:report:1#/properties/files/items/properties/oldPath"
+        },
+        "changeType": {
+          "$ref": "urn:diffdevil:report:1#/properties/files/items/properties/changeType"
+        },
+        "kind": {
+          "$ref": "urn:diffdevil:report:1#/properties/files/items/properties/kind"
+        },
+        "included": {
+          "$ref": "urn:diffdevil:report:1#/properties/files/items/properties/included"
+        },
+        "measurement": {
+          "$ref": "urn:diffdevil:report:1#/properties/files/items/properties/measurement"
+        },
+        "raw": {
+          "$ref": "urn:diffdevil:report:1#/properties/files/items/properties/raw"
+        },
+        "lines": {
+          "$ref": "urn:diffdevil:report:1#/properties/files/items/properties/lines"
+        }
+      },
+      "required": [
+        "path",
+        "changeType",
+        "kind",
+        "included",
+        "measurement",
+        "raw",
+        "lines"
+      ],
+      "additionalProperties": false
+    }
+  }
+}
