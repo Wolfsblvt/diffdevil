@@ -4,7 +4,7 @@
 
 This document defines the diffdevil Action surfaces, their language-free defaults, inline customization, outputs, trusted-policy boundary, and optional label/comment behavior. The root Action is the convenient default size-label automation; sub-actions expose read-only analysis, explicit application, and definition synchronization. All share the same policy compiler and evaluator.
 
-These entry points are implemented and locally qualified, but unpublished. `@v1` in the workflow specimens is a future release coordinate, not an existing release or a hosted-workflow observation. Current platform facts are linked to dated primary-source evidence.
+These entry points are implemented and qualified through native and hosted consumer matrices plus a separate private live-provider canary, but unpublished. `@v1` in the workflow specimens is a future release coordinate, not an existing release. Current platform and evidence boundaries remain explicit below.
 
 ## Current executable boundary
 
@@ -12,8 +12,15 @@ Shared Action runners implement root, analyze, apply and sync-labels through
 `src/diffdevil/actions/run.ts`. Focused tests execute runner inputs, event files,
 output/summary files, policy trust, artifact revalidation, controlled Git, and
 provider readback against fake GitHub HTTP. [Qualification](../QUALIFICATION.md)
-owns current executed totals and runtime standing. No live provider or hosted
-workflow has been exercised.
+owns exact native, hosted, installed-package, Action-consumer, and live-provider
+evidence.
+
+The accepted source has a separate private canary for missing-definition creation,
+true no-op readback, managed-label replacement, trusted base policy despite a
+hostile PR-head copy, stale-plan refusal, one owned-comment update, and split
+policy/effect credentials. That evidence does not turn fake-provider tests into
+live tests or establish a genuine external-fork event or live partial-write
+failure.
 
 The runners use the same policy compiler as CLI/API. Generated threshold rules
 opt out of hidden size rules. Analyze rejects effect inputs. A full policy may
@@ -22,10 +29,10 @@ generated condition/threshold/effect shorthand instead requires a standalone
 inline rule. Workspace policy remains read-only in Actions.
 
 The native-ESM distribution ships all four metadata-selected paths without an
-installation step. The current nested paths have Linux Node 22 consumer evidence;
-Node 24 execution of the predecessor is historical until this layout is rerun on
-that runtime. Workflow examples remain unpublished interfaces, not evidence of
-an existing `@v1`.
+installation step. Exact accepted source has consumer evidence on Linux Node 22,
+Linux Node 24, and Windows Node 24, including installed package and all four
+install-free Action paths. Workflow examples remain unpublished interfaces, not
+evidence of an existing `@v1`.
 
 ## Entry points
 
@@ -65,6 +72,40 @@ jobs:
 This is intentionally a complete workflow rather than a misleading five-line fragment. No checkout, configuration file, formula, threshold map, label setup, comment template, or token boilerplate is required. The Action's metadata supplies its ordinary `${{ github.token }}` default; a caller can provide an App token through `github-token` when appropriate for their repository.
 
 Current REST label operations accept Issues-write or Pull-requests-write permission. This no-config API-only route does not need repository-content reads. A custom configuration loaded from the base ref additionally needs `contents: read`. Organization/repository token restrictions and Action policies can still deny the operation; diagnostics must identify the missing capability rather than advise unsafe head-code execution. See [G1](../reference/2026-09-09/sources-and-research.md#g1).
+
+### Split trusted policy reads from effects
+
+When a narrow App token owns effects without Contents access, do not broaden it
+merely to load policy. Keep the ordinary workflow credential read-only and pass it
+as `policy-token`:
+
+```yaml
+permissions:
+  contents: read
+  pull-requests: read
+jobs:
+  policy-size:
+    runs-on: ubuntu-latest
+    steps:
+      - id: app-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ vars.DIFFDEVIL_APP_CLIENT_ID }}
+          private-key: ${{ secrets.DIFFDEVIL_APP_PRIVATE_KEY }}
+          permission-pull-requests: write
+      - uses: Wolfsblvt/diffdevil@v1
+        with:
+          config: .diffdevil.yml
+          policy-source: base
+          policy-token: ${{ github.token }}
+          github-token: ${{ steps.app-token.outputs.token }}
+```
+
+`policy-token` is confined to trusted base/pinned policy and relative-template
+reads. `github-token` still acquires the pull request and owns every label/comment
+effect. Both credentials are masked and redacted. Omitting `policy-token` preserves
+the original single-credential route; the no-config workflow above does not need
+this split.
 
 Use an immutable release commit SHA in security-sensitive workflows once a real release exists. `@v1` remains the compact documented major-version route; this package invents no release SHA. See [G2](../reference/2026-09-09/sources-and-research.md#g2).
 

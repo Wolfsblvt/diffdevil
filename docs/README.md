@@ -31,6 +31,7 @@ when a custom formula, scope, or policy needs it.
 | Executed qualification and remaining evidence | [`QUALIFICATION.md`](QUALIFICATION.md) |
 | Shortcut ergonomics comparison | [`SHORTCUT-COMPARISON.md`](SHORTCUT-COMPARISON.md) |
 | Publication boundary | [`PUBLICATION-BOUNDARY.md`](PUBLICATION-BOUNDARY.md) |
+| Release notes and publication standing | [`releases/README.md`](releases/README.md) |
 | Documentation teaching and future site source | [`DOCUMENTATION.md`](DOCUMENTATION.md) |
 | Canonical textual brand | [`BRANDING.md`](BRANDING.md) |
 | Local public-PR playground | [`../apps/playground/README.md`](../apps/playground/README.md) |

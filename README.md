@@ -16,12 +16,17 @@ once, while keeping both sets of facts available.
 This **public-source v1 release candidate** supports local Git, unified diffs,
 saved reports, detail expressions, YAML/JSON policies, GitHub acquisition, and
 explicit label/comment reconciliation. All four Actions ship executable JavaScript
-and their dependencies, with no workflow installation step. Their consumer paths are
-qualified locally on Node 22 and 24 against mock HTTP, not a live GitHub canary.
+and their dependencies, with no workflow installation step. Native and hosted
+consumer matrices cover Node 22 and 24; a separate private live canary has exercised
+label-definition creation/readback, managed assignment and no-op, trusted base policy
+against a hostile PR-head copy, stale-plan refusal, one owned-comment update, and
+split policy/effect credentials. A genuine external-fork event and live partial-write
+failure remain unobserved.
+
 Reusable software is MIT; application and hosted-service software is selected for
 AGPL-3.0-only. Original documentation prose is CC BY 4.0; runnable examples are
-MIT; brand and visual assets remain reserved. npm and `@v1` are not
-published yet. A plan remains data, not an applied change.
+MIT; brand and visual assets remain reserved. npm and `@v1` are not published yet.
+A plan remains data, not an applied change.
 
 ```sh
 node dist/lib/cli/main.js query --report docs/examples/reports/exact.json \
@@ -64,6 +69,12 @@ Action reads patches as data. Use `/analyze` for a read-only run instead. Existi
 unrelated labels remain untouched; default ensure mode preserves existing label
 colors and descriptions. An unavailable exact count is not silently replaced
 with zero.
+
+The no-config route needs only Pull requests write. A trusted base or immutable
+pinned policy file also needs Contents read. When those permissions belong to
+different credentials, optional `policy-token` performs only policy/template reads;
+`github-token` still owns pull-request acquisition and every label/comment effect.
+Omitting `policy-token` preserves the ordinary single-credential route.
 
 ## Get started
 
@@ -252,8 +263,11 @@ Private repositories require a suitable token in `GH_TOKEN` or `GITHUB_TOKEN`.
 Read-only acquisition performs no label or comment mutation. The TypeScript
 adapter exposes separate explicit application and label-definition operations.
 It preserves unrelated metadata and checks current head/base revisions before
-writes. Its provider behavior is qualified with mocked HTTP responses, not a
-live GitHub canary.
+writes. Its provider behavior has deterministic fake-HTTP regression coverage and a
+separate private live canary at the accepted source candidate. The canary proves
+ordinary managed labels, trusted policy, freshness refusal, owned-comment update,
+and split credentials; it does not claim a genuine external-fork event or live
+partial-write recovery.
 
 [GitHub API and trust boundaries](docs/integration/github-api.md)
 
@@ -266,8 +280,9 @@ documents the implemented interfaces and keeps local qualification separate from
 hosted-runner and publication evidence.
 
 The ordinary source verification command is `npm run verify`. Installed-package,
-conformance, and runtime evidence are separate commands and claims:
-[Development](docs/DEVELOPMENT.md) · [Qualification](docs/QUALIFICATION.md).
+conformance, runtime, and live-provider evidence remain separate commands and
+claims: [Development](docs/DEVELOPMENT.md) · [Qualification](docs/QUALIFICATION.md)
+· [Prepared v1.0.0 notes](docs/releases/v1.0.0.md).
 
 Suspected vulnerabilities can be [reported privately](SECURITY.md) through
 GitHub's enabled repository reporting route.

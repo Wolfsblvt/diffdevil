@@ -9,21 +9,26 @@ instructions to understand or contribute to diffdevil.
 
 ## Durable branch
 
-`main` is the durable source branch for this development candidate. The first
-official release or material public reliance is the occasion to reconsider its
-maintainer integration posture. Current GitHub settings must be read separately.
+`main` is the durable source branch. The first stable release cut selects pull
+requests as the ordinary maintainer integration route while retaining lawful direct
+recovery and tiny maintainer effects. This records the repository convention; current
+GitHub settings and branch protection must still be read separately.
 
 ```text
 main:
-  maintainer integration: direct allowed
+  maintainer integration: PR preferred
   external contributions: PR required
-  required pre-integration evidence: none
+  required pre-integration evidence: Verify on the exact candidate head
   required approval/review: none
   resolved conversations: no
   automatic CI: Verify on main push and pull request (Linux Node 22/24, Windows Node 24)
   automatic retained branch effects: none
   other pre-update evidence: none
 ```
+
+`PR preferred` does not require self-approval, invent branch protection, or forbid
+an attributable direct correction whose consequence is safer and smaller than a
+separate integration cycle.
 
 ## Start with the relevant source
 
