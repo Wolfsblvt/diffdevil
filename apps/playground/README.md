@@ -21,8 +21,11 @@ The first tranche:
 - uses GitHub's unauthenticated read API, so private repositories are outside this route;
 - calls the production `GitHubClient` and `analyzeGitHub` engine;
 - exposes replacement-aware and raw measurements, evidence standing, and a compact file projection;
+- publishes a versioned success/error envelope defined by [`contracts/response-v1.schema.json`](contracts/response-v1.schema.json);
 - performs no provider writes and stores no analysis history; and
 - links to maintained repository documentation rather than copying it into a second knowledge base.
+
+The response schema is compiled in the application test against the reusable report/value schemas. Generic 404/405 and analysis errors use the same public envelope; unexpected internal detail is not returned. A failed static-asset read is evicted so a transient filesystem failure does not poison the process cache.
 
 GitHub's unauthenticated rate limits are a real operating boundary. A hosted service may later add deliberate authentication, caching, abuse controls, and persistence under its own accepted application design; this local tranche does not smuggle those systems in early.
 
