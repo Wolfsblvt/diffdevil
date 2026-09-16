@@ -34,6 +34,7 @@ when a custom formula, scope, or policy needs it.
 | Documentation teaching and future site source | [`DOCUMENTATION.md`](DOCUMENTATION.md) |
 | Canonical textual brand | [`BRANDING.md`](BRANDING.md) |
 | Local public-PR playground | [`../apps/playground/README.md`](../apps/playground/README.md) |
+| Managed GitHub App architecture | [`integration/github-app.md`](integration/github-app.md) |
 
 ## Use diffdevil
 
@@ -44,6 +45,7 @@ when a custom formula, scope, or policy needs it.
 | GitHub Action interface | [`integration/github-actions.md`](integration/github-actions.md) |
 | Install-free Action distribution | [`integration/action-distribution.md`](integration/action-distribution.md) |
 | GitHub provider API and trust | [`integration/github-api.md`](integration/github-api.md) |
+| Managed GitHub App service architecture | [`integration/github-app.md`](integration/github-app.md) |
 | Presets and shortcut lowering | [`integration/presets-and-shortcuts.md`](integration/presets-and-shortcuts.md) |
 | Templates and comment lifecycle | [`integration/templates.md`](integration/templates.md) |
 | TypeScript embedding | [`integration/typescript-api.md`](integration/typescript-api.md) |
