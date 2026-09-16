@@ -56,6 +56,42 @@ test('playground projection reports omitted file records without changing file-s
   assert.equal(projected.fileSet.total.value, 3);
 });
 
+
+test('playground hides unexpected engine diagnostics from the public response', async () => {
+  const result = await analyzePublicPullRequest(PUBLIC_URL, {
+    client: {
+      async json() { throw new Error('sensitive internal detail'); }
+    }
+  });
+  assert.deepEqual(result, {
+    ok: false,
+    status: 500,
+    error: { code: 'E_INTERNAL', message: 'Analysis failed unexpectedly.' }
+  });
+});
+
+test('playground reports unexpected request failures to the operator without exposing them', async t => {
+  let observed;
+  const server = createPlaygroundServer({
+    analyze: async () => { throw new Error('sensitive server detail'); },
+    onError: error => { observed = error; }
+  });
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  t.after(() => new Promise(resolve => server.close(resolve)));
+  const address = server.address();
+  assert.equal(typeof address, 'object');
+
+  const response = await fetch(`http://127.0.0.1:${address.port}/api/analyze?url=${encodeURIComponent(PUBLIC_URL)}`);
+  assert.equal(response.status, 500);
+  assert.deepEqual(await response.json(), {
+    ok: false,
+    error: { code: 'E_INTERNAL', message: 'Unexpected server failure.' }
+  });
+  assert.ok(observed instanceof Error);
+  assert.equal(observed.message, 'sensitive server detail');
+});
+
 test('playground serves the front door, health readback and read-only API', async t => {
   const fake = new FakeGitHub();
   const server = createPlaygroundServer({ clientFactory: () => client(fake) });
