@@ -7,6 +7,10 @@ inputs:
     description: GitHub credential for the selected repository. A token does not enable writes.
     required: false
     default: ${{ github.token }}
+  policy-token:
+    description: Optional read credential used only for trusted base/pinned policy and repository-relative
+      template acquisition.
+    required: false
   repository:
     description: Target owner/repository. Defaults to the workflow repository.
     required: false

@@ -472,3 +472,32 @@ contracts rather than beginning with a generic hosting control plane.
 **Current consequence.** The reusable engine, API, CLI, and Action software remain MIT, and the separate Action runtime package keeps `MIT` metadata. The mixed npm artifact uses `SEE LICENSE IN LICENSE.md`; that top-level dispatch points to the component map for its MIT software, CC BY 4.0 documentation, MIT examples, reserved identifiers, and third-party terms. Quoted or linked third-party material does not receive a diffdevil grant. The first stable identity `@wolfsblvt/diffdevil@1.0.0` is a candidate until npm and release refs are actually published and read back.
 
 **Sources.** D014, the inspected npm file list, [npm package licence metadata](https://docs.npmjs.com/files/package.json/#license), and [Creative Commons legal code](https://creativecommons.org/licenses/by/4.0/legalcode).
+
+## D031: Allow a separate read credential for trusted Action policy
+
+**Decision.** The Actions accept an optional `policy-token`. When present, it is
+used only to acquire base or immutable pinned policy and repository-relative
+templates. `github-token` remains the credential for PR acquisition and every
+label/comment effect. Both credentials are masked and redacted. Without
+`policy-token`, the existing single-credential route is unchanged.
+
+**Why.** A live private canary showed that the deliberately PR-write-only
+Automaton installation can reconcile labels and owned comments but cannot read
+repository Contents, while the ordinary workflow token can perform the narrow
+trusted-policy read. Expanding the App installation would collapse two distinct
+responsibilities and is unnecessary for the selected operation.
+
+**Rejected.** Requiring every writer to gain Contents read would broaden its
+credential role. Restricting custom policy to inline workflow text would remove a
+supported repository-owned policy path. Treating a read credential as an
+alternate writer would make the separation cosmetic.
+
+**Current consequence.** Callers may combine a read-only policy credential with a
+separate PR-write credential. The policy transport is passed only to the trusted
+policy loader; acquisition and effect modules receive the GitHub transport.
+Focused two-client tests prove the separation in both directions. This does not
+grant credentials, change provider permissions, or establish live behavior until
+the distributed Action is rerun with both real tokens.
+
+**Sources.** The current provider qualification and settled public-v1 direction;
+[Action guide](guides/auto-label-pull-requests.md); two-client Action tests.

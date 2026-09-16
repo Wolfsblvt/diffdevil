@@ -311,6 +311,9 @@ acquisition to detect changed comparisons.
 commit SHA through Contents endpoints. It rejects symlinks, non-file objects and
 escapes above the repository root. It never executes repository code. The caller
 selects the trusted source; a SHA or matching hash alone is not authentication.
+The Action host may supply a separate read client only to this loader. PR
+acquisition and every effect continue through the primary GitHub client, so a
+policy credential cannot become write authority through transport reuse.
 
 `apply.ts` evaluates a selected compiled policy against freshly acquired evidence
 unless the host explicitly asserts report trust. Supplied plans must match the

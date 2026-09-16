@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { runAction } from '../../../dist/lib/actions/run.js';
+import { actionCredentialValues, redactActionCredentials } from '../../../dist/lib/actions/main.js';
 import { actionContext, readInputs } from '../../../dist/lib/actions/inputs.js';
 import { actionOutputs, outputCommands, escapeCommand, actionSummary } from '../../../dist/lib/actions/outputs.js';
 import { outputNames } from '../../../dist/lib/actions/surface.js';
@@ -43,7 +44,7 @@ async function fixture(t, inputs = {}, eventName = 'pull_request_target') {
   }
   set(inputs);
   const client = new GitHubClient({ fetch: fake.fetch, readRetries: 0 });
-  return { cwd, fake, environment, set, run: entry => runAction(entry, { environment, client }),
+  return { cwd, fake, environment, client, set, run: (entry, options = {}) => runAction(entry, { environment, client, ...options }),
     outputs: async () => parseOutputs(await readFile(environment.GITHUB_OUTPUT, 'utf8')) };
 }
 const definition = (color = 'aabbcc', description = 'Managed definition') => ({ color, description });
@@ -109,6 +110,39 @@ test('pinned policy and relative template acquisition use the declared immutable
   const r = unwrap(await f.run('apply'));
   assert.equal(r.exitCode, 0); assert.equal(f.fake.comments.length, 1); assert.match(f.fake.comments[0].body, /^Changed: 3/);
   assert.ok(f.fake.calls.filter(c => c.path.includes('/contents/')).every(c => c.query.includes(pin)));
+});
+
+test('separate policy credential reads pinned policy and templates while the GitHub credential owns acquisition and writes', async t => {
+  const pin = 'c'.repeat(40);
+  const f = await fixture(t, { 'github-token': 'effect-write', 'policy-token': 'policy-read', config: 'policy/main.yml',
+    'policy-source': 'pinned', 'policy-ref': pin, 'policy-repository': TARGET.repository,
+    'comment-author': 'fixture-app[bot]', 'comment-author-id': '101' });
+  const policyFake = new FakeGitHub();
+  policyFake.contents.set(`${pin}:policy/main.yml`, customPolicy({ rules: { weighted: { when: 'true', effects: { comment: { mode: 'upsert', templateFile: 'note.md' } } } } }));
+  policyFake.contents.set(`${pin}:policy/note.md`, 'Changed: {{ totals.lines.changed }}');
+  const policyClient = new GitHubClient({ token: 'policy-read', fetch: policyFake.fetch, readRetries: 0 });
+  const effectClient = new GitHubClient({ token: 'effect-write', fetch: f.fake.fetch, readRetries: 0 });
+
+  const result = unwrap(await f.run('apply', { client: effectClient, policyClient }));
+
+  assert.equal(result.exitCode, 0); assert.equal(f.fake.comments.length, 1);
+  assert.equal(f.fake.calls.some(call => call.path.includes('/contents/')), false);
+  assert.ok(f.fake.calls.some(call => call.path.includes('/pulls/')));
+  assert.ok(f.fake.writes().length > 0);
+  assert.ok(f.fake.calls.every(call => call.headers.get('authorization') === 'Bearer effect-write'));
+  assert.equal(policyFake.writes().length, 0);
+  assert.deepEqual(policyFake.calls.map(call => call.path.endsWith('/policy/main.yml') || call.path.endsWith('/policy/note.md')), [true, true]);
+  assert.ok(policyFake.calls.every(call => call.headers.get('authorization') === 'Bearer policy-read'));
+});
+
+test('Action transport masks and redacts both credentials without preserving duplicate values', () => {
+  const credentials = actionCredentialValues({ 'INPUT_GITHUB-TOKEN': ' write-secret ', 'INPUT_POLICY-TOKEN': 'read-secret' });
+  assert.deepEqual(credentials, ['write-secret', 'read-secret']);
+  assert.equal(redactActionCredentials('write-secret then read-secret', credentials), '[redacted] then [redacted]');
+  assert.deepEqual(actionCredentialValues({ 'INPUT_GITHUB-TOKEN': 'same', 'INPUT_POLICY-TOKEN': 'same' }), ['same']);
+  const overlapping = actionCredentialValues({ 'INPUT_GITHUB-TOKEN': 'token', 'INPUT_POLICY-TOKEN': 'token-longer' });
+  assert.deepEqual(overlapping, ['token-longer', 'token']);
+  assert.equal(redactActionCredentials('token-longer token', overlapping), '[redacted] [redacted]');
 });
 
 test('workspace policy is available for read-only analysis, but cannot become Action write authority', async t => {
@@ -270,7 +304,8 @@ for (const [entry, inputs] of [
 });
 
 test('INPUT_* uses documented hyphen spelling and unknown input is not silently ignored', () => {
-  assert.equal(readInputs('root', { 'INPUT_GITHUB-TOKEN': ' x ', INPUT_POLICY: 'version: 1\n' })['github-token'], 'x');
+  const inputs = readInputs('root', { 'INPUT_GITHUB-TOKEN': ' x ', 'INPUT_POLICY-TOKEN': ' y ', INPUT_POLICY: 'version: 1\n' });
+  assert.equal(inputs['github-token'], 'x'); assert.equal(inputs['policy-token'], 'y');
   assert.throws(() => readInputs('root', { INPUT_GITHUB_TOKEN: 'x' }), /not supported/);
 });
 

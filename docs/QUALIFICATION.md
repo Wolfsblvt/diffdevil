@@ -7,6 +7,34 @@ historical runtime results and unobserved external effects. A schema specimen is
 not execution, a green unit suite is not a packaged consumer, and mock HTTP is not
 live GitHub permission evidence.
 
+## September 16 split-policy credential candidate — native Windows Node 24
+
+The optional `policy-token` source cut at `ec5b95c1` keeps pull-request
+acquisition and every label/comment effect on `github-token`, while confining
+trusted base/pinned policy and relative-template reads to the separate credential
+when one is supplied. Omitting it reuses the existing one-client route. The four
+Action metadata files and install-free runtime were regenerated from source before
+qualification.
+
+On Windows 11 the candidate used **Node v24.19.0, npm 11.17.0, and PowerShell
+7.6.5** with the existing locked offline dependency closure. The first attempted
+launcher path was an incorrect guessed location and failed before npm or a project
+command started; the successful runs used the existing scoped Node 24 toolchain at
+`C:\Users\Wolfsblvt\AppData\Local\WolfLeitsatz\Toolchains\node-v24.19.0-win-x64`.
+
+| Boundary | Split-credential native result |
+| --- | --- |
+| `npm run verify` | **474 passed, 0 failed, 0 cancelled, 0 skipped**; exact parity over 1,141 generated Action files and 12 locked runtime packages. |
+| `npm run test:conformance` | **189 passed, 0 failed, 0 not executed, 0 harness failures**. |
+| `npm run test:package` | **486-file**, **786,683-byte** `1.0.0` tarball installed offline outside the checkout. Integrity and shasum readback, actual Windows npm CMD dispatch, direct installed PowerShell launcher, CLI, ESM exports, schemas, package assets, and strict TypeScript declarations passed. |
+| `npm run test:actions` | **10 isolated Node 24 executions** over the root Action and all three sub-actions; the distributed transport exercised distinct policy and effect credentials, with no consumer install and mock HTTP only. |
+
+These checks establish source, generated-distribution, installed-package, and
+mock-provider consumer behavior. Hosted exact-head CI and the real base-file
+application canary with a read-only policy credential plus Automaton Pull requests
+write remain separate evidence and are required before this cut becomes the v1
+release source.
+
 ## September 16 joined v1/playground candidate — native Windows Node 24
 
 The preserving replay of playground PR #1's observed remote head `12eeaa262`

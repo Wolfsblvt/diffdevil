@@ -131,6 +131,7 @@ The `files` input accepts `any` or `all` in threshold mode. It operates over inc
 | Input | Contract |
 | --- | --- |
 | `github-token` | Credential supplied by host, default ordinary GitHub token. Never expression data. |
+| `policy-token` | Optional read credential confined to trusted base/pinned policy and relative-template acquisition. When absent, `github-token` retains the existing single-credential behavior. |
 | `repository` | Target owner/repository; defaults to workflow repository, then event repository. An overridden repository needs an explicit PR number. |
 | `pull-request` | PR number; defaults to supported event PR. |
 | `source`, `git-cwd` | `github-api` by default; `git` compares existing local objects for the current PR revisions. `git-cwd` requires `source: git` and defaults to the workspace. |

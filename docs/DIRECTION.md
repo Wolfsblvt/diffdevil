@@ -19,7 +19,10 @@ The root, analyze, apply, and sync-labels Actions share one host and engine. The
 committed native-ESM distribution runs without a consumer install. Root no-config
 uses `size@1`, creates missing definitions, reconciles only its managed group, and
 posts no comments. Analyze is read-only. Workspace policy cannot authorize Action
-writes; base and immutable pinned policy are distinct from hostile diff data.
+writes; base and immutable pinned policy are distinct from hostile diff data. An
+optional `policy-token` confines trusted base/pinned policy and relative-template
+reads to a separate credential; PR acquisition and all effects remain on
+`github-token`, while omitting the new input preserves the single-token route.
 
 All aliases remain supported. Simple arithmetic and matching examples use normal
 detail formulas; file selection and quantifier shortcuts retain their useful job.
@@ -98,10 +101,13 @@ tranche rather than frozen by this document.
 ## Next release movement
 
 The native Windows/Node 24 qualification is recorded in
-[Qualification](QUALIFICATION.md). The next release seams are an independent
-trust/effects read, a hosted provider canary, the first-consumer no-dual-writer
-contract, and the `v1.0.0` publication path with outside-consumer proof. Current
-and historical runtime/consumer evidence is separated in
+[Qualification](QUALIFICATION.md). The trust/effects review and initial hosted
+canary are complete for the single-credential route. The optional credential
+split is implemented and must pass this joined tree's native and hosted
+consumers plus the live base-policy canary before it becomes the stable
+candidate. The first-consumer no-dual-writer contract then receives that exact
+coordinate; `v1.0.0` publication and outside-consumer proof follow. Current and
+historical runtime/consumer evidence is separated in
 [Qualification](QUALIFICATION.md); mock HTTP is not live permission evidence.
 
 Wolf and Nyxara selected MIT for reusable software and AGPL-3.0-only for
