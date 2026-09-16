@@ -2,113 +2,187 @@
 
 ## Meaning
 
-This is the remaining operator path from a locally qualified candidate to a real
-public release. It keeps the source tree, npm package, distributed Actions, hosted
-canary, licence, and public availability distinct. It does not authorize those
-external effects or claim that they have happened.
+This is the remaining operator path from the accepted public source candidate to a
+real diffdevil release. It keeps source, npm, immutable and maintained Action refs,
+GitHub Release, Marketplace, security intake, hosted applications, and outside-
+consumer behavior as distinct effects. It neither authorizes those effects nor
+calls them complete merely because another surface succeeded.
 
-## Start in this checkout
+## Start from the accepted source
 
-This repository is the [public source checkout](https://github.com/Wolfsblvt/diffdevil).
-Its `main` begins at a clean public root and retains subsequent public refactoring
-commits. There is no second checkout to select, no private ancestor to push, and no
-nested public-source ZIP to unpack. The reviewed source was pushed to
-`origin/main` after Wolf's grant; [Verify at `26a2d7e`](https://github.com/Wolfsblvt/diffdevil/actions/runs/35020088812)
-passed Linux Node 22/24 and Windows Node 24. For another push, inspect current
-`git status --short --branch`, `git log --all --oneline`, `git remote -v`, and
-`git ls-files` rather than relying on this recorded state.
+The public repository is the delivery root. There is no private ancestor, nested
+source archive, or second checkout to publish. Inspect the exact current candidate,
+tracked files, remotes, generated distribution, and workflow effects before every
+release operation rather than relying on a recorded clean state.
 
-`docs/reference/` preserves cleaned technical research and substantive returned
-evidence. Private originals are not public source. Local transfer material under
-ignored paths is never a release asset: push the reviewed Git history, not a ZIP of
-the entire working directory. A clean worktree alone does not prove history privacy.
+The selected first stable identity is `@wolfsblvt/diffdevil@1.0.0`. Package and
+lock metadata already carry `1.0.0`, and the committed Action distribution carries
+the same version. **No npm package, `v1.0.0` tag, GitHub Release, maintained `v1`
+alias, or Marketplace release exists until its provider readback says so.**
 
-## Local qualification
+Private originals, Company-room coordinates, local dependency caches, transfer
+archives, worktrees, and verification artifacts are not public release assets.
+Publish reviewed Git history and the package files selected by `package.json`, not
+a working-directory ZIP. A clean worktree alone does not prove history privacy.
 
-With the exact source checkout and the locked dependencies installed:
+## Re-resolve the final candidate
 
-```sh
-npm run verify
-npm run test:conformance
-npm run test:package
-npm run test:actions
-```
+Before the first external effect:
 
-The [current qualification](QUALIFICATION.md) records a native Windows/Node 24
-pass for this candidate. Node 22 remains the CLI/library floor, with earlier
-Linux Node 22 evidence. Re-run affected commands after a source or release-identity
-change rather than treating an earlier runtime result as fresh evidence.
-`test:package` exercises installed CLI dispatch, declarations, and package metadata;
-`test:actions` exercises all four distributed paths outside the checkout. Neither
-needs a real token or live GitHub. Retain the JSON evidence and logs for the exact
-candidate. See [Development](DEVELOPMENT.md) for the command scope.
+1. read the current owning release room and final candidate commit;
+2. confirm the candidate tree contains the accepted release copy, qualification,
+   mixed-content licence dispatch, `SECURITY.md`, generated Action bytes, and no
+   unintended application/source artifact in the npm package;
+3. inspect current GitHub checks for that exact head and every red, missing,
+   skipped, pending, or wrong-head result;
+4. rerun the exact-lock advisory check against the registry;
+5. confirm npm package ownership/authentication and the GitHub release/Marketplace
+   operator route without creating an effect; and
+6. apply the complete-destination comparison: the CLI/package/Action release may
+   ship while the hosted playground and managed App remain explicitly owned active
+   product Work.
 
-Read the source/effect boundary independently before a write-capable canary. The
-same author's final inspection is useful but is not an independent security review.
-Review trusted policy acquisition, stale comparison checks, comment ownership,
-partial write journals, output transport, and the install-free dependency tree.
-The code can be reviewed directly; no reconstruction or new implementation is
-expected for those boundaries.
+A documentation-only change still receives its own exact-head hosted package and
+Action consumer checks. Earlier executable evidence remains true for its own tree;
+it is not silently borrowed across a changed candidate.
 
-## Use the selected licences and candidate release identity
+## Qualification already established
 
-Wolf and Nyxara selected **MIT** for the reusable engine, package, CLI and Actions,
-and **AGPL-3.0-only** for application and hosted-service software. The [licence
-map](../LICENSES/README.md), both software-licence texts, and matching component
-metadata are in this checkout. Original documentation prose is CC BY 4.0,
-runnable examples are MIT, and brand/visual assets remain reserved. Because the
-npm artifact contains more than MIT software, its root metadata uses
-`SEE LICENSE IN LICENSE.md`; the named top-level dispatch points to the complete
-component map. The separate Action runtime package remains MIT plus its retained
-third-party notices. The selected first stable npm candidate is
-`@wolfsblvt/diffdevil@1.0.0`; `private: true` was removed from local metadata.
-This is not an npm publication or release ref.
+The maintained [Qualification](QUALIFICATION.md) records the accepted source
+boundaries separately:
 
-The local candidate used npm's version command without creating a Git tag,
-updating `package.json` and root lockfile metadata together. Rebuild the generated distribution with
-`npm run build:actions`; then run the four qualification commands again. The CLI
-version follows installed package metadata. The package test includes a different
-release-version specimen to prevent a frozen development banner from surviving.
-Review current advisories for the exact dependency lock before external release;
-offline installation is not an advisory check.
+- native Windows Node 24 verification, conformance, installed-package launchers,
+  declarations, schemas, presets, and all four install-free Actions;
+- hosted Linux Node 22/24 and Windows Node 24 consumer matrices;
+- independent cold review and the accepted source repairs;
+- a private live canary for label-definition creation/readback, managed assignment
+  change and no-op, hostile-head policy confinement, stale-plan refusal, one owned
+  comment update, and split policy/effect credentials; and
+- explicit unobserved boundaries, including native macOS, a genuine external-fork
+  event, and a real live partial-write failure.
 
-Update only release-sensitive copy after selecting real coordinates. The user
-quickstart intentionally targets `Wolfsblvt/diffdevil@v1` but does not claim the ref
-exists yet. An immutable reviewed SHA can be used instead. Do not invent a SHA,
-CI badge, package version badge, or a private security contact.
+The automated suites use fake GitHub HTTP. The live canary proves its own provider
+journeys; neither form of evidence substitutes for the other.
 
-## Qualify hosted behavior when authorized
+## Licence and content boundary
 
-The public repository was created and the reviewed source history pushed under
-Wolf's separate publication grant. Keep shipped Action code in each source commit;
-GitHub consumers do not run `npm install`. A later push can activate included
-workflows and repository settings, so inspect those effects first.
+The npm artifact contains more than one kind of content:
 
-Use an authorized disposable repository for the canary. Copy the quickstart with
-the candidate's exact public commit SHA, allow its declared permission, and verify
-size-label creation/reconciliation and summary output on an ordinary and a fork PR.
-Then verify a custom base-policy file, a changed/retargeted PR, read-only analyze,
-and an opt-in comment. Record the actual actor, effective permissions, source
-revision, labels/comments, outputs, and partial failures. Do not test against a
-valuable repository as a substitute for a disposable target.
+- reusable engine, TypeScript API, CLI, Actions, tools, and mapped executable
+  examples: **MIT**;
+- application and hosted-service software when present: **AGPL-3.0-only**;
+- original documentation prose and reusable explanation: **CC BY 4.0**;
+- product name, slogans, logo, mascot, artwork, screenshots, and other visual
+  identity: reserved unless separately licensed; and
+- third-party dependencies: their own licences and notices.
 
-No personal token setup is required for the standard workflow-token recipe. A
-provider denial may reflect repository policy rather than an engine defect.
-Do not weaken trust checks just to obtain a green canary.
+Root package metadata uses `SEE LICENSE IN LICENSE.md`; the shipped dispatch points
+to the component map. The separate install-free Action runtime remains MIT plus
+third-party notices. Verify these bytes in the packed artifact rather than
+assuming repository placement becomes npm placement.
 
-## Publish the selected surfaces
+## Prepare only real release copy
 
-A public repository alone does not publish npm or create a `v1` Action ref. After
-local and hosted acceptance, the release operator separately publishes the
-selected npm version, creates the immutable version release and intended `v1`
-major alias, and configures Marketplace only if selected. Follow current official
-provider publication instructions at execution time rather than relying on this
-local cut to authorize or perform them.
+Before publication, release-sensitive copy may describe the accepted candidate
+and exact qualification, but it keeps unavailable coordinates conditional:
 
-Confirm the real npm install, all remote Action coordinates, and release assets
-from an outside consumer. GitHub private vulnerability reporting was read back
-as enabled for this public repository; `SECURITY.md` now names its administrator
-receiver and reporting route. Read back the hosted policy after the source update
-before claiming that file is exposed. The website, wiki-like help rendering,
-logo/social preview, and Marketplace visuals may follow; repository user guides
-already work as the canonical documentation source.
+- no registry/version badge before npm readback;
+- no claim that `@v1` resolves before the alias exists;
+- no Marketplace claim before the provider listing resolves;
+- no hosted-playground or managed-App link before that service is publicly read
+  back; and
+- no private canary or Company-room link in public package documentation.
+
+Repository-owned [release notes](releases/v1.0.0.md) carry the product result,
+compatibility, trust model, rights, qualification, and deliberately unfinished
+hosted surfaces. At publication, replace only the opening availability standing
+and add the real immutable release commit; do not rewrite durable product meaning
+around provider coordinates.
+
+## Publication effects and order
+
+Perform each effect once, reconcile it before any retry, and read it back before
+independent copy claims it exists.
+
+1. **npm:** publish `@wolfsblvt/diffdevil@1.0.0`; read registry metadata, tarball
+   integrity, README, licence dispatch, exports, bin, engines, and package contents.
+2. **Immutable Git ref:** create `v1.0.0` at the exact accepted release commit and
+   verify the remote object.
+3. **GitHub Release:** publish `v1.0.0` with the repository-owned release notes and
+   verify rendered release state.
+4. **Maintained Action alias:** create or move `v1` to that same commit, then read
+   both refs before remote Action execution.
+5. **Marketplace:** publish the root Action with primary category **Continuous
+   integration** and secondary **Utilities**. `Code quality` is deliberately not
+   selected; diffdevil does not claim that line counts establish quality, risk,
+   complexity, or merge authority.
+6. **Security:** read back repository private vulnerability reporting and the
+   public `SECURITY.md` route.
+
+The Marketplace UI may require an owner-bound Developer Agreement, 2FA, or account
+confirmation. Surface the exact physical step only if the live UI requires it;
+do not invent owner homework from documentation or perform a substitute effect.
+
+A public repository alone publishes none of these surfaces. npm success does not
+create Action refs. A tag does not create Marketplace availability. A Release does
+not prove remote Actions start. Preserve the furthest exact fact when one later
+surface fails.
+
+## Outside-consumer proof
+
+After publication, prove the real coordinates outside every source checkout.
+
+### npm package
+
+1. create a fresh directory containing only a private ESM `package.json`;
+2. install `@wolfsblvt/diffdevil@1.0.0` from the registry, without a local tarball,
+   path, or source-checkout dependency;
+3. execute the installed platform launcher, `--version`, analyze/query/check, root
+   ESM API, `/core`, `/language`, `/policy`, `/git`, `/github`, and strict TypeScript
+   declarations;
+4. inspect installed schemas, presets, documentation, package metadata and licence
+   dispatch; and
+5. prove the consumer cannot borrow diffdevil's checkout dependencies or source.
+
+### GitHub Actions
+
+Use the existing authorized disposable canary rather than creating a second demo
+estate. Run root, `/actions/analyze`, `/actions/apply`, and
+`/actions/sync-labels` against both immutable `v1.0.0` and maintained `v1`.
+Read both refs first, then compare meaningful reports, outputs, and effects rather
+than run IDs or timestamps. Retain:
+
+- one read-only analysis;
+- one real no-op;
+- one managed-label change;
+- definition verify/apply;
+- the split `policy-token` / `github-token` route; and
+- successful startup from every remote metadata coordinate with no consumer
+  installation.
+
+Retire only the canary's temporary workflow/fixture through its existing owning
+Work after the final state and evidence remain encounterable.
+
+## Ambiguous or partial effects
+
+npm publication, ref movement, GitHub Release creation, and Marketplace submission
+are externally durable operations. When a response is ambiguous, reconcile the
+original attempt before retrying. Never republish an unknown npm version, move
+`v1` while its current target is unknown, or create a second Release because the
+first response was inconveniently vague.
+
+A failed later surface holds that surface and its dependent public claim, not
+already-read-back earlier effects. Record the exact performed state, repair the
+remaining route, and currentize copy to the truth that exists.
+
+## Hosted applications remain separate
+
+The local read-only playground is in source. Its Cloudflare Workers deployment and
+the managed GitHub App have their own source, review, provider, deployment,
+installation, retention, and lived-use evidence. Neither blocks the open
+package/CLI/Action release, and the release does not claim or erase them.
+
+A documentation website, custom domain, social preview, richer history, and App
+administration remain product Work in their natural homes. Repository guides are
+the canonical documentation source meanwhile; do not create a separately edited
+wiki or CMS merely to make the first release look furnished.
