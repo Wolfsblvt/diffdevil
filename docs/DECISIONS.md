@@ -114,7 +114,7 @@ through flags. Both routes continue to use one compiler with parity tests.
 
 ### D014 — License reusable components under MIT and application/service components under AGPL-3.0-only (2026-09-15)
 
-**Status:** Settled by Wolf and Nyxara for the current implementation and public-source preparation. Content and asset licensing remains open.
+**Status:** Settled by Wolf and Nyxara for the reusable/application software split. D030 separately settles documentation, example, and product-identity rights.
 
 **Decision:** `diffdevil` uses different open-source licences according to the role of each product surface. Reusable components intended for unrestricted embedding and downstream integration are licensed under the **MIT License**. This includes the portable diff engine, public TypeScript API/npm package, CLI, GitHub Action, and comparable reusable integration surfaces. Application and hosted-service components are licensed under **GNU AGPL-3.0-only**. This includes the website application, interactive hosted functionality, GitHub App runtime, hosted service backend, and comparable product/application surfaces. These components may remain in the same repository and release lifecycle. Repository topology is not determined by licence boundaries.
 
@@ -128,7 +128,7 @@ through flags. Both routes continue to use one compiler with parity tests.
 - Modified derivatives of AGPL-covered application/service components remain subject to AGPL-3.0-only, including its network-use source-availability requirements where applicable.
 - The website and documentation remain colocated with the product when that serves contribution and release coherence; licensing does not require a repository split.
 - Package metadata, licence notices, and ambiguous source files must make their applicable licence explicit.
-- Non-software documentation, branding, artwork, logos, screenshots, and similar assets are outside this decision and require their own explicit licensing/content-policy decision rather than inheriting a software licence accidentally.
+- D030 assigns original documentation prose to CC BY 4.0, runnable examples to MIT where practical, and reserves product and visual identity. Those terms remain distinct from this software split rather than inheriting by proximity.
 
 **Rejected alternatives:** Licensing the entire repository under AGPL-3.0-only would create unnecessary adoption and legal-review friction for the public library, CLI, and GitHub Action surfaces explicitly intended for broad integration. Licensing the entire repository under MIT would enable proprietary modified forks of the website and hosted application/runtime where reciprocal open-source terms better match the product model.
 
@@ -435,6 +435,6 @@ See [the project map](PROJECT-MAP.md) and [Qualification](QUALIFICATION.md).
 
 **Rejected.** Treating all npm contents as MIT would misstate the prose and brand boundary. Leaving original docs without a public reuse grant would make the released manual less useful. Applying a software licence to marks and artwork merely because they appear in docs is not selected.
 
-**Current consequence.** `package.json` keeps `MIT` SPDX metadata for reusable software; the always-included root README and included `docs/` content point to their CC BY 4.0 scope. Quoted or linked third-party material does not receive a diffdevil grant. The first stable identity `@wolfsblvt/diffdevil@1.0.0` is a candidate until npm and release refs are actually published and read back.
+**Current consequence.** The reusable engine, API, CLI, and Action software remain MIT, and the separate Action runtime package keeps `MIT` metadata. The mixed npm artifact uses `SEE LICENSE IN LICENSE.md`; that top-level dispatch points to the component map for its MIT software, CC BY 4.0 documentation, MIT examples, reserved identifiers, and third-party terms. Quoted or linked third-party material does not receive a diffdevil grant. The first stable identity `@wolfsblvt/diffdevil@1.0.0` is a candidate until npm and release refs are actually published and read back.
 
-**Sources.** [Release Work #459](https://github.com/Wolfsblvt/emergency-meeting/issues/459), the existing MIT/AGPL component decision, the inspected npm file list, and [Creative Commons legal code](https://creativecommons.org/licenses/by/4.0/legalcode).
+**Sources.** D014, the inspected npm file list, [npm package licence metadata](https://docs.npmjs.com/files/package.json/#license), and [Creative Commons legal code](https://creativecommons.org/licenses/by/4.0/legalcode).

@@ -46,7 +46,8 @@ npm(['install', ...(installMode === 'offline' ? ['--offline'] : []), '--ignore-s
 const packageRoot = join(home, 'node_modules/@wolfsblvt/diffdevil');
 const bin = join(home, 'node_modules/.bin/diffdevil');
 const packageVersion = JSON.parse(await readFile(join(packageRoot, 'package.json'), 'utf8')).version;
-assert.equal(JSON.parse(await readFile(join(packageRoot, 'package.json'), 'utf8')).license, 'MIT');
+assert.equal(JSON.parse(await readFile(join(packageRoot, 'package.json'), 'utf8')).license, 'SEE LICENSE IN LICENSE.md');
+assert.match(await readFile(join(packageRoot, 'LICENSE.md'), 'utf8'), /component-specific terms.*LICENSES\/README\.md/is);
 assert.equal(JSON.parse(await readFile(join(packageRoot, 'package.json'), 'utf8')).author, 'Wolfsblvt Works');
 assert.match(await readFile(join(packageRoot, 'LICENSES/README.md'), 'utf8'), /documentation prose.*Creative Commons Attribution 4\.0/is);
 // npm owns platform-specific launcher selection and escaping on Windows. Do not

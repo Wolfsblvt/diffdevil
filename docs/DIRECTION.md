@@ -35,9 +35,9 @@ website should render these sources, not introduce a competing wiki.
 
 Public technical references retain the founding choices, alternatives, research,
 and earlier implementation evidence. Private activation instructions and raw
-conversations are excluded from the publication history. Unique original records
-were admitted once to `wolf-agents-data@de658c3` under
-`workbench/diffdevil/2026-09-15/`; the consumed transfer archive is not a product
+conversations are excluded from the publication history. Unique original records were admitted once to the Company's private data
+archive; private repository and path coordinates are intentionally not part of
+this public product documentation. The consumed transfer archive is not a product
 asset. The earlier complete development-history carrier is historical, not this
 public source checkout.
 
