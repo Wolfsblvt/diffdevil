@@ -124,8 +124,10 @@ independent copy claims it exists.
 The `v1.0.0` publication completed this sequence. Its Marketplace listing is
 public at [GitHub Marketplace](https://github.com/marketplace/actions/diffdevil)
 with the selected categories **Continuous integration** and **Utilities**.
-Execution through `v1.0.0` and `v1` remains pending the separate outside-consumer
-journey below.
+The outside-consumer journey below is also complete: private canaries exercised
+both `v1.0.0` and `v1` through root, `/actions/analyze`, `/actions/apply`, and
+`/actions/sync-labels`, with real provider reads and bounded effects. A genuine
+external-fork event and a live partial-write failure remain unobserved.
 
 The Marketplace UI may require an owner-bound Developer Agreement, 2FA, or account
 confirmation. Surface the exact physical step only if the live UI requires it;
@@ -154,11 +156,10 @@ After publication, prove the real coordinates outside every source checkout.
 
 ### GitHub Actions
 
-Use the existing authorized disposable canary rather than creating a second demo
-estate. Run root, `/actions/analyze`, `/actions/apply`, and
-`/actions/sync-labels` against both immutable `v1.0.0` and maintained `v1`.
-Read both refs first, then compare meaningful reports, outputs, and effects rather
-than run IDs or timestamps. Retain:
+The completed authorized disposable canary ran root, `/actions/analyze`,
+`/actions/apply`, and `/actions/sync-labels` against both immutable `v1.0.0` and
+maintained `v1`. It compared meaningful reports, outputs, and effects rather
+than run IDs or timestamps, and retained:
 
 - one read-only analysis;
 - one real no-op;
@@ -167,6 +168,11 @@ than run IDs or timestamps. Retain:
 - the split `policy-token` / `github-token` route; and
 - successful startup from every remote metadata coordinate with no consumer
   installation.
+
+The live canary also covered definition creation/readback, managed-label change
+and no-op reconciliation, trusted-base policy confinement, stale-plan refusal,
+and an owned-comment update. Its evidence does not claim a genuine external-fork
+event or a live partial-write failure.
 
 Retire only the canary's temporary workflow/fixture through its existing owning
 Work after the final state and evidence remain encounterable.

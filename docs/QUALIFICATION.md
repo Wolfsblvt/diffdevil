@@ -99,14 +99,19 @@ query/check/plan/apply paths against fake HTTP, public root and subpath imports,
 schemas, presets, licence/documentation assets, closed internal exports, and
 strict TypeScript declarations.
 
-Remote Action execution from the release refs remains unobserved. The prepared
-canary dispatch was rejected before any job or step because of the GitHub account's
-Actions billing/spending state; no setup or diffdevil provider write occurred.
+Private v1 canaries have now exercised the immutable `v1.0.0` and maintained `v1`
+release refs through all four Action entry points. The canaries completed real
+provider reads and bounded `wolfsblvt-automaton` effects, including definition
+creation/readback, managed-label change and no-op reconciliation, trusted-base
+policy confinement against a hostile PR-head copy, stale-plan refusal, an
+owned-comment update, and split policy/effect credentials. This is selected live
+provider evidence for the distributed release path, not a complete qualification
+of every GitHub event or failure mode.
 The [GitHub Marketplace listing](https://github.com/marketplace/actions/diffdevil)
 was read back with owner `Wolfsblvt`, release `v1.0.0`, the root Action's current
 name/description/branding, and categories **Continuous integration** and
-**Utilities**. This proves Marketplace discovery, not execution through the
-immutable or maintained release refs.
+**Utilities**. A genuine external-fork event and a live partial-write failure
+remain unobserved and are not promoted into release claims.
 
 ## September 16 split-policy credential — accepted v1 source
 

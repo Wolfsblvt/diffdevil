@@ -5,7 +5,9 @@
 This manual describes the implemented TypeScript GitHub acquisition, pinned-policy
 loading and explicit metadata reconciliation interfaces. It distinguishes desired
 plans, observed provider effects and caller-owned trust. The adapter has mocked
-HTTP and installed-package qualification; a live GitHub canary is not yet observed.
+HTTP and installed-package qualification, plus selected live provider paths
+through the published Actions. The live canary is narrower than the complete
+adapter contract and does not replace the mocked coverage.
 
 ## Read pull-request evidence
 
@@ -163,7 +165,8 @@ preserved. Templates cannot inject adapter-owned markers. See
 
 See [Qualification](../QUALIFICATION.md) for executed cases and artifacts.
 The mock suite and installed npm consumer prove the shared adapter and its
-observable HTTP behavior. They do not prove hosted token permissions, real App
-identity, hosted GitHub Actions invocation or Marketplace availability. Local
-Node 22/24 Action execution is separately recorded in Qualification; it does not
-upgrade this mock provider boundary to live GitHub evidence.
+observable HTTP behavior. The private release canary separately proves selected
+real provider reads and bounded effects through the distributed Actions; it does
+not prove every provider branch, a genuine external-fork event, a live
+partial-write failure, or real App identity. Marketplace availability and the
+release coordinates are separately read back in Qualification.
