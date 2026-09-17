@@ -114,17 +114,17 @@ The journey exercises root no-config labeling, bounded read-only analysis,
 root planning, saved-report/plan application, stale report refusal, base policy,
 explicit multiline comments, definition verification/reconciliation and partial
 write journals. Each successful or partial result checks every declared output.
-The current nested paths have executed under Node 22.16.0. The preceding layout
-also executed under Node 24.11.1; repeat that runtime boundary after this move. These local
-processes do not emulate every GitHub-runner behavior or certify live permissions,
-secret masking, Marketplace retrieval, fork execution or the summary UI.
+The current distributed paths execute under Node 24, with the native and hosted
+consumer results bound in [Qualification](../QUALIFICATION.md). These local
+processes do not emulate every GitHub-runner behavior or certify secret masking,
+fork execution or the summary UI.
 
-`artifacts/verification/actions/consumer.json` records each execution and runtime.
-The runner files use the documented transport, but there has been **no live
-GitHub canary**. Native Windows and macOS, independent security review, public
-repository access, release tags, npm publication and Marketplace listing remain
-separate unobserved or unauthorized boundaries. Full standing is in
-[Qualification](../QUALIFICATION.md).
+`artifacts/verification/actions/consumer.json` records each local execution and
+runtime. The published `v1.0.0` and `v1` refs have additionally been exercised
+by private live canaries across all four entry points, with real provider reads
+and bounded effects. Native macOS, a genuine external-fork event, a live
+partial-write failure, and the summary UI remain separate unobserved boundaries.
+Full standing is in [Qualification](../QUALIFICATION.md).
 
 ## Primary sources
 
