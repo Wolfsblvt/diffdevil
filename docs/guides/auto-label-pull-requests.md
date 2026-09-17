@@ -9,12 +9,10 @@ explains the result, the permissions, and the first useful customizations.
 
 ## Add one workflow
 
-**Release-candidate note:** the workflow below targets the intended first public
-`v1` release. That ref has not been published in this candidate. Once the release
-exists, the file is ready to copy unchanged. Before publication, use an accepted
-immutable source commit or the local Action qualification described in
-[Development](../DEVELOPMENT.md), not a nonexistent remote ref. The copyable source
-is [`examples/workflows/size.yml`](../examples/workflows/size.yml).
+The workflow below uses the maintained public `v1` release. Security-sensitive
+workflows can pin immutable `v1.0.0` or exact release commit
+`0827485c9d3795ef58a7934cd7a4b8b3fb5cc9c5`. The copyable source is
+[`examples/workflows/size.yml`](../examples/workflows/size.yml).
 
 Save this as `.github/workflows/diffdevil.yml` in the repository whose PRs you want
 to label, then merge it into that repository's **default branch**:

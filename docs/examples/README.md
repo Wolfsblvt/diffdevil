@@ -4,9 +4,9 @@
 
 These are complete consumer inputs for the CLI, shared policy engine, and GitHub
 Actions. The smaller task recipes are exercised by `src/diffdevil/tests/examples.test.mjs`;
-installed and distributed consumers have separate tests. A parsed remote workflow
-is not a published Action or a hosted run. The `@v1` examples activate only after
-that release exists.
+installed and distributed consumers have separate tests. The `@v1` Action
+coordinate is published; a parsed workflow still does not prove that a hosted
+consumer ran it successfully.
 
 ## Pick a useful result
 

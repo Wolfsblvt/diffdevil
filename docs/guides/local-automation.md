@@ -5,11 +5,20 @@
 Measure a diff, extract a scalar, list selected paths, or make a shell decision
 without parsing a human report. These examples run from a built source checkout
 and preserve the difference between false, unknown, and an error. The same CLI
-commands apply to the installed `diffdevil` executable after publication.
+commands apply to the published `@wolfsblvt/diffdevil` executable.
 
 ## Get a first result without GitHub
 
-From the source checkout, with Node 22 or later and npm installed:
+Install the released package with Node 22 or later:
+
+```sh
+npm install --save-dev @wolfsblvt/diffdevil
+npm exec -- diffdevil analyze \
+  --diff-file node_modules/@wolfsblvt/diffdevil/docs/examples/diffs/review.diff \
+  --format human
+```
+
+From a source checkout:
 
 ```sh
 npm ci --ignore-scripts --no-audit --no-fund

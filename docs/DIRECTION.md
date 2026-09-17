@@ -123,30 +123,30 @@ lifecycle, but their exact directory layout is selected by the implementation
 tranche rather than frozen by this document.
 [The project map](PROJECT-MAP.md) locates current ownership.
 
-## Next release movement
+## Current release movement
 
-The native Windows/Node 24 qualification is recorded in
-[Qualification](QUALIFICATION.md). The trust/effects review and initial hosted
-canary are complete for the single-credential route. The optional credential
-split is implemented and must pass this joined tree's native and hosted
-consumers plus the live base-policy canary before it becomes the stable
-candidate. The first-consumer no-dual-writer contract then receives that exact
-coordinate; `v1.0.0` publication and outside-consumer proof follow. Current and
-historical runtime/consumer evidence is separated in
-[Qualification](QUALIFICATION.md); mock HTTP is not live permission evidence.
+The stable open-tool release is public from exact source `0827485`: npm
+`@wolfsblvt/diffdevil@1.0.0`, immutable `v1.0.0`, the GitHub Release, and
+maintained Action alias `v1` are read back. A fresh Windows Node 24 consumer
+installed and exercised the registry artifact outside every checkout. Current and
+historical runtime/consumer evidence remains separated in
+[Qualification](QUALIFICATION.md); mock HTTP and earlier live canaries do not
+establish execution through the published refs.
+
+Marketplace publication and the prepared `v1.0.0` / `v1` remote Action
+journeys remain separate provider effects. GitHub rejected the first prepared
+dispatch before any job or step because of the account's Actions billing/spending
+state. That hold affects only the release-ref canary and its dependent claim.
 
 Wolf and Nyxara selected MIT for reusable software and AGPL-3.0-only for
 application/service code. Original documentation prose is CC BY 4.0, runnable
 examples are MIT, and brand/visual assets remain reserved. The
 [licence map](../LICENSES/README.md) distinguishes those surfaces. Wolf authorized the
-public source repository after this preparation; public source/Action availability,
-npm availability, Marketplace listing, security intake,
-and the website, playground, and GitHub App are separate observable outcomes. Do
-not imply all of them happened because one Git push succeeded. Release preparation
-and application implementation may move in parallel while publication remains
-bound to the accepted reviewed and live-qualified candidate. No package
-installation, public repository, token, label change, or publication should be
-silently delegated to a user to compensate for an unfinished local implementation.
+public source repository and the v1 publication after this preparation. Public
+source, npm, Action refs, Marketplace listing, security intake, and the website,
+playground, and GitHub App remain separate observable outcomes. Do not imply all
+of them happened because one Git push or release succeeded. Application
+implementation continues independently around the same engine and contracts.
 
 ## Preserve the remaining horizon
 
