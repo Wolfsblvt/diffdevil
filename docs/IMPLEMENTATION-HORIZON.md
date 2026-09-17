@@ -6,7 +6,7 @@ This document preserves the complete implementation destination and the substant
 
 ## Destination
 
-Leave one locally runnable repository that is close to a public release candidate:
+The open-tool release outcome is one locally runnable repository that is close to a public release candidate:
 
 - the core measurements and evidence model work;
 - the detail language is implemented against its specification;
@@ -19,6 +19,8 @@ Leave one locally runnable repository that is close to a public release candidat
 - documentation clearly marks any remaining unimplemented or unqualified surface.
 
 Near-complete does not mean every future adapter, optimisation, or visual asset exists. It does mean the selected product is recognisable and joined, rather than six disconnected prototypes.
+
+The complete product also includes the optional managed App and independent public playground described below. Their absence from the first open-tool release is sequencing, not removal. diffdevil remains CLI/library/Actions-first; hosted adoption is not required to use the open product.
 
 ## Build from useful behavior
 
@@ -145,6 +147,24 @@ Implement GitHub behavior as an adapter around the same core:
 - effect readback and ambiguous-response recovery.
 
 Support safe API-only privileged use and ordinary checked-out Git use where appropriate. The product boundary is not “checkout forbidden”; it is “do not execute hostile pull-request content with credentials it should not possess.”
+
+### Optional managed App
+
+Carry the [selected App experience and architecture](integration/github-app.md) through installation, preset choice, account/organization defaults, trusted repository overrides, effective-setting provenance, labels, owned comments, native GitHub check summaries, and its authenticated dashboard.
+
+Native checks and `Checks: write` remain explicit selected functionality. A labels-only canary does not complete or narrow this outcome. Preserve existing Action step-level overrides and the [single conventional repository configuration](integration/presets-and-shortcuts.md#configuration-layering); do not add hidden account-repository discovery or a second hosted policy language.
+
+Implement opted-in quantitative history with aggregate and pathless per-file measurements, evidence, comparison references, coverage-aware statistics, export, retention, and deletion under [Privacy and data](PRIVACY-AND-DATA.md). The seven-day recovery ledger remains separate from thirty-day free history and the selected paid no-age-expiry history design. Do not retain names, authors, prose, or diffs merely to make a later dashboard convenient.
+
+The first managed adapter targets Workers, Queues, and D1. Keep engine/application semantics portable, provider bindings narrow, data export/import useful, and the existing Node consumers intact. Self-hosting is intentional under the same-repository AGPL application boundary; it does not imply an already delivered Docker adapter.
+
+### Public playground and website
+
+Deliver the [independent public playground](integration/playground.md): public PR input without an account, curated reproducible examples, presets and editable settings, terminal/agent/GitHub-preview/explanation views, and portable configuration/CLI/Action exports.
+
+A measurement form is a useful first result, not the complete configurable experience. All views use the shared engine, preserve incomplete evidence, and apply no effects. Private PR playground access and automatic enrollment in App history are not selected.
+
+Give the playground its own page and a compact homepage entry. The website teaches the open tool first, offers the free playground, and explains managed convenience as an optional route. Render selected repository-owned user documentation and examples through the [documentation design](DOCUMENTATION.md), not a duplicate wiki or a wholesale publication of internal product records.
 
 ### Packaging and consumer truth
 

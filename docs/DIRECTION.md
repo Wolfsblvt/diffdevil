@@ -31,32 +31,57 @@ release-candidate paths.
 
 ## Active application frontier
 
-The complete selected product also includes a managed GitHub App, a public
-read-only PR playground, and the website/documentation experience. These are now
-active product Work rather than unnamed later presentation. The current candidate
-contains the first local read-only playground and documentation-front-door vertical
-under `apps/playground/`; the hosted site and GitHub App runtime are not yet
-implemented or deployed.
+diffdevil remains an open-source CLI, TypeScript library, and workflow Actions tool.
+The managed App is an optional convenience for adopters, not the product's centre.
+The public playground is a separate free learning and configuration experience.
 
-All three surfaces use the same engine and contracts:
+Current source contains the first local read-only measurement playground under
+`apps/playground/`, backed by the shared engine and versioned response contract.
+It does not yet establish the hosted configurable playground, managed App runtime,
+dashboard, native App check lifecycle, persistent history, or commercial service.
 
-- the playground analyzes public PRs without applying repository effects;
-- the GitHub App provides hosted operation around the same reports, plans, policy,
-  and effect boundaries;
-- repository-owned policy remains authoritative over hosted defaults; and
-- the website renders repository-owned product and documentation sources rather
-  than creating a competing wiki or semantic copy.
+The selected implementation direction is now explicit:
 
-The open package, CLI, API and Actions remain fully capable. Hosted value comes
-from operation, administration, continuity, scheduling, history, scale and support,
-not from removing engine or policy capability from the open product. Reusable
-software remains MIT; application and service software remains AGPL-3.0-only.
+- Retain `.diffdevil.yml` as the single conventional repository file. Keep current
+  explicit configuration, trusted policy sources, and Action step-level overrides.
+  Do not introduce automatic `<owner>/.github` policy discovery.
+- Extend shared lowering for partial convenience settings while preserving explicit
+  declaration/array semantics. App account/organization defaults sit below
+  repository overrides; Actions do not inherit dashboard settings. The exact
+  current-versus-selected boundary is in [presets and shortcuts](integration/presets-and-shortcuts.md#configuration-layering).
+- Build the [complete managed App](integration/github-app.md): installation and
+  preset setup, account/organization administration, effective policy and origins,
+  labels, owned comments, native check summaries, and optional history.
+  `Checks: write` belongs to the selected App permission contract. Earlier omission
+  from the first canary is not a removal of that functionality.
+- Keep the [playground](integration/playground.md) public, unauthenticated, read-only,
+  and independent of App history. Carry curated examples, configuration editing,
+  terminal/agent/GitHub-preview/explanation views, and portable exports through one
+  shared engine. Provide its own page and a compact homepage entry.
+- Implement the [data boundary](PRIVACY-AND-DATA.md): seven-day recovery records;
+  opt-in aggregate and pathless per-file numeric history; thirty-day free history;
+  paid history without automatic age expiry while its entitlement/service remains
+  active, subject to explicit deletion and disclosed limits. No permanent history
+  is collected before opt-in. Prices and usage quotas are not a commercial offer.
+- Target Cloudflare Workers, Queues, and D1 directly rather than first building a
+  temporary VPS-specific App. Keep application logic and persisted meaning outside
+  provider bindings, retain Node consumers, and qualify useful export/import.
+  Avoid a second complete operating stack or generic provider framework.
+- Keep App, website, playground, and service source in this repository under the
+  AGPL application boundary. Self-hosting is intentional and documented, not the
+  primary homepage pitch. The reusable software remains MIT.
 
-The first coherent implementation tranche establishes these application
-boundaries through one useful local vertical without inventing a second semantic
-engine, a repository split, or generic hosted machinery before real behavior. Its
-versioned JSON response is an application contract, backed by a schema and contract
-tests; live public-GitHub and browser use remain distinct qualification boundaries.
+Both hosted runtimes still require the same static, bundler-visible generated
+validator boundary in the shared engine. The existing Worker-runtime contribution
+carries that repair while preserving package, CLI, Action, and local-playground
+behavior. Do not duplicate it with a hosted engine fork.
+
+An installed canary can qualify an operating path before the dashboard and all
+views exist. It does not satisfy the complete App or playground outcome. Carry the
+remaining user journeys through implementation and qualification, rather than
+reclassifying them as optional polish or requiring the product to be designed again.
+The owning workplace carries current assignments and returns; these documents
+carry the selected product contract.
 
 ## Current release preparation
 
@@ -127,8 +152,8 @@ silently delegated to a user to compensate for an unfinished local implementatio
 
 Keep richer explanation/discovery, further measured usability improvements,
 additional qualified platforms, visual identity, the website, playground, and
-GitHub App in their natural product homes. The application surfaces are active
-selected product, not optional polish, but their implementation still works inside
+GitHub App in their natural product homes. The application surfaces are optional adoption routes but active selected
+implementation, not optional polish. Their implementation still works inside
 out from useful behavior rather than beginning with a hosting control plane. Do
 not add a bundler merely to hide the generated file count; reconsider packaging
 when it has a demonstrated consumer benefit. Do not replace selected source,

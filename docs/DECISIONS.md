@@ -501,3 +501,63 @@ the distributed Action is rerun with both real tokens.
 
 **Sources.** The current provider qualification and settled public-v1 direction;
 [Action guide](guides/auto-label-pull-requests.md); two-client Action tests.
+
+## D032: Keep the open tool primary and the optional App complete
+
+**Decision.** diffdevil is an open-source CLI, TypeScript library, and workflow Actions tool with an optional managed App. The playground is a separate free public learning/configuration experience, not the App or an account funnel. The complete App includes native check summaries, labels, owned comments, installation/preset setup, a configuration dashboard, and opt-in history. Its selected repository permission set includes `Checks: write`.
+
+**Why.** Optional hosted operation removes maintenance and adds administration/continuity; it does not redefine the product as a paid service with a restricted open tier. A canary is evidence for part of the selected result, not authority to discard another part. Native checks were part of the intended App experience and were incorrectly excluded by the narrow first-tranche contract.
+
+**Rejected or superseded.** Hosted-first positioning; making open-tool behavior deliberately inconvenient to encourage subscriptions; treating a labels-only installed canary as App completion; the earlier App-wide interpretation of the first tranche's Checks/dashboard exclusions. This joins D029's complete-product destination rather than replacing it with only the open-tool release.
+
+**Current consequence.** The full App and standalone playground journeys remain selected implementation beyond the current local measurement form. The source remains one repository: reusable software MIT, application/service software AGPL-3.0-only under D014, with D030's separate content/brand rights. Self-hosting is intentional and documented in the operator material, not hidden or made the primary homepage pitch. A source licence does not grant official-service identity.
+
+**Sources.** Owner-directed co-design settlement of 2026-09-17; [Vision](VISION.md); [App architecture](integration/github-app.md); [playground experience](integration/playground.md); [GitHub Checks API](https://docs.github.com/en/rest/checks/runs); [GNU AGPL v3](https://www.gnu.org/licenses/agpl-3.0.en.html).
+
+## D033: One conventional config, explicit host layers, and partial settings
+
+**Decision.** Retain root `.diffdevil.yml` as the single conventional repository file. Do not add automatic alternative-path discovery or automatic `<owner>/.github` configuration. Explicit file paths and immutable trusted external policy reuse remain supported. CLI/Actions compose presets, selected repository policy, and supported invocation/Action step-level overrides; the App composes presets, account/organization defaults, and explicitly supplied repository overrides.
+
+**Why.** A provider-neutral CLI deserves a provider-neutral configuration home. Another implicit repository fetch would add trust, network, version, and precedence surprises. Keeping the current name is a deliberate product choice, not a requirement to preserve an unused prerelease convention. Optional hosting earns its convenience without sabotaging deliberate self-operated reuse.
+
+**Rejected or superseded.** Maintaining two automatically discovered file locations; four universal layers applied to every host; hidden dashboard inheritance in Actions; requiring a whole configuration copy when only one convenience setting changes; generic deep-merging of executable rule definitions. Existing append/replace controls and valid explicit policy-source routes are not removed.
+
+**Current consequence.** Only supplied values override inherited settings. Partial convenience maps, including individual size thresholds/labels, resolve against lower layers before complete validation and coherent generated-group rewriting. Named executable declarations continue to replace the same-ID declaration as a whole; arrays retain their documented replace/explicit-append semantics. The current compiler still requires complete supplied size maps, so shared resolver/schema/CLI/Action support is an explicit implementation remainder, not a claim that new partial examples run already. The dashboard and `explain` show origins and export ordinary policy.
+
+**Sources.** Owner-directed co-design settlement of 2026-09-17; D001; [presets and shortcuts](integration/presets-and-shortcuts.md#configuration-layering); [current Action interface](integration/github-actions.md).
+
+## D034: Separate seven-day recovery from opted-in quantitative history
+
+**Decision.** Keep minimized operational records for seven days. Do not create permanent analysis history before installation-admin opt-in. Opted-in history retains aggregate and pathless per-file numeric measurements, evidence/coverage, source/policy versions, PR/revision references, and compact policy/effect results. Free hosted history has a thirty-day rolling window. The paid-history design has no automatic age expiry while the entitlement and service remain active, with user-selected shorter retention, deletion, and disclosed usage/storage terms.
+
+**Why.** Useful statistics require actual measurements and per-file distributions, not only a size band. Those facts can explain broad or concentrated changes without archiving source, filenames, contributor identities, or conversations. Operational recovery and product memory have different purposes; neither a lease TTL nor a future dashboard should choose collection consent by accident.
+
+**Rejected or superseded.** An unresolved permanent-minimal-row fork; collecting durable history for every installation and asking consent later; storing only bands while promising numeric trends; serializing full reports and redacting a few fields; treating linkable PR/commit references or filename hashes as anonymous; retaining expired data through hidden rollups; counting retries or every PR revision as another unique PR.
+
+**Current consequence.** [Privacy and data](PRIVACY-AND-DATA.md) owns the allowlist and lifetimes. Paths, previous paths, authors, prose, patches, arbitrary labels/templates, and full reports are not retained in analysis history, queues, logs, or exports. Context is reacquired from GitHub under current authorization and kept transient. Necessary service/account configuration is a separate disclosed store, not a history exemption. No-age-expiry is not unlimited resources or a lifetime hosting promise; pricing and usage allowances remain a future commercial release decision. Data collection, expiry, deletion, authorization, export, and recovery still require implementation and qualification. Offboarding transitions and restore-resistant deletion are selected in D036.
+
+**Sources.** Owner-directed co-design settlement of 2026-09-17; [quantitative history contract](PRIVACY-AND-DATA.md); [App architecture](integration/github-app.md). These are selected product decisions, not a legal privacy notice or deployed retention evidence.
+
+## D035: Target Cloudflare directly with concrete portability boundaries
+
+**Decision.** Keep Cloudflare Workers, Queues, and D1 as the first managed App adapter and Worker hosting as the selected public-playground runtime. Do not deliberately build a temporary VPS-specific App merely to migrate it later. Keep engine/application semantics, persisted identities, and retention outside provider bindings; preserve Node consumers and a qualified material-data export/import path.
+
+**Why.** A conventional Node/Docker host fits the existing local playground and can be a useful alternative. But recreating reliable ingress, queue/retry/lease operation, and durable application state there before moving to the already-selected Worker route creates an avoidable second operating implementation. Direct Worker qualification discovers the real portability limits early. Provider-specific adapters should remain replaceable without pretending that all providers share identical semantics.
+
+**Rejected.** Treating spare server rental as zero total operating cost; assuming paid included usage is a hard ceiling that forces migration; coupling the engine or public report model to Queue/D1 APIs; declaring portability from interface names alone; implementing a generic multi-provider framework or two complete production stacks before either is useful.
+
+**Current consequence.** The shared static-validator repair remains necessary for both hosted consumers and preserves Node/package/Action behavior. Queue/lease/storage/secret/ingress details stay in narrow application adapters. Persist ordinary data identities and useful export/import semantics, including opt-in, expiry, and deletion. Replacing an adapter still needs real qualification; no automatic cheap migration is claimed. Runtime, database, upstream API, service allowance, and metered cost limits are separate. D1's current 10 GB per-database limit must not be hidden by the paid no-age-expiry history design.
+
+**Sources.** Owner-directed co-design settlement of 2026-09-17; [App operating adapter](integration/github-app.md#first-operating-adapter-and-portability); [Workers pricing](https://developers.cloudflare.com/workers/platform/pricing/); [Workers limits](https://developers.cloudflare.com/workers/platform/limits/); [D1 limits](https://developers.cloudflare.com/d1/platform/limits/); [D1 import/export](https://developers.cloudflare.com/d1/best-practices/import-export-data/). Provider documentation was checked on 2026-09-17; account usage, expenditure, deployment, and actual migration remain separately observable.
+
+## D036: Offboard retained history without stranded access
+
+**Decision.** Stop collection immediately for a repository deselection, provider-confirmed installation removal, paid-history entitlement end, or confirmed service-account closure. Repository deselection, installation removal, and entitlement end start a thirty-day offboarding grace; confirmed account closure skips grace after export is offered before final confirmation. During grace, the only history access exception is an independently authenticated service-account or organization administrator whose role existed before access loss. That administrator may inspect already retained numeric history, export it, shorten the grace, or delete it, but may not restore repository access, use an installation credential, reacquire GitHub context, or perform repository cleanup writes. If no valid administrator remains, the history expires on schedule. Grace expiry or account closure deletes primary history, pathless per-file rows, rollups, caches, and pending exports within seven days, with deletion/expiry tombstones reapplied across the longest supported backup-restore window plus seven days. Restoration does not resume collection without explicit re-enable, and transient or unverified access failures do not select destructive offboarding.
+
+**Why.** Current-installation-only control combined with paid history without automatic age expiry can otherwise strand minimized but linkable numeric history after access disappears. The selected transition preserves an honest exit without treating lost repository authority as permanent retention permission or turning an outage, billing retry, or ambiguous provider response into deletion.
+
+**Rejected.** Waiting indefinitely for a future claimant; immediate deletion for every installation or repository access loss; using an installation credential or GitHub reacquisition during grace; allowing restoration to resume collection implicitly; treating temporary failure as confirmed offboarding; or retaining the analysis projection in legally, financially, or abuse-prevention account records by convenience.
+
+**Current consequence.** [Privacy and data](PRIVACY-AND-DATA.md#offboarding-transitions) owns the collection stop, independent-admin grace, expiry/deletion, and restore-tombstone contract. [App architecture](integration/github-app.md#permissions-and-current-access) makes that grace the sole post-installation authorization exception and keeps queued work terminal after access loss. These are selected product mechanics requiring implementation and qualification, not a deployed retention or deletion claim.
+
+**Sources.** Owner-directed disposition of Katja's one-round review and Nyxara's selected correction in [Issue #471](https://github.com/Wolfsblvt/emergency-meeting/issues/471); [quantitative history decision](#d034-separate-seven-day-recovery-from-opted-in-quantitative-history); [Privacy and data](PRIVACY-AND-DATA.md); [App architecture](integration/github-app.md). This is a selected engineering/product contract, not a legal privacy notice or live deletion evidence.
