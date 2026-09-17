@@ -25,9 +25,74 @@ The first tranche:
 - performs no provider writes and stores no analysis history; and
 - links to maintained repository documentation rather than copying it into a second knowledge base.
 
-The response schema is compiled in the application test against the reusable report/value schemas. Generic 404/405 and analysis errors use the same public envelope; unexpected internal detail is not returned. A failed static-asset read is evicted so a transient filesystem failure does not poison the process cache.
+The response schema is compiled in the application test against the reusable report/value schemas. API and health 404/405 responses and analysis errors use the same public envelope; ordinary missing static assets retain their host's 404 semantics. Unexpected internal detail is not returned. A failed static-asset read is evicted so a transient filesystem failure does not poison the process cache.
 
 GitHub's unauthenticated rate limits are a real operating boundary. A hosted service may later add deliberate authentication, caching, abuse controls, and persistence under its own accepted application design; this local tranche does not smuggle those systems in early.
+
+## Cloudflare Workers source route
+
+`wrangler.jsonc` defines the hosted adapter named `diffdevil-playground`. It packages
+the same application module and the `public/` asset directory in one Worker. Static
+paths stay asset-first; only `/api/*` and `/health/*` invoke Worker code first.
+`public/_headers` applies the browser security headers to directly served assets,
+while the shared application handler applies them to Worker responses.
+
+From a restored checkout, run the local Worker runtime with:
+
+```sh
+npm run playground:worker
+```
+
+Use the source-only bundle check before a provider operation:
+
+```sh
+npm run verify
+```
+
+It validates the Worker bundle and asset binding with `wrangler deploy --dry-run`.
+It creates no Cloudflare resource, version, route, domain, or deployment.
+
+The selected production name is `diffdevil-playground`, whose first public route is
+`https://diffdevil-playground.wolfsblvt.workers.dev`. This source does not claim that
+the route exists. An authorized operator must first reconcile Cloudflare's current
+Worker state. `wrangler versions upload` cannot create a missing first Worker, so
+the first-resource path is deliberately separate from ordinary version uploads.
+
+For a missing Worker, derive and inspect one temporary bootstrap config from the
+accepted canonical config. It changes only `workers_dev` and `preview_urls` to
+`false`; the Worker name, module, compatibility settings, and asset binding remain
+identical. Use that temporary config for one attributable strict `wrangler deploy`
+tagged and messaged with the accepted source SHA. This creates the initial internal
+deployment without a Workers.dev route, preview URL, custom route, or domain. Read
+back the Worker, deployment/version, and Worker-subdomain state before continuing;
+both `enabled` and `previews_enabled` must be `false`. The bootstrap config is an
+operator artifact, not a second committed configuration source.
+
+Enable preview URLs only through the Worker-subdomain control, leaving the production
+Workers.dev route disabled. Then upload the accepted source version without promoting
+traffic, attaching the accepted commit SHA to both message and tag:
+
+```sh
+wrangler versions upload --preview-alias candidate --message "diffdevil playground <sha>" --tag "<sha>"
+```
+
+Read back the returned version ID and preview URL, then exercise the static front
+door and both referenced assets, `/health/ping`, public-URL refusal, canonical API
+failures, and one real public-PR response against the versioned response schema. Only
+after that readback may the operator deploy that exact version at 100% while keeping
+the production Workers.dev route disabled:
+
+```sh
+wrangler versions deploy <version-id>@100% --message "Promote diffdevil playground <sha>"
+```
+
+Read back the deployment/version identity, then enable the production Workers.dev
+route and exercise the same journey at the canonical URL. For later changes, keep the
+preceding accepted version ID and use `wrangler versions deploy
+<previous-version-id>@100%` to roll back. This first Worker has no preceding
+production version: if production exposure succeeds but its immediate readback fails,
+disable only its Workers.dev route and preserve the uploaded version and evidence for
+repair; do not delete the Worker or blindly upload another version.
 
 ## Licence
 

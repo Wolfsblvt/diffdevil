@@ -12,6 +12,7 @@ coverage/
 # Repository-local artifacts and editor noise
 # Leitsatz: product-owned generated output
 /artifacts/
+.wrangler/
 .DS_Store
 Thumbs.db
 .vscode/

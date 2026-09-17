@@ -1,4 +1,4 @@
-import { readFileSync, mkdirSync, writeFileSync } from 'node:fs';
+import { readFileSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import Ajv2020 from 'ajv/dist/2020.js';
 import standaloneCode from 'ajv/dist/standalone/index.js';
 
@@ -20,4 +20,10 @@ export function buildSchemas() {
   }
   mkdirSync('dist/lib/validation', { recursive: true });
   writeFileSync('dist/lib/validation/schemas.cjs', standaloneCode(ajv, ids));
+  // TypeScript emits a temporary typed CJS module so source can import the
+  // generated validator. Its declaration and source map describe that stub,
+  // not Ajv's generated runtime, so they must not ship beside the replacement.
+  for (const name of ['schemas.cjs.map', 'schemas.d.cts', 'schemas.d.cts.map']) {
+    rmSync(`dist/lib/validation/${name}`, { force: true });
+  }
 }

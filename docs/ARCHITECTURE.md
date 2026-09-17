@@ -82,6 +82,22 @@ It consumes plans; it does not become a second policy engine.
 
 Build the npm package, public declarations, CLI launcher, and a self-contained native-ESM Action distribution. Consumer verification tests the installed artifact, not only source imports.
 
+### Public playground application
+
+`apps/playground/` is an AGPL application boundary, not another diff-analysis
+engine. Its shared application handler consumes the built public engine through the
+same `GitHubClient` and `analyzeGitHub` path used by other hosts. The local Node
+adapter owns loopback listening, local asset reads, and exact representation lengths;
+the Cloudflare adapter owns the Worker entry point and asset binding. Both adapters
+share the API, health, public-error, and no-write contract.
+
+Static assets are asset-first. Only `/api/*` and `/health/*` enter the Worker
+handler; unknown routes under those namespaces return the versioned JSON envelope,
+while ordinary missing static paths retain the static host's 404 semantics. The
+application has no credential source, provider-write path, visitor history, or
+persistence. Unexpected failures remain generic in public responses and are reported
+to the host's operator log boundary.
+
 ## Public package shape
 
 One package exposes these deliberate runtime subpaths:

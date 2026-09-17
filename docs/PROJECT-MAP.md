@@ -11,16 +11,17 @@ and disposable outputs without introducing independently versioned packages.
 | Path | Responsibility |
 | --- | --- |
 | `src/diffdevil/` | Reusable MIT product core: shared engine, CLI, provider/Action hosts, core tests, contracts and presets. |
-| `apps/playground/` | AGPL application adapter: local public-PR playground, browser assets, versioned response contract and application tests. |
+| `apps/playground/` | AGPL application adapter: shared local/Worker public-PR route, browser assets, versioned response contract and application tests. |
 | `actions/` | Three sub-action entry points and their shared, committed runtime. |
 | `docs/` | Maintained manuals, runnable examples and dated technical research. |
 | `tools/` | Builds, generation and repository/consumer qualification. |
 | `.github/` | Provider-owned workflow convention, not a second implementation. |
 | `action.yml` | One-step root Action, forwarding to the shared runtime. |
 | `package.json`, `package-lock.json`, `tsconfig.json` | One package, one lock and one compiler boundary. |
+| `wrangler.jsonc` | Source-owned Cloudflare Worker name, runtime compatibility and static-asset routing; it contains no account ID, token, custom domain or deployment state. |
 | `README.md`, `AGENTS.md` | Public product front door and repository-local contribution contract. |
 
-`apps/playground/` consumes the built reusable engine from `dist/lib`; it does not duplicate measurement, policy, or provider semantics. Its browser assets and local server are application code, not npm-package contents.
+`apps/playground/` consumes the built reusable engine from `dist/lib`; it does not duplicate measurement, policy, or provider semantics. Its browser assets, local server and Workers adapter are application code, not npm-package contents.
 
 `dist/`, root `node_modules/` and `artifacts/` are ignored generated/local material,
 not extra products. They are recreated by documented commands and are not part of
@@ -46,9 +47,11 @@ All paths below are relative to `src/diffdevil/`:
 | detail grammar, catalogs, interchange definitions and supplied cases | `contracts/detail/v1/` |
 | Shipped declarative presets | `presets/` |
 
-The playground server, browser assets, response schema and application tests live
-under `apps/playground/`; those tests reuse the core fake-provider fixture without
-moving application code into the MIT source boundary.
+The playground server, browser assets, response schema, Worker adapter and application
+tests live under `apps/playground/`; those tests reuse the core fake-provider fixture
+without moving application code into the MIT source boundary. `wrangler.jsonc` routes
+only `/api/*` and `/health/*` through the Worker before static assets; the remaining
+hosted provider state is deliberately outside source.
 
 The compiled public exports still live under `dist/lib/`. Consumer import names
 and the `diffdevil` CLI do not expose the source-tree nesting. There is no workspace

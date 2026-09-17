@@ -38,7 +38,7 @@ export class GitHubClient {
         this.#token = options.token;
         if (this.#token !== undefined && /[\r\n]/u.test(this.#token))
             fail('E_CONFIG', 'GitHub token contains invalid header characters.', 'config');
-        this.#fetch = options.fetch ?? globalThis.fetch;
+        this.#fetch = options.fetch ?? globalThis.fetch.bind(globalThis);
         this.#signal = options.signal;
         this.#timeout = options.timeoutMs ?? 30000;
         this.#retries = options.readRetries ?? 2;
