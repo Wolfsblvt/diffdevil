@@ -14,6 +14,11 @@ export function resolveEffectivePolicy({ preset = {}, account = {}, repository =
   const effective = { version: 1, presets: [] }, provenance = {};
   for (const [name, layer] of Object.entries({ preset, account, repository, supplied })) {
     const input = record(layer, `${name} configuration`);
+    if (input.presets !== undefined) {
+      if (!Array.isArray(input.presets) || input.presets.some(value => typeof value !== 'string')) throw new TypeError(`${name}.presets must be an array of preset identifiers.`);
+      effective.presets = [...input.presets];
+      provenance['/presets'] = name;
+    }
     for (const section of dictionaries) {
       if (input[section] === undefined) continue;
       const declarations = record(input[section], `${name}.${section}`);

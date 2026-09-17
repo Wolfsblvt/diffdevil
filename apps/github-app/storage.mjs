@@ -65,9 +65,9 @@ export class D1AppStore {
     if ((completed.meta?.changes ?? 0) !== 1) throw Object.assign(new Error('Delivery ownership was lost before completion.'), { code: 'E_LEASE_LOST' });
     await this.database.batch([
       this.statement('DELETE FROM execution_leases WHERE repository_id=? AND pull_request=? AND delivery_id=? AND attempt_id=? AND fence=?', envelope.repositoryId, envelope.pullRequest, envelope.deliveryId, lease.attemptId, lease.executionFence),
-      this.statement('INSERT INTO operational_results (delivery_id, policy_id, comparison_id, status, effect_count, recorded_at) VALUES (?, ?, ?, ?, ?, ?)', envelope.deliveryId, result.policyId ?? null, result.comparisonId ?? null, result.status ?? state, result.effectCount ?? 0, now),
-      ...(state === 'repair' ? [this.statement(`INSERT INTO delivery_repairs (delivery_id, repair_kind, projection_json, state, code, created_at)
-        VALUES (?, ?, ?, 'open', ?, ?) ON CONFLICT(delivery_id) DO UPDATE SET repair_kind=excluded.repair_kind, projection_json=excluded.projection_json, state='open', code=excluded.code, created_at=excluded.created_at`, envelope.deliveryId, result.repair?.kind ?? 'execution', JSON.stringify(result.repair?.projection ?? {}), result.code ?? 'E_APP_EXECUTION', now)] : [])
+      this.statement('INSERT INTO operational_results (delivery_id, policy_id, comparison_id, status, effect_count, recorded_at) VALUES (?, ?, ?, ?, ?, ?)', envelope.deliveryId, result.policyId ?? result.repair?.identity?.policyId ?? null, result.comparisonId ?? result.repair?.identity?.comparisonId ?? null, result.status ?? state, result.effectCount ?? 0, now),
+      ...(state === 'repair' ? [this.statement(`INSERT INTO repairs (repair_id, repair_kind, repository_id, pull_request, base_sha, head_sha, policy_id, comparison_id, projection_json, state, code, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'open', ?, ?) ON CONFLICT(repair_id) DO UPDATE SET repair_kind=excluded.repair_kind, repository_id=excluded.repository_id, pull_request=excluded.pull_request, base_sha=excluded.base_sha, head_sha=excluded.head_sha, policy_id=excluded.policy_id, comparison_id=excluded.comparison_id, projection_json=excluded.projection_json, state='open', code=excluded.code, created_at=excluded.created_at`, `delivery:${envelope.deliveryId}`, result.repair?.kind ?? 'execution', envelope.repositoryId, result.repair?.identity?.pullRequest ?? envelope.pullRequest ?? null, result.repair?.identity?.base ?? null, result.repair?.identity?.head ?? null, result.repair?.identity?.policyId ?? null, result.repair?.identity?.comparisonId ?? null, JSON.stringify(result.repair?.projection ?? {}), result.code ?? 'E_APP_EXECUTION', now)] : [])
     ]);
   }
 
@@ -151,7 +151,7 @@ export class D1AppStore {
         SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'publishing'
         WHERE EXISTS (SELECT 1 FROM repositories r JOIN installations i ON i.installation_id=r.installation_id WHERE r.repository_id=? AND r.history_enabled=1 AND r.state='active' AND r.access_state='available' AND i.state='active')
           AND NOT EXISTS (SELECT 1 FROM deletion_tombstones WHERE scope=? AND reapply_until > ?)
-        ON CONFLICT(repository_id, comparison_id, policy_id, schema_version, metric_version) DO NOTHING RETURNING id`,
+        ON CONFLICT(repository_id, comparison_id, policy_id, schema_version, engine_version, report_version, metric_version) DO NOTHING RETURNING id`,
       identity.repositoryId, identity.pullRequest, identity.comparisonId, identity.policyId, projection.schemaVersion, projection.engineVersion, projection.reportVersion, projection.metricVersion,
       projection.source?.base ?? null, projection.source?.head ?? null, now, expires, JSON.stringify({ evidence: projection.evidence, totals: projection.totals }), JSON.stringify(projection.fileSet), JSON.stringify(projection.configuredResults), JSON.stringify(projection.gaps), identity.repositoryId, `repository:${identity.repositoryId}`, now).first();
       if (!record?.id) return { status: 'disabled' };
@@ -165,33 +165,37 @@ export class D1AppStore {
         AND NOT EXISTS (SELECT 1 FROM deletion_tombstones WHERE scope=? AND reapply_until > ?)`, record.id, identity.repositoryId, `repository:${identity.repositoryId}`, this.now()).run();
       if ((published.meta?.changes ?? 0) !== 1) {
         await this.statement("UPDATE history_records SET state='incomplete' WHERE id=? AND state='publishing'", record.id).run();
-        await this.recordHistoryRepair(identity, 'E_HISTORY_CONSENT_CHANGED');
+        if ((await this.historySettings(identity.repositoryId)).enabled) await this.recordHistoryRepair(identity, projection, 'E_HISTORY_CONSENT_CHANGED');
+        else await this.removeHistoryRecord(record.id);
         return { status: 'repair' };
       }
       return { status: 'published' };
     } catch (error) {
       if (record?.id) await this.statement("UPDATE history_records SET state='incomplete' WHERE id=? AND state='publishing'", record.id).run();
-      await this.recordHistoryRepair(identity, 'E_HISTORY_PUBLICATION');
+      if ((await this.historySettings(identity.repositoryId)).enabled) await this.recordHistoryRepair(identity, projection, 'E_HISTORY_PUBLICATION');
+      else if (record?.id) await this.removeHistoryRecord(record.id);
       return { status: 'repair', error };
     }
   }
 
-  async recordHistoryRepair(identity, code) {
-    await this.statement(`INSERT INTO history_repairs (repository_id, comparison_id, policy_id, code, created_at, state)
-      SELECT ?, ?, ?, ?, ?, 'open' WHERE EXISTS (SELECT 1 FROM repositories r JOIN installations i ON i.installation_id=r.installation_id WHERE r.repository_id=? AND r.history_enabled=1 AND r.state='active' AND r.access_state='available' AND i.state='active')
-        AND NOT EXISTS (SELECT 1 FROM deletion_tombstones WHERE scope=? AND reapply_until > ?)`, identity.repositoryId, identity.comparisonId, identity.policyId, code, this.now(), identity.repositoryId, `repository:${identity.repositoryId}`, this.now()).run();
+  async recordHistoryRepair(identity, projection, code) {
+    const now = this.now(), repairId = `history:${identity.repositoryId}:${identity.comparisonId}:${identity.policyId}:${projection.engineVersion}:${projection.reportVersion}`;
+    await this.statement(`INSERT INTO repairs (repair_id, repair_kind, repository_id, pull_request, base_sha, head_sha, policy_id, comparison_id, projection_json, state, code, created_at)
+      SELECT ?, 'history-publication', ?, ?, ?, ?, ?, ?, ?, 'open', ?, ? WHERE EXISTS (SELECT 1 FROM repositories r JOIN installations i ON i.installation_id=r.installation_id WHERE r.repository_id=? AND r.history_enabled=1 AND r.state='active' AND r.access_state='available' AND i.state='active')
+        AND NOT EXISTS (SELECT 1 FROM deletion_tombstones WHERE scope=? AND reapply_until > ?)
+      ON CONFLICT(repair_id) DO UPDATE SET projection_json=excluded.projection_json, state='open', code=excluded.code, created_at=excluded.created_at`, repairId, identity.repositoryId, identity.pullRequest, projection.source?.base ?? null, projection.source?.head ?? null, identity.policyId, identity.comparisonId, JSON.stringify({ source: projection.source, schemaVersion: projection.schemaVersion, engineVersion: projection.engineVersion, reportVersion: projection.reportVersion, metricVersion: projection.metricVersion }), code, now, identity.repositoryId, `repository:${identity.repositoryId}`, now).run();
   }
 
-  /** Repair is explicitly operator-claimed and cannot replay a delivery by itself. */
-  async claimRepair(deliveryId) {
+  /** Repairs carry stable identities only; an operator must reacquire provider facts before any idempotent reconciliation. */
+  async claimRepair(repairId) {
     const now = this.now();
-    const result = await this.statement("UPDATE delivery_repairs SET state='active', claimed_at=? WHERE delivery_id=? AND state='open'", now, deliveryId).run();
+    const result = await this.statement("UPDATE repairs SET state='active', claimed_at=? WHERE repair_id=? AND state='open'", now, repairId).run();
     if ((result.meta?.changes ?? 0) !== 1) return undefined;
-    const row = await this.statement('SELECT repair_kind, projection_json, code FROM delivery_repairs WHERE delivery_id=?', deliveryId).first();
-    return row ? { deliveryId, kind: row.repair_kind, projection: JSON.parse(row.projection_json), code: row.code } : undefined;
+    const row = await this.statement('SELECT repair_kind, repository_id, pull_request, base_sha, head_sha, policy_id, comparison_id, projection_json, code FROM repairs WHERE repair_id=?', repairId).first();
+    return row ? { repairId, kind: row.repair_kind, identity: { repositoryId: row.repository_id, pullRequest: row.pull_request, base: row.base_sha, head: row.head_sha, policyId: row.policy_id, comparisonId: row.comparison_id }, projection: JSON.parse(row.projection_json), code: row.code } : undefined;
   }
-  async completeRepair(deliveryId) { await this.statement("UPDATE delivery_repairs SET state='complete', completed_at=? WHERE delivery_id=? AND state='active'", this.now(), deliveryId).run(); }
-  async failRepair(deliveryId, code) { await this.statement("UPDATE delivery_repairs SET state='open', code=? WHERE delivery_id=? AND state='active'", code, deliveryId).run(); }
+  async completeRepair(repairId) { await this.statement("UPDATE repairs SET state='complete', completed_at=? WHERE repair_id=? AND state='active'", this.now(), repairId).run(); }
+  async failRepair(repairId, code) { await this.statement("UPDATE repairs SET state='open', code=? WHERE repair_id=? AND state='active'", code, repairId).run(); }
 
   async setRepositoryConsent(repositoryId, { enabled, retentionDays, policyId, origin }) {
     const retention = enabled ? boundedDays(retentionDays) : null;
@@ -214,6 +218,14 @@ export class D1AppStore {
     catch { throw new TypeError('Stored repository configuration is invalid.'); }
   }
 
+  async removeHistoryRecord(historyId) {
+    await this.database.batch([
+      this.statement('DELETE FROM history_file_rows WHERE history_id=?', historyId),
+      this.statement('DELETE FROM history_effect_rows WHERE history_id=?', historyId),
+      this.statement('DELETE FROM history_records WHERE id=?', historyId)
+    ]);
+  }
+
   async removeHistoryRecords(repositoryId) {
     const records = await this.statement('SELECT id FROM history_records WHERE repository_id=?', repositoryId).all();
     const statements = (records.results ?? []).flatMap(row => [
@@ -234,7 +246,11 @@ export class D1AppStore {
     for (const row of offboarding.results ?? []) {
       await this.removeHistoryRecords(row.repository_id);
       await this.database.batch([
-        this.statement('DELETE FROM history_repairs WHERE repository_id=?', row.repository_id),
+        this.statement('DELETE FROM app_checks WHERE repository_id=?', row.repository_id),
+        this.statement('DELETE FROM repairs WHERE repository_id=?', row.repository_id),
+        this.statement('DELETE FROM operational_results WHERE delivery_id IN (SELECT delivery_id FROM deliveries WHERE repository_id=?)', row.repository_id),
+        this.statement('DELETE FROM deliveries WHERE repository_id=?', row.repository_id),
+        this.statement('DELETE FROM execution_leases WHERE repository_id=?', row.repository_id),
         this.statement('INSERT INTO deletion_tombstones (scope, deleted_at, reapply_until) VALUES (?, ?, ?) ON CONFLICT(scope) DO UPDATE SET deleted_at=excluded.deleted_at, reapply_until=excluded.reapply_until', `repository:${row.repository_id}`, now, tombstoneUntil),
         this.statement('DELETE FROM repositories WHERE repository_id=?', row.repository_id)
       ]);
@@ -252,7 +268,8 @@ export class D1AppStore {
     await this.database.batch([
       this.statement('UPDATE repositories SET history_enabled=0, updated_at=? WHERE repository_id=?', now, repositoryId),
       this.statement('INSERT INTO deletion_tombstones (scope, deleted_at, reapply_until) VALUES (?, ?, ?) ON CONFLICT(scope) DO UPDATE SET deleted_at=excluded.deleted_at, reapply_until=excluded.reapply_until', `repository:${repositoryId}`, now, until),
-      this.statement('DELETE FROM history_repairs WHERE repository_id=?', repositoryId)
+      this.statement('DELETE FROM app_checks WHERE repository_id=?', repositoryId),
+      this.statement('DELETE FROM repairs WHERE repository_id=?', repositoryId)
     ]);
   }
 
@@ -260,6 +277,43 @@ export class D1AppStore {
     const configurations = await this.statement('SELECT repository_id, installation_id, history_enabled, retention_days, policy_id, consent_origin, configuration_json FROM repositories').all();
     const tombstones = await this.statement('SELECT scope, deleted_at, reapply_until FROM deletion_tombstones').all();
     return { kind: 'diffdevil.github-app-export', version: 2, exportedAt: this.now(), configurations: configurations.results ?? [], tombstones: tombstones.results ?? [] };
+  }
+
+  /** Quantitative history travels separately from protected configuration and remains blocked by deletion tombstones. */
+  async exportHistory() {
+    const records = await this.statement("SELECT id, repository_id, pull_request, comparison_id, policy_id, schema_version, engine_version, report_version, metric_version, base_sha, head_sha, observed_at, expires_at, projection_json, coverage_json, results_json, gaps_json, state FROM history_records WHERE state='published'").all();
+    const ids = (records.results ?? []).map(record => record.id);
+    const fileRows = [], effectRows = [];
+    for (const id of ids) {
+      const [files, effects] = await Promise.all([
+        this.statement('SELECT history_id, ordinal, values_json FROM history_file_rows WHERE history_id=? ORDER BY ordinal', id).all(),
+        this.statement('SELECT history_id, ordinal, effect_json FROM history_effect_rows WHERE history_id=? ORDER BY ordinal', id).all()
+      ]);
+      fileRows.push(...(files.results ?? [])); effectRows.push(...(effects.results ?? []));
+    }
+    const tombstones = await this.statement('SELECT scope, deleted_at, reapply_until FROM deletion_tombstones').all();
+    return { kind: 'diffdevil.github-app-history-export', version: 1, exportedAt: this.now(), records: records.results ?? [], fileRows, effectRows, tombstones: tombstones.results ?? [] };
+  }
+
+  async importHistory(value) {
+    if (!value || value.kind !== 'diffdevil.github-app-history-export' || value.version !== 1 || !Array.isArray(value.records) || !Array.isArray(value.fileRows) || !Array.isArray(value.effectRows) || !Array.isArray(value.tombstones)) throw new TypeError('Unsupported App history export.');
+    const now = this.now(), liveTombstones = new Set();
+    for (const tombstone of value.tombstones) {
+      if (typeof tombstone?.scope !== 'string' || typeof tombstone?.deleted_at !== 'string' || typeof tombstone?.reapply_until !== 'string' || !Number.isFinite(Date.parse(tombstone.deleted_at)) || !Number.isFinite(Date.parse(tombstone.reapply_until))) throw new TypeError('Invalid history deletion tombstone.');
+      if (Date.parse(tombstone.reapply_until) > Date.parse(now)) liveTombstones.add(tombstone.scope);
+    }
+    const tombstoneStatements = value.tombstones.map(tombstone => this.statement('INSERT INTO deletion_tombstones (scope, deleted_at, reapply_until) VALUES (?, ?, ?) ON CONFLICT(scope) DO UPDATE SET deleted_at=excluded.deleted_at, reapply_until=excluded.reapply_until', tombstone.scope, tombstone.deleted_at, tombstone.reapply_until));
+    if (tombstoneStatements.length > 0) await this.database.batch(tombstoneStatements);
+    const recordIds = new Map();
+    for (const record of value.records) {
+      if (!Number.isSafeInteger(record?.repository_id) || record.repository_id < 1 || !Number.isSafeInteger(record.pull_request) || record.pull_request < 1 || typeof record.comparison_id !== 'string' || typeof record.policy_id !== 'string' || !Number.isSafeInteger(record.schema_version) || typeof record.engine_version !== 'string' || typeof record.report_version !== 'string' || typeof record.metric_version !== 'string' || typeof record.observed_at !== 'string' || !Number.isFinite(Date.parse(record.observed_at)) || record.state !== 'published') throw new TypeError('Invalid numeric history export.');
+      if (liveTombstones.has(`repository:${record.repository_id}`)) continue;
+      const inserted = await this.statement(`INSERT INTO history_records (repository_id, pull_request, comparison_id, policy_id, schema_version, engine_version, report_version, metric_version, base_sha, head_sha, observed_at, expires_at, projection_json, coverage_json, results_json, gaps_json, state)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'published') ON CONFLICT(repository_id, comparison_id, policy_id, schema_version, engine_version, report_version, metric_version) DO NOTHING RETURNING id`, record.repository_id, record.pull_request, record.comparison_id, record.policy_id, record.schema_version, record.engine_version, record.report_version, record.metric_version, record.base_sha ?? null, record.head_sha ?? null, record.observed_at, record.expires_at ?? null, record.projection_json, record.coverage_json, record.results_json, record.gaps_json).first();
+      if (inserted?.id) recordIds.set(record.id, inserted.id);
+    }
+    for (const row of value.fileRows) if (recordIds.has(row?.history_id) && Number.isSafeInteger(row.ordinal) && typeof row.values_json === 'string') await this.statement('INSERT INTO history_file_rows (history_id, ordinal, values_json) VALUES (?, ?, ?)', recordIds.get(row.history_id), row.ordinal, row.values_json).run();
+    for (const row of value.effectRows) if (recordIds.has(row?.history_id) && Number.isSafeInteger(row.ordinal) && typeof row.effect_json === 'string') await this.statement('INSERT INTO history_effect_rows (history_id, ordinal, effect_json) VALUES (?, ?, ?)', recordIds.get(row.history_id), row.ordinal, row.effect_json).run();
   }
   async importState(value) {
     if (!value || value.kind !== 'diffdevil.github-app-export' || value.version !== 2 || !Array.isArray(value.configurations) || !Array.isArray(value.tombstones)) throw new TypeError('Unsupported App state export.');

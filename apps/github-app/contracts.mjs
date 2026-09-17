@@ -76,20 +76,21 @@ export function historyProjection(report, effects) {
     status: measurement.status, ...(Number.isSafeInteger(measurement.value) ? { value: measurement.value } : {}),
     ...(Number.isSafeInteger(measurement.minimum) ? { minimum: measurement.minimum } : {}), ...(Number.isSafeInteger(measurement.maximum) ? { maximum: measurement.maximum } : {})
   } : { status: 'unknown' };
+  const reference = value => typeof value === 'string' && /^[A-Za-z0-9._-]{1,80}$/u.test(value) ? value : undefined;
   return {
     schemaVersion: 3,
     engineVersion: 'diffdevil-engine-v1',
     reportVersion: 'diffdevil-report-v1',
     metricVersion: 'diffdevil-metrics-v1',
-    source: { base: typeof report.source?.base === 'string' ? report.source.base : undefined, head: typeof report.source?.head === 'string' ? report.source.head : undefined },
+    source: { base: typeof report.source?.base === 'string' ? report.source.base : undefined, head: typeof report.source?.head === 'string' ? report.source.head : undefined, comparison: typeof report.source?.comparisonId === 'string' ? report.source.comparisonId : undefined },
     evidence: report.measurement?.status ?? 'unknown',
-    fileSet: { complete: report.fileSet?.complete === true, total: read(report.fileSet?.total), included: read(report.totals?.files?.included), excluded: read(report.totals?.files?.excluded), omitted: read(report.totals?.files?.omitted) },
+    fileSet: { complete: report.fileSet?.complete === true, total: read(report.fileSet?.total), observed: read(report.totals?.files?.observed), included: read(report.totals?.files?.included), excluded: read(report.totals?.files?.excluded), omitted: read(report.totals?.files?.omitted), binary: read(report.totals?.files?.binary), unmeasurable: read(report.totals?.files?.unmeasurable) },
     totals: { raw: { added: read(report.totals?.raw?.added), deleted: read(report.totals?.raw?.deleted), churn: read(report.totals?.raw?.churn) },
       lines: { added: read(report.totals?.lines?.added), deleted: read(report.totals?.lines?.deleted), modified: read(report.totals?.lines?.modified), changed: read(report.totals?.lines?.changed) } },
-    configuredResults: Object.entries(report.metrics ?? {}).map(([metric, result]) => ({ metric, result: read(result) })),
+    configuredResults: Object.entries(report.metrics ?? {}).flatMap(([metric, result]) => reference(metric) === undefined ? [] : [{ metric, result: read(result) }]),
     gaps: [report.fileSet?.complete === true ? null : 'file-set-incomplete', report.measurement?.status === 'exact' ? null : 'measurement-not-exact'].filter(Boolean),
-    files: Array.isArray(report.files) ? report.files.map((file, ordinal) => ({ ordinal, raw: { added: read(file?.raw?.added), deleted: read(file?.raw?.deleted), churn: read(file?.raw?.churn) }, lines: { added: read(file?.lines?.added), deleted: read(file?.lines?.deleted), modified: read(file?.lines?.modified), changed: read(file?.lines?.changed) } })) : [],
-    effects: effects.map(effect => ({ kind: effect.kind, outcome: effect.outcome, request: effect.request, readback: effect.readback })),
+    files: Array.isArray(report.files) ? report.files.map((file, ordinal) => ({ ordinal, changeType: reference(file?.changeType) ?? 'unknown', material: file?.material === true ? 'material' : file?.material === false ? 'non-material' : 'unknown', applicability: reference(file?.applicability) ?? 'unknown', inclusion: reference(file?.inclusion) ?? 'unknown', evidence: reference(file?.measurement?.status) ?? 'unknown', raw: { added: read(file?.raw?.added), deleted: read(file?.raw?.deleted), churn: read(file?.raw?.churn) }, lines: { added: read(file?.lines?.added), deleted: read(file?.lines?.deleted), modified: read(file?.lines?.modified), changed: read(file?.lines?.changed) } })) : [],
+    effects: effects.map(effect => ({ kind: reference(effect.kind) ?? 'unknown', rule: reference(effect.rule), band: reference(effect.band), desired: reference(effect.desired), outcome: reference(effect.outcome) ?? 'unknown', request: reference(effect.request) ?? 'unknown', readback: reference(effect.readback) ?? 'unknown' })),
     publication: { state: 'complete' }
   };
 }

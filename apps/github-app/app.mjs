@@ -8,12 +8,7 @@ import { D1AppStore } from './storage.mjs';
 import { resolveEffectivePolicy } from './configuration.mjs';
 
 const JSON_HEADERS = { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' };
-const DEFAULT_SIZE_POLICY = {
-  version: 1, presets: [], metrics: { review: { measure: 'lines.changed' } }, bands: { size: { value: 'metrics.review', minimum: 0, ranges: [{ id: 'xs', lt: 20 }, { id: 's', lt: 100 }, { id: 'm', lt: 500 }, { id: 'l', lt: 1000 }, { id: 'xl', otherwise: true }] } },
-  labelGroups: { size: ['size/XS', 'size/S', 'size/M', 'size/L', 'size/XL', 'size/Unknown'] }, labelDefinitions: {
-    'size/XS': { color: 'C2E0C6', description: '0–19 replacement-aware changed lines' }, 'size/S': { color: 'BFDADC', description: '20–99 replacement-aware changed lines' }, 'size/M': { color: 'C5DEF5', description: '100–499 replacement-aware changed lines' }, 'size/L': { color: 'D4C5F9', description: '500–999 replacement-aware changed lines' }, 'size/XL': { color: 'DCC6E0', description: '1,000 or more replacement-aware changed lines' }, 'size/Unknown': { color: 'D1D5DB', description: 'Available evidence cannot establish one size band' }
-  }, rules: { size: { band: 'size', onUnknown: 'hold', effects: { labels: { group: 'size', byBand: { xs: 'size/XS', s: 'size/S', m: 'size/M', l: 'size/L', xl: 'size/XL' }, unknown: 'size/Unknown' } } } }
-};
+const DEFAULT_SIZE_POLICY = { version: 1, presets: ['size@1'] };
 
 function response(status, body) { return new Response(JSON.stringify(body), { status, headers: JSON_HEADERS }); }
 function deliveryId(request) { return request.headers.get('x-github-delivery') ?? ''; }
@@ -48,10 +43,15 @@ function failureDisposition(error) {
   return 'repair';
 }
 function appError(code) { return Object.assign(new Error(code), { code }); }
+function stable(value, fallback = 'unknown') { return typeof value === 'string' && /^[A-Za-z0-9._-]{1,200}$/u.test(value) ? value : fallback; }
 function repairProjection(error) {
-  const diagnostics = Array.isArray(error?.diagnostics) ? error.diagnostics.map(value => ({ code: typeof value?.code === 'string' ? value.code : 'E_DIAGNOSTIC', phase: typeof value?.phase === 'string' ? value.phase : 'unknown' })) : [];
-  const observations = Array.isArray(error?.observations) ? error.observations.map(value => ({ kind: typeof value?.kind === 'string' ? value.kind : 'unknown', outcome: typeof value?.outcome === 'string' ? value.outcome : 'unknown', request: typeof value?.request === 'string' ? value.request : 'unknown', readback: typeof value?.readback === 'string' ? value.readback : 'unknown' })) : [];
-  return { kind: errorCode(error) === 'E_CHECK_PUBLICATION' ? 'check-publication' : errorCode(error) === 'E_EFFECT_INCOMPLETE' ? 'effect-reconciliation' : 'execution', projection: { code: errorCode(error), diagnostics, observations } };
+  const diagnostics = Array.isArray(error?.diagnostics) ? error.diagnostics.map(value => ({ code: stable(value?.code, 'E_DIAGNOSTIC'), phase: stable(value?.phase) })) : [];
+  const observations = Array.isArray(error?.observations) ? error.observations.map(value => ({ kind: stable(value?.kind), outcome: stable(value?.outcome), request: stable(value?.request), readback: stable(value?.readback) })) : [];
+  const candidate = error?.repairIdentity;
+  const identity = Number.isSafeInteger(candidate?.repositoryId) && candidate.repositoryId > 0 && Number.isSafeInteger(candidate?.pullRequest) && candidate.pullRequest > 0
+    ? { repositoryId: candidate.repositoryId, pullRequest: candidate.pullRequest, base: stable(candidate.base, undefined), head: stable(candidate.head, undefined), policyId: stable(candidate.policyId, undefined), comparisonId: stable(candidate.comparisonId, undefined) }
+    : undefined;
+  return { kind: errorCode(error) === 'E_CHECK_PUBLICATION' ? 'check-publication' : errorCode(error) === 'E_EFFECT_INCOMPLETE' ? 'effect-reconciliation' : 'execution', identity, projection: { code: stable(errorCode(error), 'E_APP_EXECUTION'), diagnostics, observations } };
 }
 
 function installationToken(value) {
@@ -73,7 +73,7 @@ export async function createInstallationClient(env, installationId, repositoryId
 
 /** Read the provider's entire selected set before reconciling a partial installation delta. */
 export async function listInstallationRepositories(env, installationId, options = {}) {
-  const client = await mintInstallationClient(env, installationId, {}, options);
+  const client = await mintInstallationClient(env, installationId, { permissions: { metadata: 'read' } }, options);
   const repositoryIds = new Set();
   let expected, page = 1;
   for (;;) {
@@ -101,7 +101,7 @@ async function trustedPolicy(client, target, base, configuration) {
   let supplied = {};
   try {
     const ordinary = unwrap(await loadGitHubPolicy(client, { repository: target.repository, ref: base, path: '.diffdevil.yml' }));
-    supplied = explainPolicy(ordinary).document;
+    supplied = { ...explainPolicy(ordinary).document, presets: ordinary.semantics.presets };
   }
   catch (error) {
     if (!(error instanceof GitHubRequestError && error.status === 404)) throw error;
@@ -150,14 +150,14 @@ export async function executeDelivery(envelope, deliveryId, { env, store, lease,
   if (snapshot.state !== 'open') throw appError('E_PULL_REQUEST_CLOSED');
   const configuration = await store.repositoryConfiguration(envelope.repositoryId);
   const policy = await trustedPolicy(client, target, snapshot.base, configuration?.value);
-  const provisionalIdentity = { repositoryId: envelope.repositoryId, pullRequest: envelope.pullRequest, repository: target.repository, head: snapshot.head, policyId: policy.policy.id };
+  const provisionalIdentity = { repositoryId: envelope.repositoryId, pullRequest: envelope.pullRequest, repository: target.repository, base: snapshot.base, head: snapshot.head, policyId: policy.policy.id };
   await assertRerequest(client, store, envelope, provisionalIdentity, Number(env.GITHUB_APP_ID));
   const outcome = unwrap(await applyGitHubPolicy(client, target, policy.policy, { definitions: 'ensure', commentAuthor: { login: env.GITHUB_APP_BOT_LOGIN ?? 'diffdevil[bot]' }, occasionId: deliveryId, expectedPolicyBase: policy.expectedPolicyBase,
     beforeWrite: renewLease }));
   const identity = { ...provisionalIdentity, comparisonId: outcome.report.source.comparisonId, appId: Number(env.GITHUB_APP_ID) };
-  if (outcome.status !== 'verified') throw Object.assign(appError('E_EFFECT_INCOMPLETE'), { diagnostics: outcome.diagnostics, observations: outcome.observations });
+  if (outcome.status !== 'verified') throw Object.assign(appError('E_EFFECT_INCOMPLETE'), { diagnostics: outcome.diagnostics, observations: outcome.observations, repairIdentity: identity });
   try { await upsertCheck(client, store, identity, outcome.report, outcome, renewLease); }
-  catch (error) { throw Object.assign(appError('E_CHECK_PUBLICATION'), { cause: error }); }
+  catch (error) { throw Object.assign(appError('E_CHECK_PUBLICATION'), { cause: error, repairIdentity: identity }); }
   const history = await store.recordHistory(identity, historyProjection(outcome.report, outcome.observations));
   return { status: 'verified', policyId: outcome.plan.policyId, comparisonId: outcome.report.source.comparisonId, effectCount: outcome.changed, history: history.status };
 }

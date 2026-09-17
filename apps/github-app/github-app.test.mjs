@@ -70,6 +70,12 @@ test('a fenced execution finishes only after verified work, while incomplete eff
   const repair = second.calls.find(call => Array.isArray(call) && call[0] === 'finish');
   assert.equal(repair[2], 'repair');
   assert.deepEqual(repair[3].repair.projection.observations, [{ kind: 'label.add', outcome: 'acknowledged', request: 'accepted', readback: 'unknown' }]);
+
+  const third = queueMessage(), thirdStore = activeStore(third.calls);
+  await createGitHubAppWorker({ store: thirdStore, async execute() { throw Object.assign(new Error('check ambiguous'), { code: 'E_CHECK_PUBLICATION', repairIdentity: { repositoryId: 17, pullRequest: 42, base: 'base', head: 'head', policyId: 'policy', comparisonId: 'comparison' } }); } }).queue({ messages: [third.message] }, {});
+  const checkRepair = third.calls.find(call => Array.isArray(call) && call[0] === 'finish');
+  assert.equal(checkRepair[3].repair.kind, 'check-publication');
+  assert.deepEqual(checkRepair[3].repair.identity, { repositoryId: 17, pullRequest: 42, base: 'base', head: 'head', policyId: 'policy', comparisonId: 'comparison' });
 });
 
 test('rate limiting releases a fenced attempt for retry instead of calling it revoked', async () => {
@@ -104,7 +110,7 @@ test('history projection is versioned, quantitative, pathless, and keeps provide
   assert.equal(projection.files[0].ordinal, 0);
   assert.equal(projection.publication.state, 'complete');
   assert.deepEqual(projection.configuredResults, [{ metric: 'review', result: { status: 'exact', value: 3 } }]);
-  assert.deepEqual(projection.effects[0], { kind: 'label.add', outcome: 'changed', request: 'acknowledged', readback: 'verified' });
+  assert.deepEqual(projection.effects[0], { kind: 'label.add', rule: undefined, band: undefined, desired: undefined, outcome: 'changed', request: 'acknowledged', readback: 'verified' });
 });
 
 test('installation credentials remain repository-confined and response bounded', async () => {
@@ -126,7 +132,7 @@ test('installation reconciliation reads every selected repository without carryi
     return new Response(JSON.stringify({ total_count: 2, repositories: [{ id: 17, full_name: 'not-retained' }, { id: 18 }] }), { status: 200 });
   } });
   assert.deepEqual(repositories, [17, 18]);
-  assert.deepEqual(JSON.parse(requests[0].body), {});
+  assert.deepEqual(JSON.parse(requests[0].body), { permissions: { metadata: 'read' } });
   assert.equal(requests[1].url.endsWith('/installation/repositories?per_page=100&page=1'), true);
 });
 
@@ -136,4 +142,12 @@ test('effective App policy preserves selected layer provenance for export and ex
   assert.equal(effective.provenance['/bands/size'], 'account');
   assert.equal(effective.provenance['/rules/size'], 'repository');
   assert.equal(effective.document.version, 1);
+});
+
+test('an explicit repository preset selection can remove inherited size behavior', () => {
+  const defaulted = resolveEffectivePolicy({ preset: { presets: ['size@1'] } });
+  const optedOut = resolveEffectivePolicy({ preset: { presets: ['size@1'] }, repository: { presets: [] } });
+  assert.equal(defaulted.document.rules.size !== undefined, true);
+  assert.equal(optedOut.document.rules?.size, undefined);
+  assert.equal(optedOut.provenance['/presets'], 'repository');
 });
