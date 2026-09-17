@@ -17,8 +17,10 @@ release operation rather than relying on a recorded clean state.
 
 The selected first stable identity is `@wolfsblvt/diffdevil@1.0.0`. Package and
 lock metadata already carry `1.0.0`, and the committed Action distribution carries
-the same version. **No npm package, `v1.0.0` tag, GitHub Release, maintained `v1`
-alias, or Marketplace release exists until its provider readback says so.**
+the same version. **A release operator must not claim an npm package, immutable
+tag, GitHub Release, maintained Action alias, or Marketplace listing until its
+provider readback says so.** For `v1.0.0`, all five publication coordinates are
+now read back public; remote Action execution remains a separate consumer result.
 
 Private originals, Company-room coordinates, local dependency caches, transfer
 archives, worktrees, and verification artifacts are not public release assets.
@@ -118,6 +120,12 @@ independent copy claims it exists.
    complexity, or merge authority.
 6. **Security:** read back repository private vulnerability reporting and the
    public `SECURITY.md` route.
+
+The `v1.0.0` publication completed this sequence. Its Marketplace listing is
+public at [GitHub Marketplace](https://github.com/marketplace/actions/diffdevil)
+with the selected categories **Continuous integration** and **Utilities**.
+Execution through `v1.0.0` and `v1` remains pending the separate outside-consumer
+journey below.
 
 The Marketplace UI may require an owner-bound Developer Agreement, 2FA, or account
 confirmation. Surface the exact physical step only if the live UI requires it;
