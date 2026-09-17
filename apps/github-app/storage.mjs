@@ -44,8 +44,11 @@ export class D1AppStore {
 
   async renewLease(envelope, lease) {
     const now = this.now(), until = leaseExpiry(now, this.leaseMs);
-    const result = await this.statement(`UPDATE execution_leases SET lease_until=? WHERE repository_id=? AND pull_request=? AND delivery_id=? AND attempt_id=? AND fence=? AND state='active' AND lease_until > ?`, until, envelope.repositoryId, envelope.pullRequest, envelope.deliveryId, lease.attemptId, lease.fence, now).run();
-    return (result.meta?.changes ?? 0) === 1 ? { ...lease, leaseUntil: until } : undefined;
+    const [delivery, execution] = await this.database.batch([
+      this.statement(`UPDATE deliveries SET lease_until=? WHERE delivery_id=? AND attempt_id=? AND fence=? AND state='active' AND lease_until > ?`, until, envelope.deliveryId, lease.attemptId, lease.fence, now),
+      this.statement(`UPDATE execution_leases SET lease_until=? WHERE repository_id=? AND pull_request=? AND delivery_id=? AND attempt_id=? AND fence=? AND state='active' AND lease_until > ?`, until, envelope.repositoryId, envelope.pullRequest, envelope.deliveryId, lease.attemptId, lease.fence, now)
+    ]);
+    return (delivery.meta?.changes ?? 0) === 1 && (execution.meta?.changes ?? 0) === 1 ? { ...lease, leaseUntil: until } : undefined;
   }
 
   async assertLease(envelope, lease) {

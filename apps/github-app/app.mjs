@@ -104,7 +104,13 @@ async function assertRerequest(client, store, envelope, identity, appId) {
 /** Execute the reusable engine against fresh provider facts; queue payloads never become trusted policy or source data. */
 export async function executeDelivery(envelope, deliveryId, { env, store, lease, clientFactory = createInstallationClient }) {
   if (!await store.executionAllowed(envelope.repositoryId)) throw appError('E_ACCESS_DISABLED');
-  await store.assertLease(envelope, lease);
+  let activeLease = lease;
+  const renewLease = async () => {
+    activeLease = await store.renewLease(envelope, activeLease);
+    if (!activeLease) throw appError('E_LEASE_LOST');
+    await store.assertLease(envelope, activeLease);
+  };
+  await renewLease();
   const client = await clientFactory(env, envelope.installationId, envelope.repositoryId);
   const target = await repositoryTarget(client, envelope);
   const snapshot = await readPullSnapshot(client, target);
@@ -114,10 +120,10 @@ export async function executeDelivery(envelope, deliveryId, { env, store, lease,
   const provisionalIdentity = { repositoryId: envelope.repositoryId, pullRequest: envelope.pullRequest, repository: target.repository, head: snapshot.head, policyId: policy.policy.id };
   await assertRerequest(client, store, envelope, provisionalIdentity, Number(env.GITHUB_APP_ID));
   const outcome = unwrap(await applyGitHubPolicy(client, target, policy.policy, { definitions: 'ensure', commentAuthor: { login: env.GITHUB_APP_BOT_LOGIN ?? 'diffdevil[bot]' }, occasionId: deliveryId, expectedPolicyBase: policy.expectedPolicyBase,
-    beforeWrite: () => store.assertLease(envelope, lease) }));
+    beforeWrite: renewLease }));
   const identity = { ...provisionalIdentity, comparisonId: outcome.report.source.comparisonId, appId: Number(env.GITHUB_APP_ID) };
   if (outcome.status !== 'verified') throw Object.assign(appError('E_EFFECT_INCOMPLETE'), { diagnostics: outcome.diagnostics });
-  try { await upsertCheck(client, store, identity, outcome.report, outcome, () => store.assertLease(envelope, lease)); }
+  try { await upsertCheck(client, store, identity, outcome.report, outcome, renewLease); }
   catch (error) { throw Object.assign(appError('E_CHECK_PUBLICATION'), { cause: error }); }
   const settings = await store.historySettings(envelope.repositoryId);
   const history = await store.recordHistory(identity, historyProjection(outcome.report, outcome.observations), settings);
