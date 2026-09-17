@@ -61,24 +61,54 @@ or test-count quotas. Reference excerpts may repeat a short example for reading,
 but link its complete asset and repair both when behavior changes. Do not make a
 new runtime copy of a workflow just for the website.
 
-## Future website and wiki-like help
+## Website, playground, and optional hosted operation
 
-The intended site is a short product front page plus navigable help, not a second
-knowledge base. The front page should show: the three-line replacement distinction,
-the one-file labeling setup, a composable CLI query, and the plan/apply boundary.
-Every claim links to its maintained task guide or manual.
+The public website presents an open-source CLI, library, and workflow Actions
+product first. Show the replacement distinction, one-file workflow setup, a
+composable CLI query, and the plan/apply boundary before any commercial pitch.
+
+The three adoption doors are **Use the CLI / Actions**, **Try the playground**,
+and **Optional managed GitHub App**. They need not have identical prominence:
+the tool is the product, the playground teaches it, and hosting removes operating
+work. App installation is not the presumed outcome of every visitor journey.
+
+The [playground experience](integration/playground.md) has its own page and a
+compact homepage entry. Curated examples, settings controls, terminal/agent output,
+GitHub-effect previews, explanation, and exports derive from the same engine.
+Keep this anonymous read-only experience distinct from the authenticated App
+dashboard and its opted-in history.
+
+Explain the optional App's added value concretely: maintained execution, account
+or organization defaults, effective configuration, repository administration,
+native checks, and opt-in history/statistics. The comparison must say what a
+self-operated workflow would need to assemble, not imply that the CLI or Actions
+lack the full measurement or policy language.
+
+Use Astro static output as the website foundation and Starlight for the structured
+manual, with interactive components where the playground/dashboard need them.
+Keep product branding independent and consistent across the home, playground,
+and help. This selects a publishing family, not a claim of a built site.
 
 Help navigation can group **Get started**, **Recipes**, **CLI**, **Actions**,
-**Policies and detail**, **Library API**, and **Troubleshooting**. Use repository
-Markdown as source and consume the same example files. Contribution links should
-edit those sources. Do not copy maintained pages into a separately edited GitHub
-Wiki or CMS. Historical `docs/reference/` records may remain repository-only unless a
-specific article benefits from the rationale.
+**Policies and detail**, **Library API**, **Playground**, **Managed App**, and
+**Troubleshooting**. Select reader-facing repository Markdown and the same tested
+example assets. Contribution links edit those sources. Do not publish all of
+`docs/` through a broad glob, copy it into a separate wiki, or make a second
+manually maintained website policy engine.
 
-A static docs adapter, search, redirect policy, domain, visual assets, and hosting
-are later delivery decisions. They are not dependencies of useful documentation
-or the CLI/Action release. No hosting provider or publication has been configured
-by this documentation cut.
+Self-hosting belongs in findable App/operator documentation and the licence
+explanation. It is intentional, not hidden; it is not a fourth primary sales door.
+Document only deployment adapters that are actually supported, including their
+provider, credential, cost, and maintenance requirements.
+
+The App, website application, playground, and service code remain in this
+repository under AGPL-3.0-only. Original documentation prose, runnable examples,
+and branding retain the separate rights in the licence map. Do not describe an
+open-source licence as a grant to impersonate the official service.
+
+Domains, live hosting, billing, and publication remain separately observed
+outcomes. A site description must distinguish selected experience from features
+currently available to a visitor; a canary cannot silently redefine either.
 
 ## Release-sensitive copy
 
