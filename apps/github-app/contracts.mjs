@@ -24,8 +24,11 @@ export function normalizeWebhookEvent(event, payload, receivedAt = new Date().to
   const delivery = text(deliveryId, 'delivery ID', 200);
   if (!payload || typeof payload !== 'object' || Array.isArray(payload)) throw new TypeError('Webhook payload must be an object.');
   if (lifecycleEvents.has(event)) {
-    return { kind: APP_QUEUE_KIND, version: APP_QUEUE_VERSION, type: 'lifecycle', event, action: typeof payload.action === 'string' ? payload.action : 'unknown',
-      installationId: integer(payload.installation?.id, 'installation ID'), deliveryId: delivery, receivedAt };
+    const repositories = event === 'installation_repositories'
+      ? (payload.repositories_added ?? []).concat(payload.repositories_removed ?? []).map(item => integer(item?.id, 'repository ID'))
+      : [];
+    return { kind: APP_QUEUE_KIND, version: APP_QUEUE_VERSION, type: 'lifecycle', event, action: text(payload.action ?? 'unknown', 'action', 80),
+      installationId: integer(payload.installation?.id, 'installation ID'), repositories: [...new Set(repositories)], deliveryId: delivery, receivedAt };
   }
   const installationId = integer(payload.installation?.id, 'installation ID');
   const repositoryId = integer(payload.repository?.id, 'repository ID');
@@ -49,12 +52,16 @@ export function readQueueEnvelope(value) {
   const common = { kind: APP_QUEUE_KIND, version: APP_QUEUE_VERSION, type: text(value.type, 'type', 40), event: text(value.event, 'event', 80),
     action: text(value.action, 'action', 80), installationId: integer(value.installationId, 'installation ID'), deliveryId: text(value.deliveryId, 'delivery ID', 200), receivedAt: text(value.receivedAt, 'receivedAt', 40) };
   const permitted = common.type === 'lifecycle'
-    ? new Set(['kind', 'version', 'type', 'event', 'action', 'installationId', 'deliveryId', 'receivedAt'])
+    ? new Set(['kind', 'version', 'type', 'event', 'action', 'installationId', 'repositories', 'deliveryId', 'receivedAt'])
     : common.type === 'check-rerequest'
       ? new Set(['kind', 'version', 'type', 'event', 'action', 'installationId', 'repositoryId', 'pullRequest', 'checkRun', 'deliveryId', 'receivedAt'])
       : new Set(['kind', 'version', 'type', 'event', 'action', 'installationId', 'repositoryId', 'pullRequest', 'deliveryId', 'receivedAt']);
   if (Object.keys(value).some(key => !permitted.has(key))) throw new TypeError('Queue message contains a prohibited field.');
-  if (common.type === 'lifecycle') return common;
+  if (common.type === 'lifecycle') {
+    const repositories = value.repositories === undefined ? [] : value.repositories;
+    if (!Array.isArray(repositories) || repositories.length > 100) throw new TypeError('Lifecycle repositories must be a bounded array.');
+    return { ...common, repositories: [...new Set(repositories.map(value => integer(value, 'repository ID')))] };
+  }
   if (common.type !== 'pull-request' && common.type !== 'check-rerequest') throw new TypeError('Queue message has an unsupported type.');
   const result = { ...common, repositoryId: integer(value.repositoryId, 'repository ID'), pullRequest: integer(value.pullRequest, 'pull request number') };
   return common.type === 'check-rerequest' ? { ...result, checkRun: integer(value.checkRun, 'check run ID') } : result;
@@ -66,11 +73,12 @@ export function historyProjection(report, effects) {
     ...(Number.isSafeInteger(measurement.minimum) ? { minimum: measurement.minimum } : {}), ...(Number.isSafeInteger(measurement.maximum) ? { maximum: measurement.maximum } : {})
   } : { status: 'unknown' };
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     evidence: report.measurement?.status ?? 'unknown',
     fileSet: { complete: report.fileSet?.complete === true, total: read(report.fileSet?.total) },
     totals: { raw: { added: read(report.totals?.raw?.added), deleted: read(report.totals?.raw?.deleted), churn: read(report.totals?.raw?.churn) },
       lines: { added: read(report.totals?.lines?.added), deleted: read(report.totals?.lines?.deleted), modified: read(report.totals?.lines?.modified), changed: read(report.totals?.lines?.changed) } },
-    effects: effects.map(effect => ({ outcome: effect.outcome, target: effect.target })).slice(0, 100)
+    files: Array.isArray(report.files) ? report.files.slice(0, 5000).map((file, ordinal) => ({ ordinal, raw: { added: read(file?.raw?.added), deleted: read(file?.raw?.deleted), churn: read(file?.raw?.churn) }, lines: { added: read(file?.lines?.added), deleted: read(file?.lines?.deleted), modified: read(file?.lines?.modified), changed: read(file?.lines?.changed) } })) : [],
+    effects: effects.map(effect => ({ kind: effect.kind, outcome: effect.outcome, request: effect.request, readback: effect.readback })).slice(0, 100)
   };
 }

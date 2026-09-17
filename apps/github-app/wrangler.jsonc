@@ -4,7 +4,12 @@
   "main": "./worker.mjs",
   "compatibility_date": "2026-09-17",
   "compatibility_flags": ["nodejs_compat"],
+  "alias": {
+    "@wolfsblvt/diffdevil": "../../src/diffdevil/index.ts",
+    "@wolfsblvt/diffdevil/github": "../../src/diffdevil/github/index.ts"
+  },
   "workers_dev": false,
+  "triggers": { "crons": ["17 3 * * *"] },
   "d1_databases": [{
     "binding": "APP_DB",
     "database_name": "diffdevil-github-app",

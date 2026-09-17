@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { GitHubClient, GitHubRequestError, applyGitHubPolicy, compilePolicy, loadGitHubPolicy, unwrap } from '../../dist/lib/index.js';
-import { readPullSnapshot } from '../../dist/lib/github/source.js';
+import { compilePolicy, explainPolicy, unwrap } from '@wolfsblvt/diffdevil';
+import { GitHubClient, GitHubRequestError, applyGitHubPolicy, loadGitHubPolicy, readPullSnapshot } from '@wolfsblvt/diffdevil/github';
 import { APP_QUEUE_KIND, WEBHOOK_BODY_LIMIT, WORKER_RESULT_LIMIT, historyProjection, normalizeWebhookEvent, readQueueEnvelope } from './contracts.mjs';
 import { createAppJwt, verifyWebhookSignature } from './crypto.mjs';
 import { D1AppStore } from './storage.mjs';
+import { resolveEffectivePolicy } from './configuration.mjs';
 
 const JSON_HEADERS = { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' };
 const DEFAULT_SIZE_POLICY = {
@@ -22,8 +23,30 @@ function bodyLimit(request) {
   if (declared !== null && (!/^\d+$/u.test(declared) || Number(declared) > WEBHOOK_BODY_LIMIT)) return false;
   return true;
 }
-function errorCode(error) { return error instanceof GitHubRequestError ? error.status === 401 || error.status === 403 ? 'E_ACCESS_REVOKED' : error.code : typeof error?.code === 'string' ? error.code : 'E_APP_EXECUTION'; }
-function isTerminal(error) { return ['E_ACCESS_REVOKED', 'E_PULL_REQUEST_CLOSED'].includes(errorCode(error)); }
+async function readBodyWithinLimit(request) {
+  const reader = request.body?.getReader();
+  if (!reader) return new Uint8Array();
+  const chunks = []; let bytes = 0;
+  try {
+    for (;;) {
+      const part = await reader.read();
+      if (part.done) break;
+      bytes += part.value.byteLength;
+      if (bytes > WEBHOOK_BODY_LIMIT) { await reader.cancel(); throw appError('E_BODY_LIMIT'); }
+      chunks.push(part.value);
+    }
+  } finally { reader.releaseLock(); }
+  const body = new Uint8Array(bytes); let offset = 0;
+  for (const chunk of chunks) { body.set(chunk, offset); offset += chunk.byteLength; }
+  return body;
+}
+function errorCode(error) { return error instanceof GitHubRequestError ? error.code : typeof error?.code === 'string' ? error.code : 'E_APP_EXECUTION'; }
+function failureDisposition(error) {
+  const code = errorCode(error);
+  if (code === 'E_GITHUB_RATE_LIMIT' || code === 'E_LEASE_LOST') return 'retry';
+  if (['E_PULL_REQUEST_CLOSED', 'E_CHECK_STALE', 'E_ACCESS_DISABLED'].includes(code)) return 'rejected';
+  return 'repair';
+}
 function appError(code) { return Object.assign(new Error(code), { code }); }
 
 /** A repository-scoped credential is minted only after a delivery and execution lease are claimed. */
@@ -41,8 +64,12 @@ async function repositoryTarget(client, envelope) {
   return { repository: repository.full_name, pullRequest: envelope.pullRequest };
 }
 
-async function trustedPolicy(client, target, base) {
-  try { return { policy: unwrap(await loadGitHubPolicy(client, { repository: target.repository, ref: base, path: '.diffdevil.yml' })), expectedPolicyBase: base }; }
+async function trustedPolicy(client, target, base, configuration) {
+  try {
+    const ordinary = unwrap(await loadGitHubPolicy(client, { repository: target.repository, ref: base, path: '.diffdevil.yml' }));
+    const policy = configuration ? resolveEffectivePolicy({ ...configuration, supplied: explainPolicy(ordinary).document }).policy : ordinary;
+    return { policy, expectedPolicyBase: base };
+  }
   catch (error) {
     if (error instanceof GitHubRequestError && error.status === 404) return { policy: unwrap(compilePolicy(DEFAULT_SIZE_POLICY)), expectedPolicyBase: base };
     throw error;
@@ -55,47 +82,65 @@ function checkSummary(report, result) {
   return `Replacement-aware changed lines: ${Number.isSafeInteger(changed) ? changed : 'unavailable'}\nRaw churn: ${Number.isSafeInteger(raw) ? raw : 'unavailable'}\nPolicy effects observed: ${result.changed}`;
 }
 
-async function upsertCheck(client, store, identity, report, result) {
+async function upsertCheck(client, store, identity, report, result, assertLease) {
   const previous = await store.check(identity);
   const output = { title: 'diffdevil analysis', summary: checkSummary(report, result) };
   const body = { name: 'diffdevil', head_sha: identity.head, status: 'completed', conclusion: result.status === 'verified' ? 'success' : 'neutral', output };
   const route = previous?.check_run_id ? `/repos/${identity.repository}/check-runs/${previous.check_run_id}` : `/repos/${identity.repository}/check-runs`;
+  await assertLease();
   const value = await client.json(route, { method: previous?.check_run_id ? 'PATCH' : 'POST', phase: 'apply', body });
   if (!value || typeof value !== 'object' || !Number.isSafeInteger(value.id)) throw new TypeError('GitHub did not return a usable App-owned check run.');
   await store.recordCheck(identity, value.id);
 }
 
+async function assertRerequest(client, store, envelope, identity, appId) {
+  if (envelope.type !== 'check-rerequest') return;
+  const expected = await store.check(identity);
+  if (!expected || expected.check_run_id !== envelope.checkRun) throw appError('E_CHECK_STALE');
+  const check = await client.json(`/repos/${identity.repository}/check-runs/${envelope.checkRun}`);
+  if (!check || typeof check !== 'object' || check.id !== envelope.checkRun || check.head_sha !== identity.head || check.app?.id !== appId) throw appError('E_CHECK_STALE');
+}
+
 /** Execute the reusable engine against fresh provider facts; queue payloads never become trusted policy or source data. */
-export async function executeDelivery(envelope, deliveryId, { env, store, clientFactory = createInstallationClient }) {
+export async function executeDelivery(envelope, deliveryId, { env, store, lease, clientFactory = createInstallationClient }) {
+  if (!await store.executionAllowed(envelope.repositoryId)) throw appError('E_ACCESS_DISABLED');
+  await store.assertLease(envelope, lease);
   const client = await clientFactory(env, envelope.installationId, envelope.repositoryId);
   const target = await repositoryTarget(client, envelope);
   const snapshot = await readPullSnapshot(client, target);
   if (snapshot.state !== 'open') throw appError('E_PULL_REQUEST_CLOSED');
-  const policy = await trustedPolicy(client, target, snapshot.base);
-  const outcome = unwrap(await applyGitHubPolicy(client, target, policy.policy, { definitions: 'ensure', commentAuthor: { login: env.GITHUB_APP_BOT_LOGIN ?? 'diffdevil[bot]' }, occasionId: deliveryId, expectedPolicyBase: policy.expectedPolicyBase }));
-  const identity = { repositoryId: envelope.repositoryId, pullRequest: envelope.pullRequest, repository: target.repository, head: snapshot.head, policyId: outcome.plan.policyId, comparisonId: outcome.report.source.comparisonId };
-  await upsertCheck(client, store, identity, outcome.report, outcome);
-  // History is opt-in. This source keeps an allowlisted projection only when a future dashboard turns it on.
-  const settings = await store.statement('SELECT history_enabled, retention_days FROM repositories WHERE repository_id=?', envelope.repositoryId).first();
-  if (settings?.history_enabled === 1) await store.recordHistory(identity, historyProjection(outcome.report, outcome.observations), settings.retention_days === null ? null : Number(settings.retention_days));
-  return { status: outcome.status, policyId: outcome.plan.policyId, comparisonId: outcome.report.source.comparisonId, effectCount: outcome.changed };
+  const configuration = await store.repositoryConfiguration(envelope.repositoryId);
+  const policy = await trustedPolicy(client, target, snapshot.base, configuration?.value);
+  const provisionalIdentity = { repositoryId: envelope.repositoryId, pullRequest: envelope.pullRequest, repository: target.repository, head: snapshot.head, policyId: policy.policy.id };
+  await assertRerequest(client, store, envelope, provisionalIdentity, Number(env.GITHUB_APP_ID));
+  const outcome = unwrap(await applyGitHubPolicy(client, target, policy.policy, { definitions: 'ensure', commentAuthor: { login: env.GITHUB_APP_BOT_LOGIN ?? 'diffdevil[bot]' }, occasionId: deliveryId, expectedPolicyBase: policy.expectedPolicyBase,
+    beforeWrite: () => store.assertLease(envelope, lease) }));
+  const identity = { ...provisionalIdentity, comparisonId: outcome.report.source.comparisonId, appId: Number(env.GITHUB_APP_ID) };
+  if (outcome.status !== 'verified') throw Object.assign(appError('E_EFFECT_INCOMPLETE'), { diagnostics: outcome.diagnostics });
+  try { await upsertCheck(client, store, identity, outcome.report, outcome, () => store.assertLease(envelope, lease)); }
+  catch (error) { throw Object.assign(appError('E_CHECK_PUBLICATION'), { cause: error }); }
+  const settings = await store.historySettings(envelope.repositoryId);
+  const history = await store.recordHistory(identity, historyProjection(outcome.report, outcome.observations), settings);
+  return { status: 'verified', policyId: outcome.plan.policyId, comparisonId: outcome.report.source.comparisonId, effectCount: outcome.changed, history: history.status };
 }
 
 async function consumeMessage(message, dependencies) {
   const envelope = readQueueEnvelope(typeof message.body === 'string' ? JSON.parse(message.body) : message.body);
-  const accepted = await dependencies.store.claimDelivery(envelope, envelope.deliveryId);
-  if (accepted === 'duplicate') return message.ack();
-  if (accepted === 'active') return message.retry();
-  if (envelope.type === 'lifecycle') { await dependencies.store.recordLifecycle(envelope); return message.ack(); }
-  const execution = await dependencies.store.claimExecution(envelope, envelope.deliveryId);
-  if (execution === 'active') return message.retry();
+  const accepted = await dependencies.store.claimDelivery(envelope);
+  if (accepted.kind === 'duplicate') return message.ack();
+  if (accepted.kind === 'active') return message.retry();
+  if (envelope.type === 'lifecycle') { await dependencies.store.recordLifecycle(envelope); await dependencies.store.finishLifecycle(envelope, accepted); return message.ack(); }
+  const execution = await dependencies.store.claimExecution(envelope, accepted);
+  if (execution.kind === 'active') return message.retry();
   try {
-    const result = await dependencies.execute(envelope, envelope.deliveryId, dependencies);
-    await dependencies.store.complete(envelope, envelope.deliveryId, result);
+    const result = await dependencies.execute(envelope, envelope.deliveryId, { ...dependencies, lease: execution });
+    await dependencies.store.finish(envelope, execution, 'complete', result);
     return message.ack();
   } catch (error) {
-    if (isTerminal(error)) { await dependencies.store.terminal(envelope, envelope.deliveryId, errorCode(error)); return message.ack(); }
-    throw error;
+    const disposition = failureDisposition(error), code = errorCode(error);
+    if (disposition === 'retry') { await dependencies.store.retry(envelope, execution, code); return message.retry(); }
+    await dependencies.store.finish(envelope, execution, disposition === 'rejected' ? 'rejected' : 'repair', { status: disposition, code });
+    return message.ack();
   }
 }
 
@@ -113,8 +158,8 @@ export function createGitHubAppWorker(options = {}) {
       if (!bodyLimit(request)) return publicFailure(413, 'E_BODY_LIMIT');
       const id = deliveryId(request), event = request.headers.get('x-github-event');
       if (!id || !event) return publicFailure(400, 'E_WEBHOOK_IDENTITY');
-      const body = await request.arrayBuffer();
-      if (body.byteLength > WEBHOOK_BODY_LIMIT) return publicFailure(413, 'E_BODY_LIMIT');
+      let body;
+      try { body = await readBodyWithinLimit(request); } catch (error) { return publicFailure(errorCode(error) === 'E_BODY_LIMIT' ? 413 : 400, errorCode(error)); }
       if (!await (options.verifySignature ?? verifyWebhookSignature)(body, request.headers.get('x-hub-signature-256'), env.GITHUB_WEBHOOK_SECRET)) return publicFailure(401, 'E_WEBHOOK_SIGNATURE');
       let payload;
       try { payload = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(body)); } catch { return publicFailure(400, 'E_WEBHOOK_JSON'); }
@@ -130,6 +175,10 @@ export function createGitHubAppWorker(options = {}) {
         try { await consumeMessage(message, dependencies); }
         catch { message.retry(); }
       }
+    },
+    async scheduled(_controller, env, context) {
+      const store = options.store ?? new D1AppStore(env.APP_DB);
+      context.waitUntil(store.maintain());
     }
   };
 }

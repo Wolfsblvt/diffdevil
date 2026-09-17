@@ -1,7 +1,7 @@
 /** GitHub I/O adapter. Only explicit application functions perform provider writes. */
 export { GitHubClient, GitHubRequestError } from './client.js';
 export type { GitHubClientOptions } from './client.js';
-export { analyzeGitHub, analyzeGitHubGit } from './source.js';
+export { analyzeGitHub, analyzeGitHubGit, readPullSnapshot } from './source.js';
 export { loadGitHubPolicy } from './policy.js';
 export type { GitHubPolicySource } from './policy.js';
 export { applyGitHubPolicy } from './apply.js';

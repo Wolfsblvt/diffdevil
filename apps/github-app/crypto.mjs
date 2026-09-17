@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
+import { createPrivateKey, createSign } from 'node:crypto';
+
 const encoder = new TextEncoder();
 
 function hex(bytes) { return [...bytes].map(byte => byte.toString(16).padStart(2, '0')).join(''); }
@@ -29,12 +31,15 @@ function base64Url(value) {
   return btoa(binary).replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/u, '');
 }
 
-function pemBytes(pem) {
-  if (typeof pem !== 'string') throw new TypeError('GitHub App private key is unavailable.');
-  const body = pem.replace(/-----BEGIN PRIVATE KEY-----|-----END PRIVATE KEY-----|\s/gu, '');
-  if (!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/u.test(body)) throw new TypeError('GitHub App private key is not PKCS#8 PEM.');
-  const binary = atob(body);
-  return Uint8Array.from(binary, character => character.codePointAt(0));
+function appPrivateKey(pem) {
+  if (typeof pem !== 'string' || !pem.includes('-----BEGIN RSA PRIVATE KEY-----')) throw Object.assign(new TypeError('GitHub App private key must be an unencrypted RSA PKCS#1 PEM.'), { code: 'E_APP_PRIVATE_KEY' });
+  try {
+    const key = createPrivateKey({ key: pem, format: 'pem', type: 'pkcs1' });
+    if (key.type !== 'private' || key.asymmetricKeyType !== 'rsa') throw new TypeError('not RSA');
+    return key;
+  } catch {
+    throw Object.assign(new TypeError('GitHub App private key must be an unencrypted RSA PKCS#1 PEM.'), { code: 'E_APP_PRIVATE_KEY' });
+  }
 }
 
 /** Mint a short App JWT only at execution time; neither its key nor result is persisted. */
@@ -43,6 +48,8 @@ export async function createAppJwt({ appId, privateKey, now = Date.now }) {
   const issuedAt = Math.floor(now() / 1000) - 30;
   const payload = { iat: issuedAt, exp: issuedAt + 9 * 60, iss: String(appId) };
   const unsigned = `${base64Url(JSON.stringify({ alg: 'RS256', typ: 'JWT' }))}.${base64Url(JSON.stringify(payload))}`;
-  const key = await crypto.subtle.importKey('pkcs8', pemBytes(privateKey), { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['sign']);
-  return `${unsigned}.${base64Url(new Uint8Array(await crypto.subtle.sign('RSASSA-PKCS1-v1_5', key, encoder.encode(unsigned))))}`;
+  const signer = createSign('RSA-SHA256');
+  signer.update(unsigned);
+  signer.end();
+  return `${unsigned}.${base64Url(signer.sign(appPrivateKey(privateKey)))}`;
 }

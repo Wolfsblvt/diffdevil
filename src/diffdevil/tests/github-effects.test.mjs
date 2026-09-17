@@ -40,6 +40,14 @@ test('root size behavior ensures definitions, reconciles its group, preserves un
   assert.equal(second.changed, 0); assert.equal(fake.writes().length, previous);
   assert.equal(second.observations.some(row => row.kind === 'label.assignment' && row.subject === 'size/XS' && row.outcome === 'unchanged'), true);
 });
+test('a durable host assertion runs immediately before every provider write', async () => {
+  const fake = new FakeGitHub(); fake.labels.add('size/L');
+  let assertions = 0;
+  const result = unwrap(await apply(fake, policy({ version: 1 }), { beforeWrite: async () => { assertions++; } }));
+  assert.equal(result.status, 'verified');
+  assert.equal(assertions, fake.writes().length);
+  assert.ok(assertions > 0);
+});
 test('definition verification is read-only and explicit sync changes only selected definitions', async () => {
   const fake = new FakeGitHub(), desired = { 'review/main': { color: 'aabbcc', description: 'Selected definition' } };
   fake.definitions.set('other', label('other')); fake.definitions.set('review/main', label('review/main', '111111', '', true));

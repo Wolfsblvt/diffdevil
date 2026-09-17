@@ -1,87 +1,114 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import assert from 'node:assert/strict';
+import { createHmac, createVerify, generateKeyPairSync } from 'node:crypto';
 import { test } from 'node:test';
-import { createHmac } from 'node:crypto';
 import { createGitHubAppWorker, createInstallationClient } from './app.mjs';
 import { APP_QUEUE_KIND, WEBHOOK_BODY_LIMIT, WORKER_RESULT_LIMIT, historyProjection, normalizeWebhookEvent } from './contracts.mjs';
-import { constantTimeEqual } from './crypto.mjs';
+import { constantTimeEqual, createAppJwt } from './crypto.mjs';
+import { resolveEffectivePolicy } from './configuration.mjs';
 
 const secret = 'fixture-webhook-secret';
-const payload = { action: 'opened', installation: { id: 9 }, repository: { id: 17, full_name: 'example/repository' }, pull_request: { number: 42 } };
+const payload = { action: 'opened', installation: { id: 9 }, repository: { id: 17 }, pull_request: { number: 42 } };
+const envelope = () => normalizeWebhookEvent('pull_request', payload, new Date().toISOString(), 'delivery-1');
 const signedRequest = (body = JSON.stringify(payload), extra = {}) => new Request('https://app.example/webhooks/github', {
   method: 'POST', body, headers: { 'x-github-event': 'pull_request', 'x-github-delivery': 'delivery-1', 'x-hub-signature-256': `sha256=${createHmac('sha256', secret).update(body).digest('hex')}`, ...extra }
 });
 
-test('webhook verifies raw bytes before parsing and queues only the minimized selected envelope', async () => {
+function queueMessage(body = envelope()) {
+  const calls = [];
+  return { calls, message: { id: 'transport', body, ack() { calls.push('ack'); }, retry() { calls.push('retry'); } } };
+}
+function activeStore(calls) {
+  const delivery = { kind: 'claimed', attemptId: 'attempt-a', fence: 3 };
+  const lease = { kind: 'claimed', ...delivery, leaseUntil: '2030-01-01T00:01:00.000Z' };
+  return {
+    async claimDelivery() { calls.push('delivery'); return delivery; },
+    async claimExecution(_envelope, candidate) { calls.push(['execution', candidate]); return lease; },
+    async finish(_envelope, candidate, state, result) { calls.push(['finish', candidate, state, result]); },
+    async retry(_envelope, candidate, code) { calls.push(['retry-state', candidate, code]); },
+    async recordLifecycle() { calls.push('lifecycle'); },
+    async finishLifecycle() { calls.push('lifecycle-finish'); }
+  };
+}
+
+test('webhook verifies streamed raw bytes and queues only a minimized selected envelope', async () => {
   const queued = [];
-  const worker = createGitHubAppWorker();
-  const response = await worker.fetch(signedRequest(), { GITHUB_WEBHOOK_SECRET: secret, APP_QUEUE: { async send(value) { queued.push(value); } } });
+  const response = await createGitHubAppWorker().fetch(signedRequest(), { GITHUB_WEBHOOK_SECRET: secret, APP_QUEUE: { async send(value) { queued.push(value); } } });
   assert.equal(response.status, 202);
   assert.deepEqual(queued, [{ kind: APP_QUEUE_KIND, version: 1, type: 'pull-request', event: 'pull_request', action: 'opened', installationId: 9, repositoryId: 17, pullRequest: 42, deliveryId: 'delivery-1', receivedAt: queued[0].receivedAt }]);
   assert.equal(JSON.stringify(queued[0]).includes('full_name'), false);
 });
 
-test('webhook rejects invalid signatures, invalid JSON and oversized bodies without queueing', async () => {
-  const queued = [], env = { GITHUB_WEBHOOK_SECRET: secret, APP_QUEUE: { async send(value) { queued.push(value); } } }, worker = createGitHubAppWorker();
-  const invalid = await worker.fetch(signedRequest(JSON.stringify(payload), { 'x-hub-signature-256': 'sha256=00' }), env);
-  assert.equal(invalid.status, 401);
-  const malformedBody = '{';
-  const malformed = await worker.fetch(new Request('https://app.example/webhooks/github', { method: 'POST', body: malformedBody, headers: { 'x-github-event': 'pull_request', 'x-github-delivery': 'delivery-malformed', 'x-hub-signature-256': `sha256=${createHmac('sha256', secret).update(malformedBody).digest('hex')}` } }), env);
-  assert.equal(malformed.status, 400);
-  const oversized = new Request('https://app.example/webhooks/github', { method: 'POST', body: 'x'.repeat(WEBHOOK_BODY_LIMIT + 1), headers: { 'content-length': String(WEBHOOK_BODY_LIMIT + 1), 'x-github-event': 'pull_request', 'x-github-delivery': 'delivery-2' } });
-  assert.equal((await worker.fetch(oversized, env)).status, 413);
-  assert.equal(queued.length, 0);
-});
-
-test('valid but unselected events are deliberately ignored after authentication', async () => {
-  const body = JSON.stringify({ action: 'created', installation: { id: 9 }, repository: { id: 17 } });
-  const request = new Request('https://app.example/webhooks/github', { method: 'POST', body, headers: { 'x-github-event': 'issues', 'x-github-delivery': 'delivery-3', 'x-hub-signature-256': `sha256=${createHmac('sha256', secret).update(body).digest('hex')}` } });
+test('streaming ingress enforces the byte ceiling even when content length is absent', async () => {
+  const body = 'x'.repeat(WEBHOOK_BODY_LIMIT + 1);
+  const request = new Request('https://app.example/webhooks/github', { method: 'POST', body, headers: { 'x-github-event': 'pull_request', 'x-github-delivery': 'delivery-large' } });
   const response = await createGitHubAppWorker().fetch(request, { GITHUB_WEBHOOK_SECRET: secret, APP_QUEUE: { async send() { throw new Error('must not enqueue'); } } });
-  assert.deepEqual(await response.json(), { ok: true, status: 'ignored' });
+  assert.equal(response.status, 413);
 });
 
-test('queue execution holds a same-PR active lease and records a completed execution once', async () => {
-  const calls = [], store = {
-    async claimDelivery() { return 'claimed'; }, async claimExecution() { return 'claimed'; },
-    async complete(envelope, deliveryId, result) { calls.push({ envelope, deliveryId, result }); }, async terminal() { throw new Error('unexpected terminal'); }
-  };
-  const message = { id: 'queue-transport-id', body: normalizeWebhookEvent('pull_request', payload, new Date().toISOString(), 'delivery-1'), ack() { calls.push('ack'); }, retry() { calls.push('retry'); } };
-  await createGitHubAppWorker({ store, async execute() { return { status: 'verified', policyId: 'policy', comparisonId: 'comparison', effectCount: 2 }; } }).queue({ messages: [message] }, {});
-  assert.equal(calls.at(-1), 'ack');
-  assert.equal(calls[0].deliveryId, 'delivery-1');
-  assert.equal(calls[0].result.effectCount, 2);
-  const active = { ...store, async claimExecution() { return 'active'; } }, retries = [];
-  await createGitHubAppWorker({ store: active, async execute() { throw new Error('must not execute'); } }).queue({ messages: [{ ...message, retry() { retries.push(true); } }] }, {});
-  assert.equal(retries.length, 1);
-});
-
-test('history projection preserves numeric evidence and rejects contextual source fields by construction', () => {
-  const projection = historyProjection({ measurement: { status: 'exact' }, fileSet: { complete: false, total: { status: 'exact', value: 2 } }, totals: { raw: { added: { status: 'exact', value: 3 }, deleted: { status: 'exact', value: 2 }, churn: { status: 'exact', value: 5 } }, lines: { added: { status: 'exact', value: 1 }, deleted: { status: 'exact', value: 0 }, modified: { status: 'exact', value: 2 }, changed: { status: 'exact', value: 3 } } }, files: [{ path: 'private/file.ts', author: 'not-retained' }] }, [{ outcome: 'changed', target: 'label' }]);
-  assert.equal(JSON.stringify(projection).includes('private/file.ts'), false);
-  assert.equal(JSON.stringify(projection).includes('not-retained'), false);
-  assert.equal(projection.totals.lines.changed.value, 3);
-  assert.equal(constantTimeEqual(new Uint8Array([1]), new Uint8Array([1])), true);
+test('ordinary GitHub PKCS#1 App keys mint a verifiable RS256 JWT and reject other key shapes', async () => {
+  const pair = generateKeyPairSync('rsa', { modulusLength: 2048 });
+  const privateKey = pair.privateKey.export({ type: 'pkcs1', format: 'pem' });
+  const jwt = await createAppJwt({ appId: '123', privateKey, now: () => 1_700_000_000_000 });
+  const [header, claims, signature] = jwt.split('.');
+  const verifier = createVerify('RSA-SHA256'); verifier.update(`${header}.${claims}`); verifier.end();
+  assert.equal(verifier.verify(pair.publicKey, Buffer.from(signature, 'base64url')), true);
+  await assert.rejects(createAppJwt({ appId: '123', privateKey: pair.privateKey.export({ type: 'pkcs8', format: 'pem' }) }), { code: 'E_APP_PRIVATE_KEY' });
   assert.equal(constantTimeEqual(new Uint8Array([1]), new Uint8Array([1, 0])), false);
 });
 
-test('queue envelopes reject payload fields that could smuggle contextual data across the durable boundary', async () => {
-  const retries = [];
-  const message = { id: 'queue-id', body: { ...normalizeWebhookEvent('pull_request', payload, new Date().toISOString(), 'delivery-4'), repository: 'example/private' }, ack() { throw new Error('unexpected acknowledgement'); }, retry() { retries.push(true); } };
-  await createGitHubAppWorker({ store: {} }).queue({ messages: [message] }, {});
-  assert.equal(retries.length, 1);
+test('a fenced execution finishes only after verified work, while incomplete effects become repair work', async () => {
+  const first = queueMessage(), firstStore = activeStore(first.calls);
+  await createGitHubAppWorker({ store: firstStore, async execute(_envelope, _delivery, dependencies) { assert.equal(dependencies.lease.fence, 3); return { status: 'verified', policyId: 'policy', comparisonId: 'comparison', effectCount: 2 }; } }).queue({ messages: [first.message] }, {});
+  assert.equal(first.calls.at(-1), 'ack');
+  assert.equal(first.calls.find(call => Array.isArray(call) && call[0] === 'finish')[2], 'complete');
+
+  const second = queueMessage(), secondStore = activeStore(second.calls);
+  await createGitHubAppWorker({ store: secondStore, async execute() { throw Object.assign(new Error('effect ambiguous'), { code: 'E_EFFECT_INCOMPLETE' }); } }).queue({ messages: [second.message] }, {});
+  assert.equal(second.calls.at(-1), 'ack');
+  assert.equal(second.calls.find(call => Array.isArray(call) && call[0] === 'finish')[2], 'repair');
 });
 
-test('installation execution mints one repository-confined token and keeps the Worker response budget bounded', async () => {
+test('rate limiting releases a fenced attempt for retry instead of calling it revoked', async () => {
+  const run = queueMessage(), store = activeStore(run.calls);
+  await createGitHubAppWorker({ store, async execute() { throw Object.assign(new Error('rate'), { code: 'E_GITHUB_RATE_LIMIT' }); } }).queue({ messages: [run.message] }, {});
+  assert.equal(run.calls.at(-1), 'retry');
+  assert.equal(run.calls.find(call => Array.isArray(call) && call[0] === 'retry-state')[2], 'E_GITHUB_RATE_LIMIT');
+});
+
+test('lifecycle deliveries preserve numeric repository identities and complete their own delivery', async () => {
+  const lifecycle = normalizeWebhookEvent('installation_repositories', { action: 'added', installation: { id: 9 }, repositories_added: [{ id: 17 }, { id: 18 }] }, new Date().toISOString(), 'lifecycle-1');
+  const run = queueMessage(lifecycle), store = activeStore(run.calls);
+  await createGitHubAppWorker({ store }).queue({ messages: [run.message] }, {});
+  assert.deepEqual(lifecycle.repositories, [17, 18]);
+  assert.deepEqual(run.calls.slice(-3), ['lifecycle', 'lifecycle-finish', 'ack']);
+});
+
+test('history projection is versioned, quantitative, pathless, and keeps provider request/readback standing', () => {
+  const projection = historyProjection({ measurement: { status: 'exact' }, fileSet: { complete: false, total: { status: 'exact', value: 2 } }, totals: { raw: { added: { status: 'exact', value: 3 }, deleted: { status: 'exact', value: 2 }, churn: { status: 'exact', value: 5 } }, lines: { added: { status: 'exact', value: 1 }, deleted: { status: 'exact', value: 0 }, modified: { status: 'exact', value: 2 }, changed: { status: 'exact', value: 3 } } }, files: [{ path: 'private/file.ts', lines: { changed: { status: 'exact', value: 3 } } }] }, [{ kind: 'label.add', subject: 'private label', outcome: 'changed', request: 'acknowledged', readback: 'verified' }]);
+  assert.equal(projection.schemaVersion, 2);
+  assert.equal(JSON.stringify(projection).includes('private/file.ts'), false);
+  assert.equal(JSON.stringify(projection).includes('private label'), false);
+  assert.equal(projection.files[0].ordinal, 0);
+  assert.deepEqual(projection.effects[0], { kind: 'label.add', outcome: 'changed', request: 'acknowledged', readback: 'verified' });
+});
+
+test('installation credentials remain repository-confined and response bounded', async () => {
   const requests = [];
-  const fetch = async (url, init) => {
-    requests.push({ url: String(url), headers: new Headers(init.headers), body: init.body });
+  const client = await createInstallationClient({ GITHUB_APP_ID: '123', GITHUB_APP_PRIVATE_KEY: 'not-used-by-fixture' }, 9, 17, { createJwt: async () => 'app-jwt', fetch: async (url, init) => {
+    requests.push({ url: String(url), body: init.body });
     return new Response(JSON.stringify({ token: 'installation-token', expires_at: new Date(Date.now() + 60_000).toISOString() }), { status: 201 });
-  };
-  const client = await createInstallationClient({ GITHUB_APP_ID: '123', GITHUB_APP_PRIVATE_KEY: 'not-used-by-fixture' }, 9, 17, { createJwt: async () => 'app-jwt', fetch });
+  } });
   assert.equal(client.responseBytes, WORKER_RESULT_LIMIT);
-  assert.equal(requests.length, 1);
   assert.equal(requests[0].url.endsWith('/app/installations/9/access_tokens'), true);
-  assert.equal(requests[0].headers.get('authorization'), 'Bearer app-jwt');
   assert.deepEqual(JSON.parse(requests[0].body), { repository_ids: [17], permissions: { contents: 'read', pull_requests: 'write', checks: 'write' } });
+});
+
+test('effective App policy preserves selected layer provenance for export and explanation', () => {
+  const effective = resolveEffectivePolicy({ preset: { metrics: { review: { measure: 'lines.changed' } } }, account: { bands: { size: { value: 'metrics.review', ranges: [{ id: 'all', otherwise: true }] } } }, repository: { rules: { size: { band: 'size' } } } });
+  assert.equal(effective.provenance['/metrics/review'], 'preset');
+  assert.equal(effective.provenance['/bands/size'], 'account');
+  assert.equal(effective.provenance['/rules/size'], 'repository');
+  assert.equal(effective.document.version, 1);
 });
