@@ -63,6 +63,10 @@ The size override rewrites the preset's generated metric/band/group/definition r
 
 ## Configuration layering
 
+This section separates the current compiler contract from the selected multi-host configuration experience. The App/dashboard resolver described below is planned, not a claim that hosted settings or partial convenience maps are already implemented.
+
+### Current compiler and invocation behavior
+
 Resolve in this order:
 
 1. Built-in preset data in declared order.
@@ -75,6 +79,48 @@ Dictionary declarations such as a metric or rule replace the **whole declaration
 For path patterns, invocation `--exclude`/Action `exclude` append by default. `--exclude-mode replace` or `exclude-mode: replace` replaces the effective exclusion list. The same named mode applies to `include-only` and `force-include` where exposed. An explicit empty list can clear a list in structured configuration; an omitted field leaves the preceding layer intact.
 
 All effective patterns, origin layers, preset IDs, metric versions, and replacements appear in `diffdevil explain --policy`. The compiler retains provenance rather than manufacturing a flattened file that hides where behavior came from.
+
+### One conventional repository file
+
+Keep `.diffdevil.yml` at repository root as the single documented conventional file. It serves the provider-neutral CLI as well as GitHub consumers. Do not add fallback discovery of `.github/diffdevil.yml`, `.github/.diffdevil.yml`, or another spelling. This is a selected location, not a prerelease backward-compatibility obligation.
+
+Explicit `--config` or Action `config` may still name a deliberate file path; that does not create another automatically discovered convention. The current Actions load only explicitly selected configuration. Omitting `config` retains the bundled no-config route rather than adding an unexpected Contents read or workspace-policy lookup.
+
+Do not automatically fetch configuration from `<owner>/.github` or another organization-wide repository. An account-wide discovery layer would introduce hidden network, trust, precedence, and version changes. Existing explicit immutable external policy sources remain supported: convenience is not withheld to encourage App subscriptions.
+
+### Selected host-specific resolution
+
+The intended user-facing order is:
+
+| Host | Increasing precedence |
+| --- | --- |
+| CLI | Selected/bundled preset, explicitly loaded repository policy, supported command-invocation overrides |
+| Actions | Selected/bundled preset, explicitly selected repository/trusted policy, supported Action step-level overrides |
+| Managed App | Selected/bundled preset, account/organization dashboard defaults, explicitly supplied trusted repository settings |
+
+An Action does not read dashboard defaults. An App event has no Action step. No fourth hidden per-repository dashboard-default layer is selected. Inline workflow configuration and its supported overrides remain an ordinary self-operated route.
+
+The selected App defaults use the size preset, its managed size labels, a native check summary, comments off, and persistent history off. Check presentation and history enrollment are host behavior, not extra fields silently injected into the reusable size preset.
+
+### Partial settings without accidental policy merging
+
+A higher layer changes only fields it actually supplies. Omitted settings inherit; explicit `false`, zero, and supported empty collections are not treated as omission. Invalid or unknown fields are diagnosed, not silently discarded.
+
+For convenience settings, including individual size thresholds and label names, the selected shared resolution behavior fills omitted members from lower layers before validating the complete effective group. This must be shared lowering, not a dashboard-only second interpretation. A partial label rename must also update the generated group and definitions coherently.
+
+The current `size` compiler still requires complete supplied threshold/label maps as documented above. Implementing partial convenience maps across the shared resolver, schema, CLI/Actions, and App is an explicit remaining change; do not advertise an incomplete map as runnable against the current release.
+
+Named executable declarations retain a deliberate boundary: a supplied metric/rule declaration replaces the same-ID declaration as a whole; unrelated IDs remain inherited. Do not recursively splice half of one rule's expression/effects into a different rule. Arrays replace unless an established option explicitly selects append, including the current invocation path modes.
+
+Resolve preset selection before expansion. Explicit `presets: []` removes inherited preset selection rather than leaving generated size rules behind. Preserve conflict diagnostics between incompatible shorthand and full policy declarations. Step-level overrides remain limited to the combinations the Action exposes; partial layering does not legalize currently forbidden full-policy plus inline-single-rule combinations.
+
+### Explain and export the result
+
+The App dashboard and policy explanation should show effective settings, their source layer, selected preset/version, replaced declarations, and validation errors. Export one complete ordinary policy with explicit selected meaning, suitable for CLI/Actions without a hosted account.
+
+Read automatic-write repository overrides and relative templates from the trusted base or explicit immutable source. A config read failure is not the absence of configuration. Previewing proposed PR-head settings never makes those settings trusted write authority.
+
+These choices extend the current compiler contract without adding a remote preset system, executable configuration, arbitrary inheritance depth, or a new policy language.
 
 ## Metric shortcut catalog
 
