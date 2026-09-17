@@ -1,0 +1,154 @@
+/* diffdevil Surface Grammar v1 — design tokens (canonical, machine-readable companion to surface-grammar-v1.html and identity-grammar-v1.html)
+   Dark is the reference theme. Light is an authored theme, not an inversion.
+   Theme selection: [data-theme="dark"|"light"] on <html>; absence = follow prefers-color-scheme.
+   Machine surfaces (terminal, code, result panels) keep the midnight ground in BOTH themes. */
+
+:root {
+  /* ── type (frozen) ── */
+  --font-ui: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  /* scale (px) — line-height beside */
+  --t-display: 58px/1.0;   /* homepage h1 */
+  --t-h2: 32px/1.1;        /* homepage section h2, docs h1 30/1.15 */
+  --t-h3: 19px/1.3;        /* card titles; entrances 17–19 */
+  --t-lede: 20px/1.4;      /* strapline */
+  --t-body-l: 15px/1.65;   /* section paragraphs */
+  --t-body: 14px/1.5;      /* default UI */
+  --t-small: 13px/1.5;     /* secondary UI, links */
+  --t-caption: 12px/1.45;  /* notes, helper text */
+  --t-label: 11px/1.2;     /* uppercase mono labels, letter-spacing .06em */
+  --t-code: 12.5px/1.6;    /* code blocks; 13.5/1.75 in the #query field */
+  --t-metric-xl: 72px/1;   /* #measure primary */
+  --t-metric-l: 64px/1;    /* playground primary */
+  --t-metric-m: 48px/1;    /* hero result, narrow primaries 40–48 */
+  --tracking-display: -.022em;
+  --tracking-h2: -.015em;
+  --tracking-metric: -.035em;
+
+  /* ── spacing (4-base) ── */
+  --s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px; --s-5: 20px; --s-6: 24px;
+  --s-7: 32px; --s-8: 40px; --s-9: 56px; --s-10: 64px;
+  --page-x: 36px;            /* desktop gutter; 16px below 640 */
+  --section-y: 56px;         /* homepage section padding; hero 64 top */
+  --card-pad: 22px 24px;
+  --panel-pad: 14px 16px;
+
+  /* ── radii ── */
+  --r-card: 12px; --r-tile: 10px; --r-block: 8px; --r-control: 6px; --r-chip: 4px; --r-pill: 16px;
+
+  /* ── layout ── */
+  --content-max: 1280px;
+  --rail-w: 340px;
+  --bp-narrow: 640px;   /* single column, stacked */
+  --bp-mid: 900px;      /* playground rail → bottom sheet; homepage grids collapse */
+  --bp-wide: 1280px;
+
+  /* ── motion ── */
+  --dur: 160ms; --ease: cubic-bezier(.2,.7,.2,1);
+  /* @media (prefers-reduced-motion: reduce) { --dur: 0ms } */
+
+  /* ── semantic (theme-independent; only ever inside machine surfaces / code) ── */
+  --diff-add: #8fd6aa;
+  --diff-del: #ff9fb0;
+  --diff-mod: #9fc4ff;     /* reserved; modified lines are shown by "~" glyph, colour optional */
+  --term-cmd: #f0f2f5;     /* command text */
+  --term-prompt: #828690;  /* "$" and comments */
+  --term-out: #a9b8cc;     /* returned output */
+  --label-size-m: #C5DEF5; /* GitHub label preview swatch, from the fixture policy; ink text on it */
+
+  /* ── status semantics (glyph + word always; never a background wash) ── */
+  --status-info: #9fc4ff;    --status-info-light: #2a5db0;
+  --status-success: #8fd6aa; --status-success-light: #1f7a4d;
+  --status-warning: #f2c46d; --status-warning-light: #8a5a12;
+  --status-error: #ff7a70;   --status-error-light: #b3261e;
+
+  /* ── syntax (five classes; build-time Shiki or CodeMirror 6; same on both themes because code sits on --bg-machine) ── */
+  --syn-key: #c3b5ff;      /* keys, properties */
+  --syn-string: #d9c8a0;   /* strings */
+  --syn-number: #f0f2f5;   /* numbers, literals — text colour, weight 600 */
+  --syn-punct: #828690;    /* punctuation, structure */
+  --syn-comment: #6f7480;  /* comments — italic */
+}
+
+/* ────────────────────────────── DARK (reference) ────────────────────────────── */
+:root, [data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #151922;            /* page foundation (Foundation A) */
+  --bg-raised: #1d222c;     /* cards, rail chrome, strips */
+  --bg-raised-2: #262b36;   /* interactive full-width controls, selected chip fill */
+  --bg-machine: #0c0f17;    /* terminal, code, result panels, inputs */
+  --hair: #2c303a;          /* default hairline */
+  --hair-strong: #484d58;   /* emphasised card border, input border, chip border */
+  --fg: #f0f2f5;            /* primary text (off-white) */
+  --fg-2: #b4b7be;          /* secondary text */
+  --fg-3: #828690;          /* muted text, labels — 4.7:1 on --bg */
+  --accent: #f061ba;        /* magenta: primary action fill, selected outline, focus ring, permalink glyph */
+  --accent-hover: #ff7fcb;
+  --on-accent: #0c0f17;     /* text on magenta */
+  --inverse: #f0f2f5;       /* "Analyze" inverse button fill */
+  --on-inverse: #0c0f17;
+  --focus: #f061ba;
+  --hatch: repeating-linear-gradient(45deg, #2c303a 0 3px, #151922 3px 7px);
+  --logo-lockup: url("assets/identity/diffdevil-lockup-dark.svg");
+  --logo-symbol: url("assets/identity/diffdevil-symbol-master-dark.svg");
+  --logo-micro: url("assets/identity/diffdevil-symbol-micro-dark.svg");
+  --logo-wordmark-tail: url("assets/identity/diffdevil-wordmark-tail-dark.svg");
+}
+
+/* ────────────────────────────── LIGHT (authored) ────────────────────────────── */
+[data-theme="light"] {
+  color-scheme: light;
+  --bg: #fbfcfe;            /* paper */
+  --bg-raised: #ffffff;     /* cards */
+  --bg-raised-2: #f2f3f7;   /* interactive controls, selected chip fill, strips */
+  --bg-machine: #0c0f17;    /* machine surfaces stay midnight */
+  --hair: #d8dbe0;
+  --hair-strong: #b4b7be;
+  --fg: #161b24;            /* ink */
+  --fg-2: #484d58;
+  --fg-3: #6c727e;          /* 4.6:1 on paper */
+  --accent: #e54eaf;        /* magenta fill on light */
+  --accent-hover: #d43d9e;
+  --accent-text: #aa167d;   /* magenta as text on light (fills use --accent) */
+  --on-accent: #161b24;     /* ink on magenta — never white on magenta */
+  --inverse: #161b24;
+  --on-inverse: #f0f2f5;
+  --focus: #e54eaf;
+  --hatch: repeating-linear-gradient(45deg, #e9ebef 0 3px, #ffffff 3px 7px);
+  --logo-lockup: url("assets/identity/diffdevil-lockup-light.svg");
+  --logo-symbol: url("assets/identity/diffdevil-symbol-master-light.svg");
+  --logo-micro: url("assets/identity/diffdevil-symbol-micro-light.svg");
+  --logo-wordmark-tail: url("assets/identity/diffdevil-wordmark-tail-light.svg");
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) {
+    color-scheme: light;
+    --bg: #fbfcfe; --bg-raised: #ffffff; --bg-raised-2: #f2f3f7; --bg-machine: #0c0f17;
+    --hair: #d8dbe0; --hair-strong: #b4b7be;
+    --fg: #161b24; --fg-2: #484d58; --fg-3: #6c727e;
+    --accent: #e54eaf; --accent-hover: #d43d9e; --accent-text: #aa167d; --on-accent: #161b24;
+    --inverse: #161b24; --on-inverse: #f0f2f5; --focus: #e54eaf;
+    --hatch: repeating-linear-gradient(45deg, #e9ebef 0 3px, #ffffff 3px 7px);
+    --logo-lockup: url("assets/identity/diffdevil-lockup-light.svg");
+    --logo-symbol: url("assets/identity/diffdevil-symbol-master-light.svg");
+    --logo-micro: url("assets/identity/diffdevil-symbol-micro-light.svg");
+    --logo-wordmark-tail: url("assets/identity/diffdevil-wordmark-tail-light.svg");
+  }
+}
+/* In dark theme --accent-text equals --accent (6.5:1 on --bg). */
+:root, [data-theme="dark"] { --accent-text: #f061ba; }
+
+/* ── hairline meanings (never colour-only; the style IS the meaning) ──
+   solid  1px --hair          : default separation; observed / exact
+   solid  1px --hair-strong   : emphasised card (primary route, Skill card), inputs
+   solid  1px --fg            : evidence "= exact" chip
+   dashed 1px --fg            : evidence "≈ bounded" chip
+   dashed 1px --hair-strong   : proposed-not-applied notices; preserved-not-editable policy block
+   dotted 1px --fg            : evidence "? unknown" chip
+   --hatch fill + solid --fg  : evidence "∅ unmeasurable"
+   left 3px --accent          : policy-focus metric block (structural accent, not a data colour)
+   1px --accent (+ inset 1px) : selected view tile; open Agent card; selected setup chip */
+
+/* ── focus ── */
+/* :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px }
+   full-width controls (disclosure, rail tabs): outline-offset: -2px */
