@@ -147,7 +147,11 @@ Older released language profiles remain supported while real consumers depend on
 
 The supplied Draft 2020-12 schemas cover the selected structural contracts. Semantic validation additionally checks bounds/order, integer categories, metric graphs, references, scope membership, primitive identities, plan freshness, and ownership. JSON Schema alone does not prove any of those relational claims. See [S1](../reference/2026-09-09/sources-and-research.md#s1).
 
-The package qualification report distinguishes schema/example checks from unexecuted parser, evaluator, shell, and GitHub behavior. A well-formed schema is useful groundwork, not evidence of a working Action.
+The package qualification report distinguishes structural/schema/example checks
+from executed parser, evaluator, shell, package, and Action consumer evidence.
+Live provider and hosted-runner claims remain bounded to the separate evidence in
+[Qualification](../QUALIFICATION.md); a well-formed schema alone is not evidence
+of a working Action.
 
 ## Pre-release saved metric type repair
 

@@ -2,14 +2,20 @@
 
 ## Meaning
 
-This document defines how the single `@wolfsblvt/diffdevil` package exposes detail compilation, structured shortcuts, policy evaluation, and typed results without requiring GitHub Actions or shell execution. The [declaration asset](../../src/diffdevil/contracts/detail/v1/public-api.d.ts) is a concrete proposed interface contract, not an implemented package export.
+This document defines how the single `@wolfsblvt/diffdevil` package exposes
+detail compilation, structured shortcuts, policy evaluation, GitHub acquisition,
+and typed results without requiring GitHub Actions or shell execution. The
+[declaration asset](../../src/diffdevil/contracts/detail/v1/public-api.d.ts) is
+a versioned contract reference; generated declarations are the shipped package
+surface.
 
 ## Current implemented API
 
-The installed package exports the root, `/core`, `/language`, `/policy`, and
-`/git`. Generated declarations are the current executable signature source.
-The standalone proposed declaration asset below still carries planned interfaces;
-it must not be treated as evidence that every function has shipped.
+The installed package exports the root, `/core`, `/language`, `/policy`, `/git`,
+and `/github`. Generated declarations are the current executable signature
+source. The standalone contract asset remains useful for the versioned detail
+surface, but generated declarations and the release qualification determine what
+the package actually ships.
 
 ```typescript
 import { analyzeDiff, unwrap, environmentFromReport } from '@wolfsblvt/diffdevil';
@@ -204,7 +210,11 @@ The package should publish declarations for the public subpaths, maintain a pure
 
 The same normalized report and parameters must produce the same semantic result through source expressions, shortcuts, policy metrics, the CLI, and Actions. Differences in formatting or host error transport do not justify different arithmetic.
 
-Qualification covers public import smoke tests, declaration checking, program reuse, schema mismatch rejection, inert-data validation, unknown/result unions, and absence of provider effects from language/policy imports. The supplied `.d.ts` is groundwork; implementation and consumer tests remain required before claiming the package supports these calls.
+Qualification covers public import smoke tests, declaration checking, program
+reuse, schema mismatch rejection, inert-data validation, unknown/result unions,
+and absence of provider effects from language/policy imports. The released npm
+consumer also exercises the public subpaths and strict declarations; live GitHub
+provider behavior remains a separately bounded Action-canary claim.
 
 `validateSchema(kind, input)` checks one fixed product-owned schema and returns
 inert frozen data. It accepts policy, report, plan, query, AST and value schema
@@ -215,6 +225,7 @@ shape success alone does not establish arithmetic truth or effect authority.
 
 The `/github` export provides `GitHubClient`, `analyzeGitHub`,
 `loadGitHubPolicy`, `applyGitHubPolicy` and `syncGitHubLabels`, plus their public
-options/result types. Its provider tests use mocked HTTP; live GitHub is not
-qualified by those tests. See [GitHub API](github-api.md) for source trust, explicit
-application, lifecycle scope and partial-result handling.
+options/result types. Its provider tests use mocked HTTP; selected live provider
+reads and bounded effects are qualified separately through the published Action
+canaries. See [GitHub API](github-api.md) for source trust, explicit application,
+lifecycle scope and partial-result handling.
