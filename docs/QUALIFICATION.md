@@ -33,7 +33,11 @@ strict TypeScript declarations.
 Remote Action execution from the release refs remains unobserved. The prepared
 canary dispatch was rejected before any job or step because of the GitHub account's
 Actions billing/spending state; no setup or diffdevil provider write occurred.
-Marketplace discovery is also a separate provider readback.
+The [GitHub Marketplace listing](https://github.com/marketplace/actions/diffdevil)
+was read back with owner `Wolfsblvt`, release `v1.0.0`, the root Action's current
+name/description/branding, and categories **Continuous integration** and
+**Utilities**. This proves Marketplace discovery, not execution through the
+immutable or maintained release refs.
 
 ## September 16 split-policy credential — accepted v1 source
 
