@@ -3,6 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
+import { request as requestHttp } from 'node:http';
 import { readFileSync } from 'node:fs';
 import Ajv2020 from 'ajv/dist/2020.js';
 import { DiffdevilError, GitHubClient } from '../../dist/lib/index.js';
@@ -22,6 +23,18 @@ ajv.addSchema(reportSchema);
 const validateResponse = ajv.compile(responseSchema);
 const assertResponse = value => assert.equal(validateResponse(value), true, ajv.errorsText(validateResponse.errors));
 const envelope = { kind: 'diffdevil.playground-response', schemaVersion: '1.0' };
+
+function requestWithoutFetch(url, method) {
+  return new Promise((resolve, reject) => {
+    const request = requestHttp(url, { method }, response => {
+      const chunks = [];
+      response.on('data', chunk => chunks.push(chunk));
+      response.on('end', () => resolve({ status: response.statusCode, headers: response.headers, body: Buffer.concat(chunks).toString('utf8') }));
+    });
+    request.on('error', reject);
+    request.end();
+  });
+}
 
 test('playground accepts one canonical public GitHub pull-request URL', () => {
   assert.deepEqual(parsePublicPullRequestUrl(`${PUBLIC_URL}?diff=split#discussion_r1`), {
@@ -130,6 +143,11 @@ test('playground serves the front door, health readback and read-only API', asyn
   const health = await fetch(`${base}/health/ping`);
   assert.deepEqual(await health.json(), { status: 'ok', service: 'diffdevil-playground' });
 
+  const healthHead = await fetch(`${base}/health/ping`, { method: 'HEAD' });
+  assert.equal(healthHead.status, 200);
+  assert.equal(healthHead.headers.get('content-length'), health.headers.get('content-length'));
+  assert.equal(await healthHead.text(), '');
+
   const analysis = await fetch(`${base}/api/analyze?url=${encodeURIComponent(PUBLIC_URL)}`);
   const payload = await analysis.json();
   assert.equal(analysis.status, 200);
@@ -141,6 +159,10 @@ test('playground serves the front door, health readback and read-only API', asyn
   assert.equal(wrongMethod.status, 405);
   assert.equal(wrongMethodPayload.status, 405);
   assertResponse(wrongMethodPayload);
+
+  const forbidden = await requestWithoutFetch(`${base}/api/analyze`, 'TRACE');
+  assert.equal(forbidden.status, 405);
+  assertResponse(JSON.parse(forbidden.body));
 
   const missing = await fetch(`${base}/missing`);
   const missingPayload = await missing.json();
@@ -208,19 +230,31 @@ test('playground evicts a failed static asset read so the next request can recov
 test('Worker adapter serves the shared health/API contract and defers static content to assets', async () => {
   const fake = new FakeGitHub();
   const requestedAssets = [];
+  const publicAssets = new Map([
+    ['/', { body: readFileSync('apps/playground/public/index.html'), type: 'text/html; charset=utf-8' }],
+    ['/app.js', { body: readFileSync('apps/playground/public/app.js'), type: 'text/javascript; charset=utf-8' }],
+    ['/styles.css', { body: readFileSync('apps/playground/public/styles.css'), type: 'text/css; charset=utf-8' }]
+  ]);
   const assets = {
     async fetch(request) {
-      requestedAssets.push(new URL(request.url).pathname);
-      return new Response('<!doctype html><title>diffdevil</title>', {
-        headers: { 'content-type': 'text/html; charset=utf-8' }
-      });
+      const path = new URL(request.url).pathname;
+      requestedAssets.push(path);
+      const asset = publicAssets.get(path);
+      return asset
+        ? new Response(asset.body, { headers: { 'content-type': asset.type } })
+        : new Response('Not found.', { status: 404 });
     }
   };
   const worker = createPlaygroundWorker({ clientFactory: () => client(fake) });
 
-  const staticAsset = await worker.fetch(new Request('https://diffdevil-playground.wolfsblvt.workers.dev/'), { ASSETS: assets });
-  assert.equal(staticAsset.status, 200);
-  assert.deepEqual(requestedAssets, ['/']);
+  const page = await worker.fetch(new Request('https://diffdevil-playground.wolfsblvt.workers.dev/'), { ASSETS: assets });
+  assert.equal(page.status, 200);
+  assert.match(await page.text(), /href="\/styles\.css"/u);
+  const stylesheet = await worker.fetch(new Request('https://diffdevil-playground.wolfsblvt.workers.dev/styles.css'), { ASSETS: assets });
+  const script = await worker.fetch(new Request('https://diffdevil-playground.wolfsblvt.workers.dev/app.js'), { ASSETS: assets });
+  assert.equal(stylesheet.status, 200);
+  assert.equal(script.status, 200);
+  assert.deepEqual(requestedAssets, ['/', '/styles.css', '/app.js']);
 
   const health = await worker.fetch(new Request('https://diffdevil-playground.wolfsblvt.workers.dev/health/ping'), { ASSETS: assets });
   assert.deepEqual(await health.json(), { status: 'ok', service: 'diffdevil-playground' });
@@ -233,11 +267,26 @@ test('Worker adapter serves the shared health/API contract and defers static con
   const refusal = await worker.fetch(new Request('https://diffdevil-playground.wolfsblvt.workers.dev/api/analyze?url=https%3A%2F%2Fexample.com%2Fprivate'), { ASSETS: assets });
   assert.equal(refusal.status, 400);
   assertResponse(await refusal.json());
+
+  for (const path of ['/api/unknown', '/health/unknown']) {
+    const missing = await worker.fetch(new Request(`https://diffdevil-playground.wolfsblvt.workers.dev${path}`), { ASSETS: assets });
+    assert.equal(missing.status, 404);
+    assert.deepEqual(await missing.json(), {
+      ...envelope,
+      ok: false,
+      status: 404,
+      error: { code: 'E_NOT_FOUND', message: 'Not found.' }
+    });
+  }
   assert.equal(fake.writes().length, 0);
 });
 
 test('Worker adapter returns the canonical internal failure envelope', async () => {
-  const worker = createPlaygroundWorker({ analyze: async () => { throw new Error('sensitive worker detail'); } });
+  let observed;
+  const worker = createPlaygroundWorker({
+    analyze: async () => { throw new Error('sensitive worker detail'); },
+    onError: error => { observed = error; }
+  });
   const response = await worker.fetch(new Request('https://diffdevil-playground.wolfsblvt.workers.dev/api/analyze?url=https%3A%2F%2Fgithub.com%2Fexample%2Frepository%2Fpull%2F42'), {
     ASSETS: { fetch: async () => new Response('unused') }
   });
@@ -248,4 +297,6 @@ test('Worker adapter returns the canonical internal failure envelope', async () 
     status: 500,
     error: { code: 'E_INTERNAL', message: 'Unexpected server failure.' }
   });
+  assert.ok(observed instanceof Error);
+  assert.equal(observed.message, 'sensitive worker detail');
 });

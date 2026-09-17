@@ -7,6 +7,37 @@ historical runtime results and unobserved external effects. A schema specimen is
 not execution, a green unit suite is not a packaged consumer, and mock HTTP is not
 live GitHub permission evidence.
 
+## September 17 PR #9 Worker revision — native Windows Node 24
+
+The current PR #9 revision preserves Eira's original Worker/source route after a
+clean replay from reviewed `33972fd` onto public `main@d355f6b`. It repairs the
+Worker-visible static asset paths, binds only the default platform `fetch` receiver,
+keeps injected test transports unchanged, returns canonical versioned 404s for
+unknown `/api/*` and `/health/*` paths, rejects unsupported Node methods before
+constructing a Fetch request, and preserves known JSON `Content-Length` values in
+the Node adapter. The shared Worker handler still has no credential source or
+provider-write route.
+
+On Windows 11 with Node **v24.19.0** and npm **11.17.0**:
+
+| Boundary | Observed result |
+| --- | --- |
+| Ordinary source, generated Action parity, and Worker bundle check | `npm run verify`: **477 passed, 0 failed, 0 skipped**; 1,141 generated Action files over 12 locked runtime packages; telemetry-disabled `wrangler deploy --dry-run` read four static assets and exited before any provider effect. |
+| Conformance | `npm run test:conformance`: **189 declared / 189 passed / 0 failed / 0 not executed / 0 harness failures**. |
+| Installed npm consumer | `npm run test:package`: **491-file** tarball installed offline outside the checkout; CLI, API, schema, declarations, Windows CMD and PowerShell launcher routes passed. |
+| Distributed Actions | `npm run test:actions`: **10** isolated Node 24 executions across all four entries; no consumer install and mock HTTP only. |
+| Local Workerd | The front door, its referenced `/styles.css` and `/app.js`, health, canonical unknown API/health responses, and one real unauthenticated analysis of public diffdevil PR #9 all passed. The returned response validated against the versioned response schema. |
+
+The first attempted source restore could not use the supplied offline development
+cache because it lacks Wrangler dependency `youch-core@0.3.3`; a normal exact-lock
+restore supplied the local test environment. This does not alter the separately
+passing offline npm-package consumer boundary above.
+
+No Cloudflare account, Worker, version, preview, deployment, Workers.dev route,
+custom domain, DNS record, credential, or GitHub provider write was performed.
+Local Workerd is not Cloudflare edge evidence; hosted exact-head CI remains pending
+after the revised branch is pushed.
+
 ## September 17 public v1 release and outside consumer
 
 The accepted release tree is public

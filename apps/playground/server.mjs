@@ -3,14 +3,14 @@
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
-import { analyzePublicPullRequest, commonHeaders, handlePlaygroundRequest, parsePublicPullRequestUrl, projectPlaygroundReport, unexpectedServerFailureResponse } from './app.mjs';
+import { analyzePublicPullRequest, commonHeaders, handlePlaygroundRequest, parsePublicPullRequestUrl, projectPlaygroundReport, unexpectedServerFailureResponse, unsupportedMethodResponse } from './app.mjs';
 
 const DEFAULT_PORT = 4173;
 const DEFAULT_HOST = '127.0.0.1';
 const PUBLIC_ASSETS = new Map([
   ['/', { file: new URL('./public/index.html', import.meta.url), type: 'text/html; charset=utf-8' }],
-  ['/assets/app.js', { file: new URL('./public/app.js', import.meta.url), type: 'text/javascript; charset=utf-8' }],
-  ['/assets/styles.css', { file: new URL('./public/styles.css', import.meta.url), type: 'text/css; charset=utf-8' }]
+  ['/app.js', { file: new URL('./public/app.js', import.meta.url), type: 'text/javascript; charset=utf-8' }],
+  ['/styles.css', { file: new URL('./public/styles.css', import.meta.url), type: 'text/css; charset=utf-8' }]
 ]);
 
 function parsePositiveInteger(value, label) {
@@ -60,6 +60,10 @@ function createAssetLoader(readAsset = readFile) {
 async function handleRequest(request, response, options) {
   const method = request.method ?? 'GET';
   const url = new URL(request.url ?? '/', 'http://diffdevil.local');
+  if (method !== 'GET' && method !== 'HEAD') {
+    await sendWebResponse(response, unsupportedMethodResponse(method));
+    return;
+  }
   const application = await handlePlaygroundRequest(new Request(url, { method, headers: request.headers }), options);
   if (application) {
     await sendWebResponse(response, application);

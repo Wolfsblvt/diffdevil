@@ -22,6 +22,10 @@ export function unexpectedServerFailureResponse(method = 'GET') {
   return jsonResponse(500, playgroundError(500, 'E_INTERNAL', 'Unexpected server failure.'), method);
 }
 
+export function unsupportedMethodResponse(method = 'GET') {
+  return jsonResponse(405, playgroundError(405, 'E_METHOD', 'Only GET and HEAD are supported.'), method);
+}
+
 function playgroundSuccess(canonicalUrl, analysis) {
   return { kind: RESPONSE_KIND, schemaVersion: RESPONSE_VERSION, ok: true, status: 200, canonicalUrl, analysis };
 }
@@ -134,30 +138,39 @@ export function commonHeaders(contentType) {
 }
 
 export function jsonResponse(status, value, method = 'GET') {
-  const headers = new Headers({ ...commonHeaders('application/json; charset=utf-8'), 'cache-control': 'no-store' });
-  return new Response(method === 'HEAD' ? null : JSON.stringify(value), { status, headers });
+  const body = JSON.stringify(value);
+  const headers = new Headers({
+    ...commonHeaders('application/json; charset=utf-8'),
+    'cache-control': 'no-store',
+    'content-length': String(new TextEncoder().encode(body).byteLength)
+  });
+  return new Response(method === 'HEAD' ? null : body, { status, headers });
 }
 
 /** Handles the shared public API and health contract; callers own static-asset fallback. */
 export async function handlePlaygroundRequest(request, options = {}) {
   const method = request.method;
-  if (method !== 'GET' && method !== 'HEAD') {
-    return jsonResponse(405, playgroundError(405, 'E_METHOD', 'Only GET and HEAD are supported.'), method);
-  }
+  if (method !== 'GET' && method !== 'HEAD') return unsupportedMethodResponse(method);
 
   const url = new URL(request.url);
   if (url.pathname === '/health/ping') {
     return jsonResponse(200, { status: 'ok', service: 'diffdevil-playground' }, method);
   }
 
-  if (url.pathname !== '/api/analyze') return undefined;
-  if (method === 'HEAD') {
-    return jsonResponse(405, playgroundError(405, 'E_METHOD', 'Analyze with GET.'), method);
+  if (url.pathname === '/api/analyze') {
+    if (method === 'HEAD') {
+      return jsonResponse(405, playgroundError(405, 'E_METHOD', 'Analyze with GET.'), method);
+    }
+    const analyze = options.analyze ?? (value => analyzePublicPullRequest(value, {
+      client: options.clientFactory?.() ?? createPublicGitHubClient(),
+      maximumFiles: options.maximumFiles
+    }));
+    const result = await analyze(url.searchParams.get('url') ?? '');
+    return jsonResponse(result.status, result, method);
   }
-  const analyze = options.analyze ?? (value => analyzePublicPullRequest(value, {
-    client: options.clientFactory?.() ?? createPublicGitHubClient(),
-    maximumFiles: options.maximumFiles
-  }));
-  const result = await analyze(url.searchParams.get('url') ?? '');
-  return jsonResponse(result.status, result, method);
+
+  if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/health/')) {
+    return jsonResponse(404, playgroundError(404, 'E_NOT_FOUND', 'Not found.'), method);
+  }
+  return undefined;
 }

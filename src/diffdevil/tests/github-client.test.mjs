@@ -13,6 +13,36 @@ test('GitHub client uses the configured Enterprise root and does not follow redi
   assert.equal(observed.init.headers['x-github-api-version'], '2026-03-10');
   assert.throws(() => client.url('/../escape'), /escaped/);
 });
+test('GitHub client binds only the default platform fetch receiver', async () => {
+  const originalFetch = globalThis.fetch;
+  let defaultReceiver;
+  Object.defineProperty(globalThis, 'fetch', {
+    configurable: true,
+    writable: true,
+    value: async function () {
+      defaultReceiver = this;
+      return json({ defaultFetch: true });
+    }
+  });
+  try {
+    const client = new GitHubClient({ readRetries: 0 });
+    assert.deepEqual(await client.json('/repos/test/repo'), { defaultFetch: true });
+    assert.equal(defaultReceiver, globalThis);
+  } finally {
+    Object.defineProperty(globalThis, 'fetch', { configurable: true, writable: true, value: originalFetch });
+  }
+
+  let injectedReceiver;
+  const client = new GitHubClient({
+    readRetries: 0,
+    fetch: async function () {
+      injectedReceiver = this;
+      return json({ injectedFetch: true });
+    }
+  });
+  assert.deepEqual(await client.json('/repos/test/repo'), { injectedFetch: true });
+  assert.equal(injectedReceiver, client);
+});
 test('GitHub client refuses cross-origin and changed-endpoint pagination before another credentialed request', async () => {
   for (const url of ['https://untrusted.example/repos/test/repo/labels?page=2', 'https://api.github.com/repos/other/repo/labels?page=2']) {
     let calls = 0;

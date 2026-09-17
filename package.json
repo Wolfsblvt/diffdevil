@@ -18,8 +18,8 @@
     "check:actions": "node tools/build-actions.mjs --check",
     "test:actions": "node tools/action-smoke.mjs",
     "playground": "npm run build && node apps/playground/server.mjs",
-    "playground:worker": "npm run build && wrangler dev --local",
-    "check:workers": "wrangler deploy --dry-run --outdir artifacts/wrangler-dry-run"
+    "playground:worker": "npm run build && node tools/run-wrangler.mjs dev --local",
+    "check:workers": "node tools/run-wrangler.mjs deploy --dry-run --outdir artifacts/wrangler-dry-run"
   },
   "keywords": [
     "git",

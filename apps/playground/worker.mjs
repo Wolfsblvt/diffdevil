@@ -8,12 +8,14 @@ import { handlePlaygroundRequest, unexpectedServerFailureResponse } from './app.
  * fallback also gives unknown static paths Cloudflare's ordinary asset 404.
  */
 export function createPlaygroundWorker(options = {}) {
+  const reportError = options.onError ?? (error => console.error('diffdevil playground request failed:', error));
   return {
     async fetch(request, env) {
       try {
         const response = await handlePlaygroundRequest(request, options);
         return response ?? env.ASSETS.fetch(request);
-      } catch {
+      } catch (error) {
+        reportError(error);
         return unexpectedServerFailureResponse(request.method);
       }
     }
