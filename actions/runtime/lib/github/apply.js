@@ -62,7 +62,10 @@ export function applyGitHubPolicy(client, target, policy, options = {}) {
         const author = options.commentAuthor ?? { login: 'github-actions[bot]' };
         const previous = Object.keys(comments).length ? await readOwnedComments(client, plan, author) : [];
         const prepared = prepareComments(plan, comments, previous, options.occasionId);
-        const session = new EffectSession(assertCurrent), diagnostics = [];
+        const session = new EffectSession(async () => {
+            await assertCurrent();
+            await options.beforeWrite?.();
+        }), diagnostics = [];
         try {
             if (mode !== 'none' && definitions.size)
                 await reconcileDefinitions(client, target.repository, definitions, currentDefinitions, mode, session);

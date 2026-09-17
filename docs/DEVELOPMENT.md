@@ -61,7 +61,7 @@ perform no registry installation themselves. One dependency closure is sufficien
 | Command | What it proves |
 | --- | --- |
 | `npm run check:prep` | Parses machine assets and checks unique, nonempty declared case IDs. It does not execute cases or judge prose. |
-| `npm run verify` | Preparation, ordinary build, all registered core and `apps/**/*.test.mjs` application cases, exact Action regeneration parity, and a no-write Wrangler Worker/asset bundle check. |
+| `npm run verify` | Preparation, ordinary build, all registered core and `apps/**/*.test.mjs` application cases, exact Action regeneration parity, and no-write bundle checks for the playground and managed-App Workers. |
 | `npm test` | Ordinary tests against the existing build; build first after source edits. |
 | `npm run test:conformance` | Actual production test events for every supplied conformance case, with separate failed/not-executed/harness totals. |
 | `npm run demo:shortcuts` | Four CLI pairs, a custom formula/named query, and pure Action-shorthand/full-policy parity. Not an Action host test. |
@@ -72,6 +72,7 @@ perform no registry installation themselves. One dependency closure is sufficien
 | `npm run playground` | Builds the reusable engine and starts the local AGPL playground over unauthenticated public-GitHub reads. It is an operator journey, not a live-write or hosted-deployment check. |
 | `npm run playground:worker` | Builds the reusable engine and starts the same public route through local Wrangler/workerd. It disables Wrangler telemetry and does not contact Cloudflare. |
 | `npm run check:workers` | Bundles `wrangler.jsonc` and the static asset binding with telemetry disabled and `wrangler deploy --dry-run`. It creates no Worker, version, preview, deployment, route or domain. |
+| `npm run check:github-app` | Bundles the managed-App Worker, Queue and placeholder D1 binding with Wrangler dry-run. It creates no App, Queue, D1 database, Worker, deployment, route or credentialed GitHub effect. |
 
 The fresh CI `npm ci` cache holds the locked project tarballs but lacks registry
 metadata for a lockless tarball consumer. The hosted package step therefore sets
@@ -129,7 +130,9 @@ orchestration, output files, summaries and process exits. `src/diffdevil/hosts/`
 trusted policy acquisition with the CLI. `src/diffdevil/github/` owns provider acquisition
 and reconciliation, not another evaluator. `apps/playground/` consumes the built public
 engine through an AGPL application server, Worker adapter, versioned response schema,
-browser assets and application-owned tests; it is not part of the npm or Action distributions.
+browser assets and application-owned tests. `apps/github-app/` consumes that same engine
+through verified ingress, Queue, D1, native-check, and recovery/history adapters. Neither
+application is part of the npm or Action distributions.
 
 `actions/runtime/` is the committed native-ESM closure: compiled code, static
 validators, 12 locked runtime package trees, original third-party notices and a
@@ -150,6 +153,7 @@ node --test src/diffdevil/tests/cli-effects.test.mjs src/diffdevil/tests/github-
 node --test src/diffdevil/tests/github-*.test.mjs
 node --test src/diffdevil/tests/policy-yaml.test.mjs src/diffdevil/tests/schema.test.mjs
 node --test apps/playground/playground.test.mjs
+node --test apps/github-app/github-app.test.mjs
 ```
 
 The GitHub fixture is an explicit in-memory HTTP implementation under

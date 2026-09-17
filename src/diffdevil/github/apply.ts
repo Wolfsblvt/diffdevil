@@ -26,6 +26,8 @@ export interface GitHubApplyOptions extends Pick<PolicyEvaluateOptions, 'paramet
   readonly expectedPolicyBase?: string;
   /** Explicitly acquire the live PR's exact revisions through local Git. */
   readonly localGit?: { readonly cwd?: string };
+  /** Hosts with durable execution ownership assert it immediately before every provider write. */
+  readonly beforeWrite?: () => Promise<void>;
 }
 export interface GitHubApplyResult {
   readonly kind: 'diffdevil.github-apply'; readonly schemaVersion: '1.0';
@@ -75,7 +77,10 @@ export function applyGitHubPolicy(client: GitHubClient, target: PlanTarget, poli
     const author = options.commentAuthor ?? { login: 'github-actions[bot]' };
     const previous = Object.keys(comments).length ? await readOwnedComments(client, plan, author) : [];
     const prepared = prepareComments(plan, comments, previous, options.occasionId);
-    const session = new EffectSession(assertCurrent), diagnostics: Diagnostic[] = [];
+    const session = new EffectSession(async () => {
+      await assertCurrent();
+      await options.beforeWrite?.();
+    }), diagnostics: Diagnostic[] = [];
     try {
       if (mode !== 'none' && definitions.size) await reconcileDefinitions(client, target.repository, definitions, currentDefinitions, mode, session);
       if (wanted.size) await reconcileAssignments(client, plan, wanted, assignments, currentDefinitions, session);
