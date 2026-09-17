@@ -4,7 +4,10 @@
 
 This document defines the diffdevil Action surfaces, their language-free defaults, inline customization, outputs, trusted-policy boundary, and optional label/comment behavior. The root Action is the convenient default size-label automation; sub-actions expose read-only analysis, explicit application, and definition synchronization. All share the same policy compiler and evaluator.
 
-These entry points are implemented and qualified through native and hosted consumer matrices plus a separate private live-provider canary, but unpublished. `@v1` in the workflow specimens is a future release coordinate, not an existing release. Current platform and evidence boundaries remain explicit below.
+These entry points are published through maintained `@v1` and immutable
+`@v1.0.0` coordinates. Native and hosted consumer matrices plus a separate
+private live-provider canary qualify the underlying release source. Current
+platform and evidence boundaries remain explicit below.
 
 ## Current executable boundary
 
@@ -31,8 +34,8 @@ inline rule. Workspace policy remains read-only in Actions.
 The native-ESM distribution ships all four metadata-selected paths without an
 installation step. Exact accepted source has consumer evidence on Linux Node 22,
 Linux Node 24, and Windows Node 24, including installed package and all four
-install-free Action paths. Workflow examples remain unpublished interfaces, not
-evidence of an existing `@v1`.
+install-free Action paths. Workflow examples use the published `@v1` interface;
+their presence remains separate from a successful run in another repository.
 
 ## Entry points
 
@@ -107,7 +110,10 @@ effect. Both credentials are masked and redacted. Omitting `policy-token` preser
 the original single-credential route; the no-config workflow above does not need
 this split.
 
-Use an immutable release commit SHA in security-sensitive workflows once a real release exists. `@v1` remains the compact documented major-version route; this package invents no release SHA. See [G2](../reference/2026-09-09/sources-and-research.md#g2).
+Use immutable `@v1.0.0` or exact commit
+`0827485c9d3795ef58a7934cd7a4b8b3fb5cc9c5` in security-sensitive workflows.
+`@v1` remains the compact maintained major-version route. See
+[G2](../reference/2026-09-09/sources-and-research.md#g2).
 
 ## What the size default manages
 

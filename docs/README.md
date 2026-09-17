@@ -73,8 +73,7 @@ Core machine contracts live under [`../src/diffdevil/contracts/detail/v1/`](../s
 
 ## Examples
 
-[`../examples/README.md`](examples/README.md) maps expressions, policies, reports, scripts, and workflow specimens. Workflow remote references remain unpublished specimens rather than live evidence;
-expression/policy execution is identified in Qualification.
+[`../examples/README.md`](examples/README.md) maps expressions, policies, reports, scripts, and workflow specimens. Workflow remote references use the published `@v1` interface; a specimen remains separate from a successful hosted run. Expression/policy execution is identified in Qualification.
 `docs/examples/policies/weighted.json` is now executed by the shortcut demonstration
 and configured CLI tests; Qualification names the remaining unobserved routes.
 

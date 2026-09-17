@@ -4,18 +4,17 @@
 
 This guide starts with the normal, language-free diffdevil experience: useful local analysis, scalar values, threshold checks, matching paths, and automatic pull-request size labels. It then shows the same operations through explicit expressions and reusable reports. It provides a compact interface overview; the task guides own complete first-use recipes; detailed CLI, Action, and language contracts are linked at their point of use.
 
-The CLI and all four Action entry points are implemented. `@v1` is an unpublished
-future release coordinate; workflow specimens are not currently installable from
-that remote reference. Local consumers use the shipped trusted checkout as
-explained in the [Action distribution manual](integration/action-distribution.md).
+The CLI and all four Action entry points are published. `@v1` is the maintained
+major Action coordinate; `@v1.0.0` is its immutable first release. Local
+consumers can still use a complete trusted checkout as explained in the
+[Action distribution manual](integration/action-distribution.md).
 The CLI and Action use the same facts, presets, and evaluator.
 
 For the complete first-use paths, start with [auto-labeling PRs](guides/auto-label-pull-requests.md), [local scripts](guides/local-automation.md), or [policy recipes](guides/policy-recipes.md).
 
 ## Automatic size labels, without a config file
 
-The intended post-publication workflow is `.github/workflows/diffdevil-size.yml`
-(the `@v1` coordinate below does not exist yet):
+The ordinary workflow is `.github/workflows/diffdevil-size.yml`:
 
 ```yaml
 name: Pull-request size

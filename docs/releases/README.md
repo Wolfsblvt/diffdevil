@@ -8,4 +8,5 @@ Release notes do not replace the maintained [Vision](../VISION.md), [Direction](
 
 ## Releases
 
-- [`v1.0.0`](v1.0.0.md) — first stable package, CLI, TypeScript API, and four GitHub Actions. Publication pending until its public coordinates are read back.
+- [`v1.0.0`](v1.0.0.md) — first stable package, CLI, TypeScript API, and four
+  GitHub Actions, published from exact source `0827485`.

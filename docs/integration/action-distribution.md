@@ -76,8 +76,8 @@ are not runtime dependencies in the distribution.
 Reusable diffdevil Action code is [MIT](../../LICENSES/MIT.txt), with its
 [scope notice](../../LICENSES/README.md) copied into `actions/runtime/LICENSES/`.
 The Action runtime package metadata records `MIT`; original third-party notices
-remain distinct. The local npm candidate is version `1.0.0` and no longer private,
-but neither it nor the `v1` Action ref is published yet. Original documentation
+remain distinct. npm `@wolfsblvt/diffdevil@1.0.0`, immutable `v1.0.0`, and the
+maintained `v1` Action ref are public. Original documentation
 prose is CC BY 4.0, runnable examples are MIT, and brand/visual assets remain
 reserved under the component map.
 

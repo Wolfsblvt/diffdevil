@@ -1,6 +1,6 @@
 # diffdevil
 
-![Availability](https://img.shields.io/badge/npm-unpublished-6B7280?logo=npm)
+[![npm version](https://img.shields.io/npm/v/%40wolfsblvt%2Fdiffdevil?logo=npm&color=CB3837)](https://www.npmjs.com/package/@wolfsblvt/diffdevil)
 ![Runtime](https://img.shields.io/badge/tested_runtimes-Node_22_%2B_24-339933?logo=nodedotjs)
 ![Language](https://img.shields.io/badge/detail-v1-536B92)
 
@@ -13,7 +13,7 @@ queryable facts, configured rules, and inspectable label/comment effects. Raw ch
 three-line replacement as six lines. Replacement-aware changed lines count it
 once, while keeping both sets of facts available.
 
-This **public-source v1 release candidate** supports local Git, unified diffs,
+The public **v1.0.0 release** supports local Git, unified diffs,
 saved reports, detail expressions, YAML/JSON policies, GitHub acquisition, and
 explicit label/comment reconciliation. All four Actions ship executable JavaScript
 and their dependencies, with no workflow installation step. Native and hosted
@@ -25,7 +25,8 @@ failure remain unobserved.
 
 Reusable software is MIT; application and hosted-service software is selected for
 AGPL-3.0-only. Original documentation prose is CC BY 4.0; runnable examples are
-MIT; brand and visual assets remain reserved. npm and `@v1` are not published yet.
+MIT; brand and visual assets remain reserved. The npm package, immutable
+`v1.0.0` release, and maintained `@v1` Action alias are public.
 A plan remains data, not an applied change.
 
 ```sh
@@ -42,8 +43,8 @@ Save this as `.github/workflows/diffdevil.yml` on your repository's default bran
 It creates missing size labels and maintains one on each matching PR. No config,
 checkout, package install, personal token, or comment is required.
 
-**The `@v1` coordinate becomes usable when the first public release is published.**
-This candidate does not invent a released ref. The complete
+The maintained `@v1` coordinate is public. Security-sensitive workflows can pin
+the immutable `@v1.0.0` release instead. The complete
 [auto-labeling quickstart](docs/guides/auto-label-pull-requests.md) explains setup,
 permissions, label ranges, custom exclusions, and troubleshooting.
 
@@ -78,8 +79,17 @@ Omitting `policy-token` preserves the ordinary single-credential route.
 
 ## Get started
 
-Use Node.js 22 or later and npm. Local comparisons also require Git. From this
-source checkout:
+Use Node.js 22 or later and npm. Local comparisons also require Git. Install the
+released CLI and library:
+
+```sh
+npm install --save-dev @wolfsblvt/diffdevil
+npm exec -- diffdevil analyze \
+  --diff-file node_modules/@wolfsblvt/diffdevil/docs/examples/diffs/review.diff \
+  --format human
+```
+
+To develop from a source checkout instead:
 
 ```sh
 npm ci --ignore-scripts --no-audit --no-fund
@@ -91,8 +101,8 @@ The four-file teaching patch reports **10 changed lines** and **16 raw churn**.
 Follow [local automation](docs/guides/local-automation.md) for exact values, path
 queries, shell conditions, and reusable reports. Offline dependency restoration
 is documented in [Development](docs/DEVELOPMENT.md#restore-and-build).
-The installed npm tarball exposes the same commands as `diffdevil`; the commands
-here use the built entry point so they work before publication.
+The source commands below use the built entry point; the installed package exposes
+the same commands through `diffdevil`.
 
 Analyze tracked working-tree changes, compare two revisions, or read a patch:
 
@@ -213,9 +223,9 @@ The shipped metadata selects **Node 24**. Given this exact trusted checkout at
 
 `steps.changes.outputs.decision` is `true`, `false`, or `unknown`. This local path
 requires the **complete trusted checkout**, not just its `analyze` subdirectory.
-The [public source repository](https://github.com/Wolfsblvt/diffdevil) exists.
-Pin a reviewed immutable source commit for a remote `uses:` coordinate; the
-versioned `@v1` release ref does not exist yet.
+The [public source repository](https://github.com/Wolfsblvt/diffdevil) and
+maintained `@v1` coordinate exist. Pin `@v1.0.0` or its exact release commit
+when an immutable remote Action reference is required.
 
 | Entry | Behavior |
 | --- | --- |
@@ -282,7 +292,7 @@ hosted-runner and publication evidence.
 The ordinary source verification command is `npm run verify`. Installed-package,
 conformance, runtime, and live-provider evidence remain separate commands and
 claims: [Development](docs/DEVELOPMENT.md) · [Qualification](docs/QUALIFICATION.md)
-· [Prepared v1.0.0 notes](docs/releases/v1.0.0.md).
+· [v1.0.0 release notes](docs/releases/v1.0.0.md).
 
 Suspected vulnerabilities can be [reported privately](SECURITY.md) through
 GitHub's enabled repository reporting route.

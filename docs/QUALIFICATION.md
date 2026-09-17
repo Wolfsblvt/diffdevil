@@ -7,6 +7,34 @@ historical runtime results and unobserved external effects. A schema specimen is
 not execution, a green unit suite is not a packaged consumer, and mock HTTP is not
 live GitHub permission evidence.
 
+## September 17 public v1 release and outside consumer
+
+The accepted release tree is public
+[`main@0827485`](https://github.com/Wolfsblvt/diffdevil/commit/0827485c9d3795ef58a7934cd7a4b8b3fb5cc9c5).
+[Post-landing Verify run 35161413840](https://github.com/Wolfsblvt/diffdevil/actions/runs/35161413840)
+passed Linux Node 22, Linux Node 24, and Windows Node 24. The exact dependency
+lock returned zero reported advisories at the publication check.
+
+npm [`@wolfsblvt/diffdevil@1.0.0`](https://www.npmjs.com/package/@wolfsblvt/diffdevil/v/1.0.0)
+is public. Registry readback reports **489 files**, **799,085 packed bytes**,
+**3,545,235 unpacked bytes**, SHA-1
+`379f3ab0afcf7be189401052ec8af58da01b10a8`, and integrity
+`sha512-aO6aK537j5Z82gh5yo8fc2glGqNtjy616RJSh4hAcXFz8XV7p9aWLX+uVaY9Cl0Hew3zcWTJn6DbcG+dzdLzYg==`.
+The immutable annotated [`v1.0.0` release](https://github.com/Wolfsblvt/diffdevil/releases/tag/v1.0.0)
+and maintained lightweight `v1` both resolve to `0827485`.
+
+A fresh temporary directory outside every checkout used native Windows Node
+**24.19.0** and npm **11.19.0** to pack and install the registry artifact. It
+passed the real npm CMD launcher and installed PowerShell launcher, CLI
+query/check/plan/apply paths against fake HTTP, public root and subpath imports,
+schemas, presets, licence/documentation assets, closed internal exports, and
+strict TypeScript declarations.
+
+Remote Action execution from the release refs remains unobserved. The prepared
+canary dispatch was rejected before any job or step because of the GitHub account's
+Actions billing/spending state; no setup or diffdevil provider write occurred.
+Marketplace discovery is also a separate provider readback.
+
 ## September 16 split-policy credential — accepted v1 source
 
 The optional `policy-token` result is durable on public

@@ -13,8 +13,8 @@ Copy [`review-signals.yml`](../examples/policies/review-signals.yml) to
 `.github/diffdevil.yml` in the consuming repository. Copy the matching
 [`review-signals` workflow](../examples/workflows/review-signals.yml) to
 `.github/workflows/diffdevil.yml`. As with the
-[quickstart](auto-label-pull-requests.md), the remote `@v1` coordinate becomes
-usable when the first release is published.
+[quickstart](auto-label-pull-requests.md), the remote `@v1` coordinate is the
+published maintained major release.
 
 This keeps the default size labels, excludes only `**/package-lock.json`, names
 source and test scopes, and manages one additional label:
