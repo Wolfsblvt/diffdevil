@@ -141,6 +141,8 @@ Do not request Issues, Actions, Administration, or broader repository write perm
 
 Each background token is restricted to the admitted repository. Recheck repository identity and current installation access before acquisition/effects. Removed or revoked access makes queued work terminal and non-retryable. Never attempt cleanup writes after the installation loses access.
 
+The only post-installation exception to current installation/repository authorization is the thirty-day offboarding grace defined in [Privacy and data](../PRIVACY-AND-DATA.md#offboarding-transitions). It applies only to already retained numeric history and only to a service-account or organization administrator whose role existed before access loss and who authenticates independently of the removed installation. That administrator may inspect, export, shorten, or delete the retained history during grace; this route cannot restore repository access, use an installation credential, reacquire GitHub context, or perform labels, comments, checks, or other repository writes. If no such administrator remains, the data stays inaccessible and expires on schedule.
+
 Repository access for background automation and access for a signed-in dashboard viewer are separate checks. A successful webhook analysis does not authorize every organization member to inspect protected results.
 
 ## Delivery identity and per-PR serialization
@@ -173,7 +175,8 @@ The App never adopts, edits, or deletes another actor's comments. Migration disa
 - no permanent analysis history before explicit opt-in;
 - opted-in aggregate and pathless per-file numeric measurements;
 - thirty-day rolling free history;
-- paid history with no automatic age expiry while its entitlement/service is active, subject to user deletion and disclosed limits.
+- paid history with no automatic age expiry while its entitlement/service is active, subject to user deletion and disclosed limits;
+- immediate collection stop on repository deselection, installation removal, entitlement end, or confirmed account closure; a thirty-day offboarding grace for the first three transitions; immediate account-closure deletion; and restore-resistant expiry/deletion tombstones.
 
 The old unresolved minimal-history-row alternative is superseded. Default no-history is now an intentional product choice; it is not an accidental result of a lease TTL. Opt-in collection starts prospectively. A dashboard is not permission to persist filenames, authors, patches, or PR prose.
 
@@ -202,6 +205,7 @@ A canary can qualify an installed path before the complete public App experience
 - label/comment idempotency, check lifecycle/re-request/fork behavior, and no-dual-writer migration;
 - onboarding, sign-in, current authorization, effective configuration origins, and export;
 - history opt-in, numeric allowlist, per-file evidence, statistics, expiration, deletion, and recovery;
+- offboarding triggers, independent pre-loss administrator authentication, grace inspect/export/shorten/delete, no GitHub reacquisition or cleanup write, no automatic resume after restoration, account-closure immediate deletion, and tombstone reapplication across backup restore;
 - limits, operational diagnostics, deployment/rollback, and an actual installed user journey.
 
 Source, emulation, preview, production, registration, permission grants, installation, retention, billing, and ordinary use are separate observations. A narrower permission set may describe a canary only when its missing selected capability remains explicit; it is not the public App registration contract.

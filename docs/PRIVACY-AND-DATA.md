@@ -127,6 +127,18 @@ The paid no-age-expiry choice remains subject to the active service, user-select
 
 Use distinct controls for stopping future collection and deleting existing history. Stopping collection does not secretly extend existing expiry. Deleting history removes the selected records, derived rollups, and cached projections and prevents recovery work from recreating them. Service-owned deletion requires no GitHub write after installation removal.
 
+### Offboarding transitions
+
+Collection stops immediately for the affected scope when an administrator explicitly deselects a repository, the provider confirms installation removal, the paid-history entitlement ends, or the service confirms account closure. Queued or retried work cannot revive collection, and a disabled interval is not backfilled if access or service is later restored.
+
+Repository deselection, installation removal, and entitlement end start a thirty-day offboarding grace. During that grace, only a service-account or organization administrator whose role existed before access loss and who can authenticate independently of the removed installation may inspect the already retained numeric history, export it, shorten the grace, or delete it. This is the sole post-installation exception to the current installation/repository authorization requirement: it does not restore repository access, use an installation credential, reacquire GitHub context, expose names or prose, or turn older paid history into an ordinary free dashboard feature.
+
+If no valid administrator remains, the history is inaccessible and still expires on its selected schedule rather than waiting indefinitely for a future claimant. Restored installation or repository access does not silently resume collection; an authorized administrator must explicitly re-enable future history.
+
+Confirmed account closure skips the grace. Offer export before final confirmation, then begin deletion immediately. Grace expiry or account closure removes primary history, pathless per-file rows, rollups, caches, and pending exports within seven days. Deletion and expiry tombstones survive the longest supported backup-restore window plus seven days and are reapplied before restored data can be served or processed.
+
+One failed API call, temporary outage, billing retry, suspension, or unverified access response is not a destructive transition. Suspend new protected work or serving as needed and reconcile; offboarding begins only from explicit administrator action, a provider lifecycle event, or an authenticated provider read that positively establishes removal or deselection. Any legally, financially, or abuse-prevention-required account record needs its own disclosed purpose and lifetime and may not retain the analysis projection by convenience.
+
 Before hosted availability, implement and qualify the real database/backup deletion boundary and disclose any bounded backup expiration. A restore must preserve opt-outs, deletions, and expiration rather than resurrecting them. Do not claim immediate erasure of every provider backup without evidence.
 
 Export retained numeric data in a documented, versioned machine format without joining in prohibited context. A useful export preserves evidence, versions, identifiers, and coverage. It is separate from an operator database export, which may contain protected configuration and account state.
@@ -140,5 +152,7 @@ Public-result caching is a separately disclosed short-lived service optimization
 ## Implementation evidence
 
 Qualify the allowlist with source-shaped specimens containing paths, old paths, authors, arbitrary rule/label text, templates, and errors. Prove that none reaches history, logs, queues, exports, or shared caches. Exercise exact/bounded/unknown results, partial file sets, duplicate deliveries, opt-in changes during work, expiration, deletion, restore, access removal, and account/repository separation.
+
+Also qualify repository deselection, installation removal, entitlement end, and confirmed account closure; the independent pre-loss administrator check; the grace export/shorten/delete paths; no GitHub reacquisition or cleanup write after access loss; no automatic resume after restoration; grace expiry and immediate account-closure deletion; and tombstone reapplication across the longest supported backup-restore window.
 
 A clean source diff or database migration is not evidence that retention runs in production. A passing numeric projection test does not prove dashboard authorization. Preserve those proof boundaries when reporting implementation.
