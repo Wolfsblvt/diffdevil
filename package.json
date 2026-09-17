@@ -8,7 +8,7 @@
     "build": "node tools/build.mjs",
     "build:offline": "npm run build",
     "test": "node tools/test.mjs",
-    "verify": "npm run check:prep && npm run build && npm test && npm run check:actions",
+    "verify": "npm run check:prep && npm run build && npm test && npm run check:actions && npm run check:workers",
     "verify:offline": "npm run verify",
     "test:package": "node tools/package-smoke.mjs",
     "prepack": "npm run build",
@@ -17,7 +17,9 @@
     "build:actions": "npm run build && node tools/build-actions.mjs",
     "check:actions": "node tools/build-actions.mjs --check",
     "test:actions": "node tools/action-smoke.mjs",
-    "playground": "npm run build && node apps/playground/server.mjs"
+    "playground": "npm run build && node apps/playground/server.mjs",
+    "playground:worker": "npm run build && wrangler dev --local",
+    "check:workers": "wrangler deploy --dry-run --outdir artifacts/wrangler-dry-run"
   },
   "keywords": [
     "git",
@@ -75,7 +77,8 @@
   },
   "devDependencies": {
     "@types/node": "22.15.33",
-    "typescript": "5.8.3"
+    "typescript": "5.8.3",
+    "wrangler": "4.132.0"
   },
   "dependencies": {
     "ajv": "8.20.0",

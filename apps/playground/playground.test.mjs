@@ -7,7 +7,9 @@ import { readFileSync } from 'node:fs';
 import Ajv2020 from 'ajv/dist/2020.js';
 import { DiffdevilError, GitHubClient } from '../../dist/lib/index.js';
 import { FakeGitHub } from '../../src/diffdevil/tests/helpers/github.mjs';
-import { analyzePublicPullRequest, createPlaygroundServer, parsePublicPullRequestUrl, projectPlaygroundReport } from './server.mjs';
+import { analyzePublicPullRequest, parsePublicPullRequestUrl, projectPlaygroundReport } from './app.mjs';
+import { createPlaygroundServer } from './server.mjs';
+import { createPlaygroundWorker } from './worker.mjs';
 
 const PUBLIC_URL = 'https://github.com/example/repository/pull/42';
 const client = fake => new GitHubClient({ fetch: fake.fetch, readRetries: 0 });
@@ -201,4 +203,49 @@ test('playground evicts a failed static asset read so the next request can recov
   assert.equal(await recovered.text(), 'recovered asset');
   assert.equal(attempts, 2);
   assert.equal(observed.length, 1);
+});
+
+test('Worker adapter serves the shared health/API contract and defers static content to assets', async () => {
+  const fake = new FakeGitHub();
+  const requestedAssets = [];
+  const assets = {
+    async fetch(request) {
+      requestedAssets.push(new URL(request.url).pathname);
+      return new Response('<!doctype html><title>diffdevil</title>', {
+        headers: { 'content-type': 'text/html; charset=utf-8' }
+      });
+    }
+  };
+  const worker = createPlaygroundWorker({ clientFactory: () => client(fake) });
+
+  const staticAsset = await worker.fetch(new Request('https://diffdevil-playground.wolfsblvt.workers.dev/'), { ASSETS: assets });
+  assert.equal(staticAsset.status, 200);
+  assert.deepEqual(requestedAssets, ['/']);
+
+  const health = await worker.fetch(new Request('https://diffdevil-playground.wolfsblvt.workers.dev/health/ping'), { ASSETS: assets });
+  assert.deepEqual(await health.json(), { status: 'ok', service: 'diffdevil-playground' });
+  assert.match(health.headers.get('content-security-policy'), /default-src 'none'/u);
+
+  const analysis = await worker.fetch(new Request(`https://diffdevil-playground.wolfsblvt.workers.dev/api/analyze?url=${encodeURIComponent(PUBLIC_URL)}`), { ASSETS: assets });
+  assert.equal(analysis.status, 200);
+  assertResponse(await analysis.json());
+
+  const refusal = await worker.fetch(new Request('https://diffdevil-playground.wolfsblvt.workers.dev/api/analyze?url=https%3A%2F%2Fexample.com%2Fprivate'), { ASSETS: assets });
+  assert.equal(refusal.status, 400);
+  assertResponse(await refusal.json());
+  assert.equal(fake.writes().length, 0);
+});
+
+test('Worker adapter returns the canonical internal failure envelope', async () => {
+  const worker = createPlaygroundWorker({ analyze: async () => { throw new Error('sensitive worker detail'); } });
+  const response = await worker.fetch(new Request('https://diffdevil-playground.wolfsblvt.workers.dev/api/analyze?url=https%3A%2F%2Fgithub.com%2Fexample%2Frepository%2Fpull%2F42'), {
+    ASSETS: { fetch: async () => new Response('unused') }
+  });
+  assert.equal(response.status, 500);
+  assert.deepEqual(await response.json(), {
+    ...envelope,
+    ok: false,
+    status: 500,
+    error: { code: 'E_INTERNAL', message: 'Unexpected server failure.' }
+  });
 });

@@ -1,10 +1,10 @@
-import { createRequire } from 'node:module';
+import * as validators from './validation/schemas.cjs';
 import { capture, DiffdevilError } from './errors.js';
 import { deepFreeze, inertCopy } from './inert.js';
-const validators = createRequire(import.meta.url)('./validation/schemas.cjs');
+const schemaValidators = validators;
 /** Internal assertion on already-inert data; semantic checks remain with the owning model. */
 export function assertSchema(kind, value) {
-    const validator = validators[kind];
+    const validator = schemaValidators[kind];
     if (validator(value))
         return;
     const error = validator.errors?.[0];
@@ -18,7 +18,7 @@ export function assertSchema(kind, value) {
 /** Validate and freeze inert shape data. This does not establish semantic validity or authorization. */
 export function validateSchema(kind, input) {
     return capture(() => {
-        if (!Object.hasOwn(validators, kind))
+        if (!Object.hasOwn(schemaValidators, kind))
             throw new DiffdevilError({ code: 'E_CONFIG', phase: 'config', severity: 'error', message: 'Unknown product schema.' });
         const copy = inertCopy(input);
         assertSchema(kind, copy);

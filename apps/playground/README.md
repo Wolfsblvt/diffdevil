@@ -29,6 +29,59 @@ The response schema is compiled in the application test against the reusable rep
 
 GitHub's unauthenticated rate limits are a real operating boundary. A hosted service may later add deliberate authentication, caching, abuse controls, and persistence under its own accepted application design; this local tranche does not smuggle those systems in early.
 
+## Cloudflare Workers source route
+
+`wrangler.jsonc` defines the hosted adapter named `diffdevil-playground`. It packages
+the same application module and the `public/` asset directory in one Worker. Static
+paths stay asset-first; only `/api/*` and `/health/*` invoke Worker code first.
+`public/_headers` applies the browser security headers to directly served assets,
+while the shared application handler applies them to Worker responses.
+
+From a restored checkout, run the local Worker runtime with:
+
+```sh
+npm run playground:worker
+```
+
+Use the source-only bundle check before a provider operation:
+
+```sh
+npm run verify
+```
+
+It validates the Worker bundle and asset binding with `wrangler deploy --dry-run`.
+It creates no Cloudflare resource, version, route, domain, or deployment.
+
+The selected production name is `diffdevil-playground`, whose first public route is
+`https://diffdevil-playground.wolfsblvt.workers.dev`. This source does not claim that
+the route exists. An authorized operator must first reconcile Cloudflare's current
+Worker state: Cloudflare documents that `wrangler versions upload` cannot create a
+first Worker version when the named Worker does not yet exist. Do not substitute an
+opaque production `wrangler deploy` for that missing provider-creation decision.
+
+Once the Worker exists and the live-effect boundary is authorized, upload a version
+without promoting traffic, attaching the accepted commit SHA to both message and tag:
+
+```sh
+wrangler versions upload --preview-alias candidate --message "diffdevil playground <sha>" --tag "<sha>"
+```
+
+Read back the returned version ID and preview URL, then exercise the static front
+door, `/health/ping`, public-URL refusal, and one real public-PR response against the
+versioned response schema. Only after that readback may the operator deploy that exact
+version at 100%:
+
+```sh
+wrangler versions deploy <version-id>@100% --message "Promote diffdevil playground <sha>"
+```
+
+Read back the Worker, deployment, Workers.dev route and the same public journey. For
+later changes, keep the preceding accepted version ID and use `wrangler versions
+deploy <previous-version-id>@100%` to roll back. This first Worker has no preceding
+production version: if production exposure succeeds but its immediate readback fails,
+disable only its Workers.dev route and preserve the uploaded version and evidence for
+repair; do not delete the Worker or blindly upload another version.
+
 ## Licence
 
 Application code and assets under `apps/playground/` are licensed under **GNU AGPL-3.0-only**. They consume the reusable diffdevil engine under its MIT terms. Documentation and brand rights remain governed by the repository licence map rather than inheriting the application licence by proximity.
