@@ -127,8 +127,8 @@
     }
   ],
   "sources": {
-    "package-lock.json": "82636f928bf14e7b3347e48f4eb95931e7f0b0b3d92118415f8e03ecaec9db63",
-    "package.json": "1393af770185377e566a1f0dfa66b8b6b629e4a56175169217e4ec2d3200a0f1",
+    "package-lock.json": "20595c89f4687504a7c23cb061df2949edb008bcb8b5f8bcea542f74aafa79d0",
+    "package.json": "8738d56d49871a49b3c22100ed8be8c06118ca91df3c75730a81e4eb488719a5",
     "src/diffdevil/actions/analyze.ts": "e16cafafd0b0f3a142b33f9cab366fe395d97aec3da43f83eb40449735f0a14f",
     "src/diffdevil/actions/apply.ts": "40be2ca7e38568d269f612a2cd395575a4d3dac8a599aaacb16012f4cae548d5",
     "src/diffdevil/actions/inputs.ts": "d4d4a2ede4eb954c74fb540e5c8d92bd93737efb768c2246d81aa6681a5f6f51",

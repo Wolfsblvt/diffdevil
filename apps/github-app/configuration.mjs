@@ -32,6 +32,6 @@ export function resolveEffectivePolicy({ preset = {}, account = {}, repository =
 
 /** Versioned, non-secret portable App configuration: history/evidence records are intentionally not included. */
 export function readConfigurationExport(value) {
-  if (!value || value.kind !== 'diffdevil.github-app-export' || value.version !== 1 || !Array.isArray(value.configurations) || !Array.isArray(value.tombstones)) throw new TypeError('Unsupported App configuration export.');
+  if (!value || value.kind !== 'diffdevil.github-app-export' || value.version !== 2 || !Array.isArray(value.configurations) || !Array.isArray(value.tombstones)) throw new TypeError('Unsupported App configuration export.');
   return value;
 }

@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { createHmac, createVerify, generateKeyPairSync } from 'node:crypto';
 import { test } from 'node:test';
-import { createGitHubAppWorker, createInstallationClient } from './app.mjs';
+import { createGitHubAppWorker, createInstallationClient, listInstallationRepositories } from './app.mjs';
 import { APP_QUEUE_KIND, WEBHOOK_BODY_LIMIT, WORKER_RESULT_LIMIT, historyProjection, normalizeWebhookEvent } from './contracts.mjs';
 import { constantTimeEqual, createAppJwt } from './crypto.mjs';
 import { resolveEffectivePolicy } from './configuration.mjs';
@@ -21,7 +21,7 @@ function queueMessage(body = envelope()) {
 }
 function activeStore(calls) {
   const delivery = { kind: 'claimed', attemptId: 'attempt-a', fence: 3 };
-  const lease = { kind: 'claimed', ...delivery, leaseUntil: '2030-01-01T00:01:00.000Z' };
+  const lease = { kind: 'claimed', ...delivery, executionFence: 4, leaseUntil: '2030-01-01T00:01:00.000Z' };
   return {
     async claimDelivery() { calls.push('delivery'); return delivery; },
     async claimExecution(_envelope, candidate) { calls.push(['execution', candidate]); return lease; },
@@ -65,9 +65,11 @@ test('a fenced execution finishes only after verified work, while incomplete eff
   assert.equal(first.calls.find(call => Array.isArray(call) && call[0] === 'finish')[2], 'complete');
 
   const second = queueMessage(), secondStore = activeStore(second.calls);
-  await createGitHubAppWorker({ store: secondStore, async execute() { throw Object.assign(new Error('effect ambiguous'), { code: 'E_EFFECT_INCOMPLETE' }); } }).queue({ messages: [second.message] }, {});
+  await createGitHubAppWorker({ store: secondStore, async execute() { throw Object.assign(new Error('effect ambiguous'), { code: 'E_EFFECT_INCOMPLETE', observations: [{ kind: 'label.add', outcome: 'acknowledged', request: 'accepted', readback: 'unknown' }] }); } }).queue({ messages: [second.message] }, {});
   assert.equal(second.calls.at(-1), 'ack');
-  assert.equal(second.calls.find(call => Array.isArray(call) && call[0] === 'finish')[2], 'repair');
+  const repair = second.calls.find(call => Array.isArray(call) && call[0] === 'finish');
+  assert.equal(repair[2], 'repair');
+  assert.deepEqual(repair[3].repair.projection.observations, [{ kind: 'label.add', outcome: 'acknowledged', request: 'accepted', readback: 'unknown' }]);
 });
 
 test('rate limiting releases a fenced attempt for retry instead of calling it revoked', async () => {
@@ -77,20 +79,31 @@ test('rate limiting releases a fenced attempt for retry instead of calling it re
   assert.equal(run.calls.find(call => Array.isArray(call) && call[0] === 'retry-state')[2], 'E_GITHUB_RATE_LIMIT');
 });
 
-test('lifecycle deliveries preserve numeric repository identities and complete their own delivery', async () => {
+test('lifecycle deltas reconcile the current provider-selected repository identities before completion', async () => {
   const lifecycle = normalizeWebhookEvent('installation_repositories', { action: 'added', installation: { id: 9 }, repositories_added: [{ id: 17 }, { id: 18 }] }, new Date().toISOString(), 'lifecycle-1');
   const run = queueMessage(lifecycle), store = activeStore(run.calls);
-  await createGitHubAppWorker({ store }).queue({ messages: [run.message] }, {});
-  assert.deepEqual(lifecycle.repositories, [17, 18]);
-  assert.deepEqual(run.calls.slice(-3), ['lifecycle', 'lifecycle-finish', 'ack']);
+  store.reconcileRepositories = async (installationId, repositoryIds) => run.calls.push(['reconcile', installationId, repositoryIds]);
+  await createGitHubAppWorker({ store, async listInstallationRepositories() { return [17, 19]; } }).queue({ messages: [run.message] }, {});
+  assert.deepEqual(lifecycle.addedRepositories, [17, 18]);
+  assert.deepEqual(lifecycle.removedRepositories, []);
+  assert.deepEqual(run.calls.slice(-4), ['lifecycle', ['reconcile', 9, [17, 19]], 'lifecycle-finish', 'ack']);
+});
+
+test('installation creation retains its selected numeric repository identities in the minimized lifecycle envelope', () => {
+  const lifecycle = normalizeWebhookEvent('installation', { action: 'created', installation: { id: 9 }, repositories: [{ id: 17 }, { id: 18, full_name: 'not-retained' }] }, new Date().toISOString(), 'installation-1');
+  assert.deepEqual(lifecycle.addedRepositories, [17, 18]);
+  assert.deepEqual(lifecycle.removedRepositories, []);
+  assert.equal(JSON.stringify(lifecycle).includes('full_name'), false);
 });
 
 test('history projection is versioned, quantitative, pathless, and keeps provider request/readback standing', () => {
-  const projection = historyProjection({ measurement: { status: 'exact' }, fileSet: { complete: false, total: { status: 'exact', value: 2 } }, totals: { raw: { added: { status: 'exact', value: 3 }, deleted: { status: 'exact', value: 2 }, churn: { status: 'exact', value: 5 } }, lines: { added: { status: 'exact', value: 1 }, deleted: { status: 'exact', value: 0 }, modified: { status: 'exact', value: 2 }, changed: { status: 'exact', value: 3 } } }, files: [{ path: 'private/file.ts', lines: { changed: { status: 'exact', value: 3 } } }] }, [{ kind: 'label.add', subject: 'private label', outcome: 'changed', request: 'acknowledged', readback: 'verified' }]);
-  assert.equal(projection.schemaVersion, 2);
+  const projection = historyProjection({ measurement: { status: 'exact' }, fileSet: { complete: false, total: { status: 'exact', value: 2 } }, totals: { raw: { added: { status: 'exact', value: 3 }, deleted: { status: 'exact', value: 2 }, churn: { status: 'exact', value: 5 } }, lines: { added: { status: 'exact', value: 1 }, deleted: { status: 'exact', value: 0 }, modified: { status: 'exact', value: 2 }, changed: { status: 'exact', value: 3 } } }, metrics: { review: { status: 'exact', value: 3 } }, files: [{ path: 'private/file.ts', lines: { changed: { status: 'exact', value: 3 } } }] }, [{ kind: 'label.add', subject: 'private label', outcome: 'changed', request: 'acknowledged', readback: 'verified' }]);
+  assert.equal(projection.schemaVersion, 3);
   assert.equal(JSON.stringify(projection).includes('private/file.ts'), false);
   assert.equal(JSON.stringify(projection).includes('private label'), false);
   assert.equal(projection.files[0].ordinal, 0);
+  assert.equal(projection.publication.state, 'complete');
+  assert.deepEqual(projection.configuredResults, [{ metric: 'review', result: { status: 'exact', value: 3 } }]);
   assert.deepEqual(projection.effects[0], { kind: 'label.add', outcome: 'changed', request: 'acknowledged', readback: 'verified' });
 });
 
@@ -103,6 +116,18 @@ test('installation credentials remain repository-confined and response bounded',
   assert.equal(client.responseBytes, WORKER_RESULT_LIMIT);
   assert.equal(requests[0].url.endsWith('/app/installations/9/access_tokens'), true);
   assert.deepEqual(JSON.parse(requests[0].body), { repository_ids: [17], permissions: { contents: 'read', pull_requests: 'write', checks: 'write' } });
+});
+
+test('installation reconciliation reads every selected repository without carrying repository details into the queue', async () => {
+  const requests = [];
+  const repositories = await listInstallationRepositories({ GITHUB_APP_ID: '123', GITHUB_APP_PRIVATE_KEY: 'not-used-by-fixture' }, 9, { createJwt: async () => 'app-jwt', fetch: async (url, init) => {
+    requests.push({ url: String(url), body: init.body });
+    if (init.method === 'POST') return new Response(JSON.stringify({ token: 'installation-token', expires_at: new Date(Date.now() + 60_000).toISOString() }), { status: 201 });
+    return new Response(JSON.stringify({ total_count: 2, repositories: [{ id: 17, full_name: 'not-retained' }, { id: 18 }] }), { status: 200 });
+  } });
+  assert.deepEqual(repositories, [17, 18]);
+  assert.deepEqual(JSON.parse(requests[0].body), {});
+  assert.equal(requests[1].url.endsWith('/installation/repositories?per_page=100&page=1'), true);
 });
 
 test('effective App policy preserves selected layer provenance for export and explanation', () => {

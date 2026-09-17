@@ -78,6 +78,7 @@
   },
   "devDependencies": {
     "@types/node": "22.15.33",
+    "miniflare": "5.20260915.0-alpha",
     "typescript": "5.8.3",
     "wrangler": "4.132.0"
   },

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { compilePolicy, explainPolicy, unwrap } from '@wolfsblvt/diffdevil';
+import { explainPolicy, unwrap } from '@wolfsblvt/diffdevil';
 import { GitHubClient, GitHubRequestError, applyGitHubPolicy, loadGitHubPolicy, readPullSnapshot } from '@wolfsblvt/diffdevil/github';
 import { APP_QUEUE_KIND, WEBHOOK_BODY_LIMIT, WORKER_RESULT_LIMIT, historyProjection, normalizeWebhookEvent, readQueueEnvelope } from './contracts.mjs';
 import { createAppJwt, verifyWebhookSignature } from './crypto.mjs';
@@ -48,14 +48,47 @@ function failureDisposition(error) {
   return 'repair';
 }
 function appError(code) { return Object.assign(new Error(code), { code }); }
+function repairProjection(error) {
+  const diagnostics = Array.isArray(error?.diagnostics) ? error.diagnostics.map(value => ({ code: typeof value?.code === 'string' ? value.code : 'E_DIAGNOSTIC', phase: typeof value?.phase === 'string' ? value.phase : 'unknown' })) : [];
+  const observations = Array.isArray(error?.observations) ? error.observations.map(value => ({ kind: typeof value?.kind === 'string' ? value.kind : 'unknown', outcome: typeof value?.outcome === 'string' ? value.outcome : 'unknown', request: typeof value?.request === 'string' ? value.request : 'unknown', readback: typeof value?.readback === 'string' ? value.readback : 'unknown' })) : [];
+  return { kind: errorCode(error) === 'E_CHECK_PUBLICATION' ? 'check-publication' : errorCode(error) === 'E_EFFECT_INCOMPLETE' ? 'effect-reconciliation' : 'execution', projection: { code: errorCode(error), diagnostics, observations } };
+}
+
+function installationToken(value) {
+  if (!value || typeof value !== 'object' || typeof value.token !== 'string' || value.token.length === 0 || typeof value.expires_at !== 'string' || !Number.isFinite(Date.parse(value.expires_at)) || Date.parse(value.expires_at) <= Date.now()) throw new TypeError('GitHub returned an invalid installation token response.');
+  return value.token;
+}
+
+async function mintInstallationClient(env, installationId, body, options = {}) {
+  const jwt = await (options.createJwt ?? createAppJwt)({ appId: env.GITHUB_APP_ID, privateKey: env.GITHUB_APP_PRIVATE_KEY, ...(options.now === undefined ? {} : { now: options.now }) });
+  const app = new GitHubClient({ token: jwt, ...(options.fetch === undefined ? {} : { fetch: options.fetch }), responseBytes: WORKER_RESULT_LIMIT, readRetries: 0 });
+  const token = installationToken(await app.json(`/app/installations/${installationId}/access_tokens`, { method: 'POST', phase: 'apply', body }));
+  return new GitHubClient({ token, ...(options.fetch === undefined ? {} : { fetch: options.fetch }), responseBytes: WORKER_RESULT_LIMIT, readRetries: 0 });
+}
 
 /** A repository-scoped credential is minted only after a delivery and execution lease are claimed. */
 export async function createInstallationClient(env, installationId, repositoryId, options = {}) {
-  const jwt = await (options.createJwt ?? createAppJwt)({ appId: env.GITHUB_APP_ID, privateKey: env.GITHUB_APP_PRIVATE_KEY, ...(options.now === undefined ? {} : { now: options.now }) });
-  const app = new GitHubClient({ token: jwt, ...(options.fetch === undefined ? {} : { fetch: options.fetch }), responseBytes: WORKER_RESULT_LIMIT, readRetries: 0 });
-  const token = await app.json(`/app/installations/${installationId}/access_tokens`, { method: 'POST', phase: 'apply', body: { repository_ids: [repositoryId], permissions: { contents: 'read', pull_requests: 'write', checks: 'write' } } });
-  if (!token || typeof token !== 'object' || typeof token.token !== 'string' || token.token.length === 0 || typeof token.expires_at !== 'string' || !Number.isFinite(Date.parse(token.expires_at)) || Date.parse(token.expires_at) <= Date.now()) throw new TypeError('GitHub returned an invalid installation token response.');
-  return new GitHubClient({ token: token.token, ...(options.fetch === undefined ? {} : { fetch: options.fetch }), responseBytes: WORKER_RESULT_LIMIT, readRetries: 0 });
+  return mintInstallationClient(env, installationId, { repository_ids: [repositoryId], permissions: { contents: 'read', pull_requests: 'write', checks: 'write' } }, options);
+}
+
+/** Read the provider's entire selected set before reconciling a partial installation delta. */
+export async function listInstallationRepositories(env, installationId, options = {}) {
+  const client = await mintInstallationClient(env, installationId, {}, options);
+  const repositoryIds = new Set();
+  let expected, page = 1;
+  for (;;) {
+    const value = await client.json(`/installation/repositories?per_page=100&page=${page}`);
+    if (!value || typeof value !== 'object' || !Number.isSafeInteger(value.total_count) || value.total_count < 0 || !Array.isArray(value.repositories)) throw new TypeError('GitHub returned an invalid installation repository listing.');
+    if (expected === undefined) expected = value.total_count;
+    else if (expected !== value.total_count) throw new TypeError('GitHub changed the installation repository count during reconciliation.');
+    for (const repository of value.repositories) {
+      if (!repository || typeof repository !== 'object' || !Number.isSafeInteger(repository.id) || repository.id < 1) throw new TypeError('GitHub returned an invalid installation repository identity.');
+      repositoryIds.add(repository.id);
+    }
+    if (repositoryIds.size === expected) return [...repositoryIds];
+    if (repositoryIds.size > expected || value.repositories.length === 0) throw new TypeError('GitHub returned an incomplete installation repository listing.');
+    page++;
+  }
 }
 
 async function repositoryTarget(client, envelope) {
@@ -65,15 +98,15 @@ async function repositoryTarget(client, envelope) {
 }
 
 async function trustedPolicy(client, target, base, configuration) {
+  let supplied = {};
   try {
     const ordinary = unwrap(await loadGitHubPolicy(client, { repository: target.repository, ref: base, path: '.diffdevil.yml' }));
-    const policy = configuration ? resolveEffectivePolicy({ ...configuration, supplied: explainPolicy(ordinary).document }).policy : ordinary;
-    return { policy, expectedPolicyBase: base };
+    supplied = explainPolicy(ordinary).document;
   }
   catch (error) {
-    if (error instanceof GitHubRequestError && error.status === 404) return { policy: unwrap(compilePolicy(DEFAULT_SIZE_POLICY)), expectedPolicyBase: base };
-    throw error;
+    if (!(error instanceof GitHubRequestError && error.status === 404)) throw error;
   }
+  return { policy: resolveEffectivePolicy({ preset: DEFAULT_SIZE_POLICY, ...(configuration ?? {}), supplied }).policy, expectedPolicyBase: base };
 }
 
 function checkSummary(report, result) {
@@ -122,11 +155,10 @@ export async function executeDelivery(envelope, deliveryId, { env, store, lease,
   const outcome = unwrap(await applyGitHubPolicy(client, target, policy.policy, { definitions: 'ensure', commentAuthor: { login: env.GITHUB_APP_BOT_LOGIN ?? 'diffdevil[bot]' }, occasionId: deliveryId, expectedPolicyBase: policy.expectedPolicyBase,
     beforeWrite: renewLease }));
   const identity = { ...provisionalIdentity, comparisonId: outcome.report.source.comparisonId, appId: Number(env.GITHUB_APP_ID) };
-  if (outcome.status !== 'verified') throw Object.assign(appError('E_EFFECT_INCOMPLETE'), { diagnostics: outcome.diagnostics });
+  if (outcome.status !== 'verified') throw Object.assign(appError('E_EFFECT_INCOMPLETE'), { diagnostics: outcome.diagnostics, observations: outcome.observations });
   try { await upsertCheck(client, store, identity, outcome.report, outcome, renewLease); }
   catch (error) { throw Object.assign(appError('E_CHECK_PUBLICATION'), { cause: error }); }
-  const settings = await store.historySettings(envelope.repositoryId);
-  const history = await store.recordHistory(identity, historyProjection(outcome.report, outcome.observations), settings);
+  const history = await store.recordHistory(identity, historyProjection(outcome.report, outcome.observations));
   return { status: 'verified', policyId: outcome.plan.policyId, comparisonId: outcome.report.source.comparisonId, effectCount: outcome.changed, history: history.status };
 }
 
@@ -135,7 +167,12 @@ async function consumeMessage(message, dependencies) {
   const accepted = await dependencies.store.claimDelivery(envelope);
   if (accepted.kind === 'duplicate') return message.ack();
   if (accepted.kind === 'active') return message.retry();
-  if (envelope.type === 'lifecycle') { await dependencies.store.recordLifecycle(envelope); await dependencies.store.finishLifecycle(envelope, accepted); return message.ack(); }
+  if (envelope.type === 'lifecycle') {
+    await dependencies.store.recordLifecycle(envelope);
+    if (envelope.event === 'installation_repositories') await dependencies.store.reconcileRepositories(envelope.installationId, await dependencies.listInstallationRepositories(dependencies.env, envelope.installationId));
+    await dependencies.store.finishLifecycle(envelope, accepted);
+    return message.ack();
+  }
   const execution = await dependencies.store.claimExecution(envelope, accepted);
   if (execution.kind === 'active') return message.retry();
   try {
@@ -145,7 +182,7 @@ async function consumeMessage(message, dependencies) {
   } catch (error) {
     const disposition = failureDisposition(error), code = errorCode(error);
     if (disposition === 'retry') { await dependencies.store.retry(envelope, execution, code); return message.retry(); }
-    await dependencies.store.finish(envelope, execution, disposition === 'rejected' ? 'rejected' : 'repair', { status: disposition, code });
+    await dependencies.store.finish(envelope, execution, disposition === 'rejected' ? 'rejected' : 'repair', { status: disposition, code, ...(disposition === 'repair' ? { repair: repairProjection(error) } : {}) });
     return message.ack();
   }
 }
@@ -176,7 +213,7 @@ export function createGitHubAppWorker(options = {}) {
       catch { return publicFailure(503, 'E_ENQUEUE'); }
     },
     async queue(batch, env) {
-      const dependencies = { env, store: options.store ?? new D1AppStore(env.APP_DB), execute: options.execute ?? executeDelivery, ...(options.clientFactory === undefined ? {} : { clientFactory: options.clientFactory }) };
+      const dependencies = { env, store: options.store ?? new D1AppStore(env.APP_DB), execute: options.execute ?? executeDelivery, listInstallationRepositories: options.listInstallationRepositories ?? listInstallationRepositories, ...(options.clientFactory === undefined ? {} : { clientFactory: options.clientFactory }) };
       for (const message of batch.messages) {
         try { await consumeMessage(message, dependencies); }
         catch { message.retry(); }
