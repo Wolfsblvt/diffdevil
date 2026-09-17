@@ -29,13 +29,20 @@ MIT; brand and visual assets remain reserved. The npm package, immutable
 `v1.0.0` release, and maintained `@v1` Action alias are public.
 A plan remains data, not an applied change.
 
+The first public read-only playground is live at
+[`diffdevil-playground.wolfsblvt.workers.dev`](https://diffdevil-playground.wolfsblvt.workers.dev).
+It analyzes public GitHub pull requests through the same engine and applies no
+repository effects. GitHub's unauthenticated read limits remain an honest operating
+boundary, so a temporarily exhausted provider route returns `429` rather than an
+invented result.
+
 ```sh
 node dist/lib/cli/main.js query --report docs/examples/reports/exact.json \
   --expr 'totals.lines.changed' --format value
 # 178
 ```
 
-**[Label your PRs](docs/guides/auto-label-pull-requests.md)** · [Local scripts](docs/guides/local-automation.md) · [Policy recipes](docs/guides/policy-recipes.md) · [User manual](docs/automation.md) · [CLI reference](docs/integration/cli.md) · [Actions](docs/integration/github-actions.md) · [TypeScript API](docs/integration/typescript-api.md)
+**[Try the playground](https://diffdevil-playground.wolfsblvt.workers.dev)** · **[Label your PRs](docs/guides/auto-label-pull-requests.md)** · [Local scripts](docs/guides/local-automation.md) · [Policy recipes](docs/guides/policy-recipes.md) · [User manual](docs/automation.md) · [CLI reference](docs/integration/cli.md) · [Actions](docs/integration/github-actions.md) · [TypeScript API](docs/integration/typescript-api.md)
 
 ## Label your PRs with one file
 
@@ -304,6 +311,7 @@ A Wolfsblvt Works product. Reusable engine, API, CLI and Action software is
 for [AGPL-3.0-only](LICENSES/AGPL-3.0-only.txt). Original documentation prose is
 [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/legalcode), runnable
 integration examples are MIT, and brand/visual assets are reserved. The current
-checkout ships the reusable software, with no hosted application runtime yet.
+checkout also ships the AGPL playground application source used by the live public
+Worker.
 [The component licence map](LICENSES/README.md) gives exact scope; no single
 licence applies to the entire repository or npm tarball.

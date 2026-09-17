@@ -185,10 +185,12 @@ remaining route, and currentize copy to the truth that exists.
 
 ## Hosted applications remain separate
 
-The local read-only playground is in source. Its Cloudflare Workers deployment and
-the managed GitHub App have their own source, review, provider, deployment,
-installation, retention, and lived-use evidence. Neither blocks the open
-package/CLI/Action release, and the release does not claim or erase them.
+The first read-only playground Worker is public at
+[`diffdevil-playground.wolfsblvt.workers.dev`](https://diffdevil-playground.wolfsblvt.workers.dev)
+from accepted `main@a2fb057`. Its richer configurable experience and the managed
+GitHub App retain their own source, review, provider, deployment, installation,
+retention, and lived-use evidence. Neither blocks the open package/CLI/Action
+release, and that release does not claim or erase them.
 
 A documentation website, custom domain, social preview, richer history, and App
 administration remain product Work in their natural homes. Repository guides are
