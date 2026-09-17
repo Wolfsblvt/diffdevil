@@ -35,10 +35,13 @@ diffdevil remains an open-source CLI, TypeScript library, and workflow Actions t
 The managed App is an optional convenience for adopters, not the product's centre.
 The public playground is a separate free learning and configuration experience.
 
-Current source contains the first local read-only measurement playground under
+Current source contains the first read-only measurement playground under
 `apps/playground/`, backed by the shared engine and versioned response contract.
-It does not yet establish the hosted configurable playground, managed App runtime,
-dashboard, native App check lifecycle, persistent history, or commercial service.
+That exact application is live at
+[`diffdevil-playground.wolfsblvt.workers.dev`](https://diffdevil-playground.wolfsblvt.workers.dev)
+on Cloudflare Workers. It does not yet establish the complete configurable
+playground, managed App runtime, dashboard, native App check lifecycle, persistent
+history, or commercial service.
 
 The selected implementation direction is now explicit:
 
@@ -71,13 +74,13 @@ The selected implementation direction is now explicit:
   AGPL application boundary. Self-hosting is intentional and documented, not the
   primary homepage pitch. The reusable software remains MIT.
 
-Both hosted runtimes still require the same static, bundler-visible generated
-validator boundary in the shared engine. The existing Worker-runtime contribution
-carries that repair while preserving package, CLI, Action, and local-playground
-behavior. Do not duplicate it with a hosted engine fork.
+The live playground Worker consumes the same static, bundler-visible generated
+validator boundary as Node and the Actions. The managed App runtime must reuse that
+portable engine boundary rather than introduce a hosted engine fork.
 
-An installed canary can qualify an operating path before the dashboard and all
-views exist. It does not satisfy the complete App or playground outcome. Carry the
+The live measurement playground qualifies one operating path before the dashboard
+and all richer views exist. It does not satisfy the complete App or playground
+outcome. Carry the
 remaining user journeys through implementation and qualification, rather than
 reclassifying them as optional polish or requiring the product to be designed again.
 The owning workplace carries current assignments and returns; these documents

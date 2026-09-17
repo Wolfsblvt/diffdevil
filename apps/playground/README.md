@@ -2,7 +2,19 @@
 
 ## Meaning
 
-This is the first executable application surface for diffdevil: a local, browser-visible front door that analyzes one public GitHub pull request through the existing engine and links into the repository-owned documentation. It proves the playground boundary without creating a second measurement implementation, provider-write route, account system, hosted control plane, or shadow documentation source.
+This is the first executable application surface for diffdevil: a public and locally runnable browser front door that analyzes one public GitHub pull request through the existing engine and links into the repository-owned documentation. It proves the playground boundary without creating a second measurement implementation, provider-write route, account system, hosted control plane, or shadow documentation source.
+
+## Use the public playground
+
+Open [`https://diffdevil-playground.wolfsblvt.workers.dev`](https://diffdevil-playground.wolfsblvt.workers.dev).
+The hosted Worker runs the same application and response contract described below.
+It remains unauthenticated and read-only: public pull requests only, no repository
+effects, no analysis history, and no private credential supplied by the visitor.
+
+GitHub's unauthenticated read quota is shared provider capacity rather than a
+diffdevil entitlement. When GitHub refuses a read, the playground returns its
+versioned `E_GITHUB_RATE_LIMIT` response with HTTP `429`; retry later rather than
+treating that response as an analysis result.
 
 ## Run locally
 
@@ -52,11 +64,13 @@ npm run verify
 It validates the Worker bundle and asset binding with `wrangler deploy --dry-run`.
 It creates no Cloudflare resource, version, route, domain, or deployment.
 
-The selected production name is `diffdevil-playground`, whose first public route is
-`https://diffdevil-playground.wolfsblvt.workers.dev`. This source does not claim that
-the route exists. An authorized operator must first reconcile Cloudflare's current
-Worker state. `wrangler versions upload` cannot create a missing first Worker, so
-the first-resource path is deliberately separate from ordinary version uploads.
+The selected production name is `diffdevil-playground`, and its first public route
+is live at `https://diffdevil-playground.wolfsblvt.workers.dev`. The initial resource
+was created from accepted source `a2fb057` through the preview-before-production
+procedure below. Later operators must still reconcile Cloudflare's current Worker
+state before changing it. `wrangler versions upload` cannot create a missing first
+Worker, so the first-resource path remains deliberately separate from ordinary
+version uploads and recovery.
 
 For a missing Worker, derive and inspect one temporary bootstrap config from the
 accepted canonical config. It changes only `workers_dev` and `preview_urls` to

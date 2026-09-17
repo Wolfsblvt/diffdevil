@@ -12,7 +12,7 @@ This is the documentation map for diffdevil. It separates current product direct
 | Get a scalar, path list, or reliable shell condition | [Local automation](guides/local-automation.md) |
 | Add a source/test signal or one updated comment | [Policy recipes](guides/policy-recipes.md) |
 | Copy a complete tested input | [Example map](examples/README.md) |
-| Inspect one public PR in a local browser | [Playground application](../apps/playground/README.md) |
+| Inspect one public PR in a browser | [Live playground](https://diffdevil-playground.wolfsblvt.workers.dev) · [Application and local route](../apps/playground/README.md) |
 
 No expression-language study is required for the size workflow. Go deeper only
 when a custom formula, scope, or policy needs it.
@@ -34,7 +34,7 @@ when a custom formula, scope, or policy needs it.
 | Release notes and publication standing | [`releases/README.md`](releases/README.md) |
 | Documentation teaching and future site source | [`DOCUMENTATION.md`](DOCUMENTATION.md) |
 | Canonical textual brand | [`BRANDING.md`](BRANDING.md) |
-| Local public-PR playground | [`../apps/playground/README.md`](../apps/playground/README.md) |
+| Live and local public-PR playground | [`../apps/playground/README.md`](../apps/playground/README.md) |
 | Optional managed App experience and architecture (selected, not deployed) | [`integration/github-app.md`](integration/github-app.md) |
 | Hosted data, opt-in history, and retention contract | [`PRIVACY-AND-DATA.md`](PRIVACY-AND-DATA.md) |
 | Complete public playground experience (beyond the local measurement form) | [`integration/playground.md`](integration/playground.md) |

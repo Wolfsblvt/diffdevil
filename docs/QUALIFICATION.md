@@ -7,6 +7,44 @@ historical runtime results and unobserved external effects. A schema specimen is
 not execution, a green unit suite is not a packaged consumer, and mock HTTP is not
 live GitHub permission evidence.
 
+## September 17 live Cloudflare playground
+
+Accepted public [`main@a2fb057`](https://github.com/Wolfsblvt/diffdevil/commit/a2fb057063bcd02c961877ac1ce186b87f2ef36e)
+was deployed with Wrangler **4.132.0** from native Windows Node **24.19.0**, npm
+**11.19.0**, and PowerShell **7.6.5**. The source-owned wrapper disabled Wrangler
+telemetry. No runtime secret, GitHub credential, custom domain, DNS record, queue,
+database, or managed-App resource was added.
+
+The first-resource bootstrap changed only `workers_dev` and `preview_urls` from the
+canonical configuration, both to `false`. Cloudflare created internal version
+`f4b711bf-967b-4f60-96da-4f6677d92bbb`; readback showed a 100% internal deployment,
+the complete source SHA in its tag and message, `enabled:false`, and
+`previews_enabled:false`.
+
+Preview was then enabled without opening production. Candidate version
+`c9ae82a7-f6e6-4127-b44c-455c5ddcfdfb`, tagged
+`candidate-a2fb057063bcd02c961877ac1ce186b87f2ef36e`, passed at
+[`candidate-diffdevil-playground.wolfsblvt.workers.dev`](https://candidate-diffdevil-playground.wolfsblvt.workers.dev).
+The front door, `/styles.css`, `/app.js`, browser security headers,
+`/health/ping`, `HEAD` handling, method refusal, invalid-input response, and
+canonical unknown API/health responses all matched the reviewed application.
+A live analysis of public diffdevil PR #9 validated against the checked-in response
+schema and returned all **26** files, none omitted, with exact measurement evidence.
+
+That exact candidate became the 100% deployment before the production route was
+opened. Final readback reports `enabled:true`, `previews_enabled:true`, deployment
+version `c9ae82a7-f6e6-4127-b44c-455c5ddcfdfb`, and HTTP 200 from
+[`diffdevil-playground.wolfsblvt.workers.dev`](https://diffdevil-playground.wolfsblvt.workers.dev).
+The same static, health, refusal, and real-PR schema journey passed on production.
+
+One preview client route returned the application's versioned HTTP 429 response
+twice before another client route immediately completed the same analysis. The
+production journey likewise observed one 429 before its next bounded request
+succeeded. This is live evidence of the documented unauthenticated GitHub quota
+boundary, not an invented success or a Cloudflare deployment failure. The current
+first tranche exposes that honest error and retains no analysis history; future
+authentication, caching, or abuse controls remain separate application design.
+
 ## September 17 PR #9 Worker revision — native Windows Node 24
 
 The current PR #9 revision preserves Eira's original Worker/source route after a
