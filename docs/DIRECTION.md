@@ -126,22 +126,23 @@ lifecycle, but their exact directory layout is selected by the implementation
 tranche rather than frozen by this document.
 [The project map](PROJECT-MAP.md) locates current ownership.
 
-## Current release movement
+## Current release standing
 
-The stable open-tool release is public from exact source `0827485`: npm
-`@wolfsblvt/diffdevil@1.0.0`, immutable `v1.0.0`, the GitHub Release, and
-maintained Action alias `v1` are read back. A fresh Windows Node 24 consumer
-installed and exercised the registry artifact outside every checkout. Current and
+The stable open-tool release is complete from exact `v1.0.0` source snapshot
+`0827485`: npm `@wolfsblvt/diffdevil@1.0.0`, immutable `v1.0.0`, the GitHub
+Release, and maintained Action alias `v1` are read back. A fresh Windows Node 24
+consumer installed and exercised the registry artifact outside every checkout.
+Both immutable `v1.0.0` and maintained `v1` then exercised the root, `analyze`,
+`apply`, and `sync-labels` Action entries through the public refs. Current and
 historical runtime/consumer evidence remains separated in
-[Qualification](QUALIFICATION.md); mock HTTP and earlier live canaries do not
-establish execution through the published refs.
+[Qualification](QUALIFICATION.md).
 
 The [GitHub Marketplace listing](https://github.com/marketplace/actions/diffdevil)
 is public for `v1.0.0`, owned by `Wolfsblvt`, with **Continuous integration**
-and **Utilities** as its categories. The prepared `v1.0.0` / `v1` remote Action
-journeys remain a separate provider effect. GitHub rejected the first prepared
-dispatch before any job or step because of the account's Actions billing/spending
-state. That hold affects only the release-ref canary and its dependent claim.
+and **Utilities** as its categories. Release-ref Action execution is now observed;
+external-fork and live partial-write journeys remain separate unobserved provider
+claims. Source, npm, Action refs, Marketplace, the live playground, and the
+managed App remain independent observable outcomes.
 
 Wolf and Nyxara selected MIT for reusable software and AGPL-3.0-only for
 application/service code. Original documentation prose is CC BY 4.0, runnable
