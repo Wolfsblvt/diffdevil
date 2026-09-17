@@ -1,0 +1,25 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "diffdevil-github-app",
+  "main": "./worker.mjs",
+  "compatibility_date": "2026-09-17",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": false,
+  "d1_databases": [{
+    "binding": "APP_DB",
+    "database_name": "diffdevil-github-app",
+    "database_id": "00000000-0000-0000-0000-000000000000",
+    "migrations_dir": "./migrations"
+  }],
+  "queues": {
+    "producers": [{ "binding": "APP_QUEUE", "queue": "diffdevil-github-app-work" }],
+    "consumers": [{
+      "queue": "diffdevil-github-app-work",
+      "max_batch_size": 10,
+      "max_batch_timeout": 30,
+      "max_retries": 5,
+      "retry_delay": 60,
+      "dead_letter_queue": "diffdevil-github-app-dlq"
+    }]
+  }
+}
