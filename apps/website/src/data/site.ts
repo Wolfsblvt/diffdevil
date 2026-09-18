@@ -17,6 +17,10 @@ export const PLAYGROUND_API: string = (import.meta.env.PUBLIC_PLAYGROUND_API ?? 
 /** GitHub App installation URL. Absent until the hosted App is registered and opened. */
 export const APP_INSTALL_URL: string | undefined = import.meta.env.PUBLIC_APP_INSTALL_URL || undefined;
 
+/** Community and funding destinations. Both are owner-created later; while unset the site shows the slot as unavailable instead of inventing a destination. */
+export const DISCORD_URL: string | undefined = import.meta.env.PUBLIC_DISCORD_URL || undefined;
+export const SPONSOR_URL: string | undefined = import.meta.env.PUBLIC_SPONSOR_URL || undefined;
+
 export const PACKAGE_VERSION: string = packageJson.version;
 export const REPO = 'Wolfsblvt/diffdevil';
 export const GITHUB = `https://github.com/${REPO}`;
@@ -29,10 +33,11 @@ export const RELEASES = `${GITHUB}/releases`;
 export const SECURITY_ADVISORIES = `${GITHUB}/security/advisories`;
 export const LIVE_PLAYGROUND_WORKER = 'https://diffdevil-playground.wolfsblvt.workers.dev';
 
-/** Company-owned legal surfaces. The site links to them; it does not restate legal text. */
-export const IMPRESSUM = 'https://wolfsblvt.com/legal-notice.html';
-export const COMPANY_PRIVACY = 'https://wolfsblvt.com/privacy.html';
+/** Company surfaces. The diffdevil site owns its own /impressum/ and /privacy/ routes; the Company legal notice is what the Impressum route points at until its own text lands. */
 export const COMPANY = 'Wolfsblvt Works';
+export const COMPANY_SITE = 'https://wolfsblvt.com/';
+export const COMPANY_LEGAL_NOTICE = 'https://wolfsblvt.com/legal-notice.html';
+export const COMPANY_PRIVACY = 'https://wolfsblvt.com/privacy.html';
 
 export const paths = {
   home: '/',
@@ -42,6 +47,7 @@ export const paths = {
   app: '/app/',
   security: '/docs/security/',
   privacy: '/privacy/',
+  impressum: '/impressum/',
   licences: '/docs/licences/',
   skill: '/skill/SKILL.md',
   skillVersion: '/skill/version',

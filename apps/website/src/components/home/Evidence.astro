@@ -1,8 +1,11 @@
 ---
 // SPDX-License-Identifier: AGPL-3.0-only
-// Four typographic cells. The example values are read from the repository's exact,
-// bounded, incomplete and unmeasurable report specimens through the engine.
+// #evidence: a typographic specimen. Four cells, each led by its large glyph, then the
+// evidence chip with the value the engine reads from the matching repository report
+// specimen (exact, bounded, incomplete, unmeasurable), then one sentence. The hairline
+// between cells speaks the same vocabulary as the chips: solid, dashed, dotted, hatch.
 import SectionHead from '../SectionHead.astro';
+import SectionLinks from '../SectionLinks.astro';
 import { copy } from '../../data/copy';
 import { display, readRepositoryFile, reportFromSaved } from '../../lib/engine-node';
 const c = copy.evidence;
@@ -14,29 +17,41 @@ const specimens = {
 } as const;
 const value = (status: keyof typeof specimens): string => display(specimens[status].totals.lines.changed);
 ---
-<section class="section" id="evidence">
+<section class="section" data-section="evidence">
   <div class="wrap">
-    <SectionHead id="evidence" title={c.h2} body={c.body} links={[c.link]} />
+    <SectionHead id="evidence" title={c.h2} body={c.body} />
     <div class="cells">
       {c.cells.map(cell => (
-        <div class="cell">
-          <p class="cell-head"><span class="chip-ev" data-status={cell.status}>{cell.glyph} {cell.word}</span><span class="mono cell-value">{value(cell.status as keyof typeof specimens)}</span></p>
+        <div class="cell" data-status={cell.status}>
+          <p class="cell-glyph" aria-hidden="true">{cell.glyph}</p>
+          <p class="cell-head"><span class="chip-ev" data-status={cell.status}>{cell.glyph} {cell.word}</span><span class="cell-value">{value(cell.status as keyof typeof specimens)}</span></p>
           <p class="cell-text">{cell.text}</p>
-          <p class="caption mono">docs/examples/reports/{cell.status === 'unknown' ? 'incomplete' : cell.status}.json · totals.lines.changed</p>
         </div>
       ))}
     </div>
-    <p class="lede foot">{c.foot}</p>
+    <p class="evidence-foot">{c.foot}</p>
+    <SectionLinks links={[c.link]} />
   </div>
 </section>
 <style>
-  .cells { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; border-top: 1px solid var(--hair); border-bottom: 1px solid var(--hair); }
-  .cell { padding: 22px 20px; border-right: 1px solid var(--hair); display: grid; gap: 10px; align-content: start; }
-  .cell:last-child { border-right: 0; }
-  .cell-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0; }
-  .cell-value { font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .cells { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border: 1px solid var(--hair); border-radius: var(--r-card); overflow: hidden; }
+  .cell { padding: 26px 24px; display: flex; flex-direction: column; gap: 12px; border-right: 1px solid var(--hair); }
+  .cell[data-status="bounded"] { border-right: 1px dashed var(--hair-strong); }
+  .cell[data-status="unknown"] { border-right: 1px dotted var(--hair-strong); }
+  .cell[data-status="unmeasurable"] { border-right: 0; background: repeating-linear-gradient(45deg, var(--bg-raised) 0 3px, var(--bg) 3px 9px); }
+  .cell-glyph { margin: 0; font: 700 64px/1 var(--font-mono); }
+  .cell-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0; flex-wrap: wrap; }
+  .cell-value { font-family: var(--font-mono); font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
   .cell-text { margin: 0; font-size: 13.5px; color: var(--fg-2); }
-  .foot { margin-top: 22px; max-width: 720px; }
-  @media (max-width: 900px) { .cells { grid-template-columns: 1fr 1fr; } .cell:nth-child(2) { border-right: 0; } .cell:nth-child(-n+2) { border-bottom: 1px solid var(--hair); } }
-  @media (max-width: 640px) { .cells { grid-template-columns: 1fr; } .cell { border-right: 0; border-bottom: 1px solid var(--hair); } .cell:last-child { border-bottom: 0; } }
+  .evidence-foot { margin: 0; font-size: 13.5px; color: var(--fg-2); }
+  @media (max-width: 900px) {
+    .cells { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .cell:nth-child(2) { border-right: 0; }
+    .cell:nth-child(-n+2) { border-bottom: 1px solid var(--hair); }
+  }
+  @media (max-width: 640px) {
+    .cells { grid-template-columns: minmax(0, 1fr); }
+    .cell { border-right: 0 !important; border-bottom: 1px solid var(--hair); }
+    .cell:last-child { border-bottom: 0; }
+  }
 </style>

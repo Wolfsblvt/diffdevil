@@ -5,16 +5,13 @@ import react from '@astrojs/react';
 import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { diffdevilSyntax } from './src/lib/shiki-theme.ts';
+import { themeScript } from './src/lib/theme-script.mjs';
 
 const repositoryRoot = fileURLToPath(new URL('../../', import.meta.url));
 const engine = path => fileURLToPath(new URL(`../../dist/lib/${path}`, import.meta.url));
 const sidebarFile = new URL('./src/content/sidebar.json', import.meta.url);
 if (!existsSync(sidebarFile)) throw new Error('Run `node tools/website-docs.mjs` before building the website; the docs collection is generated from the manifest.');
 const sidebar = JSON.parse(readFileSync(sidebarFile, 'utf8'));
-
-// Theme before first paint on every page, including docs: persisted explicit choice
-// sets <html data-theme>; absence means "follow the system".
-const themeScript = '(function(){try{var t=localStorage.getItem("diffdevil.theme");if(t==="dark"||t==="light"){document.documentElement.setAttribute("data-theme",t);}}catch(e){}})();';
 
 export default defineConfig({
   site: process.env.DIFFDEVIL_SITE_ORIGIN ?? 'https://diffdevil.invalid',

@@ -1,8 +1,9 @@
 ---
 // SPDX-License-Identifier: AGPL-3.0-only
 // Read-only code on the machine ground, highlighted at build time by Shiki with the
-// diffdevil palette. Header row: filename · scope · Copy. No client script is shipped
-// for highlighting; the copy button uses the shared clipboard wiring.
+// diffdevil palette. Header row: filename left, scope and Copy right. Long lines wrap; a
+// code block never widens its page. No client script is shipped for highlighting; the copy
+// button uses the shared clipboard wiring.
 import { Code } from 'astro:components';
 import type { BundledLanguage } from 'shiki';
 import { diffdevilSyntax } from '../lib/shiki-theme';
@@ -10,14 +11,14 @@ interface Props { code: string; lang: BundledLanguage | 'text'; file?: string | 
 const { code, lang, file, scope, copy = true, class: className = '' } = Astro.props;
 const id = Astro.props.id ?? `code-${Math.random().toString(36).slice(2, 9)}`;
 ---
-<figure class={`machine code ${className}`}>
+<figure class={`machine machine-inner code ${className}`}>
   {(file || scope || copy) && (
     <figcaption class="code-head">
       {file && <span>{file}</span>}
-      {scope && <span>· {scope}</span>}
       <span class="spacer"></span>
-      {copy && <button type="button" data-copy-from={id} data-copy-done="Copied ✓" aria-label={`Copy ${file ?? 'code'}`}><span data-copy-label>Copy</span></button>}
+      {scope && <span>{scope}</span>}
+      {copy && <button type="button" data-copy data-copy-from={id} data-copy-done="Copied ✓" aria-label={`Copy ${file ?? 'code'}`}><span data-copy-label>Copy</span></button>}
     </figcaption>
   )}
-  <Code id={id} class="code-body" code={code} lang={lang === 'text' ? 'txt' : lang} theme={diffdevilSyntax} />
+  <Code id={id} class="code-body" code={code} lang={lang === 'text' ? 'txt' : lang} theme={diffdevilSyntax} wrap />
 </figure>

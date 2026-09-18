@@ -1,0 +1,28 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only
+// /impressum/: the legal-notice route owned by the diffdevil site. The route, its footer
+// link and its legal-route standing (public and fetchable; noindex, nosnippet; outside the
+// site search) are settled. The notice text itself is NOT authored here yet: it is owed
+// from the Wolfsblvt Works legal-page standard, which this repository cannot consume yet.
+// Until it can, the page names the operator and points at the Company legal notice, and
+// says so plainly. It does not paraphrase or improvise legal copy.
+import Base from '../layouts/Base.astro';
+import SectionHead from '../components/SectionHead.astro';
+import { COMPANY, COMPANY_LEGAL_NOTICE, paths } from '../data/site';
+---
+<Base title="Impressum" description="Legal notice for the diffdevil website." current="impressum" noindex>
+  <section class="section section-first">
+    <article class="wrap legal">
+      <SectionHead id="impressum" as="h1" title="Impressum" />
+      <p class="lede">diffdevil and this website are operated by {COMPANY}.</p>
+      <p class="small">The legal notice for {COMPANY}, including the responsible person and contact details, is published at <a class="link-quiet" href={COMPANY_LEGAL_NOTICE} rel="noopener">{COMPANY_LEGAL_NOTICE.replace('https://', '')}</a>. It applies to this website.</p>
+      <p class="small">What this site does with data: <a class="link-quiet" href={paths.privacy}>Privacy and data</a>.</p>
+    </article>
+  </section>
+</Base>
+<style>
+  .section-first { border-top: 0; padding-block: 40px 96px; }
+  .legal { gap: 12px !important; }
+  .legal > :global(*) { max-width: 760px; }
+  .legal p.small { margin: 0; color: var(--fg-2); }
+</style>

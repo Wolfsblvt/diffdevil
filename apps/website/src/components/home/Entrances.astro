@@ -1,9 +1,11 @@
 ---
 // SPDX-License-Identifier: AGPL-3.0-only
 // Three entrances with quiet route indices 01/02/03. Indices are decorative text, not
-// steps. Route 01 spans two rows at ≥ 900; below, they stack in order.
+// steps. Route 01 spans two rows at ≥ 900; below, they stack in order. The action rows of
+// 01 and 03 sit on the bottom edge of their cards, so they share one baseline however the
+// text above them reflows.
 import CodeBlock from '../CodeBlock.astro';
-import GitHubMark from '../GitHubMark.astro';
+import Icon from '../Icon.astro';
 import { copy } from '../../data/copy';
 import { docPaths, paths } from '../../data/site';
 import { readSpecimen } from '../../lib/specimens';
@@ -12,34 +14,40 @@ const one = copy.routes.one, two = copy.routes.two, three = copy.routes.three;
 const workflow = readSpecimen('sizeWorkflow').replace(/concurrency:\n(?: {2}.*\n)+/u, '');
 const docLink = (key: string): string => (docPaths as Record<string, string>)[key] ?? key;
 ---
-<section class="entrances wrap">
+<section class="entrances wrap" aria-label="Ways to use diffdevil">
   <article class="card card-strong route route-1">
-    <h2 class="route-title"><span class="route-index">{one.index}</span> {one.title}</h2>
-    <p class="caption route-meta">{one.meta}</p>
-    <p class="body-l">{one.body}</p>
+    <div class="route-head">
+      <h2 class="route-title"><span class="route-index">{one.index}</span>{one.title}</h2>
+      <span class="route-meta">{one.meta}</span>
+    </div>
+    <p class="route-body">{one.body}</p>
     <CodeBlock code={workflow} lang="yaml" file={one.file} scope={one.fileMeta} id="size-workflow" />
     <div class="route-actions">
       <a class="btn btn-primary" href={docPaths.getStarted}>{one.cta}</a>
-      <ul class="links">{one.links.map(([label, key]) => <li><a class="link" href={docLink(key)}>{label}</a></li>)}</ul>
+      {one.links.map(([label, key], index) => <a class:list={['route-link', { 'is-first': index === 0 }]} href={docLink(key)}>{label} →</a>)}
     </div>
   </article>
   <article class="card route route-2">
-    <h2 class="route-title"><span class="route-index">{two.index}</span> {two.title}</h2>
-    <p class="body-l">{two.body}</p>
+    <div class="route-split">
+      <div class="route-text">
+        <h2 class="route-title route-title-s"><span class="route-index">{two.index}</span>{two.title}</h2>
+        <p class="route-body route-body-s">{two.body}</p>
+      </div>
+      <a class="btn btn-secondary" href={paths.playground}>{two.cta}</a>
+    </div>
     <form class="pr-entry" action={paths.playground} method="get" data-pr-entry novalidate>
       <label class="visually-hidden" for="home-pr-url">Pull request URL</label>
       <input class="input" id="home-pr-url" name="url" type="url" inputmode="url" placeholder={two.placeholder} autocomplete="off" spellcheck="false" />
       <button class="btn btn-inverse" type="submit">{two.button}</button>
     </form>
     <p class="status" role="alert" data-pr-error hidden></p>
-    <a class="btn btn-secondary" href={paths.playground}>{two.cta}</a>
   </article>
   <article class="card route route-3">
-    <h2 class="route-title"><span class="route-index">{three.index}</span> <GitHubMark /> {three.title}</h2>
-    <p class="body-l">{three.body}</p>
+    <h2 class="route-title route-title-s"><span class="route-index">{three.index}</span><Icon name="github" size={17} />{three.title}</h2>
+    <p class="route-body route-body-s">{three.body}</p>
     <div class="route-actions">
-      <a class="btn btn-primary" href={paths.app}>{three.cta}</a>
-      <ul class="links">{three.links.map(([label, href]) => <li><a class="link" href={href}>{label}</a></li>)}</ul>
+      <a class="btn btn-secondary" href={paths.app}>{three.cta}</a>
+      {three.links.map(([label, href]) => <a class="route-link" href={href}>{label} →</a>)}
     </div>
   </article>
 </section>
@@ -65,15 +73,30 @@ const docLink = (key: string): string => (docPaths as Record<string, string>)[ke
 </script>
 
 <style>
-  .entrances { display: grid; grid-template-columns: 1.15fr 1fr; grid-template-rows: auto auto; gap: 14px; padding-bottom: 56px; }
-  .route-1 { grid-row: 1 / span 2; }
-  .route { display: grid; gap: 14px; align-content: start; }
-  .route-title { display: flex; align-items: baseline; gap: 10px; font-size: 19px; }
+  .entrances { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); grid-template-rows: auto auto; gap: 14px; padding-bottom: 56px; }
+  .route { display: flex; flex-direction: column; gap: 14px; }
+  .route-1 { grid-row: 1 / span 2; padding: 24px 26px 20px; }
+  .route-2, .route-3 { padding: 20px 24px; gap: 10px; }
+  .route-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px 16px; flex-wrap: wrap; }
+  .route-title { display: inline-flex; align-items: baseline; gap: 12px; font-size: 19px; font-weight: 700; }
+  .route-title-s { font-size: 17px; }
+  .route-3 .route-title { align-items: center; gap: 8px; }
+  .route-3 .route-index { margin-right: 4px; }
   .route-index { font-family: var(--font-mono); font-weight: 500; font-size: 12px; color: var(--fg-3); }
-  .route-meta { margin: -8px 0 0; }
-  .route .body-l { margin: 0; color: var(--fg-2); }
-  .route-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 22px; }
-  .pr-entry { display: flex; gap: 8px; }
+  .route-meta { font-family: var(--font-mono); font-size: 12px; color: var(--fg-3); }
+  .route-body { margin: 0; color: var(--fg-2); font-size: 14px; max-width: 56ch; }
+  .route-body-s { font-size: 13.5px; max-width: none; }
+  .route-split { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 20px; align-items: center; }
+  .route-text { display: flex; flex-direction: column; gap: 6px; }
+  /* bottom-aligned: both action rows share the bottom edge of their cards */
+  .route-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin-top: auto; padding-top: 4px; }
+  .route-link { font-size: 13.5px; color: var(--fg-2); }
+  .route-link.is-first { font-weight: 600; color: var(--fg); }
+  .route-link:hover { color: var(--fg); text-decoration: underline; text-underline-offset: 3px; }
+  .pr-entry { display: flex; gap: 6px; margin-top: auto; }
   .pr-entry .input { flex: 1; }
-  @media (max-width: 900px) { .entrances { grid-template-columns: 1fr; } .route-1 { grid-row: auto; } }
+  .pr-entry .btn { padding: 8px 12px; font-size: 13px; }
+  .route .status { margin: 0; }
+  @media (max-width: 900px) { .entrances { grid-template-columns: minmax(0, 1fr); } .route-1 { grid-row: auto; } }
+  @media (max-width: 640px) { .route-split { grid-template-columns: minmax(0, 1fr); } .route-split .btn { justify-self: start; } }
 </style>

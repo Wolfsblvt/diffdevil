@@ -26,6 +26,10 @@ export function readRepositoryFile(relative: string): string {
   return readFileSync(join(repositoryRoot, relative), 'utf8');
 }
 
+/** The policy document exactly as parsed from YAML, before compilation. */
+export function policyDocumentFromYaml(text: string, name = '.diffdevil.yml'): unknown {
+  return unwrap(readPolicyYaml(text, { name })).document;
+}
 export function policyFromYaml(text: string, name = '.diffdevil.yml'): CompiledPolicy {
   return unwrap(compilePolicy(unwrap(readPolicyYaml(text, { name })).document, { sourceName: name }));
 }

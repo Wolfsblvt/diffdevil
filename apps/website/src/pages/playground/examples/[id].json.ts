@@ -15,6 +15,10 @@ export const getStaticPaths: GetStaticPaths = () => [
   ...curated().map(entry => ({ params: { id: entry.id } })),
 ];
 
+/** The owned-comment preview every example can show when its own policy posts no comment. */
+const PREVIEW_COMMENT_POLICY = 'docs/examples/policies/review-comment.yml';
+const commentPolicyFor = (path: string = PREVIEW_COMMENT_POLICY) => ({ path, name: path.split('/').pop(), text: readRepositoryFile(path) });
+
 export const GET: APIRoute = ({ params }) => {
   const fixture = fixtures.find(entry => entry.id === params.id);
   let payload: unknown;
@@ -28,7 +32,7 @@ export const GET: APIRoute = ({ params }) => {
       policy: fixture.policy.kind === 'file'
         ? { kind: 'file', path: fixture.policy.path!, name: fixture.policy.path!.split('/').pop(), text: readRepositoryFile(fixture.policy.path!) }
         : { kind: 'preset', name: 'size@1', text: 'version: 1\npresets: [size@1]\n' },
-      commentPolicy: fixture.commentPolicy ? { path: fixture.commentPolicy.path, name: fixture.commentPolicy.path.split('/').pop(), text: readRepositoryFile(fixture.commentPolicy.path) } : undefined,
+      commentPolicy: commentPolicyFor(fixture.commentPolicy?.path),
       report,
     };
   } else {
@@ -40,6 +44,7 @@ export const GET: APIRoute = ({ params }) => {
       reason: entry.reason, teaches: entry.teaches, focus: 'review',
       snapshot: { head: entry.head, base: entry.base, analyzedAt: entry.analyzedAt, engine: entry.engine, evidence: entry.evidence, note: entry.note },
       policy: { kind: 'preset', name: 'size@1', text: 'version: 1\npresets: [size@1]\n' },
+      commentPolicy: commentPolicyFor(),
       report: entry.report,
     };
   }

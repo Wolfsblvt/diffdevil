@@ -1,47 +1,48 @@
 ---
 // SPDX-License-Identifier: AGPL-3.0-only
-import GitHubMark from './GitHubMark.astro';
+// The one site header, identical on every route including the manual: brand (+ a plain
+// surface label, never a link) on the left; search, navigation, socials, theme and the
+// npm command as one right-aligned cluster, npm right-most. Geometry comes from `.wrap`,
+// so the lockup sits at the same coordinate on every page.
+import Icon from './Icon.astro';
+import Search from './Search.astro';
+import Socials from './Socials.astro';
+import ThemeSwitch from './ThemeSwitch.astro';
 import { copy } from '../data/copy';
-import { GITHUB, paths } from '../data/site';
-interface Props { surface?: 'Playground' | 'Docs' | 'Examples' | 'App' | undefined; current?: string | undefined }
+import { paths } from '../data/site';
+interface Props { surface?: string | undefined; current?: string | undefined }
 const { surface, current } = Astro.props;
 const items = [
   { href: paths.docs, label: copy.nav.docs, key: 'docs' },
   { href: paths.playground, label: copy.nav.playground, key: 'playground' },
   { href: paths.examples, label: copy.nav.examples, key: 'examples' },
   { href: paths.app, label: copy.nav.app, key: 'app', github: true },
-];
+] as const;
 ---
-<header class="site-header">
+<header class="site-header" data-site-header>
   <div class="wrap">
-    <a class="brand" href="/" aria-label="diffdevil home">
-      <span class="logo logo-lockup" role="img" aria-label="diffdevil"></span>
-      <span class="logo logo-micro brand-micro" role="img" aria-label="diffdevil"></span>
-      {surface && <span class="surface-title">{surface}</span>}
-    </a>
-    <button class="btn btn-quiet menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav" data-menu-toggle>{copy.a11y.menu}</button>
-    <ul class="site-nav" id="site-nav">
-      {items.map(item => (
-        <li><a href={item.href} aria-current={current === item.key ? 'page' : undefined}>{item.github && <GitHubMark />}{item.label}</a></li>
-      ))}
-      <li><a href={GITHUB} rel="noopener">{copy.nav.github}</a></li>
-    </ul>
-    <span class="spacer"></span>
-    <div class="header-tools">
-      <slot name="tools" />
+    <div class="brand">
+      <a class="brand-link" href="/" aria-label="diffdevil home">
+        <span class="logo logo-lockup" role="img" aria-label="diffdevil"></span>
+        <span class="logo logo-micro brand-micro" role="img" aria-label="diffdevil"></span>
+      </a>
+      {surface && <span class="surface-title" data-surface-label>{surface}</span>}
+    </div>
+    <div class="header-cluster">
+      <Search />
+      <nav aria-label="Site"><ul class="site-nav" id="site-nav">
+        {items.map(item => (
+          <li><a href={item.href} aria-current={current === item.key ? 'page' : undefined}>{'github' in item && <Icon name="github" size={14} />}{item.label}</a></li>
+        ))}
+      </ul></nav>
+      <span class="header-sep" aria-hidden="true"></span>
+      <Socials place="header" />
+      <span class="header-sep" aria-hidden="true"></span>
+      <ThemeSwitch />
       <button class="install-chip" type="button" data-copy={copy.nav.install} aria-label={`Copy install command: ${copy.nav.install}`}>
-        <span>{copy.nav.install}</span><span class="copy-glyph" aria-hidden="true">⧉</span>
+        <span>{copy.nav.install}</span><Icon name="copy" size={13} class="copy-glyph" />
       </button>
-      <div class="theme" data-theme-control>
-        <button class="theme-btn" type="button" aria-haspopup="menu" aria-expanded="false" aria-label={`${copy.theme.label}: system`} data-theme-button>
-          <span class="half" aria-hidden="true"></span><span data-theme-current>system</span><span aria-hidden="true">▾</span>
-        </button>
-        <div class="theme-menu" role="menu" hidden data-theme-menu>
-          {copy.theme.options.map(option => (
-            <button type="button" role="menuitemradio" aria-checked={option === 'System' ? 'true' : 'false'} data-theme-option={option.toLowerCase()}>{option}</button>
-          ))}
-        </div>
-      </div>
+      <button class="btn btn-quiet menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav" data-menu-toggle>{copy.a11y.menu}</button>
     </div>
   </div>
 </header>
