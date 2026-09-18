@@ -89,6 +89,7 @@ try {
   const runtimeRoot = join(temporary, 'standalone');
   const runtime = join(runtimeRoot, 'runtime');
   const closure = await stageRuntimeClosure({ root, runtime, name: 'diffdevil-standalone-runtime', target: '>=22', description: 'Generated install-free native ESM runtime for the diffdevil CLI.' });
+  await writeFile(join(runtimeRoot, 'package.json'), JSON.stringify({ name: 'diffdevil-standalone', private: true, type: 'module', version: productVersion }, null, 2) + '\n');
   await copyTree(join(root, 'src/diffdevil/contracts'), join(runtimeRoot, 'src/diffdevil/contracts'));
   await copyTree(join(root, 'src/diffdevil/presets'), join(runtimeRoot, 'src/diffdevil/presets'));
   await writeFile(join(runtime, 'README.md'), '# diffdevil standalone runtime\n\n## Meaning\n\nThis generated Node 22+ runtime contains the compiled CLI, its exact locked production dependency closure, the schema and preset assets the CLI exposes, and redistribution notices. It does not include Node.js itself.\n');
