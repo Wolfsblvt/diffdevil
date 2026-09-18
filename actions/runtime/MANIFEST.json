@@ -127,8 +127,8 @@
     }
   ],
   "sources": {
-    "package-lock.json": "f413fe98838b30445c71ef9a05a48a170077d1272e3e024166e2f731e111a632",
-    "package.json": "47b0b5a765282bca25efb24b3c2d598dc242c7d00555409c789174ece92c80b8",
+    "package-lock.json": "c3e34c323dec993b78021d4f6598333d1efa3f08785d5847ee5fbf97ae44a7d6",
+    "package.json": "914601f1e194b705ad92b461beb9fd2a8eef48a2e9fc775ec275529d70e767c6",
     "src/diffdevil/actions/analyze.ts": "e16cafafd0b0f3a142b33f9cab366fe395d97aec3da43f83eb40449735f0a14f",
     "src/diffdevil/actions/apply.ts": "40be2ca7e38568d269f612a2cd395575a4d3dac8a599aaacb16012f4cae548d5",
     "src/diffdevil/actions/inputs.ts": "d4d4a2ede4eb954c74fb540e5c8d92bd93737efb768c2246d81aa6681a5f6f51",
@@ -222,7 +222,7 @@
     "actions/apply/index.mjs": "10c11454aa6ebc9b9c0d98ebd53e02cfdcbf28ed803a817df12219904ee0ee4a",
     "actions/runtime/LICENSES/AGPL-3.0-only.txt": "0d96a4ff68ad6d4b6f1f30f713b18d5184912ba8dd389f86aa7710db079abcb0",
     "actions/runtime/LICENSES/MIT.txt": "e4a1d35cf5f6df9e2279fda467a76ee4f972ef4576ba047253425e85924d7876",
-    "actions/runtime/LICENSES/README.md": "5f26f223d3d224fd69a5b1a0b98f13121ebed348fc9e08a5e31ee06645de13fd",
+    "actions/runtime/LICENSES/README.md": "b4907daf0ab7379c73cb03efc4526c35bd55e2f7f9193efe913de6c491e35a12",
     "actions/runtime/README.md": "04969695fca45d5559a95871128b419d4af32af9325faacd7d794d8c5c6e341c",
     "actions/runtime/lib/actions/analyze.js": "4e4b5b4e79a5628040ba478b5f614d6f844cfade24e54fa1a6785f014d311b27",
     "actions/runtime/lib/actions/analyze.js.map": "9dd3ae50a3eeab35b5c6b79e4d6479d7d5030186a090eaf915c5f7551723bf13",
