@@ -1,0 +1,42 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only
+// Branded panel 1.1fr / 1fr. The install action links to the configured installation
+// URL; while the hosted App is not open, the button says so instead of pretending.
+import GitHubMark from '../GitHubMark.astro';
+import { copy } from '../../data/copy';
+import { APP_INSTALL_URL, paths } from '../../data/site';
+const c = copy.app;
+---
+<section class="section" id="app">
+  <div class="wrap">
+    <div class="app-panel card card-strong">
+      <div class="app-text">
+        <p class="eyebrow">{c.eyebrow}</p>
+        <div class="heading"><h2 class="h2">{c.h2}</h2><a class="permalink" href="#app" aria-label={copy.a11y.permalink}>#</a></div>
+        <p class="lede">{c.body}</p>
+        <div class="app-ctas">
+          {APP_INSTALL_URL
+            ? <a class="btn btn-primary" href={APP_INSTALL_URL} rel="noopener"><GitHubMark /> {c.ctaPrimary}</a>
+            : <span class="btn btn-primary" aria-disabled="true" title={c.notOpen}><GitHubMark /> {c.ctaPrimary}</span>}
+          <a class="btn btn-secondary" href={paths.app}>{c.ctaSecondary}</a>
+          <a class="link" href={`${paths.app}#self-host`}>{c.ctaTertiary}</a>
+        </div>
+        {!APP_INSTALL_URL && <p class="caption">{c.notOpen}</p>}
+        <p class="caption">{c.foot}</p>
+      </div>
+      <ul class="benefits">
+        {c.benefits.map(([title, body]) => <li><strong>{title}</strong><span>{body}</span></li>)}
+      </ul>
+    </div>
+  </div>
+</section>
+<style>
+  .app-panel { display: grid; grid-template-columns: 1.1fr 1fr; gap: 36px; padding: 36px; background: linear-gradient(135deg, var(--bg-raised), var(--bg-raised-2)); }
+  .app-text { display: grid; gap: 14px; align-content: start; }
+  .app-text .eyebrow, .app-text p { margin: 0; }
+  .app-ctas { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 18px; margin-top: 6px; }
+  .benefits { margin: 0; padding: 0; list-style: none; display: grid; gap: 14px; align-content: start; }
+  .benefits li { display: grid; gap: 3px; padding-left: 14px; border-left: 1px solid var(--hair-strong); font-size: 13.5px; color: var(--fg-2); }
+  .benefits strong { color: var(--fg); font-weight: 600; }
+  @media (max-width: 900px) { .app-panel { grid-template-columns: 1fr; padding: 24px; } }
+</style>

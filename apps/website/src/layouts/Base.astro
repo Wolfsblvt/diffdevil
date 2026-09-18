@@ -1,0 +1,55 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only
+import '../styles/fonts.css';
+import '../styles/tokens.css';
+import '../styles/global.css';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import { ORIGIN, ORIGIN_IS_PLACEHOLDER } from '../data/site';
+
+interface Props {
+  title: string; description: string;
+  surface?: 'Playground' | 'Docs' | 'Examples' | 'App' | undefined; current?: string | undefined;
+  wide?: boolean | undefined;
+}
+const { title, description, surface, current } = Astro.props;
+const pageTitle = title === 'diffdevil' ? 'diffdevil — The devil is in the diff.' : `${title} · diffdevil`;
+const canonical = ORIGIN_IS_PLACEHOLDER ? undefined : `${ORIGIN}${Astro.url.pathname}`;
+// Theme before first paint: read the persisted choice; leave <html> unset for "system".
+const themeScript = `(function(){try{var t=localStorage.getItem("diffdevil.theme");if(t==="dark"||t==="light"){document.documentElement.setAttribute("data-theme",t);}}catch(e){}})();`;
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{pageTitle}</title>
+    <meta name="description" content={description} />
+    <meta name="theme-color" content="#151922" />
+    <meta name="color-scheme" content="dark light" />
+    <meta property="og:title" content={pageTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content={`${ORIGIN}/og.png`} />
+    <meta name="twitter:card" content="summary_large_image" />
+    {canonical && <link rel="canonical" href={canonical} />}
+    <link rel="icon" href="/favicon.ico" sizes="32x32" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="mask-icon" href="/mask-icon.svg" color="#f061ba" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <script is:inline set:html={themeScript}></script>
+  </head>
+  <body>
+    <a class="visually-hidden" href="#main">Skip to content</a>
+    <Header surface={surface} current={current} />
+    <main id="main">
+      <slot />
+    </main>
+    <Footer />
+    <div class="live" role="status" aria-live="polite" data-live-region></div>
+    <script>
+      import '../lib/client';
+    </script>
+  </body>
+</html>

@@ -1,0 +1,194 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:diffdevil:playground-replay-response:1",
+  "$comment": "SPDX-License-Identifier: AGPL-3.0-only",
+  "title": "diffdevil playground replay and head responses v1",
+  "description": "Versioned JSON responses for /api/report (the complete engine report for browser-side policy replay) and /api/head (current pull-request head). Failures share the playground error envelope.",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/report"
+    },
+    {
+      "$ref": "#/$defs/head"
+    },
+    {
+      "$ref": "#/$defs/failure"
+    }
+  ],
+  "$defs": {
+    "envelope": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "diffdevil.playground-response"
+        },
+        "schemaVersion": {
+          "const": "1.0"
+        }
+      },
+      "required": [
+        "kind",
+        "schemaVersion"
+      ]
+    },
+    "report": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "diffdevil.playground-response"
+            },
+            "schemaVersion": {
+              "const": "1.0"
+            },
+            "ok": {
+              "const": true
+            },
+            "status": {
+              "const": 200
+            },
+            "canonicalUrl": {
+              "type": "string",
+              "pattern": "^https://github\\.com/[^/]+/[^/]+/pull/[1-9][0-9]*$"
+            },
+            "report": {
+              "$ref": "urn:diffdevil:report:1"
+            }
+          },
+          "required": [
+            "kind",
+            "schemaVersion",
+            "ok",
+            "status",
+            "canonicalUrl",
+            "report"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "head": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "diffdevil.playground-response"
+            },
+            "schemaVersion": {
+              "const": "1.0"
+            },
+            "ok": {
+              "const": true
+            },
+            "status": {
+              "const": 200
+            },
+            "canonicalUrl": {
+              "type": "string",
+              "pattern": "^https://github\\.com/[^/]+/[^/]+/pull/[1-9][0-9]*$"
+            },
+            "head": {
+              "type": "object",
+              "properties": {
+                "head": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{40}$"
+                },
+                "base": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{40}$"
+                },
+                "state": {
+                  "enum": [
+                    "open",
+                    "closed"
+                  ]
+                },
+                "changedFiles": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "required": [
+                "head",
+                "base",
+                "state",
+                "changedFiles"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "kind",
+            "schemaVersion",
+            "ok",
+            "status",
+            "canonicalUrl",
+            "head"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "failure": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "diffdevil.playground-response"
+            },
+            "schemaVersion": {
+              "const": "1.0"
+            },
+            "ok": {
+              "const": false
+            },
+            "status": {
+              "type": "integer",
+              "minimum": 400,
+              "maximum": 599
+            },
+            "error": {
+              "type": "object",
+              "properties": {
+                "code": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "message": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "code",
+                "message"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "kind",
+            "schemaVersion",
+            "ok",
+            "status",
+            "error"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    }
+  }
+}

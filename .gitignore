@@ -12,6 +12,19 @@ coverage/
 # Repository-local artifacts and editor noise
 # Leitsatz: product-owned generated output
 /artifacts/
+# Generated website docs collection (tools/website-docs.mjs) and Astro type output
+apps/website/src/content/docs/
+apps/website/src/content/sidebar.json
+apps/website/.astro/
+# Derived website icons/rasters (tools/website-assets.mjs): the identity SVGs are the source; no raster is committed
+apps/website/public/favicon.ico
+apps/website/public/favicon.svg
+apps/website/public/mask-icon.svg
+apps/website/public/apple-touch-icon.png
+apps/website/public/app-logo-512.png
+apps/website/public/github-app-logo-512.png
+apps/website/public/og.png
+apps/website/public/manifest.webmanifest
 .wrangler/
 .DS_Store
 Thumbs.db

@@ -1,0 +1,17 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only
+// Docs header: the site's own header row plus Starlight's search. Starlight renders
+// this inside its <header>; the surrounding nav chrome stays Starlight's.
+import Search from '@astrojs/starlight/components/Search.astro';
+import SiteHeader from '../Header.astro';
+---
+<div class="docs-header">
+  <SiteHeader surface="Docs" current="docs"><div class="docs-search" slot="tools"><Search /></div></SiteHeader>
+</div>
+<style>
+  .docs-header { display: contents; }
+  .docs-header :global(.site-header) { position: static; border: 0; background: transparent; }
+  .docs-header :global(.site-header .wrap) { padding-inline: 0; max-width: none; }
+  .docs-search { display: contents; }
+  @media (max-width: 900px) { .docs-header :global(.install-chip) { display: none; } }
+</style>

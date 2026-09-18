@@ -1,0 +1,134 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only
+// /app/: the public GitHub App page. Same engine, less plumbing. Benefits, permissions,
+// hosted versus self-hosted, migration from an existing Action writer, install CTA. No
+// dashboard, billing or account UI; the App contract in the manual is authoritative.
+import Base from '../layouts/Base.astro';
+import GitHubMark from '../components/GitHubMark.astro';
+import CodeBlock from '../components/CodeBlock.astro';
+import { copy } from '../data/copy';
+import { APP_INSTALL_URL, blobUrl, docPaths, paths } from '../data/site';
+const c = copy.app;
+const permissions = [
+  ['Contents', 'read', 'trusted repository policy (.diffdevil.yml from the PR base) and relative comment templates'],
+  ['Pull requests', 'write', 'PR acquisition and the selected label / owned-comment effects'],
+  ['Checks', 'write', 'one App-owned check summary per analyzed head, updated rather than duplicated'],
+];
+const migration = `# 1. Disable the Action writer first, keep read-only analysis if you want its outputs.\n- uses: Wolfsblvt/diffdevil/actions/analyze@v1   # reads only; safe beside the App\n# 2. Install the App on the repository and pick the same preset (size@1 by default).\n# 3. Your .diffdevil.yml keeps winning: the App fills only what it does not declare.`;
+---
+<Base title="GitHub App" description="The diffdevil GitHub App runs the same engine and the same .diffdevil.yml as the Action, with native check summaries, org defaults and opt-in history. Hosted or self-hosted." surface="App" current="app">
+  <section class="wrap app-hero">
+    <div>
+      <p class="eyebrow">{c.eyebrow}</p>
+      <h1 class="display">{c.h2}</h1>
+      <p class="lede">{c.body}</p>
+      <div class="app-ctas">
+        {APP_INSTALL_URL
+          ? <a class="btn btn-primary" href={APP_INSTALL_URL} rel="noopener"><GitHubMark /> {c.ctaPrimary}</a>
+          : <span class="btn btn-primary" aria-disabled="true"><GitHubMark /> {c.ctaPrimary}</span>}
+        <a class="btn btn-secondary" href={docPaths.app}>{c.ctaSecondary}</a>
+        <a class="link" href="#self-host">{c.ctaTertiary}</a>
+      </div>
+      {!APP_INSTALL_URL && <p class="caption">{c.notOpen} <a class="link" href={docPaths.getStarted}>Label PRs with one workflow today</a></p>}
+      <p class="caption">{c.foot}</p>
+    </div>
+    <ul class="benefits card card-strong">
+      {c.benefits.map(([title, body]) => <li><strong>{title}</strong><span>{body}</span></li>)}
+    </ul>
+  </section>
+
+  <section class="section" id="why">
+    <div class="wrap grid-2">
+      <div class="section-head">
+        <p class="eyebrow">#why</p>
+        <div class="heading"><h2 class="h2">Why choose the App</h2><a class="permalink" href="#why" aria-label={copy.a11y.permalink}>#</a></div>
+        <p class="lede">Self-operated Actions need a workflow file, a write permission you reason about, runner minutes and version bumps. The App removes that operating work and adds what only a hosted service can offer: account defaults, effective configuration with origins, native checks and opt-in history. It does not add measurement or policy capability the CLI and Actions lack.</p>
+        <ul class="links"><li><a class="link" href={docPaths.app}>App architecture</a></li><li><a class="link" href={docPaths.presets + '#configuration-layering'}>Configuration layering</a></li></ul>
+      </div>
+      <div class="stack">
+        <div class="panel"><p class="label">What a self-operated workflow assembles</p><ul class="small plain-list"><li><code class="code-inline">.github/workflows/size.yml</code> with <code class="code-inline">pull_request_target</code> and <code class="code-inline">pull-requests: write</code></li><li>a token boundary you keep separate from trusted policy reads</li><li>runner minutes on every PR event, plus <code class="code-inline">@v1</code> upgrades</li><li>label definitions created by the first run</li></ul></div>
+        <div class="panel"><p class="label">What the App owns instead</p><ul class="small plain-list"><li>installation on the repositories you choose, nothing in the workflow tree</li><li>presets and account/organization defaults, below your repository file</li><li>one native check summary per analyzed head</li><li>labels only in declared groups, comments only when opted in, readback after every write</li><li>seven-day recovery records; history only after you opt in</li></ul></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="permissions">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="eyebrow">#permissions</p>
+        <div class="heading"><h2 class="h2">Permissions</h2><a class="permalink" href="#permissions" aria-label={copy.a11y.permalink}>#</a></div>
+        <p class="lede">Three permissions, each with one concrete operation. The App never executes pull-request code and never trusts PR-head policy for writes.</p>
+      </div>
+      <table class="table perms">
+        <thead><tr><th>Permission</th><th>Access</th><th>Used for</th></tr></thead>
+        <tbody>{permissions.map(([name, access, use]) => <tr><td>{name}</td><td><code class="code-inline">{access}</code></td><td>{use}</td></tr>)}</tbody>
+      </table>
+      <p class="caption">No Issues, Actions, Administration or broader repository write permission. Dashboard sign-in authenticates a person separately and never becomes the background credential. <a class="link" href={docPaths.app + '#permissions-and-current-access'}>Permissions and current access</a></p>
+    </div>
+  </section>
+
+  <section class="section" id="self-host">
+    <div class="wrap grid-2">
+      <div class="section-head">
+        <p class="eyebrow">#self-host</p>
+        <div class="heading"><h2 class="h2">Hosted by us or self-hosted</h2><a class="permalink" href="#self-host" aria-label={copy.a11y.permalink}>#</a></div>
+        <p class="lede">The App runtime is open source under AGPL-3.0-only, in the same repository as the engine. The official hosted version carries a useful free allowance; self-hosting is documented with its real requirements, not hidden and not the primary pitch.</p>
+      </div>
+      <div class="stack">
+        <div class="panel">
+          <p class="label">Self-hosting needs</p>
+          <ul class="small plain-list">
+            <li>your own GitHub App registration with the three permissions above</li>
+            <li>a Cloudflare Worker, Queue and D1 database (the first supported adapter), plus the webhook secret, App ID and private key as secrets</li>
+            <li>the runtime source under <code class="code-inline">apps/github-app/</code>, its migration, and its maintenance path</li>
+            <li>no diffdevil branding that implies the official service</li>
+          </ul>
+          <ul class="links"><li><a class="link" href={docPaths.app.replace('architecture', 'self-hosting')}>Self-hosting the runtime</a></li><li><a class="link" href={blobUrl('apps/github-app/README.md')} rel="noopener">Runtime source</a></li><li><a class="link" href={paths.licences}>Licence boundaries</a></li></ul>
+        </div>
+        <div class="panel">
+          <p class="label">Data</p>
+          <p class="small">Managed automation keeps a seven-day operational recovery ledger. Persistent history is off until an installation administrator enables it, then retains aggregate and pathless per-file numbers only: no paths, authors, prose, patches or reports. <a class="link" href={docPaths.privacyAndData}>Privacy and data</a></p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="migrate">
+    <div class="wrap grid-2">
+      <div class="section-head">
+        <p class="eyebrow">#migrate</p>
+        <div class="heading"><h2 class="h2">Already running the Action?</h2><a class="permalink" href="#migrate" aria-label={copy.a11y.permalink}>#</a></div>
+        <p class="lede">Two writers must not own the same labels. Disable the Action writer before enabling overlapping App effects; the App never adopts, edits or deletes another actor's comments and starts its own lifecycle. A read-only analyze step can stay beside the App.</p>
+        <ul class="links"><li><a class="link" href={docPaths.app + '#comment-ownership-and-migration'}>Comment ownership and migration</a></li><li><a class="link" href={docPaths.actions}>Actions manual</a></li></ul>
+      </div>
+      <CodeBlock code={migration} lang="yaml" file="migration outline" copy={false} />
+    </div>
+  </section>
+
+  <section class="section" id="carried" hidden data-carried>
+    <div class="wrap">
+      <div class="notice-proposed"><strong>A policy was carried from the playground.</strong> Nothing from that anonymous session is kept here. When the App is open for installation, setup asks you to install and authorize on GitHub first; until then, save the policy as <code class="code-inline">.diffdevil.yml</code> at your repository root, where both the Action and the App read it.</div>
+    </div>
+  </section>
+  <script>
+    // The playground's export hands a policy over in the URL only; reveal the note, keep nothing.
+    if (new URLSearchParams(location.search).has('policy')) document.querySelector<HTMLElement>('[data-carried]')!.hidden = false;
+  </script>
+</Base>
+<style>
+  .app-hero { display: grid; grid-template-columns: 1.1fr 1fr; gap: 40px; padding-block: 56px 48px; align-items: start; }
+  .grid-2 { align-items: start; }
+  .grid-2 > .section-head { margin-bottom: 0; }
+  .app-hero .eyebrow { margin: 0 0 12px; }
+  .display { font-size: 48px; line-height: 1.05; letter-spacing: var(--tracking-display); font-weight: 700; margin: 0 0 16px; }
+  .app-ctas { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 18px; margin: 20px 0 12px; }
+  .benefits { margin: 0; padding: 24px; list-style: none; display: grid; gap: 14px; }
+  .benefits li { display: grid; gap: 3px; padding-left: 14px; border-left: 1px solid var(--hair-strong); font-size: 13.5px; color: var(--fg-2); }
+  .benefits strong { color: var(--fg); }
+  .plain-list { margin: 0; padding-left: 18px; display: grid; gap: 6px; color: var(--fg-2); }
+  .panel .label { margin: 0 0 8px; }
+  .panel .links { margin-top: 10px; }
+  .perms td:first-child { font-weight: 600; font-family: var(--font-ui); }
+  .perms { font-family: var(--font-ui); font-size: 13.5px; }
+  @media (max-width: 900px) { .app-hero { grid-template-columns: 1fr; } .display { font-size: 36px; } }
+</style>

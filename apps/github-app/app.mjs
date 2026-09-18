@@ -6,6 +6,7 @@ import { APP_QUEUE_KIND, WEBHOOK_BODY_LIMIT, WORKER_RESULT_LIMIT, historyProject
 import { createAppJwt, verifyWebhookSignature } from './crypto.mjs';
 import { D1AppStore } from './storage.mjs';
 import { resolveEffectivePolicy } from './configuration.mjs';
+import { checkSummary } from '../shared/check-summary.mjs';
 
 const JSON_HEADERS = { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' };
 const DEFAULT_SIZE_POLICY = { version: 1, presets: ['size@1'] };
@@ -107,12 +108,6 @@ async function trustedPolicy(client, target, base, configuration) {
     if (!(error instanceof GitHubRequestError && error.status === 404)) throw error;
   }
   return { policy: resolveEffectivePolicy({ preset: DEFAULT_SIZE_POLICY, ...(configuration ?? {}), supplied }).policy, expectedPolicyBase: base };
-}
-
-function checkSummary(report, result) {
-  const changed = report.totals?.lines?.changed?.value;
-  const raw = report.totals?.raw?.churn?.value;
-  return `Replacement-aware changed lines: ${Number.isSafeInteger(changed) ? changed : 'unavailable'}\nRaw churn: ${Number.isSafeInteger(raw) ? raw : 'unavailable'}\nPolicy effects observed: ${result.changed}`;
 }
 
 async function upsertCheck(client, store, identity, report, result, assertLease) {

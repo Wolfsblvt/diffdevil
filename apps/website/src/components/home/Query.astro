@@ -1,0 +1,45 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only
+// Two-tone terminal: command in --term-cmd, returned output in --term-out. Every output
+// line is produced by the real engine at build from docs/examples/diffs/review.diff.
+import SectionHead from '../SectionHead.astro';
+import { copy } from '../../data/copy';
+import { agent, display, exact, policyFromYaml, unwrap } from '../../lib/engine-node';
+import { querySpecimen, readSpecimen } from '../../lib/specimens';
+import { evaluatePolicyQuery } from '@wolfsblvt/diffdevil/policy';
+import { formatQuery } from '@wolfsblvt/diffdevil/format';
+
+const { report, evaluated } = querySpecimen();
+const policy = policyFromYaml(readSpecimen('fullPolicy'), 'full.yml');
+const review = exact(evaluated.metrics!.review!)!;
+const included = evaluated.files.filter(file => file.included).map(file => file.path);
+const large = unwrap(evaluatePolicyQuery(policy, report, { query: 'largeFiles' })).result;
+const largeLines = unwrap(formatQuery(large, { format: 'jsonl' })).stdout.trim();
+const gt100 = review > 100, gt5 = review > 5;
+const c = copy.query;
+const rows = [
+  { cmd: 'diffdevil query metrics.review --config full.yml', out: [String(review)] },
+  { cmd: 'diffdevil query files --included --paths --config full.yml', out: included },
+  { cmd: `diffdevil check --metric changed --gt 5 --config full.yml && echo over`, out: gt5 ? ['over'] : [], comment: gt5 ? undefined : '# exit 1: false, not an error' },
+  { cmd: `diffdevil check --metric changed --gt 100 --config full.yml; echo $?`, out: [gt100 ? '0' : '1'], comment: gt100 ? undefined : '# false, not an error' },
+  { cmd: 'diffdevil analyze --format json --config full.yml | jq .totals.lines.changed', out: [display(evaluated.totals.lines.changed)] },
+  { cmd: 'diffdevil query largeFiles --format jsonl --config full.yml', out: largeLines ? largeLines.split('\n') : [], comment: largeLines ? undefined : '# no included file above 100 changed lines' },
+  { cmd: 'diffdevil analyze --format agent --config full.yml', out: [...agent(evaluated).split('\n').slice(0, 3), '…'] },
+];
+---
+<section class="section" id="query">
+  <div class="wrap">
+    <SectionHead id="query" title={c.h2} body={c.body} links={c.links} />
+    <figure class="machine">
+      <figcaption class="code-head"><span>docs/examples/diffs/review.diff · policy full.yml</span><span class="spacer"></span><span>shell</span></figcaption>
+      <pre class="terminal query-terminal"><code>{rows.map(row => <span><span class="p">$ </span><span class="c">{row.cmd}</span>{'\n'}{row.out.map(line => <span><span class="o">{line}</span>{'\n'}</span>)}{row.comment && <span><span class="cm">{row.comment}</span>{'\n'}</span>}{'\n'}</span>)}</code></pre>
+      <p class="query-foot"><span>{c.foot}</span><span>{c.foot2}</span></p>
+    </figure>
+  </div>
+</section>
+<style>
+  .query-terminal { columns: 2; column-gap: 40px; column-rule: 1px solid #2c303a; }
+  .query-terminal > code > span { break-inside: avoid; display: block; }
+  .query-foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 24px; margin: 0; padding: 10px 16px; border-top: 1px solid #2c303a; font-family: var(--font-mono); font-size: 11.5px; color: #828690; }
+  @media (max-width: 900px) { .query-terminal { columns: 1; } }
+</style>

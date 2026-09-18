@@ -13,17 +13,19 @@ and disposable outputs without introducing independently versioned packages.
 | `src/diffdevil/` | Reusable MIT product core: shared engine, CLI, provider/Action hosts, core tests, contracts and presets. |
 | `apps/playground/` | AGPL application adapter: shared local/Worker public-PR route, browser assets, versioned response contract and application tests. |
 | `apps/github-app/` | AGPL managed-App adapter: verified webhook ingress, Queue execution, D1 recovery/history state, migrations and operator boundary. |
+| `apps/website/` | AGPL public website: Astro static output + Starlight manual rendered from repository Markdown, the complete playground as one lazy React island running the shared engine in the browser, examples catalogue, App page, legal/privacy routes. Built and qualified locally; not deployed by any command here. |
+| `apps/shared/` | Small presenters both AGPL applications use (currently the App check-summary composer). |
 | `actions/` | Three sub-action entry points and their shared, committed runtime. |
 | `design/` | Canonical reusable visual reference: E3/W1/T2 with Foundation A grammars, tokens, explicit errata, and reserved production identity SVGs; not executable website source. |
 | `docs/` | Maintained manuals, runnable examples and dated technical research. |
-| `tools/` | Builds, generation and repository/consumer qualification. |
+| `tools/` | Builds, generation and repository/consumer qualification, including the website docs collection, derived website assets and curated-snapshot capture/audit. |
 | `.github/` | Provider-owned workflow convention, not a second implementation. |
 | `action.yml` | One-step root Action, forwarding to the shared runtime. |
 | `package.json`, `package-lock.json`, `tsconfig.json` | One package, one lock and one compiler boundary. |
 | `wrangler.jsonc` | Source-owned Cloudflare Worker name, runtime compatibility and static-asset routing; it contains no account ID, token, custom domain or deployment state. |
 | `README.md`, `AGENTS.md` | Public product front door and repository-local contribution contract. |
 
-`apps/playground/` and `apps/github-app/` consume the built reusable engine from `dist/lib`; neither duplicates measurement, policy, or provider semantics. Their browser/server/Worker and managed ingress/Queue/D1 adapters are application code, not npm-package contents.
+`apps/playground/`, `apps/github-app/` and `apps/website/` consume the built reusable engine from `dist/lib`; none duplicates measurement, policy, or provider semantics. The website's playground bundles that same engine for the browser through two small shims for its Node-only imports. Their browser/server/Worker and managed ingress/Queue/D1 adapters are application code, not npm-package contents.
 
 `dist/`, root `node_modules/` and `artifacts/` are ignored generated/local material,
 not extra products. They are recreated by documented commands and are not part of

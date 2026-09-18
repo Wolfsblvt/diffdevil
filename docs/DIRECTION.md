@@ -74,6 +74,17 @@ The selected implementation direction is now explicit:
   AGPL application boundary. Self-hosting is intentional and documented, not the
   primary homepage pitch. The reusable software remains MIT.
 
+The public website source now exists under `apps/website/`: the accepted homepage,
+the complete configurable playground running the shared engine in the browser,
+the examples catalogue with frozen fixtures and captured real-PR snapshots, the
+manual rendered from the repository's own Markdown, the public App page, and the
+legal/privacy routes. It is built and qualified locally only. It is not deployed,
+remotely previewed, routed or exposed; publication is a separate decision after
+the remaining accepted sources (the Agent Skill, the setup instructions and the
+researched curated catalogue) are admitted through their own Work. The playground
+API gained `/api/report` and `/api/head` for browser-side replay and freshness;
+the live Worker still serves the earlier contract until it is redeployed.
+
 The live playground Worker consumes the same static, bundler-visible generated
 validator boundary as Node and the Actions. The managed App runtime must reuse that
 portable engine boundary rather than introduce a hosted engine fork.

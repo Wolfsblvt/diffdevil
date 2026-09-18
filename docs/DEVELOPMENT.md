@@ -18,7 +18,12 @@ Native macOS remains unobserved; [Qualification](QUALIFICATION.md) binds each
 result to its candidate and boundary.
 
 The lockfile pins TypeScript 5.8.3, Node typings 22.15.33, Chevrotain 13.2.0,
-YAML 2.9.1, Ajv 8.20.0 and the source-owned Worker CLI, Wrangler 4.132.0.
+YAML 2.9.1, Ajv 8.20.0, the source-owned Worker CLI, Wrangler 4.132.0, and the
+website toolchain: Astro 7.3.3, Starlight 0.42.1, React 19.3.0, Shiki 4.4.3,
+CodeMirror 6, the self-hosted IBM Plex packages, resvg for derived assets and
+Playwright 1.63.0 for local browser qualification. The website closure is the
+largest part of the development install; none of it enters the npm package or
+the committed Action runtime.
 Wrangler contributes a 106-entry development-tooling closure, including optional
 platform packages. That cost is accepted for the hosted playground source route for
 now, remains visible in the lockfile, and does not enter either the npm package or
@@ -73,6 +78,11 @@ perform no registry installation themselves. One dependency closure is sufficien
 | `npm run playground:worker` | Builds the reusable engine and starts the same public route through local Wrangler/workerd. It disables Wrangler telemetry and does not contact Cloudflare. |
 | `npm run check:workers` | Bundles `wrangler.jsonc` and the static asset binding with telemetry disabled and `wrangler deploy --dry-run`. It creates no Worker, version, preview, deployment, route or domain. |
 | `npm run check:github-app` | Bundles the managed-App Worker, Queue and placeholder D1 binding with Wrangler dry-run. It creates no App, Queue, D1 database, Worker, deployment, route or credentialed GitHub effect. |
+| `npm run check:website` | Generates the derived website icons/rasters from the identity SVGs and the manual collection from the docs manifest, then builds the public website into `artifacts/website/dist`. Part of `verify`. It deploys, previews remotely or exposes nothing. |
+| `npm run website:assets` | Renders the ignored favicon, touch icon, web-manifest and GitHub App logos, Open Graph image and manifest from `design/assets/identity/`, measuring each framed mark against its declared occupancy. `--report` prints the measurements. |
+| `npm run website:build` / `website:dev` / `website:preview` / `website:check` | Full engine + website build, the Astro dev server, a local preview of the built output, and the Astro type check. See [the website README](../apps/website/README.md). |
+| `npm run test:website` | Data-level website tests (also discovered by `npm test`): fixtures evaluate to the outcomes they teach, snapshots are valid engine reports, the docs manifest names real sources, browser shims match Node. |
+| `npm run qa:website` | Headless Chromium qualification of the built website against the real playground application server on the fake GitHub fixture. Needs Playwright's Chromium (`npx playwright install chromium`). Local behaviour only, not a deployment claim. |
 
 The fresh CI `npm ci` cache holds the locked project tarballs but lacks registry
 metadata for a lockless tarball consumer. The hosted package step therefore sets

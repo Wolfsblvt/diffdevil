@@ -1,0 +1,171 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only
+// #agents: equal-width human/agent proof, then two independently expanding capability
+// cards. Every meaningful interaction inside a card opens that card's details while
+// completing the action (rule 3a). Plain DOM script; no framework on this page.
+import SectionHead from '../SectionHead.astro';
+import GitHubMark from '../GitHubMark.astro';
+import { copy } from '../../data/copy';
+import { ORIGIN, docPaths, paths } from '../../data/site';
+import { querySpecimen } from '../../lib/specimens';
+import { skillSource, skillVersion } from '../../lib/sources';
+
+const c = copy.agents;
+const { human, agent } = querySpecimen();
+const skill = skillSource();
+const version = skillVersion(skill);
+const resolveDoc = (key: string): string => (docPaths as Record<string, string>)[key] ?? key;
+const withOrigin = (text: string): string => text.replaceAll('{origin}', ORIGIN);
+const intents = copy.setupIntents;
+const defaultIntent = 'actions';
+---
+<section class="section" id="agents">
+  <div class="wrap">
+    <SectionHead id="agents" title={c.h2} body={c.body} links={c.links} />
+    <div class="compare">
+      <figure class="machine">
+        <figcaption class="code-head"><span>{c.compareLeft[0]}</span><span class="spacer"></span><span>{c.compareLeft[1]}</span></figcaption>
+        <pre class="code-body"><code>{human}</code></pre>
+      </figure>
+      <figure class="machine">
+        <figcaption class="code-head"><span>{c.compareRight[0]}</span><span class="spacer"></span><span>{c.compareRight[1]}</span></figcaption>
+        <pre class="code-body"><code>{agent}</code></pre>
+      </figure>
+    </div>
+    <p class="caption compare-foot">{c.compareFoot}</p>
+
+    <div class="cards">
+      <article class="card card-strong agent-card" id="agents-skill" data-agent-card>
+        <h3 class="h3">{c.skill.title}</h3>
+        <p class="caption mono">{c.skill.metaPrefix}{version ? ` · v${version}` : ''}</p>
+        <p class="body-l">{c.skill.body}</p>
+        <div class="card-actions">
+          <button class="btn btn-primary" type="button" data-copy={withOrigin(c.skill.copyInstruction)} data-copy-done={c.skill.ctaDone} data-opens-card><span data-copy-label>{c.skill.cta}</span></button>
+          <span class="chip-meta">{c.skill.path}</span>
+          {skill && <a class="link" href={paths.skill}>{c.skill.link}</a>}
+        </div>
+        <div class="details-region" id="agents-skill-details" hidden>
+          <dl class="detail-list">
+            {[c.skill.teaches, c.skill.reinforces, c.skill.current].map(([term, text]) => <div><dt>{term}</dt><dd>{text}</dd></div>)}
+          </dl>
+          <p class="small">{c.skill.install}</p>
+          <p class="small">{c.skill.runtime}</p>
+          <p class="small">{c.skill.authority}</p>
+          <ul class="links">{c.skill.links.map(([label, key]) => <li><a class="link" href={resolveDoc(key)}>{label}</a></li>)}</ul>
+        </div>
+        <button class="disclosure" type="button" aria-expanded="false" aria-controls="agents-skill-details" data-disclosure data-label-closed={c.skill.disclosure} data-label-open={c.skill.disclosureOpen}>
+          <span><span class="label-main" data-disclosure-label>{c.skill.disclosure}</span><br /><span class="label-sub">{c.skill.disclosureSub}</span></span>
+          <span class="spacer"></span><span class="box" aria-hidden="true" data-disclosure-glyph>↓</span>
+        </button>
+      </article>
+
+      <article class="card agent-card" id="agents-setup" data-agent-card data-setup-card>
+        <h3 class="h3">{c.setup.title}</h3>
+        <p class="caption mono">{c.setup.meta}</p>
+        <div class="selector">
+          <span class="small selector-lead" id="setup-lead">{c.setup.lead}</span>
+          <div class="chips" role="radiogroup" aria-labelledby="setup-lead">
+            {intents.map(intent => (
+              <button class="chip" type="button" role="radio" aria-checked={intent.id === defaultIntent ? 'true' : 'false'} tabindex={intent.id === defaultIntent ? 0 : -1} data-intent={intent.id}>
+                {'github' in intent && intent.github && <GitHubMark />}{intent.chip}{'chipSub' in intent && intent.chipSub && <span class="caption">· {intent.chipSub}</span>}
+              </button>
+            ))}
+          </div>
+        </div>
+        <p class="body-l" data-intent-description>{intents.find(i => i.id === defaultIntent)!.description}</p>
+        <div class="card-actions">
+          <button class="btn btn-primary" type="button" data-copy={withOrigin(intents.find(i => i.id === defaultIntent)!.prompt)} data-copy-done={c.setup.ctaDone} data-opens-card data-intent-copy><span data-copy-label>{c.setup.cta(intents.find(i => i.id === defaultIntent)!.short)}</span></button>
+          <span class="chip-meta" data-intent-path>{intents.find(i => i.id === defaultIntent)!.path}</span>
+          <span class="caption">{c.setup.note}</span>
+        </div>
+        <div class="details-region" id="agents-setup-details" hidden>
+          <figure class="machine">
+            <figcaption class="code-head"><span>prompt</span><span class="spacer"></span><button type="button" data-copy-from="setup-prompt-text" data-copy-done="Copied ✓" data-opens-card>Copy</button></figcaption>
+            <pre class="code-body"><code id="setup-prompt-text" data-intent-prompt>{withOrigin(intents.find(i => i.id === defaultIntent)!.prompt)}</code></pre>
+          </figure>
+          <div class="grid-2">
+            <div><p class="label">{c.setup.stepsHead}</p><ol class="steps" data-intent-steps>{intents.find(i => i.id === defaultIntent)!.steps.map(step => <li>{step}</li>)}</ol></div>
+            <div><p class="label">{c.setup.authorityHead}</p><p class="small" data-intent-authority>{intents.find(i => i.id === defaultIntent)!.authority}</p></div>
+          </div>
+          <p class="caption">{c.setup.foot} <a class="link" href={docPaths.agents} data-intent-doc>{c.setup.footLink}</a></p>
+        </div>
+        <button class="disclosure" type="button" aria-expanded="false" aria-controls="agents-setup-details" data-disclosure data-label-closed={c.setup.disclosure} data-label-open={c.setup.disclosureOpen}>
+          <span><span class="label-main" data-disclosure-label>{c.setup.disclosure}</span><br /><span class="label-sub">{c.setup.disclosureSub}</span></span>
+          <span class="spacer"></span><span class="box" aria-hidden="true" data-disclosure-glyph>↓</span>
+        </button>
+      </article>
+    </div>
+  </div>
+</section>
+
+<script define:vars={{ intents: intents.map(i => ({ ...i, prompt: withOrigin(i.prompt) })), ctaTemplate: 'Copy the {intent} setup prompt', docsAgents: docPaths.agents }}>
+  const cards = document.querySelectorAll('[data-agent-card]');
+  for (const card of cards) {
+    const control = card.querySelector('[data-disclosure]');
+    const region = card.querySelector('.details-region');
+    const setOpen = open => {
+      region.hidden = !open;
+      card.classList.toggle('is-open', open);
+      control.setAttribute('aria-expanded', String(open));
+      control.querySelector('[data-disclosure-label]').textContent = open ? control.dataset.labelOpen : control.dataset.labelClosed;
+      control.querySelector('[data-disclosure-glyph]').textContent = open ? '↑' : '↓';
+    };
+    control.addEventListener('click', () => setOpen(region.hidden));
+    // Any meaningful action inside the card opens it. Closing is only explicit.
+    for (const trigger of card.querySelectorAll('[data-opens-card]')) trigger.addEventListener('click', () => { if (region.hidden) setOpen(true); });
+    region.addEventListener('keydown', event => { if (event.key === 'Escape') { setOpen(false); control.focus(); } });
+    card.dataset.setOpen = 'ready';
+    card.addEventListener('diffdevil:open', () => setOpen(true));
+  }
+
+  const setup = document.querySelector('[data-setup-card]');
+  if (setup) {
+    const chips = [...setup.querySelectorAll('[data-intent]')];
+    const select = (id, open = true) => {
+      const intent = intents.find(i => i.id === id);
+      for (const chip of chips) { const on = chip.dataset.intent === id; chip.setAttribute('aria-checked', String(on)); chip.tabIndex = on ? 0 : -1; }
+      setup.querySelector('[data-intent-description]').textContent = intent.description;
+      const copyButton = setup.querySelector('[data-intent-copy]');
+      copyButton.dataset.copy = intent.prompt;
+      copyButton.querySelector('[data-copy-label]').textContent = ctaTemplate.replace('{intent}', intent.short);
+      setup.querySelector('[data-intent-path]').textContent = intent.path;
+      setup.querySelector('[data-intent-prompt]').textContent = intent.prompt;
+      const steps = setup.querySelector('[data-intent-steps]'); steps.replaceChildren(...intent.steps.map(step => { const li = document.createElement('li'); li.textContent = step; return li; }));
+      setup.querySelector('[data-intent-authority]').textContent = intent.authority;
+      setup.querySelector('[data-intent-doc]').href = intent.docPath ?? docsAgents;
+      if (open) setup.dispatchEvent(new CustomEvent('diffdevil:open'));
+    };
+    for (const chip of chips) {
+      chip.addEventListener('click', () => { select(chip.dataset.intent); chip.focus(); });
+      chip.addEventListener('keydown', event => {
+        const index = chips.indexOf(chip);
+        const step = event.key === 'ArrowRight' || event.key === 'ArrowDown' ? 1 : event.key === 'ArrowLeft' || event.key === 'ArrowUp' ? -1 : 0;
+        if (!step) return;
+        event.preventDefault();
+        const next = chips[(index + step + chips.length) % chips.length];
+        select(next.dataset.intent); next.focus();
+      });
+    }
+  }
+</script>
+
+<style>
+  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .compare .code-body { font-size: 12px; }
+  .compare-foot { margin: 10px 0 0; }
+  .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 32px; align-items: start; }
+  .agent-card { display: grid; gap: 12px; }
+  .agent-card .caption { margin: 0; }
+  .agent-card .body-l { margin: 0; color: var(--fg-2); }
+  .card-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+  .detail-list { margin: 0; display: grid; gap: 8px; }
+  .detail-list div { display: grid; grid-template-columns: 110px 1fr; gap: 10px; font-size: 13px; }
+  .detail-list dt { font-weight: 600; } .detail-list dd { margin: 0; color: var(--fg-2); }
+  .selector { display: grid; gap: 8px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chips .chip { min-height: 32px; }
+  .chips .chip :global(.gh) { width: 13px; height: 13px; }
+  .steps { margin: 0; padding-left: 18px; font-size: 13px; color: var(--fg-2); display: grid; gap: 4px; }
+  .agent-card .small { margin: 0; color: var(--fg-2); }
+  @media (max-width: 900px) { .compare, .cards { grid-template-columns: 1fr; } }
+</style>

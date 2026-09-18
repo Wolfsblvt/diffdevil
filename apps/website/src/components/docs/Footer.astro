@@ -1,0 +1,25 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only
+// Quiet provenance row: Edit on GitHub · View source · Applies to v… · Example tested ✓,
+// then Starlight's prev/next pagination, then the site footer with its legal links.
+import Pagination from '@astrojs/starlight/components/Pagination.astro';
+import SiteFooter from '../Footer.astro';
+const { entry } = Astro.locals.starlightRoute;
+const meta = entry.data.diffdevil;
+const editUrl = entry.data.editUrl;
+---
+<footer class="docs-footer">
+  <div class="docs-provenance">
+    {editUrl && <a href={String(editUrl)} rel="noopener">Edit on GitHub</a>}
+    {meta && <a href={meta.sourceUrl} rel="noopener">View source · {meta.source}</a>}
+    {meta && <span>Applies to v{meta.appliesTo}</span>}
+    {meta?.tested && <span>Example tested ✓</span>}
+  </div>
+  <Pagination />
+</footer>
+<div class="docs-site-footer"><SiteFooter /></div>
+<style>
+  .docs-site-footer { margin: 40px calc(-1 * var(--sl-content-pad-x)) 0; }
+  .docs-site-footer :global(.site-footer) { padding-inline: var(--sl-content-pad-x); }
+  .docs-site-footer :global(.site-footer .grid) { padding-inline: 0; }
+</style>
