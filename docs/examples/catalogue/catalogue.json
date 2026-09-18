@@ -2,20 +2,42 @@
   "formatVersion": 1,
   "defaultExample": "lockfile-scope",
   "heading": "Explore a change. See what the numbers mean.",
-  "description": "Every lesson is one frozen source, one policy, and one result produced by diffdevil.",
+  "description": "Every lesson is backed by a frozen public pull request, one selected policy, and a result produced by diffdevil.",
   "entries": [
     {
       "id": "lockfile-scope",
       "title": "The lockfile is still part of the change",
       "sourceKind": "real-pr",
-      "lessons": ["scope", "counting", "policies"],
+      "lessons": [
+        "scope",
+        "counting",
+        "policies"
+      ],
       "summary": "An explicit exclusion changes the question, not the observed source.",
       "variants": [
-        { "id": "all", "label": "Whole change", "source": "vite-18968", "policy": "standard" },
-        { "id": "without-lockfile", "label": "Exclude the lockfile", "source": "vite-18968", "policy": "vite-without-lockfile" },
-        { "id": "comment", "label": "Preview one custom comment", "source": "vite-18968", "policy": "comment-only" }
+        {
+          "id": "all",
+          "label": "Whole change",
+          "source": "vite-18968",
+          "policy": "standard"
+        },
+        {
+          "id": "without-lockfile",
+          "label": "Exclude the lockfile",
+          "source": "vite-18968",
+          "policy": "vite-without-lockfile"
+        },
+        {
+          "id": "comment",
+          "label": "Preview one custom comment",
+          "source": "vite-18968",
+          "policy": "comment-only"
+        }
       ],
-      "inspect": ["packages/vite/package.json", "pnpm-lock.yaml"],
+      "inspect": [
+        "packages/vite/package.json",
+        "pnpm-lock.yaml"
+      ],
       "guide": [
         "This Vite dependency update changes a manifest and its lockfile. Start with both files: a policy has not made the lockfile disappear from the observed comparison.",
         "Raw churn counts a removed version and its replacement separately. Replacement-aware lines pair that local edit while keeping unrelated lockfile additions visible.",
@@ -26,13 +48,29 @@
       "id": "runtime-null-guards",
       "title": "A small helper can touch a wide surface",
       "sourceKind": "real-pr",
-      "lessons": ["distribution", "scope", "counting"],
+      "lessons": [
+        "distribution",
+        "scope",
+        "counting"
+      ],
       "summary": "Replacement-aware counting and file spread are different facts.",
       "variants": [
-        { "id": "all", "label": "Whole change", "source": "runtime-105380", "policy": "standard" },
-        { "id": "implementation", "label": "Implementation scope", "source": "runtime-105380", "policy": "runtime-scopes" }
+        {
+          "id": "all",
+          "label": "Whole change",
+          "source": "runtime-105380",
+          "policy": "standard"
+        },
+        {
+          "id": "implementation",
+          "label": "Implementation scope",
+          "source": "runtime-105380",
+          "policy": "runtime-scopes"
+        }
       ],
-      "inspect": ["src/libraries/System.Collections.Concurrent/src/System/Collections/Concurrent/ConcurrentDictionary.cs"],
+      "inspect": [
+        "src/libraries/System.Collections.Concurrent/src/System/Collections/Concurrent/ConcurrentDictionary.cs"
+      ],
       "guide": [
         "This runtime change replaces repeated null guards with a common API across implementation and nested tests.",
         "The line result is asymmetric: a compact replacement can remove more source than it adds. File count remains its own fact, not a proxy for risk or effort.",
@@ -43,13 +81,28 @@
       "id": "formatter-and-snapshots",
       "title": "Snapshots are material, not invisible background",
       "sourceKind": "real-pr",
-      "lessons": ["distribution", "scope"],
+      "lessons": [
+        "distribution",
+        "scope"
+      ],
       "summary": "Overlapping scopes describe the same change from different angles.",
       "variants": [
-        { "id": "all", "label": "Whole change", "source": "prettier-13183", "policy": "standard" },
-        { "id": "scopes", "label": "Implementation, tests and snapshots", "source": "prettier-13183", "policy": "prettier-scopes" }
+        {
+          "id": "all",
+          "label": "Whole change",
+          "source": "prettier-13183",
+          "policy": "standard"
+        },
+        {
+          "id": "scopes",
+          "label": "Implementation, tests and snapshots",
+          "source": "prettier-13183",
+          "policy": "prettier-scopes"
+        }
       ],
-      "inspect": ["tests/format/ternaries/__snapshots__/jsfmt.spec.js.snap"],
+      "inspect": [
+        "tests/format/js/ternaries/__snapshots__/jsfmt.spec.js.snap"
+      ],
       "guide": [
         "A formatting change can carry implementation, documentation, tests, and generated snapshots in one comparison.",
         "The scopes overlap on purpose. They are not percentages to add together; each is a named view of the same retained source evidence.",
@@ -60,13 +113,28 @@
       "id": "binary-trampolines",
       "title": "Binary files still count as evidence",
       "sourceKind": "real-pr",
-      "lessons": ["evidence", "scope"],
+      "lessons": [
+        "evidence",
+        "scope"
+      ],
       "summary": "Unmeasurable line facts are neither zero nor an omission.",
       "variants": [
-        { "id": "all", "label": "Whole change", "source": "uv-8637", "policy": "standard" },
-        { "id": "text", "label": "Exclude six executable files", "source": "uv-8637", "policy": "uv-without-executables" }
+        {
+          "id": "all",
+          "label": "Whole change",
+          "source": "uv-8637",
+          "policy": "standard"
+        },
+        {
+          "id": "text",
+          "label": "Exclude six executable files",
+          "source": "uv-8637",
+          "policy": "uv-without-executables"
+        }
       ],
-      "inspect": ["crates/uv-trampoline/trampolines/uv-trampoline-aarch64-console.exe"],
+      "inspect": [
+        "crates/uv-trampoline/trampolines/uv-trampoline-aarch64-console.exe"
+      ],
       "guide": [
         "This change contains Rust, workflow and lockfile edits alongside six committed executable trampoline files.",
         "The six binary records remain in the whole comparison, with unmeasurable line values. A blank number is a fact about the material, not permission to substitute zero.",
@@ -74,53 +142,105 @@
       ]
     },
     {
-      "id": "same-total-different-spread",
-      "title": "Same line total, different file spread",
-      "sourceKind": "controlled",
-      "lessons": ["distribution", "counting"],
-      "summary": "Equal totals do not erase file distribution.",
-      "variants": [
-        { "id": "concentrated", "label": "Two files", "source": "spread-concentrated", "policy": "standard" },
-        { "id": "distributed", "label": "Twelve files", "source": "spread-distributed", "policy": "standard" }
+      "id": "similar-size-different-spread",
+      "title": "Similar change size, radically different spread",
+      "sourceKind": "real-pr",
+      "lessons": [
+        "distribution",
+        "counting"
       ],
-      "inspect": ["src/alpha.ts", "src/file-12.ts"],
+      "summary": "Comparable aggregate churn can be concentrated in a few files or distributed across many.",
+      "variants": [
+        {
+          "id": "many-small",
+          "label": "51 files",
+          "source": "rust-66820",
+          "policy": "standard"
+        },
+        {
+          "id": "few-large",
+          "label": "6 files",
+          "source": "rust-136978",
+          "policy": "standard"
+        }
+      ],
+      "inspect": [
+        "src/libstd/path.rs",
+        "library/std/src/sys/pal/windows/c/bindings.txt"
+      ],
       "guide": [
-        "Both authored inputs add twenty-four lines. One puts twelve lines in each of two files; the other spreads two lines across twelve files.",
-        "The aggregate changed-line measurement is deliberately equal. The file records make the distribution visible without turning it into a claim about complexity or quality.",
-        "Move between the two variants. The source identity follows the selected patch, so an export never implies that the other shape produced the result."
+        "These two Rust pull requests have almost identical provider raw churn while one touches fifty-one files and the other only six.",
+        "The captured reports keep replacement-aware totals and file membership separate. Similar aggregate size does not make the change shape interchangeable.",
+        "Move between the variants to inspect the distribution. The lesson follows the observed PR facts; it does not claim that spread measures quality, risk, or effort."
       ]
     },
     {
       "id": "bounded-decisions",
       "title": "A bounded value can still prove a policy",
-      "sourceKind": "controlled",
-      "lessons": ["evidence", "policies"],
-      "summary": "A rule can hold when evidence cannot establish its condition.",
-      "variants": [
-        { "id": "proven", "label": "Below 100 is proven", "source": "bounded-report", "policy": "bounded-proven" },
-        { "id": "held", "label": "At 65 is unresolved", "source": "bounded-report", "policy": "bounded-held" }
+      "sourceKind": "real-pr",
+      "lessons": [
+        "evidence",
+        "policies"
       ],
-      "inspect": [],
+      "summary": "The same PR can move from bounded provider evidence to an exact pinned comparison.",
+      "variants": [
+        {
+          "id": "proven",
+          "label": "Below 12,000 is proven",
+          "source": "prettier-13183-rest",
+          "policy": "prettier-bounded-proven"
+        },
+        {
+          "id": "held",
+          "label": "At 9,500 is unresolved",
+          "source": "prettier-13183-rest",
+          "policy": "prettier-bounded-held"
+        },
+        {
+          "id": "resolved",
+          "label": "Raw diff resolves 9,603",
+          "source": "prettier-13183",
+          "policy": "prettier-bounded-held"
+        }
+      ],
+      "inspect": [
+        "tests/format/js/ternaries/__snapshots__/jsfmt.spec.js.snap"
+      ],
       "guide": [
-        "This saved report preserves a changed-line interval instead of an invented exact total.",
-        "Under the first policy every possible value lies below one hundred, so that band is proven. Under the second policy the interval crosses sixty-five, so the label group holds.",
-        "Queries show the same distinction: above fifty is true, above seventy is false, and above sixty-five remains unknown."
+        "GitHub's PR-files record gives exact raw counters for the large ternary snapshot but omits its patch, so replacement-aware changed lines remain bounded.",
+        "That interval still proves some questions and forces a hold when it crosses a policy boundary. Unknown is an evidence result, not a disguised false value.",
+        "The pinned raw-diff edition measures the same file and revisions exactly. The policy resolves because the evidence improved, not because the rule changed."
       ]
     },
     {
       "id": "incomplete-file-set",
       "title": "Observed files are not the whole inventory",
-      "sourceKind": "controlled",
-      "lessons": ["evidence"],
-      "summary": "A partial file list does not license invented paths.",
-      "variants": [
-        { "id": "observed", "label": "Observed rows", "source": "incomplete-report", "policy": "standard" }
+      "sourceKind": "real-pr",
+      "lessons": [
+        "evidence"
       ],
-      "inspect": ["src/observed.ts"],
+      "summary": "A known PR total does not make a truncated comparison file list complete.",
+      "variants": [
+        {
+          "id": "comparison",
+          "label": "300 of 2,171 files",
+          "source": "cmake-docs-2-compare",
+          "policy": "standard"
+        },
+        {
+          "id": "complete",
+          "label": "All 2,171 files",
+          "source": "cmake-docs-2-files",
+          "policy": "standard"
+        }
+      ],
+      "inspect": [
+        "master/locale/pot/LC_MESSAGES/command/add_compile_definitions.pot"
+      ],
       "guide": [
-        "The report knows there are three files but contains only one observed record.",
-        "The visible row remains useful evidence. Overall line counts keep their lower bound and unknown standing because the missing members cannot be named or measured.",
-        "A rendering limit and an incomplete source inventory are different facts. This example preserves the latter rather than filling the list with guesses."
+        "This generated CMake documentation pull request reports 2,171 changed files, while the comparison JSON exposes only its first 300 file records.",
+        "Those observed rows remain real evidence, but aggregate and path-scoped facts preserve incomplete standing because the missing inventory cannot be named or measured.",
+        "The paginated PR-files edition resolves all 2,171 records for the same pull request. A stronger acquisition route completes the inventory without inventing a tail."
       ]
     }
   ]

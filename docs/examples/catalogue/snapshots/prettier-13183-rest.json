@@ -1,23 +1,24 @@
 {
   "kind": "diffdevil.example-snapshot",
   "schemaVersion": "1.2",
-  "id": "prettier-13183",
-  "edition": "raw-diff-exact",
+  "id": "prettier-13183-rest",
+  "edition": "rest-bounded",
   "repository": "prettier/prettier",
   "pullRequest": 13183,
   "url": "https://github.com/prettier/prettier/pull/13183",
   "title": "New Ternary Formatting: A Curious Case of the Ternaries",
-  "capturedAt": "2026-09-18T23:14:04.971Z",
+  "capturedAt": "2026-09-18T23:14:06.545Z",
   "provenance": {
     "baseTip": "f25a592f571257cef4847e27820e86945c7fcb68",
     "mergeBase": "f25a592f571257cef4847e27820e86945c7fcb68",
     "head": "c7d5925715a31d3c83073e03de1b90673776b691"
   },
   "acquisition": {
-    "route": "github-rest-compare-three-dot",
+    "route": "github-rest-pull-files",
     "comparisonEndpoint": "/repos/prettier/prettier/compare/f25a592f571257cef4847e27820e86945c7fcb68...c7d5925715a31d3c83073e03de1b90673776b691",
     "identityEndpoint": "/repos/prettier/prettier/compare/f25a592f571257cef4847e27820e86945c7fcb68...c7d5925715a31d3c83073e03de1b90673776b691",
-    "pullEndpoint": "/repos/prettier/prettier/pulls/13183"
+    "pullEndpoint": "/repos/prettier/prettier/pulls/13183",
+    "filesEndpoint": "/repos/prettier/prettier/pulls/13183/files"
   },
   "notices": {
     "declared": "MIT",
@@ -52,8 +53,8 @@
     "replacementLines": "replacement-lines-v1"
   },
   "payload": {
-    "sourceSha256": "579853f87d424e68e8adafead3ecb4207b323f9b9dc1cd94c54f22637b06b485",
-    "normalizedReportSha256": "87e9dceea098e564233ed9ae8932018cbca7de4e0d99f2e1b8d7962336d507f6",
+    "sourceSha256": "073d488f398dc1e48181640b80091834cb456e74fd4c89d707c69ef34ba94f6d",
+    "normalizedReportSha256": "c1ca43364a1f3b683591893c849e1aa6e18039b2d43a031e0e799d66e40bff86",
     "providerFileSetSha256": "f6712fd63a778376b478f060c572bba96709a1dbd13eb1d8a462bf332237a72e"
   },
   "capabilities": {
@@ -62,8 +63,8 @@
     "remeasurementReason": "No raw comparison material is retained in this teaching snapshot."
   },
   "lesson": {
-    "id": "formatter-and-snapshots",
-    "title": "Snapshots are material, not invisible background"
+    "id": "bounded-decisions",
+    "title": "A bounded value can still prove a policy"
   },
   "provider": {
     "complete": true,
@@ -534,7 +535,7 @@
       "paths": "diffdevil-glob/1"
     },
     "source": {
-      "kind": "unified-diff",
+      "kind": "github-api",
       "comparison": "three-dot",
       "repository": "prettier/prettier",
       "pullRequest": 13183,
@@ -1659,30 +1660,38 @@
         },
         "lines": {
           "added": {
-            "status": "exact",
-            "value": 6952
+            "status": "bounded",
+            "lower": 6028,
+            "upper": 8679
           },
           "deleted": {
-            "status": "exact",
-            "value": 924
+            "status": "bounded",
+            "lower": 0,
+            "upper": 2651
           },
           "modified": {
-            "status": "exact",
-            "value": 1727
+            "status": "bounded",
+            "lower": 0,
+            "upper": 2651
           },
           "changed": {
-            "status": "exact",
-            "value": 9603
+            "status": "bounded",
+            "lower": 8679,
+            "upper": 11330
           }
         },
         "family": {
           "id": "family-1f1bc2ac5c1e0aa69dfdbd9abc48bfb200da87706328dfb2853d3b82bfaea62d",
           "rawCountsExact": true,
-          "blocksComplete": true
+          "blocksComplete": false
         },
         "measurement": {
-          "status": "exact",
-          "reasons": []
+          "status": "bounded",
+          "reasons": [
+            {
+              "code": "PATCH_OMITTED"
+            }
+          ]
         }
       },
       {
@@ -2189,20 +2198,24 @@
       },
       "lines": {
         "added": {
-          "status": "exact",
-          "value": 9617
+          "status": "bounded",
+          "lower": 8693,
+          "upper": 11344
         },
         "deleted": {
-          "status": "exact",
-          "value": 1106
+          "status": "bounded",
+          "lower": 182,
+          "upper": 2833
         },
         "modified": {
-          "status": "exact",
-          "value": 1895
+          "status": "bounded",
+          "lower": 168,
+          "upper": 2819
         },
         "changed": {
-          "status": "exact",
-          "value": 12618
+          "status": "bounded",
+          "lower": 11694,
+          "upper": 14345
         }
       },
       "files": {
@@ -2249,9 +2262,13 @@
       }
     },
     "measurement": {
-      "status": "exact",
-      "reasons": []
+      "status": "bounded",
+      "reasons": [
+        {
+          "code": "PATCH_OMITTED"
+        }
+      ]
     },
-    "reportId": "report-928d01e666a21da2bdde1b473344dfc7a786b5d7b026aac31e4ac5ce07a3a7ce"
+    "reportId": "report-a9a55249a6022564ccdbcf98e35ed4c795ebdca0c8e69816814ea86e5a6b6252"
   }
 }

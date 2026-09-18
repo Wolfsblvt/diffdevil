@@ -1,12 +1,13 @@
 {
   "kind": "diffdevil.example-snapshot",
-  "schemaVersion": "1.1",
+  "schemaVersion": "1.2",
   "id": "runtime-105380",
+  "edition": "teaching-snapshot",
   "repository": "dotnet/runtime",
   "pullRequest": 105380,
   "url": "https://github.com/dotnet/runtime/pull/105380",
-  "title": "runtime-105380",
-  "capturedAt": "2026-09-18T04:08:59.903Z",
+  "title": "Use ArgumentNullException.ThrowIfNull in more places",
+  "capturedAt": "2026-09-18T23:14:04.032Z",
   "provenance": {
     "baseTip": "7d64842fdc41340440b00795c3f39f4c917acc62",
     "mergeBase": "7d64842fdc41340440b00795c3f39f4c917acc62",
@@ -20,22 +21,30 @@
   },
   "notices": {
     "declared": "MIT",
-    "base": {
-      "path": "LICENSE.TXT",
-      "sha": "984713a49622a96da110443c15477613bc12656b",
-      "ref": "7d64842fdc41340440b00795c3f39f4c917acc62"
-    },
-    "head": {
-      "path": "LICENSE.TXT",
-      "sha": "984713a49622a96da110443c15477613bc12656b",
-      "ref": "83e7ccfa9a4122c4de2fd06ca152d6a34f673257"
-    }
+    "records": [
+      {
+        "label": "MIT",
+        "repository": "dotnet/runtime",
+        "path": "LICENSE.TXT",
+        "role": "base",
+        "ref": "7d64842fdc41340440b00795c3f39f4c917acc62",
+        "sha": "984713a49622a96da110443c15477613bc12656b"
+      },
+      {
+        "label": "MIT",
+        "repository": "dotnet/runtime",
+        "path": "LICENSE.TXT",
+        "role": "head",
+        "ref": "83e7ccfa9a4122c4de2fd06ca152d6a34f673257",
+        "sha": "984713a49622a96da110443c15477613bc12656b"
+      }
+    ]
   },
   "rights": {
     "retainedMaterial": "normalized-report-only",
     "rawComparison": "analyzed-in-memory-not-committed",
     "binaryBytes": "not-retained",
-    "review": "Root notices and every retained normalized file record were inspected; raw source lines, patch text, discussion, and provider responses are not retained."
+    "review": "Pinned notices and every retained normalized file record were inspected; raw source lines, patch text, discussion, and provider responses are not retained."
   },
   "engine": {
     "package": "1.0.0",
@@ -43,9 +52,9 @@
     "replacementLines": "replacement-lines-v1"
   },
   "payload": {
-    "sourceSha256": "b26cb3ca7a9375fecf29228531a196c34949e00d468eedeb40e1f48f51be9d8b",
+    "sourceSha256": "553f78f90f957173573064a951f77958b70de9fbd96bfa08b86fddff3cccc5f5",
     "normalizedReportSha256": "8dd72b03fc800aaff0920c2370080b02d9d1002a6bdd425c452f7b4d7443ac5d",
-    "providerFileSetSha256": "37af953283d8070c3fefb938495e151f7d2dae60bcdd8055b3da848c6c90b60a"
+    "providerFileSetSha256": "45d2b6a3588fe7438aa07199e026eea070e40202999ac37850ec3005cf9b8798"
   },
   "capabilities": {
     "policyReplay": true,
@@ -58,6 +67,7 @@
   },
   "provider": {
     "complete": true,
+    "observedCount": 21,
     "reportedCount": 21,
     "entries": [
       {

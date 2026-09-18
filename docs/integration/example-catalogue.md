@@ -1,35 +1,49 @@
-# Shared example catalogue
+# Shared real-PR example catalogue
 
 ## Meaning
 
 The public `/examples/` page and Playground use the one catalogue in
 [`../examples/catalogue/`](../examples/catalogue/README.md). An example URL carries
-both `example` and `variant`, so a card opens the same frozen input and policy in the
-Playground rather than a page-specific approximation.
+both `example` and `variant`, so a card opens the same frozen source edition and
+policy in the Playground rather than a page-specific approximation.
+
+Every selected entry is backed by a real public pull request. The catalogue has no
+manual-fixture section, controlled source kind, Frozen-versus-Real selector, or
+second gallery. Ordinary engine tests may still use purpose-built test data where a
+unit test needs it, but that data is not public catalogue membership.
 
 ## Capture and replay
 
 `node tools/examples.mjs capture <source-id>` resolves the selected pull request's
-base tip, merge base and head, reads its public diff, and analyzes that diff with the
-shared engine. It records the normalized report, policy-replay identity, and root
-notice identities in `docs/examples/catalogue/snapshots/`; it does not commit a raw
-third-party patch or execute upstream code. A selected source cannot be silently
-omitted: a failed acquisition or notice read is a capture hold.
+base tip, merge base and head, acquires its declared evidence surface, and analyzes
+it with the shared engine. `capture-all` performs that deliberate operation for all
+selected source editions and then regenerates the observations.
 
-`node tools/examples.mjs audit` compares the fixed base tip, merge base and head
-with the current provider PR and identifies engine or measurement drift. `node tools/examples.mjs
-verify` replays every source and policy variant without a GitHub request
-and checks that the committed observations are the deterministic engine output.
-Snapshot recapture is deliberate; Git history retains the preceding provenance.
+The retained record names the base tip, actual merge base, head, evidence edition,
+capture time, engine and report identities, provider file-set standing, payload
+digests, inspected notice identities, and a normalized-report-only rights boundary.
+It records per-file material dispositions but does not commit raw patch text or
+binary bytes.
+
+Some lessons deliberately compare evidence editions of one PR:
+
+- Prettier #13183 contrasts bounded PR-files evidence with an exact pinned raw diff.
+- CMake documentation l10n #2 contrasts the comparison endpoint's 300 observed rows
+  with a complete paginated 2,171-file inventory.
+
+The source identity does not change between those editions. Only the available
+evidence does.
+
+`node tools/examples.mjs audit` compares fixed identities with the current provider
+and reports source, merge-base, notice, engine, or evidence-edition drift.
+`node tools/examples.mjs verify` performs no GitHub request: it replays every retained
+source/policy pair and proves that `observations.json` is deterministic shared-engine
+output.
 
 ## Evidence boundary
 
-Each frozen real case names base tip, actual merge base, head, capture time, engine
-and report identities, provider file-set counters, source and payload digests,
-inspected notice identities, and a normalized-report-only rights record. It also
-records a per-file material disposition: normalized facts are retained, but patch
-text and binary bytes are not. The resulting record supports offline policy replay,
-not fresh remeasurement. A moved upstream head does not change the taught snapshot.
-The Playground may offer a live analysis and return to the snapshot, but it never
-presents that fresh read as the frozen example. Binary files remain records with
-unmeasurable lines, and incomplete source inventories retain their unknown membership.
+A moved upstream head does not alter a frozen teaching snapshot. Live analysis is a
+distinct edition and must name its actual source identity. Binary files remain
+records with unmeasurable line facts. Incomplete inventories retain unknown aggregate
+and path membership rather than inventing missing rows. Capture or rights failure
+holds the affected lesson; it never resurrects a synthetic card.
