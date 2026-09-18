@@ -145,7 +145,7 @@ check('url stays clean for the default state', page.url().endsWith('/playground/
 const tiles = page.locator('.tile');
 await tiles.nth(0).focus(); await page.keyboard.press('ArrowRight');
 check('tile arrow keys select the next view', (await tiles.nth(1).getAttribute('aria-selected')) === 'true' && page.url().includes('view=agent'));
-check('agent view shows the agent presenter', (await page.locator('#pg-view-panel').innerText()).includes('DIFFDEVIL REPORT'));
+check('agent view shows the agent presenter', (await page.locator('#pg-view-panel').innerText()).includes('diffdevil.agent-report/1'));
 await page.keyboard.press('End');
 check('End selects the explanation view', (await tiles.nth(3).getAttribute('aria-selected')) === 'true');
 check('explanation lists rules and the readback lane as not observed', /Not observed/u.test(await page.locator('#pg-view-panel').innerText()));

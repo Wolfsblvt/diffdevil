@@ -5,6 +5,7 @@ import { formatReport } from '../../../dist/lib/format.js';
 import { formatPlan } from '../../../dist/lib/policy/format.js';
 import { readPlan } from '../../../dist/lib/policy/plan.js';
 import { parseInvocation } from '../../../dist/lib/cli/arguments.js';
+import { runCli } from '../../../dist/lib/cli/run.js';
 import { unwrap } from '../../../dist/lib/errors.js';
 import { readReport } from '../../../dist/lib/report.js';
 
@@ -38,6 +39,8 @@ test('human non-exact summaries retain glyph plus word and the concrete evidence
 
   const unmeasurable = unwrap(formatReport(report('unmeasurable'), 'human')).stdout;
   assert.match(unmeasurable, /∅ unmeasurable/u);
+  assert.match(unmeasurable, /^Raw\s+∅ unmeasurable additions · ∅ unmeasurable deletions · ∅ unmeasurable churn$/mu);
+  assert.doesNotMatch(unmeasurable, /[+-]∅/u);
 });
 
 test('full human detail expands aggregate identity, categories and scopes without file records', () => {
@@ -58,6 +61,24 @@ test('human ANSI color preserves identical plain meaning and uses the selected p
   assert.match(colored, /\u001b\[38;2;240;97;186;1m(?:diffdevil)/u);
   assert.match(colored, /\u001b\[38;2;143;214;170;1m\+45/u);
   assert.match(colored, /\u001b\[38;2;255;159;176;1m-18/u);
+});
+
+test('CLI auto color follows terminal capability and environment controls', async () => {
+  const argv = ['analyze', '--report', 'docs/examples/reports/exact.json', '--no-config', '--format', 'human'];
+  const capable = { isTTY: true, hasColors: () => true };
+  const incapable = { isTTY: false, hasColors: () => false };
+
+  const automatic = unwrap(await runCli(argv, process.cwd(), { stdout: capable, env: {} })).stdout;
+  assert.match(automatic, /\u001b\[/u);
+
+  const optedOut = unwrap(await runCli(argv, process.cwd(), { stdout: capable, env: { NO_COLOR: '1' } })).stdout;
+  assert.doesNotMatch(optedOut, /\u001b\[/u);
+
+  const forced = unwrap(await runCli(argv, process.cwd(), { stdout: incapable, env: { FORCE_COLOR: '1' } })).stdout;
+  assert.match(forced, /\u001b\[/u);
+
+  const forcedOff = unwrap(await runCli(argv, process.cwd(), { stdout: capable, env: { FORCE_COLOR: '0' } })).stdout;
+  assert.doesNotMatch(forcedOff, /\u001b\[/u);
 });
 
 test('agent report is a compact deterministic record projection, never colored human prose', () => {
@@ -97,6 +118,7 @@ test('agent plan emits every desired operation and still says applied=false', ()
   assert.match(rendered, /^diffdevil\.agent-plan\/1 schema=1\.0 stage=desired applied=false$/mu);
   assert.equal(rendered.match(/^effect /gmu)?.length, plan.operations.length);
   assert.match(rendered, /kind=label\.select .*selected="size\/S"/u);
+  assert.match(rendered, /^preconditions head="fixture-head" base="fixture-base"$/mu);
   assert.match(rendered, /^held count=0$/mu);
   assert.match(rendered, /^readback observed=false$/mu);
 });
