@@ -147,6 +147,7 @@ export function actionSummary(result) {
         for (const diagnostic of result.effects.diagnostics)
             text += `\n${html(diagnostic.code)}: ${html(diagnostic.message)}\n`;
     }
+    text += '\n[Use diffdevil with an agent](https://raw.githubusercontent.com/Wolfsblvt/diffdevil/main/docs/setup/skill.md)\n';
     if (Buffer.byteLength(text) > 256 * 1024)
         return '## diffdevil\n\nSummary exceeds its display budget. Consult the full report, plan and effects journal; no provider success is inferred.\n';
     return text;
