@@ -14,6 +14,7 @@ and disposable outputs without introducing independently versioned packages.
 | `apps/playground/` | AGPL application adapter: shared local/Worker public-PR route, browser assets, versioned response contract and application tests. |
 | `apps/github-app/` | AGPL managed-App adapter: verified webhook ingress, Queue execution, D1 recovery/history state, migrations and operator boundary. |
 | `actions/` | Three sub-action entry points and their shared, committed runtime. |
+| `design/` | Canonical reusable visual reference: E3/W1/T2 with Foundation A grammars, tokens, explicit errata, and reserved production identity SVGs; not executable website source. |
 | `docs/` | Maintained manuals, runnable examples and dated technical research. |
 | `tools/` | Builds, generation and repository/consumer qualification. |
 | `.github/` | Provider-owned workflow convention, not a second implementation. |

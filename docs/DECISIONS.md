@@ -136,11 +136,17 @@ through flags. Both routes continue to use one compiler with parity tests.
 
 ### D015 — Visual identity
 
-**Status:** Open co-design
-**Selected textual boundary:** `docs/BRANDING.md`.
-**Open:** Icon, logo construction, wordmark treatment, palette, visual examples, README hero composition, social/Marketplace assets, and whether a mascot earns a role.
+**Status:** Settled visual system; production adoption remains open.
 
-**Revisit:** When visual assets are designed. Visual work must preserve serious developer-tool trust and the “one good pun, then competent software” rule.
+**Decision:** diffdevil uses E3/W1/T2 with Foundation A: the E3 heavy-face split devil-head symbol with a literal tilde and negative-space gutter, a lowercase W1 technical wordmark, and the T2 tail only on standalone wordmarks. The system is smoky dark by default and system-adaptive with an authored light theme; IBM Plex Sans and IBM Plex Mono are its product typefaces. Magenta carries brand and interaction, never evidence or status. [`../design/`](../design/) is the canonical reusable design package; its SVG assets remain reserved.
+
+**Why:** The selected identity gives diffdevil a memorable authored presence while retaining the serious, precise posture required for developer infrastructure. Keeping the complete supplied reference package avoids reducing the decision to a logo summary or treating a design sheet as executable website source.
+
+**Consequences:** `docs/BRANDING.md`, this decision, the project map, and the licence map name the settled system and its source home. The admitted reference bytes remain preserved; the explicit-light `--accent-text` cascade defect is recorded separately in [`../design/ERRATA.md`](../design/ERRATA.md). The GitHub App uses the same product mark. Favicon, App-upload, and social rasters are reproducible, untracked derivatives of the canonical SVGs unless a named consumer requires one exact source-served raster. Production still owes the derivation path, self-hosted font subsets, runtime theme behavior, and accessibility/responsive qualification through [the visual implementation Work](https://github.com/Wolfsblvt/emergency-meeting/issues/475). This decision does not implement those surfaces or settle later dashboard co-design.
+
+**Rejected or superseded:** The prior open visual-co-design standing is superseded. Generic mascot-led, horror-oriented, or novelty-package visual directions were not selected; neither is a second identity exploration required before source adoption.
+
+**Source:** Wolf's accepted identity/public-surface return, preserved by [the design source-input record](https://github.com/Wolfsblvt/emergency-meeting/issues/483#issuecomment-5722715573) and admitted at `main@efdc72f`; [the reconciliation Work](https://github.com/Wolfsblvt/emergency-meeting/issues/474) carries this durable-source update. Reopen only for a material product or visual-system change.
 
 ### D016: Separate qualification from publication
 
