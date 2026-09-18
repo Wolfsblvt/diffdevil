@@ -1,0 +1,2350 @@
+{
+  "kind": "diffdevil.example-observations",
+  "schemaVersion": "1.0",
+  "generatedFrom": {
+    "catalogueSha256": "ec1b12a55cf2c28cfd8ef57e1c2eebf561c544cd451035398eb653814cb35aed",
+    "policiesSha256": "baaac708e018c311e1b698f396bc9b2a3dd9554a11543368c88fa054ed22b523"
+  },
+  "observations": [
+    {
+      "entry": "lockfile-scope",
+      "variant": "all",
+      "source": "vite-18968",
+      "policy": "standard",
+      "reportId": "report-0c4cd593f2d9890bd54f66fbb3d9c563366b0257803ea55337b9a9efeec1726e",
+      "policyId": "policy-f3923794bc7ff2583759a68e3ea6a0cfb2bb62b15cea779f05724a43daf88314",
+      "measurement": {
+        "status": "exact",
+        "reasons": []
+      },
+      "fileSet": {
+        "complete": true,
+        "total": {
+          "status": "exact",
+          "value": 2
+        }
+      },
+      "totals": {
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 22
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 3
+          },
+          "churn": {
+            "status": "exact",
+            "value": 25
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 19
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 3
+          },
+          "changed": {
+            "status": "exact",
+            "value": 22
+          }
+        },
+        "files": {
+          "total": {
+            "status": "exact",
+            "value": 2
+          },
+          "excluded": {
+            "status": "exact",
+            "value": 0
+          },
+          "included": {
+            "status": "exact",
+            "value": 2
+          },
+          "added": {
+            "status": "exact",
+            "value": 0
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 2
+          },
+          "renamed": {
+            "status": "exact",
+            "value": 0
+          },
+          "copied": {
+            "status": "exact",
+            "value": 0
+          },
+          "binary": {
+            "status": "exact",
+            "value": 0
+          },
+          "unmeasurable": {
+            "status": "exact",
+            "value": 0
+          }
+        }
+      },
+      "scopes": {},
+      "metrics": {
+        "review": {
+          "status": "exact",
+          "value": 22
+        }
+      },
+      "bands": {
+        "size": {
+          "status": "resolved",
+          "id": "s",
+          "lower": 20,
+          "upper": 100
+        }
+      },
+      "rules": {
+        "size": {
+          "band": {
+            "status": "resolved",
+            "id": "s",
+            "lower": 20,
+            "upper": 100
+          },
+          "disposition": "matched"
+        }
+      },
+      "evidence": []
+    },
+    {
+      "entry": "lockfile-scope",
+      "variant": "without-lockfile",
+      "source": "vite-18968",
+      "policy": "vite-without-lockfile",
+      "reportId": "report-9172d9112607b1f6762874bda36a6018a330ff80d9c2cf8578c38071a515fa90",
+      "policyId": "policy-4ef0ae1793b85e3fd7949acfa293019c9abd2d99fc4548a7f84d8ae19b647ae5",
+      "measurement": {
+        "status": "exact",
+        "reasons": []
+      },
+      "fileSet": {
+        "complete": true,
+        "total": {
+          "status": "exact",
+          "value": 2
+        }
+      },
+      "totals": {
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 1
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 1
+          },
+          "churn": {
+            "status": "exact",
+            "value": 2
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 0
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 1
+          },
+          "changed": {
+            "status": "exact",
+            "value": 1
+          }
+        },
+        "files": {
+          "total": {
+            "status": "exact",
+            "value": 2
+          },
+          "excluded": {
+            "status": "exact",
+            "value": 1
+          },
+          "included": {
+            "status": "exact",
+            "value": 1
+          },
+          "added": {
+            "status": "exact",
+            "value": 0
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 1
+          },
+          "renamed": {
+            "status": "exact",
+            "value": 0
+          },
+          "copied": {
+            "status": "exact",
+            "value": 0
+          },
+          "binary": {
+            "status": "exact",
+            "value": 0
+          },
+          "unmeasurable": {
+            "status": "exact",
+            "value": 0
+          }
+        }
+      },
+      "scopes": {},
+      "metrics": {
+        "review": {
+          "status": "exact",
+          "value": 1
+        }
+      },
+      "bands": {
+        "size": {
+          "status": "resolved",
+          "id": "xs",
+          "lower": 0,
+          "upper": 20
+        }
+      },
+      "rules": {
+        "size": {
+          "band": {
+            "status": "resolved",
+            "id": "xs",
+            "lower": 0,
+            "upper": 20
+          },
+          "disposition": "matched"
+        }
+      },
+      "evidence": []
+    },
+    {
+      "entry": "lockfile-scope",
+      "variant": "comment",
+      "source": "vite-18968",
+      "policy": "comment-only",
+      "reportId": "report-ec574eb88d588d70aab44ed15a0c8b0d895f725b7acb1d4324931b3c9d45bbb8",
+      "policyId": "policy-5b8b45fd604e2df69596fd441f34da26bfb98e9cdf0e8b7aa2707df61b4b16a4",
+      "measurement": {
+        "status": "exact",
+        "reasons": []
+      },
+      "fileSet": {
+        "complete": true,
+        "total": {
+          "status": "exact",
+          "value": 2
+        }
+      },
+      "totals": {
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 22
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 3
+          },
+          "churn": {
+            "status": "exact",
+            "value": 25
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 19
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 3
+          },
+          "changed": {
+            "status": "exact",
+            "value": 22
+          }
+        },
+        "files": {
+          "total": {
+            "status": "exact",
+            "value": 2
+          },
+          "excluded": {
+            "status": "exact",
+            "value": 0
+          },
+          "included": {
+            "status": "exact",
+            "value": 2
+          },
+          "added": {
+            "status": "exact",
+            "value": 0
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 2
+          },
+          "renamed": {
+            "status": "exact",
+            "value": 0
+          },
+          "copied": {
+            "status": "exact",
+            "value": 0
+          },
+          "binary": {
+            "status": "exact",
+            "value": 0
+          },
+          "unmeasurable": {
+            "status": "exact",
+            "value": 0
+          }
+        }
+      },
+      "scopes": {},
+      "metrics": {
+        "removedOrRewritten": {
+          "status": "exact",
+          "value": 3
+        }
+      },
+      "bands": {},
+      "rules": {
+        "changeSummary": {
+          "decision": {
+            "status": "resolved",
+            "value": true
+          },
+          "disposition": "matched"
+        }
+      },
+      "evidence": []
+    },
+    {
+      "entry": "runtime-null-guards",
+      "variant": "all",
+      "source": "runtime-105380",
+      "policy": "standard",
+      "reportId": "report-f15292a3d74c787a15f7c398a7338575b59141d74de6929ce8e7b18af8fa07b5",
+      "policyId": "policy-f3923794bc7ff2583759a68e3ea6a0cfb2bb62b15cea779f05724a43daf88314",
+      "measurement": {
+        "status": "exact",
+        "reasons": []
+      },
+      "fileSet": {
+        "complete": true,
+        "total": {
+          "status": "exact",
+          "value": 21
+        }
+      },
+      "totals": {
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 69
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 236
+          },
+          "churn": {
+            "status": "exact",
+            "value": 305
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 4
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 171
+          },
+          "modified": {
+            "status": "exact",
+            "value": 65
+          },
+          "changed": {
+            "status": "exact",
+            "value": 240
+          }
+        },
+        "files": {
+          "total": {
+            "status": "exact",
+            "value": 21
+          },
+          "excluded": {
+            "status": "exact",
+            "value": 0
+          },
+          "included": {
+            "status": "exact",
+            "value": 21
+          },
+          "added": {
+            "status": "exact",
+            "value": 0
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 21
+          },
+          "renamed": {
+            "status": "exact",
+            "value": 0
+          },
+          "copied": {
+            "status": "exact",
+            "value": 0
+          },
+          "binary": {
+            "status": "exact",
+            "value": 0
+          },
+          "unmeasurable": {
+            "status": "exact",
+            "value": 0
+          }
+        }
+      },
+      "scopes": {},
+      "metrics": {
+        "review": {
+          "status": "exact",
+          "value": 240
+        }
+      },
+      "bands": {
+        "size": {
+          "status": "resolved",
+          "id": "m",
+          "lower": 100,
+          "upper": 500
+        }
+      },
+      "rules": {
+        "size": {
+          "band": {
+            "status": "resolved",
+            "id": "m",
+            "lower": 100,
+            "upper": 500
+          },
+          "disposition": "matched"
+        }
+      },
+      "evidence": []
+    },
+    {
+      "entry": "runtime-null-guards",
+      "variant": "implementation",
+      "source": "runtime-105380",
+      "policy": "runtime-scopes",
+      "reportId": "report-d1595b8ebc24a758694edb137aefa12f7af4e8a6971ce930402bcf480393045d",
+      "policyId": "policy-a0c9efaa2a95085b37517224cb018bef1436a98f12e0c16fd75eba9db915ed6f",
+      "measurement": {
+        "status": "exact",
+        "reasons": []
+      },
+      "fileSet": {
+        "complete": true,
+        "total": {
+          "status": "exact",
+          "value": 21
+        }
+      },
+      "totals": {
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 69
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 236
+          },
+          "churn": {
+            "status": "exact",
+            "value": 305
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 4
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 171
+          },
+          "modified": {
+            "status": "exact",
+            "value": 65
+          },
+          "changed": {
+            "status": "exact",
+            "value": 240
+          }
+        },
+        "files": {
+          "total": {
+            "status": "exact",
+            "value": 21
+          },
+          "excluded": {
+            "status": "exact",
+            "value": 0
+          },
+          "included": {
+            "status": "exact",
+            "value": 21
+          },
+          "added": {
+            "status": "exact",
+            "value": 0
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 21
+          },
+          "renamed": {
+            "status": "exact",
+            "value": 0
+          },
+          "copied": {
+            "status": "exact",
+            "value": 0
+          },
+          "binary": {
+            "status": "exact",
+            "value": 0
+          },
+          "unmeasurable": {
+            "status": "exact",
+            "value": 0
+          }
+        }
+      },
+      "scopes": {
+        "implementation": {
+          "fileIds": [
+            "file-b866ce94f5c028a7d9b068648ce9cb319002c17807cd36ac50d6a2bf6d96bbf6",
+            "file-cd8e63a168a027cc8241c28ab56a15ccb1ed19a93295c2752a782f72713c3a48",
+            "file-0f409c3fe7d15d2911372635916b01276efcb21d64bfa0564cc5ea7a0297038d",
+            "file-433fd10687a46ccea0d17a7ccb2f2a3bfaff8a3151703b6c8dd6d540a8d962ed",
+            "file-fab3d392336e28f12f2cb1b6563cb94fbbdaf96b2f3a0723253f6b083b7e716a",
+            "file-844e866ae852b1697d5a9d66dbafcd67f0c9e8737f15d05bbbfcaf414f4edbdd",
+            "file-2cd0a0d5bdc356e89a36e15bdc082251bf7783ee2bf342d4127171b94312c49e",
+            "file-63e44e8a342cd3c0f3083d953747e7da7f8c1aa05498699bc771cf7b49bdcbad",
+            "file-1711a18db3f6dad22dd1fb3cfbc4e8283a0e703ef9ef40c81e86a7a9cb35034c",
+            "file-8d3cac189d4cf57cdfbc2c63bc76c1f49bad1a89497cbd8a761717a81ebd1dc7",
+            "file-a0962f5094f0c37e1ea6a971976e256f269f7a663010ea6ef859ec68d1d0a88b",
+            "file-10ec3225d938b7ebb4f53864bcbc44f0a3408fe15f2dab782aa73cea17cf7eaf",
+            "file-33de6cce733863c8016a723aee9bcbaf35055814f73d96a5bce337c6147e3cdf",
+            "file-a845a2bd4c44b77e9a0477ccfa9fc20f1578504b74368edb45dd72bee5b1a507",
+            "file-11356b6874f681138adfd34bb56b1373a28246ebb9c54114a61d169988b10903",
+            "file-27bc54ab41a2657f5d8651f1b694dc48690f7ea0d473e2011445fdd9f214e14a",
+            "file-c58d928fdbc94efb2bd2b53b6788f19181f4f6c0f29b88ade7026cd52d9855a4",
+            "file-39a7b6122ebc72ef80260ba32cebf0bb0b4fe06c1a41a7c59c22016c93e97efc",
+            "file-1d2267dd2473b3899f048ed34668cb71113915423b9cba1518536a17a14f69d5",
+            "file-eeef84269f69ea80712e6384617734058d1cb3a375c8e09d35f12502ffedef35"
+          ],
+          "fileSet": {
+            "complete": true,
+            "total": {
+              "status": "exact",
+              "value": 20
+            }
+          },
+          "totals": {
+            "raw": {
+              "added": {
+                "status": "exact",
+                "value": 68
+              },
+              "deleted": {
+                "status": "exact",
+                "value": 235
+              },
+              "churn": {
+                "status": "exact",
+                "value": 303
+              }
+            },
+            "lines": {
+              "added": {
+                "status": "exact",
+                "value": 4
+              },
+              "deleted": {
+                "status": "exact",
+                "value": 171
+              },
+              "modified": {
+                "status": "exact",
+                "value": 64
+              },
+              "changed": {
+                "status": "exact",
+                "value": 239
+              }
+            },
+            "files": {
+              "included": {
+                "status": "exact",
+                "value": 20
+              },
+              "added": {
+                "status": "exact",
+                "value": 0
+              },
+              "deleted": {
+                "status": "exact",
+                "value": 0
+              },
+              "modified": {
+                "status": "exact",
+                "value": 20
+              },
+              "renamed": {
+                "status": "exact",
+                "value": 0
+              },
+              "copied": {
+                "status": "exact",
+                "value": 0
+              },
+              "binary": {
+                "status": "exact",
+                "value": 0
+              },
+              "unmeasurable": {
+                "status": "exact",
+                "value": 0
+              }
+            }
+          }
+        },
+        "tests": {
+          "fileIds": [
+            "file-5df5bd84a5a99530fe85c542d2870c34ada32d99b99ae563f64bf19d0394ddff"
+          ],
+          "fileSet": {
+            "complete": true,
+            "total": {
+              "status": "exact",
+              "value": 1
+            }
+          },
+          "totals": {
+            "raw": {
+              "added": {
+                "status": "exact",
+                "value": 1
+              },
+              "deleted": {
+                "status": "exact",
+                "value": 1
+              },
+              "churn": {
+                "status": "exact",
+                "value": 2
+              }
+            },
+            "lines": {
+              "added": {
+                "status": "exact",
+                "value": 0
+              },
+              "deleted": {
+                "status": "exact",
+                "value": 0
+              },
+              "modified": {
+                "status": "exact",
+                "value": 1
+              },
+              "changed": {
+                "status": "exact",
+                "value": 1
+              }
+            },
+            "files": {
+              "included": {
+                "status": "exact",
+                "value": 1
+              },
+              "added": {
+                "status": "exact",
+                "value": 0
+              },
+              "deleted": {
+                "status": "exact",
+                "value": 0
+              },
+              "modified": {
+                "status": "exact",
+                "value": 1
+              },
+              "renamed": {
+                "status": "exact",
+                "value": 0
+              },
+              "copied": {
+                "status": "exact",
+                "value": 0
+              },
+              "binary": {
+                "status": "exact",
+                "value": 0
+              },
+              "unmeasurable": {
+                "status": "exact",
+                "value": 0
+              }
+            }
+          }
+        }
+      },
+      "metrics": {
+        "implementationChanged": {
+          "status": "exact",
+          "value": 239
+        },
+        "removedOrRewritten": {
+          "status": "exact",
+          "value": 236
+        },
+        "review": {
+          "status": "exact",
+          "value": 240
+        },
+        "testPathChanged": {
+          "status": "exact",
+          "value": 1
+        }
+      },
+      "bands": {
+        "size": {
+          "status": "resolved",
+          "id": "m",
+          "lower": 100,
+          "upper": 500
+        }
+      },
+      "rules": {
+        "size": {
+          "band": {
+            "status": "resolved",
+            "id": "m",
+            "lower": 100,
+            "upper": 500
+          },
+          "disposition": "matched"
+        }
+      },
+      "evidence": []
+    },
+    {
+      "entry": "formatter-and-snapshots",
+      "variant": "all",
+      "source": "prettier-13183",
+      "policy": "standard",
+      "reportId": "report-7bb19337d6ea037b58e73d37a7da5869fa85fd1728a460352264b5c5f5d30e0a",
+      "policyId": "policy-f3923794bc7ff2583759a68e3ea6a0cfb2bb62b15cea779f05724a43daf88314",
+      "measurement": {
+        "status": "exact",
+        "reasons": []
+      },
+      "fileSet": {
+        "complete": true,
+        "total": {
+          "status": "exact",
+          "value": 30
+        }
+      },
+      "totals": {
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 11512
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 3001
+          },
+          "churn": {
+            "status": "exact",
+            "value": 14513
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 9617
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 1106
+          },
+          "modified": {
+            "status": "exact",
+            "value": 1895
+          },
+          "changed": {
+            "status": "exact",
+            "value": 12618
+          }
+        },
+        "files": {
+          "total": {
+            "status": "exact",
+            "value": 30
+          },
+          "excluded": {
+            "status": "exact",
+            "value": 0
+          },
+          "included": {
+            "status": "exact",
+            "value": 30
+          },
+          "added": {
+            "status": "exact",
+            "value": 2
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 28
+          },
+          "renamed": {
+            "status": "exact",
+            "value": 0
+          },
+          "copied": {
+            "status": "exact",
+            "value": 0
+          },
+          "binary": {
+            "status": "exact",
+            "value": 0
+          },
+          "unmeasurable": {
+            "status": "exact",
+            "value": 0
+          }
+        }
+      },
+      "scopes": {},
+      "metrics": {
+        "review": {
+          "status": "exact",
+          "value": 12618
+        }
+      },
+      "bands": {
+        "size": {
+          "status": "resolved",
+          "id": "xl",
+          "lower": 1000
+        }
+      },
+      "rules": {
+        "size": {
+          "band": {
+            "status": "resolved",
+            "id": "xl",
+            "lower": 1000
+          },
+          "disposition": "matched"
+        }
+      },
+      "evidence": []
+    },
+    {
+      "entry": "formatter-and-snapshots",
+      "variant": "scopes",
+      "source": "prettier-13183",
+      "policy": "prettier-scopes",
+      "reportId": "report-3137626f7488a0a2050fd0451c80115a65a36a45a7c4837ff8ff80e52b66ecd4",
+      "policyId": "policy-93476badd929ff7c7056fd12153b4ea3d1a7ec1986f1e415b4a54293e4d41089",
+      "measurement": {
+        "status": "exact",
+        "reasons": []
+      },
+      "fileSet": {
+        "complete": true,
+        "total": {
+          "status": "exact",
+          "value": 30
+        }
+      },
+      "totals": {
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 11512
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 3001
+          },
+          "churn": {
+            "status": "exact",
+            "value": 14513
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 9617
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 1106
+          },
+          "modified": {
+            "status": "exact",
+            "value": 1895
+          },
+          "changed": {
+            "status": "exact",
+            "value": 12618
+          }
+        },
+        "files": {
+          "total": {
+            "status": "exact",
+            "value": 30
+          },
+          "excluded": {
+            "status": "exact",
+            "value": 0
+          },
+          "included": {
+            "status": "exact",
+            "value": 30
+          },
+          "added": {
+            "status": "exact",
+            "value": 2
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 28
+          },
+          "renamed": {
+            "status": "exact",
+            "value": 0
+          },
+          "copied": {
+            "status": "exact",
+            "value": 0
+          },
+          "binary": {
+            "status": "exact",
+            "value": 0
+          },
+          "unmeasurable": {
+            "status": "exact",
+            "value": 0
+          }
+        }
+      },
+      "scopes": {
+        "implementation": {
+          "fileIds": [
+            "file-a8a96e8494ecc8a824667a1f647b4ead0f28c009d618bc17d3bd2a3e007f049f",
+            "file-ef32aeeb9438aecca72b14764f715d741b7aa85b137ceb0606890426c2833908",
+            "file-b9ce7d422473cb80e6c320d8f2ad2f831918c5d7ce35ba2c9abd91325c6c5cd2",
+            "file-09101b9044835d0afc9483ce619c30ecb0211d880d01e12b11815bdbb17e08d0",
+            "file-8f09f113567136bb7099d11b2310424d58d55a44a505709db0d77f991f8ab60a",
+            "file-8acfbca2f69e1403650d4aa1b6444ea080920a3fa9648221a359e0ebbb4ec185",
+            "file-dfa10103400097f6038b290979bf3c13dec44934cb92cd2722fe4f7b478572ff",
+            "file-6d89c8eee46acc85e984acea5c092b6346a4e5d229d275b8c8fc950a5d848bb3",
+            "file-93ad8e1af0c8a711944a164aa2f20c089c01384f15dd554b3bf3570cce287853"
+          ],
+          "fileSet": {
+            "complete": true,
+            "total": {
+              "status": "exact",
+              "value": 9
+            }
+          },
+          "totals": {
+            "raw": {
+              "added": {
+                "status": "exact",
+                "value": 731
+              },
+              "deleted": {
+                "status": "exact",
+                "value": 223
+              },
+              "churn": {
+                "status": "exact",
+                "value": 954
+              }
+            },
+            "lines": {
+              "added": {
+                "status": "exact",
+                "value": 657
+              },
+              "deleted": {
+                "status": "exact",
+                "value": 149
+              },
+              "modified": {
+                "status": "exact",
+                "value": 74
+              },
+              "changed": {
+                "status": "exact",
+                "value": 880
+              }
+            },
+            "files": {
+              "included": {
+                "status": "exact",
+                "value": 9
+              },
+              "added": {
+                "status": "exact",
+                "value": 1
+              },
+              "deleted": {
+                "status": "exact",
+                "value": 0
+              },
+              "modified": {
+                "status": "exact",
+                "value": 8
+              },
+              "renamed": {
+                "status": "exact",
+                "value": 0
+              },
+              "copied": {
+                "status": "exact",
+                "value": 0
+              },
+              "binary": {
+                "status": "exact",
+                "value": 0
+              },
+              "unmeasurable": {
+                "status": "exact",
+                "value": 0
+              }
+            }
+          }
+        },
+        "tests": {
+          "fileIds": [
+            "file-010f9329b534f825acc3ec34c1732243dcb5c55919f73bf079c9a172bfeec5a5",
+            "file-6668d1da58fb684d83e54e1f494777dbf81c72513aac18aedc8f748e24a830e2",
+            "file-68f4e70e2837053f27806436545122331da99e1df36f623933cdfc96cb502dfa",
+            "file-f70359fc94575cd4393f0818255f1533b988c5da886c5cc3c4163e054e034559",
+            "file-e58b8f4d03c65997b060a4e46c15fc5101286c46009775b51d039c40427c955e",
+            "file-99b523bb6ea466790b598036dab37130c273877a37fc409fac0df30ec336ca8f",
+            "file-64e25a3550dfd4be70c72aa1bcb268772d5e5ee5938173d5b6b28e4d4b04dd13",
+            "file-008759ed327c984dc81a3c9f94bacfe3166effeed48f153e5fda06cfd746fb59",
+            "file-42a96710cb965369dbfd58271814c48b1d1c2998293efbdf9435e9eef41be1c6",
+            "file-c28d75478f4180a76256c9a2af0210db587e5f80526bb19d461a25750be69d19",
+            "file-f2ee88d14cafc00f4ae1507549bb354c82d5b695d679777cc6921205d207e123",
+            "file-1bc30c84834d5769f7c9e7b570327c0df91c9c4af6136635ca2743c1f873dc17",
+            "file-c19e61abd525d5ad0012bff35d2298616e63dea8414e4807ff44ae9a60b647d3",
+            "file-2c03b27f79a59fa378c52b4e1c487fd3196e992ff1af9d44148fbb37d3a75c60",
+            "file-99b842f514c81685da56d691dacbbbf134846ded50abddb85c85de7e58cc4ec2",
+            "file-5aa7c91cc5f00b7e9c9691ba3d8fdcdfd8d2a0c0953b899664858b4d6bb8db95",
+            "file-5eeaf860c02d169058e9ad9d0731c7ea49fce69bca10b7538e72c2b75dc07c26",
+            "file-8ebc47a66ba26fbd493e22e7275655d2285a020e0baaafafec5a09f62aee0871"
+          ],
+          "fileSet": {
+            "complete": true,
+            "total": {
+              "status": "exact",
+              "value": 18
+            }
+          },
+          "totals": {
+            "raw": {
+              "added": {
+                "status": "exact",
+                "value": 10729
+              },
+              "deleted": {
+                "status": "exact",
+                "value": 2778
+              },
+              "churn": {
+                "status": "exact",
+                "value": 13507
+              }
+            },
+            "lines": {
+              "added": {
+                "status": "exact",
+                "value": 8908
+              },
+              "deleted": {
+                "status": "exact",
+                "value": 957
+              },
+              "modified": {
+                "status": "exact",
+                "value": 1821
+              },
+              "changed": {
+                "status": "exact",
+                "value": 11686
+              }
+            },
+            "files": {
+              "included": {
+                "status": "exact",
+                "value": 18
+              },
+              "added": {
+                "status": "exact",
+                "value": 0
+              },
+              "deleted": {
+                "status": "exact",
+                "value": 0
+              },
+              "modified": {
+                "status": "exact",
+                "value": 18
+              },
+              "renamed": {
+                "status": "exact",
+                "value": 0
+              },
+              "copied": {
+                "status": "exact",
+                "value": 0
+              },
+              "binary": {
+                "status": "exact",
+                "value": 0
+              },
+              "unmeasurable": {
+                "status": "exact",
+                "value": 0
+              }
+            }
+          }
+        },
+        "snapshots": {
+          "fileIds": [
+            "file-010f9329b534f825acc3ec34c1732243dcb5c55919f73bf079c9a172bfeec5a5",
+            "file-6668d1da58fb684d83e54e1f494777dbf81c72513aac18aedc8f748e24a830e2",
+            "file-f70359fc94575cd4393f0818255f1533b988c5da886c5cc3c4163e054e034559",
+            "file-42a96710cb965369dbfd58271814c48b1d1c2998293efbdf9435e9eef41be1c6",
+            "file-f2ee88d14cafc00f4ae1507549bb354c82d5b695d679777cc6921205d207e123",
+            "file-c19e61abd525d5ad0012bff35d2298616e63dea8414e4807ff44ae9a60b647d3",
+            "file-2c03b27f79a59fa378c52b4e1c487fd3196e992ff1af9d44148fbb37d3a75c60",
+            "file-99b842f514c81685da56d691dacbbbf134846ded50abddb85c85de7e58cc4ec2",
+            "file-5aa7c91cc5f00b7e9c9691ba3d8fdcdfd8d2a0c0953b899664858b4d6bb8db95",
+            "file-5eeaf860c02d169058e9ad9d0731c7ea49fce69bca10b7538e72c2b75dc07c26",
+            "file-8ebc47a66ba26fbd493e22e7275655d2285a020e0baaafafec5a09f62aee0871"
+          ],
+          "fileSet": {
+            "complete": true,
+            "total": {
+              "status": "exact",
+              "value": 11
+            }
+          },
+          "totals": {
+            "raw": {
+              "added": {
+                "status": "exact",
+                "value": 10651
+              },
+              "deleted": {
+                "status": "exact",
+                "value": 2738
+              },
+              "churn": {
+                "status": "exact",
+                "value": 13389
+              }
+            },
+            "lines": {
+              "added": {
+                "status": "exact",
+                "value": 8856
+              },
+              "deleted": {
+                "status": "exact",
+                "value": 943
+              },
+              "modified": {
+                "status": "exact",
+                "value": 1795
+              },
+              "changed": {
+                "status": "exact",
+                "value": 11594
+              }
+            },
+            "files": {
+              "included": {
+                "status": "exact",
+                "value": 11
+              },
+              "added": {
+                "status": "exact",
+                "value": 0
+              },
+              "deleted": {
+                "status": "exact",
+                "value": 0
+              },
+              "modified": {
+                "status": "exact",
+                "value": 11
+              },
+              "renamed": {
+                "status": "exact",
+                "value": 0
+              },
+              "copied": {
+                "status": "exact",
+                "value": 0
+              },
+              "binary": {
+                "status": "exact",
+                "value": 0
+              },
+              "unmeasurable": {
+                "status": "exact",
+                "value": 0
+              }
+            }
+          }
+        }
+      },
+      "metrics": {
+        "implementationChanged": {
+          "status": "exact",
+          "value": 880
+        },
+        "review": {
+          "status": "exact",
+          "value": 12618
+        },
+        "snapshotChanged": {
+          "status": "exact",
+          "value": 11594
+        },
+        "testChanged": {
+          "status": "exact",
+          "value": 11686
+        }
+      },
+      "bands": {
+        "size": {
+          "status": "resolved",
+          "id": "xl",
+          "lower": 1000
+        }
+      },
+      "rules": {
+        "size": {
+          "band": {
+            "status": "resolved",
+            "id": "xl",
+            "lower": 1000
+          },
+          "disposition": "matched"
+        }
+      },
+      "evidence": []
+    },
+    {
+      "entry": "binary-trampolines",
+      "variant": "all",
+      "source": "uv-8637",
+      "policy": "standard",
+      "reportId": "report-c86f9ba7b4d807de163916a81c7b3057cdc7e4a6b4e4811efe34b795c7a3cd21",
+      "policyId": "policy-f3923794bc7ff2583759a68e3ea6a0cfb2bb62b15cea779f05724a43daf88314",
+      "measurement": {
+        "status": "unmeasurable",
+        "reasons": [
+          {
+            "code": "BINARY_LINES_UNDEFINED"
+          }
+        ]
+      },
+      "fileSet": {
+        "complete": true,
+        "total": {
+          "status": "exact",
+          "value": 19
+        }
+      },
+      "totals": {
+        "raw": {
+          "added": {
+            "status": "unmeasurable",
+            "reasons": [
+              {
+                "code": "BINARY_LINES_UNDEFINED"
+              }
+            ]
+          },
+          "deleted": {
+            "status": "unmeasurable",
+            "reasons": [
+              {
+                "code": "BINARY_LINES_UNDEFINED"
+              }
+            ]
+          },
+          "churn": {
+            "status": "unmeasurable",
+            "reasons": [
+              {
+                "code": "BINARY_LINES_UNDEFINED"
+              }
+            ]
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "unmeasurable",
+            "reasons": [
+              {
+                "code": "BINARY_LINES_UNDEFINED"
+              }
+            ]
+          },
+          "deleted": {
+            "status": "unmeasurable",
+            "reasons": [
+              {
+                "code": "BINARY_LINES_UNDEFINED"
+              }
+            ]
+          },
+          "modified": {
+            "status": "unmeasurable",
+            "reasons": [
+              {
+                "code": "BINARY_LINES_UNDEFINED"
+              }
+            ]
+          },
+          "changed": {
+            "status": "unmeasurable",
+            "reasons": [
+              {
+                "code": "BINARY_LINES_UNDEFINED"
+              }
+            ]
+          }
+        },
+        "files": {
+          "total": {
+            "status": "exact",
+            "value": 19
+          },
+          "excluded": {
+            "status": "exact",
+            "value": 0
+          },
+          "included": {
+            "status": "exact",
+            "value": 19
+          },
+          "added": {
+            "status": "exact",
+            "value": 2
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 1
+          },
+          "modified": {
+            "status": "exact",
+            "value": 16
+          },
+          "renamed": {
+            "status": "exact",
+            "value": 0
+          },
+          "copied": {
+            "status": "exact",
+            "value": 0
+          },
+          "binary": {
+            "status": "exact",
+            "value": 6
+          },
+          "unmeasurable": {
+            "status": "exact",
+            "value": 6
+          }
+        }
+      },
+      "scopes": {},
+      "metrics": {
+        "review": {
+          "status": "unmeasurable",
+          "reasons": [
+            {
+              "code": "BINARY_LINES_UNDEFINED"
+            }
+          ]
+        }
+      },
+      "bands": {
+        "size": {
+          "status": "unknown",
+          "candidates": [
+            "xs",
+            "s",
+            "m",
+            "l",
+            "xl"
+          ],
+          "reasons": [
+            {
+              "code": "BINARY_LINES_UNDEFINED"
+            },
+            {
+              "code": "BAND_UNRESOLVED"
+            }
+          ]
+        }
+      },
+      "rules": {
+        "size": {
+          "band": {
+            "status": "unknown",
+            "candidates": [
+              "xs",
+              "s",
+              "m",
+              "l",
+              "xl"
+            ],
+            "reasons": [
+              {
+                "code": "BINARY_LINES_UNDEFINED"
+              },
+              {
+                "code": "BAND_UNRESOLVED"
+              }
+            ]
+          },
+          "disposition": "fallback"
+        }
+      },
+      "evidence": []
+    },
+    {
+      "entry": "binary-trampolines",
+      "variant": "text",
+      "source": "uv-8637",
+      "policy": "uv-without-executables",
+      "reportId": "report-e5b16cdf16650fc67a52b9c8549b6721324a1a2eb1f2cb6e3ac5509b06b9a1ac",
+      "policyId": "policy-4ee65571e5d3f8e3d88f308059e67f3599445caccd2096959da71683c576be72",
+      "measurement": {
+        "status": "exact",
+        "reasons": []
+      },
+      "fileSet": {
+        "complete": true,
+        "total": {
+          "status": "exact",
+          "value": 19
+        }
+      },
+      "totals": {
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 564
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 474
+          },
+          "churn": {
+            "status": "exact",
+            "value": 1038
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 517
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 427
+          },
+          "modified": {
+            "status": "exact",
+            "value": 47
+          },
+          "changed": {
+            "status": "exact",
+            "value": 991
+          }
+        },
+        "files": {
+          "total": {
+            "status": "exact",
+            "value": 19
+          },
+          "excluded": {
+            "status": "exact",
+            "value": 6
+          },
+          "included": {
+            "status": "exact",
+            "value": 13
+          },
+          "added": {
+            "status": "exact",
+            "value": 2
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 1
+          },
+          "modified": {
+            "status": "exact",
+            "value": 10
+          },
+          "renamed": {
+            "status": "exact",
+            "value": 0
+          },
+          "copied": {
+            "status": "exact",
+            "value": 0
+          },
+          "binary": {
+            "status": "exact",
+            "value": 0
+          },
+          "unmeasurable": {
+            "status": "exact",
+            "value": 0
+          }
+        }
+      },
+      "scopes": {},
+      "metrics": {
+        "review": {
+          "status": "exact",
+          "value": 991
+        }
+      },
+      "bands": {
+        "size": {
+          "status": "resolved",
+          "id": "l",
+          "lower": 500,
+          "upper": 1000
+        }
+      },
+      "rules": {
+        "size": {
+          "band": {
+            "status": "resolved",
+            "id": "l",
+            "lower": 500,
+            "upper": 1000
+          },
+          "disposition": "matched"
+        }
+      },
+      "evidence": []
+    },
+    {
+      "entry": "same-total-different-spread",
+      "variant": "concentrated",
+      "source": "spread-concentrated",
+      "policy": "standard",
+      "reportId": "report-45d75c4520a9cd6f1118878617426faf58c23778deb7d886e25c483bac484609",
+      "policyId": "policy-f3923794bc7ff2583759a68e3ea6a0cfb2bb62b15cea779f05724a43daf88314",
+      "measurement": {
+        "status": "exact",
+        "reasons": []
+      },
+      "fileSet": {
+        "complete": true,
+        "total": {
+          "status": "exact",
+          "value": 2
+        }
+      },
+      "totals": {
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 24
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "churn": {
+            "status": "exact",
+            "value": 24
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 24
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 0
+          },
+          "changed": {
+            "status": "exact",
+            "value": 24
+          }
+        },
+        "files": {
+          "total": {
+            "status": "exact",
+            "value": 2
+          },
+          "excluded": {
+            "status": "exact",
+            "value": 0
+          },
+          "included": {
+            "status": "exact",
+            "value": 2
+          },
+          "added": {
+            "status": "exact",
+            "value": 2
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 0
+          },
+          "renamed": {
+            "status": "exact",
+            "value": 0
+          },
+          "copied": {
+            "status": "exact",
+            "value": 0
+          },
+          "binary": {
+            "status": "exact",
+            "value": 0
+          },
+          "unmeasurable": {
+            "status": "exact",
+            "value": 0
+          }
+        }
+      },
+      "scopes": {},
+      "metrics": {
+        "review": {
+          "status": "exact",
+          "value": 24
+        }
+      },
+      "bands": {
+        "size": {
+          "status": "resolved",
+          "id": "s",
+          "lower": 20,
+          "upper": 100
+        }
+      },
+      "rules": {
+        "size": {
+          "band": {
+            "status": "resolved",
+            "id": "s",
+            "lower": 20,
+            "upper": 100
+          },
+          "disposition": "matched"
+        }
+      },
+      "evidence": []
+    },
+    {
+      "entry": "same-total-different-spread",
+      "variant": "distributed",
+      "source": "spread-distributed",
+      "policy": "standard",
+      "reportId": "report-bd15df4581de3ddeeb2fc937b35f23ad92bf9ea28457ed7b2c1fd53049dd627a",
+      "policyId": "policy-f3923794bc7ff2583759a68e3ea6a0cfb2bb62b15cea779f05724a43daf88314",
+      "measurement": {
+        "status": "exact",
+        "reasons": []
+      },
+      "fileSet": {
+        "complete": true,
+        "total": {
+          "status": "exact",
+          "value": 12
+        }
+      },
+      "totals": {
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 24
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "churn": {
+            "status": "exact",
+            "value": 24
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 24
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 0
+          },
+          "changed": {
+            "status": "exact",
+            "value": 24
+          }
+        },
+        "files": {
+          "total": {
+            "status": "exact",
+            "value": 12
+          },
+          "excluded": {
+            "status": "exact",
+            "value": 0
+          },
+          "included": {
+            "status": "exact",
+            "value": 12
+          },
+          "added": {
+            "status": "exact",
+            "value": 12
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 0
+          },
+          "renamed": {
+            "status": "exact",
+            "value": 0
+          },
+          "copied": {
+            "status": "exact",
+            "value": 0
+          },
+          "binary": {
+            "status": "exact",
+            "value": 0
+          },
+          "unmeasurable": {
+            "status": "exact",
+            "value": 0
+          }
+        }
+      },
+      "scopes": {},
+      "metrics": {
+        "review": {
+          "status": "exact",
+          "value": 24
+        }
+      },
+      "bands": {
+        "size": {
+          "status": "resolved",
+          "id": "s",
+          "lower": 20,
+          "upper": 100
+        }
+      },
+      "rules": {
+        "size": {
+          "band": {
+            "status": "resolved",
+            "id": "s",
+            "lower": 20,
+            "upper": 100
+          },
+          "disposition": "matched"
+        }
+      },
+      "evidence": []
+    },
+    {
+      "entry": "bounded-decisions",
+      "variant": "proven",
+      "source": "bounded-report",
+      "policy": "bounded-proven",
+      "reportId": "report-61c4b12f29d16621ac6c29b60da3c181b7196c3bab2c7bb2355add01ec6da306",
+      "policyId": "policy-c553b851e32b6ae54ec906f0d6ae4d27b9d0eb53f786005d935b5f455191f072",
+      "measurement": {
+        "status": "bounded",
+        "reasons": [
+          {
+            "code": "PATCH_INCOMPLETE"
+          }
+        ]
+      },
+      "fileSet": {
+        "complete": true,
+        "total": {
+          "status": "exact",
+          "value": 1
+        }
+      },
+      "totals": {
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 60
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 10
+          },
+          "churn": {
+            "status": "exact",
+            "value": 70
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "bounded",
+            "lower": 50,
+            "upper": 60
+          },
+          "deleted": {
+            "status": "bounded",
+            "lower": 0,
+            "upper": 10
+          },
+          "modified": {
+            "status": "bounded",
+            "lower": 0,
+            "upper": 10
+          },
+          "changed": {
+            "status": "bounded",
+            "lower": 60,
+            "upper": 70
+          }
+        },
+        "files": {
+          "total": {
+            "status": "exact",
+            "value": 1
+          },
+          "excluded": {
+            "status": "exact",
+            "value": 0
+          },
+          "included": {
+            "status": "exact",
+            "value": 1
+          },
+          "added": {
+            "status": "exact",
+            "value": 0
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 1
+          },
+          "renamed": {
+            "status": "exact",
+            "value": 0
+          },
+          "copied": {
+            "status": "exact",
+            "value": 0
+          },
+          "binary": {
+            "status": "exact",
+            "value": 0
+          },
+          "unmeasurable": {
+            "status": "exact",
+            "value": 0
+          }
+        }
+      },
+      "scopes": {},
+      "metrics": {
+        "changed": {
+          "status": "bounded",
+          "lower": 60,
+          "upper": 70
+        }
+      },
+      "bands": {
+        "example": {
+          "status": "resolved",
+          "id": "below-100",
+          "lower": 0,
+          "upper": 100
+        }
+      },
+      "rules": {
+        "exampleBand": {
+          "band": {
+            "status": "resolved",
+            "id": "below-100",
+            "lower": 0,
+            "upper": 100
+          },
+          "disposition": "matched"
+        }
+      },
+      "evidence": []
+    },
+    {
+      "entry": "bounded-decisions",
+      "variant": "held",
+      "source": "bounded-report",
+      "policy": "bounded-held",
+      "reportId": "report-79daa1aa9c6f605e63a2477c3a470aaf72ceecaf4cad2e669ef8e396040e131c",
+      "policyId": "policy-20c29421f110625e91a78d720a234daadaeb1e26cef8b2a0a53dbd85c9609c29",
+      "measurement": {
+        "status": "bounded",
+        "reasons": [
+          {
+            "code": "PATCH_INCOMPLETE"
+          }
+        ]
+      },
+      "fileSet": {
+        "complete": true,
+        "total": {
+          "status": "exact",
+          "value": 1
+        }
+      },
+      "totals": {
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 60
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 10
+          },
+          "churn": {
+            "status": "exact",
+            "value": 70
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "bounded",
+            "lower": 50,
+            "upper": 60
+          },
+          "deleted": {
+            "status": "bounded",
+            "lower": 0,
+            "upper": 10
+          },
+          "modified": {
+            "status": "bounded",
+            "lower": 0,
+            "upper": 10
+          },
+          "changed": {
+            "status": "bounded",
+            "lower": 60,
+            "upper": 70
+          }
+        },
+        "files": {
+          "total": {
+            "status": "exact",
+            "value": 1
+          },
+          "excluded": {
+            "status": "exact",
+            "value": 0
+          },
+          "included": {
+            "status": "exact",
+            "value": 1
+          },
+          "added": {
+            "status": "exact",
+            "value": 0
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 1
+          },
+          "renamed": {
+            "status": "exact",
+            "value": 0
+          },
+          "copied": {
+            "status": "exact",
+            "value": 0
+          },
+          "binary": {
+            "status": "exact",
+            "value": 0
+          },
+          "unmeasurable": {
+            "status": "exact",
+            "value": 0
+          }
+        }
+      },
+      "scopes": {},
+      "metrics": {
+        "changed": {
+          "status": "bounded",
+          "lower": 60,
+          "upper": 70
+        }
+      },
+      "bands": {
+        "example": {
+          "status": "unknown",
+          "candidates": [
+            "below-65",
+            "at-least-65"
+          ],
+          "reasons": [
+            {
+              "code": "BAND_UNRESOLVED"
+            }
+          ]
+        }
+      },
+      "rules": {
+        "exampleBand": {
+          "band": {
+            "status": "unknown",
+            "candidates": [
+              "below-65",
+              "at-least-65"
+            ],
+            "reasons": [
+              {
+                "code": "BAND_UNRESOLVED"
+              }
+            ]
+          },
+          "disposition": "held"
+        }
+      },
+      "evidence": []
+    },
+    {
+      "entry": "incomplete-file-set",
+      "variant": "observed",
+      "source": "incomplete-report",
+      "policy": "standard",
+      "reportId": "report-0a67940a794485cdfb5d9829e945ab61bff65243517e4fdcac568ac9cbb85020",
+      "policyId": "policy-f3923794bc7ff2583759a68e3ea6a0cfb2bb62b15cea779f05724a43daf88314",
+      "measurement": {
+        "status": "unknown",
+        "reasons": [
+          {
+            "code": "FILE_SET_INCOMPLETE"
+          }
+        ]
+      },
+      "fileSet": {
+        "complete": false,
+        "total": {
+          "status": "exact",
+          "value": 3
+        }
+      },
+      "totals": {
+        "raw": {
+          "added": {
+            "status": "unknown",
+            "lower": 5,
+            "reasons": [
+              {
+                "code": "FILE_SET_INCOMPLETE"
+              }
+            ]
+          },
+          "deleted": {
+            "status": "unknown",
+            "lower": 0,
+            "reasons": [
+              {
+                "code": "FILE_SET_INCOMPLETE"
+              }
+            ]
+          },
+          "churn": {
+            "status": "unknown",
+            "lower": 5,
+            "reasons": [
+              {
+                "code": "FILE_SET_INCOMPLETE"
+              }
+            ]
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "unknown",
+            "lower": 5,
+            "reasons": [
+              {
+                "code": "FILE_SET_INCOMPLETE"
+              }
+            ]
+          },
+          "deleted": {
+            "status": "unknown",
+            "lower": 0,
+            "reasons": [
+              {
+                "code": "FILE_SET_INCOMPLETE"
+              }
+            ]
+          },
+          "modified": {
+            "status": "unknown",
+            "lower": 0,
+            "reasons": [
+              {
+                "code": "FILE_SET_INCOMPLETE"
+              }
+            ]
+          },
+          "changed": {
+            "status": "unknown",
+            "lower": 5,
+            "reasons": [
+              {
+                "code": "FILE_SET_INCOMPLETE"
+              }
+            ]
+          }
+        },
+        "files": {
+          "total": {
+            "status": "exact",
+            "value": 3
+          },
+          "excluded": {
+            "status": "exact",
+            "value": 0
+          },
+          "included": {
+            "status": "exact",
+            "value": 3
+          },
+          "added": {
+            "status": "bounded",
+            "lower": 0,
+            "upper": 2
+          },
+          "deleted": {
+            "status": "bounded",
+            "lower": 0,
+            "upper": 2
+          },
+          "modified": {
+            "status": "bounded",
+            "lower": 1,
+            "upper": 3
+          },
+          "renamed": {
+            "status": "bounded",
+            "lower": 0,
+            "upper": 2
+          },
+          "copied": {
+            "status": "bounded",
+            "lower": 0,
+            "upper": 2
+          },
+          "binary": {
+            "status": "bounded",
+            "lower": 0,
+            "upper": 2
+          },
+          "unmeasurable": {
+            "status": "bounded",
+            "lower": 0,
+            "upper": 2
+          }
+        }
+      },
+      "scopes": {},
+      "metrics": {
+        "review": {
+          "status": "unknown",
+          "reasons": [
+            {
+              "code": "FILE_SET_INCOMPLETE"
+            }
+          ],
+          "lower": 5
+        }
+      },
+      "bands": {
+        "size": {
+          "status": "unknown",
+          "candidates": [
+            "xs",
+            "s",
+            "m",
+            "l",
+            "xl"
+          ],
+          "reasons": [
+            {
+              "code": "FILE_SET_INCOMPLETE"
+            },
+            {
+              "code": "BAND_UNRESOLVED"
+            }
+          ]
+        }
+      },
+      "rules": {
+        "size": {
+          "band": {
+            "status": "unknown",
+            "candidates": [
+              "xs",
+              "s",
+              "m",
+              "l",
+              "xl"
+            ],
+            "reasons": [
+              {
+                "code": "FILE_SET_INCOMPLETE"
+              },
+              {
+                "code": "BAND_UNRESOLVED"
+              }
+            ]
+          },
+          "disposition": "fallback"
+        }
+      },
+      "evidence": []
+    }
+  ]
+}

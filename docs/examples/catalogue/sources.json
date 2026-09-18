@@ -1,0 +1,13 @@
+{
+  "formatVersion": 1,
+  "sources": {
+    "vite-18968": { "kind": "curated-pr", "repository": "vitejs/vite", "pullRequest": 18968, "url": "https://github.com/vitejs/vite/pull/18968", "baseTip": "ccd1a4c4145ee1069d7baea56981a0322e7be864", "mergeBase": "ccd1a4c4145ee1069d7baea56981a0322e7be864", "head": "48db5c9555f2d43cb88367506e79854fce8ed47d", "noticePath": "LICENSE", "noticeSha": "b7e97ecb6aa4dd70b3e3a637afa2ae16feb7cd12", "notice": "MIT" },
+    "runtime-105380": { "kind": "curated-pr", "repository": "dotnet/runtime", "pullRequest": 105380, "url": "https://github.com/dotnet/runtime/pull/105380", "baseTip": "7d64842fdc41340440b00795c3f39f4c917acc62", "mergeBase": "7d64842fdc41340440b00795c3f39f4c917acc62", "head": "83e7ccfa9a4122c4de2fd06ca152d6a34f673257", "noticePath": "LICENSE.TXT", "noticeSha": "984713a49622a96da110443c15477613bc12656b", "notice": "MIT" },
+    "prettier-13183": { "kind": "curated-pr", "repository": "prettier/prettier", "pullRequest": 13183, "url": "https://github.com/prettier/prettier/pull/13183", "baseTip": "f25a592f571257cef4847e27820e86945c7fcb68", "mergeBase": "f25a592f571257cef4847e27820e86945c7fcb68", "head": "c7d5925715a31d3c83073e03de1b90673776b691", "noticePath": "LICENSE", "noticeSha": "5767e34d30ab78796220f9492726dd2f677d4166", "notice": "MIT" },
+    "uv-8637": { "kind": "curated-pr", "repository": "astral-sh/uv", "pullRequest": 8637, "url": "https://github.com/astral-sh/uv/pull/8637", "baseTip": "0044000ed3e8bcf2a1f9b133b2d3b59c9a016271", "mergeBase": "7948441121b1d54655caa927b3eaadaf90717327", "head": "cbb90bad697c04aa68be259fa36e34fe847c208a", "noticePath": "LICENSE-MIT", "noticeSha": "ec2236bb89949a3353f85b9884c2c453b7ebe36e", "notice": "MIT" },
+    "spread-concentrated": { "kind": "unified-diff", "path": "docs/examples/catalogue/fixtures/spread-concentrated.diff" },
+    "spread-distributed": { "kind": "unified-diff", "path": "docs/examples/catalogue/fixtures/spread-distributed.diff" },
+    "bounded-report": { "kind": "report", "path": "docs/examples/reports/bounded.json" },
+    "incomplete-report": { "kind": "report", "path": "docs/examples/reports/incomplete.json" }
+  }
+}
