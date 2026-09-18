@@ -38,6 +38,8 @@ when a custom formula, scope, or policy needs it.
 | Optional managed App experience and architecture (selected, not deployed) | [`integration/github-app.md`](integration/github-app.md) |
 | Hosted data, opt-in history, and retention contract | [`PRIVACY-AND-DATA.md`](PRIVACY-AND-DATA.md) |
 | Complete public playground experience (beyond the local measurement form) | [`integration/playground.md`](integration/playground.md) |
+| Public website source, build and local qualification (not deployed) | [`../apps/website/README.md`](../apps/website/README.md) |
+| Playground example catalogue and snapshot contract | [`../apps/website/catalogue/README.md`](../apps/website/catalogue/README.md) |
 
 ## Use diffdevil
 

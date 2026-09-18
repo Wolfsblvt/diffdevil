@@ -34,6 +34,7 @@ The first tranche:
 - calls the production `GitHubClient` and `analyzeGitHub` engine;
 - exposes replacement-aware and raw measurements, evidence standing, and a compact file projection;
 - publishes a versioned success/error envelope defined by [`contracts/response-v1.schema.json`](contracts/response-v1.schema.json);
+- serves the complete engine report at `GET /api/report?url=` for browser-side policy replay (the public website playground re-evaluates edited policy locally against it; a pull request above the replay file ceiling is refused, not truncated) and the current head/base at `GET /api/head?url=` for snapshot freshness, both under [`contracts/replay-response-v1.schema.json`](contracts/replay-response-v1.schema.json), with `access-control-allow-origin: *` on the read-only JSON;
 - performs no provider writes and stores no analysis history; and
 - links to maintained repository documentation rather than copying it into a second knowledge base.
 

@@ -1,8 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { GitHubClient, analyzeGitHub } from '../../dist/lib/index.js';
+import { readPullSnapshot } from '../../dist/lib/github/index.js';
 
 const DEFAULT_FILE_LIMIT = 250;
+/** A complete report is returned for browser-side replay; beyond this many files the route refuses instead of truncating. */
+const DEFAULT_REPORT_FILE_LIMIT = 2000;
 const MAX_INPUT_LENGTH = 2048;
 const RESPONSE_KIND = 'diffdevil.playground-response';
 const RESPONSE_VERSION = '1.0';
@@ -28,6 +31,12 @@ export function unsupportedMethodResponse(method = 'GET') {
 
 function playgroundSuccess(canonicalUrl, analysis) {
   return { kind: RESPONSE_KIND, schemaVersion: RESPONSE_VERSION, ok: true, status: 200, canonicalUrl, analysis };
+}
+function replaySuccess(canonicalUrl, report) {
+  return { kind: RESPONSE_KIND, schemaVersion: RESPONSE_VERSION, ok: true, status: 200, canonicalUrl, report };
+}
+function headSuccess(canonicalUrl, snapshot) {
+  return { kind: RESPONSE_KIND, schemaVersion: RESPONSE_VERSION, ok: true, status: 200, canonicalUrl, head: { head: snapshot.head, base: snapshot.base, state: snapshot.state, changedFiles: snapshot.changedFiles } };
 }
 
 function createPublicGitHubClient() {
@@ -126,6 +135,43 @@ export async function analyzePublicPullRequest(input, options = {}) {
   return playgroundSuccess(parsed.canonicalUrl, projectPlaygroundReport(result.value, { maximumFiles: options.maximumFiles }));
 }
 
+/**
+ * The complete engine report for one public pull request. The website playground
+ * re-evaluates policy edits against it locally through the same engine, so nothing
+ * is refetched when a threshold or exclusion changes. Same trust boundary as analyze:
+ * public reads, no writes, no visitor credential.
+ */
+export async function replayPublicPullRequest(input, options = {}) {
+  const parsed = parsePublicPullRequestUrl(input);
+  if (!parsed.ok) return playgroundError(400, 'E_PLAYGROUND_URL', parsed.message);
+  const limit = options.maximumReportFiles ?? DEFAULT_REPORT_FILE_LIMIT;
+  const client = options.client ?? createPublicGitHubClient();
+  const result = await analyzeGitHub(client, parsed.target);
+  if (!result.ok) {
+    const diagnostic = result.diagnostics[0] ?? { code: 'E_INTERNAL', message: 'Analysis failed without a diagnostic.' };
+    const error = publicAnalysisError(diagnostic);
+    return playgroundError(errorStatus(diagnostic.code), error.code, error.message);
+  }
+  if (result.value.files.length > limit) {
+    return playgroundError(413, 'E_LIMIT', `The pull request has ${result.value.files.length} changed files; the playground replays at most ${limit}. Analyze it locally with the CLI.`);
+  }
+  return replaySuccess(parsed.canonicalUrl, result.value);
+}
+
+/** Current head/base of a public pull request; one request, no diff acquisition. */
+export async function readPublicPullRequestHead(input, options = {}) {
+  const parsed = parsePublicPullRequestUrl(input);
+  if (!parsed.ok) return playgroundError(400, 'E_PLAYGROUND_URL', parsed.message);
+  const client = options.client ?? createPublicGitHubClient();
+  try {
+    return headSuccess(parsed.canonicalUrl, await readPullSnapshot(client, parsed.target));
+  } catch (error) {
+    const code = typeof error?.code === 'string' ? error.code : error?.status === 404 ? 'E_GITHUB_REQUEST' : 'E_INTERNAL';
+    const diagnostic = code === 'E_INTERNAL' ? { code, message: 'Analysis failed unexpectedly.' } : { code, message: typeof error?.message === 'string' ? error.message : 'GitHub did not answer.' };
+    return playgroundError(errorStatus(code), diagnostic.code, diagnostic.message);
+  }
+}
+
 export function commonHeaders(contentType) {
   return {
     'content-type': contentType,
@@ -142,6 +188,8 @@ export function jsonResponse(status, value, method = 'GET') {
   const headers = new Headers({
     ...commonHeaders('application/json; charset=utf-8'),
     'cache-control': 'no-store',
+    // Public read-only JSON; the static website is served from another origin.
+    'access-control-allow-origin': '*',
     'content-length': String(new TextEncoder().encode(body).byteLength)
   });
   return new Response(method === 'HEAD' ? null : body, { status, headers });
@@ -166,6 +214,18 @@ export async function handlePlaygroundRequest(request, options = {}) {
       maximumFiles: options.maximumFiles
     }));
     const result = await analyze(url.searchParams.get('url') ?? '');
+    return jsonResponse(result.status, result, method);
+  }
+
+  if (url.pathname === '/api/report' || url.pathname === '/api/head') {
+    if (method === 'HEAD') {
+      return jsonResponse(405, playgroundError(405, 'E_METHOD', 'Request with GET.'), method);
+    }
+    const client = options.clientFactory?.() ?? createPublicGitHubClient();
+    const value = url.searchParams.get('url') ?? '';
+    const result = url.pathname === '/api/report'
+      ? await (options.replay ?? (input => replayPublicPullRequest(input, { client, maximumReportFiles: options.maximumReportFiles })))(value)
+      : await (options.head ?? (input => readPublicPullRequestHead(input, { client })))(value);
     return jsonResponse(result.status, result, method);
   }
 

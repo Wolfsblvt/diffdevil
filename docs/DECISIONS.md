@@ -567,3 +567,27 @@ the distributed Action is rerun with both real tokens.
 **Current consequence.** [Privacy and data](PRIVACY-AND-DATA.md#offboarding-transitions) owns the collection stop, independent-admin grace, expiry/deletion, and restore-tombstone contract. [App architecture](integration/github-app.md#permissions-and-current-access) makes that grace the sole post-installation authorization exception and keeps queued work terminal after access loss. These are selected product mechanics requiring implementation and qualification, not a deployed retention or deletion claim.
 
 **Sources.** Owner-directed disposition of Katja's one-round review and Nyxara's selected correction in [Issue #471](https://github.com/Wolfsblvt/emergency-meeting/issues/471); [quantitative history decision](#d034-separate-seven-day-recovery-from-opted-in-quantitative-history); [Privacy and data](PRIVACY-AND-DATA.md); [App architecture](integration/github-app.md). This is a selected engineering/product contract, not a legal privacy notice or live deletion evidence.
+
+## D037: Render the manual from repository Markdown through a generated, manifest-selected collection
+
+**Decision.** The public website's manual is Starlight content generated at build time from an explicit manifest of repository Markdown sources (`apps/website/docs-manifest.mjs` → `tools/website-docs.mjs`). Each page keeps its source body, lifts the H1 into the title, rewrites relative links to site routes for selected pages and to the repository on GitHub for everything else, and carries provenance (source path, edit URL, applicable version, executed-example standing) in front matter. The generated collection is ignored build input. Internal records (Vision, Direction, Decisions, qualification, dated references, publication procedure) are not published.
+
+**Why.** The repository Markdown and tested examples are canonical whether read on GitHub or on the site. Copying prose into a website tree would create a second manual that drifts; publishing `docs/**` through a glob would expose internal records and force website constraints onto every file. A manifest makes the reader-facing selection explicit and reviewable, and a generator keeps the site's front matter and link rewriting out of the maintained sources.
+
+**Rejected.** A second website-owned copy of the manual; a broad `docs/**` glob; symlinks (fragile on Windows); a custom content loader that would bypass Starlight's maintained document pipeline.
+
+**Current consequence.** `npm run website:build` and `check:website` regenerate the collection; the manifest is tested for existing sources and unique slugs. Optional sources (the Agent Skill, setup instructions) render and are served raw only when present. The playground's "Try it" companions are added by the generator where a page links to an asset the playground carries as a fixture.
+
+**Sources.** [Documentation design](DOCUMENTATION.md); [website README](../apps/website/README.md); the accepted public-surface design's build notes.
+
+## D038: Run the shared engine in the browser for the playground; replay saved reports instead of refetching
+
+**Decision.** The website playground evaluates policy in the browser with the same engine the CLI ships, bundled from `dist/lib` through two small stand-ins for its only Node-bound imports (a synchronous SHA-256 for content identities and a proxy guard). Public pull requests are acquired once through the playground API's `/api/report` route, which returns the complete engine report; fixtures and curated real-PR snapshots ship their reports as static documents. Configuration edits re-evaluate that acquired report locally; nothing is refetched. Curated snapshots are captured and audited by a local maintainer tool, never by a service.
+
+**Why.** The playground must show the real presenters, not a website re-rendering, and must let a visitor change exclusions, thresholds and whole policies against an already acquired comparison. A saved `diffdevil.report` carries the per-file facts the engine needs to recompute inclusion, scopes, metrics, bands, rules and plans, exactly as `--report` does in the CLI. Evaluating on the client keeps public compute and the shared GitHub read allowance out of every keystroke and keeps curated examples working without any server.
+
+**Rejected.** A website-only measurement implementation; an evaluation API that uploads the report on every edit; caching only final numbers (insufficient for changed exclusions or custom metrics); a hosted engine fork for the browser.
+
+**Current consequence.** `src/diffdevil/policy/yaml.ts` counts bytes with the portable helper instead of `Buffer`; the Action runtime was regenerated. The playground API gained `/api/report` (refusing, not truncating, above a file ceiling) and `/api/head`, with CORS on its read-only JSON. The engine's browser bundle is one lazy chunk on the playground page only.
+
+**Sources.** [Playground experience](integration/playground.md); [App architecture](integration/github-app.md#shared-engine-worker-prerequisite); the design-discovered replay consequence recorded during the public-surface co-design; `apps/website/website.test.mjs` and `apps/website/qa/run.mjs`.

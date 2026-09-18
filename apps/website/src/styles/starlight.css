@@ -1,0 +1,76 @@
+/* SPDX-License-Identifier: AGPL-3.0-only */
+/* Map Starlight's theme hooks onto the diffdevil tokens so the manual follows the
+   site's dark/light/system theme, typography and machine surfaces. Starlight's own
+   light values are keyed on [data-theme="light"] only; ours also follow the system
+   preference, so every mapping goes through the shared custom properties. */
+:root, [data-theme="dark"], [data-theme="light"] {
+  --sl-font: var(--font-ui);
+  --sl-font-mono: var(--font-mono);
+  --sl-color-white: var(--fg);
+  --sl-color-gray-1: var(--fg);
+  --sl-color-gray-2: var(--fg-2);
+  --sl-color-gray-3: var(--fg-2);
+  --sl-color-gray-4: var(--fg-3);
+  --sl-color-gray-5: var(--hair-strong);
+  --sl-color-gray-6: var(--bg-raised-2);
+  --sl-color-gray-7: var(--bg-raised);
+  --sl-color-black: var(--bg);
+  --sl-color-accent-low: var(--bg-raised-2);
+  --sl-color-accent: var(--accent);
+  --sl-color-accent-high: var(--accent-text);
+  --sl-color-text: var(--fg);
+  --sl-color-text-accent: var(--accent-text);
+  --sl-color-text-invert: var(--on-accent);
+  --sl-color-bg: var(--bg);
+  --sl-color-bg-nav: var(--bg);
+  --sl-color-bg-sidebar: var(--bg);
+  --sl-color-bg-inline-code: var(--bg-raised-2);
+  --sl-color-bg-accent: var(--accent);
+  --sl-color-hairline: var(--hair);
+  --sl-color-hairline-light: var(--hair);
+  --sl-color-hairline-shade: var(--hair);
+  --sl-color-backdrop-overlay: rgba(0, 0, 0, .55);
+  --sl-shadow-sm: none; --sl-shadow-md: none; --sl-shadow-lg: none;
+  --sl-sidebar-width: 230px;
+  --sl-content-width: 760px;
+  --sl-nav-height: 60px;
+  --sl-text-code: 12.5px;
+  --sl-text-body: 14px;
+  --sl-line-height: 1.6;
+}
+.sl-markdown-content { font-size: 14px; line-height: 1.65; }
+.sl-markdown-content h1 { font-size: 30px; line-height: 1.15; letter-spacing: var(--tracking-h2); }
+.sl-markdown-content h2 { font-size: 22px; margin-top: 2.2em; }
+.sl-markdown-content h3 { font-size: 17px; }
+.sl-markdown-content code:not(pre code) { font-size: .93em; border: 1px solid var(--hair); border-radius: 4px; padding: 1px 5px; background: var(--bg-raised-2); color: var(--fg); }
+.sl-markdown-content table { font-size: 13px; }
+.sl-markdown-content th { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--fg-3); font-weight: 500; }
+.sl-markdown-content td, .sl-markdown-content th { border-color: var(--hair); }
+.sl-markdown-content a { color: var(--fg); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--hair-strong); }
+.sl-markdown-content a:hover { text-decoration-color: var(--fg); }
+.sl-markdown-content blockquote { border-left: 3px solid var(--hair-strong); color: var(--fg-2); }
+.expressive-code { --ec-frm-edBg: #0c0f17; }
+.expressive-code .frame { color-scheme: dark; }
+/* the shared machine ground: code sits on midnight in both themes */
+.expressive-code pre, .expressive-code .frame, .expressive-code .copy button { background: #0c0f17 !important; }
+.expressive-code .frame.is-terminal .header { border-bottom-color: #2c303a; }
+/* sidebar */
+.sidebar-content { font-size: 13.5px; }
+.sidebar-content summary, .sidebar-content .large { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--fg-3); font-weight: 500; }
+.sidebar-content a { border-radius: 6px; }
+.sidebar-content a[aria-current="page"] { background: var(--bg-raised-2); color: var(--fg); font-weight: 600; }
+/* right rail */
+.right-sidebar { border-inline-start-color: var(--hair); }
+starlight-toc a { font-size: 12.5px; }
+starlight-toc a[aria-current="true"] { color: var(--fg); font-weight: 600; }
+/* header row uses the site header; hide Starlight's default nav chrome pieces we replaced */
+.header .site-title { display: none; }
+site-search button { border-radius: var(--r-control); border-color: var(--hair-strong); background: var(--bg-raised); color: var(--fg-2); font-size: 12.5px; }
+site-search kbd { background: var(--bg-raised-2); border-radius: 4px; color: var(--fg-3); }
+.pagination-links a { border-color: var(--hair); border-radius: var(--r-block); box-shadow: none; }
+.pagination-links a:hover { border-color: var(--hair-strong); }
+.pagination-links .link-title { font-size: 14px; }
+/* docs footer provenance row */
+.docs-provenance { display: flex; flex-wrap: wrap; gap: 8px 18px; font-family: var(--font-mono); font-size: 11.5px; color: var(--fg-3); padding-top: 12px; border-top: 1px solid var(--hair); margin-top: 24px; }
+.docs-provenance a { color: var(--fg-2); }
+.docs-provenance a:hover { text-decoration: underline; }

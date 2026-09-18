@@ -1,0 +1,79 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only
+// Three entrances with quiet route indices 01/02/03. Indices are decorative text, not
+// steps. Route 01 spans two rows at ≥ 900; below, they stack in order.
+import CodeBlock from '../CodeBlock.astro';
+import GitHubMark from '../GitHubMark.astro';
+import { copy } from '../../data/copy';
+import { docPaths, paths } from '../../data/site';
+import { readSpecimen } from '../../lib/specimens';
+const one = copy.routes.one, two = copy.routes.two, three = copy.routes.three;
+// The homepage shows the tested workflow verbatim without its concurrency block; the docs show the complete file.
+const workflow = readSpecimen('sizeWorkflow').replace(/concurrency:\n(?: {2}.*\n)+/u, '');
+const docLink = (key: string): string => (docPaths as Record<string, string>)[key] ?? key;
+---
+<section class="entrances wrap">
+  <article class="card card-strong route route-1">
+    <h2 class="route-title"><span class="route-index">{one.index}</span> {one.title}</h2>
+    <p class="caption route-meta">{one.meta}</p>
+    <p class="body-l">{one.body}</p>
+    <CodeBlock code={workflow} lang="yaml" file={one.file} scope={one.fileMeta} id="size-workflow" />
+    <div class="route-actions">
+      <a class="btn btn-primary" href={docPaths.getStarted}>{one.cta}</a>
+      <ul class="links">{one.links.map(([label, key]) => <li><a class="link" href={docLink(key)}>{label}</a></li>)}</ul>
+    </div>
+  </article>
+  <article class="card route route-2">
+    <h2 class="route-title"><span class="route-index">{two.index}</span> {two.title}</h2>
+    <p class="body-l">{two.body}</p>
+    <form class="pr-entry" action={paths.playground} method="get" data-pr-entry novalidate>
+      <label class="visually-hidden" for="home-pr-url">Pull request URL</label>
+      <input class="input" id="home-pr-url" name="url" type="url" inputmode="url" placeholder={two.placeholder} autocomplete="off" spellcheck="false" />
+      <button class="btn btn-inverse" type="submit">{two.button}</button>
+    </form>
+    <p class="status" role="alert" data-pr-error hidden></p>
+    <a class="btn btn-secondary" href={paths.playground}>{two.cta}</a>
+  </article>
+  <article class="card route route-3">
+    <h2 class="route-title"><span class="route-index">{three.index}</span> <GitHubMark /> {three.title}</h2>
+    <p class="body-l">{three.body}</p>
+    <div class="route-actions">
+      <a class="btn btn-primary" href={paths.app}>{three.cta}</a>
+      <ul class="links">{three.links.map(([label, href]) => <li><a class="link" href={href}>{label}</a></li>)}</ul>
+    </div>
+  </article>
+</section>
+
+<script>
+  import { copy } from '../../data/copy';
+  // Route 02 validates the canonical public PR shape on submit and hands off to the
+  // one playground analysis journey. The homepage never renders a result itself.
+  const form = document.querySelector<HTMLFormElement>('[data-pr-entry]');
+  const error = document.querySelector<HTMLElement>('[data-pr-error]');
+  form?.addEventListener('submit', event => {
+    event.preventDefault();
+    const input = form.querySelector<HTMLInputElement>('input')!;
+    const value = input.value.trim();
+    const match = /^https:\/\/github\.com\/([A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?)\/([A-Za-z0-9._-]+)\/pull\/([1-9]\d*)(?:[/?#].*)?$/u.exec(value);
+    if (!match) {
+      if (error) { error.hidden = false; error.textContent = copy.playground.states.refused(value || '(empty)'); }
+      input.focus();
+      return;
+    }
+    location.assign(`/playground/?pr=${match[1]}/${match[2]}/${match[3]}`);
+  });
+</script>
+
+<style>
+  .entrances { display: grid; grid-template-columns: 1.15fr 1fr; grid-template-rows: auto auto; gap: 14px; padding-bottom: 56px; }
+  .route-1 { grid-row: 1 / span 2; }
+  .route { display: grid; gap: 14px; align-content: start; }
+  .route-title { display: flex; align-items: baseline; gap: 10px; font-size: 19px; }
+  .route-index { font-family: var(--font-mono); font-weight: 500; font-size: 12px; color: var(--fg-3); }
+  .route-meta { margin: -8px 0 0; }
+  .route .body-l { margin: 0; color: var(--fg-2); }
+  .route-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 22px; }
+  .pr-entry { display: flex; gap: 8px; }
+  .pr-entry .input { flex: 1; }
+  @media (max-width: 900px) { .entrances { grid-template-columns: 1fr; } .route-1 { grid-row: auto; } }
+</style>

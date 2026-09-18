@@ -1,0 +1,108 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only
+// /examples/: two groups, Frozen fixtures and Real pull requests, as card grids. Each
+// card carries the lesson and the engine's own headline numbers for that example, and
+// opens the one playground journey with ?example=.
+import Base from '../layouts/Base.astro';
+import GitHubMark from '../components/GitHubMark.astro';
+import { copy } from '../data/copy';
+import { paths, GITHUB_BLOB } from '../data/site';
+import { fixtures } from '../../catalogue/fixtures.mjs';
+import { curated } from '../lib/catalogue';
+import { display, evaluate, evidenceGlyph, policyFromYaml, readRepositoryFile, reportFromDiff, reportFromSaved } from '../lib/engine-node';
+
+const preset = policyFromYaml('version: 1\npresets: [size@1]\n', 'size@1');
+const fixtureCards = fixtures.map(fixture => {
+  const text = readRepositoryFile(fixture.source.path);
+  const base = fixture.source.kind === 'diff' ? reportFromDiff(text) : reportFromSaved(text);
+  const policyPath = fixture.policy.kind === 'file' ? fixture.policy.path! : undefined;
+  const policy = policyPath ? policyFromYaml(readRepositoryFile(policyPath), policyPath) : preset;
+  const result = evaluate(policy, base);
+  const report = result.report;
+  const metric = report.metrics?.[fixture.focus] ?? report.totals.lines.changed;
+  const band = Object.values(report.bands ?? {})[0];
+  return { ...fixture, policyName: policyPath ? policyPath.split('/').pop() : 'size@1', report, metric, band,
+    status: report.measurement.status, files: display(report.fileSet.total), churn: display(report.totals.raw.churn) };
+});
+const curatedCards = curated().map(entry => {
+  const result = evaluate(preset, entry.report);
+  const band = result.report.bands?.size;
+  return { ...entry, result: result.report, band, files: display(entry.report.fileSet.total), churn: display(entry.report.totals.raw.churn), changed: display(result.report.metrics?.review ?? result.report.totals.lines.changed) };
+});
+const c = copy.examples;
+---
+<Base title={c.title} description="Curated diffdevil examples: frozen fixtures and real public pull requests, each with the product fact it teaches, analyzed by the same engine as the CLI." surface="Examples" current="examples">
+  <div class="wrap"><div class="ex-head">
+    <p class="eyebrow">#examples</p>
+    <h1 class="h2">{c.title}</h1>
+    <p class="lede">{c.intro}</p>
+  </div></div>
+  <section class="wrap section" id="fixtures">
+    <div class="ex-group-head"><h2 class="h3">Frozen fixtures · {fixtureCards.length}</h2><p class="caption">{copy.playground.fixturesHint}</p></div>
+    <ul class="ex-grid">
+      {fixtureCards.map(card => (
+        <li class="card ex-card">
+          <p class="ex-glyph mono" aria-hidden="true">{card.glyph}</p>
+          <h3 class="h3">{card.title}</h3>
+          <p class="ex-hook">{card.hook}</p>
+          <p class="small ex-teaches">{card.teaches}</p>
+          <p class="ex-numbers mono">
+            <span><strong class="tabular">{display(card.metric)}</strong> {card.focus === 'review' ? 'changed' : card.focus}</span>
+            <span>churn {card.churn}</span>
+            <span>{card.files} files</span>
+            {card.band && <span>band {card.band.status === 'resolved' ? card.band.id : '?'}</span>}
+            <span class="chip-ev" data-status={card.status}>{evidenceGlyph[card.status]} {card.status}</span>
+          </p>
+          <p class="caption mono">{card.source.path.replace('docs/examples/', '')} · policy {card.policyName}</p>
+          <div class="ex-actions">
+            <a class="btn btn-primary" href={`${paths.playground}?example=${card.id}`}>{c.open}</a>
+            <a class="link" href={`${GITHUB_BLOB}${card.source.path}`} rel="noopener">Source</a>
+          </div>
+        </li>
+      ))}
+    </ul>
+  </section>
+  <section class="wrap section" id="real-pull-requests">
+    <div class="ex-group-head"><h2 class="h3">Real pull requests · {curatedCards.length}</h2><p class="caption">{copy.playground.prsHint}</p></div>
+    <ul class="ex-grid">
+      {curatedCards.map(card => (
+        <li class="card ex-card">
+          <p class="ex-glyph" aria-hidden="true"><GitHubMark /></p>
+          <h3 class="h3"><a class="link-plain" href={card.url} rel="noopener">{card.repository} · PR #{card.pullRequest}</a></h3>
+          <p class="ex-hook">{card.title}</p>
+          <p class="small ex-teaches"><strong>Why this PR</strong> — {card.reason}</p>
+          <p class="small ex-teaches">{card.teaches}</p>
+          <p class="ex-numbers mono">
+            <span><strong class="tabular">{card.changed}</strong> changed</span>
+            <span>churn {card.churn}</span>
+            <span>{card.files} files</span>
+            {card.band && <span>band {card.band.status === 'resolved' ? card.band.id : '?'}</span>}
+            <span class="chip-ev" data-status={card.evidence}>{evidenceGlyph[card.evidence]} {card.evidence}</span>
+          </p>
+          <p class="caption mono">snapshot {card.head.slice(0, 7)} · analyzed {card.analyzedAt.slice(0, 10)} · engine {card.engine.package} · {card.engine.policy}</p>
+          {card.note && <p class="caption">{card.note}</p>}
+          <div class="ex-actions">
+            <a class="btn btn-primary" href={`${paths.playground}?example=${card.id}`}>{c.open}</a>
+            <a class="link" href={`${paths.playground}?example=${card.id}&head=live`}>{copy.playground.analyzeLatest}</a>
+          </div>
+        </li>
+      ))}
+    </ul>
+  </section>
+</Base>
+<style>
+  .ex-head { padding: 40px 0 8px; display: grid; gap: 10px; max-width: 760px; }
+  .ex-head .eyebrow, .ex-head .lede { margin: 0; }
+  .ex-group-head { display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; }
+  .ex-group-head .caption { margin: 0; }
+  .ex-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  .ex-card { display: grid; gap: 8px; align-content: start; }
+  .ex-glyph { margin: 0; font-size: 20px; color: var(--fg-2); }
+  .ex-hook { margin: 0; color: var(--fg-2); }
+  .ex-teaches { margin: 0; color: var(--fg-2); }
+  .ex-numbers { margin: 4px 0 0; display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12.5px; align-items: center; }
+  .ex-numbers strong { font-size: 18px; }
+  .ex-card .caption { margin: 0; }
+  .ex-actions { display: flex; align-items: center; gap: 14px; margin-top: 6px; }
+  @media (max-width: 900px) { .ex-grid { grid-template-columns: 1fr; } }
+</style>

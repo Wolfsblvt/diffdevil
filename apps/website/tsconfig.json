@@ -1,0 +1,19 @@
+{
+  "extends": "astro/tsconfigs/strict",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "jsxImportSource": "react",
+    "strictNullChecks": true,
+    "noUncheckedIndexedAccess": true,
+    "baseUrl": ".",
+    "paths": {
+      "@wolfsblvt/diffdevil/core": ["../../dist/lib/core.d.ts"],
+      "@wolfsblvt/diffdevil/policy": ["../../dist/lib/policy/index.d.ts"],
+      "@wolfsblvt/diffdevil/language": ["../../dist/lib/language/index.d.ts"],
+      "@wolfsblvt/diffdevil/format": ["../../dist/lib/format.d.ts"],
+      "@wolfsblvt/diffdevil/errors": ["../../dist/lib/errors.d.ts"]
+    }
+  },
+  "include": ["src/**/*", "astro.config.mjs", ".astro/types.d.ts"],
+  "exclude": ["../../artifacts", "../../node_modules"]
+}

@@ -1,7 +1,7 @@
 import { isAlias, isMap, isNode, isScalar, isSeq, Composer, Parser, CST } from 'yaml';
 import { capture, DiffdevilError, fail } from '../errors.js';
 import { FORBIDDEN_KEYS } from '../inert.js';
-import { DEFAULT_LIMITS, enforceBytes } from '../limits.js';
+import { DEFAULT_LIMITS, byteLength, enforceBytes } from '../limits.js';
 import { sourcePosition } from '../language/source.js';
 import { createPolicySource } from './source.js';
 import { pointer } from './validation.js';
@@ -64,7 +64,7 @@ export function readPolicyYaml(text, options = {}) {
         let aliases = 0, expandedBytes = 0;
         const rangeOf = (node) => ({ source: name, start: node.range?.[0] ?? 0, end: node.range?.[1] ?? node.range?.[0] ?? 0 });
         const charge = (value, node, path) => {
-            expandedBytes += Buffer.byteLength(value, 'utf8');
+            expandedBytes += byteLength(value);
             if (expandedBytes > limits.configBytes)
                 issue('E_LIMIT', 'Expanded YAML exceeds the selected configuration byte budget.', rangeOf(node), path);
         };

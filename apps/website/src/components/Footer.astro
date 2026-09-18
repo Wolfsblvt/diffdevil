@@ -1,0 +1,27 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only
+import { copy } from '../data/copy';
+import { COMPANY, COMPANY_PRIVACY, GITHUB, IMPRESSUM, MARKETPLACE, NPM, RELEASES, docPaths, paths } from '../data/site';
+const get: [string, string][] = [
+  ['@wolfsblvt/diffdevil', NPM], ['Wolfsblvt/diffdevil@v1', MARKETPLACE], ['GitHub Marketplace', MARKETPLACE], ['GitHub App', paths.app],
+];
+const learn: [string, string][] = [
+  ['Get started', docPaths.getStarted], ['Recipes', docPaths.recipes], ['CLI', docPaths.cli], ['Actions', docPaths.actions], ['Library API', docPaths.api], ['Policies and detail', docPaths.policies], ['Agent integration', docPaths.agents],
+];
+const project: [string, string][] = [
+  ['Source on GitHub', GITHUB], ['Releases', RELEASES], ['Security', paths.security], ['Licences', paths.licences], ['Privacy and data', paths.privacy], ['Impressum', IMPRESSUM],
+];
+---
+<footer class="site-footer">
+  <div class="wrap grid">
+    <div>
+      <span class="logo logo-tail" role="img" aria-label="diffdevil"></span>
+      <p class="line">{copy.footer.line}</p>
+      <p class="licence">{copy.footer.licence}</p>
+      <p class="licence">© {new Date().getUTCFullYear()} {COMPANY} · <a href={COMPANY_PRIVACY} rel="noopener">Company privacy</a></p>
+    </div>
+    <nav aria-label={copy.footer.get}><h4>{copy.footer.get}</h4><ul>{get.map(([label, href]) => <li><a href={href} rel={href.startsWith('http') ? 'noopener' : undefined}>{label}</a></li>)}</ul></nav>
+    <nav aria-label={copy.footer.learn}><h4>{copy.footer.learn}</h4><ul>{learn.map(([label, href]) => <li><a href={href}>{label}</a></li>)}</ul></nav>
+    <nav aria-label={copy.footer.project}><h4>{copy.footer.project}</h4><ul>{project.map(([label, href]) => <li><a href={href} rel={href.startsWith('http') ? 'noopener' : undefined}>{label}</a></li>)}</ul></nav>
+  </div>
+</footer>
