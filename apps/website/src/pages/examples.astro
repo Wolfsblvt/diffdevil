@@ -9,19 +9,19 @@ import { copy } from '../data/copy';
 import { paths, GITHUB_BLOB } from '../data/site';
 import { fixtures } from '../../catalogue/fixtures.mjs';
 import { curated } from '../lib/catalogue';
-import { display, evaluate, evidenceGlyph, policyFromYaml, readRepositoryFile, reportFromDiff, reportFromSaved } from '../lib/engine-node';
+import { display, evaluate, evidenceGlyph, policyFromDocument, policyFromYaml, readRepositoryFile, reportFromDiff, reportFromSaved } from '../lib/engine-node';
 
 const preset = policyFromYaml('version: 1\npresets: [size@1]\n', 'size@1');
 const fixtureCards = fixtures.map(fixture => {
   const text = readRepositoryFile(fixture.source.path);
   const base = fixture.source.kind === 'diff' ? reportFromDiff(text) : reportFromSaved(text);
   const policyPath = fixture.policy.kind === 'file' ? fixture.policy.path! : undefined;
-  const policy = policyPath ? policyFromYaml(readRepositoryFile(policyPath), policyPath) : preset;
+  const policy = fixture.policy.kind === 'inline' ? policyFromDocument(fixture.policy.document, fixture.policy.name) : policyPath ? policyFromYaml(readRepositoryFile(policyPath), policyPath) : preset;
   const result = evaluate(policy, base);
   const report = result.report;
   const metric = report.metrics?.[fixture.focus] ?? report.totals.lines.changed;
   const band = Object.values(report.bands ?? {})[0];
-  return { ...fixture, policyName: policyPath ? policyPath.split('/').pop() : 'size@1', report, metric, band,
+  return { ...fixture, policyName: fixture.policy.kind === 'inline' ? fixture.policy.name : policyPath ? policyPath.split('/').pop() : 'size@1', report, metric, band,
     status: report.measurement.status, files: display(report.fileSet.total), churn: display(report.totals.raw.churn) };
 });
 const curatedCards = curated().map(entry => {
@@ -55,7 +55,7 @@ const c = copy.examples;
           </p>
           <p class="caption mono">{card.source.path.replace('docs/examples/', '')} · policy {card.policyName}</p>
           <div class="ex-actions">
-            <a class="btn btn-primary" href={`${paths.playground}?example=${card.id}`}>{c.open}</a>
+            {card.variants.map(variant => <a class="btn btn-primary" href={`${paths.playground}?example=${card.id}&variant=${variant.id}`}>{variant.label}</a>)}
             <a class="link" href={`${GITHUB_BLOB}${card.source.path}`} rel="noopener">Source</a>
           </div>
         </li>
@@ -82,7 +82,7 @@ const c = copy.examples;
           <p class="caption mono">snapshot {card.head.slice(0, 7)} · analyzed {card.analyzedAt.slice(0, 10)} · engine {card.engine.package} · {card.engine.policy}</p>
           {card.note && <p class="caption">{card.note}</p>}
           <div class="ex-actions">
-            <a class="btn btn-primary" href={`${paths.playground}?example=${card.id}`}>{c.open}</a>
+            {card.variants.map(variant => <a class="btn btn-primary" href={`${paths.playground}?example=${card.id}&variant=${variant.id}`}>{variant.label}</a>)}
             <a class="link" href={`${paths.playground}?example=${card.id}&head=live`}>{copy.playground.analyzeLatest}</a>
           </div>
         </li>

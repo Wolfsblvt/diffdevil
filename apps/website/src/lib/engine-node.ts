@@ -29,6 +29,10 @@ export function readRepositoryFile(relative: string): string {
 export function policyFromYaml(text: string, name = '.diffdevil.yml'): CompiledPolicy {
   return unwrap(compilePolicy(unwrap(readPolicyYaml(text, { name })).document, { sourceName: name }));
 }
+/** The catalogue keeps portable policy objects so the page and Playground share one source. */
+export function policyFromDocument(document: object, name = 'catalogue-policy'): CompiledPolicy {
+  return unwrap(compilePolicy(document, { sourceName: name }));
+}
 export function reportFromDiff(text: string): Report { return unwrap(analyzeDiff(text)); }
 export function reportFromSaved(text: string): Report { return unwrap(readReport(JSON.parse(text))); }
 export function evaluate(policy: CompiledPolicy, report: Report): PolicyResult { return unwrap(evaluatePolicy(policy, report)); }

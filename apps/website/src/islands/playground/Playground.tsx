@@ -22,6 +22,7 @@ export interface ExamplePayload {
   readonly policy: { kind: 'file' | 'preset'; path?: string; name: string; text: string };
   readonly commentPolicy?: { path: string; name: string; text: string } | undefined;
   readonly report: Report;
+  readonly variants?: readonly { id: string; label: string; source: string; policy: { name: string; text: string }; report: Report }[] | undefined;
 }
 
 export interface Acquired {
@@ -113,6 +114,9 @@ export default function Playground({ fixtures, curated, defaultExample }: Props)
       if (cancelled) return;
       if (!example) { setError({ code: 'NOT_FOUND', message: `No example named "${id}".` }); return; }
       setError(undefined);
+      const selectedVariant = example.variants?.find(variant => variant.id === state.variant) ?? example.variants?.[0];
+      const selectedReport = selectedVariant?.report ?? example.report;
+      const selectedPolicy = selectedVariant?.policy ?? example.policy;
       const pr = example.repository && example.pullRequest ? { owner: example.repository.split('/')[0]!, repo: example.repository.split('/')[1]!, number: example.pullRequest } : undefined;
       if (example.group === 'curated' && state.head === 'live' && pr) {
         setWorking(true);
@@ -120,15 +124,15 @@ export default function Playground({ fixtures, curated, defaultExample }: Props)
         const result = await fetchApi('/api/report', prUrl(pr));
         if (cancelled) return;
         setWorking(false);
-        if (!result.ok) { setError(result.error); setAcquired({ kind: 'snapshot', report: example.report, example, pr, policyName: example.policy.name, basePolicy: example.policy.text, acquiredAt: Date.now() }); return; }
+        if (!result.ok) { setError(result.error); setAcquired({ kind: 'snapshot', report: selectedReport, example, pr, policyName: selectedPolicy.name, basePolicy: selectedPolicy.text, acquiredAt: Date.now() }); return; }
         const report = readSavedReport(result.value.report);
         if (!report.ok) { setError({ code: 'UPSTREAM_ERROR', message: copy.playground.states.upstream }); return; }
-        setAcquired({ kind: 'live', report: report.value, example, pr, policyName: example.policy.name, basePolicy: example.policy.text, liveHead: report.value.source.head, acquiredAt: Date.now() });
+        setAcquired({ kind: 'live', report: report.value, example, pr, policyName: selectedPolicy.name, basePolicy: selectedPolicy.text, liveHead: report.value.source.head, acquiredAt: Date.now() });
         announce(copy.playground.done);
       } else {
-        setAcquired({ kind: example.group === 'curated' ? 'snapshot' : 'fixture', report: example.report, example, pr, policyName: example.policy.name, basePolicy: example.policy.text, acquiredAt: Date.now() });
+        setAcquired({ kind: example.group === 'curated' ? 'snapshot' : 'fixture', report: selectedReport, example, pr, policyName: selectedPolicy.name, basePolicy: selectedPolicy.text, acquiredAt: Date.now() });
       }
-      setPolicyText(state.policy ? decodePolicy(state.policy) ?? example.policy.text : example.policy.text);
+      setPolicyText(state.policy ? decodePolicy(state.policy) ?? selectedPolicy.text : selectedPolicy.text);
       // Freshness: once per snapshot per page load; a failed check shows nothing rather than a false "current".
       if (example.group === 'curated' && pr && example.snapshot) {
         const key = `diffdevil.head.${example.id}`;
@@ -143,7 +147,7 @@ export default function Playground({ fixtures, curated, defaultExample }: Props)
       } else setNewerHead(undefined);
     })();
     return () => { cancelled = true; controller.abort(); };
-  }, [state.mode, state.pr?.owner, state.pr?.repo, state.pr?.number, state.example, state.head, defaultExample, loadExample]);
+  }, [state.mode, state.pr?.owner, state.pr?.repo, state.pr?.number, state.example, state.variant, state.head, defaultExample, loadExample]);
 
   const evaluation = useMemo<Evaluation | EvaluationFailure | undefined>(() => {
     if (!acquired || !policyText) return undefined;
@@ -159,7 +163,7 @@ export default function Playground({ fixtures, curated, defaultExample }: Props)
     setState(current => ({ ...current, policy: acquired && text === acquired.basePolicy ? undefined : encodePolicy(text) }));
   }, [acquired]);
 
-  const selectExample = useCallback((id: string) => setState(current => ({ ...current, mode: 'examples', example: id, head: 'snapshot', pr: undefined, policy: undefined })), []);
+  const selectExample = useCallback((id: string) => setState(current => ({ ...current, mode: 'examples', example: id, variant: undefined, head: 'snapshot', pr: undefined, policy: undefined })), []);
   const analyzePr = useCallback((pr: { owner: string; repo: string; number: number }) => setState(current => ({ ...current, mode: 'pr', pr, example: undefined, head: 'snapshot', policy: undefined })), []);
   const cancel = useCallback(() => { abort.current?.abort(); setWorking(false); }, []);
 
@@ -168,7 +172,7 @@ export default function Playground({ fixtures, curated, defaultExample }: Props)
       <Rail
         state={state} fixtures={fixtures} curated={curated} acquired={acquired} evaluation={evaluation} lastValid={lastValid.current}
         working={working} error={error} policyText={policyText}
-        onSelectExample={selectExample} onAnalyzePr={analyzePr} onCancel={cancel} onMode={(mode) => update({ mode })} onCfg={(cfg) => update({ cfg })} onPolicy={changePolicy}
+        onSelectExample={selectExample} onSelectVariant={(variant) => update({ variant, policy: undefined })} onAnalyzePr={analyzePr} onCancel={cancel} onMode={(mode) => update({ mode })} onCfg={(cfg) => update({ cfg })} onPolicy={changePolicy}
       />
       <Result
         state={state} acquired={acquired} previous={previous} evaluation={evaluation} lastValid={lastValid.current} working={working} error={error} newerHead={newerHead} policyText={policyText}

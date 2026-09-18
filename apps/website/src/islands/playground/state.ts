@@ -17,6 +17,7 @@ export interface PlaygroundState {
   readonly mode: Mode;
   readonly pr?: { owner: string; repo: string; number: number } | undefined;
   readonly example?: string | undefined;
+  readonly variant?: string | undefined;
   readonly head: 'snapshot' | 'live';
   readonly view: View;
   readonly cfg: ConfigMode;
@@ -49,6 +50,7 @@ export function readState(search: string, defaultExample: string): PlaygroundSta
     mode: pr ? 'pr' : 'examples',
     pr,
     example: pr ? undefined : example ?? defaultExample,
+    variant: pr ? undefined : params.get('variant') ?? undefined,
     head: head === 'live' ? 'live' : 'snapshot',
     view: view && VIEWS.includes(view) ? view : 'terminal',
     cfg: cfg === 'policy' ? 'policy' : 'controls',
@@ -60,6 +62,7 @@ export function writeState(state: PlaygroundState, defaultExample: string): stri
   const params = new URLSearchParams();
   if (state.mode === 'pr' && state.pr) params.set('pr', prParam(state.pr));
   else if (state.example && state.example !== defaultExample) params.set('example', state.example);
+  if (state.mode === 'examples' && state.variant) params.set('variant', state.variant);
   if (state.head === 'live') params.set('head', 'live');
   if (state.view !== 'terminal') params.set('view', state.view);
   if (state.cfg !== 'controls') params.set('cfg', state.cfg);

@@ -20,7 +20,7 @@ interface Props {
   state: PlaygroundState; fixtures: readonly ExampleCard[]; curated: readonly ExampleCard[];
   acquired: Acquired | undefined; evaluation: Evaluation | EvaluationFailure | undefined; lastValid: Evaluation | undefined;
   working: boolean; error: ApiError | undefined; policyText: string;
-  onSelectExample: (id: string) => void; onAnalyzePr: (pr: { owner: string; repo: string; number: number }) => void; onCancel: () => void;
+  onSelectExample: (id: string) => void; onSelectVariant: (variant: string) => void; onAnalyzePr: (pr: { owner: string; repo: string; number: number }) => void; onCancel: () => void;
   onMode: (mode: 'pr' | 'examples') => void; onCfg: (cfg: 'controls' | 'policy') => void; onPolicy: (text: string) => void;
 }
 
@@ -118,6 +118,13 @@ export function Rail(props: Props) {
               <button type="button" role="radio" className="chip" aria-checked={kind === 'prs'} onClick={() => selectKind('prs')}>{c.prs} · {curated.length}</button>
             </div>
             <p className="field-hint">{kind === 'fixtures' ? c.fixturesHint : c.prsHint}</p>
+            {acquired?.example?.variants && acquired.example.variants.length > 1 && (
+              <label className="field"><span className="field-label">Example variant</span>
+                <select className="input" value={state.variant ?? acquired.example.variants[0]!.id} onChange={event => props.onSelectVariant(event.target.value)}>
+                  {acquired.example.variants.map(variant => <option key={variant.id} value={variant.id}>{variant.label}</option>)}
+                </select>
+              </label>
+            )}
             <ul className="pg-examples">
               {(kind === 'fixtures' ? fixtures : curated).map(card => (
                 <li key={card.id}>
