@@ -1,0 +1,315 @@
+{
+  "kind": "diffdevil.example-snapshot",
+  "schemaVersion": "1.1",
+  "id": "vite-18968",
+  "repository": "vitejs/vite",
+  "pullRequest": 18968,
+  "url": "https://github.com/vitejs/vite/pull/18968",
+  "title": "vite-18968",
+  "capturedAt": "2026-09-18T04:08:42.653Z",
+  "provenance": {
+    "baseTip": "ccd1a4c4145ee1069d7baea56981a0322e7be864",
+    "mergeBase": "ccd1a4c4145ee1069d7baea56981a0322e7be864",
+    "head": "48db5c9555f2d43cb88367506e79854fce8ed47d"
+  },
+  "acquisition": {
+    "route": "github-rest-compare-three-dot",
+    "comparisonEndpoint": "/repos/vitejs/vite/compare/ccd1a4c4145ee1069d7baea56981a0322e7be864...48db5c9555f2d43cb88367506e79854fce8ed47d",
+    "identityEndpoint": "/repos/vitejs/vite/compare/ccd1a4c4145ee1069d7baea56981a0322e7be864...48db5c9555f2d43cb88367506e79854fce8ed47d",
+    "pullEndpoint": "/repos/vitejs/vite/pulls/18968"
+  },
+  "notices": {
+    "declared": "MIT",
+    "base": {
+      "path": "LICENSE",
+      "sha": "b7e97ecb6aa4dd70b3e3a637afa2ae16feb7cd12",
+      "ref": "ccd1a4c4145ee1069d7baea56981a0322e7be864"
+    },
+    "head": {
+      "path": "LICENSE",
+      "sha": "b7e97ecb6aa4dd70b3e3a637afa2ae16feb7cd12",
+      "ref": "48db5c9555f2d43cb88367506e79854fce8ed47d"
+    }
+  },
+  "rights": {
+    "retainedMaterial": "normalized-report-only",
+    "rawComparison": "analyzed-in-memory-not-committed",
+    "binaryBytes": "not-retained",
+    "review": "Root notices and every retained normalized file record were inspected; raw source lines, patch text, discussion, and provider responses are not retained."
+  },
+  "engine": {
+    "package": "1.0.0",
+    "reportSchema": "1.0",
+    "replacementLines": "replacement-lines-v1"
+  },
+  "payload": {
+    "sourceSha256": "80bb76f750143b0d2962304397f9a7163ff3555be078aae340adef0d8f33faa2",
+    "normalizedReportSha256": "9be735e1e8d02edab17ebc208859c358ece0307d4aff6fbf0beb3eb06752f4f1",
+    "providerFileSetSha256": "7d0f07bd58f8a384be59a0366d01d257bbe83999114b63a34ab69f455c44056e"
+  },
+  "capabilities": {
+    "policyReplay": true,
+    "remeasurement": false,
+    "remeasurementReason": "No raw comparison material is retained in this teaching snapshot."
+  },
+  "lesson": {
+    "id": "lockfile-scope",
+    "title": "The lockfile is still part of the change"
+  },
+  "provider": {
+    "complete": true,
+    "reportedCount": 2,
+    "entries": [
+      {
+        "path": "packages/vite/package.json",
+        "status": "modified",
+        "additions": 1,
+        "deletions": 1,
+        "changes": 2,
+        "patchAvailable": true
+      },
+      {
+        "path": "pnpm-lock.yaml",
+        "status": "modified",
+        "additions": 21,
+        "deletions": 2,
+        "changes": 23,
+        "patchAvailable": true
+      }
+    ]
+  },
+  "material": [
+    {
+      "path": "packages/vite/package.json",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "pnpm-lock.yaml",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    }
+  ],
+  "report": {
+    "kind": "diffdevil.report",
+    "schemaVersion": "1.0",
+    "semantics": {
+      "language": "diffdevil-expr/1",
+      "numbers": "diffdevil-number/1",
+      "replacementLines": "replacement-lines-v1",
+      "paths": "diffdevil-glob/1"
+    },
+    "source": {
+      "kind": "unified-diff",
+      "comparison": "three-dot",
+      "repository": "vitejs/vite",
+      "pullRequest": 18968,
+      "base": "ccd1a4c4145ee1069d7baea56981a0322e7be864",
+      "baseTip": "ccd1a4c4145ee1069d7baea56981a0322e7be864",
+      "head": "48db5c9555f2d43cb88367506e79854fce8ed47d",
+      "comparisonId": "github-compare-a099346f627bbf11ae173a23fed7f9ea196b05675ef4a9b8d417beeb9f3ebf32"
+    },
+    "fileSet": {
+      "complete": true,
+      "total": {
+        "status": "exact",
+        "value": 2
+      }
+    },
+    "files": [
+      {
+        "id": "file-959d119bcd7d64be759d9d142f06716064ebbe1fe8e65a925234866f380b7710",
+        "path": "packages/vite/package.json",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "packages/vite/package.json"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 1
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 1
+          },
+          "churn": {
+            "status": "exact",
+            "value": 2
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 0
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 1
+          },
+          "changed": {
+            "status": "exact",
+            "value": 1
+          }
+        },
+        "family": {
+          "id": "family-b9f65e6410ed86ff15004ef2ed1640d6110b5548ba096a6d72ea746203d5ff5e",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-f9088a85eb14831abe62f6765153f08ff69b9128caa83b229c3e2b6be8dd7d57",
+        "path": "pnpm-lock.yaml",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "pnpm-lock.yaml"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 21
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 2
+          },
+          "churn": {
+            "status": "exact",
+            "value": 23
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 19
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 2
+          },
+          "changed": {
+            "status": "exact",
+            "value": 21
+          }
+        },
+        "family": {
+          "id": "family-a0807f7554fd3aedca6a2c24bbbe99ff4d375754c0c35fb5bbdb8c2d37a0427b",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      }
+    ],
+    "totals": {
+      "raw": {
+        "added": {
+          "status": "exact",
+          "value": 22
+        },
+        "deleted": {
+          "status": "exact",
+          "value": 3
+        },
+        "churn": {
+          "status": "exact",
+          "value": 25
+        }
+      },
+      "lines": {
+        "added": {
+          "status": "exact",
+          "value": 19
+        },
+        "deleted": {
+          "status": "exact",
+          "value": 0
+        },
+        "modified": {
+          "status": "exact",
+          "value": 3
+        },
+        "changed": {
+          "status": "exact",
+          "value": 22
+        }
+      },
+      "files": {
+        "total": {
+          "status": "exact",
+          "value": 2
+        },
+        "excluded": {
+          "status": "exact",
+          "value": 0
+        },
+        "included": {
+          "status": "exact",
+          "value": 2
+        },
+        "added": {
+          "status": "exact",
+          "value": 0
+        },
+        "deleted": {
+          "status": "exact",
+          "value": 0
+        },
+        "modified": {
+          "status": "exact",
+          "value": 2
+        },
+        "renamed": {
+          "status": "exact",
+          "value": 0
+        },
+        "copied": {
+          "status": "exact",
+          "value": 0
+        },
+        "binary": {
+          "status": "exact",
+          "value": 0
+        },
+        "unmeasurable": {
+          "status": "exact",
+          "value": 0
+        }
+      }
+    },
+    "measurement": {
+      "status": "exact",
+      "reasons": []
+    },
+    "reportId": "report-3a7feb993885e7b429fa25f25588940283b36cda56ea1a7df2140d6eb3a54e87"
+  }
+}

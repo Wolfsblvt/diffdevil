@@ -1,0 +1,127 @@
+{
+  "formatVersion": 1,
+  "defaultExample": "lockfile-scope",
+  "heading": "Explore a change. See what the numbers mean.",
+  "description": "Every lesson is one frozen source, one policy, and one result produced by diffdevil.",
+  "entries": [
+    {
+      "id": "lockfile-scope",
+      "title": "The lockfile is still part of the change",
+      "sourceKind": "real-pr",
+      "lessons": ["scope", "counting", "policies"],
+      "summary": "An explicit exclusion changes the question, not the observed source.",
+      "variants": [
+        { "id": "all", "label": "Whole change", "source": "vite-18968", "policy": "standard" },
+        { "id": "without-lockfile", "label": "Exclude the lockfile", "source": "vite-18968", "policy": "vite-without-lockfile" },
+        { "id": "comment", "label": "Preview one custom comment", "source": "vite-18968", "policy": "comment-only" }
+      ],
+      "inspect": ["packages/vite/package.json", "pnpm-lock.yaml"],
+      "guide": [
+        "This Vite dependency update changes a manifest and its lockfile. Start with both files: a policy has not made the lockfile disappear from the observed comparison.",
+        "Raw churn counts a removed version and its replacement separately. Replacement-aware lines pair that local edit while keeping unrelated lockfile additions visible.",
+        "Switch to Exclude the lockfile, then back again. The policy answers a narrower question; it does not claim the whole pull request became smaller."
+      ]
+    },
+    {
+      "id": "runtime-null-guards",
+      "title": "A small helper can touch a wide surface",
+      "sourceKind": "real-pr",
+      "lessons": ["distribution", "scope", "counting"],
+      "summary": "Replacement-aware counting and file spread are different facts.",
+      "variants": [
+        { "id": "all", "label": "Whole change", "source": "runtime-105380", "policy": "standard" },
+        { "id": "implementation", "label": "Implementation scope", "source": "runtime-105380", "policy": "runtime-scopes" }
+      ],
+      "inspect": ["src/libraries/System.Collections.Concurrent/src/System/Collections/Concurrent/ConcurrentDictionary.cs"],
+      "guide": [
+        "This runtime change replaces repeated null guards with a common API across implementation and nested tests.",
+        "The line result is asymmetric: a compact replacement can remove more source than it adds. File count remains its own fact, not a proxy for risk or effort.",
+        "The implementation scope intentionally excludes nested tests. The whole-change result keeps them, so the two views can be compared without erasing either."
+      ]
+    },
+    {
+      "id": "formatter-and-snapshots",
+      "title": "Snapshots are material, not invisible background",
+      "sourceKind": "real-pr",
+      "lessons": ["distribution", "scope"],
+      "summary": "Overlapping scopes describe the same change from different angles.",
+      "variants": [
+        { "id": "all", "label": "Whole change", "source": "prettier-13183", "policy": "standard" },
+        { "id": "scopes", "label": "Implementation, tests and snapshots", "source": "prettier-13183", "policy": "prettier-scopes" }
+      ],
+      "inspect": ["tests/format/ternaries/__snapshots__/jsfmt.spec.js.snap"],
+      "guide": [
+        "A formatting change can carry implementation, documentation, tests, and generated snapshots in one comparison.",
+        "The scopes overlap on purpose. They are not percentages to add together; each is a named view of the same retained source evidence.",
+        "Select the scope variant to inspect those views. diffdevil reports the actual selected policy rather than calling the change formatting-only."
+      ]
+    },
+    {
+      "id": "binary-trampolines",
+      "title": "Binary files still count as evidence",
+      "sourceKind": "real-pr",
+      "lessons": ["evidence", "scope"],
+      "summary": "Unmeasurable line facts are neither zero nor an omission.",
+      "variants": [
+        { "id": "all", "label": "Whole change", "source": "uv-8637", "policy": "standard" },
+        { "id": "text", "label": "Exclude six executable files", "source": "uv-8637", "policy": "uv-without-executables" }
+      ],
+      "inspect": ["crates/uv-trampoline/trampolines/uv-trampoline-aarch64-console.exe"],
+      "guide": [
+        "This change contains Rust, workflow and lockfile edits alongside six committed executable trampoline files.",
+        "The six binary records remain in the whole comparison, with unmeasurable line values. A blank number is a fact about the material, not permission to substitute zero.",
+        "The text-only variant excludes exactly those paths. It is useful for a text question, but it is honestly labelled as a narrower selection."
+      ]
+    },
+    {
+      "id": "same-total-different-spread",
+      "title": "Same line total, different file spread",
+      "sourceKind": "controlled",
+      "lessons": ["distribution", "counting"],
+      "summary": "Equal totals do not erase file distribution.",
+      "variants": [
+        { "id": "concentrated", "label": "Two files", "source": "spread-concentrated", "policy": "standard" },
+        { "id": "distributed", "label": "Twelve files", "source": "spread-distributed", "policy": "standard" }
+      ],
+      "inspect": ["src/alpha.ts", "src/file-12.ts"],
+      "guide": [
+        "Both authored inputs add twenty-four lines. One puts twelve lines in each of two files; the other spreads two lines across twelve files.",
+        "The aggregate changed-line measurement is deliberately equal. The file records make the distribution visible without turning it into a claim about complexity or quality.",
+        "Move between the two variants. The source identity follows the selected patch, so an export never implies that the other shape produced the result."
+      ]
+    },
+    {
+      "id": "bounded-decisions",
+      "title": "A bounded value can still prove a policy",
+      "sourceKind": "controlled",
+      "lessons": ["evidence", "policies"],
+      "summary": "A rule can hold when evidence cannot establish its condition.",
+      "variants": [
+        { "id": "proven", "label": "Below 100 is proven", "source": "bounded-report", "policy": "bounded-proven" },
+        { "id": "held", "label": "At 65 is unresolved", "source": "bounded-report", "policy": "bounded-held" }
+      ],
+      "inspect": [],
+      "guide": [
+        "This saved report preserves a changed-line interval instead of an invented exact total.",
+        "Under the first policy every possible value lies below one hundred, so that band is proven. Under the second policy the interval crosses sixty-five, so the label group holds.",
+        "Queries show the same distinction: above fifty is true, above seventy is false, and above sixty-five remains unknown."
+      ]
+    },
+    {
+      "id": "incomplete-file-set",
+      "title": "Observed files are not the whole inventory",
+      "sourceKind": "controlled",
+      "lessons": ["evidence"],
+      "summary": "A partial file list does not license invented paths.",
+      "variants": [
+        { "id": "observed", "label": "Observed rows", "source": "incomplete-report", "policy": "standard" }
+      ],
+      "inspect": ["src/observed.ts"],
+      "guide": [
+        "The report knows there are three files but contains only one observed record.",
+        "The visible row remains useful evidence. Overall line counts keep their lower bound and unknown standing because the missing members cannot be named or measured.",
+        "A rendering limit and an incomplete source inventory are different facts. This example preserves the latter rather than filling the list with guesses."
+      ]
+    }
+  ]
+}
