@@ -207,7 +207,7 @@ function reportHuman(report: Report, options: TextPresentationOptions): string {
   lines.push(`  ${paintAdded(humanSignedMeasurement('+',report.totals.lines.added,report.measurement.status),color)} added only · ${paintDeleted(humanSignedMeasurement('-',report.totals.lines.deleted,report.measurement.status),color)} deleted only · ${paintStrong(humanSignedMeasurement('~',report.totals.lines.modified,report.measurement.status),color)} modified`);
   lines.push('');
 
-  lines.push(paintQuiet(`${padLabel('Raw')}+${humanMeasurement(report.totals.raw.added,report.measurement.status)} additions · -${humanMeasurement(report.totals.raw.deleted,report.measurement.status)} deletions · ${humanMeasurement(report.totals.raw.churn,report.measurement.status)} churn`,color));
+  lines.push(paintQuiet(`${padLabel('Raw')}${humanSignedMeasurement('+',report.totals.raw.added,report.measurement.status)} additions · ${humanSignedMeasurement('-',report.totals.raw.deleted,report.measurement.status)} deletions · ${humanMeasurement(report.totals.raw.churn,report.measurement.status)} churn`,color));
   lines.push(paintQuiet(`${padLabel('Files')}${humanFilesLine(report)}`,color));
 
   const bands=humanBandsLine(report), metrics=humanMetricsLine(report,full), rules=humanRulesLine(report,full);

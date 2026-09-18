@@ -307,7 +307,7 @@ check('a controlled fixture still opens by its id', (await page.locator('.pg-str
 const tiles = page.locator('.pg-tile');
 await tiles.nth(0).focus(); await page.keyboard.press('ArrowRight');
 check('tile arrow keys select the next view', (await tiles.nth(1).getAttribute('aria-selected')) === 'true' && page.url().includes('view=agent'));
-check('agent view shows the agent presenter', (await page.locator('#pg-view-panel').innerText()).includes('DIFFDEVIL REPORT'));
+check('agent view shows the agent presenter', (await page.locator('#pg-view-panel').innerText()).includes('diffdevil.agent-report/1'));
 check('agent data and report.json are syntax-coloured', (await page.locator('.pg-data').first().locator('.tok-key').count()) > 3 && (await page.locator('.pg-data[data-lang="json"] .tok-key').count()) > 10 && (await page.locator('.pg-data[data-lang="json"] .tok-str').count()) > 5);
 await page.locator('.pg-agent [role="tab"]', { hasText: 'plan.json' }).click();
 check('plan.json gets the same JSON colouring', (await page.locator('.pg-data[data-lang="json"]').innerText()).includes('"diffdevil.plan"') && (await page.locator('.pg-data[data-lang="json"] .tok-key').count()) > 5);
