@@ -41,10 +41,19 @@ interface Props { readonly fixtures: readonly ExampleCard[]; readonly curated: r
 
 const PRESET_POLICY = 'version: 1\npresets: [size@1]\n';
 
-async function fetchApi(path: string, url: string): Promise<{ ok: true; value: any } | { ok: false; error: ApiError }> {
+/**
+ * One request to the playground API. The caller's AbortSignal travels with the fetch so
+ * a cancel actually cancels; an abort is reported as `CANCELLED`, never as an unreachable
+ * provider. Callers additionally fence completions by request identity, because a
+ * response can still arrive for a request the visitor has moved past.
+ */
+export async function fetchApi(path: string, url: string, signal?: AbortSignal): Promise<{ ok: true; value: any } | { ok: false; error: ApiError }> {
   let response: Response;
-  try { response = await fetch(`${PLAYGROUND_API}${path}?url=${encodeURIComponent(url)}`, { headers: { accept: 'application/json' } }); }
-  catch { return { ok: false, error: { code: 'UNREACHABLE', message: copy.playground.states.unreachable } }; }
+  try { response = await fetch(`${PLAYGROUND_API}${path}?url=${encodeURIComponent(url)}`, { headers: { accept: 'application/json' }, signal }); }
+  catch (error) {
+    if ((error as { name?: string })?.name === 'AbortError' || signal?.aborted) return { ok: false, error: { code: 'CANCELLED', message: 'Cancelled.' } };
+    return { ok: false, error: { code: 'UNREACHABLE', message: copy.playground.states.unreachable } };
+  }
   let body: any;
   try { body = await response.json(); } catch { return { ok: false, error: { code: 'UPSTREAM_ERROR', message: copy.playground.states.upstream } }; }
   if (body?.ok) return { ok: true, value: body };
@@ -62,8 +71,13 @@ export default function Playground({ fixtures, curated, defaultExample }: Props)
   const [error, setError] = useState<ApiError | undefined>();
   const [policyText, setPolicyText] = useState<string>('');
   const [newerHead, setNewerHead] = useState<string | undefined>();
+  // Re-submitting the same public PR (after a cancel or a failure) is a new acquisition.
+  const [attempt, setAttempt] = useState(0);
   const examples = useRef(new Map<string, ExamplePayload>());
   const abort = useRef<AbortController | undefined>(undefined);
+  // Every acquisition gets an identity; only the latest may commit state. A cancelled or
+  // superseded request that later resolves is ignored, whatever its outcome.
+  const requestId = useRef(0);
 
   // Reflect state into the URL (shareable, reloadable) without adding history entries per keystroke.
   useEffect(() => {
@@ -92,12 +106,14 @@ export default function Playground({ fixtures, curated, defaultExample }: Props)
     abort.current?.abort();
     const controller = new AbortController();
     abort.current = controller;
+    const id = ++requestId.current;
+    const stale = () => cancelled || controller.signal.aborted || requestId.current !== id;
     (async () => {
       if (state.mode === 'pr' && state.pr) {
         setWorking(true); setError(undefined);
         announce(copy.playground.working);
-        const result = await fetchApi('/api/report', prUrl(state.pr));
-        if (cancelled) return;
+        const result = await fetchApi('/api/report', prUrl(state.pr), controller.signal);
+        if (stale()) return;
         setWorking(false);
         if (!result.ok) { setError(result.error); return; }
         const report = readSavedReport(result.value.report);
@@ -108,17 +124,17 @@ export default function Playground({ fixtures, curated, defaultExample }: Props)
         announce(copy.playground.done);
         return;
       }
-      const id = state.example ?? defaultExample;
-      const example = await loadExample(id);
-      if (cancelled) return;
-      if (!example) { setError({ code: 'NOT_FOUND', message: `No example named "${id}".` }); return; }
+      const exampleId = state.example ?? defaultExample;
+      const example = await loadExample(exampleId);
+      if (stale()) return;
+      if (!example) { setError({ code: 'NOT_FOUND', message: `No example named "${exampleId}".` }); return; }
       setError(undefined);
       const pr = example.repository && example.pullRequest ? { owner: example.repository.split('/')[0]!, repo: example.repository.split('/')[1]!, number: example.pullRequest } : undefined;
       if (example.group === 'curated' && state.head === 'live' && pr) {
         setWorking(true);
         announce(copy.playground.working);
-        const result = await fetchApi('/api/report', prUrl(pr));
-        if (cancelled) return;
+        const result = await fetchApi('/api/report', prUrl(pr), controller.signal);
+        if (stale()) return;
         setWorking(false);
         if (!result.ok) { setError(result.error); setAcquired({ kind: 'snapshot', report: example.report, example, pr, policyName: example.policy.name, basePolicy: example.policy.text, acquiredAt: Date.now() }); return; }
         const report = readSavedReport(result.value.report);
@@ -135,15 +151,15 @@ export default function Playground({ fixtures, curated, defaultExample }: Props)
         const cachedHead = sessionStorage.getItem(key);
         if (cachedHead !== null) { setNewerHead(cachedHead && cachedHead !== example.snapshot.head ? cachedHead : undefined); }
         else {
-          fetchApi('/api/head', prUrl(pr)).then(result => {
-            if (cancelled) return;
+          fetchApi('/api/head', prUrl(pr), controller.signal).then(result => {
+            if (stale()) return;
             if (result.ok) { sessionStorage.setItem(key, result.value.head.head); setNewerHead(result.value.head.head !== example.snapshot!.head ? result.value.head.head : undefined); }
           });
         }
       } else setNewerHead(undefined);
     })();
     return () => { cancelled = true; controller.abort(); };
-  }, [state.mode, state.pr?.owner, state.pr?.repo, state.pr?.number, state.example, state.head, defaultExample, loadExample]);
+  }, [state.mode, state.pr?.owner, state.pr?.repo, state.pr?.number, state.example, state.head, attempt, defaultExample, loadExample]);
 
   const evaluation = useMemo<Evaluation | EvaluationFailure | undefined>(() => {
     if (!acquired || !policyText) return undefined;
@@ -160,8 +176,10 @@ export default function Playground({ fixtures, curated, defaultExample }: Props)
   }, [acquired]);
 
   const selectExample = useCallback((id: string) => setState(current => ({ ...current, mode: 'examples', example: id, head: 'snapshot', pr: undefined, policy: undefined })), []);
-  const analyzePr = useCallback((pr: { owner: string; repo: string; number: number }) => setState(current => ({ ...current, mode: 'pr', pr, example: undefined, head: 'snapshot', policy: undefined })), []);
-  const cancel = useCallback(() => { abort.current?.abort(); setWorking(false); }, []);
+  const analyzePr = useCallback((pr: { owner: string; repo: string; number: number }) => { setAttempt(a => a + 1); setState(current => ({ ...current, mode: 'pr', pr, example: undefined, head: 'snapshot', policy: undefined })); }, []);
+  // Cancel aborts the in-flight request and retires its identity, so a late response
+  // (success or failure) cannot commit state; the input and the previous result stay.
+  const cancel = useCallback(() => { abort.current?.abort(); requestId.current += 1; setWorking(false); announce('Cancelled. Your input is kept.'); }, []);
 
   return (
     <div className="pg">

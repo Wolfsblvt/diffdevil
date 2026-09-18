@@ -48,7 +48,7 @@ export const groups = [
   ] },
   { label: 'Agents', entries: [
     { source: 'docs/agent-skill/README.md', slug: 'agents/agent-integration', optional: true },
-    { source: 'docs/agent-skill/SKILL.md', slug: 'agents/skill', optional: true, title: 'Agent Skill source' },
+    { source: 'skills/diffdevil/SKILL.md', slug: 'agents/skill', optional: true, title: 'Agent Skill source' },
     { source: 'docs/setup/README.md', slug: 'agents/setup', optional: true },
     { source: 'docs/setup/cli.md', slug: 'setup/cli', optional: true },
     { source: 'docs/setup/actions.md', slug: 'setup/actions', optional: true },

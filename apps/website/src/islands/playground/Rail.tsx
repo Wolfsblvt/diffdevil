@@ -94,7 +94,7 @@ export function Rail(props: Props) {
             {editing || !lastPr ? (
               <form onSubmit={submit} className="field" noValidate>
                 <label className="field-label" htmlFor="pg-url">{c.inputLabel}</label>
-                <input ref={input} id="pg-url" className="input" type="url" inputMode="url" placeholder={copy.routes.two.placeholder} defaultValue={lastPr ? prUrl(lastPr) : ''} autoComplete="off" spellCheck={false} disabled={working} onKeyDown={e => { if (e.key === 'Escape' && working) props.onCancel(); }} />
+                <input ref={input} id="pg-url" className="input" type="url" inputMode="url" placeholder={copy.routes.two.placeholder} defaultValue={lastPr ? prUrl(lastPr) : ''} autoComplete="off" spellCheck={false} aria-busy={working} onKeyDown={e => { if (e.key === 'Escape' && working) { e.preventDefault(); props.onCancel(); } }} />
                 <p className="field-hint">{c.inputHint}</p>
                 <div className="pg-input-actions">
                   <button className="btn btn-inverse" type="submit" disabled={working}>{c.inputButton}</button>

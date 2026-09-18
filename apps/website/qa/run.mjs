@@ -20,6 +20,7 @@ import { join, extname } from 'node:path';
 import { GitHubClient } from '../../../dist/lib/index.js';
 import { FakeGitHub } from '../../../src/diffdevil/tests/helpers/github.mjs';
 import { createPlaygroundServer } from '../../playground/server.mjs';
+import { replayPublicPullRequest } from '../../playground/app.mjs';
 
 const DIST = 'artifacts/website/dist';
 const OUT = 'artifacts/website/qa';
@@ -35,7 +36,10 @@ const site = createServer(async (req, res) => {
 });
 site.listen(SITE_PORT, '127.0.0.1'); await once(site, 'listening');
 const fake = new FakeGitHub();
-const api = createPlaygroundServer({ clientFactory: () => new GitHubClient({ fetch: fake.fetch, readRetries: 0 }) });
+const apiClient = () => new GitHubClient({ fetch: fake.fetch, readRetries: 0 });
+// The next replay request can be held back on demand so a cancel-then-late-success can be exercised.
+let holdNextReplayMs = 0;
+const api = createPlaygroundServer({ clientFactory: apiClient, replay: async input => { const result = await replayPublicPullRequest(input, { client: apiClient() }); if (holdNextReplayMs) { const ms = holdNextReplayMs; holdNextReplayMs = 0; await new Promise(r => setTimeout(r, ms)); } return result; } });
 api.listen(API_PORT, '127.0.0.1'); await once(api, 'listening');
 
 const results = [];
@@ -116,6 +120,22 @@ await page.waitForSelector('.pg-primary', { timeout: 20000 });
 check('PR mode analyzed through the API and shows the compact PR display', (await page.locator('.pg-analyzed').innerText()).includes('example/repository'));
 check('PR mode primary result is exact 3 changed', /3\s*changed/u.test(await page.locator('.pg-primary').innerText()));
 await shot('playground-pr');
+
+// ── playground: cancel, then a late successful response must not commit ──
+await go('/playground/?example=lockfile-excluded');
+await page.waitForSelector('.pg-primary');
+holdNextReplayMs = 2500;
+await page.locator('#tab-pr').click();
+await page.locator('#pg-url').fill('https://github.com/example/repository/pull/42');
+await page.locator('.pg-input form button[type="submit"]').click();
+await page.waitForSelector('.pg-input [role="status"]');
+await page.locator('#pg-url').press('Escape');
+check('Escape cancels: the spinner clears and the input is kept', (await page.locator('.pg-input [role="status"]').count()) === 0 && (await page.locator('#pg-url').inputValue()).includes('pull/42'));
+await page.waitForTimeout(3200);
+check('a late successful response after cancel does not commit a result', (await page.locator('.pg-analyzed').count()) === 0 && /178\s*changed/u.test(await page.locator('.pg-primary').innerText()));
+await page.locator('.pg-input form button[type="submit"]').click();
+await page.waitForSelector('.pg-analyzed', { timeout: 15000 });
+check('re-submitting after cancel analyzes normally', /3\s*changed/u.test(await page.locator('.pg-primary').innerText()));
 
 // ── playground: default fixture, tiles, controls, editor, export ──
 await go('/playground/');
@@ -212,6 +232,15 @@ await page.locator('[data-menu-toggle]').click();
 check('narrow header menu opens the navigation', await page.locator('#site-nav').isVisible());
 await shot('home-narrow');
 await page.setViewportSize({ width: 1280, height: 900 });
+
+// ── repository links ──
+for (const path of ['/examples/', '/app/']) {
+  await go(path);
+  const hrefs = await page.locator('a[href*="/blob/main"]').evaluateAll(links => links.map(a => a.getAttribute('href')));
+  check(`${path} repository links carry the separator once`, hrefs.length > 0 && hrefs.every(h => h.includes('/blob/main/') && !h.includes('/blob/main//') && !/\/blob\/main[^/]/u.test(h)), hrefs.slice(0, 3).join(' '));
+}
+const badge = await page.goto(`http://127.0.0.1:${SITE_PORT}/github-app-logo-512.png`);
+check('generated GitHub App badge is served by the built site', badge.status() === 200 && (badge.headers()['content-type'] ?? '').includes('image/png'));
 
 // ── invariants ──
 check('no external requests left the site origin (fonts self-hosted)', external.length === 0, external.slice(0, 5).join(', '));

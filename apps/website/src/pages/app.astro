@@ -7,7 +7,7 @@ import Base from '../layouts/Base.astro';
 import GitHubMark from '../components/GitHubMark.astro';
 import CodeBlock from '../components/CodeBlock.astro';
 import { copy } from '../data/copy';
-import { APP_INSTALL_URL, GITHUB_BLOB, docPaths, paths } from '../data/site';
+import { APP_INSTALL_URL, blobUrl, docPaths, paths } from '../data/site';
 const c = copy.app;
 const permissions = [
   ['Contents', 'read', 'trusted repository policy (.diffdevil.yml from the PR base) and relative comment templates'],
@@ -83,7 +83,7 @@ const migration = `# 1. Disable the Action writer first, keep read-only analysis
             <li>the runtime source under <code class="code-inline">apps/github-app/</code>, its migration, and its maintenance path</li>
             <li>no diffdevil branding that implies the official service</li>
           </ul>
-          <ul class="links"><li><a class="link" href={docPaths.app.replace('architecture', 'self-hosting')}>Self-hosting the runtime</a></li><li><a class="link" href={`${GITHUB_BLOB}apps/github-app/README.md`} rel="noopener">Runtime source</a></li><li><a class="link" href={paths.licences}>Licence boundaries</a></li></ul>
+          <ul class="links"><li><a class="link" href={docPaths.app.replace('architecture', 'self-hosting')}>Self-hosting the runtime</a></li><li><a class="link" href={blobUrl('apps/github-app/README.md')} rel="noopener">Runtime source</a></li><li><a class="link" href={paths.licences}>Licence boundaries</a></li></ul>
         </div>
         <div class="panel">
           <p class="label">Data</p>

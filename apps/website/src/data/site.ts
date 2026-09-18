@@ -20,7 +20,9 @@ export const APP_INSTALL_URL: string | undefined = import.meta.env.PUBLIC_APP_IN
 export const PACKAGE_VERSION: string = packageJson.version;
 export const REPO = 'Wolfsblvt/diffdevil';
 export const GITHUB = `https://github.com/${REPO}`;
-export const GITHUB_BLOB = `${GITHUB}/blob/main`;
+export const GITHUB_BLOB = `${GITHUB}/blob/main/`;
+/** Repository file on GitHub at main; `path` is repository-relative without a leading slash. */
+export function blobUrl(path: string): string { return `${GITHUB_BLOB}${path.replace(/^\/+/u, '')}`; }
 export const NPM = 'https://www.npmjs.com/package/@wolfsblvt/diffdevil';
 export const MARKETPLACE = 'https://github.com/marketplace/actions/diffdevil';
 export const RELEASES = `${GITHUB}/releases`;

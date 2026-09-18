@@ -8,8 +8,10 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { repositoryRoot } from './engine-node';
+import { skillVersionOf } from './skill-version.mjs';
 
-export const SKILL_SOURCE = 'docs/agent-skill/SKILL.md';
+/** The canonical Skill home is the repository's skills tree, not a docs copy. */
+export const SKILL_SOURCE = 'skills/diffdevil/SKILL.md';
 export const SETUP_SOURCES = {
   cli: 'docs/setup/cli.md', actions: 'docs/setup/actions.md', app: 'docs/setup/app.md', everything: 'docs/setup/everything.md',
 } as const;
@@ -25,11 +27,9 @@ function readIfPresent(relative: string): SourceFile | undefined {
 export function skillSource(): SourceFile | undefined { return readIfPresent(SKILL_SOURCE); }
 export function setupSource(intent: SetupIntent): SourceFile | undefined { return readIfPresent(SETUP_SOURCES[intent]); }
 
-/** The skill's version is its front-matter `version:`; the site never hard-codes one. */
+/** The skill's version is `metadata.version` in its YAML front matter (Agent Skills schema); the site never hard-codes one. */
 export function skillVersion(source: SourceFile | undefined): string | undefined {
-  if (!source) return undefined;
-  const match = /^---\r?\n(?:.*\r?\n)*?version:\s*["']?([0-9]+\.[0-9]+\.[0-9]+[^"'\s]*)["']?\s*\r?\n(?:.*\r?\n)*?---/u.exec(source.text);
-  return match?.[1];
+  return source ? skillVersionOf(source.text) : undefined;
 }
 
 export interface SourcesReport { readonly skill: { present: boolean; version?: string | undefined; path: string }; readonly setup: Record<SetupIntent, { present: boolean; path: string }> }

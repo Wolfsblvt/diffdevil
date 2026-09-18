@@ -151,3 +151,36 @@ test('site copy keeps design placeholders only where the build resolves them', (
   assert.doesNotMatch(copy, /v1\.2\.0|vitejs\/vite #|prettier\/prettier #|astral-sh\/uv #/u, 'illustrative design data must not ship');
   assert.doesNotMatch(copy, /Managed App/u);
 });
+
+import { spawnSync } from 'node:child_process';
+import { skillVersionOf } from './src/lib/skill-version.mjs';
+
+test('the skill version reader parses Agent Skills front matter (metadata.version) and rejects non-semver', () => {
+  assert.equal(skillVersionOf('---\nname: diffdevil\nmetadata:\n  version: "1.0.0"\n---\n# diffdevil\n'), '1.0.0');
+  assert.equal(skillVersionOf('---\nversion: 2.3.4-beta.1\n---\nbody'), '2.3.4-beta.1');
+  assert.equal(skillVersionOf('---\nmetadata:\n  version: "1.0"\n---\n'), undefined);
+  assert.equal(skillVersionOf('# no front matter\nversion: 1.0.0\n'), undefined);
+  assert.equal(skillVersionOf('---\nmetadata: [\n---\n'), undefined);
+});
+
+test('repository blob links carry the path separator once', () => {
+  const site = read('apps/website/src/data/site.ts');
+  assert.match(site, /GITHUB_BLOB = `\$\{GITHUB\}\/blob\/main\/`/u);
+  assert.match(site, /export function blobUrl\(/u);
+  for (const page of ['apps/website/src/pages/examples.astro', 'apps/website/src/pages/app.astro']) {
+    assert.doesNotMatch(read(page), /\$\{GITHUB_BLOB\}/u, `${page} must build blob links through blobUrl()`);
+  }
+});
+
+test('derived website assets are generated from the identity SVGs within their declared framing, and are not tracked', () => {
+  const run = spawnSync(process.execPath, ['tools/website-assets.mjs', '--report'], { encoding: 'utf8' });
+  assert.equal(run.status, 0, run.stderr);
+  const report = JSON.parse(run.stdout);
+  for (const [name, frame] of Object.entries(report)) {
+    assert.ok(frame.occupancy >= frame.declared[0] && frame.occupancy <= frame.declared[1], `${name} occupancy ${frame.occupancy} within ${frame.declared}`);
+    assert.ok(existsSync(join('apps/website/public', frame.file)), frame.file);
+  }
+  assert.ok(report.githubApp.occupancy > report.webApp.occupancy, 'the GitHub badge frame occupies more of its canvas than the web-manifest frame');
+  const tracked = spawnSync('git', ['ls-files', 'apps/website/public'], { encoding: 'utf8' }).stdout.split(/\r?\n/u).filter(Boolean);
+  assert.deepEqual(tracked.filter(path => /\.(png|ico)$/u.test(path)), [], 'no raster derivative is committed');
+});
