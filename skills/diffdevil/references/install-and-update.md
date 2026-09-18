@@ -36,28 +36,27 @@ is active. Update the selected installation rather than creating competing copie
 ## Obtain one complete source snapshot
 
 The canonical repository is `Wolfsblvt/diffdevil`; the skill folder is
-`skills/diffdevil/`. Current released skill versions are named by:
+`skills/diffdevil/`. The stable release manifest is:
 
 ```text
-https://raw.githubusercontent.com/Wolfsblvt/diffdevil/main/skills/versions.json
+https://github.com/Wolfsblvt/diffdevil/releases/latest/download/diffdevil-release-manifest.json
 ```
 
-Its `diffdevil` value is the skill's SemVer string. There is no CLI version range
-in the descriptor. The npm package and skill can change independently.
+Its `skills.diffdevil.version` is the Skill's SemVer string; `assets.skill`
+names its immutable ZIP, SHA-256, and source commit. There is no CLI version
+range in the descriptor. The npm package and Skill can change independently.
 
 For installation or refresh:
 
-1. Resolve repository `main` to one commit using the GitHub adapter, REST API,
-   or Git. For example, GitHub's `repos/Wolfsblvt/diffdevil/commits/main` response
-   identifies the commit in `sha`.
-2. Read `skills/versions.json` and obtain the complete `skills/diffdevil/`
-   directory from that commit, including all referenced Markdown and notices.
-   A GitHub Contents directory listing with `ref=COMMIT` or a checkout/archive
-   of that commit supplies the file set.
+1. Read the stable release manifest and verify the selected `assets.skill`
+   download against its declared SHA-256 before extracting it.
+2. Obtain the complete released Skill folder from that asset, including all
+   referenced Markdown and notices. Its `skills.diffdevil.sourceCommit` is
+   provenance for that immutable published snapshot, not a request to follow
+   mutable `main`.
 3. Confirm the folder's `SKILL.md` name is `diffdevil` and its `metadata.version`
-   equals that snapshot's `diffdevil` descriptor value. Check that its local
-   reference links resolve. If `main` advanced after the earlier quick check,
-   use the self-consistent snapshot rather than mixing revisions.
+   equals that snapshot's `skills.diffdevil.version` value. Check that its
+   local reference links resolve.
 4. Install that folder into the selected harness scope and read back the copied
    files. Preserve the original UTF-8 bytes, including line endings; do not
    rewrite frontmatter, insert local instructions, or reformat references.
@@ -96,8 +95,9 @@ personal route before reducing the result to a file left in a transient sandbox.
 
 ## Check and refresh on use
 
-The skill core checks the small version file on first relevant use in each session.
-An explicit user request can check again. There is no daemon or scheduled updater.
+The Skill core checks the stable release manifest on first relevant use in each
+session. An explicit user request can check again. There is no daemon or
+scheduled updater.
 
 Compare SemVer, not strings: `1.10.0` is newer than `1.9.0`. Equal versions need
 no update. A local newer/development version is not silently downgraded.
