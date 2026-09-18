@@ -1,25 +1,21 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-/** Four views of one result: Terminal (real human presenter), Agent · data, GitHub preview (desired plan, never applied), Explanation (key by key). */
-import { useMemo, useState } from 'react';
+/**
+ * Four views of one result. Terminal: the real human presenters as one terminal session.
+ * Agent · data: the real agent projection beside the report and plan documents, with the
+ * site's restrained syntax colouring. GitHub preview: the desired plan as GitHub would
+ * show it, never as applied. Explanation: fact → rule → proposed → readback, and the
+ * settings that produced the result, each linked to its manual section.
+ */
+import { useState, type ReactNode } from 'react';
 import { copy } from '../../data/copy';
 import { docPaths, paths } from '../../data/site';
 import { agent, appCheckSummary, display, evaluate, evidenceGlyph, human, json, planHuman, planJson, type Evaluation } from './engine';
 import type { Acquired } from './Playground';
 import { copyText } from '../../lib/clipboard';
+import { highlightJson, highlightLines } from './highlight';
 import type { View } from './state';
 
 interface Props { view: View; evaluation: Evaluation; acquired: Acquired }
-
-function Block({ title, meta, text, lang = 'text', footer }: { title: string; meta?: string; text: string; lang?: string; footer?: React.ReactNode }) {
-  const id = useMemo(() => `blk-${Math.random().toString(36).slice(2, 8)}`, []);
-  return (
-    <figure className="machine code pg-block">
-      <figcaption className="code-head"><span>{title}</span>{meta && <span>· {meta}</span>}<span className="spacer" /><button type="button" onClick={() => copyText(text)} aria-label={`Copy ${title}`}>Copy</button></figcaption>
-      <pre className="code-body" id={id} data-lang={lang}><code>{text}</code></pre>
-      {footer && <p className="pg-block-foot">{footer}</p>}
-    </figure>
-  );
-}
 
 const explanationAnchors: Record<string, string> = {
   presets: `${docPaths.presets}#presets`, size: `${docPaths.presets}#size-overrides`, measurement: `${docPaths.versioning}`, defaults: `${docPaths.policies}#defaults`,
@@ -27,108 +23,197 @@ const explanationAnchors: Record<string, string> = {
   labelGroups: `${docPaths.templates}#label-groups`, labelDefinitions: `${docPaths.policies}#label-definitions`, queries: `${docPaths.policies}#queries`, parameters: `${docPaths.policies}#parameters`,
 };
 
+const Code = ({ children }: { children: ReactNode }) => <code className="pg-code">{children}</code>;
+
+/** A comment body is Markdown. Render the small subset comment templates use; anything else stays literal text. */
+function CommentBody({ body }: { body: string }) {
+  const inline = (text: string, seed: string): ReactNode[] => text.split(/(\*\*[^*]+\*\*|`[^`]+`)/u).map((part, index) =>
+    part.startsWith('**') && part.endsWith('**') ? <strong key={`${seed}${index}`}>{part.slice(2, -2)}</strong>
+      : part.startsWith('`') && part.endsWith('`') ? <Code key={`${seed}${index}`}>{part.slice(1, -1)}</Code> : part);
+  const lines = body.split('\n').filter(line => !/^\s*<!--.*-->\s*$/u.test(line));
+  return (
+    <div className="pg-comment-text">
+      {lines.map((line, index) => {
+        const heading = /^#{1,6}\s+(.*)$/u.exec(line);
+        const bullet = /^\s*[-*]\s+(.*)$/u.exec(line);
+        if (heading) return <p key={index} className="is-heading">{inline(heading[1]!, `h${index}`)}</p>;
+        if (bullet) return <p key={index} className="is-bullet">{inline(bullet[1]!, `b${index}`)}</p>;
+        if (!line.trim()) return <span key={index} className="is-gap" />;
+        return <p key={index}>{inline(line, `p${index}`)}</p>;
+      })}
+    </div>
+  );
+}
+
 export function Views({ view, evaluation, acquired }: Props) {
   const c = copy.playground;
-  const [agentMode, setAgentMode] = useState<'agent' | 'json' | 'plan'>('agent');
-  const [commentPreview, setCommentPreview] = useState(false);
+  const [data, setData] = useState<'report' | 'plan'>('report');
+  const [commentPreview, setCommentPreview] = useState(true);
   const report = evaluation.report, plan = evaluation.plan;
 
   if (view === 'terminal') {
+    const analyze = human(report), planText = plan ? planHuman(plan) : undefined;
+    const config = acquired.policyName;
     return (
-      <div className="stack">
-        <Block title="diffdevil analyze" meta={`--config ${acquired.policyName} --format human`} text={human(report)} footer={c.terminalFoot} />
-        {plan && <Block title="diffdevil plan" meta={`--config ${acquired.policyName} --format human`} text={planHuman(plan)} />}
-      </div>
+      <>
+        <figure className="machine machine-inner pg-term">
+          <figcaption className="machine-head"><span>terminal</span><span className="pg-head-actions"><button type="button" onClick={() => copyText(analyze)}>Copy analyze</button>{planText && <button type="button" onClick={() => copyText(planText)}>Copy plan</button>}</span></figcaption>
+          <pre className="terminal pg-term-body"><code><span className="p">$ </span><span className="c">diffdevil analyze --config {config}</span>{'\n'}{analyze.trimEnd()}{planText && <>{'\n\n'}<span className="p">$ </span><span className="c">diffdevil plan --config {config}</span>{'\n'}{planText.trimEnd()}</>}</code></pre>
+        </figure>
+        <p className="pg-view-foot">{c.terminalFoot}</p>
+      </>
     );
   }
+
   if (view === 'agent') {
+    const text = data === 'report' ? json(report) : plan ? planJson(plan) : '';
+    const agentText = agent(report);
     return (
-      <div className="stack">
-        <div className="segmented" role="tablist" aria-label="Data view">
-          <button type="button" role="tab" aria-selected={agentMode === 'agent'} onClick={() => setAgentMode('agent')}>--format agent</button>
-          <button type="button" role="tab" aria-selected={agentMode === 'json'} onClick={() => setAgentMode('json')}>report.json</button>
-          <button type="button" role="tab" aria-selected={agentMode === 'plan'} onClick={() => setAgentMode('plan')}>plan.json</button>
+      <div className="pg-agent">
+        <div className="pg-col">
+          <p className="label pg-col-label"><span>Compact agent projection · --format agent</span><button type="button" className="pg-copy" onClick={() => copyText(agentText)}>Copy</button></p>
+          <pre className="machine machine-inner pg-data" tabIndex={0}><code>{highlightLines(agentText.trimEnd())}</code></pre>
+          <p className="pg-view-foot">{c.agentFoot} <a className="link" href={docPaths.agents}>Agent integration</a></p>
         </div>
-        {agentMode === 'agent' && <Block title="diffdevil analyze" meta="--format agent" text={agent(report)} footer={<>{c.agentFoot} <a className="link" href={docPaths.agents}>Agent integration</a></>} />}
-        {agentMode === 'json' && <Block title="report.json" meta={`diffdevil.report ${report.schemaVersion}`} text={json(report)} lang="json" />}
-        {agentMode === 'plan' && (plan ? <Block title="plan.json" meta={`diffdevil.plan ${plan.schemaVersion} · stage ${plan.stage}`} text={planJson(plan)} lang="json" /> : <p className="caption">No plan: {evaluation.planDiagnostics.map(d => d.message).join(' ')}</p>)}
+        <div className="pg-col">
+          <p className="label pg-col-label">
+            <span>{data === 'report' ? `Report · diffdevil.report ${report.schemaVersion}` : plan ? `Plan · diffdevil.plan ${plan.schemaVersion} · stage ${plan.stage}` : 'Plan'}</span>
+            <span className="pg-head-actions">
+              <span className="segmented" role="tablist" aria-label="Document">
+                <button type="button" role="tab" aria-selected={data === 'report'} onClick={() => setData('report')}>report.json</button>
+                <button type="button" role="tab" aria-selected={data === 'plan'} onClick={() => setData('plan')}>plan.json</button>
+              </span>
+              <button type="button" className="pg-copy" onClick={() => copyText(text)} disabled={!text}>Copy</button>
+            </span>
+          </p>
+          {text
+            ? <pre className="machine machine-inner pg-data" tabIndex={0} data-lang="json"><code>{highlightJson(text)}</code></pre>
+            : <p className="notice-proposed">No plan: {evaluation.planDiagnostics.map(d => d.message).join(' ')}</p>}
+        </div>
       </div>
     );
   }
+
   if (view === 'github') {
-    const labels = plan?.operations.filter(op => op.kind === 'label.select' || op.kind === 'label.add') ?? [];
+    const selects = plan?.operations.filter(op => op.kind === 'label.select') ?? [];
+    const adds = plan?.operations.filter(op => op.kind === 'label.add') ?? [];
     const removes = plan?.operations.filter(op => op.kind === 'label.remove') ?? [];
     const comments = plan?.operations.filter(op => op.kind === 'comment.reconcile') ?? [];
     const definitions = evaluation.effective.labelDefinitions ?? {};
+    const swatch = (name: string) => <span className="label-swatch" style={{ background: `#${definitions[name]?.color ?? 'C5DEF5'}` }}>{name}</span>;
     const commentPolicy = acquired.example?.commentPolicy;
-    const preview = commentPreview && commentPolicy ? evaluate(commentPolicy.text, commentPolicy.name, acquired.report) : undefined;
-    const previewComments = preview?.ok ? preview.plan?.operations.filter(op => op.kind === 'comment.reconcile') ?? [] : [];
+    const preview = !comments.length && commentPreview && commentPolicy ? evaluate(commentPolicy.text, commentPolicy.name, acquired.report) : undefined;
+    const shown = comments.length ? comments : preview?.ok ? preview.plan?.operations.filter(op => op.kind === 'comment.reconcile') ?? [] : [];
+    const [summaryTitle, ...summaryLines] = `diffdevil analysis · ${report.source.head ?? report.source.kind}\n${appCheckSummary(report, plan)}`.split('\n').filter(Boolean);
     return (
-      <div className="stack">
-        <div className="notice-proposed"><strong>{c.githubNotice}</strong> {c.githubNoticeBody}</div>
-        <div className="grid-2">
-          <div className="panel stack">
-            <p className="label">{c.labelsH}{plan ? ` · target ${plan.target.repository}#${plan.target.pullRequest}` : ''}</p>
-            {labels.length === 0 && removes.length === 0 && <p className="caption">No label operation. {plan?.held.length ? `Held: ${plan.held.map(h => `${h.rule} (${h.reasons.map(r => r.code).join(', ')})`).join('; ')}.` : ''}</p>}
-            <ul className="pg-labels">
-              {labels.map((op, i) => op.kind === 'label.select'
-                ? <li key={i}><span className="label-swatch" style={{ background: `#${definitions[op.selected]?.color ?? 'C5DEF5'}` }}>{op.selected}</span> <span className="caption">managed group {op.group}: {op.members.filter(m => m !== op.selected).join(', ')} absent</span></li>
-                : op.kind === 'label.add' ? <li key={i}><span className="label-swatch" style={{ background: `#${definitions[op.name]?.color ?? 'C5DEF5'}` }}>{op.name}</span> <span className="caption">rule {op.rule}</span></li> : null)}
-              {removes.map((op, i) => op.kind === 'label.remove' ? <li key={`r${i}`}><span className="caption">− {op.name} removed when false · rule {op.rule}</span></li> : null)}
-            </ul>
+      <div className="pg-github">
+        <div className="pg-col">
+          <div className="notice-proposed"><strong>{c.githubNotice}</strong> {c.githubNoticeBody}</div>
+          <div className="machine machine-inner pg-box">
+            <p className="label pg-box-head">{c.labelsH}{selects[0]?.kind === 'label.select' ? ` · managed group ${selects[0].group}` : ''}</p>
+            <div className="pg-box-body">
+              {selects.length === 0 && adds.length === 0 && removes.length === 0 && <p className="pg-dim">No label operation.{plan?.held.length ? ` Held: ${plan.held.map(h => `${h.rule} (${h.reasons.map(r => r.code).join(', ')})`).join('; ')}.` : ''}</p>}
+              {selects.map((op, i) => op.kind === 'label.select' ? (
+                <div key={`s${i}`} className="pg-label-rows">
+                  <p className="pg-label-row">{swatch(op.selected)}<span>selected{definitions[op.selected]?.description ? ` · ${definitions[op.selected]!.description}` : ''}</span></p>
+                  <p className="pg-label-row pg-dim"><span className="mono">{op.members.filter(m => m !== op.selected).join(' · ')}</span><span>absent (other group members)</span></p>
+                </div>
+              ) : null)}
+              {adds.map((op, i) => op.kind === 'label.add' ? <p key={`a${i}`} className="pg-label-row">{swatch(op.name)}<span>added · rule {op.rule} matched</span></p> : null)}
+              {removes.map((op, i) => op.kind === 'label.remove' ? <p key={`r${i}`} className="pg-label-row pg-dim"><span className="mono">{op.name}</span><span>absent · rule {op.rule} not matched, removeWhenFalse</span></p> : null)}
+              <p className="pg-box-foot">Labels outside declared groups and rules are never touched.{plan ? ` Target ${plan.target.repository}#${plan.target.pullRequest}.` : ''}</p>
+            </div>
           </div>
-          <div className="panel stack">
-            <p className="label">{c.checkH}</p>
-            <pre className="machine code-body pg-check"><code>{`diffdevil analysis\n${appCheckSummary(report, plan)}`}</code></pre>
-            <p className="caption">{c.checkFoot}</p>
+          <div className="machine machine-inner pg-box">
+            <p className="label pg-box-head">{c.checkH}</p>
+            <div className="pg-box-body pg-check">
+              <p><strong>{summaryTitle}</strong></p>
+              {summaryLines.map((line, index) => <p key={index}>{line}</p>)}
+              <p className="pg-box-foot">{c.checkFoot}</p>
+            </div>
           </div>
         </div>
-        <div className="panel stack">
-          <p className="label">{c.commentH} · {comments.length ? 'on' : c.commentOffNote}{commentPolicy && !comments.length ? <> · <label className="small"><input type="checkbox" checked={commentPreview} onChange={e => setCommentPreview(e.target.checked)} /> {c.commentShownWith.replace('review-comment.yml', commentPolicy.name)}</label></> : null}</p>
-          {(comments.length ? comments : previewComments).map((op, i) => op.kind === 'comment.reconcile' ? (
-            <div key={i} className="pg-comment">
-              <p className="caption">mode {op.mode} · trigger {op.trigger} · marker <code>&lt;!-- diffdevil:rule={op.rule} --&gt;</code></p>
-              <pre className="pg-comment-body">{op.body}</pre>
-            </div>
-          ) : null)}
-          {!comments.length && !previewComments.length && <p className="caption">No comment in this policy. Turn one on in Controls, or open Policy and add a rule with <code>effects.comment</code>.</p>}
+        <div className="machine machine-inner pg-box">
+          <p className="label pg-box-head pg-box-head-split">
+            <span>{c.commentH}</span>
+            <span>{comments.length ? 'on in this policy' : c.commentOffNote}{!comments.length && commentPolicy ? <> · <label className="pg-toggle"><input type="checkbox" checked={commentPreview} onChange={e => setCommentPreview(e.target.checked)} /> {c.commentShownWith.replace('review-comment.yml', commentPolicy.name)}</label></> : null}</span>
+          </p>
+          <div className="pg-box-body">
+            {shown.map((op, i) => op.kind === 'comment.reconcile' ? (
+              <div key={i} className="pg-comment-wrap">
+                <article className="pg-comment" aria-label="Rendered comment preview">
+                  <header className="pg-comment-head"><span className="logo logo-micro pg-avatar" role="img" aria-label="" /><strong>diffdevil</strong><span className="pg-comment-meta">bot · would comment</span></header>
+                  <CommentBody body={op.body} />
+                  <p className="pg-comment-marker">&lt;!-- diffdevil:rule={op.rule} --&gt;</p>
+                </article>
+                <p className="pg-box-foot">Mode <Code>{op.mode}</Code> · trigger <Code>{op.trigger}</Code>: one comment, identified by its marker and updated in place. It never adopts a comment written by anyone else.</p>
+              </div>
+            ) : null)}
+            {!shown.length && <p className="pg-dim">No comment in this policy. Turn one on in Controls, or open Policy and add a rule with <Code>effects.comment</Code>.</p>}
+          </div>
         </div>
       </div>
     );
   }
+
   // explain
   const rules = Object.entries(evaluation.result.rules);
   const origins = evaluation.origins;
   const userKeys = Object.keys(evaluation.document).filter(k => k !== 'version');
+  const metric = report.metrics?.[evaluation.focusMetric];
+  const definition = evaluation.effective.metrics?.[evaluation.focusMetric];
+  const included = report.files.filter(file => file.included), excluded = report.files.filter(file => !file.included);
+  const contribution = included.slice(0, 4).map(file => `${file.path} ${display(file.lines.changed)}`).join(' + ') + (included.length > 4 ? ` + ${included.length - 4} more` : '');
+  const lines = report.totals.lines, raw = report.totals.raw;
+  const hasModified = lines.modified.status === 'exact' && lines.modified.value > 0;
+  const operations = plan?.operations ?? [];
+  const proposed = operations.map(op => op.kind === 'label.select' ? `select ${op.selected} in group ${op.group}` : op.kind === 'label.add' ? `add ${op.name}` : op.kind === 'label.remove' ? `keep ${op.name} absent` : op.kind === 'comment.reconcile' ? `${op.mode} the ${op.rule} comment` : op.kind);
   return (
-    <div className="stack">
-      <ul className="pg-lanes">
-        {c.explainLanes.map(([glyph, name, meaning]) => <li key={name}><span className="lane" data-lane={name.toLowerCase()}>{glyph} {name}</span><span className="caption">{meaning}</span></li>)}
-      </ul>
-      <div className="panel stack">
-        <p className="label">■ Fact · evidence</p>
-        <p className="small">Measurement <span className="chip-ev" data-status={report.measurement.status}>{evidenceGlyph[report.measurement.status]} {report.measurement.status}</span>{report.measurement.reasons.length ? <> — {report.measurement.reasons.map(r => `${r.code}${r.subject ? ` (${r.subject})` : ''}`).join(', ')}</> : null}. File set {report.fileSet.complete ? 'complete' : 'incomplete'}: {display(report.fileSet.total)} observed, {display(report.totals.files.included)} included, {display(report.totals.files.excluded)} excluded.</p>
-        {evaluation.result.evidence.length > 0 && <p className="caption">Evaluation notes: {evaluation.result.evidence.map(r => r.code).join(', ')}</p>}
+    <div className="pg-explain">
+      <div className="pg-col">
+        <div className="machine machine-inner pg-lane">
+          <p className="label">■ Fact</p>
+          <p>Metric <Code>{evaluation.focusMetric}</Code>{definition && 'measure' in definition ? <> = <Code>{definition.measure}</Code> over included files</> : definition && 'formula' in definition ? <> = <Code>{definition.formula}</Code></> : null} evaluated to <strong>{display(metric)}</strong>, {evidenceGlyph[metric?.status ?? report.measurement.status]} {metric?.status ?? report.measurement.status}.</p>
+          <p className="pg-dim">{contribution ? `${contribution}.` : 'No included files.'}{excluded.length ? ` ${excluded.slice(0, 3).map(file => `${file.path} (${display(file.lines.changed)}) excluded`).join(', ')}${excluded.length > 3 ? `, and ${excluded.length - 3} more excluded` : ''}.` : ''}</p>
+          <p className="pg-dim">Measurement {evidenceGlyph[report.measurement.status]} {report.measurement.status}{report.measurement.reasons.length ? ` — ${report.measurement.reasons.map(r => `${r.code}${r.subject ? ` (${r.subject})` : ''}`).join(', ')}` : ''}. File set {report.fileSet.complete ? 'complete' : 'incomplete'}.</p>
+        </div>
+        <div className="machine machine-inner pg-lane">
+          <p className="label">§ Rule</p>
+          {rules.map(([id, r]) => (
+            <p key={id}>{r.band
+              ? r.band.status === 'resolved'
+                ? <>Band: {r.band.lower ?? 0} ≤ {display(metric)}{r.band.upper !== undefined ? ` < ${r.band.upper}` : ''} → <strong>{r.band.id}</strong>. </>
+                : <>Band unknown across {r.band.candidates.join(', ')}. </>
+              : null}Rule <Code>{id}</Code> {r.disposition}{r.decision ? ` (${r.decision.status === 'resolved' ? String(r.decision.value) : 'unknown'})` : ''}.</p>
+          ))}
+          {rules.length === 0 && <p className="pg-dim">No rules in this policy.</p>}
+          {evaluation.result.evidence.length > 0 && <p className="pg-dim">Evaluation notes: {evaluation.result.evidence.map(r => r.code).join(', ')}</p>}
+        </div>
+        <div className="machine machine-inner pg-lane">
+          <p className="label">→ Proposed</p>
+          <p>{plan ? proposed.length ? `${proposed.join('; ')}.` : 'No desired operation.' : `No plan: ${evaluation.planDiagnostics.map(d => d.message).join(' ')}`}{plan?.held.length ? ` Held: ${plan.held.map(h => h.rule).join(', ')}.` : ''}{plan && !operations.some(op => op.kind === 'comment.reconcile') ? ' No comment.' : ''}</p>
+          {plan && <p className="pg-dim">Stage {plan.stage}; nothing applied.</p>}
+        </div>
+        <div className="pg-lane pg-lane-readback">
+          <p className="label">⟲ Readback</p>
+          <p>{c.explainLanes[3][2]} <a className="link" href={`${paths.docs}actions/github-actions/#analyze-then-revalidate-and-apply-explicitly`}>How apply reads back</a></p>
+        </div>
       </div>
-      <div className="panel stack">
-        <p className="label">§ Rule · which settings produced this</p>
-        <ul className="pg-keys">
-          {userKeys.map(key => <li key={key}><a className="link-plain mono" href={explanationAnchors[key] ?? docPaths.policies}>{key}</a> <span className="caption">{describeKey(key, evaluation)}</span></li>)}
-        </ul>
-        {origins.length > 0 && <details><summary className="caption">Origins ({origins.length})</summary><ul className="pg-keys">{origins.map((o, i) => <li key={i}><span className="mono">{o.path}</span> <span className="caption">from {o.layer}{o.replaces ? `, replaces ${o.replaces}` : ''}</span></li>)}</ul></details>}
-      </div>
-      <div className="panel stack">
-        <p className="label">§ Rules · results</p>
-        <ul className="pg-keys">
-          {rules.map(([id, r]) => <li key={id}><span className="mono">{id}</span> <span className="caption">{r.disposition}{r.band ? ` · band ${r.band.status === 'resolved' ? r.band.id : `unknown (${r.band.candidates.join(', ')})`}` : ''}{r.decision ? ` · ${r.decision.status === 'resolved' ? String(r.decision.value) : 'unknown'}` : ''}</span></li>)}
-          {rules.length === 0 && <li className="caption">No rules in this policy.</li>}
-        </ul>
-      </div>
-      <div className="panel stack">
-        <p className="label">→ Proposed</p>
-        <p className="small">{plan ? `${plan.operations.length} desired operation${plan.operations.length === 1 ? '' : 's'}, ${plan.held.length} held. Stage ${plan.stage}; nothing applied.` : `No plan: ${evaluation.planDiagnostics.map(d => d.message).join(' ')}`}</p>
-        <p className="label" data-lane="readback">⟲ Readback</p>
-        <p className="caption">Not observed. The playground reads no repository state and applies nothing. <a className="link" href={paths.docs + 'actions/github-actions/#analyze-then-revalidate-and-apply-explicitly'}>How apply reads back</a></p>
+      <div className="pg-col">
+        {hasModified && (
+          <div className="machine machine-inner pg-lane">
+            <p className="label">Why {display(lines.modified)} modified, not {display(raw.deleted)} + {display(raw.added)}</p>
+            <p>Under <Code>{report.semantics.replacementLines}</Code>, adjacent deleted and added lines in one edit block pair as modified. Raw counters stay +{display(raw.added)} / −{display(raw.deleted)}; the replacement-aware count is {display(lines.changed)}.</p>
+          </div>
+        )}
+        <div className="machine machine-inner pg-lane">
+          <p className="label">{c.explainKeys}</p>
+          <ul className="pg-keys">
+            {userKeys.map(key => <li key={key}><a href={explanationAnchors[key] ?? docPaths.policies}><Code>{key}</Code> <span className="pg-key-text">{describeKey(key, evaluation)}</span> <span aria-hidden="true">→</span></a></li>)}
+          </ul>
+          <p className="pg-box-foot">Each arrow opens the manual section for that key.</p>
+          {origins.length > 0 && <details className="pg-origins"><summary>Origins ({origins.length})</summary><ul className="pg-keys">{origins.map((o, i) => <li key={i}><Code>{o.path}</Code> <span className="pg-key-text">from {o.layer}{o.replaces ? `, replaces ${o.replaces}` : ''}</span></li>)}</ul></details>}
+        </div>
       </div>
     </div>
   );

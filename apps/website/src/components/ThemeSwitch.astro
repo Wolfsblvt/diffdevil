@@ -1,0 +1,22 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only
+// Three-state theme switch: light · automatic · dark. One radiogroup with a sliding thumb;
+// the middle state follows the system and carries a smaller, fainter glyph. Arrow keys
+// cycle in both directions and wrap. The persisted choice is applied before first paint
+// by the head script (`html[data-theme-choice]`), so the thumb never jumps on load.
+import Icon from './Icon.astro';
+import { copy } from '../data/copy';
+const options = [
+  { value: 'light', icon: 'theme-light', label: copy.theme.light },
+  { value: 'system', icon: 'theme-auto', label: copy.theme.system },
+  { value: 'dark', icon: 'theme-dark', label: copy.theme.dark },
+] as const;
+---
+<div class="theme-switch" role="radiogroup" aria-label={copy.theme.label} data-theme-switch>
+  <span class="theme-thumb" aria-hidden="true"></span>
+  {options.map(option => (
+    <button type="button" role="radio" aria-checked="false" tabindex="-1" data-theme-option={option.value} aria-label={option.label} title={option.label}>
+      <Icon name={option.icon} size={option.value === 'system' ? 11 : 14} />
+    </button>
+  ))}
+</div>

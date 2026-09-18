@@ -1,0 +1,27 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only
+// Social icon slots for the header and footer. A destination that does not exist yet is
+// shown as an unavailable slot (not a link, not focusable as an action) rather than hidden
+// or pointed somewhere invented. `website` appears in the footer only.
+import Icon from './Icon.astro';
+import { copy } from '../data/copy';
+import { COMPANY_SITE, DISCORD_URL, GITHUB } from '../data/site';
+interface Props { place: 'header' | 'footer' }
+const { place } = Astro.props;
+const all = [
+  { id: 'website', icon: 'website', label: copy.socials.website, href: COMPANY_SITE, only: 'footer' },
+  { id: 'discord', icon: 'discord', label: copy.socials.discord, href: DISCORD_URL, soon: copy.socials.discordSoon },
+  { id: 'github', icon: 'github', label: copy.socials.github, href: GITHUB },
+] as const;
+// Header order: GitHub, Discord. Footer order: company website, Discord, GitHub.
+const items = place === 'header' ? [all[2], all[1]] : all;
+---
+<ul class:list={['socials', `socials-${place}`]} aria-label={copy.socials.label}>
+  {items.map(item => (
+    <li>
+      {item.href
+        ? <a class="social" href={item.href} rel="noopener" aria-label={item.label} title={item.label} data-social={item.id}><Icon name={item.icon} size={place === 'header' ? 17 : 15} /></a>
+        : <span class="social is-unavailable" role="img" aria-label={'soon' in item ? item.soon : item.label} title={'soon' in item ? item.soon : item.label} data-social={item.id} aria-disabled="true"><Icon name={item.icon} size={place === 'header' ? 17 : 15} /></span>}
+    </li>
+  ))}
+</ul>

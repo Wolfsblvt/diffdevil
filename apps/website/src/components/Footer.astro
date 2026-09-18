@@ -1,27 +1,34 @@
 ---
 // SPDX-License-Identifier: AGPL-3.0-only
+import Socials from './Socials.astro';
 import { copy } from '../data/copy';
-import { COMPANY, COMPANY_PRIVACY, GITHUB, IMPRESSUM, MARKETPLACE, NPM, RELEASES, docPaths, paths } from '../data/site';
-const get: [string, string][] = [
-  ['@wolfsblvt/diffdevil', NPM], ['Wolfsblvt/diffdevil@v1', MARKETPLACE], ['GitHub Marketplace', MARKETPLACE], ['GitHub App', paths.app],
+import { COMPANY, GITHUB, MARKETPLACE, NPM, RELEASES, docPaths, paths } from '../data/site';
+type Item = readonly [string, string];
+const get: Item[] = [['@wolfsblvt/diffdevil', NPM], ['Wolfsblvt/diffdevil@v1', MARKETPLACE], ['GitHub Marketplace', MARKETPLACE], ['GitHub App', paths.app]];
+// One row may carry several sibling links (CLI · Actions · Library API stay on one line).
+const learn: Item[][] = [
+  [['Get started', docPaths.getStarted]], [['Recipes', docPaths.recipes]],
+  [['CLI', docPaths.cli], ['Actions', docPaths.actions], ['Library API', docPaths.api]],
+  [['Policies and detail', docPaths.policies]], [['Agent integration', docPaths.agents]],
 ];
-const learn: [string, string][] = [
-  ['Get started', docPaths.getStarted], ['Recipes', docPaths.recipes], ['CLI', docPaths.cli], ['Actions', docPaths.actions], ['Library API', docPaths.api], ['Policies and detail', docPaths.policies], ['Agent integration', docPaths.agents],
-];
-const project: [string, string][] = [
-  ['Source on GitHub', GITHUB], ['Releases', RELEASES], ['Security', paths.security], ['Licences', paths.licences], ['Privacy and data', paths.privacy], ['Impressum', IMPRESSUM],
-];
+const project: Item[] = [['Source on GitHub', GITHUB], ['Releases', RELEASES], ['Security', paths.security], ['Licences', paths.licences], ['Privacy and data', paths.privacy], ['Impressum', paths.impressum]];
+const rel = (href: string) => (href.startsWith('http') ? 'noopener' : undefined);
 ---
-<footer class="site-footer">
-  <div class="wrap grid">
-    <div>
-      <span class="logo logo-tail" role="img" aria-label="diffdevil"></span>
-      <p class="line">{copy.footer.line}</p>
-      <p class="licence">{copy.footer.licence}</p>
-      <p class="licence">© {new Date().getUTCFullYear()} {COMPANY} · <a href={COMPANY_PRIVACY} rel="noopener">Company privacy</a></p>
+<footer class="site-footer" data-pagefind-ignore>
+  <div class="wrap">
+    <div class="grid">
+      <div class="footer-brand">
+        <span class="logo logo-tail" role="img" aria-label="diffdevil"></span>
+        <p class="line">{copy.footer.line}</p>
+        <p class="licence">{copy.footer.licence}</p>
+      </div>
+      <nav aria-label={copy.footer.get}><h4>{copy.footer.get}</h4><ul class="mono-list">{get.map(([label, href], index) => <li class={index < 2 ? 'mono' : undefined}><a href={href} rel={rel(href)}>{label}</a></li>)}</ul></nav>
+      <nav aria-label={copy.footer.learn}><h4>{copy.footer.learn}</h4><ul>{learn.map(row => <li class="footer-row">{row.map(([label, href], index) => <>{index > 0 && <span aria-hidden="true"> · </span>}<a href={href}>{label}</a></>)}</li>)}</ul></nav>
+      <nav aria-label={copy.footer.project}><h4>{copy.footer.project}</h4><ul>{project.map(([label, href]) => <li><a href={href} rel={rel(href)}>{label}</a></li>)}</ul></nav>
     </div>
-    <nav aria-label={copy.footer.get}><h4>{copy.footer.get}</h4><ul>{get.map(([label, href]) => <li><a href={href} rel={href.startsWith('http') ? 'noopener' : undefined}>{label}</a></li>)}</ul></nav>
-    <nav aria-label={copy.footer.learn}><h4>{copy.footer.learn}</h4><ul>{learn.map(([label, href]) => <li><a href={href}>{label}</a></li>)}</ul></nav>
-    <nav aria-label={copy.footer.project}><h4>{copy.footer.project}</h4><ul>{project.map(([label, href]) => <li><a href={href} rel={href.startsWith('http') ? 'noopener' : undefined}>{label}</a></li>)}</ul></nav>
+    <div class="footer-base">
+      <p class="licence">© {new Date().getUTCFullYear()} {COMPANY}</p>
+      <Socials place="footer" />
+    </div>
   </div>
 </footer>

@@ -1,0 +1,22 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only
+// Global search: one trigger in the shared header and one modal, on every route including
+// the manual. It queries the Pagefind index the build writes over the whole site, and
+// marks every hit as a manual page or a site page. The index exists only in built output;
+// in `astro dev` the modal says so instead of failing silently.
+import Icon from './Icon.astro';
+import { copy } from '../data/copy';
+const c = copy.search;
+---
+<button class="search-trigger" type="button" data-search-open aria-haspopup="dialog" aria-keyshortcuts="Control+K Meta+K">
+  <Icon name="search" size={14} /><span class="search-trigger-label">{c.trigger}</span><kbd class="search-kbd" aria-hidden="true">Ctrl K</kbd>
+</button>
+<dialog class="search-dialog" data-search-dialog aria-label={c.title}>
+  <form method="dialog" class="search-form" role="search" data-search-form>
+    <Icon name="search" size={16} />
+    <input class="search-input" type="search" name="q" placeholder={c.placeholder} aria-label={c.placeholder} autocomplete="off" spellcheck="false" data-search-input />
+    <button class="search-close" type="submit" value="close" aria-label={c.close}>Esc</button>
+  </form>
+  <p class="search-status" role="status" aria-live="polite" data-search-status>{c.hint}</p>
+  <ol class="search-results" data-search-results></ol>
+</dialog>

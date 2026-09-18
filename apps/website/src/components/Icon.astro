@@ -1,0 +1,15 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only
+// One semantic icon slot for the whole site. Callers name a meaning (`discord`, `sponsor`,
+// `theme-auto`), never a drawing. The drawings in ../data/icons.ts are neutral temporary
+// glyphs: the reusable icon family is an open owner design seam, and replacing it is a
+// change to that one registry, not to any page.
+import { icons, type IconDrawing, type IconName } from '../data/icons';
+interface Props { name: IconName; size?: number | undefined; class?: string | undefined; label?: string | undefined }
+const { name, size = 16, class: extra, label } = Astro.props;
+const icon: IconDrawing = icons[name];
+---
+<svg class:list={['icon', extra]} data-icon={name} width={size} height={size} viewBox={icon.viewBox ?? '0 0 16 16'}
+  fill={icon.stroke ? 'none' : 'currentColor'} stroke={icon.stroke ? 'currentColor' : undefined} stroke-width={icon.stroke ? 1.5 : undefined}
+  stroke-linecap={icon.stroke ? 'round' : undefined} stroke-linejoin={icon.stroke ? 'round' : undefined}
+  aria-hidden={label ? undefined : 'true'} role={label ? 'img' : undefined} aria-label={label} set:html={icon.body} />

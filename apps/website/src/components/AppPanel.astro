@@ -1,0 +1,56 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only
+// The branded App panel: one component, used by the homepage `#app` interruption and as
+// the head of /app/, so the two can never drift. Midnight ground in both themes, 1.1fr /
+// 1fr, six benefits in two columns. The GitHub mark sits before the `#app` anchor and is
+// not part of it. The install action links to the configured installation URL; while the
+// hosted App is not open, the button says so instead of pretending.
+import Icon from './Icon.astro';
+import { copy } from '../data/copy';
+import { APP_INSTALL_URL } from '../data/site';
+interface Props { as?: 'h1' | 'h2' | undefined; secondaryHref: string; selfHostHref: string }
+const { as: Tag = 'h2', secondaryHref, selfHostHref } = Astro.props;
+const c = copy.app;
+const [line1, line2] = c.h2Lines;
+---
+<div class="app-panel on-machine anchor-group">
+  <div class="app-text">
+    <p class="app-eyebrow"><Icon name="github" size={34} /><span><a class="eyebrow-link" id="app" href="#app">#app</a> · {c.eyebrowTail}</span></p>
+    <div class="heading"><Tag class="app-title">{line1}<br />{line2}</Tag><a class="permalink" href="#app" tabindex="-1" aria-hidden="true">#</a></div>
+    <p class="app-body">{c.body}</p>
+    <div class="app-ctas">
+      {APP_INSTALL_URL
+        ? <a class="btn btn-l btn-primary" href={APP_INSTALL_URL} rel="noopener">{c.ctaPrimary}</a>
+        : <span class="btn btn-l btn-primary" aria-disabled="true" title={c.notOpen}>{c.ctaPrimary}</span>}
+      <a class="btn btn-l btn-secondary" href={secondaryHref}>{c.ctaSecondary}</a>
+      <a class="app-tertiary" href={selfHostHref}>{c.ctaTertiary} →</a>
+    </div>
+    {!APP_INSTALL_URL && <p class="app-foot">{c.notOpen}</p>}
+    <p class="app-foot">{c.foot}</p>
+  </div>
+  <ul class="benefits">
+    {c.benefits.map(([title, body]) => <li><strong>{title}</strong><span>{body}</span></li>)}
+  </ul>
+</div>
+<style>
+  .app-panel { border: 1px solid #484d58; border-radius: 16px; background: var(--bg-machine); color: #f0f2f5; color-scheme: dark; overflow: hidden; display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); }
+  .app-text { padding: 40px 40px 36px; display: flex; flex-direction: column; gap: 16px; border-right: 1px solid #2c303a; }
+  .app-eyebrow { margin: 0; display: flex; align-items: center; gap: 12px; font-family: var(--font-mono); font-size: 12px; color: #828690; }
+  .app-eyebrow .eyebrow-link { color: #828690; }
+  .app-panel:has(.eyebrow-link:hover, .permalink:hover, .eyebrow-link:focus-visible) .eyebrow-link { color: #f061ba; }
+  .app-panel .permalink { color: #f061ba; font-size: 26px; }
+  .app-panel .heading { margin: 0; }
+  .app-title { font-size: 40px; line-height: 1.05; letter-spacing: -.02em; font-weight: 700; }
+  .app-body { margin: 0; color: #b4b7be; font-size: 15px; line-height: 1.65; max-width: 48ch; }
+  .app-ctas { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 6px; }
+  .app-ctas .btn-primary { background: #f061ba; color: #0c0f17; }
+  .app-ctas .btn-primary:not([aria-disabled="true"]):hover { background: #ff7fcb; }
+  .app-tertiary { margin-left: 6px; font-size: 13.5px; color: #b4b7be; }
+  .app-tertiary:hover { color: #f0f2f5; text-decoration: underline; text-underline-offset: 3px; }
+  .app-foot { margin: 0; font-size: 12.5px; color: #828690; }
+  .benefits { margin: 0; padding: 36px; list-style: none; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 26px; font-size: 13.5px; align-content: center; }
+  .benefits li { display: flex; flex-direction: column; gap: 2px; color: #b4b7be; }
+  .benefits strong { color: #f0f2f5; font-weight: 700; }
+  @media (max-width: 900px) { .app-panel { grid-template-columns: minmax(0, 1fr); } .app-text { border-right: 0; border-bottom: 1px solid #2c303a; padding: 28px 24px; } .benefits { padding: 24px; } .app-title { font-size: 32px; } }
+  @media (max-width: 640px) { .benefits { grid-template-columns: minmax(0, 1fr); } }
+</style>

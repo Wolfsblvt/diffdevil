@@ -1,14 +1,17 @@
 ---
 // SPDX-License-Identifier: AGPL-3.0-only
 import Base from '../layouts/Base.astro';
+import SectionLinks from '../components/SectionLinks.astro';
 import { paths } from '../data/site';
 ---
-<Base title="Not found" description="This page does not exist.">
-  <section class="wrap nf">
-    <p class="eyebrow">#404</p>
-    <h1 class="h2">Nothing at this address.</h1>
-    <p class="lede">The page you asked for is not part of the site. Unknown evidence is not false: the path may have moved, or never existed.</p>
-    <ul class="links"><li><a class="link" href="/">Home</a></li><li><a class="link" href={paths.docs}>Docs</a></li><li><a class="link" href={paths.playground}>Playground</a></li><li><a class="link" href={paths.examples}>Examples</a></li></ul>
+<Base title="Not found" description="This page does not exist." noindex>
+  <section class="section section-first">
+    <div class="wrap nf">
+      <p class="eyebrow">#404</p>
+      <h1 class="h2">Nothing at this address.</h1>
+      <p class="lede">The page you asked for is not part of the site. Unknown evidence is not false: the path may have moved, or never existed.</p>
+      <SectionLinks links={[['Home', '/'], ['Docs', paths.docs], ['Playground', paths.playground], ['Examples', paths.examples]]} />
+    </div>
   </section>
 </Base>
-<style>.nf { padding: 64px 0 96px; display: grid; gap: 12px; max-width: 640px; } .nf .eyebrow, .nf .lede { margin: 0; }</style>
+<style>.section-first { border-top: 0; padding-block: 64px 96px; } .nf { gap: 12px !important; } .nf > :global(*) { max-width: 640px; }</style>

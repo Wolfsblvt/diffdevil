@@ -1,0 +1,13 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only
+// Deep links into the manual and other pages, always as the closing row of a section:
+// the first link carries the weight, the rest stay secondary. Keys resolve through
+// docPaths; anything else is used as a path.
+import { docPaths } from '../data/site';
+interface Props { links: ReadonlyArray<readonly [string, string]>; class?: string | undefined }
+const { links, class: extra } = Astro.props;
+const resolve = (key: string): string => (docPaths as Record<string, string>)[key] ?? key;
+---
+<ul class:list={['section-links', extra]}>
+  {links.map(([label, key]) => <li><a class="link" href={resolve(key)}>{label}</a></li>)}
+</ul>

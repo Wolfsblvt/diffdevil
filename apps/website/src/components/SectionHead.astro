@@ -1,21 +1,18 @@
 ---
 // SPDX-License-Identifier: AGPL-3.0-only
-// Literal `#id` eyebrow, h2 with a keyboard-reachable permalink, lede and contextual links.
-import { copy } from '../data/copy';
-import { docPaths } from '../data/site';
-interface Props { id: string; eyebrow?: string | undefined; title: string; body?: string | undefined; links?: ReadonlyArray<readonly [string, string]> | undefined; wide?: boolean | undefined }
-const { id, eyebrow = `#${id}`, title, body, links = [], wide = false } = Astro.props;
-const resolve = (key: string): string => (docPaths as Record<string, string>)[key] ?? key;
+// Section heading. The literal `#id` eyebrow IS the anchor: it carries the id, scrolls into
+// place under the sticky header, and is a link to itself. The magenta `#` after the title
+// is the same link for pointer users. Hovering or focusing either lights both.
+// Cross-links never live here; they close the section through SectionLinks.
+interface Props { id: string; title: string; body?: string | undefined; as?: 'h1' | 'h2' | undefined; small?: boolean | undefined }
+const { id, title, body, as: Tag = 'h2', small = false } = Astro.props;
 ---
-<div class:list={['section-head', { 'section-head-wide': wide }]}>
-  <p class="eyebrow">{eyebrow}</p>
+<div class:list={['section-head', 'anchor-group', { 'section-head-small': small }]}>
+  <p class="eyebrow"><slot name="before" /><a class="eyebrow-link" id={id} href={`#${id}`}>#{id}</a><slot name="after" /></p>
   <div class="heading">
-    <h2 class="h2">{title}</h2>
-    <a class="permalink" href={`#${id}`} aria-label={copy.a11y.permalink}>#</a>
+    <Tag class="h2">{title}</Tag>
+    <a class="permalink" href={`#${id}`} tabindex="-1" aria-hidden="true">#</a>
   </div>
   {body && <p class="lede">{body}</p>}
-  {links.length > 0 && <ul class="links">{links.map(([label, key]) => <li><a class="link" href={resolve(key)}>{label}</a></li>)}</ul>}
+  <slot />
 </div>
-<style>
-  .section-head-wide { max-width: none; }
-</style>

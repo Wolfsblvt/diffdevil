@@ -152,6 +152,22 @@ test('site copy keeps design placeholders only where the build resolves them', (
   assert.doesNotMatch(copy, /Managed App/u);
 });
 
+test('each copied setup prompt is one sentence that names its instructions; the linked Markdown owns the detail', () => {
+  const prompts = [...read('apps/website/src/data/copy.ts').matchAll(/^\s+prompt: '([^']+)',$/gmu)].map(match => match[1]);
+  assert.equal(prompts.length, 4);
+  for (const prompt of prompts) {
+    assert.match(prompt, /\{origin\}\/setup\/(cli|actions|app|everything)\.md/u);
+    assert.equal(prompt.split(/(?<=[.!?])\s+/u).length, 1, prompt);
+  }
+});
+
+test('the icon registry names every semantic slot the shell and the support section use', () => {
+  const registry = read('apps/website/src/data/icons.ts');
+  for (const slot of ['github', 'discord', 'website', 'search', 'theme-light', 'theme-dark', 'theme-auto', 'sponsor', 'star', 'copy']) {
+    assert.match(registry, new RegExp(`^\\s+'?${slot}'?: \\{`, 'mu'), slot);
+  }
+});
+
 import { spawnSync } from 'node:child_process';
 import { skillVersionOf } from './src/lib/skill-version.mjs';
 
