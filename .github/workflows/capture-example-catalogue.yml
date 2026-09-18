@@ -1,0 +1,73 @@
+name: Capture example catalogue
+
+on:
+  push:
+    branches:
+      - feat/example-catalogue-source
+
+permissions:
+  contents: write
+
+concurrency:
+  group: capture-example-catalogue-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  capture:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Apply reviewed real-PR catalogue migration
+        run: |
+          base64 --decode .catalogue-migration.tar.gz.b64 > /tmp/catalogue-migration.tar.gz
+          echo "f00bedb4197f2c5faae691207defe0c1260889936b11d5e5ac4cbfcdf34e738d  /tmp/catalogue-migration.tar.gz" | sha256sum --check
+          tar -xzf /tmp/catalogue-migration.tar.gz -C .
+          rm .catalogue-migration.tar.gz.b64
+          rm docs/examples/catalogue/fixtures/spread-concentrated.diff
+          rm docs/examples/catalogue/fixtures/spread-distributed.diff
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Build
+        run: npm run build
+
+      - name: Capture real public PR editions
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node tools/examples.mjs capture-all
+
+      - name: Verify offline replay
+        run: node tools/examples.mjs verify
+
+      - name: Upload captured catalogue fallback
+        uses: actions/upload-artifact@v4
+        with:
+          name: real-pr-catalogue-${{ github.sha }}
+          if-no-files-found: error
+          path: |
+            docs/examples/catalogue
+            docs/integration/example-catalogue.md
+            src/diffdevil/tests/example-catalogue.test.mjs
+            tools/examples.mjs
+
+      - name: Commit source and generated snapshots
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add --all
+          git diff --cached --quiet && exit 0
+          git commit -m "feat: replace catalogue fixtures with real PR evidence"
+          git push origin HEAD:${GITHUB_REF_NAME}

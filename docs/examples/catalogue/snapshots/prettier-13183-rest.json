@@ -1,0 +1,2274 @@
+{
+  "kind": "diffdevil.example-snapshot",
+  "schemaVersion": "1.2",
+  "id": "prettier-13183-rest",
+  "edition": "rest-bounded",
+  "repository": "prettier/prettier",
+  "pullRequest": 13183,
+  "url": "https://github.com/prettier/prettier/pull/13183",
+  "title": "New Ternary Formatting: A Curious Case of the Ternaries",
+  "capturedAt": "2026-09-18T23:14:06.545Z",
+  "provenance": {
+    "baseTip": "f25a592f571257cef4847e27820e86945c7fcb68",
+    "mergeBase": "f25a592f571257cef4847e27820e86945c7fcb68",
+    "head": "c7d5925715a31d3c83073e03de1b90673776b691"
+  },
+  "acquisition": {
+    "route": "github-rest-pull-files",
+    "comparisonEndpoint": "/repos/prettier/prettier/compare/f25a592f571257cef4847e27820e86945c7fcb68...c7d5925715a31d3c83073e03de1b90673776b691",
+    "identityEndpoint": "/repos/prettier/prettier/compare/f25a592f571257cef4847e27820e86945c7fcb68...c7d5925715a31d3c83073e03de1b90673776b691",
+    "pullEndpoint": "/repos/prettier/prettier/pulls/13183",
+    "filesEndpoint": "/repos/prettier/prettier/pulls/13183/files"
+  },
+  "notices": {
+    "declared": "MIT",
+    "records": [
+      {
+        "label": "MIT",
+        "repository": "prettier/prettier",
+        "path": "LICENSE",
+        "role": "base",
+        "ref": "f25a592f571257cef4847e27820e86945c7fcb68",
+        "sha": "5767e34d30ab78796220f9492726dd2f677d4166"
+      },
+      {
+        "label": "MIT",
+        "repository": "prettier/prettier",
+        "path": "LICENSE",
+        "role": "head",
+        "ref": "c7d5925715a31d3c83073e03de1b90673776b691",
+        "sha": "5767e34d30ab78796220f9492726dd2f677d4166"
+      }
+    ]
+  },
+  "rights": {
+    "retainedMaterial": "normalized-report-only",
+    "rawComparison": "analyzed-in-memory-not-committed",
+    "binaryBytes": "not-retained",
+    "review": "Pinned notices and every retained normalized file record were inspected; raw source lines, patch text, discussion, and provider responses are not retained."
+  },
+  "engine": {
+    "package": "1.0.0",
+    "reportSchema": "1.0",
+    "replacementLines": "replacement-lines-v1"
+  },
+  "payload": {
+    "sourceSha256": "073d488f398dc1e48181640b80091834cb456e74fd4c89d707c69ef34ba94f6d",
+    "normalizedReportSha256": "c1ca43364a1f3b683591893c849e1aa6e18039b2d43a031e0e799d66e40bff86",
+    "providerFileSetSha256": "f6712fd63a778376b478f060c572bba96709a1dbd13eb1d8a462bf332237a72e"
+  },
+  "capabilities": {
+    "policyReplay": true,
+    "remeasurement": false,
+    "remeasurementReason": "No raw comparison material is retained in this teaching snapshot."
+  },
+  "lesson": {
+    "id": "bounded-decisions",
+    "title": "A bounded value can still prove a policy"
+  },
+  "provider": {
+    "complete": true,
+    "observedCount": 30,
+    "reportedCount": 30,
+    "entries": [
+      {
+        "path": "changelog_unreleased/javascript/13183.md",
+        "status": "added",
+        "additions": 38,
+        "deletions": 0,
+        "changes": 38,
+        "patchAvailable": true
+      },
+      {
+        "path": "cspell.json",
+        "status": "modified",
+        "additions": 1,
+        "deletions": 0,
+        "changes": 1,
+        "patchAvailable": true
+      },
+      {
+        "path": "docs/options.md",
+        "status": "modified",
+        "additions": 13,
+        "deletions": 0,
+        "changes": 13,
+        "patchAvailable": true
+      },
+      {
+        "path": "src/language-js/comments/handle-comments.js",
+        "status": "modified",
+        "additions": 50,
+        "deletions": 0,
+        "changes": 50,
+        "patchAvailable": true
+      },
+      {
+        "path": "src/language-js/needs-parens.js",
+        "status": "modified",
+        "additions": 5,
+        "deletions": 1,
+        "changes": 6,
+        "patchAvailable": true
+      },
+      {
+        "path": "src/language-js/options.js",
+        "status": "modified",
+        "additions": 9,
+        "deletions": 0,
+        "changes": 9,
+        "patchAvailable": true
+      },
+      {
+        "path": "src/language-js/print/assignment.js",
+        "status": "modified",
+        "additions": 15,
+        "deletions": 2,
+        "changes": 17,
+        "patchAvailable": true
+      },
+      {
+        "path": "src/language-js/print/estree.js",
+        "status": "modified",
+        "additions": 1,
+        "deletions": 1,
+        "changes": 2,
+        "patchAvailable": true
+      },
+      {
+        "path": "src/language-js/print/function.js",
+        "status": "modified",
+        "additions": 5,
+        "deletions": 1,
+        "changes": 6,
+        "patchAvailable": true
+      },
+      {
+        "path": "src/language-js/print/ternary-old.js",
+        "status": "added",
+        "additions": 351,
+        "deletions": 0,
+        "changes": 351,
+        "patchAvailable": true
+      },
+      {
+        "path": "src/language-js/print/ternary.js",
+        "status": "modified",
+        "additions": 292,
+        "deletions": 218,
+        "changes": 510,
+        "patchAvailable": true
+      },
+      {
+        "path": "src/language-js/print/type-annotation.js",
+        "status": "modified",
+        "additions": 3,
+        "deletions": 0,
+        "changes": 3,
+        "patchAvailable": true
+      },
+      {
+        "path": "tests/format/flow/conditional-types-comments/__snapshots__/jsfmt.spec.js.snap",
+        "status": "modified",
+        "additions": 23,
+        "deletions": 16,
+        "changes": 39,
+        "patchAvailable": true
+      },
+      {
+        "path": "tests/format/js/comments-closure-typecast/__snapshots__/jsfmt.spec.js.snap",
+        "status": "modified",
+        "additions": 5,
+        "deletions": 0,
+        "changes": 5,
+        "patchAvailable": true
+      },
+      {
+        "path": "tests/format/js/comments-closure-typecast/issue-9358.js",
+        "status": "modified",
+        "additions": 2,
+        "deletions": 0,
+        "changes": 2,
+        "patchAvailable": true
+      },
+      {
+        "path": "tests/format/js/conditional/__snapshots__/jsfmt.spec.js.snap",
+        "status": "modified",
+        "additions": 1412,
+        "deletions": 65,
+        "changes": 1477,
+        "patchAvailable": true
+      },
+      {
+        "path": "tests/format/js/conditional/jsfmt.spec.js",
+        "status": "modified",
+        "additions": 3,
+        "deletions": 0,
+        "changes": 3,
+        "patchAvailable": true
+      },
+      {
+        "path": "tests/format/js/conditional/new-ternary-examples.js",
+        "status": "modified",
+        "additions": 29,
+        "deletions": 34,
+        "changes": 63,
+        "patchAvailable": true
+      },
+      {
+        "path": "tests/format/js/conditional/new-ternary-spec.js",
+        "status": "modified",
+        "additions": 11,
+        "deletions": 6,
+        "changes": 17,
+        "patchAvailable": true
+      },
+      {
+        "path": "tests/format/js/conditional/postfix-ternary-regressions.js",
+        "status": "modified",
+        "additions": 15,
+        "deletions": 0,
+        "changes": 15,
+        "patchAvailable": true
+      },
+      {
+        "path": "tests/format/js/ternaries/__snapshots__/jsfmt.spec.js.snap",
+        "status": "modified",
+        "additions": 8679,
+        "deletions": 2651,
+        "changes": 11330,
+        "patchAvailable": false
+      },
+      {
+        "path": "tests/format/js/ternaries/jsfmt.spec.js",
+        "status": "modified",
+        "additions": 17,
+        "deletions": 0,
+        "changes": 17,
+        "patchAvailable": true
+      },
+      {
+        "path": "tests/format/typescript/conditional-types/__snapshots__/jsfmt.spec.js.snap",
+        "status": "modified",
+        "additions": 482,
+        "deletions": 0,
+        "changes": 482,
+        "patchAvailable": true
+      },
+      {
+        "path": "tests/format/typescript/conditional-types/jsfmt.spec.js",
+        "status": "modified",
+        "additions": 1,
+        "deletions": 0,
+        "changes": 1,
+        "patchAvailable": true
+      },
+      {
+        "path": "tests/integration/__tests__/__snapshots__/early-exit.js.snap",
+        "status": "modified",
+        "additions": 4,
+        "deletions": 0,
+        "changes": 4,
+        "patchAvailable": true
+      },
+      {
+        "path": "tests/integration/__tests__/__snapshots__/help-options.js.snap",
+        "status": "modified",
+        "additions": 22,
+        "deletions": 0,
+        "changes": 22,
+        "patchAvailable": true
+      },
+      {
+        "path": "tests/integration/__tests__/__snapshots__/plugin-options-string.js.snap",
+        "status": "modified",
+        "additions": 3,
+        "deletions": 3,
+        "changes": 6,
+        "patchAvailable": true
+      },
+      {
+        "path": "tests/integration/__tests__/__snapshots__/plugin-options.js.snap",
+        "status": "modified",
+        "additions": 3,
+        "deletions": 3,
+        "changes": 6,
+        "patchAvailable": true
+      },
+      {
+        "path": "tests/integration/__tests__/__snapshots__/schema.js.snap",
+        "status": "modified",
+        "additions": 5,
+        "deletions": 0,
+        "changes": 5,
+        "patchAvailable": true
+      },
+      {
+        "path": "tests/integration/__tests__/__snapshots__/support-info.js.snap",
+        "status": "modified",
+        "additions": 13,
+        "deletions": 0,
+        "changes": 13,
+        "patchAvailable": true
+      }
+    ]
+  },
+  "material": [
+    {
+      "path": "changelog_unreleased/javascript/13183.md",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "cspell.json",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "docs/options.md",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "src/language-js/comments/handle-comments.js",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "src/language-js/needs-parens.js",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "src/language-js/options.js",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "src/language-js/print/assignment.js",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "src/language-js/print/estree.js",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "src/language-js/print/function.js",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "src/language-js/print/ternary-old.js",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "src/language-js/print/ternary.js",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "src/language-js/print/type-annotation.js",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "tests/format/flow/conditional-types-comments/__snapshots__/jsfmt.spec.js.snap",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "tests/format/js/comments-closure-typecast/__snapshots__/jsfmt.spec.js.snap",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "tests/format/js/comments-closure-typecast/issue-9358.js",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "tests/format/js/conditional/__snapshots__/jsfmt.spec.js.snap",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "tests/format/js/conditional/jsfmt.spec.js",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "tests/format/js/conditional/new-ternary-examples.js",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "tests/format/js/conditional/new-ternary-spec.js",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "tests/format/js/conditional/postfix-ternary-regressions.js",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "tests/format/js/ternaries/__snapshots__/jsfmt.spec.js.snap",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "tests/format/js/ternaries/jsfmt.spec.js",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "tests/format/typescript/conditional-types/__snapshots__/jsfmt.spec.js.snap",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "tests/format/typescript/conditional-types/jsfmt.spec.js",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "tests/integration/__tests__/__snapshots__/early-exit.js.snap",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "tests/integration/__tests__/__snapshots__/help-options.js.snap",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "tests/integration/__tests__/__snapshots__/plugin-options-string.js.snap",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "tests/integration/__tests__/__snapshots__/plugin-options.js.snap",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "tests/integration/__tests__/__snapshots__/schema.js.snap",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "tests/integration/__tests__/__snapshots__/support-info.js.snap",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    }
+  ],
+  "report": {
+    "kind": "diffdevil.report",
+    "schemaVersion": "1.0",
+    "semantics": {
+      "language": "diffdevil-expr/1",
+      "numbers": "diffdevil-number/1",
+      "replacementLines": "replacement-lines-v1",
+      "paths": "diffdevil-glob/1"
+    },
+    "source": {
+      "kind": "github-api",
+      "comparison": "three-dot",
+      "repository": "prettier/prettier",
+      "pullRequest": 13183,
+      "base": "f25a592f571257cef4847e27820e86945c7fcb68",
+      "baseTip": "f25a592f571257cef4847e27820e86945c7fcb68",
+      "head": "c7d5925715a31d3c83073e03de1b90673776b691",
+      "comparisonId": "github-compare-1bef4c9d0fa766e8c59432a934a93b42a3b2baca6e8af538c4c96b68ac434f91"
+    },
+    "fileSet": {
+      "complete": true,
+      "total": {
+        "status": "exact",
+        "value": 30
+      }
+    },
+    "files": [
+      {
+        "id": "file-efbe59b56068fb5fa22e9f6c18b9126d551569e5d2f17ecd8d79801fba2c157c",
+        "path": "changelog_unreleased/javascript/13183.md",
+        "changeType": "added",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "changelog_unreleased/javascript/13183.md"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 38
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "churn": {
+            "status": "exact",
+            "value": 38
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 38
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 0
+          },
+          "changed": {
+            "status": "exact",
+            "value": 38
+          }
+        },
+        "family": {
+          "id": "family-d9ded470997fdbe4efee88e54b07269935e7fdb5faaf67d5372d2b8c1f2c6f60",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-e991e52e88094a7baf2435b060efb8bdf12ef335ce4eca4fb907b78b83c0b391",
+        "path": "cspell.json",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "cspell.json"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 1
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "churn": {
+            "status": "exact",
+            "value": 1
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 1
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 0
+          },
+          "changed": {
+            "status": "exact",
+            "value": 1
+          }
+        },
+        "family": {
+          "id": "family-0c2680e5bad8df9ea4a309a459cf84d23c7a6229ca2735829e730f4833f23eb2",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-f076bc43f6a8d958eb7cdaa0b32d0b2eb59196645179323b9590b4d13b02d887",
+        "path": "docs/options.md",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "docs/options.md"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 13
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "churn": {
+            "status": "exact",
+            "value": 13
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 13
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 0
+          },
+          "changed": {
+            "status": "exact",
+            "value": 13
+          }
+        },
+        "family": {
+          "id": "family-ae6a6a148d511b041789db77605b22e6e20367aac3457720fc8eda5e27670e17",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-a8a96e8494ecc8a824667a1f647b4ead0f28c009d618bc17d3bd2a3e007f049f",
+        "path": "src/language-js/comments/handle-comments.js",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/language-js/comments/handle-comments.js"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 50
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "churn": {
+            "status": "exact",
+            "value": 50
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 50
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 0
+          },
+          "changed": {
+            "status": "exact",
+            "value": 50
+          }
+        },
+        "family": {
+          "id": "family-44e0ab7b55b6adee39289ca8e2a223a090ef6a9e69cf03c089aee511b9e65539",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-ef32aeeb9438aecca72b14764f715d741b7aa85b137ceb0606890426c2833908",
+        "path": "src/language-js/needs-parens.js",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/language-js/needs-parens.js"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 5
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 1
+          },
+          "churn": {
+            "status": "exact",
+            "value": 6
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 4
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 1
+          },
+          "changed": {
+            "status": "exact",
+            "value": 5
+          }
+        },
+        "family": {
+          "id": "family-3706ea3836dc9a927ba37e8a658103a23cd541cf3eed2b0d97892c3eb77c2786",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-b9ce7d422473cb80e6c320d8f2ad2f831918c5d7ce35ba2c9abd91325c6c5cd2",
+        "path": "src/language-js/options.js",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/language-js/options.js"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 9
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "churn": {
+            "status": "exact",
+            "value": 9
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 9
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 0
+          },
+          "changed": {
+            "status": "exact",
+            "value": 9
+          }
+        },
+        "family": {
+          "id": "family-b10cce43896e3570cc1220ba426fbfed9b527b24616d4a2e6698f9d23737d8f3",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-09101b9044835d0afc9483ce619c30ecb0211d880d01e12b11815bdbb17e08d0",
+        "path": "src/language-js/print/assignment.js",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/language-js/print/assignment.js"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 15
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 2
+          },
+          "churn": {
+            "status": "exact",
+            "value": 17
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 13
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 2
+          },
+          "changed": {
+            "status": "exact",
+            "value": 15
+          }
+        },
+        "family": {
+          "id": "family-200821e2e0264765441aa1e0a7b66f33e5719424eb57a0cdd9df1f9970c527b2",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-8f09f113567136bb7099d11b2310424d58d55a44a505709db0d77f991f8ab60a",
+        "path": "src/language-js/print/estree.js",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/language-js/print/estree.js"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 1
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 1
+          },
+          "churn": {
+            "status": "exact",
+            "value": 2
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 0
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 1
+          },
+          "changed": {
+            "status": "exact",
+            "value": 1
+          }
+        },
+        "family": {
+          "id": "family-7ba8bb3a270a83fb6e68fda1b51d02baa4f32282e78f7b42fa74b2e9338d9f25",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-8acfbca2f69e1403650d4aa1b6444ea080920a3fa9648221a359e0ebbb4ec185",
+        "path": "src/language-js/print/function.js",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/language-js/print/function.js"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 5
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 1
+          },
+          "churn": {
+            "status": "exact",
+            "value": 6
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 4
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 1
+          },
+          "changed": {
+            "status": "exact",
+            "value": 5
+          }
+        },
+        "family": {
+          "id": "family-222a39e8d732d7fb8fbc0f7ad4971377157544a81969997383b24dc2b351a927",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-dfa10103400097f6038b290979bf3c13dec44934cb92cd2722fe4f7b478572ff",
+        "path": "src/language-js/print/ternary-old.js",
+        "changeType": "added",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/language-js/print/ternary-old.js"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 351
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "churn": {
+            "status": "exact",
+            "value": 351
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 351
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 0
+          },
+          "changed": {
+            "status": "exact",
+            "value": 351
+          }
+        },
+        "family": {
+          "id": "family-281657b256a4ba2aac37188ce2cc3bc44244c3763e0e72b429cc2581d2b354e6",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-6d89c8eee46acc85e984acea5c092b6346a4e5d229d275b8c8fc950a5d848bb3",
+        "path": "src/language-js/print/ternary.js",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/language-js/print/ternary.js"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 292
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 218
+          },
+          "churn": {
+            "status": "exact",
+            "value": 510
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 223
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 149
+          },
+          "modified": {
+            "status": "exact",
+            "value": 69
+          },
+          "changed": {
+            "status": "exact",
+            "value": 441
+          }
+        },
+        "family": {
+          "id": "family-23e3331bfed7e6e03be1e10021019dbf3854e94cd0d7f0f96a10dde6749d27e2",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-93ad8e1af0c8a711944a164aa2f20c089c01384f15dd554b3bf3570cce287853",
+        "path": "src/language-js/print/type-annotation.js",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/language-js/print/type-annotation.js"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 3
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "churn": {
+            "status": "exact",
+            "value": 3
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 3
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 0
+          },
+          "changed": {
+            "status": "exact",
+            "value": 3
+          }
+        },
+        "family": {
+          "id": "family-526116f483e43c158e7f440dcf62114cbd43ea75e118488fe034cf04fe2020b1",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-010f9329b534f825acc3ec34c1732243dcb5c55919f73bf079c9a172bfeec5a5",
+        "path": "tests/format/flow/conditional-types-comments/__snapshots__/jsfmt.spec.js.snap",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "tests/format/flow/conditional-types-comments/__snapshots__/jsfmt.spec.js.snap"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 23
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 16
+          },
+          "churn": {
+            "status": "exact",
+            "value": 39
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 7
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 16
+          },
+          "changed": {
+            "status": "exact",
+            "value": 23
+          }
+        },
+        "family": {
+          "id": "family-d7113ccda8506e6385f7d526546cb87c89235d956c9959c2b5c4d0305edeeece",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-6668d1da58fb684d83e54e1f494777dbf81c72513aac18aedc8f748e24a830e2",
+        "path": "tests/format/js/comments-closure-typecast/__snapshots__/jsfmt.spec.js.snap",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "tests/format/js/comments-closure-typecast/__snapshots__/jsfmt.spec.js.snap"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 5
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "churn": {
+            "status": "exact",
+            "value": 5
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 5
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 0
+          },
+          "changed": {
+            "status": "exact",
+            "value": 5
+          }
+        },
+        "family": {
+          "id": "family-31ba18f101bfd57fafa4dcc602f99882b870251e703c58b06e0851d5eaa8f459",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-68f4e70e2837053f27806436545122331da99e1df36f623933cdfc96cb502dfa",
+        "path": "tests/format/js/comments-closure-typecast/issue-9358.js",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "tests/format/js/comments-closure-typecast/issue-9358.js"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 2
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "churn": {
+            "status": "exact",
+            "value": 2
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 2
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 0
+          },
+          "changed": {
+            "status": "exact",
+            "value": 2
+          }
+        },
+        "family": {
+          "id": "family-5d9209bf9f8f12146d9e40a39d68989f9b21ba171df8ff47fc37e6c0655b0767",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-f70359fc94575cd4393f0818255f1533b988c5da886c5cc3c4163e054e034559",
+        "path": "tests/format/js/conditional/__snapshots__/jsfmt.spec.js.snap",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "tests/format/js/conditional/__snapshots__/jsfmt.spec.js.snap"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 1412
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 65
+          },
+          "churn": {
+            "status": "exact",
+            "value": 1477
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 1362
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 15
+          },
+          "modified": {
+            "status": "exact",
+            "value": 50
+          },
+          "changed": {
+            "status": "exact",
+            "value": 1427
+          }
+        },
+        "family": {
+          "id": "family-b4a76983dd698eea62f2c2d74380ecbc3a82a4cd677551657a6e66f48d590af7",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-e58b8f4d03c65997b060a4e46c15fc5101286c46009775b51d039c40427c955e",
+        "path": "tests/format/js/conditional/jsfmt.spec.js",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "tests/format/js/conditional/jsfmt.spec.js"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 3
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "churn": {
+            "status": "exact",
+            "value": 3
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 3
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 0
+          },
+          "changed": {
+            "status": "exact",
+            "value": 3
+          }
+        },
+        "family": {
+          "id": "family-62c4c5feea5b07e40e5b3bf6505e0f9384a3e8c1615f581755ca782473957969",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-99b523bb6ea466790b598036dab37130c273877a37fc409fac0df30ec336ca8f",
+        "path": "tests/format/js/conditional/new-ternary-examples.js",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "tests/format/js/conditional/new-ternary-examples.js"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 29
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 34
+          },
+          "churn": {
+            "status": "exact",
+            "value": 63
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 9
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 14
+          },
+          "modified": {
+            "status": "exact",
+            "value": 20
+          },
+          "changed": {
+            "status": "exact",
+            "value": 43
+          }
+        },
+        "family": {
+          "id": "family-b3c7d2be81c29b483d44cddab4ecd1f8636ea7ef9982ade57a331c91af2ad259",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-64e25a3550dfd4be70c72aa1bcb268772d5e5ee5938173d5b6b28e4d4b04dd13",
+        "path": "tests/format/js/conditional/new-ternary-spec.js",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "tests/format/js/conditional/new-ternary-spec.js"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 11
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 6
+          },
+          "churn": {
+            "status": "exact",
+            "value": 17
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 5
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 6
+          },
+          "changed": {
+            "status": "exact",
+            "value": 11
+          }
+        },
+        "family": {
+          "id": "family-56bac4b3bbb78345c6da91faf904bfd194ca1c10ecd1d5810eec1fc3513a7766",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-008759ed327c984dc81a3c9f94bacfe3166effeed48f153e5fda06cfd746fb59",
+        "path": "tests/format/js/conditional/postfix-ternary-regressions.js",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "tests/format/js/conditional/postfix-ternary-regressions.js"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 15
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "churn": {
+            "status": "exact",
+            "value": 15
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 15
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 0
+          },
+          "changed": {
+            "status": "exact",
+            "value": 15
+          }
+        },
+        "family": {
+          "id": "family-87c58c12557ef86717f07788b5e636aa1025cfb6d2440c8fda25a376058d2efc",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-42a96710cb965369dbfd58271814c48b1d1c2998293efbdf9435e9eef41be1c6",
+        "path": "tests/format/js/ternaries/__snapshots__/jsfmt.spec.js.snap",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "tests/format/js/ternaries/__snapshots__/jsfmt.spec.js.snap"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 8679
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 2651
+          },
+          "churn": {
+            "status": "exact",
+            "value": 11330
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "bounded",
+            "lower": 6028,
+            "upper": 8679
+          },
+          "deleted": {
+            "status": "bounded",
+            "lower": 0,
+            "upper": 2651
+          },
+          "modified": {
+            "status": "bounded",
+            "lower": 0,
+            "upper": 2651
+          },
+          "changed": {
+            "status": "bounded",
+            "lower": 8679,
+            "upper": 11330
+          }
+        },
+        "family": {
+          "id": "family-1f1bc2ac5c1e0aa69dfdbd9abc48bfb200da87706328dfb2853d3b82bfaea62d",
+          "rawCountsExact": true,
+          "blocksComplete": false
+        },
+        "measurement": {
+          "status": "bounded",
+          "reasons": [
+            {
+              "code": "PATCH_OMITTED"
+            }
+          ]
+        }
+      },
+      {
+        "id": "file-c28d75478f4180a76256c9a2af0210db587e5f80526bb19d461a25750be69d19",
+        "path": "tests/format/js/ternaries/jsfmt.spec.js",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "tests/format/js/ternaries/jsfmt.spec.js"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 17
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "churn": {
+            "status": "exact",
+            "value": 17
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 17
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 0
+          },
+          "changed": {
+            "status": "exact",
+            "value": 17
+          }
+        },
+        "family": {
+          "id": "family-eaec069fc83523ecdbc03096cfe9cc5f1935762c646e0b98656f2d046129c566",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-f2ee88d14cafc00f4ae1507549bb354c82d5b695d679777cc6921205d207e123",
+        "path": "tests/format/typescript/conditional-types/__snapshots__/jsfmt.spec.js.snap",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "tests/format/typescript/conditional-types/__snapshots__/jsfmt.spec.js.snap"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 482
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "churn": {
+            "status": "exact",
+            "value": 482
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 482
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 0
+          },
+          "changed": {
+            "status": "exact",
+            "value": 482
+          }
+        },
+        "family": {
+          "id": "family-545ed2c53d60710894ff9e80033c64bba8873647292329b0c3e77aae854835e1",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-1bc30c84834d5769f7c9e7b570327c0df91c9c4af6136635ca2743c1f873dc17",
+        "path": "tests/format/typescript/conditional-types/jsfmt.spec.js",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "tests/format/typescript/conditional-types/jsfmt.spec.js"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 1
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "churn": {
+            "status": "exact",
+            "value": 1
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 1
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 0
+          },
+          "changed": {
+            "status": "exact",
+            "value": 1
+          }
+        },
+        "family": {
+          "id": "family-dc68b72b51df881b23681c5cedcd5f1f6347f1e22c222ed3aa30baf329afd6c4",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-c19e61abd525d5ad0012bff35d2298616e63dea8414e4807ff44ae9a60b647d3",
+        "path": "tests/integration/__tests__/__snapshots__/early-exit.js.snap",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "tests/integration/__tests__/__snapshots__/early-exit.js.snap"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 4
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "churn": {
+            "status": "exact",
+            "value": 4
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 4
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 0
+          },
+          "changed": {
+            "status": "exact",
+            "value": 4
+          }
+        },
+        "family": {
+          "id": "family-ac3f45d0421e06588b9aac0cd07b4cbcc6916254efc98899f7f6582ec4cc80ea",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-2c03b27f79a59fa378c52b4e1c487fd3196e992ff1af9d44148fbb37d3a75c60",
+        "path": "tests/integration/__tests__/__snapshots__/help-options.js.snap",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "tests/integration/__tests__/__snapshots__/help-options.js.snap"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 22
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "churn": {
+            "status": "exact",
+            "value": 22
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 22
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 0
+          },
+          "changed": {
+            "status": "exact",
+            "value": 22
+          }
+        },
+        "family": {
+          "id": "family-6aa0cb25feac094566d7109fcb56d86786aad30f7ac5991e15c49c19a648f5cf",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-99b842f514c81685da56d691dacbbbf134846ded50abddb85c85de7e58cc4ec2",
+        "path": "tests/integration/__tests__/__snapshots__/plugin-options-string.js.snap",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "tests/integration/__tests__/__snapshots__/plugin-options-string.js.snap"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 3
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 3
+          },
+          "churn": {
+            "status": "exact",
+            "value": 6
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 2
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 2
+          },
+          "modified": {
+            "status": "exact",
+            "value": 1
+          },
+          "changed": {
+            "status": "exact",
+            "value": 5
+          }
+        },
+        "family": {
+          "id": "family-17a1a402c2b2881753013b04b18f1c808112f3d1f2ec1b3f3cba7bf15e8f22f4",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-5aa7c91cc5f00b7e9c9691ba3d8fdcdfd8d2a0c0953b899664858b4d6bb8db95",
+        "path": "tests/integration/__tests__/__snapshots__/plugin-options.js.snap",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "tests/integration/__tests__/__snapshots__/plugin-options.js.snap"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 3
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 3
+          },
+          "churn": {
+            "status": "exact",
+            "value": 6
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 2
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 2
+          },
+          "modified": {
+            "status": "exact",
+            "value": 1
+          },
+          "changed": {
+            "status": "exact",
+            "value": 5
+          }
+        },
+        "family": {
+          "id": "family-b60b51b5af966f52f619e8b5805923dfe000f71bccb350f29a899d7d2995c1fd",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-5eeaf860c02d169058e9ad9d0731c7ea49fce69bca10b7538e72c2b75dc07c26",
+        "path": "tests/integration/__tests__/__snapshots__/schema.js.snap",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "tests/integration/__tests__/__snapshots__/schema.js.snap"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 5
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "churn": {
+            "status": "exact",
+            "value": 5
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 5
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 0
+          },
+          "changed": {
+            "status": "exact",
+            "value": 5
+          }
+        },
+        "family": {
+          "id": "family-9725066802384df337e3c331aac6ef983d7137d5e512bf0a7a51af418cd3a771",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-8ebc47a66ba26fbd493e22e7275655d2285a020e0baaafafec5a09f62aee0871",
+        "path": "tests/integration/__tests__/__snapshots__/support-info.js.snap",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "tests/integration/__tests__/__snapshots__/support-info.js.snap"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 13
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "churn": {
+            "status": "exact",
+            "value": 13
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 13
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 0
+          },
+          "changed": {
+            "status": "exact",
+            "value": 13
+          }
+        },
+        "family": {
+          "id": "family-4053e8765f6c28b71a083a3ff3e7aecae7d7d2366669f94d554d1d69dfe02595",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      }
+    ],
+    "totals": {
+      "raw": {
+        "added": {
+          "status": "exact",
+          "value": 11512
+        },
+        "deleted": {
+          "status": "exact",
+          "value": 3001
+        },
+        "churn": {
+          "status": "exact",
+          "value": 14513
+        }
+      },
+      "lines": {
+        "added": {
+          "status": "bounded",
+          "lower": 8693,
+          "upper": 11344
+        },
+        "deleted": {
+          "status": "bounded",
+          "lower": 182,
+          "upper": 2833
+        },
+        "modified": {
+          "status": "bounded",
+          "lower": 168,
+          "upper": 2819
+        },
+        "changed": {
+          "status": "bounded",
+          "lower": 11694,
+          "upper": 14345
+        }
+      },
+      "files": {
+        "total": {
+          "status": "exact",
+          "value": 30
+        },
+        "excluded": {
+          "status": "exact",
+          "value": 0
+        },
+        "included": {
+          "status": "exact",
+          "value": 30
+        },
+        "added": {
+          "status": "exact",
+          "value": 2
+        },
+        "deleted": {
+          "status": "exact",
+          "value": 0
+        },
+        "modified": {
+          "status": "exact",
+          "value": 28
+        },
+        "renamed": {
+          "status": "exact",
+          "value": 0
+        },
+        "copied": {
+          "status": "exact",
+          "value": 0
+        },
+        "binary": {
+          "status": "exact",
+          "value": 0
+        },
+        "unmeasurable": {
+          "status": "exact",
+          "value": 0
+        }
+      }
+    },
+    "measurement": {
+      "status": "bounded",
+      "reasons": [
+        {
+          "code": "PATCH_OMITTED"
+        }
+      ]
+    },
+    "reportId": "report-a9a55249a6022564ccdbcf98e35ed4c795ebdca0c8e69816814ea86e5a6b6252"
+  }
+}

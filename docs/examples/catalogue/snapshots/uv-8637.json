@@ -1,0 +1,1692 @@
+{
+  "kind": "diffdevil.example-snapshot",
+  "schemaVersion": "1.2",
+  "id": "uv-8637",
+  "edition": "teaching-snapshot",
+  "repository": "astral-sh/uv",
+  "pullRequest": 8637,
+  "url": "https://github.com/astral-sh/uv/pull/8637",
+  "title": "Add a trampoline variant that just executes `python`",
+  "capturedAt": "2026-09-18T23:14:07.352Z",
+  "provenance": {
+    "baseTip": "0044000ed3e8bcf2a1f9b133b2d3b59c9a016271",
+    "mergeBase": "7948441121b1d54655caa927b3eaadaf90717327",
+    "head": "cbb90bad697c04aa68be259fa36e34fe847c208a"
+  },
+  "acquisition": {
+    "route": "github-rest-compare-three-dot",
+    "comparisonEndpoint": "/repos/astral-sh/uv/compare/7948441121b1d54655caa927b3eaadaf90717327...cbb90bad697c04aa68be259fa36e34fe847c208a",
+    "identityEndpoint": "/repos/astral-sh/uv/compare/0044000ed3e8bcf2a1f9b133b2d3b59c9a016271...cbb90bad697c04aa68be259fa36e34fe847c208a",
+    "pullEndpoint": "/repos/astral-sh/uv/pulls/8637"
+  },
+  "notices": {
+    "declared": "MIT",
+    "records": [
+      {
+        "label": "MIT",
+        "repository": "astral-sh/uv",
+        "path": "LICENSE-MIT",
+        "role": "base",
+        "ref": "7948441121b1d54655caa927b3eaadaf90717327",
+        "sha": "ec2236bb89949a3353f85b9884c2c453b7ebe36e"
+      },
+      {
+        "label": "MIT",
+        "repository": "astral-sh/uv",
+        "path": "LICENSE-MIT",
+        "role": "head",
+        "ref": "cbb90bad697c04aa68be259fa36e34fe847c208a",
+        "sha": "ec2236bb89949a3353f85b9884c2c453b7ebe36e"
+      }
+    ]
+  },
+  "rights": {
+    "retainedMaterial": "normalized-report-only",
+    "rawComparison": "analyzed-in-memory-not-committed",
+    "binaryBytes": "not-retained",
+    "review": "Pinned notices and every retained normalized file record were inspected; raw source lines, patch text, discussion, and provider responses are not retained."
+  },
+  "engine": {
+    "package": "1.0.0",
+    "reportSchema": "1.0",
+    "replacementLines": "replacement-lines-v1"
+  },
+  "payload": {
+    "sourceSha256": "58fe6469590f5a202f72e4a7e0583da32665ed870192cabe13a804d77fc8c466",
+    "normalizedReportSha256": "4777560efca071cda60baa66b0b12ffba63c41a6aaf7c6d5411cd669d8bbc859",
+    "providerFileSetSha256": "04797dd6bd86eb183411b294733214993b5b77b1d956ce51f82ff61e88094c06"
+  },
+  "capabilities": {
+    "policyReplay": true,
+    "remeasurement": false,
+    "remeasurementReason": "No raw comparison material is retained in this teaching snapshot."
+  },
+  "lesson": {
+    "id": "binary-trampolines",
+    "title": "Binary files still count as evidence"
+  },
+  "provider": {
+    "complete": true,
+    "observedCount": 19,
+    "reportedCount": 19,
+    "entries": [
+      {
+        "path": ".github/workflows/ci.yml",
+        "status": "modified",
+        "additions": 10,
+        "deletions": 3,
+        "changes": 13,
+        "patchAvailable": true
+      },
+      {
+        "path": "Cargo.lock",
+        "status": "modified",
+        "additions": 15,
+        "deletions": 0,
+        "changes": 15,
+        "patchAvailable": true
+      },
+      {
+        "path": "Cargo.toml",
+        "status": "modified",
+        "additions": 1,
+        "deletions": 0,
+        "changes": 1,
+        "patchAvailable": true
+      },
+      {
+        "path": "crates/uv-install-wheel/Cargo.toml",
+        "status": "modified",
+        "additions": 1,
+        "deletions": 0,
+        "changes": 1,
+        "patchAvailable": true
+      },
+      {
+        "path": "crates/uv-install-wheel/src/lib.rs",
+        "status": "modified",
+        "additions": 2,
+        "deletions": 0,
+        "changes": 2,
+        "patchAvailable": true
+      },
+      {
+        "path": "crates/uv-install-wheel/src/wheel.rs",
+        "status": "modified",
+        "additions": 8,
+        "deletions": 162,
+        "changes": 170,
+        "patchAvailable": true
+      },
+      {
+        "path": "crates/uv-trampoline-builder/Cargo.toml",
+        "status": "added",
+        "additions": 34,
+        "deletions": 0,
+        "changes": 34,
+        "patchAvailable": true
+      },
+      {
+        "path": "crates/uv-trampoline-builder/src/lib.rs",
+        "status": "added",
+        "additions": 406,
+        "deletions": 0,
+        "changes": 406,
+        "patchAvailable": true
+      },
+      {
+        "path": "crates/uv-trampoline/Cargo.lock",
+        "status": "modified",
+        "additions": 5,
+        "deletions": 5,
+        "changes": 10,
+        "patchAvailable": true
+      },
+      {
+        "path": "crates/uv-trampoline/README.md",
+        "status": "modified",
+        "additions": 21,
+        "deletions": 15,
+        "changes": 36,
+        "patchAvailable": true
+      },
+      {
+        "path": "crates/uv-trampoline/rust-toolchain.toml",
+        "status": "modified",
+        "additions": 1,
+        "deletions": 1,
+        "changes": 2,
+        "patchAvailable": true
+      },
+      {
+        "path": "crates/uv-trampoline/src/bounce.rs",
+        "status": "modified",
+        "additions": 60,
+        "deletions": 19,
+        "changes": 79,
+        "patchAvailable": true
+      },
+      {
+        "path": "crates/uv-trampoline/tests/harness.rs",
+        "status": "removed",
+        "additions": 0,
+        "deletions": 269,
+        "changes": 269,
+        "patchAvailable": true
+      },
+      {
+        "path": "crates/uv-trampoline/trampolines/uv-trampoline-aarch64-console.exe",
+        "status": "modified",
+        "additions": 0,
+        "deletions": 0,
+        "changes": 0,
+        "patchAvailable": false
+      },
+      {
+        "path": "crates/uv-trampoline/trampolines/uv-trampoline-aarch64-gui.exe",
+        "status": "modified",
+        "additions": 0,
+        "deletions": 0,
+        "changes": 0,
+        "patchAvailable": false
+      },
+      {
+        "path": "crates/uv-trampoline/trampolines/uv-trampoline-i686-console.exe",
+        "status": "modified",
+        "additions": 0,
+        "deletions": 0,
+        "changes": 0,
+        "patchAvailable": false
+      },
+      {
+        "path": "crates/uv-trampoline/trampolines/uv-trampoline-i686-gui.exe",
+        "status": "modified",
+        "additions": 0,
+        "deletions": 0,
+        "changes": 0,
+        "patchAvailable": false
+      },
+      {
+        "path": "crates/uv-trampoline/trampolines/uv-trampoline-x86_64-console.exe",
+        "status": "modified",
+        "additions": 0,
+        "deletions": 0,
+        "changes": 0,
+        "patchAvailable": false
+      },
+      {
+        "path": "crates/uv-trampoline/trampolines/uv-trampoline-x86_64-gui.exe",
+        "status": "modified",
+        "additions": 0,
+        "deletions": 0,
+        "changes": 0,
+        "patchAvailable": false
+      }
+    ]
+  },
+  "material": [
+    {
+      "path": ".github/workflows/ci.yml",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "Cargo.lock",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "Cargo.toml",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "crates/uv-install-wheel/Cargo.toml",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "crates/uv-install-wheel/src/lib.rs",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "crates/uv-install-wheel/src/wheel.rs",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "crates/uv-trampoline-builder/Cargo.toml",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "crates/uv-trampoline-builder/src/lib.rs",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "crates/uv-trampoline/Cargo.lock",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "crates/uv-trampoline/README.md",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "crates/uv-trampoline/rust-toolchain.toml",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "crates/uv-trampoline/src/bounce.rs",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "crates/uv-trampoline/tests/harness.rs",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "crates/uv-trampoline/trampolines/uv-trampoline-aarch64-console.exe",
+      "kind": "binary",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "binary-coordinate-and-normalized-facts-only"
+    },
+    {
+      "path": "crates/uv-trampoline/trampolines/uv-trampoline-aarch64-gui.exe",
+      "kind": "binary",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "binary-coordinate-and-normalized-facts-only"
+    },
+    {
+      "path": "crates/uv-trampoline/trampolines/uv-trampoline-i686-console.exe",
+      "kind": "binary",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "binary-coordinate-and-normalized-facts-only"
+    },
+    {
+      "path": "crates/uv-trampoline/trampolines/uv-trampoline-i686-gui.exe",
+      "kind": "binary",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "binary-coordinate-and-normalized-facts-only"
+    },
+    {
+      "path": "crates/uv-trampoline/trampolines/uv-trampoline-x86_64-console.exe",
+      "kind": "binary",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "binary-coordinate-and-normalized-facts-only"
+    },
+    {
+      "path": "crates/uv-trampoline/trampolines/uv-trampoline-x86_64-gui.exe",
+      "kind": "binary",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "binary-coordinate-and-normalized-facts-only"
+    }
+  ],
+  "report": {
+    "kind": "diffdevil.report",
+    "schemaVersion": "1.0",
+    "semantics": {
+      "language": "diffdevil-expr/1",
+      "numbers": "diffdevil-number/1",
+      "replacementLines": "replacement-lines-v1",
+      "paths": "diffdevil-glob/1"
+    },
+    "source": {
+      "kind": "unified-diff",
+      "comparison": "three-dot",
+      "repository": "astral-sh/uv",
+      "pullRequest": 8637,
+      "base": "7948441121b1d54655caa927b3eaadaf90717327",
+      "baseTip": "0044000ed3e8bcf2a1f9b133b2d3b59c9a016271",
+      "head": "cbb90bad697c04aa68be259fa36e34fe847c208a",
+      "comparisonId": "github-compare-f7f061424ab44ad0c296d728f56607cfe6bae0a71cbff9d42e033ca7b5ce6282"
+    },
+    "fileSet": {
+      "complete": true,
+      "total": {
+        "status": "exact",
+        "value": 19
+      }
+    },
+    "files": [
+      {
+        "id": "file-ab8765968392ee2a875846d770a2e4b94588d4be1ad2e89a7e9b854414806eab",
+        "path": ".github/workflows/ci.yml",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": ".github/workflows/ci.yml"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 10
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 3
+          },
+          "churn": {
+            "status": "exact",
+            "value": 13
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 7
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 3
+          },
+          "changed": {
+            "status": "exact",
+            "value": 10
+          }
+        },
+        "family": {
+          "id": "family-0ed1c707ad7fd6fd9e7e87e7288f539caa0150fc99d2cd03f8534764dafb751a",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-7fc608eb14d8722d55c694feedd31a9cff0e7b209bf1324e0091508994b03579",
+        "path": "Cargo.lock",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "Cargo.lock"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 15
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "churn": {
+            "status": "exact",
+            "value": 15
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 15
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 0
+          },
+          "changed": {
+            "status": "exact",
+            "value": 15
+          }
+        },
+        "family": {
+          "id": "family-b78b98f1e3c3301a731e9b14f900f972bfbfab20f11094137c84090446fd52e0",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-b2b00196eacbc62f62161e9800a992f9c312c40135f9929d1fa8678f6cf76ee8",
+        "path": "Cargo.toml",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "Cargo.toml"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 1
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "churn": {
+            "status": "exact",
+            "value": 1
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 1
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 0
+          },
+          "changed": {
+            "status": "exact",
+            "value": 1
+          }
+        },
+        "family": {
+          "id": "family-35cce9a3db6dea376eb848319c1343eca493d0e88cef9df19a5192b8b9bfa16d",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-75210348c7e05bf2bdd215e01335cb26eb5bbe48b7664559106c4097ac1633d2",
+        "path": "crates/uv-install-wheel/Cargo.toml",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "crates/uv-install-wheel/Cargo.toml"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 1
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "churn": {
+            "status": "exact",
+            "value": 1
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 1
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 0
+          },
+          "changed": {
+            "status": "exact",
+            "value": 1
+          }
+        },
+        "family": {
+          "id": "family-3a67558e6d0a90ea68d5c5372f3559d049fc5a4dd5c444d8610b974bd65aba83",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-1137911a42b3080e7ec7ced2d9837a01c2c1782df99480f9e35ac10c635415ea",
+        "path": "crates/uv-install-wheel/src/lib.rs",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "crates/uv-install-wheel/src/lib.rs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 2
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "churn": {
+            "status": "exact",
+            "value": 2
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 2
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 0
+          },
+          "changed": {
+            "status": "exact",
+            "value": 2
+          }
+        },
+        "family": {
+          "id": "family-7c91bd676db4a7f866ec16c72b0e924f9460435028c8b27b1257fb4c18488065",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-841766c0dcef9ead736036da9a807987ede9ea8b76e002ab82157198cf77e9a7",
+        "path": "crates/uv-install-wheel/src/wheel.rs",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "crates/uv-install-wheel/src/wheel.rs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 8
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 162
+          },
+          "churn": {
+            "status": "exact",
+            "value": 170
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 3
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 157
+          },
+          "modified": {
+            "status": "exact",
+            "value": 5
+          },
+          "changed": {
+            "status": "exact",
+            "value": 165
+          }
+        },
+        "family": {
+          "id": "family-379ce3e4d906b1ad871a8c9f4c5a0d60caa90526d19a4919ebe262158d7190d9",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-f49057cdcf52cbb4b1f76191a9b04c3722bdafa596c73cd0e0f003ee30bab254",
+        "path": "crates/uv-trampoline-builder/Cargo.toml",
+        "changeType": "added",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "crates/uv-trampoline-builder/Cargo.toml"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 34
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "churn": {
+            "status": "exact",
+            "value": 34
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 34
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 0
+          },
+          "changed": {
+            "status": "exact",
+            "value": 34
+          }
+        },
+        "family": {
+          "id": "family-c286dd95c949b5c22fbef4da2043c77775b426dbecfc0917c48868e445463d22",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-42d842d6232031dbc4df6c59e659a5e1f87dc38a959535dc2f0a49d36fc18ea2",
+        "path": "crates/uv-trampoline-builder/src/lib.rs",
+        "changeType": "added",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "crates/uv-trampoline-builder/src/lib.rs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 406
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "churn": {
+            "status": "exact",
+            "value": 406
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 406
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 0
+          },
+          "changed": {
+            "status": "exact",
+            "value": 406
+          }
+        },
+        "family": {
+          "id": "family-3401b8edf2895f32625c65c96a88c679edf38db19b5714f45c6a28cd0d41913e",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-4e3eb68176a9d103b46b8a3ddaba464eb376aeee1bc6ff0b50afe2e164c4b48e",
+        "path": "crates/uv-trampoline/Cargo.lock",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "crates/uv-trampoline/Cargo.lock"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 5
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 5
+          },
+          "churn": {
+            "status": "exact",
+            "value": 10
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 0
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 5
+          },
+          "changed": {
+            "status": "exact",
+            "value": 5
+          }
+        },
+        "family": {
+          "id": "family-95c6c0b892e08b1e67a7ba1ddd7fe54c7d8a73f460fdd961829753b86a71dace",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-f00e025d814573137b0a4a6d918c1989d92c6bf0527cf0192d8edcd6ea222b21",
+        "path": "crates/uv-trampoline/README.md",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "crates/uv-trampoline/README.md"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 21
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 15
+          },
+          "churn": {
+            "status": "exact",
+            "value": 36
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 6
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 15
+          },
+          "changed": {
+            "status": "exact",
+            "value": 21
+          }
+        },
+        "family": {
+          "id": "family-abde86f4dca9a60b843bf4270a163dc2b003fa83764855c26752fa39475ad12c",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-356934003770e12120b821663a423c7051655df779ef72eb36d650d18595e24b",
+        "path": "crates/uv-trampoline/rust-toolchain.toml",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "crates/uv-trampoline/rust-toolchain.toml"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 1
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 1
+          },
+          "churn": {
+            "status": "exact",
+            "value": 2
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 0
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 1
+          },
+          "changed": {
+            "status": "exact",
+            "value": 1
+          }
+        },
+        "family": {
+          "id": "family-a42a57198f00953a2540989a0f58d7b871439012f550c440bce3d64eb12e5027",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-86a4eb4a4457e361ad0bc4b098fbe0d04b67627c594e3577a51e8c1a1b965ff2",
+        "path": "crates/uv-trampoline/src/bounce.rs",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "crates/uv-trampoline/src/bounce.rs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 60
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 19
+          },
+          "churn": {
+            "status": "exact",
+            "value": 79
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 42
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 1
+          },
+          "modified": {
+            "status": "exact",
+            "value": 18
+          },
+          "changed": {
+            "status": "exact",
+            "value": 61
+          }
+        },
+        "family": {
+          "id": "family-32a809a5fdfcd6818bcba2ad4c14ffefeeeda4c74f21b15ba9b6e270b7e0d60f",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-23265aae4ca6af16e610e1f56af65426d0cc8b9017513b6253c9bc5ddafcccf8",
+        "path": "crates/uv-trampoline/tests/harness.rs",
+        "changeType": "deleted",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "crates/uv-trampoline/tests/harness.rs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 0
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 269
+          },
+          "churn": {
+            "status": "exact",
+            "value": 269
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 0
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 269
+          },
+          "modified": {
+            "status": "exact",
+            "value": 0
+          },
+          "changed": {
+            "status": "exact",
+            "value": 269
+          }
+        },
+        "family": {
+          "id": "family-baaf16239efbc23a6eb052fff46f75b0b8e8312fb0f4aa0182e02be86a74d98b",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-c895a5a14f001d8135365bc12513937a7c3918b531c23ffc94ba194b6f11a5e4",
+        "path": "crates/uv-trampoline/trampolines/uv-trampoline-aarch64-console.exe",
+        "changeType": "modified",
+        "kind": "binary",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "crates/uv-trampoline/trampolines/uv-trampoline-aarch64-console.exe"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "unmeasurable",
+            "reasons": [
+              {
+                "code": "BINARY_LINES_UNDEFINED"
+              }
+            ]
+          },
+          "deleted": {
+            "status": "unmeasurable",
+            "reasons": [
+              {
+                "code": "BINARY_LINES_UNDEFINED"
+              }
+            ]
+          },
+          "churn": {
+            "status": "unmeasurable",
+            "reasons": [
+              {
+                "code": "BINARY_LINES_UNDEFINED"
+              }
+            ]
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "unmeasurable",
+            "reasons": [
+              {
+                "code": "BINARY_LINES_UNDEFINED"
+              }
+            ]
+          },
+          "deleted": {
+            "status": "unmeasurable",
+            "reasons": [
+              {
+                "code": "BINARY_LINES_UNDEFINED"
+              }
+            ]
+          },
+          "modified": {
+            "status": "unmeasurable",
+            "reasons": [
+              {
+                "code": "BINARY_LINES_UNDEFINED"
+              }
+            ]
+          },
+          "changed": {
+            "status": "unmeasurable",
+            "reasons": [
+              {
+                "code": "BINARY_LINES_UNDEFINED"
+              }
+            ]
+          }
+        },
+        "measurement": {
+          "status": "unmeasurable",
+          "reasons": [
+            {
+              "code": "BINARY_LINES_UNDEFINED"
+            }
+          ]
+        }
+      },
+      {
+        "id": "file-36350041a9fdab32a446cc42e546ebb61354e542551fee0d304e453b90360127",
+        "path": "crates/uv-trampoline/trampolines/uv-trampoline-aarch64-gui.exe",
+        "changeType": "modified",
+        "kind": "binary",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "crates/uv-trampoline/trampolines/uv-trampoline-aarch64-gui.exe"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "unmeasurable",
+            "reasons": [
+              {
+                "code": "BINARY_LINES_UNDEFINED"
+              }
+            ]
+          },
+          "deleted": {
+            "status": "unmeasurable",
+            "reasons": [
+              {
+                "code": "BINARY_LINES_UNDEFINED"
+              }
+            ]
+          },
+          "churn": {
+            "status": "unmeasurable",
+            "reasons": [
+              {
+                "code": "BINARY_LINES_UNDEFINED"
+              }
+            ]
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "unmeasurable",
+            "reasons": [
+              {
+                "code": "BINARY_LINES_UNDEFINED"
+              }
+            ]
+          },
+          "deleted": {
+            "status": "unmeasurable",
+            "reasons": [
+              {
+                "code": "BINARY_LINES_UNDEFINED"
+              }
+            ]
+          },
+          "modified": {
+            "status": "unmeasurable",
+            "reasons": [
+              {
+                "code": "BINARY_LINES_UNDEFINED"
+              }
+            ]
+          },
+          "changed": {
+            "status": "unmeasurable",
+            "reasons": [
+              {
+                "code": "BINARY_LINES_UNDEFINED"
+              }
+            ]
+          }
+        },
+        "measurement": {
+          "status": "unmeasurable",
+          "reasons": [
+            {
+              "code": "BINARY_LINES_UNDEFINED"
+            }
+          ]
+        }
+      },
+      {
+        "id": "file-8f0435cd5ee76af5af98ddd0e9049e899552089c782afb9396669d33c3ea1102",
+        "path": "crates/uv-trampoline/trampolines/uv-trampoline-i686-console.exe",
+        "changeType": "modified",
+        "kind": "binary",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "crates/uv-trampoline/trampolines/uv-trampoline-i686-console.exe"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "unmeasurable",
+            "reasons": [
+              {
+                "code": "BINARY_LINES_UNDEFINED"
+              }
+            ]
+          },
+          "deleted": {
+            "status": "unmeasurable",
+            "reasons": [
+              {
+                "code": "BINARY_LINES_UNDEFINED"
+              }
+            ]
+          },
+          "churn": {
+            "status": "unmeasurable",
+            "reasons": [
+              {
+                "code": "BINARY_LINES_UNDEFINED"
+              }
+            ]
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "unmeasurable",
+            "reasons": [
+              {
+                "code": "BINARY_LINES_UNDEFINED"
+              }
+            ]
+          },
+          "deleted": {
+            "status": "unmeasurable",
+            "reasons": [
+              {
+                "code": "BINARY_LINES_UNDEFINED"
+              }
+            ]
+          },
+          "modified": {
+            "status": "unmeasurable",
+            "reasons": [
+              {
+                "code": "BINARY_LINES_UNDEFINED"
+              }
+            ]
+          },
+          "changed": {
+            "status": "unmeasurable",
+            "reasons": [
+              {
+                "code": "BINARY_LINES_UNDEFINED"
+              }
+            ]
+          }
+        },
+        "measurement": {
+          "status": "unmeasurable",
+          "reasons": [
+            {
+              "code": "BINARY_LINES_UNDEFINED"
+            }
+          ]
+        }
+      },
+      {
+        "id": "file-5529af2f129d575772c72e908769874fc74f4324c6c604940d1f8bd2dfd2f91d",
+        "path": "crates/uv-trampoline/trampolines/uv-trampoline-i686-gui.exe",
+        "changeType": "modified",
+        "kind": "binary",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "crates/uv-trampoline/trampolines/uv-trampoline-i686-gui.exe"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "unmeasurable",
+            "reasons": [
+              {
+                "code": "BINARY_LINES_UNDEFINED"
+              }
+            ]
+          },
+          "deleted": {
+            "status": "unmeasurable",
+            "reasons": [
+              {
+                "code": "BINARY_LINES_UNDEFINED"
+              }
+            ]
+          },
+          "churn": {
+            "status": "unmeasurable",
+            "reasons": [
+              {
+                "code": "BINARY_LINES_UNDEFINED"
+              }
+            ]
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "unmeasurable",
+            "reasons": [
+              {
+                "code": "BINARY_LINES_UNDEFINED"
+              }
+            ]
+          },
+          "deleted": {
+            "status": "unmeasurable",
+            "reasons": [
+              {
+                "code": "BINARY_LINES_UNDEFINED"
+              }
+            ]
+          },
+          "modified": {
+            "status": "unmeasurable",
+            "reasons": [
+              {
+                "code": "BINARY_LINES_UNDEFINED"
+              }
+            ]
+          },
+          "changed": {
+            "status": "unmeasurable",
+            "reasons": [
+              {
+                "code": "BINARY_LINES_UNDEFINED"
+              }
+            ]
+          }
+        },
+        "measurement": {
+          "status": "unmeasurable",
+          "reasons": [
+            {
+              "code": "BINARY_LINES_UNDEFINED"
+            }
+          ]
+        }
+      },
+      {
+        "id": "file-d4a62b865ee3bce54217db2de9970bdc74736a4cf1df439a15e62fa07be0dc28",
+        "path": "crates/uv-trampoline/trampolines/uv-trampoline-x86_64-console.exe",
+        "changeType": "modified",
+        "kind": "binary",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "crates/uv-trampoline/trampolines/uv-trampoline-x86_64-console.exe"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "unmeasurable",
+            "reasons": [
+              {
+                "code": "BINARY_LINES_UNDEFINED"
+              }
+            ]
+          },
+          "deleted": {
+            "status": "unmeasurable",
+            "reasons": [
+              {
+                "code": "BINARY_LINES_UNDEFINED"
+              }
+            ]
+          },
+          "churn": {
+            "status": "unmeasurable",
+            "reasons": [
+              {
+                "code": "BINARY_LINES_UNDEFINED"
+              }
+            ]
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "unmeasurable",
+            "reasons": [
+              {
+                "code": "BINARY_LINES_UNDEFINED"
+              }
+            ]
+          },
+          "deleted": {
+            "status": "unmeasurable",
+            "reasons": [
+              {
+                "code": "BINARY_LINES_UNDEFINED"
+              }
+            ]
+          },
+          "modified": {
+            "status": "unmeasurable",
+            "reasons": [
+              {
+                "code": "BINARY_LINES_UNDEFINED"
+              }
+            ]
+          },
+          "changed": {
+            "status": "unmeasurable",
+            "reasons": [
+              {
+                "code": "BINARY_LINES_UNDEFINED"
+              }
+            ]
+          }
+        },
+        "measurement": {
+          "status": "unmeasurable",
+          "reasons": [
+            {
+              "code": "BINARY_LINES_UNDEFINED"
+            }
+          ]
+        }
+      },
+      {
+        "id": "file-112b5b4762432856da1721967b060ee7cb708c311b8b0412ae98bd2ad08949d7",
+        "path": "crates/uv-trampoline/trampolines/uv-trampoline-x86_64-gui.exe",
+        "changeType": "modified",
+        "kind": "binary",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "crates/uv-trampoline/trampolines/uv-trampoline-x86_64-gui.exe"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "unmeasurable",
+            "reasons": [
+              {
+                "code": "BINARY_LINES_UNDEFINED"
+              }
+            ]
+          },
+          "deleted": {
+            "status": "unmeasurable",
+            "reasons": [
+              {
+                "code": "BINARY_LINES_UNDEFINED"
+              }
+            ]
+          },
+          "churn": {
+            "status": "unmeasurable",
+            "reasons": [
+              {
+                "code": "BINARY_LINES_UNDEFINED"
+              }
+            ]
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "unmeasurable",
+            "reasons": [
+              {
+                "code": "BINARY_LINES_UNDEFINED"
+              }
+            ]
+          },
+          "deleted": {
+            "status": "unmeasurable",
+            "reasons": [
+              {
+                "code": "BINARY_LINES_UNDEFINED"
+              }
+            ]
+          },
+          "modified": {
+            "status": "unmeasurable",
+            "reasons": [
+              {
+                "code": "BINARY_LINES_UNDEFINED"
+              }
+            ]
+          },
+          "changed": {
+            "status": "unmeasurable",
+            "reasons": [
+              {
+                "code": "BINARY_LINES_UNDEFINED"
+              }
+            ]
+          }
+        },
+        "measurement": {
+          "status": "unmeasurable",
+          "reasons": [
+            {
+              "code": "BINARY_LINES_UNDEFINED"
+            }
+          ]
+        }
+      }
+    ],
+    "totals": {
+      "raw": {
+        "added": {
+          "status": "unmeasurable",
+          "reasons": [
+            {
+              "code": "BINARY_LINES_UNDEFINED"
+            }
+          ]
+        },
+        "deleted": {
+          "status": "unmeasurable",
+          "reasons": [
+            {
+              "code": "BINARY_LINES_UNDEFINED"
+            }
+          ]
+        },
+        "churn": {
+          "status": "unmeasurable",
+          "reasons": [
+            {
+              "code": "BINARY_LINES_UNDEFINED"
+            }
+          ]
+        }
+      },
+      "lines": {
+        "added": {
+          "status": "unmeasurable",
+          "reasons": [
+            {
+              "code": "BINARY_LINES_UNDEFINED"
+            }
+          ]
+        },
+        "deleted": {
+          "status": "unmeasurable",
+          "reasons": [
+            {
+              "code": "BINARY_LINES_UNDEFINED"
+            }
+          ]
+        },
+        "modified": {
+          "status": "unmeasurable",
+          "reasons": [
+            {
+              "code": "BINARY_LINES_UNDEFINED"
+            }
+          ]
+        },
+        "changed": {
+          "status": "unmeasurable",
+          "reasons": [
+            {
+              "code": "BINARY_LINES_UNDEFINED"
+            }
+          ]
+        }
+      },
+      "files": {
+        "total": {
+          "status": "exact",
+          "value": 19
+        },
+        "excluded": {
+          "status": "exact",
+          "value": 0
+        },
+        "included": {
+          "status": "exact",
+          "value": 19
+        },
+        "added": {
+          "status": "exact",
+          "value": 2
+        },
+        "deleted": {
+          "status": "exact",
+          "value": 1
+        },
+        "modified": {
+          "status": "exact",
+          "value": 16
+        },
+        "renamed": {
+          "status": "exact",
+          "value": 0
+        },
+        "copied": {
+          "status": "exact",
+          "value": 0
+        },
+        "binary": {
+          "status": "exact",
+          "value": 6
+        },
+        "unmeasurable": {
+          "status": "exact",
+          "value": 6
+        }
+      }
+    },
+    "measurement": {
+      "status": "unmeasurable",
+      "reasons": [
+        {
+          "code": "BINARY_LINES_UNDEFINED"
+        }
+      ]
+    },
+    "reportId": "report-fbdf7793ed37d487a4e53abc69f9f965a1b132f3ef64cedc9532bfb2acaf02d3"
+  }
+}
