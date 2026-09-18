@@ -31,7 +31,8 @@ function base64Url(value) {
   return btoa(binary).replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/u, '');
 }
 
-function appPrivateKey(pem) {
+/** Validate the exact ordinary GitHub App key shape without retaining or logging it. */
+export function validateGitHubAppPrivateKey(pem) {
   if (typeof pem !== 'string' || !pem.includes('-----BEGIN RSA PRIVATE KEY-----')) throw Object.assign(new TypeError('GitHub App private key must be an unencrypted RSA PKCS#1 PEM.'), { code: 'E_APP_PRIVATE_KEY' });
   try {
     const key = createPrivateKey({ key: pem, format: 'pem', type: 'pkcs1' });
@@ -51,5 +52,5 @@ export async function createAppJwt({ appId, privateKey, now = Date.now }) {
   const signer = createSign('RSA-SHA256');
   signer.update(unsigned);
   signer.end();
-  return `${unsigned}.${base64Url(signer.sign(appPrivateKey(privateKey)))}`;
+  return `${unsigned}.${base64Url(signer.sign(validateGitHubAppPrivateKey(privateKey)))}`;
 }
