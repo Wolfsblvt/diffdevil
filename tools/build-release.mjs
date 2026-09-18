@@ -73,12 +73,18 @@ async function manifest(directory, kind, extra = {}) {
   for (const file of await files(directory)) members[relative(directory, file).replaceAll('\\', '/')] = sha256(await readFile(file));
   return { kind, schemaVersion: '1.0', source: { repository: 'Wolfsblvt/diffdevil', commit: sourceRef }, productVersion, skillVersion, files: members, ...extra };
 }
+async function treeDigest(directory) {
+  const members = {};
+  for (const file of await files(directory)) members[relative(directory, file).replaceAll('\\', '/')] = sha256(await readFile(file));
+  return sha256(JSON.stringify(members));
+}
 
 await mkdir(output, { recursive: true });
 const temporary = await mkdtemp(join(tmpdir(), 'diffdevil-release-'));
 try {
   const skillRoot = join(temporary, 'skill');
   await copyTree(join(root, 'skills/diffdevil'), skillRoot);
+  const skillTreeSha256 = await treeDigest(skillRoot);
   await writeFile(join(skillRoot, 'MANIFEST.json'), JSON.stringify(await manifest(skillRoot, 'diffdevil.skill'), null, 2) + '\n');
   const runtimeRoot = join(temporary, 'standalone');
   const runtime = join(runtimeRoot, 'runtime');
@@ -111,7 +117,13 @@ try {
     const data = await readFile(path);
     return [key, { name, url: `${releaseBase}/${name}`, sha256: sha256(data), size: (await stat(path)).size, ...(key === 'skill' ? {} : { node: '>=22' }) }];
   })));
-  const release = { kind: 'diffdevil.release-manifest', schemaVersion: '1.0', source: { repository: 'Wolfsblvt/diffdevil', commit: sourceRef }, productVersion, skillVersion, assets: locations };
+  const release = {
+    kind: 'diffdevil.release-manifest', schemaVersion: '1.0',
+    source: { repository: 'Wolfsblvt/diffdevil', commit: sourceRef },
+    productVersion,
+    skills: { diffdevil: { version: skillVersion, sourcePath: 'skills/diffdevil', sourceCommit: sourceRef, treeSha256: skillTreeSha256 } },
+    assets: locations,
+  };
   await writeFile(join(output, 'release-manifest.json'), JSON.stringify(release, null, 2) + '\n');
   console.log(JSON.stringify({ output, release, reproducibility: { archive: 'deterministic ZIP member order, DEFLATE level 9, and --epoch timestamps' } }, null, 2));
 } finally {

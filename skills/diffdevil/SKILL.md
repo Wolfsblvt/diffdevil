@@ -13,16 +13,16 @@ compatibility: >-
   Local sources and saved reports can be used offline.
 metadata:
   version: "1.0.0"
-  versions-url: "https://raw.githubusercontent.com/Wolfsblvt/diffdevil/main/skills/versions.json"
+  versions-url: "https://github.com/Wolfsblvt/diffdevil/releases/latest/download/diffdevil-release-manifest.json"
 ---
 
 # diffdevil
 
 ## Check the skill version
 
-On first relevant use in a session, fetch `metadata.versions-url` and compare its
-`diffdevil` value with this skill's `metadata.version`. These are skill versions,
-independent of the npm package. When an update is available, use
+On first relevant use in a session, fetch `metadata.versions-url` and compare
+`skills.diffdevil.version` with this skill's `metadata.version`. These are skill
+versions, independent of the npm package. When an update is available, use
 [Install and update](references/install-and-update.md) under the user's existing
 update instructions. An offline or failed check leaves the installed skill usable;
 report unknown freshness only when it matters to the task.
