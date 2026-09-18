@@ -4,7 +4,7 @@ import { resolve } from 'node:path';
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { captureAsync, fail, unwrap } from '../errors.js';
-import { formatQuery, formatReport, type QueryFormat, type ReportFormat, type Rendered } from '../format.js';
+import { formatQuery, formatReportWithOptions, type QueryFormat, type ReportFormat, type Rendered } from '../format.js';
 import { requireType } from '../language/types.js';
 import { environmentFromReport } from '../language/environment.js';
 import { evaluateExpression } from '../language/evaluate.js';
@@ -18,12 +18,13 @@ import { analyzeGit } from '../sources/git.js';
 import { GitHubClient } from '../github/client.js';
 import { analyzeGitHub } from '../github/source.js';
 import type { Diagnostic, Report, Result } from '../model.js';
+import type { TextPresentationOptions } from '../presentation.js';
 import { readUtf8, stdinText, writeAtomic } from '../hosts/io.js';
 import { loadPolicy } from './policy.js';
 import { evaluatePolicy, evaluatePolicyQuery, type PolicyQuerySelector } from '../policy/evaluate.js';
 import { createPlan, type PlanOptions } from '../policy/plan.js';
 import { explainPolicy } from '../policy/compile.js';
-import { formatPlan } from '../policy/format.js';
+import { formatPlanWithOptions } from '../policy/format.js';
 import { parseInvocation, type Invocation } from './arguments.js';
 
 export const HELP=`diffdevil
@@ -50,6 +51,7 @@ Sources: --diff-file PATH, --stdin, --report PATH, --staged,
          --base REF --head REF [--comparison direct], or tracked worktree.
 Selection: --scope NAME, repeated --path PATTERN, --all-files, --certain.
 Path policy: repeated --exclude, --include-only, or --force-include PATTERN.
+Human presentation: --detail summary|full; --color auto|always|never.
 Output: --output PATH, --diagnostics json. Check exits: 0 true, 1 false,
         2 invalid operation, 3 unresolved evidence.
 
@@ -97,12 +99,44 @@ async function readExpression(invocation: Invocation, cwd: string): Promise<Expr
       return undefined;
   }
 }
-export interface CliHost { readonly githubClient?: GitHubClient }
+
+export interface CliColorStream {
+  readonly isTTY?: boolean;
+  hasColors?(count?: number, env?: object): boolean;
+}
+export interface CliHost {
+  readonly githubClient?: GitHubClient;
+  readonly stdout?: CliColorStream;
+  readonly env?: NodeJS.ProcessEnv;
+}
+
+function hostEnvironment(host: CliHost): NodeJS.ProcessEnv { return host.env??process.env; }
+
 export function githubClientForHost(host: CliHost): GitHubClient {
   if (host.githubClient) return host.githubClient;
-  const token=process.env.GH_TOKEN??process.env.GITHUB_TOKEN,apiUrl=process.env.GITHUB_API_URL;
+  const env=hostEnvironment(host), token=env.GH_TOKEN??env.GITHUB_TOKEN, apiUrl=env.GITHUB_API_URL;
   return new GitHubClient({...(token?{token}:{}),...(apiUrl?{apiUrl}:{})});
 }
+
+function presentationColor(invocation: Invocation, host: CliHost): boolean {
+  const mode=String(invocation.values.color??'auto');
+  if(mode==='always') return true;
+  if(mode==='never') return false;
+  if(invocation.values.output!==undefined) return false;
+  const env=hostEnvironment(host);
+  if(env.FORCE_COLOR!==undefined) return env.FORCE_COLOR!=='0';
+  if(env.NO_COLOR!==undefined) return false;
+  const stdout=host.stdout??process.stdout;
+  return stdout.isTTY===true && typeof stdout.hasColors==='function' && stdout.hasColors(16_777_216,env);
+}
+
+function presentationOptions(invocation: Invocation, host: CliHost): TextPresentationOptions {
+  return {
+    detail: invocation.values.detail==='full'?'full':'summary',
+    color: presentationColor(invocation,host),
+  };
+}
+
 async function source(invocation:Invocation,cwd:string,selectedPolicy:boolean,host:CliHost):Promise<Report>{
   const v=invocation.values;
   let report:Report;
@@ -158,11 +192,11 @@ export function runCli(argv:readonly string[],defaultCwd=process.cwd(),host:CliH
           const pullRequest=v['target-pr']===undefined?report.source.pullRequest:Number(v['target-pr']);
           if(!repository||pullRequest===undefined) fail('E_PLAN_TARGET','A local diff requires --target-repo OWNER/REPO and --target-pr NUMBER to create a GitHub effect plan.','plan');
           const plan=unwrap(createPlan(evaluated,{repository,pullRequest},{definitions:String(v.definitions??'none') as NonNullable<PlanOptions['definitions']>,...(v.rule===undefined?{}:{rules:[String(v.rule)]})}));
-          output=unwrap(formatPlan(plan,String(v.format??'human')));
+          output=unwrap(formatPlanWithOptions(plan,String(v.format??'human'),presentationOptions(invocation,host)));
           if(v['require-resolved']&&plan.held.length) output={...output,exitCode:3};
         } else if(invocation.command==='analyze') {
           if(selected) report=unwrap(evaluatePolicy(selected.policy,report,{parameters:selected.parameters,phase:'analyze'})).report;
-          output=unwrap(formatReport(report,String(v.format??'human') as ReportFormat));
+          output=unwrap(formatReportWithOptions(report,String(v.format??'human') as ReportFormat,presentationOptions(invocation,host)));
         } else {
           const expression=await readExpression(invocation,cwd);
           let evaluated;
