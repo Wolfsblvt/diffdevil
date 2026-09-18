@@ -1,0 +1,32 @@
+[
+  {
+    "id": "cli",
+    "label": "CLI locally",
+    "path": "/setup/cli.md",
+    "text": "Set up diffdevil's CLI for this project using {url}. Reuse suitable tooling and policy, and verify a local analysis."
+  },
+  {
+    "id": "actions",
+    "label": "GitHub Actions",
+    "path": "/setup/actions.md",
+    "text": "Set up diffdevil for this project's GitHub Actions using {url}. Preserve its policy and CI, avoid competing writers, and verify the intended PR automation."
+  },
+  {
+    "id": "app",
+    "label": "GitHub App",
+    "path": "/setup/app.md",
+    "text": "Set up the diffdevil GitHub App for this repository using {url}. Reuse any existing installation, preserve its policy, and verify the result."
+  },
+  {
+    "id": "everything",
+    "label": "Everything",
+    "path": "/setup/everything.md",
+    "text": "Set up diffdevil for this project using {url}: CLI, repository policy, the Agent Skill, and suitable GitHub automation. Use what you know about my needs; ask when a meaningful choice is unclear."
+  },
+  {
+    "id": "skill",
+    "label": "Agent Skill",
+    "path": "/setup/skill.md",
+    "text": "Install or update the diffdevil Agent Skill for this agent using {url}. Use user scope unless my instructions select otherwise, and verify that this agent can load it."
+  }
+]
