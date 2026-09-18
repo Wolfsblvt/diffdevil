@@ -1,0 +1,455 @@
+{
+  "kind": "diffdevil.curated-snapshot",
+  "schemaVersion": "1.0",
+  "id": "diffdevil-12",
+  "repository": "Wolfsblvt/diffdevil",
+  "pullRequest": 12,
+  "title": "Document the live playground deployment",
+  "url": "https://github.com/Wolfsblvt/diffdevil/pull/12",
+  "reason": "A documentation-only pull request from this project, analyzed under the default size preset.",
+  "teaches": "That the default preset counts documentation lines like any other included file, and where a path exclusion or scope would change that.",
+  "note": "Initial seed from the project's own repository; the researched third-party catalogue is authored separately and replaces or extends this set.",
+  "head": "a682e0a22ffa3fb46fc1bbd230bc16d85f7150f0",
+  "base": "a2fb057063bcd02c961877ac1ce186b87f2ef36e",
+  "analyzedAt": "2026-09-18T00:34:52.541Z",
+  "engine": {
+    "package": "1.0.0",
+    "reportSchema": "1.0",
+    "replacementLines": "replacement-lines-v1",
+    "policy": "size@1"
+  },
+  "evidence": "exact",
+  "report": {
+    "kind": "diffdevil.report",
+    "schemaVersion": "1.0",
+    "semantics": {
+      "language": "diffdevil-expr/1",
+      "numbers": "diffdevil-number/1",
+      "replacementLines": "replacement-lines-v1",
+      "paths": "diffdevil-glob/1"
+    },
+    "source": {
+      "kind": "github-api",
+      "comparison": "three-dot",
+      "repository": "Wolfsblvt/diffdevil",
+      "pullRequest": 12,
+      "head": "a682e0a22ffa3fb46fc1bbd230bc16d85f7150f0",
+      "base": "a2fb057063bcd02c961877ac1ce186b87f2ef36e",
+      "comparisonId": "comparison-bbc3b2fdc55d7cdf888f97f600b93732af42794946239d3f3af5a7e3cee6858b"
+    },
+    "fileSet": {
+      "complete": true,
+      "total": {
+        "status": "exact",
+        "value": 6
+      }
+    },
+    "files": [
+      {
+        "id": "file-ee46ced13353c070332091839c87c32d2d442e631b432abf7cdb426f0ac06934",
+        "path": "README.md",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "README.md"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 10
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 2
+          },
+          "churn": {
+            "status": "exact",
+            "value": 12
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 8
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 2
+          },
+          "changed": {
+            "status": "exact",
+            "value": 10
+          }
+        },
+        "family": {
+          "id": "family-eec11398a142ddacee56292901db3d284334e1fe5b961614bb3e11a7171388e7",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-cd5763d05dc5a36f9d68bf5908a6fe5dc0f0c5312f01efc92578f06a334c0390",
+        "path": "apps/playground/README.md",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "apps/playground/README.md"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 20
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 6
+          },
+          "churn": {
+            "status": "exact",
+            "value": 26
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 14
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 6
+          },
+          "changed": {
+            "status": "exact",
+            "value": 20
+          }
+        },
+        "family": {
+          "id": "family-980f5aea0c36cfcaa86012a3a46bc85c52e65b5747bed9c1db6232926b183d0e",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-d2911e124e1c12ff34e66ca07ccd8089ac544e593bbf5aaa75bfd9fc4d39be94",
+        "path": "docs/DIRECTION.md",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "docs/DIRECTION.md"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 12
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 9
+          },
+          "churn": {
+            "status": "exact",
+            "value": 21
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 4
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 1
+          },
+          "modified": {
+            "status": "exact",
+            "value": 8
+          },
+          "changed": {
+            "status": "exact",
+            "value": 13
+          }
+        },
+        "family": {
+          "id": "family-43e08222e857f91f266a668f2d01f4d10743b218c8b2b71a3bc2d03541887d0a",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-628edcf662c91774cb276981d1eb83eb05968af25d19fe6d4e42f89988fdc9af",
+        "path": "docs/PUBLICATION-BOUNDARY.md",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "docs/PUBLICATION-BOUNDARY.md"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 6
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 4
+          },
+          "churn": {
+            "status": "exact",
+            "value": 10
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 2
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 4
+          },
+          "changed": {
+            "status": "exact",
+            "value": 6
+          }
+        },
+        "family": {
+          "id": "family-4f3eeb5049d677e12c279ca03df8470b7d5d03c830d02a706987eb94625b20e1",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-e34a406cba4f84e5f4763904016f8e31d3d0f3bbbc6b89e5a073b8fd301c7def",
+        "path": "docs/QUALIFICATION.md",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "docs/QUALIFICATION.md"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 38
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "churn": {
+            "status": "exact",
+            "value": 38
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 38
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 0
+          },
+          "changed": {
+            "status": "exact",
+            "value": 38
+          }
+        },
+        "family": {
+          "id": "family-12c7fccd6baf5f019ce5ab93244a50cb5b58f068d6e118de0204a43608be3050",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-91e29f3708d6ac74e5a0bfbaee23017e2793bb3099d7ab98ba51482271416a34",
+        "path": "docs/README.md",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "docs/README.md"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 2
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 2
+          },
+          "churn": {
+            "status": "exact",
+            "value": 4
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 0
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 2
+          },
+          "changed": {
+            "status": "exact",
+            "value": 2
+          }
+        },
+        "family": {
+          "id": "family-4782ca2081ad5264e1ee3f5a36500e31fb74a480aba120f4a3030bd99cc8c50c",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      }
+    ],
+    "totals": {
+      "raw": {
+        "added": {
+          "status": "exact",
+          "value": 88
+        },
+        "deleted": {
+          "status": "exact",
+          "value": 23
+        },
+        "churn": {
+          "status": "exact",
+          "value": 111
+        }
+      },
+      "lines": {
+        "added": {
+          "status": "exact",
+          "value": 66
+        },
+        "deleted": {
+          "status": "exact",
+          "value": 1
+        },
+        "modified": {
+          "status": "exact",
+          "value": 22
+        },
+        "changed": {
+          "status": "exact",
+          "value": 89
+        }
+      },
+      "files": {
+        "total": {
+          "status": "exact",
+          "value": 6
+        },
+        "excluded": {
+          "status": "exact",
+          "value": 0
+        },
+        "included": {
+          "status": "exact",
+          "value": 6
+        },
+        "added": {
+          "status": "exact",
+          "value": 0
+        },
+        "deleted": {
+          "status": "exact",
+          "value": 0
+        },
+        "modified": {
+          "status": "exact",
+          "value": 6
+        },
+        "renamed": {
+          "status": "exact",
+          "value": 0
+        },
+        "copied": {
+          "status": "exact",
+          "value": 0
+        },
+        "binary": {
+          "status": "exact",
+          "value": 0
+        },
+        "unmeasurable": {
+          "status": "exact",
+          "value": 0
+        }
+      }
+    },
+    "measurement": {
+      "status": "exact",
+      "reasons": []
+    },
+    "reportId": "report-ec2e70d1ee6fceac74746a444fc8572d22cbf6ba5d1cad233d56a93e622f3f99"
+  }
+}

@@ -1,0 +1,67 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only
+import GitHubMark from '../GitHubMark.astro';
+import { copy } from '../../data/copy';
+import { docPaths, paths } from '../../data/site';
+import { display, evidenceGlyph, exact, heroPatch, reportFromDiff } from '../../lib/engine-node';
+
+// The specimen numbers are the engine's, computed at build from the actual patch.
+const report = reportFromDiff(heroPatch);
+const lines = report.totals.lines, raw = report.totals.raw;
+const changed = display(lines.changed);
+const status = lines.changed.status;
+const diffLines = heroPatch.split('\n').slice(3).filter(Boolean);
+---
+<section class="hero">
+  <div class="wrap hero-grid">
+    <div class="hero-text">
+      <p class="eyebrow">{copy.hero.eyebrow}</p>
+      <h1 class="display">{copy.hero.h1}</h1>
+      <p class="strap">{copy.hero.strap}</p>
+      <p class="body-l why">{copy.hero.why}</p>
+      <div class="hero-ctas">
+        <a class="btn btn-primary" href={docPaths.getStarted}>{copy.hero.ctaPrimary}</a>
+        <a class="btn btn-secondary" href={paths.playground}>{copy.hero.ctaSecondary}</a>
+        <a class="link-plain hero-tertiary" href={paths.app}><GitHubMark /> {copy.hero.ctaTertiary}</a>
+      </div>
+    </div>
+    <figure class="machine specimen">
+      <figcaption class="code-head"><span>{copy.hero.specimenHead}</span><span class="spacer"></span><span>{copy.hero.specimenSemantics}</span></figcaption>
+      <pre class="code-body diff"><code>{diffLines.map(line => <span class={line.startsWith('+') ? 'add' : line.startsWith('-') ? 'del' : 'hunk'}>{line.startsWith('+') || line.startsWith('-') ? (line[0] === '+' ? '+ ' : '− ') + line.slice(1).trimStart() : line}{'\n'}</span>)}</code></pre>
+      <div class="specimen-facts">
+        <div class="specimen-cell result-frame">
+          <p class="label">{copy.hero.leftLabel}</p>
+          <p class="specimen-value"><span class="metric-m">{changed}</span><span class="metric-unit">changed</span> <span class="chip-ev" data-status={status}>{evidenceGlyph[status]} {status}</span></p>
+          <p class="fact-block"><span class="k">~</span> {display(lines.modified)} modified · <span class="k">+</span> {display(lines.added)} added-only · <span class="k">−</span> {display(lines.deleted)} deleted-only</p>
+        </div>
+        <div class="specimen-cell">
+          <p class="label">{copy.hero.rightLabel}</p>
+          <p class="specimen-value"><span class="metric-m raw">+{display(raw.added)} −{display(raw.deleted)}</span></p>
+          <p class="fact-block">raw churn {display(raw.churn)} · {copy.hero.rightSub}</p>
+        </div>
+      </div>
+      <p class="specimen-foot">Calling this "{exact(raw.churn)} changed lines" would misrepresent the edit. Two lines were replaced, one was added.</p>
+    </figure>
+  </div>
+</section>
+
+<style>
+  .hero { padding: 64px 0 56px; }
+  .hero-grid { display: grid; grid-template-columns: 1fr 1.1fr; gap: 48px; align-items: center; }
+  .display { font-size: 58px; line-height: 1; letter-spacing: var(--tracking-display); font-weight: 700; margin: 14px 0 18px; }
+  .strap { font-size: 20px; line-height: 1.4; font-weight: 500; margin: 0 0 14px; }
+  .why { color: var(--fg-2); max-width: 52ch; }
+  .hero-ctas { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 22px; }
+  .hero-tertiary { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; font-size: 13px; color: var(--fg-2); }
+  .specimen .code-body { padding-top: 10px; padding-bottom: 10px; }
+  .specimen-facts { display: grid; grid-template-columns: 1.15fr 1fr; gap: 0; border-top: 1px solid #2c303a; }
+  .specimen-cell { padding: 14px 16px; }
+  .specimen-cell + .specimen-cell { border-left: 1px solid #2c303a; }
+  .specimen-cell .label { margin: 0 0 10px; }
+  .specimen-value { margin: 0 0 8px; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+  .specimen-value .raw { color: #a9b8cc; font-weight: 500; font-size: 40px; }
+  .specimen-cell .fact-block { margin: 0; color: #a9b8cc; }
+  .specimen-foot { margin: 0; padding: 12px 16px; border-top: 1px solid #2c303a; font-size: 12.5px; color: #a9b8cc; }
+  @media (max-width: 900px) { .hero-grid { grid-template-columns: 1fr; gap: 28px; } .display { font-size: 40px; } }
+  @media (max-width: 640px) { .hero { padding-top: 32px; } .display { font-size: 36px; } .specimen-facts { grid-template-columns: 1fr; } .specimen-cell + .specimen-cell { border-left: 0; border-top: 1px solid #2c303a; } }
+</style>

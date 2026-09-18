@@ -1,0 +1,1535 @@
+{
+  "kind": "diffdevil.curated-snapshot",
+  "schemaVersion": "1.0",
+  "id": "diffdevil-9",
+  "repository": "Wolfsblvt/diffdevil",
+  "pullRequest": 9,
+  "title": "Add Cloudflare Workers playground source route",
+  "url": "https://github.com/Wolfsblvt/diffdevil/pull/9",
+  "reason": "A source pull request from this project: application code, tests and manuals in one change, analyzed under the default size preset.",
+  "teaches": "How a mixed source/docs/test change lands in one band while the per-file facts stay separate, and how the raw counters compare with the replacement-aware count.",
+  "note": "Initial seed from the project's own repository; the researched third-party catalogue is authored separately and replaces or extends this set.",
+  "head": "cfd34018eaa16d51cdc1d93696f448bfa16ba548",
+  "base": "d355f6b42853ee7e4523002f0830fe65d0306470",
+  "analyzedAt": "2026-09-18T00:34:51.032Z",
+  "engine": {
+    "package": "1.0.0",
+    "reportSchema": "1.0",
+    "replacementLines": "replacement-lines-v1",
+    "policy": "size@1"
+  },
+  "evidence": "exact",
+  "report": {
+    "kind": "diffdevil.report",
+    "schemaVersion": "1.0",
+    "semantics": {
+      "language": "diffdevil-expr/1",
+      "numbers": "diffdevil-number/1",
+      "replacementLines": "replacement-lines-v1",
+      "paths": "diffdevil-glob/1"
+    },
+    "source": {
+      "kind": "github-api",
+      "comparison": "three-dot",
+      "repository": "Wolfsblvt/diffdevil",
+      "pullRequest": 9,
+      "head": "cfd34018eaa16d51cdc1d93696f448bfa16ba548",
+      "base": "d355f6b42853ee7e4523002f0830fe65d0306470",
+      "comparisonId": "comparison-f96f72fbe35345a7c5e14625824a1c39684ed973a66d51c633ebcf6d71dfc762"
+    },
+    "fileSet": {
+      "complete": true,
+      "total": {
+        "status": "exact",
+        "value": 26
+      }
+    },
+    "files": [
+      {
+        "id": "file-5a07b36e6ecd2a944bfcc329318c0db83fc120ccb2a86e04be44982ceef98c27",
+        "path": ".gitignore",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": ".gitignore"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 1
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "churn": {
+            "status": "exact",
+            "value": 1
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 1
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 0
+          },
+          "changed": {
+            "status": "exact",
+            "value": 1
+          }
+        },
+        "family": {
+          "id": "family-aec8102599911ef581bfdf1edd160ad3161f8d940efab839cb7cca7f05fc972d",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-7695b53de42e809a6429e485c2dda3d68c3397d25dd7a6ba425eb42ec104fbc5",
+        "path": "actions/runtime/MANIFEST.json",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "actions/runtime/MANIFEST.json"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 9
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 9
+          },
+          "churn": {
+            "status": "exact",
+            "value": 18
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 0
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 9
+          },
+          "changed": {
+            "status": "exact",
+            "value": 9
+          }
+        },
+        "family": {
+          "id": "family-1296e5fc3ef58d1d98b6c0f1b95f0d91f652fecc8239b3f6f912fd751c48b8a2",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-637fe2504ecf5bd5d7760c48af85b05470074989002456479f0c334530841b93",
+        "path": "actions/runtime/lib/github/client.js",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "actions/runtime/lib/github/client.js"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 1
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 1
+          },
+          "churn": {
+            "status": "exact",
+            "value": 2
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 0
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 1
+          },
+          "changed": {
+            "status": "exact",
+            "value": 1
+          }
+        },
+        "family": {
+          "id": "family-cb50cce980c98c1768b17a2251b4f11ccc6d0d2e32e6f3808f24b6fc9fe16bf8",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-97144769699452043aacc981442ba5f4350cca5179af8d64cbe7ff5438eddce1",
+        "path": "actions/runtime/lib/github/client.js.map",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "actions/runtime/lib/github/client.js.map"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 1
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 1
+          },
+          "churn": {
+            "status": "exact",
+            "value": 2
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 0
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 1
+          },
+          "changed": {
+            "status": "exact",
+            "value": 1
+          }
+        },
+        "family": {
+          "id": "family-541cefbee524cef67ac174393b0069b1689ff043ffcaa3a7b29b626e17bee9ec",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-c3f4da43002db09971153bddf360ee46887d542540e515eb68c275a4b831bf3e",
+        "path": "actions/runtime/lib/schema.js",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "actions/runtime/lib/schema.js"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 4
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 4
+          },
+          "churn": {
+            "status": "exact",
+            "value": 8
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 0
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 4
+          },
+          "changed": {
+            "status": "exact",
+            "value": 4
+          }
+        },
+        "family": {
+          "id": "family-0f130a7cba3134448f8578d984d59bc735609e95d42b1dd95eb0ad65a89cce58",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-2e1f7e76925d8817afca9b39f75e34c34d80830681ec6f9718f7aad32deac8e3",
+        "path": "actions/runtime/lib/schema.js.map",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "actions/runtime/lib/schema.js.map"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 1
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 1
+          },
+          "churn": {
+            "status": "exact",
+            "value": 2
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 0
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 1
+          },
+          "changed": {
+            "status": "exact",
+            "value": 1
+          }
+        },
+        "family": {
+          "id": "family-b35961b771239aa5c7d9f6fd730109d7613b364bcd36cc595f6ab18da703305f",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-52f13476a7b37618204b7080bbd7323b98b8541587669d637d1335d83ce2d155",
+        "path": "apps/playground/README.md",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "apps/playground/README.md"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 66
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 1
+          },
+          "churn": {
+            "status": "exact",
+            "value": 67
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 65
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 1
+          },
+          "changed": {
+            "status": "exact",
+            "value": 66
+          }
+        },
+        "family": {
+          "id": "family-44906a0185a44224127049347be5c5c4c1735f8ba3068fb09e7eb78c1666d499",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-91b7c24d398b0aaa7089ec847d583a32feb83d84347bda2a7df825238de24692",
+        "path": "apps/playground/app.mjs",
+        "changeType": "added",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "apps/playground/app.mjs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 176
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "churn": {
+            "status": "exact",
+            "value": 176
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 176
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 0
+          },
+          "changed": {
+            "status": "exact",
+            "value": 176
+          }
+        },
+        "family": {
+          "id": "family-2122d42fd10ac99f0ea530e31472c3e6c3076a5dbec9231a394921f4fd7af304",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-b0c77c1598b79684691146b787cc9ad5d0e4af1b5311164ee6fc891d3667b03d",
+        "path": "apps/playground/playground.test.mjs",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "apps/playground/playground.test.mjs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 99
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 1
+          },
+          "churn": {
+            "status": "exact",
+            "value": 100
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 98
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 1
+          },
+          "changed": {
+            "status": "exact",
+            "value": 99
+          }
+        },
+        "family": {
+          "id": "family-be86ae1281d25f85599025ae7acf079056096c0b9d06bba26d1f3b06f9a2d760",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-2e227236aee9d5ac92ced22f7ae00acc35e93f42ca07b05b093cc625375b4b22",
+        "path": "apps/playground/public/_headers",
+        "changeType": "added",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "apps/playground/public/_headers"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 6
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "churn": {
+            "status": "exact",
+            "value": 6
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 6
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 0
+          },
+          "changed": {
+            "status": "exact",
+            "value": 6
+          }
+        },
+        "family": {
+          "id": "family-83371bcf683822b53d669c760ecbc814b2dbf41b118dde278db79ed1d06a9399",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-aaa87d9b134fe29c9100ab6de9f52bd638d1af605b2a51cf6ac8977c38a20da6",
+        "path": "apps/playground/public/index.html",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "apps/playground/public/index.html"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 2
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 2
+          },
+          "churn": {
+            "status": "exact",
+            "value": 4
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 0
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 2
+          },
+          "changed": {
+            "status": "exact",
+            "value": 2
+          }
+        },
+        "family": {
+          "id": "family-e4418fa4f7ceedda24b53793a60d6a8dbe68565c0df80549c1e728aa69378a7b",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-be9da709a77fb77ba037a66c30d29b188c493cf686dc5b8cde49e1707e9547f8",
+        "path": "apps/playground/server.mjs",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "apps/playground/server.mjs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 16
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 144
+          },
+          "churn": {
+            "status": "exact",
+            "value": 160
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 3
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 131
+          },
+          "modified": {
+            "status": "exact",
+            "value": 13
+          },
+          "changed": {
+            "status": "exact",
+            "value": 147
+          }
+        },
+        "family": {
+          "id": "family-458780294df830d1fcd894d2a88545009b997af67a5b0b4665b1563ccfc1cd5f",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-3cca8eb25ce651a7060280e83c232fd3ce27d36ea3d664bf2df67cf3546938b9",
+        "path": "apps/playground/worker.mjs",
+        "changeType": "added",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "apps/playground/worker.mjs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 25
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "churn": {
+            "status": "exact",
+            "value": 25
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 25
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 0
+          },
+          "changed": {
+            "status": "exact",
+            "value": 25
+          }
+        },
+        "family": {
+          "id": "family-abe6f128870616b4509ebe472792d1eb64c429d263234de2ea9b8b3eb2e008bd",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-51e60be303689d7aeb7561220eaf2c78807da8fc2f5ece7002f6dae5f7cf3a46",
+        "path": "docs/ARCHITECTURE.md",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "docs/ARCHITECTURE.md"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 16
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "churn": {
+            "status": "exact",
+            "value": 16
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 16
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 0
+          },
+          "changed": {
+            "status": "exact",
+            "value": 16
+          }
+        },
+        "family": {
+          "id": "family-0b4bfa4e140311958115fd44bf4d61b927ccd7316b83742c6c6abfdf29e8603e",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-8e05599050616e296a2afff27af4b61a367af0c19fa578c673f2e4fedcbca1a6",
+        "path": "docs/DEVELOPMENT.md",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "docs/DEVELOPMENT.md"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 11
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 6
+          },
+          "churn": {
+            "status": "exact",
+            "value": 17
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 5
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 6
+          },
+          "changed": {
+            "status": "exact",
+            "value": 11
+          }
+        },
+        "family": {
+          "id": "family-0db27b41a75371c441eae4f95526634773a19f176b12f6e1d24534a11aa1bea8",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-754895e605406b5a481e660bcb18bfaa61ec53352ccf04a19b1a4b7ea3154eae",
+        "path": "docs/PROJECT-MAP.md",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "docs/PROJECT-MAP.md"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 8
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 5
+          },
+          "churn": {
+            "status": "exact",
+            "value": 13
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 3
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 5
+          },
+          "changed": {
+            "status": "exact",
+            "value": 8
+          }
+        },
+        "family": {
+          "id": "family-e46bede56cd551a0afddb8a8fac30cbda8fd2c5258afd859520cbf1e2651cd7a",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-2a4882a2d642cea703bbee79a2950be0337d84006abba3291bc1cb08c7f752c1",
+        "path": "docs/QUALIFICATION.md",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "docs/QUALIFICATION.md"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 31
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "churn": {
+            "status": "exact",
+            "value": 31
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 31
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 0
+          },
+          "changed": {
+            "status": "exact",
+            "value": 31
+          }
+        },
+        "family": {
+          "id": "family-15b73205c3b1bb34e6b424d0fb12b795fe26f575c23d4e917c8c1e5a5673ffe7",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-e67bf7df143769cffcf9fce11b6e95d0d2e7df9de89c16dd1c664fa80f7d1a6d",
+        "path": "package-lock.json",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "package-lock.json"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 1579
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 1
+          },
+          "churn": {
+            "status": "exact",
+            "value": 1580
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 1578
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 1
+          },
+          "changed": {
+            "status": "exact",
+            "value": 1579
+          }
+        },
+        "family": {
+          "id": "family-1b2eed537970a3c185297a78d39de0e1fda53c27f05c677f5b2034dc6faf135f",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-55fc623745afd62d8808d3a3e5ecc5b89b25e65c6d914a3b44a9c4b9f4ab4e14",
+        "path": "package.json",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "package.json"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 6
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 3
+          },
+          "churn": {
+            "status": "exact",
+            "value": 9
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 3
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 3
+          },
+          "changed": {
+            "status": "exact",
+            "value": 6
+          }
+        },
+        "family": {
+          "id": "family-9575e939ad931545ff9dac1e1519e9f83199d52d1cf779a4fa023cf0df09b02a",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-ca9cc3b8d09826a7ec1be6cd82b2e60e630c5dd9f0b95332d593dd7f7ac67392",
+        "path": "src/diffdevil/github/client.ts",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/diffdevil/github/client.ts"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 1
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 1
+          },
+          "churn": {
+            "status": "exact",
+            "value": 2
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 0
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 1
+          },
+          "changed": {
+            "status": "exact",
+            "value": 1
+          }
+        },
+        "family": {
+          "id": "family-c03ddb41753c195186cf1e9fd88ae6350426d250c3ee6c074918db52bb92434f",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-c25436e281e3d1295b768c4449839cd069d5732e4a6f251a12671a3c16b2999b",
+        "path": "src/diffdevil/schema.ts",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/diffdevil/schema.ts"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 4
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 4
+          },
+          "churn": {
+            "status": "exact",
+            "value": 8
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 0
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 4
+          },
+          "changed": {
+            "status": "exact",
+            "value": 4
+          }
+        },
+        "family": {
+          "id": "family-af172265952ad1a4beb3cf34e87dd98249c4d429a028475206b71d4a1c3d6385",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-27c3bd3bdac8b9f1c1cef1144bb5454f2e03e66681ffa02339a50600c75022cf",
+        "path": "src/diffdevil/tests/github-client.test.mjs",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/diffdevil/tests/github-client.test.mjs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 30
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "churn": {
+            "status": "exact",
+            "value": 30
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 30
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 0
+          },
+          "changed": {
+            "status": "exact",
+            "value": 30
+          }
+        },
+        "family": {
+          "id": "family-e7ac33acf94d9ff52e73fedd0a4f80932deba480979ed3d7dd1191f64326b1d0",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-a0f26c363413687485e77bf24e7ab7c1159ea70ee6dc0c12cb5312ac54e5cb4c",
+        "path": "src/diffdevil/validation/schemas.cts",
+        "changeType": "added",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/diffdevil/validation/schemas.cts"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 19
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "churn": {
+            "status": "exact",
+            "value": 19
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 19
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 0
+          },
+          "changed": {
+            "status": "exact",
+            "value": 19
+          }
+        },
+        "family": {
+          "id": "family-43701a23c4a61b20a3c0896f7dbe9bc1aef17dfa8be66af632effbc664923ba2",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-6cb2fc8b0b5f52cbb02759cba4a131bd43dfd7b5e52a7bf5a918392dde075984",
+        "path": "tools/run-wrangler.mjs",
+        "changeType": "added",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "tools/run-wrangler.mjs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 23
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "churn": {
+            "status": "exact",
+            "value": 23
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 23
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 0
+          },
+          "changed": {
+            "status": "exact",
+            "value": 23
+          }
+        },
+        "family": {
+          "id": "family-307ba7dd24c49eb5fe61bdeb681a65b0561ca06575a985a421e20dcfab97eba5",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-8d81f1002c7bda47a4a5728c75229b431d54a77cb071f1a23df90c826b79b195",
+        "path": "tools/schema-build.mjs",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "tools/schema-build.mjs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 7
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 1
+          },
+          "churn": {
+            "status": "exact",
+            "value": 8
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 6
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 1
+          },
+          "changed": {
+            "status": "exact",
+            "value": 7
+          }
+        },
+        "family": {
+          "id": "family-e8a14ab8fcf429f463c1f55ce2a795de82aab16a8178807021df5bf118e9252e",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-a27e2231e0bc9ef7b6ccc9b763d47b52c2f99a8c8083e24ea75aadd26212b452",
+        "path": "wrangler.jsonc",
+        "changeType": "added",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "wrangler.jsonc"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 14
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "churn": {
+            "status": "exact",
+            "value": 14
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 14
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 0
+          },
+          "changed": {
+            "status": "exact",
+            "value": 14
+          }
+        },
+        "family": {
+          "id": "family-521e09155960d36336f24394304848450b25798a13a8f7c4d81996414719cf02",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      }
+    ],
+    "totals": {
+      "raw": {
+        "added": {
+          "status": "exact",
+          "value": 2156
+        },
+        "deleted": {
+          "status": "exact",
+          "value": 185
+        },
+        "churn": {
+          "status": "exact",
+          "value": 2341
+        }
+      },
+      "lines": {
+        "added": {
+          "status": "exact",
+          "value": 2102
+        },
+        "deleted": {
+          "status": "exact",
+          "value": 131
+        },
+        "modified": {
+          "status": "exact",
+          "value": 54
+        },
+        "changed": {
+          "status": "exact",
+          "value": 2287
+        }
+      },
+      "files": {
+        "total": {
+          "status": "exact",
+          "value": 26
+        },
+        "excluded": {
+          "status": "exact",
+          "value": 0
+        },
+        "included": {
+          "status": "exact",
+          "value": 26
+        },
+        "added": {
+          "status": "exact",
+          "value": 6
+        },
+        "deleted": {
+          "status": "exact",
+          "value": 0
+        },
+        "modified": {
+          "status": "exact",
+          "value": 20
+        },
+        "renamed": {
+          "status": "exact",
+          "value": 0
+        },
+        "copied": {
+          "status": "exact",
+          "value": 0
+        },
+        "binary": {
+          "status": "exact",
+          "value": 0
+        },
+        "unmeasurable": {
+          "status": "exact",
+          "value": 0
+        }
+      }
+    },
+    "measurement": {
+      "status": "exact",
+      "reasons": []
+    },
+    "reportId": "report-5aa17250e7804fd763be2673f0dcd07cb65aedfe638e559364bd431c2d629791"
+  }
+}

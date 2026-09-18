@@ -8,7 +8,7 @@ import { readFileSync } from 'node:fs';
 import Ajv2020 from 'ajv/dist/2020.js';
 import { DiffdevilError, GitHubClient } from '../../dist/lib/index.js';
 import { FakeGitHub } from '../../src/diffdevil/tests/helpers/github.mjs';
-import { analyzePublicPullRequest, parsePublicPullRequestUrl, projectPlaygroundReport } from './app.mjs';
+import { analyzePublicPullRequest, parsePublicPullRequestUrl, projectPlaygroundReport, replayPublicPullRequest } from './app.mjs';
 import { createPlaygroundServer } from './server.mjs';
 import { createPlaygroundWorker } from './worker.mjs';
 
@@ -299,4 +299,53 @@ test('Worker adapter returns the canonical internal failure envelope', async () 
   });
   assert.ok(observed instanceof Error);
   assert.equal(observed.message, 'sensitive worker detail');
+});
+
+const replaySchema = JSON.parse(readFileSync('apps/playground/contracts/replay-response-v1.schema.json', 'utf8'));
+const replayAjv = new Ajv2020({ strict: true, strictTypes: false, strictRequired: false, allErrors: true });
+replayAjv.addSchema(valuesSchema);
+replayAjv.addSchema(reportSchema);
+const validateReplay = replayAjv.compile(replaySchema);
+const assertReplay = value => assert.equal(validateReplay(value), true, replayAjv.errorsText(validateReplay.errors));
+
+test('playground replay route returns the complete engine report and the head route the current revisions', async t => {
+  const fake = new FakeGitHub();
+  const server = createPlaygroundServer({ clientFactory: () => client(fake) });
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  t.after(() => new Promise(resolve => server.close(resolve)));
+  const base = `http://127.0.0.1:${server.address().port}`;
+
+  const replay = await fetch(`${base}/api/report?url=${encodeURIComponent(PUBLIC_URL)}`);
+  const payload = await replay.json();
+  assert.equal(replay.status, 200);
+  assert.equal(replay.headers.get('access-control-allow-origin'), '*');
+  assert.equal(payload.report.kind, 'diffdevil.report');
+  assert.equal(payload.report.totals.lines.changed.value, 3);
+  assert.ok(payload.report.files.every(file => typeof file.id === 'string'));
+  assertReplay(payload);
+
+  const head = await fetch(`${base}/api/head?url=${encodeURIComponent(PUBLIC_URL)}`);
+  const headPayload = await head.json();
+  assert.equal(head.status, 200);
+  assert.equal(headPayload.head.head, payload.report.source.head);
+  assert.equal(headPayload.head.base, payload.report.source.base);
+  assertReplay(headPayload);
+
+  const refused = await fetch(`${base}/api/report?url=${encodeURIComponent('https://github.com/example/repository/issues/1')}`);
+  assert.equal(refused.status, 400);
+  assertReplay(await refused.json());
+
+  const headMethod = await fetch(`${base}/api/report?url=${encodeURIComponent(PUBLIC_URL)}`, { method: 'HEAD' });
+  assert.equal(headMethod.status, 405);
+  assert.equal(fake.writes().length, 0);
+});
+
+test('playground replay refuses rather than truncates a report beyond its file ceiling', async () => {
+  const fake = new FakeGitHub();
+  const result = await replayPublicPullRequest(PUBLIC_URL, { client: client(fake), maximumReportFiles: 0 });
+  assert.equal(result.ok, false);
+  assert.equal(result.status, 413);
+  assert.equal(result.error.code, 'E_LIMIT');
+  assertReplay(result);
 });

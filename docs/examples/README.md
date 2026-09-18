@@ -14,6 +14,7 @@ consumer ran it successfully.
 | --- | --- | --- |
 | Automatic size labels with no config or comments | [size workflow](workflows/size.yml) | [Quickstart](../guides/auto-label-pull-requests.md) |
 | Transparent local counts, scalars and path queries | [four-file patch](diffs/review.diff) | [Local automation](../guides/local-automation.md) |
+| File count and line count as separate facts | [two large files beside fourteen small ones](diffs/few-vs-many.diff) | Playground fixture `few-vs-many` |
 | Source changes without test-path changes | [policy](policies/review-signals.yml), [workflow](workflows/review-signals.yml) | [Policy recipes](../guides/policy-recipes.md) |
 | One updated comment, no size labels | [policy](policies/review-comment.yml), [workflow](workflows/review-comment.yml) | [Policy recipes](../guides/policy-recipes.md) |
 | Read-only Action facts and a threshold decision | [analyze workflow](workflows/analyze.yml) | [Action manual](../integration/github-actions.md) |

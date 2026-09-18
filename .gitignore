@@ -12,6 +12,10 @@ coverage/
 # Repository-local artifacts and editor noise
 # Leitsatz: product-owned generated output
 /artifacts/
+# Generated website docs collection (tools/website-docs.mjs) and Astro type output
+apps/website/src/content/docs/
+apps/website/src/content/sidebar.json
+apps/website/.astro/
 .wrangler/
 .DS_Store
 Thumbs.db

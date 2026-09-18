@@ -1,0 +1,66 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only
+import SectionHead from '../SectionHead.astro';
+import { copy } from '../../data/copy';
+import { paths } from '../../data/site';
+import { display, evidenceGlyph } from '../../lib/engine-node';
+import { measureSpecimen } from '../../lib/specimens';
+const { report, result, observed, excluded } = measureSpecimen();
+const review = report.metrics!.review!;
+const band = result.rules.size?.band;
+const label = band?.status === 'resolved' ? `size/${band.id.toUpperCase()}` : 'size/Unknown';
+const lines = report.totals.lines, raw = report.totals.raw, files = report.totals.files;
+const c = copy.measure;
+---
+<section class="section" id="measure">
+  <div class="wrap measure-grid">
+    <SectionHead id="measure" title={c.h2} body={c.body} links={c.links} />
+    <figure class="machine measure-panel">
+      <figcaption class="code-head"><span>{c.panelHead}</span><span class="spacer"></span><span>{display(files.total!)} files · {display(files.included!)} included · {display(files.excluded!)} excluded</span></figcaption>
+      <div class="primary result-frame">
+        <p class="label">{c.primaryLabel}</p>
+        <p class="primary-value"><span class="metric-xl">{display(review)}</span><span class="metric-unit">changed</span></p>
+        <p class="pills"><span class="chip-ev" data-status={review.status}>{evidenceGlyph[review.status]} {review.status}</span> <span class="chip-meta">lines.changed</span></p>
+        <p class="result-line mono">band {band?.status === 'resolved' ? band.id : '?'} → <span class="label-swatch" style="background:#C5DEF5">{label}</span></p>
+      </div>
+      <div class="facts">
+        <div class="fact-block">
+          <p class="k">{c.decomposition}</p>
+          <ul class="fact-list">
+            <li><span>+ added-only</span><span class="v">{display(lines.added)}</span></li>
+            <li><span>− deleted-only</span><span class="v">{display(lines.deleted)}</span></li>
+            <li><span>~ modified</span><span class="v">{display(lines.modified)}</span></li>
+          </ul>
+        </div>
+        <div class="fact-block">
+          <p class="k">{c.raw}</p>
+          <ul class="fact-list">
+            <li><span>+ additions</span><span class="v">{display(raw.added)}</span></li>
+            <li><span>− deletions</span><span class="v">{display(raw.deleted)}</span></li>
+            <li><span>churn</span><span class="v">{display(raw.churn)}</span></li>
+          </ul>
+        </div>
+      </div>
+      <p class="measure-foot">
+        {excluded.map(file => <span><span class="glyph">▣</span><code>{file.path}</code> excluded by <code>defaults.paths.exclude</code> — observed churn would be {new Intl.NumberFormat('en').format(observed.churn)}. </span>)}
+        <a class="link" href={`${paths.playground}?example=lockfile-excluded`}>{c.tryIt}</a>
+      </p>
+    </figure>
+  </div>
+</section>
+<style>
+  .measure-grid { display: grid; grid-template-columns: 1fr 1.5fr; gap: 48px; align-items: start; }
+  .measure-grid :global(.section-head) { margin-bottom: 0; }
+  .primary { padding: 18px 20px; }
+  .primary .label { margin: 0 0 12px; }
+  .primary-value { margin: 0 0 12px; display: flex; align-items: baseline; }
+  .pills { display: flex; gap: 8px; margin: 0 0 10px; }
+  .result-line { margin: 0; font-size: 12.5px; color: #a9b8cc; display: flex; align-items: center; gap: 8px; }
+  .facts { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 14px 20px; border-top: 1px solid #2c303a; }
+  .facts .k { margin: 0 0 6px; }
+  .measure-foot { margin: 0; padding: 12px 20px; border-top: 1px solid #2c303a; font-size: 12.5px; color: #a9b8cc; }
+  .measure-foot code { color: #f0f2f5; }
+  .measure-foot .link { color: #f0f2f5; }
+  @media (max-width: 900px) { .measure-grid { grid-template-columns: 1fr; gap: 24px; } }
+  @media (max-width: 640px) { .facts { grid-template-columns: 1fr; } }
+</style>

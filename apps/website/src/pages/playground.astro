@@ -1,0 +1,30 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only
+// The dedicated playground page. The island is the justified interactive part; the
+// rest of the page is static. Example cards are listed from the catalogue at build.
+import Base from '../layouts/Base.astro';
+import Playground from '../islands/playground/Playground.tsx';
+import { copy } from '../data/copy';
+import { fixtures, DEFAULT_FIXTURE } from '../../catalogue/fixtures.mjs';
+import { curated } from '../lib/catalogue';
+import { readRepositoryFile, reportFromDiff, reportFromSaved, display } from '../lib/engine-node';
+import '../styles/playground.css';
+
+const fixtureCards = fixtures.map(fixture => {
+  const text = readRepositoryFile(fixture.source.path);
+  const report = fixture.source.kind === 'diff' ? reportFromDiff(text) : reportFromSaved(text);
+  const policyName = fixture.policy.kind === 'file' ? fixture.policy.path!.split('/').pop() : 'size@1';
+  return { id: fixture.id, group: 'fixture' as const, glyph: fixture.glyph, title: fixture.title, hook: fixture.hook,
+    meta: `${display(report.fileSet.total)} files · ${report.measurement.status} · policy ${policyName}` };
+});
+const curatedCards = curated().map(entry => ({ id: entry.id, group: 'curated' as const, title: entry.title, repository: entry.repository, pullRequest: entry.pullRequest, reason: entry.reason, head: entry.head, analyzedAt: entry.analyzedAt, evidence: entry.evidence }));
+---
+<Base title={copy.playground.title} description="Read-only diffdevil playground: analyze a public pull request or a curated example and see the same result as terminal, data, GitHub preview and explanation." surface="Playground" current="playground">
+  <div class="wrap pg-head">
+    <h1 class="h2">{copy.playground.title}</h1>
+    <p class="caption">{copy.playground.sub}</p>
+  </div>
+  <div class="wrap pg-wrap">
+    <Playground client:only="react" fixtures={fixtureCards} curated={curatedCards} defaultExample={DEFAULT_FIXTURE} />
+  </div>
+</Base>
