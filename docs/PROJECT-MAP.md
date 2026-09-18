@@ -15,7 +15,6 @@ and disposable outputs without introducing independently versioned packages.
 | `apps/github-app/` | AGPL managed-App adapter: verified webhook ingress, Queue execution, D1 recovery/history state, migrations and operator boundary. |
 | `apps/website/` | AGPL public website: Astro static output + Starlight manual rendered from repository Markdown, the complete playground as one lazy React island running the shared engine in the browser, examples catalogue, App page, legal/privacy routes. Built and qualified locally; not deployed by any command here. |
 | `apps/shared/` | Small presenters both AGPL applications use (currently the App check-summary composer). |
-| `design/` | Reusable design authority: Surface Grammar v1, Identity Grammar v1, canonical tokens and identity SVGs. |
 | `actions/` | Three sub-action entry points and their shared, committed runtime. |
 | `design/` | Canonical reusable visual reference: E3/W1/T2 with Foundation A grammars, tokens, explicit errata, and reserved production identity SVGs; not executable website source. |
 | `docs/` | Maintained manuals, runnable examples and dated technical research. |
