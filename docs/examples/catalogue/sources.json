@@ -1,13 +1,255 @@
 {
   "formatVersion": 1,
   "sources": {
-    "vite-18968": { "kind": "curated-pr", "repository": "vitejs/vite", "pullRequest": 18968, "url": "https://github.com/vitejs/vite/pull/18968", "baseTip": "ccd1a4c4145ee1069d7baea56981a0322e7be864", "mergeBase": "ccd1a4c4145ee1069d7baea56981a0322e7be864", "head": "48db5c9555f2d43cb88367506e79854fce8ed47d", "noticePath": "LICENSE", "noticeSha": "b7e97ecb6aa4dd70b3e3a637afa2ae16feb7cd12", "notice": "MIT" },
-    "runtime-105380": { "kind": "curated-pr", "repository": "dotnet/runtime", "pullRequest": 105380, "url": "https://github.com/dotnet/runtime/pull/105380", "baseTip": "7d64842fdc41340440b00795c3f39f4c917acc62", "mergeBase": "7d64842fdc41340440b00795c3f39f4c917acc62", "head": "83e7ccfa9a4122c4de2fd06ca152d6a34f673257", "noticePath": "LICENSE.TXT", "noticeSha": "984713a49622a96da110443c15477613bc12656b", "notice": "MIT" },
-    "prettier-13183": { "kind": "curated-pr", "repository": "prettier/prettier", "pullRequest": 13183, "url": "https://github.com/prettier/prettier/pull/13183", "baseTip": "f25a592f571257cef4847e27820e86945c7fcb68", "mergeBase": "f25a592f571257cef4847e27820e86945c7fcb68", "head": "c7d5925715a31d3c83073e03de1b90673776b691", "noticePath": "LICENSE", "noticeSha": "5767e34d30ab78796220f9492726dd2f677d4166", "notice": "MIT" },
-    "uv-8637": { "kind": "curated-pr", "repository": "astral-sh/uv", "pullRequest": 8637, "url": "https://github.com/astral-sh/uv/pull/8637", "baseTip": "0044000ed3e8bcf2a1f9b133b2d3b59c9a016271", "mergeBase": "7948441121b1d54655caa927b3eaadaf90717327", "head": "cbb90bad697c04aa68be259fa36e34fe847c208a", "noticePath": "LICENSE-MIT", "noticeSha": "ec2236bb89949a3353f85b9884c2c453b7ebe36e", "notice": "MIT" },
-    "spread-concentrated": { "kind": "unified-diff", "path": "docs/examples/catalogue/fixtures/spread-concentrated.diff" },
-    "spread-distributed": { "kind": "unified-diff", "path": "docs/examples/catalogue/fixtures/spread-distributed.diff" },
-    "bounded-report": { "kind": "report", "path": "docs/examples/reports/bounded.json" },
-    "incomplete-report": { "kind": "report", "path": "docs/examples/reports/incomplete.json" }
+    "vite-18968": {
+      "kind": "curated-pr",
+      "repository": "vitejs/vite",
+      "pullRequest": 18968,
+      "url": "https://github.com/vitejs/vite/pull/18968",
+      "baseTip": "ccd1a4c4145ee1069d7baea56981a0322e7be864",
+      "mergeBase": "ccd1a4c4145ee1069d7baea56981a0322e7be864",
+      "head": "48db5c9555f2d43cb88367506e79854fce8ed47d",
+      "capture": "comparison-diff",
+      "noticePath": "LICENSE",
+      "noticeSha": "b7e97ecb6aa4dd70b3e3a637afa2ae16feb7cd12",
+      "notice": "MIT",
+      "expectedChangedFiles": 2
+    },
+    "runtime-105380": {
+      "kind": "curated-pr",
+      "repository": "dotnet/runtime",
+      "pullRequest": 105380,
+      "url": "https://github.com/dotnet/runtime/pull/105380",
+      "baseTip": "7d64842fdc41340440b00795c3f39f4c917acc62",
+      "mergeBase": "7d64842fdc41340440b00795c3f39f4c917acc62",
+      "head": "83e7ccfa9a4122c4de2fd06ca152d6a34f673257",
+      "capture": "comparison-diff",
+      "noticePath": "LICENSE.TXT",
+      "noticeSha": "984713a49622a96da110443c15477613bc12656b",
+      "notice": "MIT",
+      "expectedChangedFiles": 21
+    },
+    "prettier-13183": {
+      "kind": "curated-pr",
+      "repository": "prettier/prettier",
+      "pullRequest": 13183,
+      "url": "https://github.com/prettier/prettier/pull/13183",
+      "baseTip": "f25a592f571257cef4847e27820e86945c7fcb68",
+      "mergeBase": "f25a592f571257cef4847e27820e86945c7fcb68",
+      "head": "c7d5925715a31d3c83073e03de1b90673776b691",
+      "capture": "comparison-diff",
+      "edition": "raw-diff-exact",
+      "noticePath": "LICENSE",
+      "noticeSha": "5767e34d30ab78796220f9492726dd2f677d4166",
+      "notice": "MIT",
+      "expectedChangedFiles": 30
+    },
+    "prettier-13183-rest": {
+      "kind": "curated-pr",
+      "repository": "prettier/prettier",
+      "pullRequest": 13183,
+      "url": "https://github.com/prettier/prettier/pull/13183",
+      "baseTip": "f25a592f571257cef4847e27820e86945c7fcb68",
+      "mergeBase": "f25a592f571257cef4847e27820e86945c7fcb68",
+      "head": "c7d5925715a31d3c83073e03de1b90673776b691",
+      "capture": "pull-files",
+      "edition": "rest-bounded",
+      "noticePath": "LICENSE",
+      "noticeSha": "5767e34d30ab78796220f9492726dd2f677d4166",
+      "notice": "MIT",
+      "expectedChangedFiles": 30,
+      "expectedFileSetComplete": true,
+      "expectedObservedFiles": 30
+    },
+    "uv-8637": {
+      "kind": "curated-pr",
+      "repository": "astral-sh/uv",
+      "pullRequest": 8637,
+      "url": "https://github.com/astral-sh/uv/pull/8637",
+      "baseTip": "0044000ed3e8bcf2a1f9b133b2d3b59c9a016271",
+      "mergeBase": "7948441121b1d54655caa927b3eaadaf90717327",
+      "head": "cbb90bad697c04aa68be259fa36e34fe847c208a",
+      "capture": "comparison-diff",
+      "noticePath": "LICENSE-MIT",
+      "noticeSha": "ec2236bb89949a3353f85b9884c2c453b7ebe36e",
+      "notice": "MIT",
+      "expectedChangedFiles": 19
+    },
+    "rust-66820": {
+      "kind": "curated-pr",
+      "repository": "rust-lang/rust",
+      "pullRequest": 66820,
+      "url": "https://github.com/rust-lang/rust/pull/66820",
+      "baseTip": "9081929d45f12d3f56d43b1d6db7519981580fc9",
+      "mergeBase": "9081929d45f12d3f56d43b1d6db7519981580fc9",
+      "head": "9ad085070746b5ff4c3262bb65c2cdefe4269198",
+      "capture": "comparison-diff",
+      "notice": "MIT OR Apache-2.0",
+      "notices": [
+        {
+          "label": "MIT",
+          "path": "LICENSE-MIT",
+          "refs": [
+            {
+              "role": "base",
+              "ref": "merge-base",
+              "sha": "31aa79387f27e730e33d871925e152e35e428031"
+            },
+            {
+              "role": "head",
+              "ref": "head",
+              "sha": "31aa79387f27e730e33d871925e152e35e428031"
+            }
+          ]
+        },
+        {
+          "label": "Apache-2.0",
+          "path": "LICENSE-APACHE",
+          "refs": [
+            {
+              "role": "base",
+              "ref": "merge-base",
+              "sha": "16fe87b06e802f094b3fbb0894b137bca2b16ef1"
+            },
+            {
+              "role": "head",
+              "ref": "head",
+              "sha": "16fe87b06e802f094b3fbb0894b137bca2b16ef1"
+            }
+          ]
+        }
+      ],
+      "expectedChangedFiles": 51,
+      "expectedFileSetComplete": true,
+      "expectedObservedFiles": 51
+    },
+    "rust-136978": {
+      "kind": "curated-pr",
+      "repository": "rust-lang/rust",
+      "pullRequest": 136978,
+      "url": "https://github.com/rust-lang/rust/pull/136978",
+      "baseTip": "54cdc751df770517e70db0588573e32e6a7b9821",
+      "mergeBase": "cfe9ffcd7c2d63fd3e0fc33a8d23ac4f0d50efe9",
+      "head": "26eeac1a1e9fe46ffd80dd0d3dafdd2c2a644306",
+      "capture": "comparison-diff",
+      "notice": "MIT OR Apache-2.0",
+      "notices": [
+        {
+          "label": "MIT",
+          "path": "LICENSE-MIT",
+          "refs": [
+            {
+              "role": "base",
+              "ref": "merge-base",
+              "sha": "a2070c4be7acd5316f8d0357ca3c12419a2f3c62"
+            },
+            {
+              "role": "head",
+              "ref": "head",
+              "sha": "a2070c4be7acd5316f8d0357ca3c12419a2f3c62"
+            }
+          ]
+        },
+        {
+          "label": "Apache-2.0",
+          "path": "LICENSE-APACHE",
+          "refs": [
+            {
+              "role": "base",
+              "ref": "merge-base",
+              "sha": "1b5ec8b78e237b5c3b3d812a7c0a6589d0f7161d"
+            },
+            {
+              "role": "head",
+              "ref": "head",
+              "sha": "1b5ec8b78e237b5c3b3d812a7c0a6589d0f7161d"
+            }
+          ]
+        }
+      ],
+      "expectedChangedFiles": 6,
+      "expectedFileSetComplete": true,
+      "expectedObservedFiles": 6
+    },
+    "cmake-docs-2-compare": {
+      "kind": "curated-pr",
+      "repository": "localizethedocs/cmake-docs-l10n",
+      "pullRequest": 2,
+      "url": "https://github.com/localizethedocs/cmake-docs-l10n/pull/2",
+      "baseTip": "b6faeb9f40efd37059b31a95a84cb8c168d736ea",
+      "mergeBase": "b6faeb9f40efd37059b31a95a84cb8c168d736ea",
+      "head": "5da311a62054fece578096ca56c3eeef56f720a8",
+      "capture": "compare-files",
+      "edition": "compare-json-incomplete",
+      "patches": "counters-only",
+      "notice": "Generated .pot text follows the upstream CMake package licence; project material has a mixed licence map.",
+      "notices": [
+        {
+          "label": "Representative generated .pot header",
+          "path": "master/locale/pot/LC_MESSAGES/command/add_compile_definitions.pot",
+          "refs": [
+            {
+              "role": "head",
+              "ref": "head",
+              "sha": "571d9bb7b1f292b78c2c2af6c1814bd3279543ea"
+            }
+          ]
+        },
+        {
+          "label": "Repository licensing map",
+          "path": "README.md",
+          "refs": [
+            {
+              "role": "authority",
+              "ref": "d8ac0972ef25302de744b4ac3313a106db7d7309",
+              "sha": "7c095b67c13f004a3f4a053dae3476445b1a0a56"
+            }
+          ]
+        }
+      ],
+      "expectedChangedFiles": 2171,
+      "expectedFileSetComplete": false,
+      "expectedObservedFiles": 300
+    },
+    "cmake-docs-2-files": {
+      "kind": "curated-pr",
+      "repository": "localizethedocs/cmake-docs-l10n",
+      "pullRequest": 2,
+      "url": "https://github.com/localizethedocs/cmake-docs-l10n/pull/2",
+      "baseTip": "b6faeb9f40efd37059b31a95a84cb8c168d736ea",
+      "mergeBase": "b6faeb9f40efd37059b31a95a84cb8c168d736ea",
+      "head": "5da311a62054fece578096ca56c3eeef56f720a8",
+      "capture": "pull-files",
+      "edition": "pr-files-complete",
+      "patches": "counters-only",
+      "notice": "Generated .pot text follows the upstream CMake package licence; project material has a mixed licence map.",
+      "notices": [
+        {
+          "label": "Representative generated .pot header",
+          "path": "master/locale/pot/LC_MESSAGES/command/add_compile_definitions.pot",
+          "refs": [
+            {
+              "role": "head",
+              "ref": "head",
+              "sha": "571d9bb7b1f292b78c2c2af6c1814bd3279543ea"
+            }
+          ]
+        },
+        {
+          "label": "Repository licensing map",
+          "path": "README.md",
+          "refs": [
+            {
+              "role": "authority",
+              "ref": "d8ac0972ef25302de744b4ac3313a106db7d7309",
+              "sha": "7c095b67c13f004a3f4a053dae3476445b1a0a56"
+            }
+          ]
+        }
+      ],
+      "expectedChangedFiles": 2171,
+      "expectedFileSetComplete": true,
+      "expectedObservedFiles": 2171
+    }
   }
 }

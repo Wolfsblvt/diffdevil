@@ -1,12 +1,13 @@
 {
   "kind": "diffdevil.example-snapshot",
-  "schemaVersion": "1.1",
+  "schemaVersion": "1.2",
   "id": "uv-8637",
+  "edition": "teaching-snapshot",
   "repository": "astral-sh/uv",
   "pullRequest": 8637,
   "url": "https://github.com/astral-sh/uv/pull/8637",
-  "title": "uv-8637",
-  "capturedAt": "2026-09-18T04:09:27.350Z",
+  "title": "Add a trampoline variant that just executes `python`",
+  "capturedAt": "2026-09-18T23:14:07.352Z",
   "provenance": {
     "baseTip": "0044000ed3e8bcf2a1f9b133b2d3b59c9a016271",
     "mergeBase": "7948441121b1d54655caa927b3eaadaf90717327",
@@ -20,22 +21,30 @@
   },
   "notices": {
     "declared": "MIT",
-    "base": {
-      "path": "LICENSE-MIT",
-      "sha": "ec2236bb89949a3353f85b9884c2c453b7ebe36e",
-      "ref": "7948441121b1d54655caa927b3eaadaf90717327"
-    },
-    "head": {
-      "path": "LICENSE-MIT",
-      "sha": "ec2236bb89949a3353f85b9884c2c453b7ebe36e",
-      "ref": "cbb90bad697c04aa68be259fa36e34fe847c208a"
-    }
+    "records": [
+      {
+        "label": "MIT",
+        "repository": "astral-sh/uv",
+        "path": "LICENSE-MIT",
+        "role": "base",
+        "ref": "7948441121b1d54655caa927b3eaadaf90717327",
+        "sha": "ec2236bb89949a3353f85b9884c2c453b7ebe36e"
+      },
+      {
+        "label": "MIT",
+        "repository": "astral-sh/uv",
+        "path": "LICENSE-MIT",
+        "role": "head",
+        "ref": "cbb90bad697c04aa68be259fa36e34fe847c208a",
+        "sha": "ec2236bb89949a3353f85b9884c2c453b7ebe36e"
+      }
+    ]
   },
   "rights": {
     "retainedMaterial": "normalized-report-only",
     "rawComparison": "analyzed-in-memory-not-committed",
     "binaryBytes": "not-retained",
-    "review": "Root notices and every retained normalized file record were inspected; raw source lines, patch text, discussion, and provider responses are not retained."
+    "review": "Pinned notices and every retained normalized file record were inspected; raw source lines, patch text, discussion, and provider responses are not retained."
   },
   "engine": {
     "package": "1.0.0",
@@ -43,9 +52,9 @@
     "replacementLines": "replacement-lines-v1"
   },
   "payload": {
-    "sourceSha256": "79cb3fd86ce77f5781946fda2a476d9f1a531288dd82034bcbd8fca702a9e857",
+    "sourceSha256": "58fe6469590f5a202f72e4a7e0583da32665ed870192cabe13a804d77fc8c466",
     "normalizedReportSha256": "4777560efca071cda60baa66b0b12ffba63c41a6aaf7c6d5411cd669d8bbc859",
-    "providerFileSetSha256": "7d5192641c8da44f4ec03bc8b8252f43508a14164d790e2ed931fb659545391c"
+    "providerFileSetSha256": "04797dd6bd86eb183411b294733214993b5b77b1d956ce51f82ff61e88094c06"
   },
   "capabilities": {
     "policyReplay": true,
@@ -58,6 +67,7 @@
   },
   "provider": {
     "complete": true,
+    "observedCount": 19,
     "reportedCount": 19,
     "entries": [
       {

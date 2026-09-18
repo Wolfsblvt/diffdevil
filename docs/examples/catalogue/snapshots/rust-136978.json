@@ -1,0 +1,617 @@
+{
+  "kind": "diffdevil.example-snapshot",
+  "schemaVersion": "1.2",
+  "id": "rust-136978",
+  "edition": "teaching-snapshot",
+  "repository": "rust-lang/rust",
+  "pullRequest": 136978,
+  "url": "https://github.com/rust-lang/rust/pull/136978",
+  "title": "Windows: Update generated bindings",
+  "capturedAt": "2026-09-18T23:14:09.374Z",
+  "provenance": {
+    "baseTip": "54cdc751df770517e70db0588573e32e6a7b9821",
+    "mergeBase": "cfe9ffcd7c2d63fd3e0fc33a8d23ac4f0d50efe9",
+    "head": "26eeac1a1e9fe46ffd80dd0d3dafdd2c2a644306"
+  },
+  "acquisition": {
+    "route": "github-rest-compare-three-dot",
+    "comparisonEndpoint": "/repos/rust-lang/rust/compare/cfe9ffcd7c2d63fd3e0fc33a8d23ac4f0d50efe9...26eeac1a1e9fe46ffd80dd0d3dafdd2c2a644306",
+    "identityEndpoint": "/repos/rust-lang/rust/compare/54cdc751df770517e70db0588573e32e6a7b9821...26eeac1a1e9fe46ffd80dd0d3dafdd2c2a644306",
+    "pullEndpoint": "/repos/rust-lang/rust/pulls/136978"
+  },
+  "notices": {
+    "declared": "MIT OR Apache-2.0",
+    "records": [
+      {
+        "label": "MIT",
+        "repository": "rust-lang/rust",
+        "path": "LICENSE-MIT",
+        "role": "base",
+        "ref": "cfe9ffcd7c2d63fd3e0fc33a8d23ac4f0d50efe9",
+        "sha": "a2070c4be7acd5316f8d0357ca3c12419a2f3c62"
+      },
+      {
+        "label": "MIT",
+        "repository": "rust-lang/rust",
+        "path": "LICENSE-MIT",
+        "role": "head",
+        "ref": "26eeac1a1e9fe46ffd80dd0d3dafdd2c2a644306",
+        "sha": "a2070c4be7acd5316f8d0357ca3c12419a2f3c62"
+      },
+      {
+        "label": "Apache-2.0",
+        "repository": "rust-lang/rust",
+        "path": "LICENSE-APACHE",
+        "role": "base",
+        "ref": "cfe9ffcd7c2d63fd3e0fc33a8d23ac4f0d50efe9",
+        "sha": "1b5ec8b78e237b5c3b3d812a7c0a6589d0f7161d"
+      },
+      {
+        "label": "Apache-2.0",
+        "repository": "rust-lang/rust",
+        "path": "LICENSE-APACHE",
+        "role": "head",
+        "ref": "26eeac1a1e9fe46ffd80dd0d3dafdd2c2a644306",
+        "sha": "1b5ec8b78e237b5c3b3d812a7c0a6589d0f7161d"
+      }
+    ]
+  },
+  "rights": {
+    "retainedMaterial": "normalized-report-only",
+    "rawComparison": "analyzed-in-memory-not-committed",
+    "binaryBytes": "not-retained",
+    "review": "Pinned notices and every retained normalized file record were inspected; raw source lines, patch text, discussion, and provider responses are not retained."
+  },
+  "engine": {
+    "package": "1.0.0",
+    "reportSchema": "1.0",
+    "replacementLines": "replacement-lines-v1"
+  },
+  "payload": {
+    "sourceSha256": "0b7c423494524a44bcbd017ee0289fc6ef050387c97cb968e5929652f9112904",
+    "normalizedReportSha256": "d923981a7848b0bf7279192d619658d22f0294393816c4897342ec91e5982e15",
+    "providerFileSetSha256": "827d120c8766493b23b011b10e801712db4e61eb79d954f6d7c2585819216401"
+  },
+  "capabilities": {
+    "policyReplay": true,
+    "remeasurement": false,
+    "remeasurementReason": "No raw comparison material is retained in this teaching snapshot."
+  },
+  "lesson": {
+    "id": "similar-size-different-spread",
+    "title": "Similar change size, radically different spread"
+  },
+  "provider": {
+    "complete": true,
+    "observedCount": 6,
+    "reportedCount": 6,
+    "entries": [
+      {
+        "path": "Cargo.lock",
+        "status": "modified",
+        "additions": 2,
+        "deletions": 13,
+        "changes": 15,
+        "patchAvailable": true
+      },
+      {
+        "path": "library/std/src/sys/pal/windows/c/bindings.txt",
+        "status": "modified",
+        "additions": 2606,
+        "deletions": 2605,
+        "changes": 5211,
+        "patchAvailable": false
+      },
+      {
+        "path": "library/std/src/sys/pal/windows/c/windows_sys.rs",
+        "status": "modified",
+        "additions": 162,
+        "deletions": 127,
+        "changes": 289,
+        "patchAvailable": true
+      },
+      {
+        "path": "library/std/src/sys/pal/windows/fs.rs",
+        "status": "modified",
+        "additions": 2,
+        "deletions": 2,
+        "changes": 4,
+        "patchAvailable": true
+      },
+      {
+        "path": "src/tools/generate-windows-sys/Cargo.toml",
+        "status": "modified",
+        "additions": 1,
+        "deletions": 1,
+        "changes": 2,
+        "patchAvailable": true
+      },
+      {
+        "path": "src/tools/generate-windows-sys/src/main.rs",
+        "status": "modified",
+        "additions": 1,
+        "deletions": 2,
+        "changes": 3,
+        "patchAvailable": true
+      }
+    ]
+  },
+  "material": [
+    {
+      "path": "Cargo.lock",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "library/std/src/sys/pal/windows/c/bindings.txt",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "library/std/src/sys/pal/windows/c/windows_sys.rs",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "library/std/src/sys/pal/windows/fs.rs",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "src/tools/generate-windows-sys/Cargo.toml",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "src/tools/generate-windows-sys/src/main.rs",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    }
+  ],
+  "report": {
+    "kind": "diffdevil.report",
+    "schemaVersion": "1.0",
+    "semantics": {
+      "language": "diffdevil-expr/1",
+      "numbers": "diffdevil-number/1",
+      "replacementLines": "replacement-lines-v1",
+      "paths": "diffdevil-glob/1"
+    },
+    "source": {
+      "kind": "unified-diff",
+      "comparison": "three-dot",
+      "repository": "rust-lang/rust",
+      "pullRequest": 136978,
+      "base": "cfe9ffcd7c2d63fd3e0fc33a8d23ac4f0d50efe9",
+      "baseTip": "54cdc751df770517e70db0588573e32e6a7b9821",
+      "head": "26eeac1a1e9fe46ffd80dd0d3dafdd2c2a644306",
+      "comparisonId": "github-compare-a78bfd19cb01ccf08cf8c20d079249a21a3c0c328e6e7a891b8eca1676ff6280"
+    },
+    "fileSet": {
+      "complete": true,
+      "total": {
+        "status": "exact",
+        "value": 6
+      }
+    },
+    "files": [
+      {
+        "id": "file-e3e301897c43b2995c9fc9b931c9eb8fe70a6009c8e0eff6ab6b8ab33d6bb202",
+        "path": "Cargo.lock",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "Cargo.lock"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 2
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 13
+          },
+          "churn": {
+            "status": "exact",
+            "value": 15
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 0
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 11
+          },
+          "modified": {
+            "status": "exact",
+            "value": 2
+          },
+          "changed": {
+            "status": "exact",
+            "value": 13
+          }
+        },
+        "family": {
+          "id": "family-92dafed85eeeac6f5f16acba9ec9dfd2a7cd2d768fa4410996ce79f7e69b866a",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-60887bcaea99b4a63ae0085e982cfaf5fd8c28e0906283f1cb32612bbfb606d9",
+        "path": "library/std/src/sys/pal/windows/c/bindings.txt",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "library/std/src/sys/pal/windows/c/bindings.txt"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 2606
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 2605
+          },
+          "churn": {
+            "status": "exact",
+            "value": 5211
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 2477
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 2476
+          },
+          "modified": {
+            "status": "exact",
+            "value": 129
+          },
+          "changed": {
+            "status": "exact",
+            "value": 5082
+          }
+        },
+        "family": {
+          "id": "family-ae38b09fb2e2ec38ae7af2ea0d037ef5502a0e947a534116ede05b2d7cb08871",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-3c0215d6eaeda173866509d188a439b3043ad554fbc081704f3a598a1f56ddb5",
+        "path": "library/std/src/sys/pal/windows/c/windows_sys.rs",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "library/std/src/sys/pal/windows/c/windows_sys.rs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 162
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 127
+          },
+          "churn": {
+            "status": "exact",
+            "value": 289
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 84
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 49
+          },
+          "modified": {
+            "status": "exact",
+            "value": 78
+          },
+          "changed": {
+            "status": "exact",
+            "value": 211
+          }
+        },
+        "family": {
+          "id": "family-eec1095a225f91857f444d881ec5436491a1f554f988dd33b873851d52ea037e",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-6fb18ef4212562851cbee7ee975563a219c79997b5e90e1432bb19d6f81cf322",
+        "path": "library/std/src/sys/pal/windows/fs.rs",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "library/std/src/sys/pal/windows/fs.rs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 2
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 2
+          },
+          "churn": {
+            "status": "exact",
+            "value": 4
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 0
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 2
+          },
+          "changed": {
+            "status": "exact",
+            "value": 2
+          }
+        },
+        "family": {
+          "id": "family-7ffe9509180ef30e63f79c466e62aeb0b5fdab9bbd5da6f9c9ec7ae21f63489e",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-34b205ca9a0159c2e118fbae9148bc9fb50ba9ec62d13efb0e576fb9407c7fdd",
+        "path": "src/tools/generate-windows-sys/Cargo.toml",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/tools/generate-windows-sys/Cargo.toml"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 1
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 1
+          },
+          "churn": {
+            "status": "exact",
+            "value": 2
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 0
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 1
+          },
+          "changed": {
+            "status": "exact",
+            "value": 1
+          }
+        },
+        "family": {
+          "id": "family-023859cb730d6888e186396bb55c547c1f2137709a8d374f903a80f9441ddde7",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-1637e1697227db3464cf3a2930103ea092fc6c50b885202ff45037d4d6c65c9e",
+        "path": "src/tools/generate-windows-sys/src/main.rs",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/tools/generate-windows-sys/src/main.rs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 1
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 2
+          },
+          "churn": {
+            "status": "exact",
+            "value": 3
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 0
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 1
+          },
+          "modified": {
+            "status": "exact",
+            "value": 1
+          },
+          "changed": {
+            "status": "exact",
+            "value": 2
+          }
+        },
+        "family": {
+          "id": "family-b17ea776aadc0ce5a2778ef796f788047d2d7c98708d06d1bc47300d1ee1f7cf",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      }
+    ],
+    "totals": {
+      "raw": {
+        "added": {
+          "status": "exact",
+          "value": 2774
+        },
+        "deleted": {
+          "status": "exact",
+          "value": 2750
+        },
+        "churn": {
+          "status": "exact",
+          "value": 5524
+        }
+      },
+      "lines": {
+        "added": {
+          "status": "exact",
+          "value": 2561
+        },
+        "deleted": {
+          "status": "exact",
+          "value": 2537
+        },
+        "modified": {
+          "status": "exact",
+          "value": 213
+        },
+        "changed": {
+          "status": "exact",
+          "value": 5311
+        }
+      },
+      "files": {
+        "total": {
+          "status": "exact",
+          "value": 6
+        },
+        "excluded": {
+          "status": "exact",
+          "value": 0
+        },
+        "included": {
+          "status": "exact",
+          "value": 6
+        },
+        "added": {
+          "status": "exact",
+          "value": 0
+        },
+        "deleted": {
+          "status": "exact",
+          "value": 0
+        },
+        "modified": {
+          "status": "exact",
+          "value": 6
+        },
+        "renamed": {
+          "status": "exact",
+          "value": 0
+        },
+        "copied": {
+          "status": "exact",
+          "value": 0
+        },
+        "binary": {
+          "status": "exact",
+          "value": 0
+        },
+        "unmeasurable": {
+          "status": "exact",
+          "value": 0
+        }
+      }
+    },
+    "measurement": {
+      "status": "exact",
+      "reasons": []
+    },
+    "reportId": "report-e4be7247f978f109293cb90e50a7c06d45ee9cabfec4d0f12c2045cd76588f38"
+  }
+}

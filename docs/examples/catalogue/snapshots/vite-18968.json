@@ -1,12 +1,13 @@
 {
   "kind": "diffdevil.example-snapshot",
-  "schemaVersion": "1.1",
+  "schemaVersion": "1.2",
   "id": "vite-18968",
+  "edition": "teaching-snapshot",
   "repository": "vitejs/vite",
   "pullRequest": 18968,
   "url": "https://github.com/vitejs/vite/pull/18968",
-  "title": "vite-18968",
-  "capturedAt": "2026-09-18T04:08:42.653Z",
+  "title": "chore(deps): update dependency @rollup/plugin-node-resolve to v16",
+  "capturedAt": "2026-09-18T23:14:03.062Z",
   "provenance": {
     "baseTip": "ccd1a4c4145ee1069d7baea56981a0322e7be864",
     "mergeBase": "ccd1a4c4145ee1069d7baea56981a0322e7be864",
@@ -20,22 +21,30 @@
   },
   "notices": {
     "declared": "MIT",
-    "base": {
-      "path": "LICENSE",
-      "sha": "b7e97ecb6aa4dd70b3e3a637afa2ae16feb7cd12",
-      "ref": "ccd1a4c4145ee1069d7baea56981a0322e7be864"
-    },
-    "head": {
-      "path": "LICENSE",
-      "sha": "b7e97ecb6aa4dd70b3e3a637afa2ae16feb7cd12",
-      "ref": "48db5c9555f2d43cb88367506e79854fce8ed47d"
-    }
+    "records": [
+      {
+        "label": "MIT",
+        "repository": "vitejs/vite",
+        "path": "LICENSE",
+        "role": "base",
+        "ref": "ccd1a4c4145ee1069d7baea56981a0322e7be864",
+        "sha": "b7e97ecb6aa4dd70b3e3a637afa2ae16feb7cd12"
+      },
+      {
+        "label": "MIT",
+        "repository": "vitejs/vite",
+        "path": "LICENSE",
+        "role": "head",
+        "ref": "48db5c9555f2d43cb88367506e79854fce8ed47d",
+        "sha": "b7e97ecb6aa4dd70b3e3a637afa2ae16feb7cd12"
+      }
+    ]
   },
   "rights": {
     "retainedMaterial": "normalized-report-only",
     "rawComparison": "analyzed-in-memory-not-committed",
     "binaryBytes": "not-retained",
-    "review": "Root notices and every retained normalized file record were inspected; raw source lines, patch text, discussion, and provider responses are not retained."
+    "review": "Pinned notices and every retained normalized file record were inspected; raw source lines, patch text, discussion, and provider responses are not retained."
   },
   "engine": {
     "package": "1.0.0",
@@ -43,9 +52,9 @@
     "replacementLines": "replacement-lines-v1"
   },
   "payload": {
-    "sourceSha256": "80bb76f750143b0d2962304397f9a7163ff3555be078aae340adef0d8f33faa2",
+    "sourceSha256": "56c23144d4c12d9e9af69645539a9e89a8d6a38e44f0971b8a522346f0ae0168",
     "normalizedReportSha256": "9be735e1e8d02edab17ebc208859c358ece0307d4aff6fbf0beb3eb06752f4f1",
-    "providerFileSetSha256": "7d0f07bd58f8a384be59a0366d01d257bbe83999114b63a34ab69f455c44056e"
+    "providerFileSetSha256": "267c15e6a9df12b209afb689f3ddeb37b8dd21e798bd2fbfc8f19f53458b30cb"
   },
   "capabilities": {
     "policyReplay": true,
@@ -58,6 +67,7 @@
   },
   "provider": {
     "complete": true,
+    "observedCount": 2,
     "reportedCount": 2,
     "entries": [
       {
