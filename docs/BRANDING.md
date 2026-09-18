@@ -8,14 +8,14 @@ It governs public and repository-facing language across the root README, GitHub 
 
 This is deliberately not a compact handoff, launch blurb, or list of slogans. It preserves the full brand system so future copy can be derived consistently without gradually turning diffdevil into either a sterile enterprise utility or a novelty demon living in somebody’s CI pipeline.
 
-The document defines the **textual brand**. It does not settle the final icon, logo construction, illustration style, or whether diffdevil receives a full mascot. Those visual decisions may be developed later, but they must preserve the written identity established here.
+The document defines the **textual brand**. The selected visual identity and its reusable design authority live in [`../design/`](../design/): this document records the product-facing boundary those sources must preserve, rather than duplicating their construction rules.
 
 ## Standing
 
 - **Canonical product name:** `diffdevil`
 - **Canonical repository path for this document:** `docs/BRANDING.md`
 - **Textual brand status:** settled
-- **Visual brand status:** intentionally open beyond the constraints in this document
+- **Visual brand status:** settled as E3/W1/T2 with Foundation A; [`../design/`](../design/) is the reusable visual source
 - **Primary product category:** composable diff analysis and automation
 - **Primary surfaces:** CLI, TypeScript library, GitHub Action, CI pipelines, scripts, and coding-agent workflows
 
@@ -1457,22 +1457,11 @@ Do not structure the README as a directory of every command before the reader un
 
 ## Visual-brand boundary
 
-The final visual identity is not settled by this document.
+The visual identity is settled as **E3/W1/T2 with Foundation A**: the E3 heavy-face split devil-head symbol with its negative-space gutter and literal tilde; the lowercase W1 technical wordmark; and the T2 tail only on standalone wordmarks. Foundation A is smoky dark, system-adaptive with an authored light mode, and uses IBM Plex Sans and IBM Plex Mono. Magenta is reserved for brand and interaction, never evidence or status.
 
-The following textual constraints already apply to future visual work:
+[`../design/identity-grammar-v1.html`](../design/identity-grammar-v1.html), [`../design/surface-grammar-v1.html`](../design/surface-grammar-v1.html), [`../design/tokens.css`](../design/tokens.css), and [`../design/assets/identity/`](../design/assets/identity/) are the canonical reusable visual sources. They preserve the selected construction, themes, interaction grammar, and production SVGs; their HTML sheets are design references, not executable website source. [`../design/ERRATA.md`](../design/ERRATA.md) records an admitted-token cascade correction without changing the returned reference bytes.
 
-- the written wordmark remains lowercase `diffdevil`;
-- the product must still read as serious developer infrastructure;
-- personality should be restrained rather than childish or aggressive;
-- a logo or icon may use diff-native symbols such as `+`, `−`, and `~`;
-- subtle horns, a tail, or an imp-like silhouette are available directions, not requirements;
-- the devil should not appear violent, satanic, horror-oriented, or religiously confrontational;
-- a full mascot is optional, not assumed;
-- the icon must work without mascot lore;
-- visual cuteness must not reduce legibility at GitHub Action, package, favicon, and terminal-adjacent sizes;
-- the brand should avoid the visual language of a novelty npm package, crypto token, gaming clan, or security threat actor.
-
-The likely visual neighborhood is **dark-cute, geometric, compact, and precise**. That is a direction for later design exploration, not an approved icon specification.
+The GitHub App uses the same diffdevil mark, not a subfeature identity. Favicons, social images, and App-upload rasters are reproducible derivatives of the canonical SVG family and remain untracked build artifacts unless one named consumer must fetch that exact raster from maintained source. The written wordmark remains lowercase `diffdevil`. The product must still read as serious developer infrastructure: restrained, geometric and precise rather than childish, aggressive, horror-oriented, religiously confrontational, or a novelty package. The icon must remain legible at Action, package, favicon, and terminal-adjacent sizes without mascot lore.
 
 ## Brand non-goals
 
