@@ -7,7 +7,7 @@ jobs:
   transfer:
     name: Generate presenter Action distribution
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
@@ -20,6 +20,12 @@ jobs:
         run: npm ci --cache artifacts/dependencies/npm-cache --ignore-scripts --no-audit --no-fund
       - name: Generate committed Action distribution
         run: npm run build:actions
+      - name: Verify generated candidate
+        run: |
+          npm run verify
+          npm run test:conformance
+          npm run test:package
+          npm run test:actions
       - name: Pack exact generated and source bytes
         shell: bash
         run: |
@@ -36,5 +42,5 @@ jobs:
         with:
           name: presenter-action-transfer
           path: artifacts/presenter-action-transfer/
-          retention-days: 1
+          retention-days: 7
           if-no-files-found: error
