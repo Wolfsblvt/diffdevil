@@ -47,12 +47,27 @@ jobs:
           git diff --cached --check
           git commit -F artifacts/presenter-final/commit-message.txt
       - name: Verify exact final candidate
+        continue-on-error: true
+        shell: bash
         run: |
-          npm run verify
-          npm run test:conformance
-          npm run test:package
-          npm run test:actions
+          set +e
+          mkdir -p artifacts/presenter-final
+          npm run verify 2>&1 | tee artifacts/presenter-final/verify.log
+          verify_status=${PIPESTATUS[0]}
+          npm run test:conformance 2>&1 | tee artifacts/presenter-final/conformance.log
+          conformance_status=${PIPESTATUS[0]}
+          npm run test:package 2>&1 | tee artifacts/presenter-final/package.log
+          package_status=${PIPESTATUS[0]}
+          npm run test:actions 2>&1 | tee artifacts/presenter-final/actions.log
+          actions_status=${PIPESTATUS[0]}
+          printf 'verify=%s\nconformance=%s\npackage=%s\nactions=%s\n' \
+            "$verify_status" "$conformance_status" "$package_status" "$actions_status" \
+            | tee artifacts/presenter-final/statuses.txt
+          if (( verify_status || conformance_status || package_status || actions_status )); then
+            exit 1
+          fi
       - name: Pack exact commit transport and evidence
+        if: always()
         shell: bash
         run: |
           git diff --exit-code HEAD -- .
@@ -63,9 +78,16 @@ jobs:
           git rev-parse HEAD > artifacts/presenter-final/commit-sha.txt
           git show --format=fuller --stat --no-renames HEAD > artifacts/presenter-final/commit.txt
       - name: Upload final candidate
+        if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: presenter-final-candidate
           path: artifacts/presenter-final/
           retention-days: 7
           if-no-files-found: error
+      - name: Require complete qualification
+        if: always()
+        shell: bash
+        run: |
+          test -f artifacts/presenter-final/statuses.txt
+          ! grep -Eq '=[1-9][0-9]*$' artifacts/presenter-final/statuses.txt
