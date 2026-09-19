@@ -1,0 +1,40 @@
+name: Presenter Action Transfer
+on:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  transfer:
+    name: Generate presenter Action distribution
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - name: Restore locked project packages
+        run: npm ci --cache artifacts/dependencies/npm-cache --ignore-scripts --no-audit --no-fund
+      - name: Generate committed Action distribution
+        run: npm run build:actions
+      - name: Pack exact generated and source bytes
+        shell: bash
+        run: |
+          mkdir -p artifacts/presenter-action-transfer
+          git diff --name-only -- actions action.yml > artifacts/presenter-action-transfer/generated-files.txt
+          test -s artifacts/presenter-action-transfer/generated-files.txt
+          git diff --stat -- actions action.yml > artifacts/presenter-action-transfer/generated-stat.txt
+          git diff --name-only -z -- actions action.yml |
+            tar --null --files-from=- -czf artifacts/presenter-action-transfer/generated-actions.tar.gz
+          git ls-files -co --exclude-standard -z |
+            tar --null --files-from=- -czf artifacts/presenter-action-transfer/source-generated.tar.gz
+      - name: Upload finite transfer artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: presenter-action-transfer
+          path: artifacts/presenter-action-transfer/
+          retention-days: 1
+          if-no-files-found: error
