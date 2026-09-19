@@ -1,0 +1,205 @@
+--- a/docs/PRESENTATION.md
++++ b/docs/PRESENTATION.md
+@@ -202,6 +202,7 @@
+ source kind=github-api comparison=supplied id="fixture-bounded-comparison" base="fixture-base" head="fixture-head" repository="example/repository" pull_request=42
+ target repository="example/repository" pull_request=42
+ identity report="fixture-report-bounded" policy="fixture-policy-size"
++preconditions head="fixture-head" base="fixture-base"
+ rule id="size" disposition=matched band=resolved("s",lower=20,upper=100)
+ effect kind=label.select rule="size" group="size" selected="size/S" members=["size/XS","size/S","size/M","size/L","size/XL","size/Unknown"]
+ held count=0
+--- a/docs/integration/cli.md
++++ b/docs/integration/cli.md
+@@ -130,7 +130,15 @@
+ 
+ ### Human and agent
+ 
+-`analyze` defaults to human output on the terminal. `--format markdown` produces a readable report; `--format agent` is compact deterministic text containing the same evidence and metric versions, without generated review judgment. Neither is a stable field-extraction protocol.
++`analyze` defaults to the compact human summary. Replacement-aware `Changed` is always the primary result, followed by its added-only, deleted-only, and modified decomposition; raw and file facts are quieter supporting context. Evidence remains explicit as glyph plus word (`= exact`, `≈ bounded`, `? unknown`, `∅ unmeasurable`). `plan` gives desired provider effects their own projection and never implies that a provider write or readback occurred.
++
++`--detail full` expands aggregate identities, evidence, file categories, scopes, configured metrics, bands, rules, plan preconditions, and desired operations. It does not dump individual file records; JSON and report JSONL own exhaustive record-level consumption.
++
++Human report and plan output support `--color auto|always|never`, defaulting to `auto`. Automatic color requires an interactive true-color terminal, respects `NO_COLOR` and `FORCE_COLOR`, and remains plain when redirected or written through `--output`. Color reinforces hierarchy only; every state and value remains complete in plain text.
++
++`--format agent` emits a materially different fixed-order record projection headed by `diffdevil.agent-report/1` or `diffdevil.agent-plan/1`. It preserves semantic/source identity, evidence, replacement-aware and raw facts, files, scopes, metrics, bands, rules, desired effects, and absent readback without human prose, ANSI color, or generated review judgment. It is optimized for coding-agent context, not offered as a second semantic model.
++
++`--format markdown` remains readable documentation/workflow prose. Human and agent text are public projections, not stable field-extraction protocols; automation requiring structured fields uses canonical JSON or JSONL. [Human and agent presentation](../PRESENTATION.md) owns the full grouping, density, color, agent-record, plan, and projection-versioning contract.
+ 
+ ### Canonical JSON
+ 
+@@ -164,9 +172,9 @@
+ 
+ ## Stdout, stderr, and output files
+ 
+-In machine formats, stdout contains only the selected artifact. No header, progress message, ANSI color, warning, or version greeting is allowed. Diagnostics, including informational evidence limitations when requested, go to stderr. `--diagnostics json` makes stderr diagnostics structured JSONL.
++In machine formats and agent format, stdout contains only the selected artifact. No progress message, ANSI color, warning, or version greeting is allowed. Human report and plan output may contain ANSI only under the explicit color contract above. Diagnostics, including informational evidence limitations when requested, go to stderr. `--diagnostics json` makes stderr diagnostics structured JSONL.
+ 
+-`--output PATH` writes the selected artifact to that file and leaves stdout empty. The tool validates before replacing an existing output, uses a temporary sibling and atomic rename where supported, and reports filesystem failures honestly. An existing file is not considered a successful result after a failed invocation.
++`--output PATH` writes the selected artifact to that file and leaves stdout empty. Human `--color auto` is plain on that route; `--color always` is the deliberate opt-in to persist ANSI bytes. The tool validates before replacing an existing output, uses a temporary sibling and atomic rename where supported, and reports filesystem failures honestly. An existing file is not considered a successful result after a failed invocation.
+ 
+ Strict selected-result modes resolve and validate the entire result before starting stdout emission, within the selected output budget. A broken pipe or disk error can still interrupt transport. Such an interruption is not a successfully completed partial query.
+ 
+--- a/docs/BRANDING.md
++++ b/docs/BRANDING.md
+@@ -988,45 +988,42 @@
+ 
+ ### CLI human output
+ 
+-Human output should be compact, readable, and calm.
++Human output should be compact, readable, and calm. `Changed` is the permanent primary metric; its decomposition stays attached as a two-line unit, while raw and file facts step down in contrast.
+ 
+ Recommended style:
+ 
+ ```text
+ diffdevil analysis
++git · fixture-base..fixture-head · direct · = exact
+ 
+-Comparison
+-  Source       git
+-  Base         origin/main
+-  Head         HEAD
+-  Measurement  exact
+-
+-Lines
+-  Added only      42
+-  Deleted only    18
+-  Modified       113
+-  Changed        173
+-  Raw additions  155
+-  Raw deletions  131
+-  Raw churn      286
+-
+-Files
+-  Total           19
+-  Included        16
+-  Excluded         3
+-  Unmeasurable     0
++Changed    178 lines
++  +45 added only · -18 deleted only · ~115 modified
++
++Raw        +160 additions · -133 deletions · 293 churn
++Files      3 total · 2 included · 1 excluded
++
++Policy
++  Band       size → m
++  Metrics    review 178 · churn 293 · destructive 133 · … 2 more
+ ```
+ 
+ Rules:
+ 
+ - use the lowercase product name;
+-- use aligned values where terminal width permits;
+-- use color only when attached to an interactive terminal;
+-- do not require color to understand status;
++- keep `Changed` and its decomposition together, then separate supporting facts with whitespace;
++- use evidence glyph plus word, never a glyph or color alone;
++- omit ordinary zero-valued exception rows and compact long configured collections honestly;
++- use the selected provider label as the strongest human plan result, while keeping it distinct from an internal band id;
++- use color only through `--color auto|always|never` on human report/plan output;
++- reserve brand magenta for the lowercase `diffdevil` heading, never a metric, label, evidence state, success, or error;
++- use semantic green/rose only to reinforce additions/deletions, with modified and primary values in neutral text;
++- keep raw facts, file facts, source identity, and absent readback in quieter neutral text;
+ - do not include banners, ASCII mascots, jokes, or animation in normal output;
+ - do not write human prose to stdout in machine formats;
+ - send diagnostics to stderr where piping semantics require it.
+ 
++[Human and agent presentation](PRESENTATION.md) owns the complete summary, full-detail, evidence, color, plan, and wrapping contract.
++
+ ### Machine output
+ 
+ Machine output is a contract, not a branding surface.
+@@ -1055,28 +1052,31 @@
+ 
+ ### Agent-facing output
+ 
+-Agent-facing output should be compact, deterministic, and semantically identical to the canonical report.
++Agent-facing output is a compact, deterministic record projection of the canonical report or plan. It is intentionally not the human summary with whitespace removed.
++
++Suitable report opening:
++
++```text
++diffdevil.agent-report/1 schema=1.0
++semantics language=diffdevil-expr/1 numbers=diffdevil-number/1 replacement_lines=replacement-lines-v1 paths=diffdevil-glob/1
++source kind=git comparison=direct id="fixture-exact-comparison" base="fixture-base" head="fixture-head"
++identity report="fixture-report-exact" policy="fixture-policy-full"
++evidence status=exact file_set=complete
++lines changed=178 modified=115 added_only=45 deleted_only=18
++raw churn=293 added=160 deleted=133
++```
+ 
+ It may optimize for context efficiency, but it must not:
+ 
+-- add generated review judgment;
++- add generated review judgment or human advice;
+ - anthropomorphize the tool;
+-- omit measurement status;
++- omit semantic/source identity or measurement status;
+ - silently rename raw churn;
+ - invent semantic importance;
+-- become a second incompatible data model.
+-
+-Suitable:
++- use ANSI color or appearance-only alignment padding;
++- become a second incompatible data model or a substitute for canonical JSON.
+ 
+-```text
+-DIFFDEVIL REPORT
+-schema: 1
+-source: git origin/main...HEAD
+-measurement: exact
+-lines: +only 42 | -only 18 | modified 113 | changed 173
+-raw: +155 | -131 | churn 286
+-files: 16 included | 3 excluded | 0 unmeasurable
+-```
++Non-exact values remain typed (`bounded(...)`, `unknown(...)`, `unmeasurable(...)`). Dynamic strings use JSON quoting. The projection has its own public identity (`diffdevil.agent-report/1` or `diffdevil.agent-plan/1`) so its record grammar can evolve without pretending the report or plan schema changed. Structured consumers that need exhaustive stable fields use JSON or JSONL. [Human and agent presentation](PRESENTATION.md) owns the full agent grammar.
+ 
+ ### Workflow summaries
+ 
+--- a/docs/language/versioning-and-interchange.md
++++ b/docs/language/versioning-and-interchange.md
+@@ -17,9 +17,26 @@
+ | `size@1` | Shipped size metric, thresholds, labels, path defaults, and comment policy. |
+ | `diffdevil-limits/1` | Logical cost accounting and the selected default budget profile. |
+ | Report/query/plan schema `1.0` | The corresponding serialized artifact shape. |
++| `diffdevil.agent-report/1` | Fixed-order compact textual report projection for coding-agent context. |
++| `diffdevil.agent-plan/1` | Fixed-order compact textual desired-plan projection for coding-agent context. |
+ 
+ Expression version 1 binds its numeric and standard-library profile; users do not have to repeat every identity in a small config. Artifacts record the resolved set. A Chevrotain dependency version is implementation provenance, not a new language identity.
+ 
++## Textual presentation identities
++
++Human report and plan output are public reading interfaces, but their spacing, grouping, emphasis, and optional ANSI reinforcement are not serialized report fields. A deliberate compatible presentation correction therefore does not claim a report-schema change. Release notes still identify material human-interface changes.
++
++The agent projections have explicit first-line identities:
++
++```text
++diffdevil.agent-report/1
++diffdevil.agent-plan/1
++```
++
++Within one agent-presentation major, records retain their fixed semantic grouping, key meanings, quoting rules, and typed non-exact measurement grammar. An incompatible change to that record grammar requires a new projection major even when `diffdevil.report` or `diffdevil.plan` remains at schema `1.0`.
++
++These textual identities do not compete with JSON. JSON and JSONL remain the exhaustive stable extraction contracts; agent text is a compact, deterministic context interface. [Human and agent presentation](../PRESENTATION.md) owns the normative human/agent grouping, color, plan, and consumer contract.
++
+ ## Report envelope
+ 
+ A full report has `kind: diffdevil.report`, `schemaVersion: "1.0"`, `semantics`, `source`, `measurement`, `fileSet`, `totals`, and observed `files`. Optional evaluated policy sections contain compatible `metrics`, `bands`, `rules`, and `scopes`, plus their policy identity.
+--- a/docs/DECISIONS.md
++++ b/docs/DECISIONS.md
+@@ -591,3 +591,16 @@
+ **Current consequence.** `src/diffdevil/policy/yaml.ts` counts bytes with the portable helper instead of `Buffer`; the Action runtime was regenerated. The playground API gained `/api/report` (refusing, not truncating, above a file ceiling) and `/api/head`, with CORS on its read-only JSON. The engine's browser bundle is one lazy chunk on the playground page only.
+ 
+ **Sources.** [Playground experience](integration/playground.md); [App architecture](integration/github-app.md#shared-engine-worker-prerequisite); the design-discovered replay consequence recorded during the public-surface co-design; `apps/website/website.test.mjs` and `apps/website/qa/run.mjs`.
++
++## D039: Make Changed the human focus and give agents a versioned compact projection
++
++**Decision.** Human report output uses replacement-aware `Changed` as its permanent primary metric, attached to its added-only, deleted-only, and modified decomposition as one two-line block. The normal summary keeps raw facts, file facts, and relevant configured policy standing compact; `--detail full` expands complete aggregate identity/evidence/categories/scopes/metrics/bands/rules without dumping individual file records. Human evidence always uses glyph plus word. Human report and plan output support restrained `--color auto|always|never`: brand magenta identifies the lowercase product name, semantic green/rose reinforces additions/deletions, and all meaning survives in plain text. Desired plans promote the concrete selected provider label while remaining explicit that nothing was applied or read back. Agent report and plan output are materially different fixed-order line-record projections, versioned independently as `diffdevil.agent-report/1` and `diffdevil.agent-plan/1`; canonical JSON/JSONL remain the exhaustive structured contracts.
++
++**Why.** The previous implementation rendered human and agent views from one flat row list, so neither audience received a useful hierarchy. Humans need one result to pop, its meaning nearby, and lower-priority facts subdued rather than sixteen equal-weight lines. Agents do not benefit from human alignment or decorative whitespace; they benefit from stable semantic grouping, explicit identities, typed uncertainty, and low context cost. Reports, desired plans, and observed provider results also need visibly different language so an internal band never masquerades as a provider label and a proposed effect never reads as applied.
++
++**Rejected.** A configurable presentation-focus metric; making every configured number equally prominent; printing all zero exception states by default; separating `Changed` from its decomposition; using brand magenta for data/status/evidence; color-only meaning; agents receiving verbose human output by default; retaining `DIFFDEVIL REPORT` plus the human rows; inventing a second agent data model; reducing agent output to JSON merely because JSON already exists; deriving `size/M` from band `m`; a website-only formatter or hard-coded transcript.
++
++**Current consequence.** [`PRESENTATION.md`](PRESENTATION.md) is the normative interface. The CLI and public library share the report/plan presenters; the website consumes them rather than maintaining display semantics. `--detail` and `--color` are confined to human report/plan presentation. Agent and machine formats never contain ANSI. Material textual changes receive public interface/release documentation without changing the canonical report schema by fiction. Provider results continue to own applied/readback standing.
++
++**Sources.** Wolf and Nyxara's owner co-design in [emergency-meeting #491](https://github.com/Wolfsblvt/emergency-meeting/issues/491#issuecomment-5737100063); [textual branding](BRANDING.md); [versioning and interchange](language/versioning-and-interchange.md); [human and agent presentation](PRESENTATION.md).
++
