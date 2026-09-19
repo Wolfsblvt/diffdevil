@@ -24,7 +24,7 @@ jobs:
         shell: bash
         run: |
           git apply --check .github/presenter-docs.patch
-          git apply .github/presenter-docs.patch
+          git apply --whitespace=fix .github/presenter-docs.patch
           npm run build:actions
           rm .github/presenter-docs.patch
           rm .github/workflows/presenter-action-transfer.yml
