@@ -123,6 +123,13 @@ test('agent plan emits every desired operation and still says applied=false', ()
   assert.match(rendered, /^readback observed=false$/mu);
 });
 
+test('Markdown plan keeps dynamic subjects literal when they contain backticks', () => {
+  const raw = fixture('plan');
+  raw.operations[0].definition.description = 'Use `review` before apply';
+  const rendered = unwrap(formatPlan(unwrap(readPlan(raw)), 'markdown')).stdout;
+  assert.match(rendered, /`` "size\/XS" · #C2E0C6 · "Use `review` before apply" ``/u);
+});
+
 test('detail and color flags are confined to human analyze and plan presentation', () => {
   assert.equal(parseInvocation(['analyze', '--detail', 'full', '--color', 'never']).values.detail, 'full');
   assert.equal(parseInvocation(['plan', '--detail', 'summary', '--color', 'always']).values.color, 'always');

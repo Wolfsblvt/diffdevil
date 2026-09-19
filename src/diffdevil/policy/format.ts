@@ -39,12 +39,16 @@ function agentOperation(operation: EffectOperation): string {
   }
 }
 
-function markdownCode(value: string): string { return '`'+value.replaceAll('`','\`')+'`'; }
+function markdownCode(value: string): string {
+  const longest=Math.max(0,...(value.match(/`+/gu)??[]).map(run=>run.length));
+  const fence='`'.repeat(longest+1);
+  return `${fence}${longest?` ${value} `:value}${fence}`;
+}
 
 function planMarkdown(plan: EffectPlan): string {
   const lines=['# diffdevil effect plan','',`- Stage: ${markdownCode(plan.stage)}`,`- Target: ${markdownCode(planTarget(plan))}`,`- Report: ${markdownCode(plan.reportId)}`,`- Policy: ${markdownCode(plan.policyId)}`,'','## Proposed effects',''];
   if(!plan.operations.length) lines.push('No desired operations.');
-  else for(const operation of plan.operations) lines.push(`- ${markdownCode(operation.kind)}: ${operationSubject(operation)}`);
+  else for(const operation of plan.operations) lines.push(`- ${markdownCode(operation.kind)}: ${markdownCode(operationSubject(operation))}`);
   if(plan.held.length){
     lines.push('','## Held rules','');
     for(const held of plan.held) lines.push(`- ${markdownCode(held.rule)}: ${reasonCodes(held.reasons).join(', ')}`);
