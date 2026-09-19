@@ -1,0 +1,43 @@
+name: Browser extension
+on:
+  pull_request:
+    paths:
+      - 'src/diffdevil/**'
+      - 'apps/browser-extension/**'
+      - 'tools/**'
+      - 'package*.json'
+      - '.github/workflows/browser-extension.yml'
+permissions:
+  contents: read
+concurrency:
+  group: extension-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  extension:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '22'
+          package-manager-cache: false
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npm run build
+      - run: node --test src/diffdevil/tests/browser.test.mjs
+      # Finite source-session recovery: the Web sandbox has no network. This
+      # read-only build export supplies already-locked tooling, not a Git writer.
+      # Remove the toolchain export once ordinary extension packaging is in place.
+      - name: Export locked browser build toolchain
+        run: |
+          mkdir -p artifacts/extension-toolchain
+          tar -czf artifacts/extension-toolchain/toolchain.tgz node_modules/esbuild node_modules/@esbuild node_modules/@resvg node_modules/@fontsource node_modules/@playwright node_modules/playwright node_modules/playwright-core
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: extension-toolchain
+          path: artifacts/extension-toolchain
+          retention-days: 3
+          if-no-files-found: error
