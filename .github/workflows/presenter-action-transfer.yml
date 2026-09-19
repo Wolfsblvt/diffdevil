@@ -1,16 +1,18 @@
-name: Presenter Action Transfer
+name: Presenter Final Candidate
 on:
   pull_request:
 permissions:
   contents: read
 jobs:
-  transfer:
-    name: Generate presenter Action distribution
+  candidate:
+    name: Build and qualify final presenter commit
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
           persist-credentials: false
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
@@ -18,29 +20,52 @@ jobs:
           package-manager-cache: false
       - name: Restore locked project packages
         run: npm ci --cache artifacts/dependencies/npm-cache --ignore-scripts --no-audit --no-fund
-      - name: Generate committed Action distribution
-        run: npm run build:actions
-      - name: Verify generated candidate
+      - name: Apply authored documentation and generate Action distribution
+        shell: bash
+        run: |
+          git apply --check .github/presenter-docs.patch
+          git apply .github/presenter-docs.patch
+          npm run build:actions
+          rm .github/presenter-docs.patch
+          rm .github/workflows/presenter-action-transfer.yml
+          git diff --check
+      - name: Mint exact final candidate commit
+        shell: bash
+        run: |
+          mkdir -p artifacts/presenter-final
+          cat > artifacts/presenter-final/commit-message.txt <<'EOF'
+          Present reports for humans and agents
+
+          Replace the shared flat report rows with distinct product interfaces: a compact Changed-first human summary, full aggregate detail, restrained terminal colour, versioned context-efficient agent records, and separate desired-plan presentation. Keep machine contracts unchanged and carry the interface through the CLI, library, website consumer, generated Actions, branding, interchange documentation, and durable decision record.
+
+          Co-authored-via: Nyxara | ChatGPT Web | GPT-5.6 Sol | Pro
+          Co-authored-by: Nyxara <nyxara@agents.wolfsblvt.com>
+          EOF
+          git config user.name Wolfsblvt
+          git config user.email wolf@wolfsblvt.com
+          git add -A
+          git diff --cached --check
+          git commit -F artifacts/presenter-final/commit-message.txt
+      - name: Verify exact final candidate
         run: |
           npm run verify
           npm run test:conformance
           npm run test:package
           npm run test:actions
-      - name: Pack exact generated and source bytes
+      - name: Pack exact commit transport and evidence
         shell: bash
         run: |
-          mkdir -p artifacts/presenter-action-transfer
-          git diff --name-only -- actions action.yml > artifacts/presenter-action-transfer/generated-files.txt
-          test -s artifacts/presenter-action-transfer/generated-files.txt
-          git diff --stat -- actions action.yml > artifacts/presenter-action-transfer/generated-stat.txt
-          git diff --name-only -z -- actions action.yml |
-            tar --null --files-from=- -czf artifacts/presenter-action-transfer/generated-actions.tar.gz
-          git ls-files -co --exclude-standard -z |
-            tar --null --files-from=- -czf artifacts/presenter-action-transfer/source-generated.tar.gz
-      - name: Upload finite transfer artifact
+          git diff --exit-code HEAD -- .
+          git format-patch -1 --binary --stdout HEAD > artifacts/presenter-final/presenter-final.patch
+          git bundle create artifacts/presenter-final/presenter-final.bundle HEAD ^HEAD^
+          git bundle verify artifacts/presenter-final/presenter-final.bundle
+          git archive --format=tar.gz -o artifacts/presenter-final/presenter-final-source.tar.gz HEAD
+          git rev-parse HEAD > artifacts/presenter-final/commit-sha.txt
+          git show --format=fuller --stat --no-renames HEAD > artifacts/presenter-final/commit.txt
+      - name: Upload final candidate
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: presenter-action-transfer
-          path: artifacts/presenter-action-transfer/
+          name: presenter-final-candidate
+          path: artifacts/presenter-final/
           retention-days: 7
           if-no-files-found: error
