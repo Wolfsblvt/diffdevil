@@ -998,44 +998,41 @@ Avoid leading with “cute,” “devil,” “imp,” or mascot language. The l
 
 ### CLI human output
 
-Human output should be compact, readable, and calm.
+Human output should be compact, readable, and calm. `Changed` is the permanent primary metric; its decomposition stays attached as a two-line unit, while raw and file facts step down in contrast.
 
 Recommended style:
 
 ```text
 diffdevil analysis
+git · fixture-base..fixture-head · direct · = exact
 
-Comparison
-  Source       git
-  Base         origin/main
-  Head         HEAD
-  Measurement  exact
+Changed    178 lines
+  +45 added only · -18 deleted only · ~115 modified
 
-Lines
-  Added only      42
-  Deleted only    18
-  Modified       113
-  Changed        173
-  Raw additions  155
-  Raw deletions  131
-  Raw churn      286
+Raw        +160 additions · -133 deletions · 293 churn
+Files      3 total · 2 included · 1 excluded
 
-Files
-  Total           19
-  Included        16
-  Excluded         3
-  Unmeasurable     0
+Policy
+  Band       size → m
+  Metrics    review 178 · churn 293 · destructive 133 · … 2 more
 ```
 
 Rules:
 
 - use the lowercase product name;
-- use aligned values where terminal width permits;
-- use color only when attached to an interactive terminal;
-- do not require color to understand status;
+- keep `Changed` and its decomposition together, then separate supporting facts with whitespace;
+- use evidence glyph plus word, never a glyph or color alone;
+- omit ordinary zero-valued exception rows and compact long configured collections honestly;
+- use the selected provider label as the strongest human plan result, while keeping it distinct from an internal band id;
+- use color only through `--color auto|always|never` on human report/plan output;
+- reserve brand magenta for the lowercase `diffdevil` heading, never a metric, label, evidence state, success, or error;
+- use semantic green/rose only to reinforce additions/deletions, with modified and primary values in neutral text;
+- keep raw facts, file facts, source identity, and absent readback in quieter neutral text;
 - do not include banners, ASCII mascots, jokes, or animation in normal output;
 - do not write human prose to stdout in machine formats;
 - send diagnostics to stderr where piping semantics require it.
+
+[Human and agent presentation](PRESENTATION.md) owns the complete summary, full-detail, evidence, color, plan, and wrapping contract.
 
 ### Machine output
 
@@ -1065,28 +1062,31 @@ The devil found 173 changed lines! 😈
 
 ### Agent-facing output
 
-Agent-facing output should be compact, deterministic, and semantically identical to the canonical report.
+Agent-facing output is a compact, deterministic record projection of the canonical report or plan. It is intentionally not the human summary with whitespace removed.
+
+Suitable report opening:
+
+```text
+diffdevil.agent-report/1 schema=1.0
+semantics language=diffdevil-expr/1 numbers=diffdevil-number/1 replacement_lines=replacement-lines-v1 paths=diffdevil-glob/1
+source kind=git comparison=direct id="fixture-exact-comparison" base="fixture-base" head="fixture-head"
+identity report="fixture-report-exact" policy="fixture-policy-full"
+evidence status=exact file_set=complete
+lines changed=178 modified=115 added_only=45 deleted_only=18
+raw churn=293 added=160 deleted=133
+```
 
 It may optimize for context efficiency, but it must not:
 
-- add generated review judgment;
+- add generated review judgment or human advice;
 - anthropomorphize the tool;
-- omit measurement status;
+- omit semantic/source identity or measurement status;
 - silently rename raw churn;
 - invent semantic importance;
-- become a second incompatible data model.
+- use ANSI color or appearance-only alignment padding;
+- become a second incompatible data model or a substitute for canonical JSON.
 
-Suitable:
-
-```text
-DIFFDEVIL REPORT
-schema: 1
-source: git origin/main...HEAD
-measurement: exact
-lines: +only 42 | -only 18 | modified 113 | changed 173
-raw: +155 | -131 | churn 286
-files: 16 included | 3 excluded | 0 unmeasurable
-```
+Non-exact values remain typed (`bounded(...)`, `unknown(...)`, `unmeasurable(...)`). Dynamic strings use JSON quoting. The projection has its own public identity (`diffdevil.agent-report/1` or `diffdevil.agent-plan/1`) so its record grammar can evolve without pretending the report or plan schema changed. Structured consumers that need exhaustive stable fields use JSON or JSONL. [Human and agent presentation](PRESENTATION.md) owns the full agent grammar.
 
 ### Workflow summaries
 

@@ -130,7 +130,15 @@ Typed parameters use repeated `--param name=value`. Split at the first `=` only.
 
 ### Human and agent
 
-`analyze` defaults to human output on the terminal. `--format markdown` produces a readable report; `--format agent` is compact deterministic text containing the same evidence and metric versions, without generated review judgment. Neither is a stable field-extraction protocol.
+`analyze` defaults to the compact human summary. Replacement-aware `Changed` is always the primary result, followed by its added-only, deleted-only, and modified decomposition; raw and file facts are quieter supporting context. Evidence remains explicit as glyph plus word (`= exact`, `≈ bounded`, `? unknown`, `∅ unmeasurable`). `plan` gives desired provider effects their own projection and never implies that a provider write or readback occurred.
+
+`--detail full` expands aggregate identities, evidence, file categories, scopes, configured metrics, bands, rules, plan preconditions, and desired operations. It does not dump individual file records; JSON and report JSONL own exhaustive record-level consumption.
+
+Human report and plan output support `--color auto|always|never`, defaulting to `auto`. Automatic color requires an interactive true-color terminal, respects `NO_COLOR` and `FORCE_COLOR`, and remains plain when redirected or written through `--output`. Color reinforces hierarchy only; every state and value remains complete in plain text.
+
+`--format agent` emits a materially different fixed-order record projection headed by `diffdevil.agent-report/1` or `diffdevil.agent-plan/1`. It preserves semantic/source identity, evidence, replacement-aware and raw facts, files, scopes, metrics, bands, rules, desired effects, and absent readback without human prose, ANSI color, or generated review judgment. It is optimized for coding-agent context, not offered as a second semantic model.
+
+`--format markdown` remains readable documentation/workflow prose. Human and agent text are public projections, not stable field-extraction protocols; automation requiring structured fields uses canonical JSON or JSONL. [Human and agent presentation](../PRESENTATION.md) owns the full grouping, density, color, agent-record, plan, and projection-versioning contract.
 
 ### Canonical JSON
 
@@ -164,9 +172,9 @@ An empty determined collection writes zero bytes and exits zero. An incomplete c
 
 ## Stdout, stderr, and output files
 
-In machine formats, stdout contains only the selected artifact. No header, progress message, ANSI color, warning, or version greeting is allowed. Diagnostics, including informational evidence limitations when requested, go to stderr. `--diagnostics json` makes stderr diagnostics structured JSONL.
+In machine formats and agent format, stdout contains only the selected artifact. No progress message, ANSI color, warning, or version greeting is allowed. Human report and plan output may contain ANSI only under the explicit color contract above. Diagnostics, including informational evidence limitations when requested, go to stderr. `--diagnostics json` makes stderr diagnostics structured JSONL.
 
-`--output PATH` writes the selected artifact to that file and leaves stdout empty. The tool validates before replacing an existing output, uses a temporary sibling and atomic rename where supported, and reports filesystem failures honestly. An existing file is not considered a successful result after a failed invocation.
+`--output PATH` writes the selected artifact to that file and leaves stdout empty. Human `--color auto` is plain on that route; `--color always` is the deliberate opt-in to persist ANSI bytes. The tool validates before replacing an existing output, uses a temporary sibling and atomic rename where supported, and reports filesystem failures honestly. An existing file is not considered a successful result after a failed invocation.
 
 Strict selected-result modes resolve and validate the entire result before starting stdout emission, within the selected output budget. A broken pipe or disk error can still interrupt transport. Such an interruption is not a successfully completed partial query.
 

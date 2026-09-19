@@ -202,6 +202,7 @@ semantics language=diffdevil-expr/1 numbers=diffdevil-number/1 replacement_lines
 source kind=github-api comparison=supplied id="fixture-bounded-comparison" base="fixture-base" head="fixture-head" repository="example/repository" pull_request=42
 target repository="example/repository" pull_request=42
 identity report="fixture-report-bounded" policy="fixture-policy-size"
+preconditions head="fixture-head" base="fixture-base"
 rule id="size" disposition=matched band=resolved("s",lower=20,upper=100)
 effect kind=label.select rule="size" group="size" selected="size/S" members=["size/XS","size/S","size/M","size/L","size/XL","size/Unknown"]
 held count=0
