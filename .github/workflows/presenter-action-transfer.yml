@@ -1,0 +1,93 @@
+name: Presenter Final Candidate
+on:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  candidate:
+    name: Build and qualify final presenter commit
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - name: Restore locked project packages
+        run: npm ci --cache artifacts/dependencies/npm-cache --ignore-scripts --no-audit --no-fund
+      - name: Apply authored documentation and generate Action distribution
+        shell: bash
+        run: |
+          git apply --check .github/presenter-docs.patch
+          git apply --whitespace=fix .github/presenter-docs.patch
+          npm run build:actions
+          rm .github/presenter-docs.patch
+          rm .github/workflows/presenter-action-transfer.yml
+          git diff --check
+      - name: Mint exact final candidate commit
+        shell: bash
+        run: |
+          mkdir -p artifacts/presenter-final
+          cat > artifacts/presenter-final/commit-message.txt <<'EOF'
+          Present reports for humans and agents
+
+          Replace the shared flat report rows with distinct product interfaces: a compact Changed-first human summary, full aggregate detail, restrained terminal colour, versioned context-efficient agent records, and separate desired-plan presentation. Keep machine contracts unchanged and carry the interface through the CLI, library, website consumer, generated Actions, branding, interchange documentation, and durable decision record.
+
+          Co-authored-via: Nyxara | ChatGPT Web | GPT-5.6 Sol | Pro
+          Co-authored-by: Nyxara <nyxara@agents.wolfsblvt.com>
+          EOF
+          git config user.name Wolfsblvt
+          git config user.email wolf@wolfsblvt.com
+          git add -A
+          git diff --cached --check
+          git commit -F artifacts/presenter-final/commit-message.txt
+      - name: Verify exact final candidate
+        continue-on-error: true
+        shell: bash
+        run: |
+          set +e
+          mkdir -p artifacts/presenter-final
+          npm run verify 2>&1 | tee artifacts/presenter-final/verify.log
+          verify_status=${PIPESTATUS[0]}
+          npm run test:conformance 2>&1 | tee artifacts/presenter-final/conformance.log
+          conformance_status=${PIPESTATUS[0]}
+          DIFFDEVIL_PACKAGE_INSTALL_ONLINE=1 npm run test:package 2>&1 | tee artifacts/presenter-final/package.log
+          package_status=${PIPESTATUS[0]}
+          npm run test:actions 2>&1 | tee artifacts/presenter-final/actions.log
+          actions_status=${PIPESTATUS[0]}
+          printf 'verify=%s\nconformance=%s\npackage=%s\nactions=%s\n' \
+            "$verify_status" "$conformance_status" "$package_status" "$actions_status" \
+            | tee artifacts/presenter-final/statuses.txt
+          if (( verify_status || conformance_status || package_status || actions_status )); then
+            exit 1
+          fi
+      - name: Pack exact commit transport and evidence
+        if: always()
+        shell: bash
+        run: |
+          git diff --exit-code HEAD -- .
+          git format-patch -1 --binary --stdout HEAD > artifacts/presenter-final/presenter-final.patch
+          git bundle create artifacts/presenter-final/presenter-final.bundle HEAD ^HEAD^
+          git bundle verify artifacts/presenter-final/presenter-final.bundle
+          git archive --format=tar.gz -o artifacts/presenter-final/presenter-final-source.tar.gz HEAD
+          git rev-parse HEAD > artifacts/presenter-final/commit-sha.txt
+          git show --format=fuller --stat --no-renames HEAD > artifacts/presenter-final/commit.txt
+      - name: Upload final candidate
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: presenter-final-candidate
+          path: artifacts/presenter-final/
+          retention-days: 7
+          if-no-files-found: error
+      - name: Require complete qualification
+        if: always()
+        shell: bash
+        run: |
+          test -f artifacts/presenter-final/statuses.txt
+          ! grep -Eq '=[1-9][0-9]*$' artifacts/presenter-final/statuses.txt
