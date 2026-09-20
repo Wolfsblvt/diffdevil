@@ -10,11 +10,11 @@ export const copy = {
     docs: 'Docs', playground: 'Playground', examples: 'Examples', menu: 'Menu', install: 'Install', dashboard: 'Dashboard',
     command: 'npm i -D @wolfsblvt/diffdevil', copied: 'Copied ✓', source: 'Source on GitHub',
   },
-  /** Install⌄: [product wording → product page, description, action wording → the action itself]. */
+  /** Install⌄: a menu of the site's own pages. Every entry is [title, short description]. */
   install: {
-    extension: ['Browser extension', 'Changed and policy directly inside GitHub', 'Add to Chrome'],
-    app: ['GitHub App', 'Automatic checks, labels and managed operation', 'Install on GitHub'],
-    open: 'CLI and GitHub Actions',
+    extension: ['Browser extension', 'Changed and policy directly inside GitHub'],
+    app: ['GitHub App', 'Automatic checks, labels and managed operation'],
+    open: ['CLI and GitHub Actions', 'Run the open package yourself'],
   },
   theme: {
     label: 'Theme', dark: 'Dark', light: 'Light',
@@ -59,7 +59,7 @@ export const copy = {
       links: [['Label PRs in one file', 'getStarted'], ['Query locally', 'localAutomation'], ['Author a policy', 'recipes']] as const },
     two: { index: '02', label: 'Browser extension', title: 'Bring Changed into GitHub',
       body: 'See replacement-aware Changed, per-file decomposition, personal or repository size bands, and inspectable reports directly on pull requests. No workflow, App installation, or repository write access required.',
-      cta: 'Add to Chrome', link: 'Explore the browser extension' },
+      cta: 'Install the extension', link: 'Explore the browser extension' },
     three: { index: '03', label: 'GitHub App', title: 'Let it run for you',
       body: 'Install the GitHub App once for automatic analysis, native checks, labels, comments, and managed configuration. No workflow file, token assembly, or runner upkeep.',
       cta: 'Install the App', links: [['How the App works', '/app/'], ['Self-hosting', '/app/#self-host']] as const },

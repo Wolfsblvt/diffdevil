@@ -208,10 +208,11 @@ pre.astro-code, .code-body.astro-code { background: transparent !important; whit
 .brand .surface-title { font-weight: 600; font-size: 13px; color: var(--fg-2); cursor: default; user-select: none; white-space: nowrap; }
 .header-main { margin-left: auto; display: flex; align-items: center; gap: 16px; min-width: 0; }
 .site-nav { display: flex; align-items: center; gap: 18px; margin: 0; padding: 0; list-style: none; }
-.site-nav a, .nav-disclosure, .menu-trigger { font-size: 13px; line-height: 1; color: var(--fg-2); background: none; border: 0; padding: 0; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; height: 30px; border-radius: var(--r-control); transition: color var(--dur) var(--ease); }
-.site-nav a:hover, .nav-disclosure:hover, .nav-disclosure[aria-expanded="true"], .menu-trigger:hover { color: var(--fg); }
-/* current location: one emphasis step — stronger text, never a pill, block or underline */
-.site-nav [aria-current="page"], .site-nav [data-in-section] { color: var(--fg); font-weight: 600; }
+.site-nav > li > a, .nav-disclosure, .menu-trigger { font-size: 13px; line-height: 1; color: var(--fg-2); background: none; border: 0; padding: 0; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; height: 30px; border-radius: var(--r-control); transition: color var(--dur) var(--ease); }
+.site-nav > li > a:hover, .nav-disclosure:hover, .nav-disclosure[aria-expanded="true"], .menu-trigger:hover { color: var(--fg); }
+/* (direct children only: the Install panel lives inside this list and keeps its own row styles)
+   current location: one emphasis step — stronger text, never a pill, block or underline */
+.site-nav > li > [aria-current="page"], .site-nav > li > [data-in-section] { color: var(--fg); font-weight: 600; }
 /* every label reserves its semibold width, so the current item never shifts the cluster between routes */
 .nav-label { display: inline-flex; flex-direction: column; align-items: center; }
 .nav-label::after { content: attr(data-label); font-weight: 600; height: 0; visibility: hidden; overflow: hidden; user-select: none; pointer-events: none; }
@@ -245,11 +246,11 @@ pre.astro-code, .code-body.astro-code { background: transparent !important; whit
 .dest-panel[hidden] { display: none; }
 .dest-panel[data-align="start"] { left: -8px; }
 .dest-panel[data-align="end"] { right: 0; }
-#panel-install, #panel-menu { width: 300px; }
+#panel-install, #panel-menu { width: 290px; }
 :root[data-theme="light"] .dest-panel { box-shadow: 0 10px 30px rgb(22 27 36 / 12%); }
 .dest-heading { margin: 0; padding: 6px 8px 4px; font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--fg-3); }
 .dest-rows, .install-entries { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
-.dest-row { display: flex; align-items: center; gap: 10px; min-height: 36px; padding: 6px 8px; border-radius: var(--r-control); color: var(--fg); }
+.dest-row { display: flex; align-items: center; gap: 12px; min-height: 36px; padding: 6px 10px; border-radius: var(--r-control); color: var(--fg); }
 .dest-row:hover { background: var(--bg-raised-2); }
 .dest-row .icon { color: var(--fg-2); }
 .dest-text { display: flex; flex-direction: column; min-width: 0; flex: 1; }
@@ -261,29 +262,26 @@ pre.astro-code, .code-body.astro-code { background: transparent !important; whit
 .dest-row.is-unavailable { color: var(--fg-3); cursor: default; }
 .dest-row.is-unavailable:hover { background: none; }
 .dest-row.is-unavailable .dest-note, .dest-row.is-unavailable .icon { color: var(--fg-3); }
-.install-entry { display: flex; flex-direction: column; padding-bottom: 4px; }
-.install-entry + .install-entry, .install-open { border-top: 1px solid var(--hair); padding-top: 4px; }
-.install-action { display: inline-flex; align-items: center; gap: 5px; align-self: flex-start; margin: 0 0 2px 34px; padding: 4px 8px; border-radius: var(--r-control); font-size: 12.5px; font-weight: 600; color: var(--accent-text); }
-.install-action:hover { background: var(--bg-raised-2); }
-.install-action .dest-arrow { color: currentColor; }
 /* a configured-later destination keeps its full appearance; it only has nowhere to go yet */
 .is-unconfigured { cursor: default; }
 
-/* theme control: 72 × 28, one capsule. Explicit: the capsule holds one side. Automatic: it
-   stretches over the centre dot. Dark capsule when dark, bright capsule when light. */
-.theme-control { position: relative; width: 72px; height: 28px; flex: none; padding: 0; border: 1px solid var(--hair); border-radius: 999px; background: var(--bg-raised); color: var(--fg-3); }
+/* theme control: 64 × 28, one capsule. The two sides are 24px cells; the middle is a small
+   12px section holding only the dot, not a third icon-sized slot. Explicit: the capsule holds
+   one side. Automatic: it stretches over the dot. Dark capsule when dark, bright when light.
+   (Narrower than the shared 72px default by owner direction for diffdevil.) */
+.theme-control { position: relative; width: 64px; height: 28px; flex: none; padding: 0; border: 1px solid var(--hair); border-radius: 999px; background: var(--bg-raised); color: var(--fg-3); }
 .theme-control:hover { border-color: var(--hair-strong); }
 .theme-capsule { position: absolute; top: 1px; left: 1px; height: 24px; width: 24px; border-radius: 999px; background: #111318; border: 1px solid #484d58; transition: left 160ms var(--ease), width 160ms var(--ease), background 160ms var(--ease); }
 .theme-glyph, .theme-dot { position: absolute; top: 50%; transform: translate(-50%, -50%); z-index: 1; transition: color 160ms var(--ease); }
 .theme-glyph-dark { left: 13px; }
-.theme-glyph-light { left: 57px; }
-.theme-dot { left: 35px; width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+.theme-glyph-light { left: 49px; }
+.theme-dot { left: 31px; width: 4px; height: 4px; border-radius: 50%; background: currentColor; }
 html[data-theme="dark"] .theme-glyph-dark { color: #f0f2f5; }
-html[data-theme="light"] .theme-capsule { background: #f5f6f8; border-color: #b4b7be; left: 45px; }
+html[data-theme="light"] .theme-capsule { background: #f5f6f8; border-color: #b4b7be; left: 37px; }
 html[data-theme="light"] .theme-glyph-light { color: #161b24; }
-html[data-theme-pref="auto"] .theme-capsule { width: 46px; }
-html[data-theme-pref="auto"][data-theme="light"] .theme-capsule { left: 23px; }
-html[data-theme-pref="auto"] .theme-dot { width: 6px; height: 6px; box-shadow: 0 0 0 1.5px color-mix(in srgb, currentColor 35%, transparent); }
+html[data-theme-pref="auto"] .theme-capsule { width: 36px; }
+html[data-theme-pref="auto"][data-theme="light"] .theme-capsule { left: 25px; }
+html[data-theme-pref="auto"] .theme-dot { width: 5px; height: 5px; box-shadow: 0 0 0 1.5px color-mix(in srgb, currentColor 35%, transparent); }
 html[data-theme-pref="auto"][data-theme="dark"] .theme-dot { color: #f0f2f5; }
 html[data-theme-pref="auto"][data-theme="light"] .theme-dot { color: #161b24; }
 @media (forced-colors: active) { .theme-capsule { border: 2px solid Highlight; background: Canvas; } .theme-glyph, .theme-dot { color: CanvasText; } }

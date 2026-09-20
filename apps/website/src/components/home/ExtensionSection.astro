@@ -5,7 +5,6 @@
 // open, three short explanatory blocks, and two actions: Add to Chrome goes straight to
 // the Store, the product wording goes to /extension/.
 import ActionLink from '../ActionLink.astro';
-import Icon from '../Icon.astro';
 import Scene from '../extension/Scene.astro';
 import SectionHead from '../SectionHead.astro';
 import { copy } from '../../data/copy';
@@ -20,7 +19,7 @@ const c = copy.extension;
       {c.columns.map(([title, body]) => <li><strong>{title}</strong><span>{body}</span></li>)}
     </ul>
     <div class="ext-actions">
-      <ActionLink class="btn btn-primary" href={CHROME_WEB_STORE_URL} data-cta="add-to-chrome">{c.add}<Icon name="external" size={11} /></ActionLink>
+      <ActionLink class="btn btn-primary" href={CHROME_WEB_STORE_URL} data-cta="add-to-chrome">{c.add}</ActionLink>
       <a class="ext-explore" href={paths.extension}>{c.explore} →</a>
       <span class="ext-trust">{c.trust}</span>
     </div>

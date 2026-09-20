@@ -5,7 +5,6 @@
 // In the specimen the replacement-aware result leads: big number, word, evidence chip at
 // the right edge. The raw counters are deliberately smaller and grey.
 import ActionLink from '../ActionLink.astro';
-import Icon from '../Icon.astro';
 import { copy } from '../../data/copy';
 import { CHROME_WEB_STORE_URL, docPaths, paths } from '../../data/site';
 import { display, evidenceGlyph, exact, heroPatch, reportFromDiff } from '../../lib/engine-node';
@@ -26,7 +25,7 @@ const dot = ' · ';
       <p class="strap">{c.strap}</p>
       <p class="why">{c.why}</p>
       <div class="hero-ctas">
-        <ActionLink class="btn btn-l btn-primary" href={CHROME_WEB_STORE_URL} data-cta="add-to-chrome">{c.ctaPrimary}<Icon name="external" size={12} /></ActionLink>
+        <ActionLink class="btn btn-l btn-primary" href={CHROME_WEB_STORE_URL} data-cta="add-to-chrome">{c.ctaPrimary}</ActionLink>
         <a class="btn btn-l btn-secondary" href={docPaths.getStarted}>{c.ctaSecondary}</a>
         <a class="hero-tertiary" href={paths.playground}>{c.ctaTertiary} →</a>
       </div>

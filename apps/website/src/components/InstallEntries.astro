@@ -1,32 +1,23 @@
 ---
 // SPDX-License-Identifier: AGPL-3.0-only
 // The Install destinations, used by the desktop Install⌄ panel and the compact Menu⌄
-// panel alike. Two descriptive entries, browser extension first. In each, the product
-// wording goes to the product page and the action wording goes straight to the action:
-// they are sibling links, never one anchor inside another. A quiet last row keeps the open
-// CLI and Actions route one step away, so managed and in-browser use never look mandatory.
-import ActionLink from './ActionLink.astro';
-import Icon from './Icon.astro';
+// panel alike. It is a menu of the site's own pages and nothing else: every entry is one
+// whole-row link with a title and a short description, browser extension first. Direct
+// install actions ("Add to Chrome", "Install on GitHub") deliberately do not live here;
+// they are on the pages these rows lead to and on the homepage.
+import DestinationRows from './DestinationRows.astro';
 import { copy } from '../data/copy';
-import { APP_INSTALL_URL, CHROME_WEB_STORE_URL, docPaths, paths } from '../data/site';
+import type { IconName } from '../data/icons';
+import { docPaths, paths } from '../data/site';
 interface Props { kind: string }
 const { kind } = Astro.props;
 const here = Astro.url.pathname;
 const c = copy.install;
-const entries = [
-  { id: 'extension', icon: 'chrome', href: paths.extension, title: c.extension[0], note: c.extension[1], action: c.extension[2], actionHref: CHROME_WEB_STORE_URL },
-  { id: 'app', icon: 'github', href: paths.app, title: c.app[0], note: c.app[1], action: c.app[2], actionHref: APP_INSTALL_URL },
-] as const;
+const entries: { id: string; icon: IconName; label: string; note: string; href: string }[] = [
+  { id: 'extension', icon: 'chrome', label: c.extension[0], note: c.extension[1], href: paths.extension },
+  { id: 'app', icon: 'github', label: c.app[0], note: c.app[1], href: paths.app },
+  { id: 'open', icon: 'cli', label: c.open[0], note: c.open[1], href: docPaths.getStarted },
+];
+const rows = entries.map(row => ({ ...row, current: row.href === here }));
 ---
-<ul class="install-entries">
-  {entries.map(entry => (
-    <li class="install-entry">
-      <a class="dest-row" href={entry.href} aria-current={entry.href === here ? 'page' : undefined} data-dest={`${kind}:${entry.id}`}>
-        <Icon name={entry.icon} size={16} />
-        <span class="dest-text"><span class="dest-label">{entry.title}</span><span class="dest-note">{entry.note}</span></span>
-      </a>
-      <ActionLink class="install-action" href={entry.actionHref} data-dest={`${kind}:${entry.id}-install`}>{entry.action}<Icon name="external" size={11} class="dest-arrow" /></ActionLink>
-    </li>
-  ))}
-  <li class="install-open"><a class="dest-row dest-row-plain" href={docPaths.getStarted} data-dest={`${kind}:open`}><Icon name="cli" size={16} /><span class="dest-label">{c.open}</span></a></li>
-</ul>
+<DestinationRows rows={rows} kind={kind} />
