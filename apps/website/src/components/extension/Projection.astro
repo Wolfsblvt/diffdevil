@@ -1,0 +1,52 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only
+// One compact diffdevil for GitHub projection, as the extension renders it beside GitHub's
+// own diffstat: [brand glyph] Changed N (+a −d ~m)  size pill  band rail  standing, with
+// the raw counters as a quiet second line. The visible word "Changed" always stays. The
+// rail has one cell per configured band and only marks a position in that ordinal scale;
+// it is not a score. Values are passed in from the engine; nothing is computed here.
+import Icon from '../Icon.astro';
+interface Props {
+  changed: string; added: string; deleted: string; modified: string; rawAdded: string; rawDeleted: string;
+  bands: readonly { id: string; label: string | undefined }[]; band: string | undefined; label?: string | undefined;
+  standing?: string | undefined; compact?: boolean | undefined;
+}
+const { changed, added, deleted, modified, rawAdded, rawDeleted, bands, band, standing = 'local', compact = false } = Astro.props;
+const selected = bands.find(item => item.id === band);
+const pill = Astro.props.label ?? selected?.label ?? band;
+---
+<span class:list={['ddx', { 'ddx-compact': compact }]}>
+  <span class="ddx-main">
+    <Icon name="brand" size={15} class="ddx-glyph" />
+    <span class="ddx-word">Changed</span>
+    <strong class="ddx-total">{changed}</strong>
+    <span class="ddx-parts">(<span class="ddx-add">+{added}</span> <span class="ddx-del">−{deleted}</span> <span class="ddx-mod">~{modified}</span>)</span>
+    {pill && <span class="ddx-pill">{pill}</span>}
+    {bands.length > 0 && band && (
+      <span class="ddx-rail" role="img" aria-label={`Band ${band}, position ${bands.findIndex(item => item.id === band) + 1} of ${bands.length}`}>
+        {bands.map(item => <span class:list={['ddx-cell', { 'is-selected': item.id === band }]}></span>)}
+      </span>
+    )}
+    {standing && <span class="ddx-standing">{standing}</span>}
+  </span>
+  <span class="ddx-raw">Raw <span>+{rawAdded}</span> <span>−{rawDeleted}</span></span>
+</span>
+<style>
+  /* colours come from the surrounding surface through --gh-* (GitHub scene) or the machine ground */
+  .ddx { display: inline-flex; flex-direction: column; gap: 2px; font-family: -apple-system, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif; font-size: 12px; line-height: 1.4; color: var(--gh-fg, #e6edf3); text-align: left; }
+  .ddx-main { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 4px 7px; }
+  .ddx :global(.ddx-glyph) { color: var(--gh-fg, #e6edf3); }
+  .ddx-word { font-weight: 600; }
+  .ddx-total { font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .ddx-parts { font-variant-numeric: tabular-nums; color: var(--gh-muted, #8b949e); }
+  .ddx-add { color: var(--gh-add, #3fb950); }
+  .ddx-del { color: var(--gh-del, #f85149); }
+  .ddx-mod { color: var(--gh-fg, #e6edf3); font-weight: 600; }
+  .ddx-pill { padding: 0 7px; border: 1px solid var(--gh-border, #30363d); border-radius: 999px; font-size: 11.5px; font-weight: 500; line-height: 18px; }
+  .ddx-rail { display: inline-flex; gap: 3px; }
+  .ddx-cell { width: 9px; height: 9px; border: 1px solid var(--gh-border-strong, #484f58); border-radius: 2px; }
+  .ddx-cell.is-selected { background: var(--gh-fg, #e6edf3); border-color: var(--gh-fg, #e6edf3); }
+  .ddx-standing { color: var(--gh-muted, #8b949e); font-size: 11.5px; }
+  .ddx-raw { padding-left: 22px; font-size: 11.5px; color: var(--gh-muted, #8b949e); font-variant-numeric: tabular-nums; }
+  .ddx-compact .ddx-total { font-size: 13px; }
+</style>

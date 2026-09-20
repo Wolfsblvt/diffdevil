@@ -14,12 +14,22 @@ export const ORIGIN_IS_PLACEHOLDER = ORIGIN.endsWith('.invalid');
 /** The public playground API Worker the playground island calls for live public PRs. */
 export const PLAYGROUND_API: string = (import.meta.env.PUBLIC_PLAYGROUND_API ?? 'http://127.0.0.1:4173').replace(/\/$/u, '');
 
-/** GitHub App installation URL. Absent until the hosted App is registered and opened. */
+/** Canonical GitHub App installation route. Every "Install the App" / "Install on GitHub" goes here directly, never through /app/. */
 export const APP_INSTALL_URL: string | undefined = import.meta.env.PUBLIC_APP_INSTALL_URL || undefined;
 
-/** Community and funding destinations. Both are owner-created later; while unset the site shows the slot as unavailable instead of inventing a destination. */
+/**
+ * Live destinations that are real configuration facts, not design decisions. While one is
+ * unset the site renders its control as unavailable (a disabled link), never as an invented
+ * URL: the shared Works Discord server and Bluesky account, the Chrome Web Store listing,
+ * the funding destination, and the authenticated Dashboard. When the Dashboard is set it
+ * takes the header's one trailing slot from the npm copy command.
+ */
 export const DISCORD_URL: string | undefined = import.meta.env.PUBLIC_DISCORD_URL || undefined;
+export const BLUESKY_URL: string | undefined = import.meta.env.PUBLIC_BLUESKY_URL || undefined;
 export const SPONSOR_URL: string | undefined = import.meta.env.PUBLIC_SPONSOR_URL || undefined;
+/** Canonical Chrome Web Store listing of diffdevil for GitHub. Every "Add to Chrome" goes here directly, never through /extension/. */
+export const CHROME_WEB_STORE_URL: string | undefined = import.meta.env.PUBLIC_CHROME_WEB_STORE_URL || undefined;
+export const DASHBOARD_URL: string | undefined = import.meta.env.PUBLIC_DASHBOARD_URL || undefined;
 
 export const PACKAGE_VERSION: string = packageJson.version;
 export const REPO = 'Wolfsblvt/diffdevil';
@@ -45,6 +55,7 @@ export const paths = {
   examples: '/examples/',
   docs: '/docs/',
   app: '/app/',
+  extension: '/extension/',
   security: '/docs/security/',
   privacy: '/privacy/',
   impressum: '/impressum/',
@@ -74,6 +85,7 @@ export const docPaths = {
   privacyAndData: '/docs/github-app/privacy-and-data/',
   troubleshooting: '/docs/get-started/auto-label-pull-requests/#troubleshooting',
   releases: '/docs/releases/',
+  extension: '/docs/browser-extension/',
   versioning: '/docs/policies-and-detail/versioning-and-interchange/',
   githubApi: '/docs/actions/github-api/',
 } as const;

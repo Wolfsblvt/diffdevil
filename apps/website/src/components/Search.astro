@@ -1,15 +1,17 @@
 ---
 // SPDX-License-Identifier: AGPL-3.0-only
-// Global search: one trigger in the shared header and one modal, on every route including
-// the manual. It queries the Pagefind index the build writes over the whole site, and
-// marks every hit as a manual page or a site page. The index exists only in built output;
-// in `astro dev` the modal says so instead of failing silently.
+// Global search: one launcher in the shared header and one modal, on every route including
+// the manual. The launcher is a button, not a field: full (190 × 30, with the shortcut),
+// compact (156, no shortcut) and icon-only (30 × 30) are the same control and open the same
+// dialog. It queries the Pagefind index the build writes over the whole site and marks
+// every hit as a manual page or a site page. The index exists only in built output; in
+// `astro dev` the modal says so instead of failing silently.
 import Icon from './Icon.astro';
 import { copy } from '../data/copy';
 const c = copy.search;
 ---
-<button class="search-trigger" type="button" data-search-open aria-haspopup="dialog" aria-keyshortcuts="Control+K Meta+K">
-  <Icon name="search" size={14} /><span class="search-trigger-label">{c.trigger}</span><kbd class="search-kbd" aria-hidden="true">Ctrl K</kbd>
+<button class="search-trigger" type="button" data-search-open aria-haspopup="dialog" aria-label={c.trigger} aria-keyshortcuts="Control+K Meta+K">
+  <Icon name="search" size={14} /><span class="search-trigger-label" aria-hidden="true">{c.trigger}</span><kbd class="search-kbd" aria-hidden="true" data-search-shortcut>Ctrl K</kbd>
 </button>
 <dialog class="search-dialog" data-search-dialog aria-label={c.title}>
   <form method="dialog" class="search-form" role="search" data-search-form>

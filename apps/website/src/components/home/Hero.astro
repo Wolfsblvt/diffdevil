@@ -4,9 +4,10 @@
 // specimen column is the wider one, ending on the same right edge as every block below.
 // In the specimen the replacement-aware result leads: big number, word, evidence chip at
 // the right edge. The raw counters are deliberately smaller and grey.
+import ActionLink from '../ActionLink.astro';
 import Icon from '../Icon.astro';
 import { copy } from '../../data/copy';
-import { docPaths, paths } from '../../data/site';
+import { CHROME_WEB_STORE_URL, docPaths, paths } from '../../data/site';
 import { display, evidenceGlyph, exact, heroPatch, reportFromDiff } from '../../lib/engine-node';
 
 // The specimen numbers are the engine's, computed at build from the actual patch.
@@ -25,9 +26,9 @@ const dot = ' · ';
       <p class="strap">{c.strap}</p>
       <p class="why">{c.why}</p>
       <div class="hero-ctas">
-        <a class="btn btn-l btn-primary" href={docPaths.getStarted}>{c.ctaPrimary}</a>
-        <a class="btn btn-l btn-secondary" href={paths.playground}>{c.ctaSecondary}</a>
-        <a class="hero-tertiary" href={paths.app}><Icon name="github" size={14} />{c.ctaTertiary}</a>
+        <ActionLink class="btn btn-l btn-primary" href={CHROME_WEB_STORE_URL} data-cta="add-to-chrome">{c.ctaPrimary}<Icon name="external" size={12} /></ActionLink>
+        <a class="btn btn-l btn-secondary" href={docPaths.getStarted}>{c.ctaSecondary}</a>
+        <a class="hero-tertiary" href={paths.playground}>{c.ctaTertiary} →</a>
       </div>
     </div>
     <figure class="machine specimen">
@@ -63,8 +64,8 @@ const dot = ' · ';
   .strap { font-size: 20px; font-weight: 600; margin: 0; }
   .why { margin: 0; font-size: 15.5px; line-height: 1.6; color: var(--fg-2); max-width: 480px; }
   .hero-ctas { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 4px; }
-  .hero-tertiary { margin-left: 6px; display: inline-flex; align-items: center; gap: 6px; font-size: 13.5px; color: var(--fg-2); text-decoration: underline; text-underline-offset: 3px; }
-  .hero-tertiary:hover { color: var(--fg); }
+  .hero-tertiary { margin-left: 6px; font-size: 13.5px; font-weight: 600; color: var(--fg-2); }
+  .hero-tertiary:hover { color: var(--fg); text-decoration: underline; text-underline-offset: 3px; }
   .specimen-diff { padding: 16px 18px; font-size: 13.5px; line-height: 1.7; color: #f0f2f5; }
   .specimen-facts { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); border-top: 1px solid #2c303a; }
   .specimen-cell { padding: 18px 20px; }

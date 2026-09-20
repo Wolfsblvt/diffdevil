@@ -1,0 +1,246 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only
+// /extension/: the trust and detail surface for diffdevil for GitHub. It shows the
+// extension's real projection and report as fixture-backed scenes and its real settings
+// application as rendered UI, then states exactly what the extension reads, stores and
+// never does. Those statements follow the extension's own privacy notice, manifest
+// (`storage`; content script on github.com; host access to api.github.com; Incognito not
+// allowed) and listing copy; when that source changes, this page follows it, not the other
+// way round. Every "Add to Chrome" goes straight to the Chrome Web Store.
+import { Image } from 'astro:assets';
+import Base from '../layouts/Base.astro';
+import ActionLink from '../components/ActionLink.astro';
+import Icon from '../components/Icon.astro';
+import Scene from '../components/extension/Scene.astro';
+import SectionHead from '../components/SectionHead.astro';
+import SectionLinks from '../components/SectionLinks.astro';
+import settingsBands from '../assets/extension/settings-policy-bands-light.png';
+import settingsDisplay from '../assets/extension/settings-display-dark.png';
+import { copy } from '../data/copy';
+import { APP_INSTALL_URL, CHROME_WEB_STORE_URL, GITHUB, docPaths, paths } from '../data/site';
+import { extensionDocsPresent } from '../lib/sources';
+const c = copy.extension;
+const docs = extensionDocsPresent();
+const standings = [
+  ['=', 'exact', 'exact', 'Every included edit block was observed. The band is selected.'],
+  ['≈', 'bounded', 'bounded', 'A proven interval. If it lies inside one band, that band is selected and the standing says bounded.'],
+  ['?', 'unknown', 'unknown', 'Evidence crosses several bands or the file set is incomplete. No cell is selected.'],
+  ['∅', 'unmeasurable', 'unmeasurable', 'Lines are undefined, for example binary content. Shown as unmeasurable, never as 0.'],
+] as const;
+const layers = [
+  ['Personal defaults', 'Your own size policy. It is the complete policy wherever a repository has none.'],
+  ['Repository .diffdevil.yml', 'Read from the exact base revision of the pull request, never from the proposed head, and cached by that immutable identity.'],
+  ['Your override for this repository', 'An explicit personal adjustment for one repository. It wins, and it never leaves your browser.'],
+] as const;
+const modes = [
+  ['composed', 'the default: personal defaults, then repository policy, then your override'],
+  ['repository', 'the repository policy when present, otherwise your defaults'],
+  ['personal-only', 'deliberately ignore the repository policy for your own view'],
+] as const;
+const settings = [
+  ['display.rawChurn', 'Basic', 'Show the raw additions and deletions line under Changed'],
+  ['display.dimNativeDiffstat', 'Basic', 'De-emphasise the native GitHub diffstat (on by default)'],
+  ['display.hideNativeDiffstat', 'Advanced', 'Hide the native diffstat completely; never the default'],
+  ['display.brandIcon', 'Basic', 'Monochrome glyph, full-colour symbol, or no icon; "Changed" stays visible text'],
+  ['display.density', 'Advanced', 'Compact or comfortable projection'],
+  ['policy.mode', 'Basic', 'composed, repository or personal-only'],
+  ['policy.bands', 'Basic', 'Guided band editor with optional existing-label mappings'],
+  ['policy.advancedYaml', 'Advanced', 'The full diffdevil policy language, validated, with import and export'],
+  ['cache.maximumSize', 'Advanced', 'Upper bound of the rebuildable report and policy cache'],
+  ['data.resetAll', 'Advanced', 'Clear everything the extension stored, after a deliberate confirmation'],
+] as const;
+const facts = [
+  ['Reads on GitHub', 'Repository and pull-request identity, the immutable base and head revisions, change counters, file identities, the available diff, and the native label controls. Only on github.com pull-request pages; elsewhere it analyzes nothing.'],
+  ['Analysis', 'Runs in the extension worker in your browser, with the same engine as the CLI. No hosted analysis is triggered and nothing is sent to a diffdevil or Wolfsblvt Works service.'],
+  ['Repository policy', '.diffdevil.yml and the templates it names are read from the exact base revision. Proposed pull-request configuration is never trusted as policy.'],
+  ['Requests', 'They use your signed-in GitHub page when available. A public api.github.com fallback deliberately sends no credentials. The extension never asks for a personal access token and collects no cookies.'],
+  ['Raw patches', 'Held in memory for the analysis and then discarded. They are not persisted.'],
+  ['Cache', 'Bounded and rebuildable: normalized numeric reports, file paths, revision identities and trusted policy text, with least-recently-used eviction under a limit you set. It can reveal private repository names and paths to someone with access to your browser profile, and it is not separately encrypted.'],
+  ['Your settings', 'Small display and guided-policy preferences use Chrome synchronized storage, so Chrome may sync them across your signed-in browsers. Advanced YAML and per-repository overrides stay in local extension storage.'],
+  ['Writes to GitHub', 'None of its own. The optional label handoff opens and searches the visible GitHub label picker; you make the selection. No hidden request, no automatic label, no new label definitions.'],
+  ['GitHub App results', 'The extension presents its own local results. It is built to show an App result whose identity matches the same head and policy, and it never claims one that was not delivered.'],
+  ['Permissions', 'storage; a content script on github.com; host access to api.github.com for the read-only fallback. No cookies, history, tabs enumeration, all-site access or clipboard permission.'],
+  ['Not supported', 'Incognito windows (not allowed, so private sessions never mix with the persistent cache), GitHub Enterprise hosts, and browsers other than Chrome.'],
+] as const;
+const routes = [
+  { title: 'Browser extension', body: 'Personal Changed, policy, and reports directly inside GitHub.', href: '#changed', link: 'You are here' },
+  { title: 'CLI / Actions', body: 'Repository-owned, portable analysis and automation.', href: docPaths.getStarted, link: 'Use the CLI / Actions' },
+  { title: 'GitHub App', body: 'Managed repository operation, native checks, effects, configuration, and history.', href: paths.app, link: 'How the App works' },
+] as const;
+---
+<Base title="Browser extension" description="diffdevil for GitHub adds replacement-aware Changed, personal or repository size bands and inspectable reports directly to pull requests. No workflow, App installation or write access required." surface="Extension" current="extension">
+  <section class="section section-first" data-section="extension">
+    <div class="wrap">
+      <div class="ext-hero anchor-group">
+        <div class="ext-hero-text">
+          <p class="eyebrow eyebrow-caps"><a class="eyebrow-link" id="extension" href="#extension">Browser extension</a><span>· {c.name}</span></p>
+          <h1 class="ext-h1">Changed, directly in GitHub</h1>
+          <p class="lede">See replacement-aware Changed, per-file decomposition, personal or repository size bands, and inspectable reports on pull requests. No workflow, App installation, or write access required.</p>
+          <div class="ext-cta">
+            <ActionLink class="btn btn-l btn-primary" href={CHROME_WEB_STORE_URL} data-cta="add-to-chrome">{c.add}<Icon name="external" size={12} /></ActionLink>
+            <a class="ext-cta-link" href="#data">What it reads and stores →</a>
+          </div>
+          <p class="ext-assurance">No account, token or telemetry. It reads pull-request pages on github.com, analyzes them in your browser, and stores numbers, not patches.</p>
+        </div>
+        <Scene files={false} report={false} caption={false} />
+      </div>
+    </div>
+  </section>
+
+  <section class="section" data-section="changed">
+    <div class="wrap">
+      <SectionHead id="changed" title="Aggregate and per-file Changed" body="A replaced line is one changed position, not two units of churn. The extension shows Changed for the whole pull request and for every file GitHub renders, with added-only, deleted-only and modified kept apart, and leaves the raw counters visible as their own fact." />
+      <Scene report={false} />
+      <div class="ext-two">
+        <div class="panel">
+          <p class="label">The native GitHub numbers stay</p>
+          <p class="small ext-muted">Additions, deletions and the native ratio bar remain on the page, de-emphasised so Changed reads first. Hiding them is an explicit advanced setting, never the default. One number does not silently replace the other.</p>
+        </div>
+        <div class="panel">
+          <p class="label">A size, not a verdict</p>
+          <p class="small ext-muted">The band rail has one cell per band of the policy in effect and marks a position in that ordinal scale. It is not a health, risk or quality score, and a line count does not establish importance or review difficulty.</p>
+        </div>
+      </div>
+      <ul class="ext-standings">
+        {standings.map(([glyph, word, status, text]) => <li><span class="chip-ev" data-status={status}>{glyph} {word}</span><span>{text}</span></li>)}
+      </ul>
+      <SectionLinks links={[['How changed lines work', 'typesAndMeasurements'], ['Evidence semantics', 'typesAndMeasurements']]} />
+    </div>
+  </section>
+
+  <section class="section" data-section="policy">
+    <div class="wrap">
+      <SectionHead id="policy" title="Your policy, even when the repository has none" body="Size bands are yours to define. They appear on pull requests in repositories with no workflow, no labels, no App and no diffdevil configuration, including repositories you do not own, because the classification is local and virtual: it changes what you see, not the repository." />
+      <div class="ext-policy">
+        <ol class="ext-layers">
+          {layers.map(([title, body], index) => <li><span class="ext-layer-index mono">{index === 0 ? ' ' : '<'}</span><div><strong>{title}</strong><span>{body}</span></div></li>)}
+        </ol>
+        <div class="ext-policy-side">
+          <div class="panel">
+            <p class="label">Policy mode, per repository</p>
+            <dl class="ext-modes">{modes.map(([mode, text]) => <><dt><code class="code-inline">{mode}</code></dt><dd>{text}</dd></>)}</dl>
+          </div>
+          <div class="panel">
+            <p class="label">Every value keeps its origin</p>
+            <p class="small ext-muted">The report names where each effective setting came from. An invalid repository file is shown as invalid, not quietly treated as absent. A size the extension shows is a local policy result; a label that exists on the pull request, or a GitHub App result, is observed state and is always shown as such.</p>
+          </div>
+        </div>
+      </div>
+      <SectionLinks links={[['Policies and bands', 'policies'], ['Presets and shortcuts', 'presets']]} />
+    </div>
+  </section>
+
+  <section class="section" data-section="report">
+    <div class="wrap">
+      <SectionHead id="report" title="The full report, anchored in place" body="The Changed projection is the trigger for a persistent report that opens right where you are. It is a real popover, not a tooltip and not a modal: no backdrop, no scroll lock, no dashboard detour for ordinary inspection." />
+      <Scene />
+      <ul class="ext-columns">
+        <li><strong>Aggregate and file-focused</strong><span>The aggregate trigger opens the whole-comparison report. A file trigger opens that file with the same terms and the same evidence semantics.</span></li>
+        <li><strong>Policy and evidence, explained</strong><span>Revisions, measurement standing, files, metrics, scopes, bands, rules and the origin of the policy in effect. Missing source never becomes a reassuring exact zero.</span></li>
+        <li><strong>Keyboard and focus</strong><span>Click or press Enter to open; click again, click outside or press Escape to close, and focus returns to the trigger. One report is open at a time, and it stays inside the viewport.</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="section" data-section="settings">
+    <div class="wrap">
+      <SectionHead id="settings" title="Make it yours" body="Settings are a full diffdevil application in the same design as this site: one searchable configuration with a Basic and an Advanced view, light, automatic and dark themes, import and export, diagnostics and cache controls." />
+      <div class="ext-shots">
+        <figure class="ext-shot"><Image src={settingsDisplay} alt="Extension settings in the dark theme: search for 'diffdevil icon' shows the display.brandIcon setting with its three choices, the Basic and Advanced tabs, and a notice that one advanced setting is active." widths={[640, 1280]} sizes="(max-width: 900px) 100vw, 590px" /><figcaption>Search finds a setting by name, identifier or keyword. Rendered settings UI from the store kit.</figcaption></figure>
+        <figure class="ext-shot"><Image src={settingsBands} alt="Extension settings in the light theme: the policy.bands editor with five size bands, their upper limits, label mappings and colours." widths={[640, 1280]} sizes="(max-width: 900px) 100vw, 590px" /><figcaption>The guided band editor. Upper limits are exclusive; the last band is unbounded.</figcaption></figure>
+      </div>
+      <ul class="ext-columns">
+        <li><strong>Basic and Advanced, one configuration</strong><span>Advanced values keep applying while Basic is shown. The Advanced tab counts the settings that differ from their default, and switching views never resets anything.</span></li>
+        <li><strong>Stable identifiers and deep links</strong><span>Every setting has a visible, copyable identifier such as <code class="code-inline">#display.rawChurn</code>. Following that link opens its category, reveals it even when it is Advanced, and highlights it.</span></li>
+        <li><strong>Your data, under your control</strong><span>Clear the report cache, the policy cache or your overrides separately, reset everything after a confirmation, and copy a support snapshot that contains no repository names, paths, policy text or source.</span></li>
+      </ul>
+      <div class="ext-table-wrap">
+        <table class="ext-table">
+          <thead><tr><th>Identifier</th><th>View</th><th>What it controls</th></tr></thead>
+          <tbody>{settings.map(([id, view, text]) => <tr><td><code>#{id}</code></td><td>{view}</td><td>{text}</td></tr>)}</tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" data-section="data">
+    <div class="wrap">
+      <SectionHead id="data" title="What it reads and stores" body="The extension has no backend, no telemetry and no analytics. This is the complete picture, stated plainly, including the parts that are not flattering." />
+      <dl class="ext-facts">
+        {facts.map(([term, text]) => <div><dt>{term}</dt><dd>{text}</dd></div>)}
+      </dl>
+      <ul class="section-links">
+        <li><ActionLink class="link" href={docs ? `${docPaths.extension}privacy/` : undefined} external={false}>Extension privacy notice</ActionLink></li>
+        <li><a class="link" href={`${GITHUB}/issues`} rel="noopener">Report an issue</a></li>
+        <li><a class="link" href={paths.privacy}>Privacy of this website</a></li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="section" data-section="routes">
+    <div class="wrap">
+      <SectionHead id="routes" title="Choose the right route" body={c.distinction} />
+      <div class="ext-routes">
+        {routes.map(route => <div class="panel ext-route"><strong>{route.title}</strong><p class="small ext-muted">{route.body}</p><a class="link" href={route.href}>{route.link}</a></div>)}
+      </div>
+      <p class="small ext-muted ext-note">The three routes run the same open engine and the same policy language. The extension does not need the App, and the App does not need the extension. <ActionLink class="link-quiet" href={APP_INSTALL_URL}>Install on GitHub</ActionLink> for the repository-level route.</p>
+    </div>
+  </section>
+
+  <section class="section" data-section="add">
+    <div class="wrap ext-final">
+      <h2 class="h2">Changed, where you already review.</h2>
+      <ActionLink class="btn btn-l btn-primary" href={CHROME_WEB_STORE_URL} data-cta="add-to-chrome">{c.add}<Icon name="external" size={12} /></ActionLink>
+    </div>
+  </section>
+</Base>
+<style>
+  .section-first { border-top: 0; }
+  .ext-hero { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 44px; align-items: center; }
+  .ext-hero-text { display: flex; flex-direction: column; gap: 16px; }
+  .ext-h1 { font-size: 44px; line-height: 1.05; letter-spacing: -.02em; font-weight: 700; }
+  .ext-cta { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin-top: 4px; }
+  .ext-cta-link { font-size: 13.5px; font-weight: 600; color: var(--fg-2); }
+  .ext-cta-link:hover { color: var(--fg); text-decoration: underline; text-underline-offset: 3px; }
+  .ext-assurance { margin: 0; font-size: 12.5px; color: var(--fg-3); max-width: 52ch; }
+  .ext-muted { margin: 0; color: var(--fg-2); }
+  .panel .label { margin: 0 0 8px; }
+  .ext-two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+  .ext-standings { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 28px; font-size: 13.5px; color: var(--fg-2); }
+  .ext-standings li { display: grid; grid-template-columns: 118px minmax(0, 1fr); gap: 12px; align-items: baseline; }
+  .ext-standings .chip-ev { justify-self: start; }
+  .ext-columns { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px 28px; font-size: 13.5px; }
+  .ext-columns li { display: flex; flex-direction: column; gap: 2px; color: var(--fg-2); }
+  .ext-columns strong { color: var(--fg); font-weight: 700; }
+  .ext-policy { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+  .ext-layers { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; border: 1px solid var(--hair); border-radius: var(--r-card); background: var(--bg-raised); }
+  .ext-layers li { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 10px; padding: 16px 20px; }
+  .ext-layers li + li { border-top: 1px solid var(--hair); }
+  .ext-layers div { display: flex; flex-direction: column; gap: 2px; font-size: 13.5px; color: var(--fg-2); }
+  .ext-layers strong { color: var(--fg); font-size: 14.5px; }
+  .ext-layer-index { color: var(--fg-3); font-weight: 600; }
+  .ext-policy-side { display: flex; flex-direction: column; gap: 14px; }
+  .ext-modes { margin: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px 12px; font-size: 13px; color: var(--fg-2); align-items: baseline; }
+  .ext-modes dd { margin: 0; }
+  .ext-shots { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+  .ext-shot { margin: 0; border: 1px solid var(--hair); border-radius: var(--r-card); overflow: hidden; background: var(--bg-raised); }
+  .ext-shot :global(img) { width: 100%; height: auto; border-bottom: 1px solid var(--hair); }
+  .ext-shot figcaption { padding: 8px 14px; font-size: 12px; color: var(--fg-3); }
+  .ext-table-wrap { overflow-x: auto; }
+  .ext-table { width: 100%; min-width: 560px; border-collapse: collapse; font-size: 13px; }
+  .ext-table th { text-align: left; font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--fg-3); font-weight: 500; padding: 8px 10px; border-bottom: 1px solid var(--hair); }
+  .ext-table td { padding: 8px 10px; border-bottom: 1px solid var(--hair); vertical-align: top; color: var(--fg-2); }
+  .ext-table td:first-child { white-space: nowrap; color: var(--fg); }
+  .ext-table code { font-size: 12.5px; }
+  .ext-facts { margin: 0; display: flex; flex-direction: column; border: 1px solid var(--hair); border-radius: var(--r-card); overflow: hidden; }
+  .ext-facts div { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 20px; padding: 12px 20px; font-size: 13.5px; }
+  .ext-facts div + div { border-top: 1px solid var(--hair); }
+  .ext-facts dt { font-weight: 600; } .ext-facts dd { margin: 0; color: var(--fg-2); }
+  .ext-routes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+  .ext-route { display: flex; flex-direction: column; gap: 6px; font-size: 14px; }
+  .ext-route .link { margin-top: auto; padding-top: 6px; font-size: 13px; }
+  .ext-note { max-width: 760px; }
+  .ext-final { flex-direction: row !important; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+  @media (max-width: 1000px) { .ext-hero, .ext-policy { grid-template-columns: minmax(0, 1fr); } .ext-h1 { font-size: 36px; } }
+  @media (max-width: 900px) { .ext-two, .ext-standings, .ext-columns, .ext-shots, .ext-routes { grid-template-columns: minmax(0, 1fr); } .ext-facts div { grid-template-columns: minmax(0, 1fr); gap: 2px; } }
+</style>

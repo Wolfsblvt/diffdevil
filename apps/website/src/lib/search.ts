@@ -69,6 +69,15 @@ export function wireSearch(): void {
   document.addEventListener('keydown', event => {
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') { event.preventDefault(); open(); }
   });
+  // Closing returns focus to what opened the dialog; after the keyboard shortcut that is
+  // the visible launcher rather than nowhere.
+  dialog.addEventListener('close', () => {
+    // The browser restores the previous focus after this event; look once it has.
+    window.setTimeout(() => {
+      if (document.activeElement && document.activeElement !== document.body) return;
+      [...document.querySelectorAll<HTMLButtonElement>('[data-search-open]')].find(launcher => launcher.offsetParent !== null)?.focus();
+    }, 0);
+  });
   // A click on the backdrop closes; a click inside never does.
   dialog.addEventListener('click', event => { if (event.target === dialog) dialog.close(); });
   dialog.querySelector('[data-search-form]')!.addEventListener('submit', event => {
@@ -78,6 +87,8 @@ export function wireSearch(): void {
     results.querySelector<HTMLAnchorElement>('a')?.click();
   });
   dialog.addEventListener('keydown', event => {
+    // A search field swallows the first Escape to clear itself; here Escape always closes.
+    if (event.key === 'Escape') { event.preventDefault(); dialog.close(); return; }
     if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
     const stops: HTMLElement[] = [input, ...results.querySelectorAll<HTMLAnchorElement>('a')];
     const index = stops.indexOf(document.activeElement as HTMLElement);

@@ -41,3 +41,7 @@ export function sourcesReport(): SourcesReport {
     setup: Object.fromEntries((Object.keys(SETUP_SOURCES) as SetupIntent[]).map(intent => [intent, { present: setupSource(intent) !== undefined, path: SETUP_SOURCES[intent] }])) as SourcesReport['setup'],
   };
 }
+
+/** The extension's manual pages are authored with the extension application; links to them are live once that source is present. */
+export const EXTENSION_DOCS_SOURCE = 'apps/browser-extension/README.md';
+export function extensionDocsPresent(): boolean { return existsSync(join(repositoryRoot, EXTENSION_DOCS_SOURCE)); }

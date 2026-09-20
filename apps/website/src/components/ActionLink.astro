@@ -1,0 +1,13 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only
+// A link whose destination is a configured live fact (Chrome Web Store listing, GitHub App
+// installation, Dashboard, sponsor page). "Action wording goes to the action": it links
+// straight to that destination, as an external link in a new tab. Until the destination is
+// configured it renders as the same control without an href (`aria-disabled`), so the page
+// is complete and nothing points at an invented URL or a "coming soon" note.
+interface Props { href: string | undefined; class?: string | undefined; external?: boolean | undefined; [key: `data-${string}`]: string | undefined }
+const { href, class: className, external = true, ...rest } = Astro.props;
+---
+{href
+  ? <a class={className} href={href} target={external ? '_blank' : undefined} rel={external ? 'noopener noreferrer' : undefined} {...rest}><slot /></a>
+  : <a class:list={[className, 'is-unconfigured']} role="link" aria-disabled="true" {...rest}><slot /></a>}

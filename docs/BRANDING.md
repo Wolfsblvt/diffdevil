@@ -43,7 +43,7 @@ A second useful editorial rule follows from it:
 
 ### Public category descriptor
 
-> **Composable diff analysis and automation for the CLI and GitHub Actions.**
+> **Composable diff analysis and automation for GitHub and the CLI.**
 
 ### Technical category descriptor
 
@@ -190,7 +190,7 @@ It is compact enough for a README opening, website hero, social card, release im
 
 ### 3. Category or product description
 
-> **Composable diff analysis and automation for the CLI and GitHub Actions.**
+> **Composable diff analysis and automation for GitHub and the CLI.**
 
 The descriptor establishes what kind of product this is. It prevents the hero from being interpreted as an empty joke or a cute wrapper around a single PR-size counter.
 
@@ -207,7 +207,7 @@ For technical audiences already inside the documentation, use:
 
 **Measure changes. Match rules. Act on the result.**
 
-Composable diff analysis and automation for the CLI and GitHub Actions.
+Composable diff analysis and automation for GitHub and the CLI.
 ```
 
 Not every surface needs all three layers. The hero must not be repeated so often that it becomes verbal wallpaper.
@@ -269,6 +269,16 @@ This belongs near the beginning of the root README, after the hero and before th
 ### Library-focused description
 
 > **A TypeScript API for normalized diff facts, replacement-aware line metrics, scoped queries, policy evaluation, reports, and effect plans.**
+
+### Browser-extension description
+
+> **diffdevil for GitHub adds replacement-aware Changed, personal or repository policy, and inspectable reports directly to pull requests.**
+
+The extension's product name is **diffdevil for GitHub**. It is a personal, in-place view: it changes what one reader sees on GitHub and never the repository. Keep it distinct from the GitHub App in every sentence that mentions both:
+
+> **The extension changes your view. The App runs for the repository.**
+
+Inside GitHub the extension follows GitHub's visual language, uses the compact `diffdevil/brand` glyph for recognition, keeps the word `Changed` visible, and carries no hero language, mascot voice or brand magenta.
 
 ### Agent-facing description
 
@@ -1538,7 +1548,7 @@ hero: The devil is in the diff.
 
 strapline: Measure changes. Match rules. Act on the result.
 
-category: Composable diff analysis and automation for the CLI and GitHub Actions.
+category: Composable diff analysis and automation for GitHub and the CLI.
 
 technicalCategory: A portable diff analysis and policy engine.
 

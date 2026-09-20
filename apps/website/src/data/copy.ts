@@ -6,9 +6,25 @@
  * engine at build or run time.
  */
 export const copy = {
-  nav: { docs: 'Docs', playground: 'Playground', examples: 'Examples', app: 'App', github: 'GitHub ↗', install: 'npm i -D @wolfsblvt/diffdevil' },
-  theme: { label: 'Theme', light: 'Light theme', system: 'Automatic theme · follows your system', dark: 'Dark theme' },
-  socials: { label: 'Community and source', github: 'diffdevil on GitHub', discord: 'diffdevil on Discord', discordSoon: 'Discord · not open yet', website: 'Wolfsblvt Works website' },
+  nav: {
+    docs: 'Docs', playground: 'Playground', examples: 'Examples', menu: 'Menu', install: 'Install', dashboard: 'Dashboard',
+    command: 'npm i -D @wolfsblvt/diffdevil', copied: 'Copied ✓', source: 'Source on GitHub',
+  },
+  /** Install⌄: [product wording → product page, description, action wording → the action itself]. */
+  install: {
+    extension: ['Browser extension', 'Changed and policy directly inside GitHub', 'Add to Chrome'],
+    app: ['GitHub App', 'Automatic checks, labels and managed operation', 'Install on GitHub'],
+    open: 'CLI and GitHub Actions',
+  },
+  theme: {
+    label: 'Theme', dark: 'Dark', light: 'Light',
+    auto: (resolved: string) => `Automatic, using ${resolved}`,
+    next: (label: string) => `Next click: ${label}.`,
+  },
+  community: {
+    trigger: 'Community and social links', tooltip: 'Community', heading: 'Community',
+    discord: ['Discord', 'Wolfsblvt Works community'], bluesky: ['Bluesky', 'Development updates'], works: ['Wolfsblvt Works', 'About the maker'], github: ['GitHub', 'Source code'],
+  },
   search: {
     trigger: 'Search', title: 'Search diffdevil', placeholder: 'Search the site and the manual', close: 'Close search',
     hint: 'Searches site pages and the manual. Every result says which one it is.', kindDocs: 'Docs', kindSite: 'Site',
@@ -24,11 +40,11 @@ export const copy = {
   a11y: { copied: 'Copied to clipboard.', menu: 'Menu' },
 
   hero: {
-    eyebrow: 'Composable diff analysis and automation for the CLI and GitHub Actions',
+    eyebrow: 'Composable diff analysis and automation for GitHub and the CLI',
     h1: 'The devil is in the diff.',
     strap: 'Measure changes. Match rules. Act on the result.',
-    why: 'Git gives you a patch and a pair of raw counters. diffdevil turns the details inside that diff into facts your scripts, workflows and agents can inspect, query, evaluate, and act on.',
-    ctaPrimary: 'Use the CLI / Actions', ctaSecondary: 'Try the playground', ctaTertiary: 'Or install the App',
+    why: 'Git gives you a patch and a pair of raw counters. diffdevil turns the details inside that diff into facts you can see in GitHub, query locally, evaluate in workflows, and hand to agents.',
+    ctaPrimary: 'Add to Chrome', ctaSecondary: 'Use the CLI / Actions', ctaTertiary: 'Try a public PR',
     specimenHead: 'src/Foo.cs · one edit block', specimenSemantics: 'replacement-lines-v1',
     leftLabel: 'Replacement-aware · what a size policy counts',
     rightLabel: 'Raw counters · what the patch shows',
@@ -37,17 +53,20 @@ export const copy = {
   },
 
   routes: {
-    one: { index: '01', title: 'Run diffdevil yourself', meta: 'CLI · TypeScript · GitHub Actions',
+    one: { index: '01', label: 'CLI · TypeScript · GitHub Actions', title: 'Run diffdevil yourself',
       body: 'One workflow file gives a repository size labels, no comments, and an inspectable summary. The same engine answers local queries, script conditions, the TypeScript API and agents.',
       file: '.github/workflows/size.yml', fileMeta: 'writes labels · pull-requests: write', cta: 'Install',
       links: [['Label PRs in one file', 'getStarted'], ['Query locally', 'localAutomation'], ['Author a policy', 'recipes']] as const },
-    two: { index: '02', title: 'Understand it in a minute',
-      body: 'Paste a public pull request or open a curated example. See the same result as terminal, data, GitHub preview and explanation. Read-only, no account.',
-      cta: 'Open the playground', placeholder: 'https://github.com/owner/repo/pull/123', button: 'Analyze' },
-    three: { index: '03', title: 'Let it run for you',
-      body: 'Install the GitHub App once. No workflow file, no token assembly, no runner upkeep. Native check summaries, org defaults, your .diffdevil.yml still wins. Hosted by us or self-hosted.',
-      cta: 'Install the App', links: [['Why choose the App', '/app/#why'], ['Self-hosting', '/app/#self-host']] as const },
+    two: { index: '02', label: 'Browser extension', title: 'Bring Changed into GitHub',
+      body: 'See replacement-aware Changed, per-file decomposition, personal or repository size bands, and inspectable reports directly on pull requests. No workflow, App installation, or repository write access required.',
+      cta: 'Add to Chrome', link: 'Explore the browser extension' },
+    three: { index: '03', label: 'GitHub App', title: 'Let it run for you',
+      body: 'Install the GitHub App once for automatic analysis, native checks, labels, comments, and managed configuration. No workflow file, token assembly, or runner upkeep.',
+      cta: 'Install the App', links: [['How the App works', '/app/'], ['Self-hosting', '/app/#self-host']] as const },
   },
+
+  /** Where a refused PR URL is explained; used by the playground. */
+  prPlaceholder: 'https://github.com/owner/repo/pull/123',
 
   measure: {
     eyebrow: '#measure', h2: 'Why changed lines exist',
@@ -145,7 +164,6 @@ export const copy = {
     body: 'Install once on the repositories you choose. The App runs the same engine and the same .diffdevil.yml as the Action, and stays up to date without a workflow file, a token, or a runner to babysit.',
     ctaPrimary: 'Install on GitHub', ctaSecondary: 'How the App works', ctaTertiary: 'Self-host it',
     foot: 'Open source (AGPL-3.0). Official hosted version with a useful free allowance; self-hosting documented with its real requirements.',
-    notOpen: 'The hosted App is not yet open for installation. The Action route works today; self-hosting is documented.',
     benefits: [
       ['Install once', 'No workflow file for ordinary use, no personal token assembly, no runner minutes or upgrades.'],
       ['Native check summaries', 'Evidence, raw and replacement-aware facts, rule results and observed effects on the PR itself.'],
@@ -156,15 +174,29 @@ export const copy = {
     ] as const,
   },
 
+  extension: {
+    name: 'diffdevil for GitHub', add: 'Add to Chrome',
+    h2: 'Changed, where you already review',
+    body: 'diffdevil for GitHub adds replacement-aware totals, per-file decomposition, size bands and inspectable reports directly to pull requests, without requiring a repository workflow or write access.',
+    columns: [
+      ['See the useful number', 'Aggregate and per-file Changed, with added-only, deleted-only, and modified positions kept distinct.'],
+      ['Apply your own policy', 'See virtual size bands even when the repository has no workflow, labels, App installation, or diffdevil configuration.'],
+      ['Open the evidence', 'Inspect the complete report, policy origin, exclusions, and evidence quality without leaving the pull request.'],
+    ] as const,
+    explore: 'Explore diffdevil for GitHub', trust: 'Local analysis by default. Raw patches are not persisted.',
+    specimenNote: 'Authored pull-request scene in the visual language of GitHub. Every figure is the engine result for',
+    distinction: 'The extension changes your view. The App runs for the repository.',
+  },
+
   support: {
     h2: 'Support diffdevil',
     body: 'diffdevil is open source and built in the open. If it saves your team time, a sponsorship or a star helps keep it maintained.',
-    sponsor: 'Sponsor', sponsorSoon: 'Sponsoring is not open yet.', star: 'Star us on GitHub',
+    sponsor: 'Sponsor', star: 'Star us on GitHub',
   },
 
   playground: {
     title: 'Playground', sub: 'Read-only · public pull requests and curated examples · no account · nothing stored',
-    tabPr: 'Public pull request', tabExamples: 'Curated examples',
+    tabPr: 'Public pull request', tabExamples: 'Curated pull requests',
     inputLabel: 'Pull request URL', inputHint: 'Public github.com pull requests only. Never asks for a token.', inputButton: 'Analyze public PR',
     analyzed: 'Analyzed', edit: 'edit', copyUrl: 'copy URL',
     fixtures: 'Frozen fixtures', fixturesHint: 'Repository-owned, deterministic. Work without touching GitHub.',

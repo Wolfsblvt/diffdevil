@@ -33,7 +33,7 @@
   --sl-shadow-sm: none; --sl-shadow-md: none; --sl-shadow-lg: none;
   --sl-sidebar-width: 230px;
   --sl-content-width: 760px;
-  --sl-nav-height: 60px;
+  --sl-nav-height: 62px;
   --sl-text-code: 12.5px;
   --sl-text-body: 14px;
   --sl-line-height: 1.6;
@@ -87,9 +87,9 @@ starlight-toc a[aria-current="true"] { color: var(--fg); font-weight: 600; }
   .sidebar-content { width: calc(var(--docs-nav-w) + var(--page-x)); margin-inline-start: auto; padding: 18px 14px 0 calc(var(--page-x) + 5px); }
   .main-frame { padding-inline-start: var(--docs-rail); padding-inline-end: var(--docs-edge); }
 }
-/* Below the rail breakpoint Starlight shows its own round menu button at the right edge;
-   the header cluster makes room for it instead of sliding underneath. */
-@media (max-width: 49.99rem) { .page > .header .site-header .wrap { padding-inline-end: calc(var(--page-x) + var(--sl-menu-button-size) + 12px); } }
+/* Below the rail breakpoint the manual's own rail toggle moves out of the header, which is
+   fully occupied by the shared controls, into the "On this page" bar directly beneath it. */
+@media (max-width: 49.99rem) { .sl-menu-button { top: calc(var(--sl-nav-height) + (var(--sl-mobile-toc-height) - var(--sl-menu-button-size)) / 2); inset-inline-end: var(--page-x); } }
 .pagination-links a { border-color: var(--hair); border-radius: var(--r-block); box-shadow: none; }
 .pagination-links a:hover { border-color: var(--hair-strong); }
 .pagination-links .link-title { font-size: 14px; }

@@ -10,8 +10,8 @@
 //                reading order until it is set) on `[data-support-art]`
 //   · ground   → `--support-ground` (defaults to a plain raised surface gradient)
 //   · icons    → the `sponsor` and `star` slots of the icon registry
-//   · sponsor  → PUBLIC_SPONSOR_URL; until a funding destination exists the action is
-//                shown as unavailable rather than pointed somewhere invented
+//   · sponsor  → PUBLIC_SPONSOR_URL, a configured live destination like every other action link
+import ActionLink from '../ActionLink.astro';
 import Icon from '../Icon.astro';
 import SectionHead from '../SectionHead.astro';
 import { copy } from '../../data/copy';
@@ -24,11 +24,8 @@ const c = copy.support;
       <div class="support-text">
         <SectionHead id="support" title={c.h2} body={c.body} small />
         <div class="support-actions">
-          {SPONSOR_URL
-            ? <a class="btn btn-primary" href={SPONSOR_URL} rel="noopener" data-support-action="sponsor"><Icon name="sponsor" size={15} />{c.sponsor}</a>
-            : <span class="btn btn-primary" aria-disabled="true" title={c.sponsorSoon} data-support-action="sponsor"><Icon name="sponsor" size={15} />{c.sponsor}</span>}
+          <ActionLink class="btn btn-primary" href={SPONSOR_URL} data-support-action="sponsor"><Icon name="sponsor" size={15} />{c.sponsor}</ActionLink>
           <a class="btn btn-secondary" href={GITHUB} rel="noopener" data-support-action="star"><Icon name="star" size={15} />{c.star}</a>
-          {!SPONSOR_URL && <span class="caption">{c.sponsorSoon}</span>}
         </div>
       </div>
       <div class="support-art" data-support-art aria-hidden="true"></div>
