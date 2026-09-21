@@ -279,8 +279,9 @@ pre.astro-code, .code-body.astro-code { background: transparent !important; whit
 html[data-theme="dark"] .theme-glyph-dark { color: #f0f2f5; }
 html[data-theme="light"] .theme-capsule { background: #f5f6f8; border-color: #b4b7be; left: 37px; }
 html[data-theme="light"] .theme-glyph-light { color: #161b24; }
-html[data-theme-pref="auto"] .theme-capsule { width: 36px; }
-html[data-theme-pref="auto"][data-theme="light"] .theme-capsule { left: 25px; }
+/* in Automatic the capsule reaches 3px past the dot, so its edge does not crowd it; the control keeps its width */
+html[data-theme-pref="auto"] .theme-capsule { width: 39px; }
+html[data-theme-pref="auto"][data-theme="light"] .theme-capsule { left: 22px; }
 html[data-theme-pref="auto"] .theme-dot { width: 5px; height: 5px; box-shadow: 0 0 0 1.5px color-mix(in srgb, currentColor 35%, transparent); }
 html[data-theme-pref="auto"][data-theme="dark"] .theme-dot { color: #f0f2f5; }
 html[data-theme-pref="auto"][data-theme="light"] .theme-dot { color: #161b24; }
