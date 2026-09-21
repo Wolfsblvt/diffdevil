@@ -28,7 +28,7 @@ export const groups = [
     { source: 'docs/guides/policy-recipes.md', slug: 'recipes/policy-recipes', tested: true },
   ] },
   { label: 'CLI', entries: [
-    { source: 'docs/integration/cli.md', slug: 'cli', title: 'CLI' },
+    { source: 'docs/integration/cli.md', faq: ["different-results", "machine-output"], slug: 'cli', title: 'CLI' },
     { source: 'docs/PRESENTATION.md', slug: 'cli/presentation', title: 'Human and agent presentation' },
   ] },
   { label: 'Actions', entries: [
