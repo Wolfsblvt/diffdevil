@@ -1,0 +1,17 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only
+import Base from '../layouts/Base.astro';
+import { Content, frontmatter } from '../../../../docs/manual/faq.md';
+import '../styles/faq.css';
+import { FAQ_CANONICAL } from '../../faq-content.mjs';
+---
+<Base title={frontmatter.title} description={frontmatter.description} surface="FAQ" current="faq" siteSearch={false}>
+  <div class="wrap faq-page" data-faq-page data-faq-canonical={FAQ_CANONICAL}>
+    <div class="faq-content"><Content /></div>
+    <p class="visually-hidden" role="status" aria-live="polite" data-faq-status></p>
+  </div>
+</Base>
+<script>
+  import { wireFaq } from '../lib/faq-client.mjs';
+  wireFaq();
+</script>
