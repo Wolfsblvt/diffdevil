@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 /**
  * Global search over the Pagefind index the build writes for the whole site. One modal on
- * every route; each hit says whether it is a manual page or a site page. The index and
+ * every route; each hit identifies a manual page, site page or individual FAQ answer. The index and
  * its runtime are loaded on first open, never on page load.
  */
 import { copy } from '../data/copy';
 
 interface SubResult { readonly title: string; readonly url: string; readonly excerpt: string }
-interface ResultData { readonly url: string; readonly excerpt: string; readonly meta: { readonly title?: string }; readonly sub_results?: readonly SubResult[] }
+interface ResultData { readonly url: string; readonly excerpt: string; readonly meta: { readonly title?: string; readonly kind?: string; readonly category?: string; readonly standing?: string; readonly identifier?: string }; readonly sub_results?: readonly SubResult[] }
 interface Pagefind {
   init?: () => Promise<void>;
   debouncedSearch: (query: string, options?: object, delay?: number) => Promise<{ results: { data: () => Promise<ResultData> }[] } | null>;
@@ -23,26 +23,35 @@ function load(): Promise<Pagefind | undefined> {
   return engine;
 }
 
-/** A manual page lives under /docs/; everything else is a page of the site. */
-export function kindOf(url: string): 'docs' | 'site' {
-  return /^\/docs(\/|$)/u.test(new URL(url, location.origin).pathname) ? 'docs' : 'site';
+/** Manual pages and independently indexed FAQ answers retain distinct result kinds. */
+export function kindOf(url: string, metadataKind?: string): 'docs' | 'site' | 'faq' {
+  const target = new URL(url, location.origin);
+  if (metadataKind === 'FAQ' || (target.pathname === '/faq/' && target.hash)) return 'faq';
+  return /^\/docs(\/|$)/u.test(target.pathname) || target.hostname === 'docs.diffdevil.dev' ? 'docs' : 'site';
 }
 
 function hit(data: ResultData): HTMLLIElement {
   const c = copy.search;
-  const kind = kindOf(data.url);
+  const kind = kindOf(data.url, data.meta.kind);
   const item = document.createElement('li');
   const link = document.createElement('a');
   link.className = 'search-hit'; link.href = data.url; link.dataset.kind = kind;
   const head = document.createElement('span'); head.className = 'search-hit-head';
-  const chip = document.createElement('span'); chip.className = 'chip-meta search-kind'; chip.textContent = kind === 'docs' ? c.kindDocs : c.kindSite;
+  const chip = document.createElement('span'); chip.className = 'chip-meta search-kind'; chip.textContent = kind === 'faq' ? c.kindFaq : kind === 'docs' ? c.kindDocs : c.kindSite;
   const title = document.createElement('span'); title.className = 'search-hit-title'; title.textContent = data.meta.title ?? data.url;
   head.append(chip, title);
   const excerpt = document.createElement('span'); excerpt.className = 'search-hit-excerpt';
   excerpt.innerHTML = data.excerpt; // Pagefind escapes the page text and adds only <mark>.
-  link.append(head, excerpt);
+  link.append(head);
+  if (kind === 'faq') {
+    const context = document.createElement('span');
+    context.className = 'search-hit-excerpt search-faq-context';
+    context.textContent = [data.meta.category, data.meta.identifier, data.meta.standing].filter(Boolean).join(' · ');
+    link.append(context);
+  }
+  link.append(excerpt);
   item.append(link);
-  const subs = (data.sub_results ?? []).filter(sub => sub.url !== data.url).slice(0, 3);
+  const subs = (kind === 'faq' ? [] : data.sub_results ?? []).filter(sub => sub.url !== data.url).slice(0, 3);
   if (subs.length > 0) {
     const list = document.createElement('ul'); list.className = 'search-subs';
     for (const sub of subs) {
@@ -85,6 +94,14 @@ export function wireSearch(): void {
     if ((event as SubmitEvent).submitter) return;
     event.preventDefault();
     results.querySelector<HTMLAnchorElement>('a')?.click();
+  });
+  // Same-page question links must leave the modal before the FAQ moves keyboard focus.
+  results.addEventListener('click', event => {
+    if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+    const link = event.target instanceof Element ? event.target.closest('a[href]') : null;
+    if (!(link instanceof HTMLAnchorElement)) return;
+    const target = new URL(link.href);
+    if (target.origin === location.origin && target.pathname === location.pathname && target.hash) dialog.close();
   });
   dialog.addEventListener('keydown', event => {
     // A search field swallows the first Escape to clear itself; here Escape always closes.
