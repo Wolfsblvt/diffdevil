@@ -65,6 +65,13 @@ export const groups = [
     { source: 'docs/PRIVACY-AND-DATA.md', slug: 'github-app/privacy-and-data', title: 'Privacy and data' },
     { source: 'apps/github-app/README.md', slug: 'github-app/self-hosting', title: 'Self-hosting the runtime' },
   ] },
+  // The browser extension's manual pages are authored with the extension application.
+  // They render as soon as that source is in the repository; until then the group is empty.
+  { label: 'Browser extension', entries: [
+    { source: 'apps/browser-extension/README.md', slug: 'browser-extension', title: 'diffdevil for GitHub', optional: true },
+    { source: 'apps/browser-extension/PRIVACY.md', slug: 'browser-extension/privacy', title: 'Extension privacy', optional: true },
+    { source: 'docs/integration/browser-extension.md', slug: 'browser-extension/integration', title: 'Browser integration', optional: true },
+  ] },
   { label: 'Troubleshooting', entries: [
     { link: '/docs/get-started/auto-label-pull-requests/#troubleshooting', label: 'Labels did not appear' },
     { link: '/docs/policies-and-detail/types-and-measurements/', label: 'A count is unavailable or bounded' },

@@ -1,67 +1,82 @@
 ---
 // SPDX-License-Identifier: AGPL-3.0-only
-import GitHubMark from '../GitHubMark.astro';
+// Hero: text beside the specimen. The headline stays on one line at desktop width and the
+// specimen column is the wider one, ending on the same right edge as every block below.
+// In the specimen the replacement-aware result leads: big number, word, evidence chip at
+// the right edge. The raw counters are deliberately smaller and grey.
+import ActionLink from '../ActionLink.astro';
 import { copy } from '../../data/copy';
-import { docPaths, paths } from '../../data/site';
+import { CHROME_WEB_STORE_URL, docPaths, paths } from '../../data/site';
 import { display, evidenceGlyph, exact, heroPatch, reportFromDiff } from '../../lib/engine-node';
 
 // The specimen numbers are the engine's, computed at build from the actual patch.
 const report = reportFromDiff(heroPatch);
 const lines = report.totals.lines, raw = report.totals.raw;
-const changed = display(lines.changed);
 const status = lines.changed.status;
 const diffLines = heroPatch.split('\n').slice(3).filter(Boolean);
+const c = copy.hero;
+const dot = ' · ';
 ---
 <section class="hero">
   <div class="wrap hero-grid">
     <div class="hero-text">
-      <p class="eyebrow">{copy.hero.eyebrow}</p>
-      <h1 class="display">{copy.hero.h1}</h1>
-      <p class="strap">{copy.hero.strap}</p>
-      <p class="body-l why">{copy.hero.why}</p>
+      <p class="eyebrow eyebrow-caps">{c.eyebrow}</p>
+      <h1 class="display">{c.h1}</h1>
+      <p class="strap">{c.strap}</p>
+      <p class="why">{c.why}</p>
       <div class="hero-ctas">
-        <a class="btn btn-primary" href={docPaths.getStarted}>{copy.hero.ctaPrimary}</a>
-        <a class="btn btn-secondary" href={paths.playground}>{copy.hero.ctaSecondary}</a>
-        <a class="link-plain hero-tertiary" href={paths.app}><GitHubMark /> {copy.hero.ctaTertiary}</a>
+        <ActionLink class="btn btn-l btn-primary" href={CHROME_WEB_STORE_URL} data-cta="add-to-chrome">{c.ctaPrimary}</ActionLink>
+        <a class="btn btn-l btn-secondary" href={docPaths.getStarted}>{c.ctaSecondary}</a>
+        <a class="hero-tertiary" href={paths.playground}>{c.ctaTertiary} →</a>
       </div>
     </div>
     <figure class="machine specimen">
-      <figcaption class="code-head"><span>{copy.hero.specimenHead}</span><span class="spacer"></span><span>{copy.hero.specimenSemantics}</span></figcaption>
-      <pre class="code-body diff"><code>{diffLines.map(line => <span class={line.startsWith('+') ? 'add' : line.startsWith('-') ? 'del' : 'hunk'}>{line.startsWith('+') || line.startsWith('-') ? (line[0] === '+' ? '+ ' : '− ') + line.slice(1).trimStart() : line}{'\n'}</span>)}</code></pre>
+      <figcaption class="machine-head"><span>{c.specimenHead}</span><span>{c.specimenSemantics}</span></figcaption>
+      <pre class="specimen-diff diff"><code>{diffLines.map(line => {
+        const sign = line[0] === '+' ? 'add' : line[0] === '-' ? 'del' : undefined;
+        return sign
+          ? <span><span class={sign}>{sign === 'add' ? '+' : '−'}</span> {line.slice(1).trimStart()}{'\n'}</span>
+          : <span class="hunk">{line}{'\n'}</span>;
+      })}</code></pre>
       <div class="specimen-facts">
         <div class="specimen-cell result-frame">
-          <p class="label">{copy.hero.leftLabel}</p>
-          <p class="specimen-value"><span class="metric-m">{changed}</span><span class="metric-unit">changed</span> <span class="chip-ev" data-status={status}>{evidenceGlyph[status]} {status}</span></p>
-          <p class="fact-block"><span class="k">~</span> {display(lines.modified)} modified · <span class="k">+</span> {display(lines.added)} added-only · <span class="k">−</span> {display(lines.deleted)} deleted-only</p>
+          <p class="label">{c.leftLabel}</p>
+          <p class="specimen-value"><span class="metric-m">{display(lines.changed)}</span><span class="metric-unit">changed</span><span class="chip-ev" data-status={status}>{evidenceGlyph[status]} {status}</span></p>
+          <p class="specimen-sub"><span>~ {display(lines.modified)} modified</span>{dot}<span>+ {display(lines.added)} added-only</span>{dot}<span>− {display(lines.deleted)} deleted-only</span></p>
         </div>
         <div class="specimen-cell">
-          <p class="label">{copy.hero.rightLabel}</p>
-          <p class="specimen-value"><span class="metric-m raw">+{display(raw.added)} −{display(raw.deleted)}</span></p>
-          <p class="fact-block">raw churn {display(raw.churn)} · {copy.hero.rightSub}</p>
+          <p class="label">{c.rightLabel}</p>
+          <p class="specimen-value raw"><span>+{display(raw.added)}</span><span>−{display(raw.deleted)}</span></p>
+          <p class="specimen-sub muted">raw churn {display(raw.churn)} · {c.rightSub}</p>
         </div>
       </div>
-      <p class="specimen-foot">Calling this "{exact(raw.churn)} changed lines" would misrepresent the edit. Two lines were replaced, one was added.</p>
+      <p class="machine-foot">Calling this "{exact(raw.churn)} changed lines" would misrepresent the edit. Two lines were replaced, one was added.</p>
     </figure>
   </div>
 </section>
 
 <style>
-  .hero { padding: 64px 0 56px; }
-  .hero-grid { display: grid; grid-template-columns: 1fr 1.1fr; gap: 48px; align-items: center; }
-  .display { font-size: 58px; line-height: 1; letter-spacing: var(--tracking-display); font-weight: 700; margin: 14px 0 18px; }
-  .strap { font-size: 20px; line-height: 1.4; font-weight: 500; margin: 0 0 14px; }
-  .why { color: var(--fg-2); max-width: 52ch; }
-  .hero-ctas { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 22px; }
-  .hero-tertiary { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; font-size: 13px; color: var(--fg-2); }
-  .specimen .code-body { padding-top: 10px; padding-bottom: 10px; }
-  .specimen-facts { display: grid; grid-template-columns: 1.15fr 1fr; gap: 0; border-top: 1px solid #2c303a; }
-  .specimen-cell { padding: 14px 16px; }
+  .hero { padding: 64px 0 48px; }
+  .hero-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: 44px; align-items: center; }
+  .hero-text { display: flex; flex-direction: column; gap: 18px; }
+  .display { font-size: 58px; line-height: 1; letter-spacing: var(--tracking-display); font-weight: 700; white-space: nowrap; }
+  .strap { font-size: 20px; font-weight: 600; margin: 0; }
+  .why { margin: 0; font-size: 15.5px; line-height: 1.6; color: var(--fg-2); max-width: 480px; }
+  .hero-ctas { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 4px; }
+  .hero-tertiary { margin-left: 6px; font-size: 13.5px; font-weight: 600; color: var(--fg-2); }
+  .hero-tertiary:hover { color: var(--fg); text-decoration: underline; text-underline-offset: 3px; }
+  .specimen-diff { padding: 16px 18px; font-size: 13.5px; line-height: 1.7; color: #f0f2f5; }
+  .specimen-facts { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); border-top: 1px solid #2c303a; }
+  .specimen-cell { padding: 18px 20px; }
   .specimen-cell + .specimen-cell { border-left: 1px solid #2c303a; }
-  .specimen-cell .label { margin: 0 0 10px; }
-  .specimen-value { margin: 0 0 8px; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
-  .specimen-value .raw { color: #a9b8cc; font-weight: 500; font-size: 40px; }
-  .specimen-cell .fact-block { margin: 0; color: #a9b8cc; }
-  .specimen-foot { margin: 0; padding: 12px 16px; border-top: 1px solid #2c303a; font-size: 12.5px; color: #a9b8cc; }
-  @media (max-width: 900px) { .hero-grid { grid-template-columns: 1fr; gap: 28px; } .display { font-size: 40px; } }
-  @media (max-width: 640px) { .hero { padding-top: 32px; } .display { font-size: 36px; } .specimen-facts { grid-template-columns: 1fr; } .specimen-cell + .specimen-cell { border-left: 0; border-top: 1px solid #2c303a; } }
+  .specimen-value { margin: 6px 0 0; display: flex; align-items: baseline; gap: 12px; }
+  .specimen-value .chip-ev { margin-left: auto; align-self: center; }
+  /* raw counters are subordinate: smaller and grey, never competing with the changed-lines result */
+  .specimen-value.raw { gap: 10px; font-size: 26px; font-weight: 600; color: #b4b7be; font-variant-numeric: tabular-nums; line-height: 48px; }
+  .specimen-sub { margin: 10px 0 0; font-family: var(--font-mono); font-size: 13px; color: #b4b7be; }
+  .specimen-sub.muted { color: #828690; }
+  .specimen-sub span { white-space: nowrap; }
+  @media (max-width: 1240px) { .display { font-size: 4.4vw; } }
+  @media (max-width: 900px) { .hero-grid { grid-template-columns: minmax(0, 1fr); gap: 28px; } .display { font-size: 40px; white-space: normal; } }
+  @media (max-width: 640px) { .hero { padding-top: 32px; } .display { font-size: 36px; } .specimen-facts { grid-template-columns: minmax(0, 1fr); } .specimen-cell + .specimen-cell { border-left: 0; border-top: 1px solid #2c303a; } .specimen-value.raw { line-height: 1.2; } }
 </style>

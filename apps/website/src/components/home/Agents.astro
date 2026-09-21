@@ -1,100 +1,124 @@
 ---
 // SPDX-License-Identifier: AGPL-3.0-only
-// #agents: equal-width human/agent proof, then two independently expanding capability
-// cards. Every meaningful interaction inside a card opens that card's details while
-// completing the action (rule 3a). Plain DOM script; no framework on this page.
+// #agents: heading, then an equal-width human/agent comparison, then two independently
+// expanding capability cards. Both comparison panes print what the real CLI prints for
+// exact.json under full.yml; the website never re-renders a presenter. The panes are
+// bounded in height, so a long presenter scrolls inside its pane instead of stretching
+// the section. Every meaningful interaction inside a card opens that card's details
+// while completing the action (rule 3a). Plain DOM script; no framework on this page.
 import SectionHead from '../SectionHead.astro';
-import GitHubMark from '../GitHubMark.astro';
+import SectionLinks from '../SectionLinks.astro';
+import Icon from '../Icon.astro';
 import { copy } from '../../data/copy';
 import { ORIGIN, docPaths, paths } from '../../data/site';
-import { querySpecimen } from '../../lib/specimens';
+import { runCli } from '../../lib/cli-specimen';
 import { skillSource, skillVersion } from '../../lib/sources';
 
 const c = copy.agents;
-const { human, agent } = querySpecimen();
+const human = runCli(['analyze']).stdout;
+const agent = runCli(['analyze', '--format', 'agent']).stdout;
 const skill = skillSource();
 const version = skillVersion(skill);
-const resolveDoc = (key: string): string => (docPaths as Record<string, string>)[key] ?? key;
+// The front matter and opening of the real skill file, when the repository carries one.
+const skillExcerpt = skill?.text.split('\n').slice(0, 14).join('\n');
 const withOrigin = (text: string): string => text.replaceAll('{origin}', ORIGIN);
 const intents = copy.setupIntents;
-const defaultIntent = 'actions';
+const first = intents.find(intent => intent.id === 'actions')!;
 ---
-<section class="section" id="agents">
+<section class="section" data-section="agents">
   <div class="wrap">
-    <SectionHead id="agents" title={c.h2} body={c.body} links={c.links} />
+    <SectionHead id="agents" title={c.h2} body={c.body} />
     <div class="compare">
-      <figure class="machine">
-        <figcaption class="code-head"><span>{c.compareLeft[0]}</span><span class="spacer"></span><span>{c.compareLeft[1]}</span></figcaption>
-        <pre class="code-body"><code>{human}</code></pre>
+      <figure class="machine pane">
+        <figcaption class="machine-head"><span>{c.compareLeft[0]}</span><span>{c.compareLeft[1]}</span></figcaption>
+        <pre class="pane-body" tabindex="0" aria-label={c.compareLeft[0]}><code>{human}</code></pre>
       </figure>
-      <figure class="machine">
-        <figcaption class="code-head"><span>{c.compareRight[0]}</span><span class="spacer"></span><span>{c.compareRight[1]}</span></figcaption>
-        <pre class="code-body"><code>{agent}</code></pre>
+      <figure class="machine pane">
+        <figcaption class="machine-head"><span>{c.compareRight[0]}</span><span>{c.compareRight[1]}</span></figcaption>
+        <pre class="pane-body" tabindex="0" aria-label={c.compareRight[0]}><code>{agent}</code></pre>
+        <p class="pane-foot">{c.compareFoot}</p>
       </figure>
     </div>
-    <p class="caption compare-foot">{c.compareFoot}</p>
 
     <div class="cards">
-      <article class="card card-strong agent-card" id="agents-skill" data-agent-card>
-        <h3 class="h3">{c.skill.title}</h3>
-        <p class="caption mono">{c.skill.metaPrefix}{version ? ` · v${version}` : ''}</p>
-        <p class="body-l">{c.skill.body}</p>
-        <div class="card-actions">
-          <button class="btn btn-primary" type="button" data-copy={withOrigin(c.skill.copyInstruction)} data-copy-done={c.skill.ctaDone} data-opens-card><span data-copy-label>{c.skill.cta}</span></button>
-          <span class="chip-meta">{c.skill.path}</span>
-          {skill && <a class="link" href={paths.skill}>{c.skill.link}</a>}
+      <article class="agent-card" id="agents-skill" data-agent-card>
+        <div class="agent-top">
+          <div class="agent-head"><h3 class="agent-title">{c.skill.title}</h3><span class="agent-sub">{c.skill.metaPrefix}{version ? ` · v${version}` : ''}</span></div>
+          <p class="agent-body">{c.skill.body}</p>
+          <div class="agent-actions">
+            <button class="btn btn-primary" type="button" data-copy={withOrigin(c.skill.copyInstruction)} data-copy-done={c.skill.ctaDone} data-opens-card><span data-copy-label>{c.skill.cta}</span></button>
+            <span class="strip">{c.skill.path}</span>
+            {skill && <a class="agent-link" href={paths.skill}>{c.skill.link} →</a>}
+          </div>
         </div>
-        <div class="details-region" id="agents-skill-details" hidden>
-          <dl class="detail-list">
+        <div class="agent-details" id="agents-skill-details" hidden>
+          {skillExcerpt && (
+            <figure class="machine machine-inner">
+              <figcaption class="machine-head"><span>SKILL.md{version ? ` · v${version}` : ''}</span><a href={paths.skill}>View raw</a></figcaption>
+              <pre class="code-body"><code>{skillExcerpt}</code></pre>
+            </figure>
+          )}
+          <dl class="skill-cells">
             {[c.skill.teaches, c.skill.reinforces, c.skill.current].map(([term, text]) => <div><dt>{term}</dt><dd>{text}</dd></div>)}
           </dl>
-          <p class="small">{c.skill.install}</p>
-          <p class="small">{c.skill.runtime}</p>
-          <p class="small">{c.skill.authority}</p>
-          <ul class="links">{c.skill.links.map(([label, key]) => <li><a class="link" href={resolveDoc(key)}>{label}</a></li>)}</ul>
+          <dl class="skill-rows">
+            <dt>install</dt><dd>{c.skill.install}</dd>
+            <dt>runtime</dt><dd>{c.skill.runtime}</dd>
+            <dt>authority</dt><dd>{c.skill.authority}</dd>
+          </dl>
+          <SectionLinks links={c.skill.links} class="agent-links" />
         </div>
         <button class="disclosure" type="button" aria-expanded="false" aria-controls="agents-skill-details" data-disclosure data-label-closed={c.skill.disclosure} data-label-open={c.skill.disclosureOpen}>
-          <span><span class="label-main" data-disclosure-label>{c.skill.disclosure}</span><br /><span class="label-sub">{c.skill.disclosureSub}</span></span>
-          <span class="spacer"></span><span class="box" aria-hidden="true" data-disclosure-glyph>↓</span>
+          <span class="label-text"><span class="label-main" data-disclosure-label>{c.skill.disclosure}</span><span class="label-sub">{c.skill.disclosureSub}</span></span>
+          <span class="box" aria-hidden="true" data-disclosure-glyph>↓</span>
         </button>
       </article>
 
-      <article class="card agent-card" id="agents-setup" data-agent-card data-setup-card>
-        <h3 class="h3">{c.setup.title}</h3>
-        <p class="caption mono">{c.setup.meta}</p>
-        <div class="selector">
-          <span class="small selector-lead" id="setup-lead">{c.setup.lead}</span>
-          <div class="chips" role="radiogroup" aria-labelledby="setup-lead">
-            {intents.map(intent => (
-              <button class="chip" type="button" role="radio" aria-checked={intent.id === defaultIntent ? 'true' : 'false'} tabindex={intent.id === defaultIntent ? 0 : -1} data-intent={intent.id}>
-                {'github' in intent && intent.github && <GitHubMark />}{intent.chip}{'chipSub' in intent && intent.chipSub && <span class="caption">· {intent.chipSub}</span>}
+      <article class="agent-card" id="agents-setup" data-agent-card data-setup-card>
+        <div class="agent-top">
+          <div class="agent-head"><h3 class="agent-title">{c.setup.title}</h3><span class="agent-sub">{c.setup.meta}</span></div>
+          <div class="selector" role="radiogroup" aria-labelledby="setup-lead">
+            <div class="selector-row">
+              <span class="selector-lead" id="setup-lead">{c.setup.lead}</span>
+              {intents.slice(0, 3).map(intent => (
+                <button class="chip" type="button" role="radio" aria-checked={intent.id === first.id ? 'true' : 'false'} tabindex={intent.id === first.id ? 0 : -1} data-intent={intent.id}>
+                  {'github' in intent && intent.github && <Icon name="github" size={13} />}{intent.chip}
+                </button>
+              ))}
+            </div>
+            {intents.slice(3).map(intent => (
+              <button class="chip" type="button" role="radio" aria-checked="false" tabindex="-1" data-intent={intent.id}>
+                {intent.chip}{'chipSub' in intent && intent.chipSub && <span class="chip-sub">· {intent.chipSub}</span>}
               </button>
             ))}
           </div>
+          <p class="agent-body agent-body-fixed" data-intent-description>{first.description}</p>
+          <div class="agent-actions">
+            <button class="btn btn-primary" type="button" data-copy={withOrigin(first.prompt)} data-copy-done={c.setup.ctaDone} data-opens-card data-intent-copy><span data-copy-label>{c.setup.cta(first.short)}</span></button>
+            <span class="strip" data-intent-path>{first.path}</span>
+            <span class="agent-note">{c.setup.note}</span>
+          </div>
         </div>
-        <p class="body-l" data-intent-description>{intents.find(i => i.id === defaultIntent)!.description}</p>
-        <div class="card-actions">
-          <button class="btn btn-primary" type="button" data-copy={withOrigin(intents.find(i => i.id === defaultIntent)!.prompt)} data-copy-done={c.setup.ctaDone} data-opens-card data-intent-copy><span data-copy-label>{c.setup.cta(intents.find(i => i.id === defaultIntent)!.short)}</span></button>
-          <span class="chip-meta" data-intent-path>{intents.find(i => i.id === defaultIntent)!.path}</span>
-          <span class="caption">{c.setup.note}</span>
-        </div>
-        <div class="details-region" id="agents-setup-details" hidden>
-          <figure class="machine">
-            <figcaption class="code-head"><span>prompt</span><span class="spacer"></span><button type="button" data-copy-from="setup-prompt-text" data-copy-done="Copied ✓" data-opens-card>Copy</button></figcaption>
-            <pre class="code-body"><code id="setup-prompt-text" data-intent-prompt>{withOrigin(intents.find(i => i.id === defaultIntent)!.prompt)}</code></pre>
+        <div class="agent-details" id="agents-setup-details" hidden>
+          <figure class="machine machine-inner">
+            <figcaption class="machine-head"><span>prompt · <span data-intent-title>{first.chip}</span></span><button type="button" data-copy data-copy-from="setup-prompt-text" data-copy-done="Copied ✓" data-opens-card><span data-copy-label>Copy</span></button></figcaption>
+            <pre class="code-body"><code id="setup-prompt-text" data-intent-prompt>{withOrigin(first.prompt)}</code></pre>
           </figure>
           <div class="grid-2">
-            <div><p class="label">{c.setup.stepsHead}</p><ol class="steps" data-intent-steps>{intents.find(i => i.id === defaultIntent)!.steps.map(step => <li>{step}</li>)}</ol></div>
-            <div><p class="label">{c.setup.authorityHead}</p><p class="small" data-intent-authority>{intents.find(i => i.id === defaultIntent)!.authority}</p></div>
+            <div><p class="label steps-head">{c.setup.stepsHead}</p><ol class="steps" data-intent-steps>{first.steps.map(step => <li>{step}</li>)}</ol></div>
+            <div class="authority">
+              <div class="notice-proposed"><strong>{c.setup.authorityHead}</strong><div data-intent-authority>{first.authority}</div></div>
+              <p class="authority-foot">{c.setup.foot} <a class="link" href={docPaths.agents} data-intent-doc>{c.setup.footLink}</a></p>
+            </div>
           </div>
-          <p class="caption">{c.setup.foot} <a class="link" href={docPaths.agents} data-intent-doc>{c.setup.footLink}</a></p>
         </div>
         <button class="disclosure" type="button" aria-expanded="false" aria-controls="agents-setup-details" data-disclosure data-label-closed={c.setup.disclosure} data-label-open={c.setup.disclosureOpen}>
-          <span><span class="label-main" data-disclosure-label>{c.setup.disclosure}</span><br /><span class="label-sub">{c.setup.disclosureSub}</span></span>
-          <span class="spacer"></span><span class="box" aria-hidden="true" data-disclosure-glyph>↓</span>
+          <span class="label-text"><span class="label-main" data-disclosure-label>{c.setup.disclosure}</span><span class="label-sub">{c.setup.disclosureSub}</span></span>
+          <span class="box" aria-hidden="true" data-disclosure-glyph>↓</span>
         </button>
       </article>
     </div>
+    <SectionLinks links={c.links} />
   </div>
 </section>
 
@@ -102,7 +126,7 @@ const defaultIntent = 'actions';
   const cards = document.querySelectorAll('[data-agent-card]');
   for (const card of cards) {
     const control = card.querySelector('[data-disclosure]');
-    const region = card.querySelector('.details-region');
+    const region = card.querySelector('.agent-details');
     const setOpen = open => {
       region.hidden = !open;
       card.classList.toggle('is-open', open);
@@ -129,6 +153,7 @@ const defaultIntent = 'actions';
       copyButton.dataset.copy = intent.prompt;
       copyButton.querySelector('[data-copy-label]').textContent = ctaTemplate.replace('{intent}', intent.short);
       setup.querySelector('[data-intent-path]').textContent = intent.path;
+      setup.querySelector('[data-intent-title]').textContent = intent.chip;
       setup.querySelector('[data-intent-prompt]').textContent = intent.prompt;
       const steps = setup.querySelector('[data-intent-steps]'); steps.replaceChildren(...intent.steps.map(step => { const li = document.createElement('li'); li.textContent = step; return li; }));
       setup.querySelector('[data-intent-authority]').textContent = intent.authority;
@@ -150,22 +175,41 @@ const defaultIntent = 'actions';
 </script>
 
 <style>
-  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-  .compare .code-body { font-size: 12px; }
-  .compare-foot { margin: 10px 0 0; }
-  .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 32px; align-items: start; }
-  .agent-card { display: grid; gap: 12px; }
-  .agent-card .caption { margin: 0; }
-  .agent-card .body-l { margin: 0; color: var(--fg-2); }
-  .card-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
-  .detail-list { margin: 0; display: grid; gap: 8px; }
-  .detail-list div { display: grid; grid-template-columns: 110px 1fr; gap: 10px; font-size: 13px; }
-  .detail-list dt { font-weight: 600; } .detail-list dd { margin: 0; color: var(--fg-2); }
-  .selector { display: grid; gap: 8px; }
-  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
-  .chips .chip { min-height: 32px; }
-  .chips .chip :global(.gh) { width: 13px; height: 13px; }
-  .steps { margin: 0; padding-left: 18px; font-size: 13px; color: var(--fg-2); display: grid; gap: 4px; }
-  .agent-card .small { margin: 0; color: var(--fg-2); }
-  @media (max-width: 900px) { .compare, .cards { grid-template-columns: 1fr; } }
+  .compare, .cards { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; }
+  .cards { align-items: start; }
+  .pane { display: flex; flex-direction: column; }
+  /* a presenter longer than the accepted short specimen scrolls inside its pane */
+  .pane-body { padding: 14px 18px; font-size: 12.5px; line-height: 1.6; color: #f0f2f5; flex: 1; max-height: 340px; overflow: auto; white-space: pre; overflow-wrap: normal; }
+  .pane-foot { margin: 0; padding: 8px 18px; border-top: 1px solid #2c303a; font-size: 12px; color: #828690; }
+  .agent-card { border: 1px solid var(--hair); border-radius: var(--r-card); background: var(--bg-raised); display: flex; flex-direction: column; overflow: hidden; min-width: 0; transition: border-color var(--dur) var(--ease); }
+  .agent-card:first-child { border-color: var(--hair-strong); }
+  .agent-card.is-open { border-color: var(--accent); }
+  .agent-top { padding: 22px 24px 18px; display: flex; flex-direction: column; gap: 12px; }
+  .agent-head { display: flex; justify-content: space-between; align-items: baseline; gap: 4px 12px; flex-wrap: wrap; }
+  .agent-title { font-size: 19px; font-weight: 700; }
+  .agent-sub { font-family: var(--font-mono); font-size: 12px; color: var(--fg-3); white-space: nowrap; margin-left: auto; }
+  .agent-body { margin: 0; color: var(--fg-2); font-size: 14px; line-height: 1.6; }
+  .agent-body-fixed { min-height: 44px; }
+  .agent-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+  .agent-link, .agent-note { font-size: 13px; color: var(--fg-2); }
+  .agent-link:hover { color: var(--fg); text-decoration: underline; text-underline-offset: 3px; }
+  .selector { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .selector-row { display: flex; flex-wrap: nowrap; gap: 6px; align-items: center; min-width: 0; }
+  .selector-lead { font-size: 13px; color: var(--fg-3); margin-right: 4px; white-space: nowrap; }
+  .agent-details { border-top: 1px solid var(--hair); padding: 18px 24px 20px; display: flex; flex-direction: column; gap: 14px; background: var(--bg); }
+  .agent-details[hidden] { display: none; }
+  .agent-details > * { min-width: 0; }
+  .skill-cells { margin: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; font-size: 12.5px; color: var(--fg-2); }
+  .skill-cells div { padding: 10px 12px; border: 1px solid var(--hair); border-radius: var(--r-block); }
+  .skill-cells dt { font-weight: 700; color: var(--fg); } .skill-cells dd { margin: 2px 0 0; }
+  .skill-rows { margin: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 14px; font-size: 13px; color: var(--fg-2); align-items: baseline; }
+  .skill-rows dt { font-family: var(--font-mono); font-size: 12px; color: var(--fg-3); } .skill-rows dd { margin: 0; }
+  .agent-details :global(.agent-links) { font-size: 13px; gap: 6px 16px; }
+  .steps-head { margin-bottom: 6px; }
+  .steps { margin: 0; padding-left: 18px; font-size: 13px; color: var(--fg-2); line-height: 1.7; }
+  .authority { display: flex; flex-direction: column; gap: 10px; }
+  .authority-foot { margin: 0; font-size: 12.5px; color: var(--fg-2); }
+  .authority-foot .link { color: var(--fg); }
+  @media (max-width: 900px) { .compare, .cards { grid-template-columns: minmax(0, 1fr); } }
+  @media (max-width: 640px) { .selector-row { flex-wrap: wrap; } .skill-cells { grid-template-columns: minmax(0, 1fr); } .agent-top, .agent-details { padding-inline: 16px; } }
 </style>

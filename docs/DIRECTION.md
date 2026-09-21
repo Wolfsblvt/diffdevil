@@ -35,6 +35,15 @@ diffdevil remains an open-source CLI, TypeScript library, and workflow Actions t
 The managed App is an optional convenience for adopters, not the product's centre.
 The public playground is a separate free learning and configuration experience.
 
+The three ways to operate diffdevil are: run it yourself (CLI, TypeScript API, GitHub
+Actions), bring Changed into GitHub (the browser extension, *diffdevil for GitHub*: a
+personal in-place view with no repository installation, workflow or write access), and
+let it run for you (the GitHub App: repository-level managed operation). The public
+website presents them in that order, makes the extension the easiest adoption route and
+its primary action, and keeps the open package visibly first-class. The playground is
+the trial surface, not a fourth route. The public category descriptor is *Composable
+diff analysis and automation for GitHub and the CLI.*
+
 Current source contains the first read-only measurement playground under
 `apps/playground/`, backed by the shared engine and versioned response contract.
 That exact application is live at

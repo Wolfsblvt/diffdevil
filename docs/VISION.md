@@ -94,9 +94,17 @@ A public read-only playground should let somebody enter a public pull-request UR
 
 The playground is a real product surface, not a hand-maintained demo. It uses the same engine and public contracts, applies no repository effects, and never turns a public PR into permission to inspect private data.
 
-It has a dedicated page with explanations, curated reproducible examples, selectable presets, editable settings, terminal and agent/data views, a preview of proposed GitHub effects, and an explanation of why each rule matched. A compact entry on the homepage introduces that same experience. Users can leave with a CLI invocation, Action example, or repository configuration; installation of the managed App is not the required destination.
+It has a dedicated page with explanations, curated reproducible examples, selectable presets, editable settings, terminal and agent/data views, a preview of proposed GitHub effects, and an explanation of why each rule matched. It is the no-install trial and learning surface, not an operating route: the website leads to it from the header, the hero and the measurement explanation rather than presenting it as a fourth way to run diffdevil. Users can leave with a CLI invocation, Action example, or repository configuration; installation of the managed App is not the required destination.
 
 Public PR experiments require no account. Private-PR playground analysis is not selected. Learning, configuration experiments, and anonymous public analysis remain independent of App installation, authentication, history, billing, and private repository access.
+
+### See it where the review already happens
+
+A browser extension, **diffdevil for GitHub**, should bring the same facts into GitHub pull requests for one person, with nothing to install in the repository: replacement-aware Changed for the pull request and for each file, the added-only, deleted-only and modified decomposition, raw churn kept visible as its own fact, a virtual size band from the reader's own policy or the repository's trusted base-revision `.diffdevil.yml`, and an inspectable report anchored in place.
+
+It needs no workflow, App installation, repository ownership or write access, and it is useful on its own. It analyzes locally with the same engine and policy language, keeps raw patches out of persistent storage, performs no provider writes of its own, and never presents a local policy result as observed GitHub or App state. It is the easiest way to adopt diffdevil, not a replacement for the open CLI, library and Actions, and not a companion that requires the App.
+
+> The extension changes your view. The App runs for the repository.
 
 ### Use it without becoming its operator
 
@@ -140,6 +148,7 @@ The selected complete shape is:
 - human, scalar, lines, NUL, JSON, JSONL, environment, Markdown, and compact agent-facing projections where each earns its use;
 - managed labels, owned comments, and label-definition validation/synchronization;
 - an optional managed GitHub App that operates the same engine and repository-owned policy, with native checks, a configuration dashboard, and opt-in quantitative history;
+- an optional browser extension for GitHub pull requests that runs the same engine locally in the reader's browser;
 - a public read-only PR playground backed by the same reports and projections;
 - a website and documentation experience rendered from repository-owned product and manual sources;
 - application, website, and service code in this repository and release lifecycle without changing the reusable package boundary.

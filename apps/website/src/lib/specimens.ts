@@ -3,7 +3,7 @@
  * Build-time specimens for the narrative surfaces. Every number is computed by the
  * engine from a repository-owned asset; the assets are the same files the tests execute.
  */
-import { agent, createPlan, evaluate, exact, human, policyFromYaml, readRepositoryFile, reportFromDiff, reportFromSaved, unwrap } from './engine-node';
+import { agent, createPlan, evaluate, exact, human, policyDocumentFromYaml, policyFromDocument, policyFromYaml, readRepositoryFile, reportFromDiff, reportFromSaved, unwrap } from './engine-node';
 import type { Report } from '@wolfsblvt/diffdevil/core';
 
 export const files = {
@@ -43,11 +43,43 @@ export function querySpecimen() {
   return { report, evaluated, human: human(evaluated), agent: agent(evaluated) };
 }
 
-/** `#policy`: a desired plan for the teaching patch under the full policy. */
+/**
+ * `#policy`: the full policy as the reader wrote it, and the desired plan the engine
+ * creates for exact.json under it — the same 178-line comparison `#measure` shows, so the
+ * page tells one story from number to band to proposed label.
+ */
 export function policySpecimen() {
-  const report = reportFromDiff(readSpecimen('reviewDiff'));
-  const policy = policyFromYaml(readSpecimen('fullPolicy'), 'full.yml');
-  const result = evaluate(policy, report);
+  const text = readSpecimen('fullPolicy');
+  // The parsed document, typed loosely: the surface projects two of its keys as an excerpt.
+  const document = policyDocumentFromYaml(text, 'full.yml') as Record<string, any>;
+  const report = reportFromSaved(readSpecimen('exactReport'));
+  const result = evaluate(policyFromYaml(text, 'full.yml'), report);
   const plan = unwrap(createPlan(result, { repository: 'owner/repo', pullRequest: 123 }));
-  return { report, result, plan };
+  return { document, report, result, plan };
+}
+
+/**
+ * The browser-extension scenes: the same exact.json under full.yml that `#measure` shows,
+ * projected the way diffdevil for GitHub projects it — aggregate, then one row per file.
+ * A file's virtual band is the engine's answer for that file alone under the same policy
+ * (the policy evaluated with `includeOnly` set to that path); an excluded file stays a
+ * measurable fact and receives no band.
+ */
+export function extensionSpecimen() {
+  const { report, result, policy: _policy } = measureSpecimen();
+  const document = policyDocumentFromYaml(readSpecimen('fullPolicy'), 'full.yml') as Record<string, any>;
+  const saved = reportFromSaved(readSpecimen('exactReport'));
+  const bands: { id: string; label: string | undefined }[] = document.bands.size.ranges.map((range: { id: string }) => ({ id: range.id, label: document.rules.size.effects.labels.byBand[range.id] as string | undefined }));
+  const band = result.rules.size?.band;
+  const files = report.files.map(file => {
+    let fileBand: string | undefined;
+    if (file.included) {
+      const only = structuredClone(document);
+      only.defaults = { ...(only.defaults ?? {}), paths: { ...(only.defaults?.paths ?? {}), includeOnly: [file.path] } };
+      const own = evaluate(policyFromDocument(only, 'full.yml'), saved).rules.size?.band;
+      fileBand = own?.status === 'resolved' ? own.id : undefined;
+    }
+    return { file, band: fileBand, reason: file.inclusionReasons?.[0]?.subject };
+  });
+  return { report, bands, band: band?.status === 'resolved' ? band.id : undefined, files };
 }

@@ -152,6 +152,38 @@ test('site copy keeps design placeholders only where the build resolves them', (
   assert.doesNotMatch(copy, /Managed App/u);
 });
 
+test('each copied setup prompt is one sentence that names its instructions; the linked Markdown owns the detail', () => {
+  const prompts = [...read('apps/website/src/data/copy.ts').matchAll(/^\s+prompt: '([^']+)',$/gmu)].map(match => match[1]);
+  assert.equal(prompts.length, 4);
+  for (const prompt of prompts) {
+    assert.match(prompt, /\{origin\}\/setup\/(cli|actions|app|everything)\.md/u);
+    assert.equal(prompt.split(/(?<=[.!?])\s+/u).length, 1, prompt);
+  }
+});
+
+test('the icon registry maps every semantic name to a glyph that exists in its installed local collection', () => {
+  const registry = read('apps/website/src/data/icons.ts');
+  const lucide = JSON.parse(read('node_modules/@iconify-json/lucide/icons.json')).icons;
+  const brands = JSON.parse(read('node_modules/@iconify-json/simple-icons/icons.json')).icons;
+  const map = [...registry.matchAll(/^\s+'?([a-z-]+)'?: '(ui|brand|product):([^']+)',$/gmu)].map(match => ({ name: match[1], route: match[2], id: match[3] }));
+  for (const slot of ['search', 'chevron', 'social-links', 'github', 'discord', 'bluesky', 'chrome', 'theme-light', 'theme-dark', 'brand', 'changed', 'raw-churn', 'bands']) assert.ok(map.some(entry => entry.name === slot), slot);
+  assert.equal(map.find(entry => entry.name === 'social-links').id, 'waypoints', 'the shared header standard names this glyph');
+  for (const entry of map) {
+    if (entry.route === 'ui') assert.ok(lucide[entry.id], `lucide:${entry.id}`);
+    else if (entry.route === 'brand') assert.ok(brands[entry.id], `simple-icons:${entry.id}`);
+    else assert.match(registry, new RegExp(`'${entry.id}': stroked\\(`, 'u'), entry.id);
+  }
+});
+
+test('install and store actions are configured destinations, never hard-coded in components', () => {
+  const site = read('apps/website/src/data/site.ts');
+  assert.match(site, /CHROME_WEB_STORE_URL[^\n]+PUBLIC_CHROME_WEB_STORE_URL/u);
+  assert.match(site, /APP_INSTALL_URL[^\n]+PUBLIC_APP_INSTALL_URL/u);
+  for (const file of ['components/Header.astro', 'components/InstallEntries.astro', 'components/Footer.astro', 'components/home/Hero.astro', 'components/home/Entrances.astro', 'pages/extension.astro']) {
+    assert.doesNotMatch(read(`apps/website/src/${file}`), /chromewebstore\.google\.com|github\.com\/apps\//u, file);
+  }
+});
+
 import { spawnSync } from 'node:child_process';
 import { skillVersionOf } from './src/lib/skill-version.mjs';
 

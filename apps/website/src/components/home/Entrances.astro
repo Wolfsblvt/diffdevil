@@ -1,79 +1,82 @@
 ---
 // SPDX-License-Identifier: AGPL-3.0-only
-// Three entrances with quiet route indices 01/02/03. Indices are decorative text, not
-// steps. Route 01 spans two rows at ≥ 900; below, they stack in order.
+// The three ways to operate diffdevil, with quiet route indices 01/02/03 (decorative, not
+// steps). 01 is the open product centre and spans the left column; on the right the browser
+// extension takes roughly 60 % of the height and the GitHub App the rest. Below 900 they
+// stack in order. The Playground is the no-install trial, not an operating route, so it
+// has no card here: the header, the hero and `#measure` already lead to it. All three
+// action rows sit on the bottom edge of their cards; 01 and 03 therefore share one baseline.
+import ActionLink from '../ActionLink.astro';
 import CodeBlock from '../CodeBlock.astro';
-import GitHubMark from '../GitHubMark.astro';
+import Projection from '../extension/Projection.astro';
 import { copy } from '../../data/copy';
-import { docPaths, paths } from '../../data/site';
-import { readSpecimen } from '../../lib/specimens';
+import { APP_INSTALL_URL, CHROME_WEB_STORE_URL, docPaths, paths } from '../../data/site';
+import { display } from '../../lib/engine-node';
+import { extensionSpecimen, readSpecimen } from '../../lib/specimens';
 const one = copy.routes.one, two = copy.routes.two, three = copy.routes.three;
 // The homepage shows the tested workflow verbatim without its concurrency block; the docs show the complete file.
 const workflow = readSpecimen('sizeWorkflow').replace(/concurrency:\n(?: {2}.*\n)+/u, '');
 const docLink = (key: string): string => (docPaths as Record<string, string>)[key] ?? key;
+const { report, bands, band } = extensionSpecimen();
+const lines = report.totals.lines, raw = report.totals.raw;
 ---
-<section class="entrances wrap">
+<section class="entrances wrap" aria-label="Ways to operate diffdevil">
   <article class="card card-strong route route-1">
-    <h2 class="route-title"><span class="route-index">{one.index}</span> {one.title}</h2>
-    <p class="caption route-meta">{one.meta}</p>
-    <p class="body-l">{one.body}</p>
+    <div class="route-head">
+      <h2 class="route-title"><span class="route-index">{one.index}</span>{one.title}</h2>
+      <span class="route-meta">{one.label}</span>
+    </div>
+    <p class="route-body">{one.body}</p>
     <CodeBlock code={workflow} lang="yaml" file={one.file} scope={one.fileMeta} id="size-workflow" />
     <div class="route-actions">
       <a class="btn btn-primary" href={docPaths.getStarted}>{one.cta}</a>
-      <ul class="links">{one.links.map(([label, key]) => <li><a class="link" href={docLink(key)}>{label}</a></li>)}</ul>
+      {one.links.map(([label, key], index) => <a class:list={['route-link', { 'is-first': index === 0 }]} href={docLink(key)}>{label} →</a>)}
     </div>
   </article>
   <article class="card route route-2">
-    <h2 class="route-title"><span class="route-index">{two.index}</span> {two.title}</h2>
-    <p class="body-l">{two.body}</p>
-    <form class="pr-entry" action={paths.playground} method="get" data-pr-entry novalidate>
-      <label class="visually-hidden" for="home-pr-url">Pull request URL</label>
-      <input class="input" id="home-pr-url" name="url" type="url" inputmode="url" placeholder={two.placeholder} autocomplete="off" spellcheck="false" />
-      <button class="btn btn-inverse" type="submit">{two.button}</button>
-    </form>
-    <p class="status" role="alert" data-pr-error hidden></p>
-    <a class="btn btn-secondary" href={paths.playground}>{two.cta}</a>
+    <div class="route-head">
+      <h2 class="route-title route-title-s"><span class="route-index">{two.index}</span>{two.title}</h2>
+      <span class="route-meta">{two.label}</span>
+    </div>
+    <p class="route-body route-body-s">{two.body}</p>
+    <div class="route-projection machine machine-inner" data-route-projection>
+      <Projection changed={display(lines.changed)} added={display(lines.added)} deleted={display(lines.deleted)} modified={display(lines.modified)} rawAdded={display(raw.added)} rawDeleted={display(raw.deleted)} bands={bands} band={band} standing="" />
+    </div>
+    <div class="route-actions">
+      <ActionLink class="btn btn-primary" href={CHROME_WEB_STORE_URL} data-cta="add-to-chrome">{two.cta}</ActionLink>
+      <a class="route-link is-first" href={paths.extension}>{two.link} →</a>
+    </div>
   </article>
   <article class="card route route-3">
-    <h2 class="route-title"><span class="route-index">{three.index}</span> <GitHubMark /> {three.title}</h2>
-    <p class="body-l">{three.body}</p>
+    <div class="route-head">
+      <h2 class="route-title route-title-s"><span class="route-index">{three.index}</span>{three.title}</h2>
+      <span class="route-meta">{three.label}</span>
+    </div>
+    <p class="route-body route-body-s">{three.body}</p>
     <div class="route-actions">
-      <a class="btn btn-primary" href={paths.app}>{three.cta}</a>
-      <ul class="links">{three.links.map(([label, href]) => <li><a class="link" href={href}>{label}</a></li>)}</ul>
+      <ActionLink class="btn btn-secondary" href={APP_INSTALL_URL} data-cta="install-app">{three.cta}</ActionLink>
+      {three.links.map(([label, href], index) => <a class:list={['route-link', { 'is-first': index === 0 }]} href={href}>{label} →</a>)}
     </div>
   </article>
 </section>
 
-<script>
-  import { copy } from '../../data/copy';
-  // Route 02 validates the canonical public PR shape on submit and hands off to the
-  // one playground analysis journey. The homepage never renders a result itself.
-  const form = document.querySelector<HTMLFormElement>('[data-pr-entry]');
-  const error = document.querySelector<HTMLElement>('[data-pr-error]');
-  form?.addEventListener('submit', event => {
-    event.preventDefault();
-    const input = form.querySelector<HTMLInputElement>('input')!;
-    const value = input.value.trim();
-    const match = /^https:\/\/github\.com\/([A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?)\/([A-Za-z0-9._-]+)\/pull\/([1-9]\d*)(?:[/?#].*)?$/u.exec(value);
-    if (!match) {
-      if (error) { error.hidden = false; error.textContent = copy.playground.states.refused(value || '(empty)'); }
-      input.focus();
-      return;
-    }
-    location.assign(`/playground/?pr=${match[1]}/${match[2]}/${match[3]}`);
-  });
-</script>
-
 <style>
-  .entrances { display: grid; grid-template-columns: 1.15fr 1fr; grid-template-rows: auto auto; gap: 14px; padding-bottom: 56px; }
-  .route-1 { grid-row: 1 / span 2; }
-  .route { display: grid; gap: 14px; align-content: start; }
-  .route-title { display: flex; align-items: baseline; gap: 10px; font-size: 19px; }
+  .entrances { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); grid-template-rows: minmax(0, 3fr) minmax(0, 2fr); gap: 14px; padding-bottom: 56px; }
+  .route { display: flex; flex-direction: column; gap: 12px; }
+  .route-1 { grid-row: 1 / span 2; padding: 24px 26px 20px; gap: 14px; }
+  .route-2, .route-3 { padding: 20px 24px; }
+  .route-head { display: flex; justify-content: space-between; align-items: baseline; gap: 4px 16px; flex-wrap: wrap; }
+  .route-title { display: inline-flex; align-items: baseline; gap: 12px; font-size: 19px; font-weight: 700; }
+  .route-title-s { font-size: 17px; }
   .route-index { font-family: var(--font-mono); font-weight: 500; font-size: 12px; color: var(--fg-3); }
-  .route-meta { margin: -8px 0 0; }
-  .route .body-l { margin: 0; color: var(--fg-2); }
-  .route-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 22px; }
-  .pr-entry { display: flex; gap: 8px; }
-  .pr-entry .input { flex: 1; }
-  @media (max-width: 900px) { .entrances { grid-template-columns: 1fr; } .route-1 { grid-row: auto; } }
+  .route-meta { font-family: var(--font-mono); font-size: 12px; color: var(--fg-3); }
+  .route-body { margin: 0; color: var(--fg-2); font-size: 14px; max-width: 56ch; }
+  .route-body-s { font-size: 13.5px; max-width: none; }
+  .route-projection { padding: 12px 14px; }
+  /* bottom-aligned: every action row sits on the bottom edge of its card */
+  .route-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin-top: auto; padding-top: 4px; }
+  .route-link { font-size: 13.5px; color: var(--fg-2); }
+  .route-link.is-first { font-weight: 600; color: var(--fg); }
+  .route-link:hover { color: var(--fg); text-decoration: underline; text-underline-offset: 3px; }
+  @media (max-width: 900px) { .entrances { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; } .route-1 { grid-row: auto; } }
 </style>

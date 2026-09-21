@@ -6,7 +6,7 @@ This directory owns the public examples the website and playground present: the 
 
 ## Frozen fixtures
 
-[`fixtures.mjs`](fixtures.mjs) lists the deterministic examples. Each names a repository-owned input under `docs/examples/` (a unified diff analyzed at build time, or a saved `diffdevil.report` specimen re-read by the engine) and the policy it is evaluated with. They run without GitHub. Their expected semantic outcomes are asserted by `apps/website/website.test.mjs`.
+[`fixtures.mjs`](fixtures.mjs) lists the deterministic examples. Each names a repository-owned input under `docs/examples/` (a unified diff analyzed at build time, or a saved `diffdevil.report` specimen re-read by the engine) and the policy it is evaluated with. They run without GitHub. Their expected semantic outcomes are asserted by `apps/website/website.test.mjs`. Fixtures are controlled inputs: the playground offers them and the homepage links one, but the public `/examples/` page lists real pull requests only.
 
 ## Curated real pull requests
 

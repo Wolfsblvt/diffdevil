@@ -32,6 +32,13 @@ export function wireCopyButtons(root: ParentNode): void {
       const source = button.dataset.copyFrom ? document.getElementById(button.dataset.copyFrom)?.textContent ?? '' : button.dataset.copy ?? '';
       const done = await copyText(source);
       if (!done) return;
+      // A fixed-width control shows its confirmation in place: both texts share one grid
+      // cell, so the control (and everything beside it) keeps exactly its width.
+      if (button.hasAttribute('data-copy-state')) {
+        button.classList.add('is-copied');
+        window.setTimeout(() => button.classList.remove('is-copied'), 2000);
+        return;
+      }
       const label = button.querySelector<HTMLElement>('[data-copy-label]') ?? button;
       const original = label.textContent ?? '';
       label.textContent = button.dataset.copyDone ?? 'Copied ✓';

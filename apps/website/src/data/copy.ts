@@ -6,21 +6,45 @@
  * engine at build or run time.
  */
 export const copy = {
-  nav: { docs: 'Docs', playground: 'Playground', examples: 'Examples', app: 'App', github: 'GitHub ↗', install: 'npm i -D @wolfsblvt/diffdevil' },
-  theme: { label: 'Theme', options: ['System', 'Dark', 'Light'] as const },
+  nav: {
+    docs: 'Docs', playground: 'Playground', examples: 'Examples', menu: 'Menu', install: 'Install', dashboard: 'Dashboard',
+    command: 'npm i -D @wolfsblvt/diffdevil', copied: 'Copied ✓', source: 'Source on GitHub',
+  },
+  /** Install⌄: a menu of the site's own pages. Every entry is [title, short description]. */
+  install: {
+    extension: ['Browser extension', 'Changed and policy directly inside GitHub'],
+    app: ['GitHub App', 'Automatic checks, labels and managed operation'],
+    open: ['CLI and GitHub Actions', 'Run the open package yourself'],
+  },
+  theme: {
+    label: 'Theme', dark: 'Dark', light: 'Light',
+    auto: (resolved: string) => `Automatic, using ${resolved}`,
+    next: (label: string) => `Next click: ${label}.`,
+  },
+  community: {
+    trigger: 'Community and social links', tooltip: 'Community', heading: 'Community',
+    discord: ['Discord', 'Wolfsblvt Works community'], bluesky: ['Bluesky', 'Development updates'], works: ['Wolfsblvt Works', 'About the maker'], github: ['GitHub', 'Source code'],
+  },
+  search: {
+    trigger: 'Search', title: 'Search diffdevil', placeholder: 'Search the site and the manual', close: 'Close search',
+    hint: 'Searches site pages and the manual. Every result says which one it is.', kindDocs: 'Docs', kindSite: 'Site',
+    unavailable: 'The search index is part of the built site and is not available in this preview.',
+    none: (query: string) => `Nothing found for "${query}".`,
+    count: (total: number, shown: number) => (total > shown ? `${total} results · showing the first ${shown}` : `${total} result${total === 1 ? '' : 's'}`),
+  },
   footer: {
     line: 'One deterministic core. CLI, TypeScript API, GitHub Actions, GitHub App, playground and agents read the same report.',
     licence: 'Engine MIT · applications AGPL-3.0-only · docs CC BY 4.0 · brand reserved',
     get: 'Get', learn: 'Learn', project: 'Project',
   },
-  a11y: { copied: 'Copied to clipboard.', permalink: 'Permalink to this section', menu: 'Menu' },
+  a11y: { copied: 'Copied to clipboard.', menu: 'Menu' },
 
   hero: {
-    eyebrow: 'Composable diff analysis and automation for the CLI and GitHub Actions',
+    eyebrow: 'Composable diff analysis and automation for GitHub and the CLI',
     h1: 'The devil is in the diff.',
     strap: 'Measure changes. Match rules. Act on the result.',
-    why: 'Git gives you a patch and a pair of raw counters. diffdevil turns the details inside that diff into facts your scripts, workflows and agents can inspect, query, evaluate, and act on.',
-    ctaPrimary: 'Use the CLI / Actions', ctaSecondary: 'Try the playground', ctaTertiary: 'Or install the App',
+    why: 'Git gives you a patch and a pair of raw counters. diffdevil turns the details inside that diff into facts you can see in GitHub, query locally, evaluate in workflows, and hand to agents.',
+    ctaPrimary: 'Add to Chrome', ctaSecondary: 'Use the CLI / Actions', ctaTertiary: 'Try a public PR',
     specimenHead: 'src/Foo.cs · one edit block', specimenSemantics: 'replacement-lines-v1',
     leftLabel: 'Replacement-aware · what a size policy counts',
     rightLabel: 'Raw counters · what the patch shows',
@@ -29,17 +53,20 @@ export const copy = {
   },
 
   routes: {
-    one: { index: '01', title: 'Run diffdevil yourself', meta: 'CLI · TypeScript · GitHub Actions',
+    one: { index: '01', label: 'CLI · TypeScript · GitHub Actions', title: 'Run diffdevil yourself',
       body: 'One workflow file gives a repository size labels, no comments, and an inspectable summary. The same engine answers local queries, script conditions, the TypeScript API and agents.',
       file: '.github/workflows/size.yml', fileMeta: 'writes labels · pull-requests: write', cta: 'Install',
       links: [['Label PRs in one file', 'getStarted'], ['Query locally', 'localAutomation'], ['Author a policy', 'recipes']] as const },
-    two: { index: '02', title: 'Understand it in a minute',
-      body: 'Paste a public pull request or open a curated example. See the same result as terminal, data, GitHub preview and explanation. Read-only, no account.',
-      cta: 'Open the playground', placeholder: 'https://github.com/owner/repo/pull/123', button: 'Analyze' },
-    three: { index: '03', title: 'Let it run for you',
-      body: 'Install the GitHub App once. No workflow file, no token assembly, no runner upkeep. Native check summaries, org defaults, your .diffdevil.yml still wins. Hosted by us or self-hosted.',
-      cta: 'Install the App', links: [['Why choose the App', '/app/#why'], ['Self-hosting', '/app/#self-host']] as const },
+    two: { index: '02', label: 'Browser extension', title: 'Bring Changed into GitHub',
+      body: 'See replacement-aware Changed, per-file decomposition, personal or repository size bands, and inspectable reports directly on pull requests. No workflow, App installation, or repository write access required.',
+      cta: 'Install the extension', link: 'Explore the browser extension' },
+    three: { index: '03', label: 'GitHub App', title: 'Let it run for you',
+      body: 'Install the GitHub App once for automatic analysis, native checks, labels, comments, and managed configuration. No workflow file, token assembly, or runner upkeep.',
+      cta: 'Install the App', links: [['How the App works', '/app/'], ['Self-hosting', '/app/#self-host']] as const },
   },
+
+  /** Where a refused PR URL is explained; used by the playground. */
+  prPlaceholder: 'https://github.com/owner/repo/pull/123',
 
   measure: {
     eyebrow: '#measure', h2: 'Why changed lines exist',
@@ -62,7 +89,8 @@ export const copy = {
     eyebrow: '#policy', h2: 'Policy → plan → apply',
     body: 'Facts are not effects. Planning is not applying. A token being present never turns reading into writing. You declare the policy; diffdevil evaluates it, shows the intended effects, and mutates only when told to.',
     col1: ['§ Configured', '.diffdevil.yml', 'you own this'], col2: ['→ Proposed', 'diffdevil plan', 'inspectable, no writes'], col3: ['⟲ Applied + readback', 'diffdevil apply', 'explicit'],
-    col3Body: ['Read current labels on PR #123.', 'Group size: size/S present, size/M absent.', '− remove size/S', '+ add size/M', 'Unrelated labels untouched (3).', 'Applied 2 label changes. Readback confirms size/M.'],
+    col3Body: ['Read current labels on PR #123.', 'Group size: size/S present, size/M absent.', '  − remove size/S', '  + add size/M', 'Unrelated labels untouched (3).', 'Applied 2 label changes.', 'Readback confirms size/M.'],
+    col3Note: 'What an explicit apply reports. Readback is observed provider state, never assumed.',
     links: [['Policies and bands', 'policies'], ['Managed label groups and owned comments', 'templates'], ['Plan and apply in Actions', 'actions']] as const,
   },
 
@@ -98,22 +126,22 @@ export const copy = {
   setupIntents: [
     { id: 'cli', chip: 'the CLI locally', short: 'CLI', path: '/setup/cli.md',
       description: 'Installs the package as a dev dependency, writes a starter .diffdevil.yml with the size preset, and runs one analysis so you see a result before touching CI.',
-      prompt: 'Set up the diffdevil CLI in this repository by following {origin}/setup/cli.md exactly. Do not change CI or GitHub settings.',
+      prompt: 'Set up the diffdevil CLI in this repository by following {origin}/setup/cli.md exactly.',
       steps: ['Reads the versioned instructions', 'Adds @wolfsblvt/diffdevil as a dev dependency', 'Writes .diffdevil.yml from the size@1 preset', 'Runs diffdevil analyze and shows you the summary'],
       authority: 'Local files only. No GitHub access, no tokens, no writes outside your working tree.' },
     { id: 'actions', chip: 'GitHub Actions', short: 'Actions', path: '/setup/actions.md',
       description: 'Adds the one-file size workflow, explains the write permission it needs, and asks before enabling comments or touching existing workflows.',
-      prompt: 'Set up diffdevil GitHub Actions for this repository by following {origin}/setup/actions.md exactly. Ask me before adding write permissions or changing existing workflows.',
+      prompt: 'Set up diffdevil GitHub Actions for this repository by following {origin}/setup/actions.md exactly.',
       steps: ['Reads the versioned instructions', 'Adds .github/workflows/size.yml (root Action, size@1)', 'Explains pull-requests: write and pull_request_target before committing', 'Runs a read-only analysis locally and shows the summary'],
       authority: 'The workflow writes labels inside one managed group when it runs on GitHub. Nothing runs against GitHub until you merge it.' },
     { id: 'app', chip: 'the GitHub App', short: 'App', path: '/setup/app.md', github: true,
       description: 'Walks you to the App installation on GitHub, then aligns your .diffdevil.yml with the preset you chose so repository policy and App defaults agree.',
-      prompt: 'Set up the diffdevil GitHub App for this repository by following {origin}/setup/app.md exactly. Stop and hand back to me for the GitHub installation step.',
+      prompt: 'Set up the diffdevil GitHub App for this repository by following {origin}/setup/app.md exactly.',
       steps: ['Reads the versioned instructions', 'Hands you the installation link; you authorize it on GitHub', 'Writes or aligns .diffdevil.yml with the chosen preset', 'Checks that no Action writer targets the same labels'],
       authority: 'Installation and permissions are granted by you on GitHub. The agent never holds App credentials.' },
     { id: 'everything', chip: 'everything', chipSub: 'includes the Skill', short: 'full', path: '/setup/everything.md',
       description: 'CLI locally, repository policy, the Agent Skill, and one GitHub execution route — Actions or the App, never both writing the same labels.',
-      prompt: 'Set up diffdevil completely for this repository by following {origin}/setup/everything.md exactly, including the Agent Skill. Ask me which GitHub route to use before configuring it.',
+      prompt: 'Set up diffdevil completely for this repository by following {origin}/setup/everything.md exactly, including the Agent Skill.',
       steps: ['Reads the versioned instructions', 'CLI as dev dependency + .diffdevil.yml', 'Installs SKILL.md byte-identically as a skill', 'Asks: Actions or App? Configures one, never both'],
       authority: 'Asks before any GitHub-facing change. Refuses to enable a second writer for effects the other route already owns.' },
   ],
@@ -132,11 +160,10 @@ export const copy = {
   },
 
   app: {
-    eyebrow: '#app · diffdevil GitHub App', h2: 'Same diffdevil. Less plumbing.',
+    eyebrowTail: 'diffdevil GitHub App', h2: 'Same diffdevil. Less plumbing.', h2Lines: ['Same diffdevil.', 'Less plumbing.'] as const,
     body: 'Install once on the repositories you choose. The App runs the same engine and the same .diffdevil.yml as the Action, and stays up to date without a workflow file, a token, or a runner to babysit.',
     ctaPrimary: 'Install on GitHub', ctaSecondary: 'How the App works', ctaTertiary: 'Self-host it',
     foot: 'Open source (AGPL-3.0). Official hosted version with a useful free allowance; self-hosting documented with its real requirements.',
-    notOpen: 'The hosted App is not yet open for installation. The Action route works today; self-hosting is documented.',
     benefits: [
       ['Install once', 'No workflow file for ordinary use, no personal token assembly, no runner minutes or upgrades.'],
       ['Native check summaries', 'Evidence, raw and replacement-aware facts, rule results and observed effects on the PR itself.'],
@@ -147,9 +174,29 @@ export const copy = {
     ] as const,
   },
 
+  extension: {
+    name: 'diffdevil for GitHub', add: 'Add to Chrome',
+    h2: 'Changed, where you already review',
+    body: 'diffdevil for GitHub adds replacement-aware totals, per-file decomposition, size bands and inspectable reports directly to pull requests, without requiring a repository workflow or write access.',
+    columns: [
+      ['See the useful number', 'Aggregate and per-file Changed, with added-only, deleted-only, and modified positions kept distinct.'],
+      ['Apply your own policy', 'See virtual size bands even when the repository has no workflow, labels, App installation, or diffdevil configuration.'],
+      ['Open the evidence', 'Inspect the complete report, policy origin, exclusions, and evidence quality without leaving the pull request.'],
+    ] as const,
+    explore: 'Explore diffdevil for GitHub', trust: 'Local analysis by default. Raw patches are not persisted.',
+    specimenNote: 'Authored pull-request scene in the visual language of GitHub. Every figure is the engine result for',
+    distinction: 'The extension changes your view. The App runs for the repository.',
+  },
+
+  support: {
+    h2: 'Support diffdevil',
+    body: 'diffdevil is open source and built in the open. If it saves your team time, a sponsorship or a star helps keep it maintained.',
+    sponsor: 'Sponsor', star: 'Star us on GitHub',
+  },
+
   playground: {
     title: 'Playground', sub: 'Read-only · public pull requests and curated examples · no account · nothing stored',
-    tabPr: 'Public pull request', tabExamples: 'Curated examples',
+    tabPr: 'Public pull request', tabExamples: 'Curated pull requests',
     inputLabel: 'Pull request URL', inputHint: 'Public github.com pull requests only. Never asks for a token.', inputButton: 'Analyze public PR',
     analyzed: 'Analyzed', edit: 'edit', copyUrl: 'copy URL',
     fixtures: 'Frozen fixtures', fixturesHint: 'Repository-owned, deterministic. Work without touching GitHub.',
@@ -163,9 +210,9 @@ export const copy = {
     viewsH: 'See this result as', viewsSub: 'Four views. Same analysis. Each one is what a different reader of diffdevil gets.',
     tiles: [
       { id: 'terminal', glyph: '$', title: 'Terminal', meaning: 'What a developer sees from the CLI' },
-      { id: 'agent', glyph: '{}', title: 'Agent · data', meaning: 'What tools, scripts and agents consume' },
+      { id: 'agent', glyph: '{ }', title: 'Agent · data', meaning: 'What tools, scripts and agents consume' },
       { id: 'github', glyph: '→', title: 'GitHub preview', meaning: 'What diffdevil proposes to change on the PR' },
-      { id: 'explain', glyph: '§', title: 'Explanation', meaning: 'Why the result happened, key by key' },
+      { id: 'explain', glyph: '?', title: 'Explanation', meaning: 'Why the result happened, key by key' },
     ] as const,
     export: 'Export', exportSub: 'CLI, Action, .diffdevil.yml',
     terminalFoot: 'The real human presenter’s output for this report — not a website re-rendering.',
@@ -196,9 +243,12 @@ export const copy = {
   },
 
   examples: {
-    title: 'Examples', sub: 'Curated, engine-backed, one reason each',
-    intro: 'Every example is analyzed by the same engine that runs in the CLI and the Actions. Frozen fixtures are repository-owned inputs; real pull requests are snapshots with their provenance. Open one in the playground and change the policy against it.',
-    open: 'Open in the playground',
+    title: 'Examples',
+    howTitle: 'Why look at these',
+    how: 'A number is only convincing once you have seen it on a change you can judge yourself. Each example is a real pull request picked for one lesson: what a replacement-aware count says that raw churn hides, what an exclusion changes, or how a band is decided. Open one in the playground, change the policy, and watch the same engine that runs in your CI answer.',
+    howNote: 'Every figure on a card is the snapshot analysis of that pull request, with its head and date. Nothing here is typed in.',
+    realTitle: 'Real pull requests', realBody: 'Open-source pull requests we picked and snapshotted. They open from the snapshot; analyze the latest head on demand.',
+    open: 'Open in the playground', why: 'Why this PR',
   },
 
   docs: { title: 'Docs', search: 'Search the manual', tryIt: 'Try it in the playground' },

@@ -33,7 +33,7 @@
   --sl-shadow-sm: none; --sl-shadow-md: none; --sl-shadow-lg: none;
   --sl-sidebar-width: 230px;
   --sl-content-width: 760px;
-  --sl-nav-height: 60px;
+  --sl-nav-height: 62px;
   --sl-text-code: 12.5px;
   --sl-text-body: 14px;
   --sl-line-height: 1.6;
@@ -63,10 +63,33 @@
 .right-sidebar { border-inline-start-color: var(--hair); }
 starlight-toc a { font-size: 12.5px; }
 starlight-toc a[aria-current="true"] { color: var(--fg); font-weight: 600; }
-/* header row uses the site header; hide Starlight's default nav chrome pieces we replaced */
+/* ── docs shell on the shared page grid ─────────────────────────────────────────────
+   The manual keeps the site header exactly: the lockup sits at the same coordinate as on
+   every other route, because the header content is the same `.wrap`. The navigation rail
+   starts directly under the lockup, on the grid's left content edge. Everything left of
+   the rail's divider, header included, is the lighter raised ground, and the divider runs
+   the full height through the header. The header and lockup stay fixed; the rail scrolls
+   on its own beneath them; the page scrolls with the ordinary full-height scrollbar.
+   Only the shell is settled here. Article typography below is provisional until the
+   docs-page design lands. */
+:root {
+  --docs-nav-w: 230px;
+  /* distance from the viewport's left edge to the rail divider */
+  --docs-rail: calc(max(0px, (100% - var(--content-max)) / 2) + var(--page-x) + var(--docs-nav-w));
+  --docs-edge: max(0px, calc((100% - var(--content-max)) / 2));
+}
+.page > .header { padding: 0; border-bottom-color: var(--hair); background: var(--bg); }
+.page > .header .site-header { position: static; width: 100%; height: 100%; border: 0; background: transparent; }
 .header .site-title { display: none; }
-site-search button { border-radius: var(--r-control); border-color: var(--hair-strong); background: var(--bg-raised); color: var(--fg-2); font-size: 12.5px; }
-site-search kbd { background: var(--bg-raised-2); border-radius: 4px; color: var(--fg-3); }
+@media (min-width: 50rem) {
+  .page > .header { background: linear-gradient(to right, var(--bg-raised) 0, var(--bg-raised) calc(var(--docs-rail) - 1px), var(--hair) calc(var(--docs-rail) - 1px), var(--hair) var(--docs-rail), var(--bg) var(--docs-rail)); }
+  .sidebar-pane { width: var(--docs-rail); background: var(--bg-raised); border-inline-end: 1px solid var(--hair); scrollbar-width: thin; }
+  .sidebar-content { width: calc(var(--docs-nav-w) + var(--page-x)); margin-inline-start: auto; padding: 18px 14px 0 calc(var(--page-x) + 5px); }
+  .main-frame { padding-inline-start: var(--docs-rail); padding-inline-end: var(--docs-edge); }
+}
+/* Below the rail breakpoint the manual's own rail toggle moves out of the header, which is
+   fully occupied by the shared controls, into the "On this page" bar directly beneath it. */
+@media (max-width: 49.99rem) { .sl-menu-button { top: calc(var(--sl-nav-height) + (var(--sl-mobile-toc-height) - var(--sl-menu-button-size)) / 2); inset-inline-end: var(--page-x); } }
 .pagination-links a { border-color: var(--hair); border-radius: var(--r-block); box-shadow: none; }
 .pagination-links a:hover { border-color: var(--hair-strong); }
 .pagination-links .link-title { font-size: 14px; }
@@ -74,3 +97,6 @@ site-search kbd { background: var(--bg-raised-2); border-radius: 4px; color: var
 .docs-provenance { display: flex; flex-wrap: wrap; gap: 8px 18px; font-family: var(--font-mono); font-size: 11.5px; color: var(--fg-3); padding-top: 12px; border-top: 1px solid var(--hair); margin-top: 24px; }
 .docs-provenance a { color: var(--fg-2); }
 .docs-provenance a:hover { text-decoration: underline; }
+/* the manual's own rail toggle below the rail breakpoint, in the site's control grammar */
+.sl-menu-button { background: var(--bg-raised); color: var(--fg); border: 1px solid var(--hair-strong); border-radius: var(--r-control); box-shadow: none; }
+.sl-menu-button svg { color: var(--fg); }

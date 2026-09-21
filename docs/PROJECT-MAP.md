@@ -13,7 +13,7 @@ and disposable outputs without introducing independently versioned packages.
 | `src/diffdevil/` | Reusable MIT product core: shared engine, CLI, provider/Action hosts, core tests, contracts and presets. |
 | `apps/playground/` | AGPL application adapter: shared local/Worker public-PR route, browser assets, versioned response contract and application tests. |
 | `apps/github-app/` | AGPL managed-App adapter: verified webhook ingress, Queue execution, D1 recovery/history state, migrations and operator boundary. |
-| `apps/website/` | AGPL public website: Astro static output + Starlight manual rendered from repository Markdown, the complete playground as one lazy React island running the shared engine in the browser, examples catalogue, App page, legal/privacy routes. Built and qualified locally; not deployed by any command here. |
+| `apps/website/` | AGPL public website: Astro static output + Starlight manual rendered from repository Markdown, the complete playground as one lazy React island running the shared engine in the browser, examples catalogue, browser-extension and App pages, legal/privacy routes. Built and qualified locally; not deployed by any command here. |
 | `apps/shared/` | Small presenters both AGPL applications use (currently the App check-summary composer). |
 | `actions/` | Three sub-action entry points and their shared, committed runtime. |
 | `design/` | Canonical reusable visual reference: E3/W1/T2 with Foundation A grammars, tokens, explicit errata, and reserved production identity SVGs; not executable website source. |

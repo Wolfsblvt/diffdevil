@@ -1,108 +1,86 @@
 ---
 // SPDX-License-Identifier: AGPL-3.0-only
-// /examples/: two groups, Frozen fixtures and Real pull requests, as card grids. Each
-// card carries the lesson and the engine's own headline numbers for that example, and
-// opens the one playground journey with ?example=.
+// /examples/: real pull requests, each chosen for one lesson. A card carries the identity
+// of the PR, why it was picked, what it teaches, and the engine's own headline numbers for
+// that snapshot; it opens the one playground journey with ?example=. Controlled fixtures
+// are regression and manual inputs, not gallery cards, so they are not listed here.
+// The cards read whatever `lib/catalogue.ts` resolves; joining the shared real-PR
+// catalogue is a change to that resolver, not to this page.
 import Base from '../layouts/Base.astro';
-import GitHubMark from '../components/GitHubMark.astro';
+import Icon from '../components/Icon.astro';
+import SectionHead from '../components/SectionHead.astro';
 import { copy } from '../data/copy';
-import { paths, blobUrl } from '../data/site';
-import { fixtures } from '../../catalogue/fixtures.mjs';
+import { paths } from '../data/site';
 import { curated } from '../lib/catalogue';
-import { display, evaluate, evidenceGlyph, policyFromYaml, readRepositoryFile, reportFromDiff, reportFromSaved } from '../lib/engine-node';
+import { display, evaluate, evidenceGlyph, policyFromYaml } from '../lib/engine-node';
 
 const preset = policyFromYaml('version: 1\npresets: [size@1]\n', 'size@1');
-const fixtureCards = fixtures.map(fixture => {
-  const text = readRepositoryFile(fixture.source.path);
-  const base = fixture.source.kind === 'diff' ? reportFromDiff(text) : reportFromSaved(text);
-  const policyPath = fixture.policy.kind === 'file' ? fixture.policy.path! : undefined;
-  const policy = policyPath ? policyFromYaml(readRepositoryFile(policyPath), policyPath) : preset;
-  const result = evaluate(policy, base);
-  const report = result.report;
-  const metric = report.metrics?.[fixture.focus] ?? report.totals.lines.changed;
-  const band = Object.values(report.bands ?? {})[0];
-  return { ...fixture, policyName: policyPath ? policyPath.split('/').pop() : 'size@1', report, metric, band,
-    status: report.measurement.status, files: display(report.fileSet.total), churn: display(report.totals.raw.churn) };
-});
-const curatedCards = curated().map(entry => {
+const cards = curated().map(entry => {
   const result = evaluate(preset, entry.report);
   const band = result.report.bands?.size;
-  return { ...entry, result: result.report, band, files: display(entry.report.fileSet.total), churn: display(entry.report.totals.raw.churn), changed: display(result.report.metrics?.review ?? result.report.totals.lines.changed) };
+  const [owner, repo] = entry.repository.split('/');
+  return { ...entry, owner, repo, band, files: display(entry.report.fileSet.total), churn: display(entry.report.totals.raw.churn), changed: display(result.report.metrics?.review ?? result.report.totals.lines.changed) };
 });
 const c = copy.examples;
 ---
-<Base title={c.title} description="Curated diffdevil examples: frozen fixtures and real public pull requests, each with the product fact it teaches, analyzed by the same engine as the CLI." surface="Examples" current="examples">
-  <div class="wrap"><div class="ex-head">
-    <p class="eyebrow">#examples</p>
-    <h1 class="h2">{c.title}</h1>
-    <p class="lede">{c.intro}</p>
-  </div></div>
-  <section class="wrap section" id="fixtures">
-    <div class="ex-group-head"><h2 class="h3">Frozen fixtures · {fixtureCards.length}</h2><p class="caption">{copy.playground.fixturesHint}</p></div>
-    <ul class="ex-grid">
-      {fixtureCards.map(card => (
-        <li class="card ex-card">
-          <p class="ex-glyph mono" aria-hidden="true">{card.glyph}</p>
-          <h3 class="h3">{card.title}</h3>
-          <p class="ex-hook">{card.hook}</p>
-          <p class="small ex-teaches">{card.teaches}</p>
-          <p class="ex-numbers mono">
-            <span><strong class="tabular">{display(card.metric)}</strong> {card.focus === 'review' ? 'changed' : card.focus}</span>
-            <span>churn {card.churn}</span>
-            <span>{card.files} files</span>
-            {card.band && <span>band {card.band.status === 'resolved' ? card.band.id : '?'}</span>}
-            <span class="chip-ev" data-status={card.status}>{evidenceGlyph[card.status]} {card.status}</span>
-          </p>
-          <p class="caption mono">{card.source.path.replace('docs/examples/', '')} · policy {card.policyName}</p>
-          <div class="ex-actions">
-            <a class="btn btn-primary" href={`${paths.playground}?example=${card.id}`}>{c.open}</a>
-            <a class="link" href={blobUrl(card.source.path)} rel="noopener">Source</a>
-          </div>
-        </li>
-      ))}
-    </ul>
+<Base title={c.title} description="Real public pull requests, each picked for one lesson about measuring a change, analyzed by the same engine as the diffdevil CLI and Actions." surface="Examples" current="examples">
+  <h1 class="visually-hidden">{c.title}</h1>
+  <section class="section section-first" data-section="how">
+    <div class="wrap">
+      <SectionHead id="how" title={c.howTitle} body={c.how} small />
+      <p class="caption how-note">{c.howNote}</p>
+    </div>
   </section>
-  <section class="wrap section" id="real-pull-requests">
-    <div class="ex-group-head"><h2 class="h3">Real pull requests · {curatedCards.length}</h2><p class="caption">{copy.playground.prsHint}</p></div>
-    <ul class="ex-grid">
-      {curatedCards.map(card => (
-        <li class="card ex-card">
-          <p class="ex-glyph" aria-hidden="true"><GitHubMark /></p>
-          <h3 class="h3"><a class="link-plain" href={card.url} rel="noopener">{card.repository} · PR #{card.pullRequest}</a></h3>
-          <p class="ex-hook">{card.title}</p>
-          <p class="small ex-teaches"><strong>Why this PR</strong> — {card.reason}</p>
-          <p class="small ex-teaches">{card.teaches}</p>
-          <p class="ex-numbers mono">
-            <span><strong class="tabular">{card.changed}</strong> changed</span>
-            <span>churn {card.churn}</span>
-            <span>{card.files} files</span>
-            {card.band && <span>band {card.band.status === 'resolved' ? card.band.id : '?'}</span>}
-            <span class="chip-ev" data-status={card.evidence}>{evidenceGlyph[card.evidence]} {card.evidence}</span>
-          </p>
-          <p class="caption mono">snapshot {card.head.slice(0, 7)} · analyzed {card.analyzedAt.slice(0, 10)} · engine {card.engine.package} · {card.engine.policy}</p>
-          {card.note && <p class="caption">{card.note}</p>}
-          <div class="ex-actions">
-            <a class="btn btn-primary" href={`${paths.playground}?example=${card.id}`}>{c.open}</a>
-            <a class="link" href={`${paths.playground}?example=${card.id}&head=live`}>{copy.playground.analyzeLatest}</a>
-          </div>
-        </li>
-      ))}
-    </ul>
+  <section class="section" data-section="pull-requests">
+    <div class="wrap">
+      <SectionHead id="pull-requests" title={c.realTitle} body={c.realBody} small />
+      <ul class="ex-grid">
+        {cards.map(card => (
+          <li class="card ex-card">
+            <div class="ex-head">
+              <h3 class="ex-title"><Icon name="github" size={16} class="ex-icon" /><a class="link-plain" href={card.url} rel="noopener"><span class="ex-owner">{card.owner}/</span>{card.repo} <span class="ex-number">#{card.pullRequest}</span></a></h3>
+              <span class="chip-ev" data-status={card.evidence}>{evidenceGlyph[card.evidence]} {card.evidence}</span>
+            </div>
+            <p class="ex-pr-title">{card.title}</p>
+            <p class="ex-why"><strong>{c.why}</strong> — {card.reason}</p>
+            <p class="ex-teaches">{card.teaches}</p>
+            <p class="ex-numbers">
+              <span><strong class="tabular">{card.changed}</strong> changed</span>
+              <span>churn {card.churn}</span>
+              <span>{card.files} files</span>
+              {card.band && <span>band {card.band.status === 'resolved' ? card.band.id : '?'}</span>}
+            </p>
+            <p class="caption ex-meta">snapshot {card.head.slice(0, 7)} · analyzed {card.analyzedAt.slice(0, 10)} · engine {card.engine.package} · {card.engine.policy}</p>
+            <div class="ex-actions">
+              <a class="btn btn-primary" href={`${paths.playground}?example=${card.id}`}>{c.open}</a>
+              <a class="ex-latest" href={`${paths.playground}?example=${card.id}&head=live`}>{copy.playground.analyzeLatest} →</a>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
   </section>
 </Base>
 <style>
-  .ex-head { padding: 40px 0 8px; display: grid; gap: 10px; max-width: 760px; }
-  .ex-head .eyebrow, .ex-head .lede { margin: 0; }
-  .ex-group-head { display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; }
-  .ex-group-head .caption { margin: 0; }
-  .ex-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
-  .ex-card { display: grid; gap: 8px; align-content: start; }
-  .ex-glyph { margin: 0; font-size: 20px; color: var(--fg-2); }
-  .ex-hook { margin: 0; color: var(--fg-2); }
-  .ex-teaches { margin: 0; color: var(--fg-2); }
-  .ex-numbers { margin: 4px 0 0; display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12.5px; align-items: center; }
-  .ex-numbers strong { font-size: 18px; }
-  .ex-card .caption { margin: 0; }
-  .ex-actions { display: flex; align-items: center; gap: 14px; margin-top: 6px; }
-  @media (max-width: 900px) { .ex-grid { grid-template-columns: 1fr; } }
+  .section-first { border-top: 0; padding-block: 40px 32px; }
+  .how-note { margin: 0; }
+  .ex-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+  .ex-card { display: flex; flex-direction: column; gap: 8px; }
+  .ex-head { display: flex; align-items: center; justify-content: space-between; gap: 6px 12px; flex-wrap: wrap; }
+  .ex-title { display: inline-flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 700; min-width: 0; overflow-wrap: anywhere; }
+  .ex-title :global(.ex-icon) { color: var(--fg-3); }
+  .ex-owner { color: var(--fg-3); font-weight: 500; }
+  .ex-number { font-variant-numeric: tabular-nums; }
+  .ex-head .chip-ev { margin-left: auto; }
+  .ex-pr-title { margin: 0 0 10px; font-weight: 600; font-size: 14.5px; }
+  .ex-why, .ex-teaches { margin: 0; font-size: 13px; color: var(--fg-2); }
+  .ex-why strong { color: var(--fg); }
+  .ex-numbers { margin: 4px 0 0; display: flex; flex-wrap: wrap; gap: 6px 14px; font-family: var(--font-mono); font-size: 12.5px; align-items: baseline; color: var(--fg-2); }
+  .ex-numbers strong { font-size: 18px; color: var(--fg); }
+  .ex-meta { margin: 0; font-family: var(--font-mono); }
+  .ex-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 14px; margin-top: auto; padding-top: 6px; }
+  .ex-latest { font-size: 13px; color: var(--fg-2); }
+  .ex-latest:hover { color: var(--fg); text-decoration: underline; text-underline-offset: 3px; }
+  @media (max-width: 1000px) { .ex-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 640px) { .ex-grid { grid-template-columns: minmax(0, 1fr); } }
 </style>

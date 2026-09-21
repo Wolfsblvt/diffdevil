@@ -1,27 +1,57 @@
 ---
 // SPDX-License-Identifier: AGPL-3.0-only
+// Footer. Product wording goes to the product page and action wording straight to the
+// action, here as everywhere. "Get" lists every way to obtain diffdevil, package and Action
+// first; "Learn" points into the manual, where a row may carry sibling links; socials are
+// icons only, never collapsed and complete (Works, Discord, Bluesky, GitHub).
+import ActionLink from './ActionLink.astro';
+import Icon from './Icon.astro';
 import { copy } from '../data/copy';
-import { COMPANY, COMPANY_PRIVACY, GITHUB, IMPRESSUM, MARKETPLACE, NPM, RELEASES, docPaths, paths } from '../data/site';
-const get: [string, string][] = [
-  ['@wolfsblvt/diffdevil', NPM], ['Wolfsblvt/diffdevil@v1', MARKETPLACE], ['GitHub Marketplace', MARKETPLACE], ['GitHub App', paths.app],
+import { footerSocials } from '../data/destinations';
+import { APP_INSTALL_URL, CHROME_WEB_STORE_URL, COMPANY, GITHUB, MARKETPLACE, NPM, docPaths, paths } from '../data/site';
+import { extensionDocsPresent } from '../lib/sources';
+type Item = readonly [label: string, href: string | undefined];
+const c = copy.footer;
+const extensionDocs = extensionDocsPresent() ? docPaths.extension : undefined;
+// One row may carry several sibling links (Extension · GitHub App, CLI · Actions · Library API).
+const learn: Item[][] = [
+  [['Get started', docPaths.getStarted]], [['Recipes', docPaths.recipes]],
+  [['Extension', extensionDocs], ['GitHub App', docPaths.app]],
+  [['CLI', docPaths.cli], ['Actions', docPaths.actions], ['Library API', docPaths.api]],
+  [['Policies and detail', docPaths.policies]], [['Agent integration', docPaths.agents]],
 ];
-const learn: [string, string][] = [
-  ['Get started', docPaths.getStarted], ['Recipes', docPaths.recipes], ['CLI', docPaths.cli], ['Actions', docPaths.actions], ['Library API', docPaths.api], ['Policies and detail', docPaths.policies], ['Agent integration', docPaths.agents],
-];
-const project: [string, string][] = [
-  ['Source on GitHub', GITHUB], ['Releases', RELEASES], ['Security', paths.security], ['Licences', paths.licences], ['Privacy and data', paths.privacy], ['Impressum', IMPRESSUM],
-];
+const project: Item[] = [['Source on GitHub', GITHUB], ['Releases', docPaths.releases], ['Security', paths.security], ['Licences', paths.licences], ['Privacy and data', paths.privacy], ['Impressum', paths.impressum]];
+const rel = (href: string) => (href.startsWith('http') ? 'noopener' : undefined);
 ---
-<footer class="site-footer">
-  <div class="wrap grid">
-    <div>
-      <span class="logo logo-tail" role="img" aria-label="diffdevil"></span>
-      <p class="line">{copy.footer.line}</p>
-      <p class="licence">{copy.footer.licence}</p>
-      <p class="licence">© {new Date().getUTCFullYear()} {COMPANY} · <a href={COMPANY_PRIVACY} rel="noopener">Company privacy</a></p>
+<footer class="site-footer" data-pagefind-ignore>
+  <div class="wrap">
+    <div class="grid">
+      <div class="footer-brand">
+        <span class="logo logo-tail" role="img" aria-label="diffdevil"></span>
+        <p class="line">{c.line}</p>
+        <p class="licence">{c.licence}</p>
+      </div>
+      <nav aria-label={c.get}><h4>{c.get}</h4><ul>
+        <li class="mono"><a href={NPM} rel="noopener">@wolfsblvt/diffdevil</a></li>
+        <li class="mono"><a href={MARKETPLACE} rel="noopener">Wolfsblvt/diffdevil@v1</a></li>
+        <li><a href={MARKETPLACE} rel="noopener">GitHub Marketplace</a></li>
+        <li class="footer-row"><a href={paths.extension}>Browser extension</a><span aria-hidden="true"> · </span><ActionLink href={CHROME_WEB_STORE_URL} data-footer-action="store">Chrome Web Store<Icon name="external" size={10} class="footer-arrow" /></ActionLink></li>
+        <li class="footer-row"><a href={paths.app}>GitHub App</a><span aria-hidden="true"> · </span><ActionLink href={APP_INSTALL_URL} data-footer-action="app">Install on GitHub<Icon name="external" size={10} class="footer-arrow" /></ActionLink></li>
+      </ul></nav>
+      <nav aria-label={c.learn}><h4>{c.learn}</h4><ul>{learn.map(row => (
+        <li class="footer-row">{row.map(([label, href], index) => <>{index > 0 && <span aria-hidden="true"> · </span>}<ActionLink href={href} external={false}>{label}</ActionLink></>)}</li>
+      ))}</ul></nav>
+      <nav aria-label={c.project}><h4>{c.project}</h4><ul>{project.map(([label, href]) => <li><a href={href} rel={rel(href!)}>{label}</a></li>)}</ul></nav>
     </div>
-    <nav aria-label={copy.footer.get}><h4>{copy.footer.get}</h4><ul>{get.map(([label, href]) => <li><a href={href} rel={href.startsWith('http') ? 'noopener' : undefined}>{label}</a></li>)}</ul></nav>
-    <nav aria-label={copy.footer.learn}><h4>{copy.footer.learn}</h4><ul>{learn.map(([label, href]) => <li><a href={href}>{label}</a></li>)}</ul></nav>
-    <nav aria-label={copy.footer.project}><h4>{copy.footer.project}</h4><ul>{project.map(([label, href]) => <li><a href={href} rel={href.startsWith('http') ? 'noopener' : undefined}>{label}</a></li>)}</ul></nav>
+    <div class="footer-base">
+      <p class="licence">© {new Date().getUTCFullYear()} {COMPANY}</p>
+      <ul class="footer-socials" aria-label={copy.community.heading}>
+        {footerSocials.map(item => (
+          <li>{item.href
+            ? <a class="footer-social" href={item.href} rel="noopener" aria-label={`${item.label} · ${item.note}`} title={item.label} data-social={item.id}><Icon name={item.icon} size={15} /></a>
+            : <a class="footer-social is-unconfigured" role="link" aria-disabled="true" aria-label={`${item.label} · ${item.note}`} title={item.label} data-social={item.id}><Icon name={item.icon} size={15} /></a>}</li>
+        ))}
+      </ul>
+    </div>
   </div>
 </footer>

@@ -1,0 +1,12 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only
+// One semantic icon slot for the whole site. Callers name a meaning (`social-links`,
+// `discord`, `changed`), never a drawing; ../data/icons.ts resolves it to local geometry at
+// build time. Decorative by default: an icon-only control carries its accessible name on
+// the control, and `label` is only for a standalone icon that carries information itself.
+import { iconBody, type IconName } from '../data/icons';
+interface Props { name: IconName; size?: number | undefined; class?: string | undefined; label?: string | undefined }
+const { name, size = 16, class: extra, label } = Astro.props;
+---
+<svg class:list={['icon', extra]} data-icon={name} width={size} height={size} viewBox="0 0 24 24"
+  aria-hidden={label ? undefined : 'true'} role={label ? 'img' : undefined} aria-label={label} set:html={iconBody(name)} />

@@ -1,0 +1,41 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only
+// `#support`: the quiet closing banner — anchor, title, one short paragraph, two actions
+// with icon slots, and an art slot on the right.
+//
+// STRUCTURE ONLY. The sponsor visual is an open owner design seam. This component fixes
+// the semantics, layout, responsive behaviour and the interfaces the final design plugs
+// into, and deliberately uses the ordinary surface tokens and ordinary buttons:
+//   · art      → `--support-art` (a CSS image; the slot is empty and takes no space in the
+//                reading order until it is set) on `[data-support-art]`
+//   · ground   → `--support-ground` (defaults to a plain raised surface gradient)
+//   · icons    → the `sponsor` and `star` slots of the icon registry
+//   · sponsor  → PUBLIC_SPONSOR_URL, a configured live destination like every other action link
+import ActionLink from '../ActionLink.astro';
+import Icon from '../Icon.astro';
+import SectionHead from '../SectionHead.astro';
+import { copy } from '../../data/copy';
+import { GITHUB, SPONSOR_URL } from '../../data/site';
+const c = copy.support;
+---
+<section class="section" data-section="support">
+  <div class="wrap">
+    <div class="support">
+      <div class="support-text">
+        <SectionHead id="support" title={c.h2} body={c.body} small />
+        <div class="support-actions">
+          <ActionLink class="btn btn-primary" href={SPONSOR_URL} data-support-action="sponsor"><Icon name="sponsor" size={15} />{c.sponsor}</ActionLink>
+          <a class="btn btn-secondary" href={GITHUB} rel="noopener" data-support-action="star"><Icon name="star" size={15} />{c.star}</a>
+        </div>
+      </div>
+      <div class="support-art" data-support-art aria-hidden="true"></div>
+    </div>
+  </div>
+</section>
+<style>
+  .support { position: relative; display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); border: 1px solid var(--hair); border-radius: var(--r-card); overflow: hidden; background: var(--support-ground, linear-gradient(100deg, var(--bg-raised), var(--bg-raised-2))); }
+  .support-text { padding: 28px 32px; display: flex; flex-direction: column; gap: 16px; }
+  .support-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+  .support-art { background-image: var(--support-art, none); background-repeat: no-repeat; background-position: right center; background-size: contain; min-height: 100%; }
+  @media (max-width: 900px) { .support { grid-template-columns: minmax(0, 1fr); } .support-art { display: none; } .support-text { padding: 24px; } }
+</style>

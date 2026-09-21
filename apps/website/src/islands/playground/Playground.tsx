@@ -37,7 +37,7 @@ export interface Acquired {
 
 export type ApiError = { code: string; message: string; retryMinutes?: number | undefined };
 
-interface Props { readonly fixtures: readonly ExampleCard[]; readonly curated: readonly ExampleCard[]; readonly defaultExample: string }
+interface Props { readonly curated: readonly ExampleCard[]; readonly defaultExample: string }
 
 const PRESET_POLICY = 'version: 1\npresets: [size@1]\n';
 
@@ -63,7 +63,7 @@ export async function fetchApi(path: string, url: string, signal?: AbortSignal):
   return { ok: false, error: { code: body?.error?.code ?? 'UPSTREAM_ERROR', message: body?.error?.message ?? copy.playground.states.upstream, retryMinutes } };
 }
 
-export default function Playground({ fixtures, curated, defaultExample }: Props) {
+export default function Playground({ curated, defaultExample }: Props) {
   const [state, setState] = useState<PlaygroundState>(() => readState(typeof location === 'undefined' ? '' : location.search, defaultExample));
   const [acquired, setAcquired] = useState<Acquired | undefined>();
   const [previous, setPrevious] = useState<Acquired | undefined>();
@@ -184,7 +184,7 @@ export default function Playground({ fixtures, curated, defaultExample }: Props)
   return (
     <div className="pg">
       <Rail
-        state={state} fixtures={fixtures} curated={curated} acquired={acquired} evaluation={evaluation} lastValid={lastValid.current}
+        state={state} curated={curated} acquired={acquired} evaluation={evaluation} lastValid={lastValid.current}
         working={working} error={error} policyText={policyText}
         onSelectExample={selectExample} onAnalyzePr={analyzePr} onCancel={cancel} onMode={(mode) => update({ mode })} onCfg={(cfg) => update({ cfg })} onPolicy={changePolicy}
       />

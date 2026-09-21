@@ -1,40 +1,44 @@
 ---
 // SPDX-License-Identifier: AGPL-3.0-only
 // /privacy/: what this website and its public playground do with data. Website copy;
-// the product's hosted data contract and the company notice are linked, not restated.
+// the hosted data contract of the product is linked, not restated. A legal route: public and
+// fetchable, but kept out of search engines, snippets and the site search.
 import Base from '../layouts/Base.astro';
-import { COMPANY, COMPANY_PRIVACY, IMPRESSUM, LIVE_PLAYGROUND_WORKER, docPaths } from '../data/site';
+import SectionHead from '../components/SectionHead.astro';
+import { LIVE_PLAYGROUND_WORKER, docPaths, paths } from '../data/site';
 ---
-<Base title="Privacy and data" description="What the diffdevil website and public playground do with data: no accounts, no analytics, no stored analyses; public pull requests only." current="privacy">
-  <article class="wrap privacy">
-    <p class="eyebrow">#privacy</p>
-    <h1 class="h2">Privacy and data</h1>
-    <p class="lede">This page describes what the diffdevil website and its public playground do with data. The hosted GitHub App has its own <a class="link" href={docPaths.privacyAndData}>privacy and data contract</a>; the company notice is at <a class="link" href={COMPANY_PRIVACY} rel="noopener">{COMPANY}</a>.</p>
-    <h2 class="h3">The website</h2>
-    <ul class="small">
-      <li>Static pages, no accounts, no sign-in, no analytics, no tracking pixels, no third-party scripts.</li>
-      <li>No cookies. Your theme choice (system, dark or light) is kept in your browser's local storage under <code class="code-inline">diffdevil.theme</code> and never sent anywhere.</li>
-      <li>Fonts (IBM Plex Sans and Mono) are served from this site; no request goes to a font network.</li>
-      <li>The manual's search runs in your browser over an index built with the site.</li>
-    </ul>
-    <h2 class="h3">The playground</h2>
-    <ul class="small">
-      <li>Curated examples are analyzed in your browser from files shipped with the site. Nothing is sent to a server when you open one or edit its policy.</li>
-      <li>When you analyze a public pull request, your browser asks the playground API (<code class="code-inline">{LIVE_PLAYGROUND_WORKER}</code> in production) to read that public pull request from GitHub and return the analysis. The API accepts public <code class="code-inline">github.com</code> pull-request URLs only, never asks for a token, performs no repository writes, and stores no analysis history. GitHub's unauthenticated read allowance is shared by the API's visitors; when it is exhausted the API says so instead of inventing a result.</li>
-      <li>The edited policy travels in the page URL so a result can be shared and reloaded. It is not stored by the site.</li>
-      <li>"Carry into the GitHub App" passes the policy in the URL of the App page; nothing from the playground session is kept.</li>
-      <li>Short-lived rate-limit and cache controls on the API are abuse and compute protection, not an activity timeline. Raw client addresses and entered URLs are not retained in product analytics.</li>
-    </ul>
-    <h2 class="h3">Agent Skill and setup instructions</h2>
-    <p class="small">The skill and setup files are plain Markdown served from this site. Fetching them tells us nothing beyond an ordinary page request; the site does not identify the agent or the user.</p>
-    <h2 class="h3">Contact and legal</h2>
-    <p class="small">Legal notice: <a class="link" href={IMPRESSUM} rel="noopener">Impressum</a>. Security reports: <a class="link" href="/docs/security/">Security</a>.</p>
-  </article>
+<Base title="Privacy and data" description="What the diffdevil website and public playground do with data: no accounts, no analytics, no stored analyses; public pull requests only." current="privacy" noindex>
+  <section class="section section-first">
+    <article class="wrap legal">
+      <SectionHead id="privacy" as="h1" title="Privacy and data" />
+      <p class="lede">This page describes what the diffdevil website and its public playground do with data. The hosted GitHub App has its own <a class="link-quiet" href={docPaths.privacyAndData}>privacy and data contract</a>.</p>
+      <h2 class="h3">The website</h2>
+      <ul class="small">
+        <li>Static pages, no accounts, no sign-in, no analytics, no tracking pixels, no third-party scripts.</li>
+        <li>No cookies. Your theme choice (dark, automatic or light) is kept in the local storage of your browser under <code class="code-inline">diffdevil.theme</code> and <code class="code-inline">diffdevil.theme.next</code> and never sent anywhere.</li>
+        <li>Fonts (IBM Plex Sans and Mono) are served from this site; no request goes to a font network.</li>
+        <li>Search runs in your browser over an index built with the site. What you type is not sent anywhere.</li>
+      </ul>
+      <h2 class="h3">The playground</h2>
+      <ul class="small">
+        <li>Curated examples are analyzed in your browser from files shipped with the site. Nothing is sent to a server when you open one or edit its policy.</li>
+        <li>When you analyze a public pull request, your browser asks the playground API (<code class="code-inline">{LIVE_PLAYGROUND_WORKER}</code> in production) to read that public pull request from GitHub and return the analysis. The API accepts public <code class="code-inline">github.com</code> pull-request URLs only, never asks for a token, performs no repository writes, and stores no analysis history. The unauthenticated GitHub read allowance is shared by everyone using the API; when it is exhausted the API says so instead of inventing a result.</li>
+        <li>The edited policy travels in the page URL so a result can be shared and reloaded. It is not stored by the site.</li>
+        <li>"Carry into the GitHub App" passes the policy in the URL of the App page; nothing from the playground session is kept.</li>
+        <li>Short-lived rate-limit and cache controls on the API are abuse and compute protection, not an activity timeline. Raw client addresses and entered URLs are not retained in product analytics.</li>
+      </ul>
+      <h2 class="h3">Agent Skill and setup instructions</h2>
+      <p class="small">The skill and setup files are plain Markdown served from this site. Fetching them tells us nothing beyond an ordinary page request; the site does not identify the agent or the user.</p>
+      <h2 class="h3">Contact and legal</h2>
+      <p class="small">Legal notice: <a class="link-quiet" href={paths.impressum}>Impressum</a>. Security reports: <a class="link-quiet" href={paths.security}>Security</a>.</p>
+    </article>
+  </section>
 </Base>
 <style>
-  .privacy { max-width: 760px; padding: 40px 0 64px; display: grid; gap: 12px; }
-  .privacy .eyebrow, .privacy .lede { margin: 0; }
-  .privacy h2 { margin-top: 18px; }
-  .privacy ul { margin: 0; padding-left: 20px; display: grid; gap: 8px; color: var(--fg-2); }
-  .privacy p.small { margin: 0; color: var(--fg-2); }
+  .section-first { border-top: 0; padding-block: 40px 64px; }
+  .legal { gap: 12px !important; }
+  .legal > :global(*) { max-width: 760px; }
+  .legal h2 { margin-top: 18px; }
+  .legal ul { margin: 0; padding-left: 20px; display: grid; gap: 8px; color: var(--fg-2); }
+  .legal p.small { margin: 0; color: var(--fg-2); }
 </style>
