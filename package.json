@@ -22,7 +22,7 @@
     "playground": "npm run build && node apps/playground/server.mjs",
     "playground:worker": "npm run build && node tools/run-wrangler.mjs dev --local",
     "check:workers": "node tools/run-wrangler.mjs deploy --dry-run --outdir artifacts/wrangler-dry-run",
-    "check:github-app": "node tools/run-wrangler.mjs deploy --dry-run --config apps/github-app/wrangler.jsonc --outdir ../../artifacts/github-app-wrangler-dry-run",
+    "check:github-app": "node tools/run-wrangler.mjs deploy --dry-run --config apps/github-app/wrangler.jsonc --outdir ../../artifacts/github-app-wrangler-dry-run && node tools/github-app-runtime-smoke.mjs",
     "website:assets": "node tools/website-assets.mjs",
     "website:docs": "node tools/website-docs.mjs --report",
     "website:build": "npm run build && npm run website:assets && npm run website:docs && astro build --root apps/website",
