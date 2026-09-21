@@ -83,11 +83,11 @@ guide. FAQ summaries must be reconciled when those facts change.
 
 ## Verification
 
-`npm run test:faq` exercises question extraction, stable fragments, search metadata, development
+`node --test apps/website/faq.test.mjs` exercises question extraction, stable fragments, search metadata, development
 standing, the product/manual route distinction and contextual-link integrity. The ordinary root
 `npm test` discovers this suite through the existing `apps/**/*.test.mjs` convention.
 
-After `npm run website:build`, `npm run qa:faq` exercises the real built page and Pagefind index:
+After `npm run website:build`, `node apps/website/qa/faq.mjs` exercises the real built page and Pagefind index:
 all question records, independent and keyboard disclosures, permalinks, clipboard, Back/Forward,
 search focus, manual/deeper links, compact navigation, responsive layouts and no-JavaScript use.
 It owns its local static server and browser and closes both. Results and selected screenshots are

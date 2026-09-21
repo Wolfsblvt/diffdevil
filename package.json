@@ -31,9 +31,7 @@
     "website:check": "node tools/website-docs.mjs && astro check --root apps/website",
     "check:website": "node tools/website-assets.mjs && node tools/website-docs.mjs && astro build --root apps/website",
     "test:website": "node --test apps/website/website.test.mjs",
-    "qa:website": "node apps/website/qa/run.mjs",
-    "test:faq": "node --test apps/website/faq.test.mjs",
-    "qa:faq": "node apps/website/qa/faq.mjs"
+    "qa:website": "node apps/website/qa/run.mjs"
   },
   "keywords": [
     "git",

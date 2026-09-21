@@ -28,8 +28,6 @@ jobs:
     name: Built FAQ / Chromium
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    outputs:
-      diagnostic: ${{ steps.diagnostic.outputs.message }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
@@ -40,44 +38,15 @@ jobs:
           node-version: '22'
           package-manager-cache: false
       - name: Restore locked project packages
-        id: restore
-        run: |
-          mkdir -p artifacts/website
-          set -o pipefail
-          npm ci --ignore-scripts --no-audit --no-fund 2>&1 | tee artifacts/website/faq-restore.log
+        run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Build the real website and search index
-        id: build
         env:
           DIFFDEVIL_SITE_ORIGIN: https://diffdevil.dev
-        run: |
-          set -o pipefail
-          npm run website:build 2>&1 | tee artifacts/website/faq-build.log
+        run: npm run website:build
       - name: Install the repository-selected Chromium
-        id: chromium
         run: npx --no-install playwright install --with-deps chromium
       - name: Exercise FAQ navigation, links, search and responsive layout
-        id: journey
-        run: |
-          set -o pipefail
-          npm run qa:faq 2>&1 | tee artifacts/website/faq-browser.log
-      - name: Expose the bounded failure through the available check readback
-        id: diagnostic
-        if: failure()
-        env:
-          RESTORE_OUTCOME: ${{ steps.restore.outcome }}
-          BUILD_OUTCOME: ${{ steps.build.outcome }}
-          CHROMIUM_OUTCOME: ${{ steps.chromium.outcome }}
-          JOURNEY_OUTCOME: ${{ steps.journey.outcome }}
-        run: |
-          node --input-type=module <<'NODE'
-          import { readFileSync, appendFileSync, existsSync } from 'node:fs';
-          const stage = ['RESTORE','BUILD','CHROMIUM','JOURNEY'].find(name => process.env[name + '_OUTCOME'] === 'failure') ?? 'SETUP';
-          const file = stage === 'JOURNEY' ? 'artifacts/website/faq-browser.log' : stage === 'RESTORE' ? 'artifacts/website/faq-restore.log' : 'artifacts/website/faq-build.log';
-          const lines = existsSync(file) ? readFileSync(file, 'utf8').replace(/\x1b\[[0-9;]*m/g, '').split(/\r?\n/) : [];
-          const at = lines.findLastIndex(line => /\b(?:[A-Z][A-Za-z]+Error|Error)(?:\s*\[[^\]]+\])?:|\[ERROR\]|Cannot find|Could not resolve|^npm error/i.test(line));
-          const detail = (at < 0 ? lines.slice(-8) : lines.slice(at, at + 4)).join(' ').replace(/[\r\n\t]+/g, ' ').slice(0, 200);
-          appendFileSync(process.env.GITHUB_OUTPUT, `message=${stage}: ${detail || 'no command diagnostic'}\n`);
-          NODE
+        run: node apps/website/qa/faq.mjs
       - name: Preserve browser evidence
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -85,10 +54,3 @@ jobs:
           name: faq-browser-evidence
           path: artifacts/website/faq-qa/
           if-no-files-found: ignore
-  diagnostic:
-    name: FAQ diagnostic · ${{ needs.browser.outputs.diagnostic || needs.browser.result }}
-    needs: browser
-    if: failure()
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo "The failing browser job remains the authoritative result."
