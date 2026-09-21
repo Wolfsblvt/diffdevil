@@ -152,9 +152,15 @@ try {
   const plain = await browser.newContext({ javaScriptEnabled: false, viewport: { width: 1280, height: 900 } });
   const noScript = await plain.newPage();
   await noScript.goto(`${origin}/faq/`);
-  const native = noScript.locator('[data-faq-id="beyond-size-labels"]');
-  await native.locator('summary').click();
-  await expect(native.locator('.faq-answer')).toBeVisible();
+  const featured = noScript.locator('[data-faq-id="beyond-size-labels"]');
+  await expect(featured.locator('.faq-answer')).toBeVisible();
+  await featured.locator('summary').click();
+  await expect(featured.locator('.faq-answer')).toBeHidden();
+
+  const collapsed = noScript.locator('[data-faq-id="no-language-required"]');
+  await expect(collapsed.locator('.faq-answer')).toBeHidden();
+  await collapsed.locator('summary').click();
+  await expect(collapsed.locator('.faq-answer')).toBeVisible();
   await plain.close();
   evidence.push('Server-rendered answer content and native disclosures work without JavaScript.');
   assert.deepEqual(failures, []);
