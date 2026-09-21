@@ -15,6 +15,7 @@ export type { Shortcut } from './language/shortcuts.js';
 export type { CompiledExpression } from './language/compile.js';
 export type { EvaluationEnvironment } from './language/environment.js';
 export type { EvaluationResult } from './language/evaluate.js';
+export type { PresentationDetail, TextPresentationOptions } from './presentation.js';
 
 export { compileExpression, parseExpression } from './language/text.js';
 export { sourcePosition } from './language/source.js';

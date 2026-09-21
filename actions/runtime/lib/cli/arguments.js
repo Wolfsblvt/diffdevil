@@ -2,7 +2,7 @@ import { parseArgs } from 'node:util';
 import { fail } from '../errors.js';
 import { COMPARATORS, parseNumericInput } from '../language/shortcuts.js';
 const lists = ['path', 'exclude', 'include-only', 'force-include', 'preset', 'param'];
-const strings = ['cwd', 'base', 'head', 'comparison', 'diff-file', 'report', 'format', 'output', 'diagnostics', 'metric', 'scope', 'select', 'status', 'expr', 'expr-file', 'name', 'config', 'band', 'kind', 'pr', 'repo', 'target-repo', 'target-pr', 'definitions', 'params-file', 'exclude-mode', 'include-only-mode', 'force-include-mode', 'plan', 'rule', 'policy-source', 'policy-ref', 'policy-repository', 'comment-author', 'comment-author-id', 'occasion', ...Object.keys(COMPARATORS)];
+const strings = ['cwd', 'base', 'head', 'comparison', 'diff-file', 'report', 'format', 'output', 'diagnostics', 'detail', 'color', 'metric', 'scope', 'select', 'status', 'expr', 'expr-file', 'name', 'config', 'band', 'kind', 'pr', 'repo', 'target-repo', 'target-pr', 'definitions', 'params-file', 'exclude-mode', 'include-only-mode', 'force-include-mode', 'plan', 'rule', 'policy-source', 'policy-ref', 'policy-repository', 'comment-author', 'comment-author-id', 'occasion', ...Object.keys(COMPARATORS)];
 const flags = ['staged', 'stdin', 'help', 'version', 'no-config', 'all-files', 'certain', 'expr-stdin', 'policy', 'git', 'trust-report', 'require-resolved'];
 export function parseInvocation(argv) {
     let command = argv[0]?.startsWith('-') ? 'analyze' : argv[0] ?? 'analyze';
@@ -41,6 +41,14 @@ export function parseInvocation(argv) {
         return { command, values: v };
     if (v.diagnostics !== undefined && v.diagnostics !== 'json')
         fail('E_USAGE', '--diagnostics accepts json.', 'config');
+    if (v.detail !== undefined && !['summary', 'full'].includes(String(v.detail)))
+        fail('E_USAGE', '--detail accepts summary or full.', 'config');
+    if (v.color !== undefined && !['auto', 'always', 'never'].includes(String(v.color)))
+        fail('E_USAGE', '--color accepts auto, always or never.', 'config');
+    if ((v.detail !== undefined || v.color !== undefined) && !['analyze', 'plan'].includes(command))
+        fail('E_CONFIG_CONFLICT', '--detail and --color belong to analyze or plan human presentation.', 'config');
+    if ((v.detail !== undefined || v.color !== undefined) && v.format !== undefined && v.format !== 'human')
+        fail('E_CONFIG_CONFLICT', '--detail and --color require --format human.', 'config');
     if (v.kind !== undefined && command !== 'schema' || v.policy && command !== 'explain')
         fail('E_CONFIG_CONFLICT', 'An option is not supported by this command.', 'config');
     if (command === 'schema' && Object.keys(v).some(key => !['kind', 'cwd', 'output', 'diagnostics'].includes(key)))
@@ -130,7 +138,7 @@ function validateEffectArguments(command, v) {
         if ((v.repo !== undefined) !== (v.pr !== undefined))
             fail('E_USAGE', 'Supply both --repo OWNER/REPO and --pr NUMBER.', 'config');
         if (!v.plan && !v.repo)
-            fail('E_USAGE', 'Application needs --repo and --pr, or a saved --plan with a target.', 'config');
+            fail('E_USAGE', 'Application needs --repo and --pr, or a saved --plan with a target.', 'plan');
         if (v.pr !== undefined && (!/^[1-9][0-9]*$/u.test(String(v.pr)) || !Number.isSafeInteger(Number(v.pr))))
             fail('E_USAGE', 'Pull request must be a positive safe integer.', 'config');
         if (v['trust-report'] && !v.report)
