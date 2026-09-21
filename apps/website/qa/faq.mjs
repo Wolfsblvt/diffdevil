@@ -5,11 +5,14 @@ import { createServer } from 'node:http';
 import { readFile, mkdir, writeFile } from 'node:fs/promises';
 import { resolve, extname, sep } from 'node:path';
 import { chromium, expect } from '@playwright/test';
-import { faqRecords, FAQ_CANONICAL } from '../faq-content.mjs';
+import { faqRecords, FAQ_CANONICAL, FAQ_SOURCE } from '../faq-content.mjs';
 
 const directory = resolve('artifacts/website/dist');
 const output = resolve('artifacts/website/faq-qa');
 const records = faqRecords(await readFile(resolve(directory, 'faq/index.html'), 'utf8'));
+const authored = faqRecords(await readFile(resolve(FAQ_SOURCE), 'utf8'));
+assert.deepEqual(records.map(({ id, title }) => ({ id, title })), authored.map(({ id, title }) => ({ id, title })));
+const authoredLinkCount = authored.reduce((count, question) => count + [...question.html.matchAll(/\[[^\]]+\]\([^)]+\)/gu)].length, 0);
 const mime = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml', '.wasm': 'application/wasm', '.woff2': 'font/woff2', '.png': 'image/png', '.ico': 'image/x-icon' };
 const server = createServer(async (request, response) => {
   try {
@@ -43,6 +46,7 @@ try {
   await expect(page.locator('h1')).toHaveCount(1);
   await expect(page.locator('.faq-question')).toHaveCount(38);
   await expect(page.locator('.faq-categories a')).toHaveCount(6);
+  await expect(page.locator('.faq-answer a')).toHaveCount(authoredLinkCount);
   await expect(page.locator('.faq-question details[open]')).toHaveCount(2);
   await expect(page.locator('.sidebar-pane')).toHaveCount(0);
   await expect(page.locator('.primary-nav .site-nav > li').last().locator('a')).toHaveAttribute('href', '/faq/');
@@ -134,8 +138,10 @@ try {
   }
   await page.setViewportSize({ width: 375, height: 850 });
   // Use the shared theme preference, not FAQ-specific theme state.
-  await page.evaluate(() => localStorage.setItem('diffdevil.theme', 'light'));
   await page.emulateMedia({ colorScheme: 'light' });
+  await page.evaluate(() => localStorage.setItem('diffdevil.theme', 'light'));
+  // A same-page hash navigation does not rerun the shared before-paint script.
+  await page.reload();
   await page.goto(`${origin}/faq/#extension-data`);
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
   await page.screenshot({ path: resolve(output, 'faq-light-mobile-answer.png') });

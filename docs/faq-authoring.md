@@ -64,8 +64,9 @@ standing. Search results identify FAQ answers and open the exact disclosure; fol
 same-page result closes the search dialog before moving focus. There is no FAQ-only search box,
 remote search service or independently authored search answer.
 
-The Pagefind version is resolved through the pinned Starlight toolchain. This replaces its default
-indexing pass; it does not run a second competing pass or add another search dependency graph.
+The build uses the existing locked Pagefind package supplied by the Starlight toolchain through
+its ESM API. This replaces the default indexing pass; it does not run a second competing pass or
+add another search dependency graph. Toolchain updates retain the build and browser checks.
 
 ## Availability and deeper ownership
 
