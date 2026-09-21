@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { explainPolicy, unwrap } from '@wolfsblvt/diffdevil';
-import { GitHubClient, GitHubRequestError, applyGitHubPolicy, loadGitHubPolicy, readPullSnapshot } from '@wolfsblvt/diffdevil/github';
+import { DiffdevilError, explainPolicy, unwrap } from '@wolfsblvt/diffdevil';
+import { GitHubClient, applyGitHubPolicy, readGitHubPolicy, readPullSnapshot } from '@wolfsblvt/diffdevil/github';
 import { APP_QUEUE_KIND, WEBHOOK_BODY_LIMIT, WORKER_RESULT_LIMIT, historyProjection, normalizeWebhookEvent, readQueueEnvelope } from './contracts.mjs';
 import { createAppJwt, verifyWebhookSignature } from './crypto.mjs';
 import { D1AppStore } from './storage.mjs';
@@ -36,7 +36,7 @@ async function readBodyWithinLimit(request) {
   for (const chunk of chunks) { body.set(chunk, offset); offset += chunk.byteLength; }
   return body;
 }
-function errorCode(error) { return error instanceof GitHubRequestError ? error.diagnostic.code : typeof error?.code === 'string' ? error.code : 'E_APP_EXECUTION'; }
+function errorCode(error) { return error instanceof DiffdevilError ? error.diagnostic.code : typeof error?.code === 'string' ? error.code : 'E_APP_EXECUTION'; }
 function executionDiagnostic(error, fallbackCode, phase) {
   const code = errorCode(error) === 'E_APP_EXECUTION' ? fallbackCode : errorCode(error);
   const diagnostics = Array.isArray(error?.diagnostics) ? error.diagnostics : [];
@@ -110,11 +110,11 @@ async function repositoryTarget(client, envelope) {
 async function trustedPolicy(client, target, base, configuration) {
   let supplied = {};
   try {
-    const ordinary = unwrap(await loadGitHubPolicy(client, { repository: target.repository, ref: base, path: '.diffdevil.yml' }));
+    const ordinary = await readGitHubPolicy(client, { repository: target.repository, ref: base, path: '.diffdevil.yml' });
     supplied = { ...explainPolicy(ordinary).document, presets: ordinary.semantics.presets };
   }
   catch (error) {
-    if (!(error instanceof GitHubRequestError && error.status === 404)) throw error;
+    if (error?.diagnostic?.details?.status !== 404) throw error;
   }
   return { policy: resolveEffectivePolicy({ preset: DEFAULT_SIZE_POLICY, ...(configuration ?? {}), supplied }).policy, expectedPolicyBase: base };
 }

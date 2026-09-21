@@ -27,15 +27,17 @@ export async function readGitHubText(client: GitHubClient, source: GitHubPolicyS
   return text;
 }
 /** The host selects this trusted base/pinned source. The PR head never supplies apply policy implicitly. */
-export function loadGitHubPolicy(client: GitHubClient, source: GitHubPolicySource, options: Pick<PolicyCompileOptions, 'presets' | 'paths' | 'limits'> = {}): Promise<Result<CompiledPolicy>> {
-  return captureAsync(async () => {
-    const maximum = options.limits?.configBytes ?? DEFAULT_LIMITS.configBytes;
-    const text = await readGitHubText(client, source, maximum);
-    const name = `github:${source.repository}@${source.ref}:${source.path}`;
-    return compilePolicyText(text, name, options, relative => {
-      if (relative.startsWith('/') || relative.includes('\\') || /^[A-Za-z][A-Za-z0-9+.-]*:/u.test(relative)) fail('E_POLICY_SOURCE', 'Template file must be a repository-relative path.', 'config');
-      const path = validatePath(posix.normalize(posix.join(posix.dirname(source.path), relative)));
-      return readGitHubText(client, { ...source, path }, maximum);
-    });
+export async function readGitHubPolicy(client: GitHubClient, source: GitHubPolicySource, options: Pick<PolicyCompileOptions, 'presets' | 'paths' | 'limits'> = {}): Promise<CompiledPolicy> {
+  const maximum = options.limits?.configBytes ?? DEFAULT_LIMITS.configBytes;
+  const text = await readGitHubText(client, source, maximum);
+  const name = `github:${source.repository}@${source.ref}:${source.path}`;
+  return compilePolicyText(text, name, options, relative => {
+    if (relative.startsWith('/') || relative.includes('\\') || /^[A-Za-z][A-Za-z0-9+.-]*:/u.test(relative)) fail('E_POLICY_SOURCE', 'Template file must be a repository-relative path.', 'config');
+    const path = validatePath(posix.normalize(posix.join(posix.dirname(source.path), relative)));
+    return readGitHubText(client, { ...source, path }, maximum);
   });
+}
+/** Preserve the Result-shaped API for callers that do not need transport-specific handling. */
+export function loadGitHubPolicy(client: GitHubClient, source: GitHubPolicySource, options: Pick<PolicyCompileOptions, 'presets' | 'paths' | 'limits'> = {}): Promise<Result<CompiledPolicy>> {
+  return captureAsync(() => readGitHubPolicy(client, source, options));
 }

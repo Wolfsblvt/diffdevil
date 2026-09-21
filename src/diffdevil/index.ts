@@ -26,7 +26,7 @@ export type { CompiledPolicy, PolicyCompileOptions, PolicyEvaluateOptions, Polic
 export { validateSchema } from './schema.js';
 export type { SchemaKind } from './schema.js';
 
-export { GitHubClient, GitHubRequestError, analyzeGitHub, analyzeGitHubGit, loadGitHubPolicy } from './github/index.js';
+export { GitHubClient, GitHubRequestError, analyzeGitHub, analyzeGitHubGit, loadGitHubPolicy, readGitHubPolicy } from './github/index.js';
 export type { GitHubClientOptions, GitHubPolicySource } from './github/index.js';
 export { applyGitHubPolicy, syncGitHubLabels } from './github/index.js';
 export type { GitHubApplyOptions, GitHubApplyResult, DefinitionResult, EffectObservation, CommentAuthor } from './github/index.js';

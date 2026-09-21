@@ -32,17 +32,19 @@ export async function readGitHubText(client, source, maximum = DEFAULT_LIMITS.co
     return text;
 }
 /** The host selects this trusted base/pinned source. The PR head never supplies apply policy implicitly. */
-export function loadGitHubPolicy(client, source, options = {}) {
-    return captureAsync(async () => {
-        const maximum = options.limits?.configBytes ?? DEFAULT_LIMITS.configBytes;
-        const text = await readGitHubText(client, source, maximum);
-        const name = `github:${source.repository}@${source.ref}:${source.path}`;
-        return compilePolicyText(text, name, options, relative => {
-            if (relative.startsWith('/') || relative.includes('\\') || /^[A-Za-z][A-Za-z0-9+.-]*:/u.test(relative))
-                fail('E_POLICY_SOURCE', 'Template file must be a repository-relative path.', 'config');
-            const path = validatePath(posix.normalize(posix.join(posix.dirname(source.path), relative)));
-            return readGitHubText(client, { ...source, path }, maximum);
-        });
+export async function readGitHubPolicy(client, source, options = {}) {
+    const maximum = options.limits?.configBytes ?? DEFAULT_LIMITS.configBytes;
+    const text = await readGitHubText(client, source, maximum);
+    const name = `github:${source.repository}@${source.ref}:${source.path}`;
+    return compilePolicyText(text, name, options, relative => {
+        if (relative.startsWith('/') || relative.includes('\\') || /^[A-Za-z][A-Za-z0-9+.-]*:/u.test(relative))
+            fail('E_POLICY_SOURCE', 'Template file must be a repository-relative path.', 'config');
+        const path = validatePath(posix.normalize(posix.join(posix.dirname(source.path), relative)));
+        return readGitHubText(client, { ...source, path }, maximum);
     });
+}
+/** Preserve the Result-shaped API for callers that do not need transport-specific handling. */
+export function loadGitHubPolicy(client, source, options = {}) {
+    return captureAsync(() => readGitHubPolicy(client, source, options));
 }
 //# sourceMappingURL=policy.js.map

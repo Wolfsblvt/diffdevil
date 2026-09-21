@@ -12,6 +12,6 @@ export { compileExpression, parseExpression } from './language/text.js';
 export { sourcePosition } from './language/source.js';
 export { compilePolicy, explainPolicy, evaluatePolicy, evaluatePolicyQuery, createPlan, readPlan, readPolicyJson, readPolicyYaml, formatPlan } from './policy/index.js';
 export { validateSchema } from './schema.js';
-export { GitHubClient, GitHubRequestError, analyzeGitHub, analyzeGitHubGit, loadGitHubPolicy } from './github/index.js';
+export { GitHubClient, GitHubRequestError, analyzeGitHub, analyzeGitHubGit, loadGitHubPolicy, readGitHubPolicy } from './github/index.js';
 export { applyGitHubPolicy, syncGitHubLabels } from './github/index.js';
 //# sourceMappingURL=index.js.map
