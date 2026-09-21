@@ -74,7 +74,7 @@ jobs:
           const stage = ['RESTORE','BUILD','CHROMIUM','JOURNEY'].find(name => process.env[name + '_OUTCOME'] === 'failure') ?? 'SETUP';
           const file = stage === 'JOURNEY' ? 'artifacts/website/faq-browser.log' : stage === 'RESTORE' ? 'artifacts/website/faq-restore.log' : 'artifacts/website/faq-build.log';
           const lines = existsSync(file) ? readFileSync(file, 'utf8').replace(/\x1b\[[0-9;]*m/g, '').split(/\r?\n/) : [];
-          const at = lines.findIndex(line => /Error|ERR_|Cannot find|Could not|error:/i.test(line));
+          const at = lines.findLastIndex(line => /\b(?:[A-Z][A-Za-z]+Error|Error)(?:\s*\[[^\]]+\])?:|\[ERROR\]|Cannot find|Could not resolve|^npm error/i.test(line));
           const detail = (at < 0 ? lines.slice(-8) : lines.slice(at, at + 4)).join(' ').replace(/[\r\n\t]+/g, ' ').slice(0, 200);
           appendFileSync(process.env.GITHUB_OUTPUT, `message=${stage}: ${detail || 'no command diagnostic'}\n`);
           NODE

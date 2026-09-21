@@ -8,7 +8,7 @@ import { faqRecords } from './faq-content.mjs';
 // Use the Pagefind version owned by the pinned Starlight toolchain, not an assumed
 // hoisted package or a second independently versioned search implementation.
 const starlightRequire = createRequire(import.meta.resolve('@astrojs/starlight'));
-const pagefind = await import(pathToFileURL(starlightRequire.resolve('pagefind')).href);
+const pagefind = await import(/* @vite-ignore */ pathToFileURL(starlightRequire.resolve('pagefind')).href);
 function checked(result, operation) {
   if (result.errors?.length) throw new Error(`${operation}: ${result.errors.join('; ')}`);
   return result;
