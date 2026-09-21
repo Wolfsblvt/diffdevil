@@ -7,8 +7,8 @@
     "check:prep": "node ./tools/check-prep.mjs",
     "build": "node tools/build.mjs",
     "build:offline": "npm run build",
-    "test": "node tools/test.mjs",
-    "verify": "npm run check:prep && npm run build && npm test && npm run test:release && npm run check:actions && npm run check:workers && npm run check:github-app && npm run check:website",
+    "test": "node tools/browser-extension-build.mjs --without-fonts && node tools/test.mjs",
+    "verify": "npm run check:prep && npm run build && npm test && npm run test:release && npm run check:actions && npm run check:workers && npm run check:github-app && npm run check:website && npm run extension:check && node tools/browser-extension-build.mjs",
     "verify:offline": "npm run verify",
     "test:package": "node tools/package-smoke.mjs",
     "prepack": "npm run build",
@@ -31,7 +31,13 @@
     "website:check": "node tools/website-docs.mjs && astro check --root apps/website",
     "check:website": "node tools/website-assets.mjs && node tools/website-docs.mjs && astro build --root apps/website",
     "test:website": "node --test apps/website/website.test.mjs",
-    "qa:website": "node apps/website/qa/run.mjs"
+    "qa:website": "node apps/website/qa/run.mjs",
+    "extension:build": "npm run build && npm run extension:check && node tools/browser-extension-build.mjs",
+    "extension:check": "node node_modules/typescript/bin/tsc -p apps/browser-extension/tsconfig.json --pretty false",
+    "extension:test": "node tools/browser-extension-build.mjs --without-fonts && node --test apps/browser-extension/tests/*.test.mjs",
+    "extension:qa": "node apps/browser-extension/qa/run.mjs && node apps/browser-extension/qa/acquisition.mjs",
+    "extension:qa:installed": "node apps/browser-extension/qa/installed.mjs",
+    "extension:store": "node tools/browser-extension-store.mjs"
   },
   "keywords": [
     "git",
@@ -74,10 +80,19 @@
     "./github": {
       "types": "./dist/lib/github/index.d.ts",
       "import": "./dist/lib/github/index.js"
+    },
+    "./browser": {
+      "types": "./dist/lib/browser/index.d.ts",
+      "import": "./dist/browser/index.js"
+    },
+    "./browser/text": {
+      "types": "./dist/lib/browser/text.d.ts",
+      "import": "./dist/lib/browser/text.js"
     }
   },
   "files": [
     "dist/lib",
+    "dist/browser",
     "src/diffdevil/**/*.ts",
     "src/diffdevil/contracts",
     "src/diffdevil/presets/*.yml",

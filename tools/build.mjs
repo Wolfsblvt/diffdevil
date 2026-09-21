@@ -1,3 +1,4 @@
+import { buildBrowser } from './browser-library-build.mjs';
 import { buildSchemas } from './schema-build.mjs';
 import { existsSync, mkdirSync, rmSync, chmodSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -17,6 +18,7 @@ const result = spawnSync(process.execPath, args, { stdio: 'inherit', windowsHide
 if (result.error) { console.error(result.error.message); process.exit(2); }
 if (result.status === 0) {
   buildSchemas();
+  await buildBrowser();
   if (existsSync('dist/lib/cli/main.js')) chmodSync('dist/lib/cli/main.js', 0o755);
 }
 process.exit(result.status ?? 2);

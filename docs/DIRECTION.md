@@ -44,6 +44,14 @@ its primary action, and keeps the open package visibly first-class. The playgrou
 the trial surface, not a fourth route. The public category descriptor is *Composable
 diff analysis and automation for GitHub and the CLI.*
 
+Current source now contains the complete local-first Chrome extension under
+`apps/browser-extension/` and the reusable browser entry under
+`src/diffdevil/browser/`. Its exact-head browser and repository verification is green,
+including an installed Manifest V3 worker and native Chrome storage. Live authenticated
+GitHub journeys, Windows interactive accessibility, native writable-label readback,
+managed-App report delivery, Store submission and publication remain separate release
+acceptance and provider effects.
+
 Current source contains the first read-only measurement playground under
 `apps/playground/`, backed by the shared engine and versioned response contract.
 That exact application is live at

@@ -1,0 +1,27 @@
+<!doctype html>
+<!-- SPDX-License-Identifier: AGPL-3.0-only -->
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark light">
+  <title>Settings · diffdevil for GitHub</title><link rel="icon" href="assets/icon-32.png"><script src="theme.js"></script><link rel="stylesheet" href="options.css">
+</head>
+<body>
+<a class="skip-link" href="#settings-content">Skip to settings</a>
+<header class="app-header"><div class="header-inner">
+  <a class="wordmark" href="https://github.com/Wolfsblvt/diffdevil" target="_blank" rel="noopener noreferrer"><img id="wordmark" src="assets/diffdevil-wordmark-dark.svg" width="126" height="30" alt="diffdevil"></a>
+  <span class="location-label">Settings</span><div class="header-end"><div id="theme-control" class="segmented" role="group" aria-label="Settings theme"></div><a class="header-link" href="https://github.com/Wolfsblvt/diffdevil" target="_blank" rel="noopener noreferrer">GitHub ↗</a></div>
+</div></header>
+<main class="app-main">
+  <div class="page-heading"><div><p class="eyebrow">#your-view</p><h1>Your view of the diff.</h1><p class="lede">Clearer measurements. Your policy. No source upload.</p></div><span class="local-badge">Local analysis · GitHub only</span></div>
+  <section class="settings-toolbar" aria-label="Find settings">
+    <label class="search-label" for="settings-search">Search settings</label><input id="settings-search" type="search" placeholder="Search settings, descriptions or #identifiers…" autocomplete="off" spellcheck="false">
+    <div class="view-row"><div id="view-control" class="segmented" role="group" aria-label="Settings detail"><button type="button" data-view="basic" aria-pressed="true">Basic</button><button type="button" data-view="advanced" aria-pressed="false">Advanced <span id="advanced-badge" class="count-badge" hidden></span></button></div><span id="search-summary" role="status"></span><button id="show-changed" class="subtle-button" type="button" hidden></button></div>
+  </section>
+  <div class="settings-layout"><nav class="category-nav" aria-label="Setting categories" id="categories"></nav><div id="settings-content" tabindex="-1"><p>Loading your settings…</p></div></div>
+  <section class="details-panel" aria-labelledby="details-heading"><div class="section-title"><div><p class="eyebrow">#extension-details</p><h2 id="details-heading">Extension details</h2></div><button type="button" id="refresh-details" class="subtle-button">Refresh</button></div><div id="diagnostics"></div></section>
+  <section class="portability" aria-labelledby="portability-heading"><h2 id="portability-heading">Keep your configuration portable.</h2><p>Export settings for another browser, or use the same policy with the CLI and Actions. Exports can include personal repository names and policy text.</p><div class="button-row"><button type="button" id="export-settings">Export settings</button><button type="button" id="import-settings">Import settings</button><input id="import-file" type="file" accept="application/json,.json" hidden></div></section>
+</main>
+<footer class="app-footer"><div><strong>diffdevil for GitHub</strong><span>No account. No telemetry. No source upload.</span></div><nav aria-label="Product links"><a href="https://github.com/Wolfsblvt/diffdevil" target="_blank" rel="noopener noreferrer">Product</a><a href="https://github.com/Wolfsblvt/diffdevil/tree/main/docs" target="_blank" rel="noopener noreferrer">Docs</a><a href="https://github.com/Wolfsblvt/diffdevil" target="_blank" rel="noopener noreferrer">Source</a><a href="https://github.com/Wolfsblvt/diffdevil/issues" target="_blank" rel="noopener noreferrer">Issues</a><a href="https://github.com/Wolfsblvt/diffdevil/releases" target="_blank" rel="noopener noreferrer">Releases</a><a href="privacy.html">Privacy</a><a href="licenses.html">Licences</a><a href="https://wolfsblvt.com" target="_blank" rel="noopener noreferrer">Wolfsblvt Works ↗</a></nav><p class="publication-note">Unpublished source candidate · No Chrome Web Store listing.</p></footer>
+<div id="save-status" class="save-status" role="status" aria-live="polite" hidden></div>
+<script src="options.js" type="module"></script>
+</body></html>
