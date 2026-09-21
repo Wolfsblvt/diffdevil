@@ -42,7 +42,7 @@ node dist/lib/cli/main.js query --report docs/examples/reports/exact.json \
 # 178
 ```
 
-**[Try the playground](https://diffdevil-playground.wolfsblvt.workers.dev)** · **[Label your PRs](docs/guides/auto-label-pull-requests.md)** · [Local scripts](docs/guides/local-automation.md) · [Policy recipes](docs/guides/policy-recipes.md) · [User manual](docs/automation.md) · [CLI reference](docs/integration/cli.md) · [Actions](docs/integration/github-actions.md) · [TypeScript API](docs/integration/typescript-api.md)
+**[Try the playground](https://diffdevil-playground.wolfsblvt.workers.dev)** · **[Label your PRs](docs/guides/auto-label-pull-requests.md)** · [Local scripts](docs/guides/local-automation.md) · [Policy recipes](docs/guides/policy-recipes.md) · [FAQ](docs/manual/faq.md) · [User manual](docs/automation.md) · [CLI reference](docs/integration/cli.md) · [Actions](docs/integration/github-actions.md) · [TypeScript API](docs/integration/typescript-api.md)
 
 ## Label your PRs with one file
 
