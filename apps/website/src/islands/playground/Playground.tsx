@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 /**
- * The playground island. One acquired report (fixture, curated snapshot, or a public
+ * The playground island. One acquired report (a catalogue snapshot or a public
  * PR from the playground API) is evaluated locally against one policy text; every view
  * renders the same result. URL parameters are the state.
  */
@@ -14,10 +14,10 @@ import { Result } from './Result';
 import { announce } from '../../lib/clipboard';
 
 export interface ExamplePayload {
-  readonly kind: 'diffdevil.playground-example'; readonly group: 'fixture' | 'curated';
-  readonly id: string; readonly glyph?: string; readonly title: string; readonly hook?: string; readonly teaches: string; readonly reason?: string; readonly focus?: string;
+  readonly kind: 'diffdevil.playground-example'; readonly group: 'catalogue';
+  readonly id: string; readonly variant: string; readonly key: string; readonly title: string; readonly focus?: string;
   readonly repository?: string; readonly pullRequest?: number; readonly url?: string;
-  readonly source?: { kind: string; path: string };
+  readonly sourceId: string; readonly edition: string;
   readonly snapshot?: { head: string; base: string; analyzedAt: string; engine: { package: string; reportSchema: string; replacementLines: string; policy: string }; evidence: string; note?: string };
   readonly policy: { kind: 'file' | 'preset'; path?: string; name: string; text: string };
   readonly commentPolicy?: { path: string; name: string; text: string } | undefined;
@@ -25,7 +25,7 @@ export interface ExamplePayload {
 }
 
 export interface Acquired {
-  readonly kind: 'fixture' | 'snapshot' | 'live' | 'pr';
+  readonly kind: 'snapshot' | 'live' | 'pr';
   readonly report: Report;
   readonly example?: ExamplePayload | undefined;
   readonly pr?: { owner: string; repo: string; number: number } | undefined;
@@ -37,7 +37,7 @@ export interface Acquired {
 
 export type ApiError = { code: string; message: string; retryMinutes?: number | undefined };
 
-interface Props { readonly curated: readonly ExampleCard[]; readonly defaultExample: string }
+interface Props { readonly catalogue: readonly ExampleCard[]; readonly defaultExample: string }
 
 const PRESET_POLICY = 'version: 1\npresets: [size@1]\n';
 
@@ -63,7 +63,7 @@ export async function fetchApi(path: string, url: string, signal?: AbortSignal):
   return { ok: false, error: { code: body?.error?.code ?? 'UPSTREAM_ERROR', message: body?.error?.message ?? copy.playground.states.upstream, retryMinutes } };
 }
 
-export default function Playground({ curated, defaultExample }: Props) {
+export default function Playground({ catalogue, defaultExample }: Props) {
   const [state, setState] = useState<PlaygroundState>(() => readState(typeof location === 'undefined' ? '' : location.search, defaultExample));
   const [acquired, setAcquired] = useState<Acquired | undefined>();
   const [previous, setPrevious] = useState<Acquired | undefined>();
@@ -85,22 +85,26 @@ export default function Playground({ curated, defaultExample }: Props) {
     if (location.search !== next) history.replaceState(null, '', `${location.pathname}${next}${location.hash}`);
   }, [state, defaultExample]);
 
-  const loadExample = useCallback(async (id: string): Promise<ExamplePayload | undefined> => {
-    const cached = examples.current.get(id);
+  const loadExample = useCallback(async (id: string, variant: string | undefined): Promise<ExamplePayload | undefined> => {
+    const card = catalogue.find(candidate => candidate.id === id);
+    const selectedVariant = card?.variants.find(candidate => candidate.id === variant) ?? card?.variants[0];
+    if (!selectedVariant) return undefined;
+    const key = `${id}--${selectedVariant.id}`;
+    const cached = examples.current.get(key);
     if (cached) return cached;
     try {
-      const response = await fetch(`/playground/examples/${id}.json`);
+      const response = await fetch(`/playground/examples/${key}.json`);
       if (!response.ok) return undefined;
       const payload = await response.json() as ExamplePayload;
       const report = readSavedReport(payload.report);
       if (!report.ok) return undefined;
       const value = { ...payload, report: report.value };
-      examples.current.set(id, value);
+      examples.current.set(key, value);
       return value;
     } catch { return undefined; }
-  }, []);
+  }, [catalogue]);
 
-  // Acquisition: fixtures and snapshots from static JSON, live and PR input from the API.
+  // Acquisition: catalogue snapshots from static JSON, live and PR input from the API.
   useEffect(() => {
     let cancelled = false;
     abort.current?.abort();
@@ -125,12 +129,12 @@ export default function Playground({ curated, defaultExample }: Props) {
         return;
       }
       const exampleId = state.example ?? defaultExample;
-      const example = await loadExample(exampleId);
+      const example = await loadExample(exampleId, state.variant);
       if (stale()) return;
       if (!example) { setError({ code: 'NOT_FOUND', message: `No example named "${exampleId}".` }); return; }
       setError(undefined);
       const pr = example.repository && example.pullRequest ? { owner: example.repository.split('/')[0]!, repo: example.repository.split('/')[1]!, number: example.pullRequest } : undefined;
-      if (example.group === 'curated' && state.head === 'live' && pr) {
+      if (state.head === 'live' && pr) {
         setWorking(true);
         announce(copy.playground.working);
         const result = await fetchApi('/api/report', prUrl(pr), controller.signal);
@@ -142,12 +146,12 @@ export default function Playground({ curated, defaultExample }: Props) {
         setAcquired({ kind: 'live', report: report.value, example, pr, policyName: example.policy.name, basePolicy: example.policy.text, liveHead: report.value.source.head, acquiredAt: Date.now() });
         announce(copy.playground.done);
       } else {
-        setAcquired({ kind: example.group === 'curated' ? 'snapshot' : 'fixture', report: example.report, example, pr, policyName: example.policy.name, basePolicy: example.policy.text, acquiredAt: Date.now() });
+        setAcquired({ kind: 'snapshot', report: example.report, example, pr, policyName: example.policy.name, basePolicy: example.policy.text, acquiredAt: Date.now() });
       }
       setPolicyText(state.policy ? decodePolicy(state.policy) ?? example.policy.text : example.policy.text);
       // Freshness: once per snapshot per page load; a failed check shows nothing rather than a false "current".
-      if (example.group === 'curated' && pr && example.snapshot) {
-        const key = `diffdevil.head.${example.id}`;
+      if (pr && example.snapshot) {
+        const key = `diffdevil.head.${example.key}`;
         const cachedHead = sessionStorage.getItem(key);
         if (cachedHead !== null) { setNewerHead(cachedHead && cachedHead !== example.snapshot.head ? cachedHead : undefined); }
         else {
@@ -159,7 +163,7 @@ export default function Playground({ curated, defaultExample }: Props) {
       } else setNewerHead(undefined);
     })();
     return () => { cancelled = true; controller.abort(); };
-  }, [state.mode, state.pr?.owner, state.pr?.repo, state.pr?.number, state.example, state.head, attempt, defaultExample, loadExample]);
+  }, [state.mode, state.pr?.owner, state.pr?.repo, state.pr?.number, state.example, state.variant, state.head, attempt, defaultExample, loadExample]);
 
   const evaluation = useMemo<Evaluation | EvaluationFailure | undefined>(() => {
     if (!acquired || !policyText) return undefined;
@@ -175,8 +179,8 @@ export default function Playground({ curated, defaultExample }: Props) {
     setState(current => ({ ...current, policy: acquired && text === acquired.basePolicy ? undefined : encodePolicy(text) }));
   }, [acquired]);
 
-  const selectExample = useCallback((id: string) => setState(current => ({ ...current, mode: 'examples', example: id, head: 'snapshot', pr: undefined, policy: undefined })), []);
-  const analyzePr = useCallback((pr: { owner: string; repo: string; number: number }) => { setAttempt(a => a + 1); setState(current => ({ ...current, mode: 'pr', pr, example: undefined, head: 'snapshot', policy: undefined })); }, []);
+  const selectExample = useCallback((id: string, variant: string) => setState(current => ({ ...current, mode: 'examples', example: id, variant, head: 'snapshot', pr: undefined, policy: undefined })), []);
+  const analyzePr = useCallback((pr: { owner: string; repo: string; number: number }) => { setAttempt(a => a + 1); setState(current => ({ ...current, mode: 'pr', pr, example: undefined, variant: undefined, head: 'snapshot', policy: undefined })); }, []);
   // Cancel aborts the in-flight request and retires its identity, so a late response
   // (success or failure) cannot commit state; the input and the previous result stay.
   const cancel = useCallback(() => { abort.current?.abort(); requestId.current += 1; setWorking(false); announce('Cancelled. Your input is kept.'); }, []);
@@ -184,7 +188,7 @@ export default function Playground({ curated, defaultExample }: Props) {
   return (
     <div className="pg">
       <Rail
-        state={state} curated={curated} acquired={acquired} evaluation={evaluation} lastValid={lastValid.current}
+        state={state} catalogue={catalogue} acquired={acquired} evaluation={evaluation} lastValid={lastValid.current}
         working={working} error={error} policyText={policyText}
         onSelectExample={selectExample} onAnalyzePr={analyzePr} onCancel={cancel} onMode={(mode) => update({ mode })} onCfg={(cfg) => update({ cfg })} onPolicy={changePolicy}
       />
