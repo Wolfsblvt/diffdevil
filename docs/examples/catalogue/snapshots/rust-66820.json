@@ -1,0 +1,3722 @@
+{
+  "kind": "diffdevil.example-snapshot",
+  "schemaVersion": "1.2",
+  "id": "rust-66820",
+  "edition": "teaching-snapshot",
+  "repository": "rust-lang/rust",
+  "pullRequest": 66820,
+  "url": "https://github.com/rust-lang/rust/pull/66820",
+  "title": "Format libstd with rustfmt",
+  "capturedAt": "2026-09-18T23:14:08.374Z",
+  "provenance": {
+    "baseTip": "9081929d45f12d3f56d43b1d6db7519981580fc9",
+    "mergeBase": "9081929d45f12d3f56d43b1d6db7519981580fc9",
+    "head": "9ad085070746b5ff4c3262bb65c2cdefe4269198"
+  },
+  "acquisition": {
+    "route": "github-rest-compare-three-dot",
+    "comparisonEndpoint": "/repos/rust-lang/rust/compare/9081929d45f12d3f56d43b1d6db7519981580fc9...9ad085070746b5ff4c3262bb65c2cdefe4269198",
+    "identityEndpoint": "/repos/rust-lang/rust/compare/9081929d45f12d3f56d43b1d6db7519981580fc9...9ad085070746b5ff4c3262bb65c2cdefe4269198",
+    "pullEndpoint": "/repos/rust-lang/rust/pulls/66820"
+  },
+  "notices": {
+    "declared": "MIT OR Apache-2.0",
+    "records": [
+      {
+        "label": "MIT",
+        "repository": "rust-lang/rust",
+        "path": "LICENSE-MIT",
+        "role": "base",
+        "ref": "9081929d45f12d3f56d43b1d6db7519981580fc9",
+        "sha": "31aa79387f27e730e33d871925e152e35e428031"
+      },
+      {
+        "label": "MIT",
+        "repository": "rust-lang/rust",
+        "path": "LICENSE-MIT",
+        "role": "head",
+        "ref": "9ad085070746b5ff4c3262bb65c2cdefe4269198",
+        "sha": "31aa79387f27e730e33d871925e152e35e428031"
+      },
+      {
+        "label": "Apache-2.0",
+        "repository": "rust-lang/rust",
+        "path": "LICENSE-APACHE",
+        "role": "base",
+        "ref": "9081929d45f12d3f56d43b1d6db7519981580fc9",
+        "sha": "16fe87b06e802f094b3fbb0894b137bca2b16ef1"
+      },
+      {
+        "label": "Apache-2.0",
+        "repository": "rust-lang/rust",
+        "path": "LICENSE-APACHE",
+        "role": "head",
+        "ref": "9ad085070746b5ff4c3262bb65c2cdefe4269198",
+        "sha": "16fe87b06e802f094b3fbb0894b137bca2b16ef1"
+      }
+    ]
+  },
+  "rights": {
+    "retainedMaterial": "normalized-report-only",
+    "rawComparison": "analyzed-in-memory-not-committed",
+    "binaryBytes": "not-retained",
+    "review": "Pinned notices and every retained normalized file record were inspected; raw source lines, patch text, discussion, and provider responses are not retained."
+  },
+  "engine": {
+    "package": "1.0.0",
+    "reportSchema": "1.0",
+    "replacementLines": "replacement-lines-v1"
+  },
+  "payload": {
+    "sourceSha256": "263e6c4f511e481b089da4dca33651cca06b8c14ef1a8cb27ece2ae4456091ed",
+    "normalizedReportSha256": "0620be389b43f7a372f2e3e67b38a06092c4406427e05bbb438018b855a33f21",
+    "providerFileSetSha256": "df11761e1ebb816f964e80b70f3ddc1fc59af3b95180d4dc31a58e53c4f5657f"
+  },
+  "capabilities": {
+    "policyReplay": true,
+    "remeasurement": false,
+    "remeasurementReason": "No raw comparison material is retained in this teaching snapshot."
+  },
+  "lesson": {
+    "id": "similar-size-different-spread",
+    "title": "Similar change size, radically different spread"
+  },
+  "provider": {
+    "complete": true,
+    "observedCount": 51,
+    "reportedCount": 51,
+    "entries": [
+      {
+        "path": "src/libstd/ascii.rs",
+        "status": "modified",
+        "additions": 1,
+        "deletions": 1,
+        "changes": 2,
+        "patchAvailable": true
+      },
+      {
+        "path": "src/libstd/backtrace.rs",
+        "status": "modified",
+        "additions": 2,
+        "deletions": 2,
+        "changes": 4,
+        "patchAvailable": true
+      },
+      {
+        "path": "src/libstd/benches/hash/map.rs",
+        "status": "modified",
+        "additions": 1,
+        "deletions": 1,
+        "changes": 2,
+        "patchAvailable": true
+      },
+      {
+        "path": "src/libstd/collections/mod.rs",
+        "status": "modified",
+        "additions": 5,
+        "deletions": 5,
+        "changes": 10,
+        "patchAvailable": true
+      },
+      {
+        "path": "src/libstd/env.rs",
+        "status": "modified",
+        "additions": 94,
+        "deletions": 67,
+        "changes": 161,
+        "patchAvailable": true
+      },
+      {
+        "path": "src/libstd/f32.rs",
+        "status": "modified",
+        "additions": 37,
+        "deletions": 45,
+        "changes": 82,
+        "patchAvailable": true
+      },
+      {
+        "path": "src/libstd/f64.rs",
+        "status": "modified",
+        "additions": 36,
+        "deletions": 42,
+        "changes": 78,
+        "patchAvailable": true
+      },
+      {
+        "path": "src/libstd/ffi/mod.rs",
+        "status": "modified",
+        "additions": 10,
+        "deletions": 8,
+        "changes": 18,
+        "patchAvailable": true
+      },
+      {
+        "path": "src/libstd/fs.rs",
+        "status": "modified",
+        "additions": 204,
+        "deletions": 131,
+        "changes": 335,
+        "patchAvailable": true
+      },
+      {
+        "path": "src/libstd/io/buffered.rs",
+        "status": "modified",
+        "additions": 80,
+        "deletions": 67,
+        "changes": 147,
+        "patchAvailable": true
+      },
+      {
+        "path": "src/libstd/io/error.rs",
+        "status": "modified",
+        "additions": 29,
+        "deletions": 36,
+        "changes": 65,
+        "patchAvailable": true
+      },
+      {
+        "path": "src/libstd/io/impls.rs",
+        "status": "modified",
+        "additions": 46,
+        "deletions": 18,
+        "changes": 64,
+        "patchAvailable": true
+      },
+      {
+        "path": "src/libstd/io/mod.rs",
+        "status": "modified",
+        "additions": 89,
+        "deletions": 79,
+        "changes": 168,
+        "patchAvailable": true
+      },
+      {
+        "path": "src/libstd/io/prelude.rs",
+        "status": "modified",
+        "additions": 1,
+        "deletions": 1,
+        "changes": 2,
+        "patchAvailable": true
+      },
+      {
+        "path": "src/libstd/io/util.rs",
+        "status": "modified",
+        "additions": 38,
+        "deletions": 14,
+        "changes": 52,
+        "patchAvailable": true
+      },
+      {
+        "path": "src/libstd/macros.rs",
+        "status": "modified",
+        "additions": 3,
+        "deletions": 4,
+        "changes": 7,
+        "patchAvailable": true
+      },
+      {
+        "path": "src/libstd/net/addr.rs",
+        "status": "modified",
+        "additions": 56,
+        "deletions": 35,
+        "changes": 91,
+        "patchAvailable": true
+      },
+      {
+        "path": "src/libstd/net/parser.rs",
+        "status": "modified",
+        "additions": 31,
+        "deletions": 44,
+        "changes": 75,
+        "patchAvailable": true
+      },
+      {
+        "path": "src/libstd/net/tcp.rs",
+        "status": "modified",
+        "additions": 146,
+        "deletions": 93,
+        "changes": 239,
+        "patchAvailable": true
+      },
+      {
+        "path": "src/libstd/net/test.rs",
+        "status": "modified",
+        "additions": 19,
+        "deletions": 10,
+        "changes": 29,
+        "patchAvailable": true
+      },
+      {
+        "path": "src/libstd/net/udp.rs",
+        "status": "modified",
+        "additions": 42,
+        "deletions": 30,
+        "changes": 72,
+        "patchAvailable": true
+      },
+      {
+        "path": "src/libstd/num.rs",
+        "status": "modified",
+        "additions": 66,
+        "deletions": 53,
+        "changes": 119,
+        "patchAvailable": true
+      },
+      {
+        "path": "src/libstd/panic.rs",
+        "status": "modified",
+        "additions": 20,
+        "deletions": 22,
+        "changes": 42,
+        "patchAvailable": true
+      },
+      {
+        "path": "src/libstd/path.rs",
+        "status": "modified",
+        "additions": 781,
+        "deletions": 847,
+        "changes": 1628,
+        "patchAvailable": true
+      },
+      {
+        "path": "src/libstd/prelude/v1.rs",
+        "status": "modified",
+        "additions": 12,
+        "deletions": 46,
+        "changes": 58,
+        "patchAvailable": true
+      },
+      {
+        "path": "src/libstd/process.rs",
+        "status": "modified",
+        "additions": 133,
+        "deletions": 86,
+        "changes": 219,
+        "patchAvailable": true
+      },
+      {
+        "path": "src/libstd/rt.rs",
+        "status": "modified",
+        "additions": 16,
+        "deletions": 10,
+        "changes": 26,
+        "patchAvailable": true
+      },
+      {
+        "path": "src/libstd/sync/barrier.rs",
+        "status": "modified",
+        "additions": 9,
+        "deletions": 13,
+        "changes": 22,
+        "patchAvailable": true
+      },
+      {
+        "path": "src/libstd/sync/mpsc/blocking.rs",
+        "status": "modified",
+        "additions": 5,
+        "deletions": 12,
+        "changes": 17,
+        "patchAvailable": true
+      },
+      {
+        "path": "src/libstd/sync/mpsc/cache_aligned.rs",
+        "status": "modified",
+        "additions": 7,
+        "deletions": 7,
+        "changes": 14,
+        "patchAvailable": true
+      },
+      {
+        "path": "src/libstd/sync/mpsc/mod.rs",
+        "status": "modified",
+        "additions": 251,
+        "deletions": 259,
+        "changes": 510,
+        "patchAvailable": true
+      },
+      {
+        "path": "src/libstd/sync/mpsc/mpsc_queue.rs",
+        "status": "modified",
+        "additions": 11,
+        "deletions": 17,
+        "changes": 28,
+        "patchAvailable": true
+      },
+      {
+        "path": "src/libstd/sync/mpsc/oneshot.rs",
+        "status": "modified",
+        "additions": 27,
+        "deletions": 29,
+        "changes": 56,
+        "patchAvailable": true
+      },
+      {
+        "path": "src/libstd/sync/mpsc/shared.rs",
+        "status": "modified",
+        "additions": 37,
+        "deletions": 20,
+        "changes": 57,
+        "patchAvailable": true
+      },
+      {
+        "path": "src/libstd/sync/mpsc/spsc_queue.rs",
+        "status": "modified",
+        "additions": 24,
+        "deletions": 23,
+        "changes": 47,
+        "patchAvailable": true
+      },
+      {
+        "path": "src/libstd/sync/mpsc/stream.rs",
+        "status": "modified",
+        "additions": 62,
+        "deletions": 50,
+        "changes": 112,
+        "patchAvailable": true
+      },
+      {
+        "path": "src/libstd/sync/mpsc/sync.rs",
+        "status": "modified",
+        "additions": 66,
+        "deletions": 55,
+        "changes": 121,
+        "patchAvailable": true
+      },
+      {
+        "path": "src/libstd/sys_common/alloc.rs",
+        "status": "modified",
+        "additions": 17,
+        "deletions": 13,
+        "changes": 30,
+        "patchAvailable": true
+      },
+      {
+        "path": "src/libstd/sys_common/bytestring.rs",
+        "status": "modified",
+        "additions": 2,
+        "deletions": 2,
+        "changes": 4,
+        "patchAvailable": true
+      },
+      {
+        "path": "src/libstd/sys_common/fs.rs",
+        "status": "modified",
+        "additions": 6,
+        "deletions": 8,
+        "changes": 14,
+        "patchAvailable": true
+      },
+      {
+        "path": "src/libstd/sys_common/io.rs",
+        "status": "modified",
+        "additions": 1,
+        "deletions": 1,
+        "changes": 2,
+        "patchAvailable": true
+      },
+      {
+        "path": "src/libstd/sys_common/net.rs",
+        "status": "modified",
+        "additions": 143,
+        "deletions": 113,
+        "changes": 256,
+        "patchAvailable": true
+      },
+      {
+        "path": "src/libstd/sys_common/os_str_bytes.rs",
+        "status": "modified",
+        "additions": 6,
+        "deletions": 9,
+        "changes": 15,
+        "patchAvailable": true
+      },
+      {
+        "path": "src/libstd/sys_common/poison.rs",
+        "status": "modified",
+        "additions": 25,
+        "deletions": 19,
+        "changes": 44,
+        "patchAvailable": true
+      },
+      {
+        "path": "src/libstd/sys_common/process.rs",
+        "status": "modified",
+        "additions": 3,
+        "deletions": 11,
+        "changes": 14,
+        "patchAvailable": true
+      },
+      {
+        "path": "src/libstd/sys_common/thread_info.rs",
+        "status": "modified",
+        "additions": 14,
+        "deletions": 14,
+        "changes": 28,
+        "patchAvailable": true
+      },
+      {
+        "path": "src/libstd/sys_common/util.rs",
+        "status": "modified",
+        "additions": 7,
+        "deletions": 3,
+        "changes": 10,
+        "patchAvailable": true
+      },
+      {
+        "path": "src/libstd/sys_common/wtf8.rs",
+        "status": "modified",
+        "additions": 122,
+        "deletions": 121,
+        "changes": 243,
+        "patchAvailable": true
+      },
+      {
+        "path": "src/libstd/tests/env.rs",
+        "status": "modified",
+        "additions": 5,
+        "deletions": 10,
+        "changes": 15,
+        "patchAvailable": true
+      },
+      {
+        "path": "src/libstd/thread/local.rs",
+        "status": "modified",
+        "additions": 49,
+        "deletions": 54,
+        "changes": 103,
+        "patchAvailable": true
+      },
+      {
+        "path": "src/test/ui/issues/issue-27033.stderr",
+        "status": "modified",
+        "additions": 2,
+        "deletions": 2,
+        "changes": 4,
+        "patchAvailable": true
+      }
+    ]
+  },
+  "material": [
+    {
+      "path": "src/libstd/ascii.rs",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "src/libstd/backtrace.rs",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "src/libstd/benches/hash/map.rs",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "src/libstd/collections/mod.rs",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "src/libstd/env.rs",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "src/libstd/f32.rs",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "src/libstd/f64.rs",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "src/libstd/ffi/mod.rs",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "src/libstd/fs.rs",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "src/libstd/io/buffered.rs",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "src/libstd/io/error.rs",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "src/libstd/io/impls.rs",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "src/libstd/io/mod.rs",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "src/libstd/io/prelude.rs",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "src/libstd/io/util.rs",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "src/libstd/macros.rs",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "src/libstd/net/addr.rs",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "src/libstd/net/parser.rs",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "src/libstd/net/tcp.rs",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "src/libstd/net/test.rs",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "src/libstd/net/udp.rs",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "src/libstd/num.rs",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "src/libstd/panic.rs",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "src/libstd/path.rs",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "src/libstd/prelude/v1.rs",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "src/libstd/process.rs",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "src/libstd/rt.rs",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "src/libstd/sync/barrier.rs",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "src/libstd/sync/mpsc/blocking.rs",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "src/libstd/sync/mpsc/cache_aligned.rs",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "src/libstd/sync/mpsc/mod.rs",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "src/libstd/sync/mpsc/mpsc_queue.rs",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "src/libstd/sync/mpsc/oneshot.rs",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "src/libstd/sync/mpsc/shared.rs",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "src/libstd/sync/mpsc/spsc_queue.rs",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "src/libstd/sync/mpsc/stream.rs",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "src/libstd/sync/mpsc/sync.rs",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "src/libstd/sys_common/alloc.rs",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "src/libstd/sys_common/bytestring.rs",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "src/libstd/sys_common/fs.rs",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "src/libstd/sys_common/io.rs",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "src/libstd/sys_common/net.rs",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "src/libstd/sys_common/os_str_bytes.rs",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "src/libstd/sys_common/poison.rs",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "src/libstd/sys_common/process.rs",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "src/libstd/sys_common/thread_info.rs",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "src/libstd/sys_common/util.rs",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "src/libstd/sys_common/wtf8.rs",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "src/libstd/tests/env.rs",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "src/libstd/thread/local.rs",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "src/test/ui/issues/issue-27033.stderr",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    }
+  ],
+  "report": {
+    "kind": "diffdevil.report",
+    "schemaVersion": "1.0",
+    "semantics": {
+      "language": "diffdevil-expr/1",
+      "numbers": "diffdevil-number/1",
+      "replacementLines": "replacement-lines-v1",
+      "paths": "diffdevil-glob/1"
+    },
+    "source": {
+      "kind": "unified-diff",
+      "comparison": "three-dot",
+      "repository": "rust-lang/rust",
+      "pullRequest": 66820,
+      "base": "9081929d45f12d3f56d43b1d6db7519981580fc9",
+      "baseTip": "9081929d45f12d3f56d43b1d6db7519981580fc9",
+      "head": "9ad085070746b5ff4c3262bb65c2cdefe4269198",
+      "comparisonId": "github-compare-1eaae29d8d689aa80c66fedfdf88fd615a2d26155d1d21653d7286558b875894"
+    },
+    "fileSet": {
+      "complete": true,
+      "total": {
+        "status": "exact",
+        "value": 51
+      }
+    },
+    "files": [
+      {
+        "id": "file-534de98cf184830a4cecff71b1fed209fbccb0192696f5bbe634cce51799685b",
+        "path": "src/libstd/ascii.rs",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/libstd/ascii.rs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 1
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 1
+          },
+          "churn": {
+            "status": "exact",
+            "value": 2
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 0
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 1
+          },
+          "changed": {
+            "status": "exact",
+            "value": 1
+          }
+        },
+        "family": {
+          "id": "family-a73932897c62efa970957db6060e2c170e47d548066166ec47d36b37025ff00f",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-e00c763abd8c42bbfb79886efd0a43f1c35419b3465bb683f887a2cfc46e9d02",
+        "path": "src/libstd/backtrace.rs",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/libstd/backtrace.rs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 2
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 2
+          },
+          "churn": {
+            "status": "exact",
+            "value": 4
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 1
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 1
+          },
+          "modified": {
+            "status": "exact",
+            "value": 1
+          },
+          "changed": {
+            "status": "exact",
+            "value": 3
+          }
+        },
+        "family": {
+          "id": "family-9c091f46768f401b50813ae793153361fdd26575d82e79156fa618db281460ff",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-7e2fa3317f02f395201f7bcdd959ff716a7cec3ba840a72f211cc96e3e191f77",
+        "path": "src/libstd/benches/hash/map.rs",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/libstd/benches/hash/map.rs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 1
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 1
+          },
+          "churn": {
+            "status": "exact",
+            "value": 2
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 1
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 1
+          },
+          "modified": {
+            "status": "exact",
+            "value": 0
+          },
+          "changed": {
+            "status": "exact",
+            "value": 2
+          }
+        },
+        "family": {
+          "id": "family-e53a4626eeef41c48585b729a07890ac5796e0a208b5c94ce98eaf9b97c38739",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-a76807daff07e8163518824de2a036d1d73ff5b4266779486a7f18ad592cfe23",
+        "path": "src/libstd/collections/mod.rs",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/libstd/collections/mod.rs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 5
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 5
+          },
+          "churn": {
+            "status": "exact",
+            "value": 10
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 4
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 4
+          },
+          "modified": {
+            "status": "exact",
+            "value": 1
+          },
+          "changed": {
+            "status": "exact",
+            "value": 9
+          }
+        },
+        "family": {
+          "id": "family-437f4a044a25fc5b097f22e24293d22d2540fce56292238c0464dbdd1019a47e",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-13cee3e7d11d46d7ed64445a71f0144bfe2b815a6df87289d488f2d5b1d85bf2",
+        "path": "src/libstd/env.rs",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/libstd/env.rs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 94
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 67
+          },
+          "churn": {
+            "status": "exact",
+            "value": 161
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 45
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 18
+          },
+          "modified": {
+            "status": "exact",
+            "value": 49
+          },
+          "changed": {
+            "status": "exact",
+            "value": 112
+          }
+        },
+        "family": {
+          "id": "family-f438e5760eb338150988c570f31388a8de64fc185cf9bae13e01b7fdd485e2ce",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-98459a42857f261deaec8b261fb88c5f4d92069fa6ee4dfab7c1287977246041",
+        "path": "src/libstd/f32.rs",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/libstd/f32.rs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 37
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 45
+          },
+          "churn": {
+            "status": "exact",
+            "value": 82
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 11
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 19
+          },
+          "modified": {
+            "status": "exact",
+            "value": 26
+          },
+          "changed": {
+            "status": "exact",
+            "value": 56
+          }
+        },
+        "family": {
+          "id": "family-a2ab8708e58e753682be4dfd98aa35368a4ee1b7f7e61e02df4686653e8d2feb",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-4607bae1609c07e53ae5812697abc9a7b6a2f2de6cf1a474ab8e44d0d84be74e",
+        "path": "src/libstd/f64.rs",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/libstd/f64.rs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 36
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 42
+          },
+          "churn": {
+            "status": "exact",
+            "value": 78
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 11
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 17
+          },
+          "modified": {
+            "status": "exact",
+            "value": 25
+          },
+          "changed": {
+            "status": "exact",
+            "value": 53
+          }
+        },
+        "family": {
+          "id": "family-dd99049b8c119367ac71fbd626643dc2c6aa77b706290c7eecf44b3dc75e2217",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-db93d9dd43f5a4ee9d0424478ee6390670dc2bc193053510a419e7229b45040d",
+        "path": "src/libstd/ffi/mod.rs",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/libstd/ffi/mod.rs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 10
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 8
+          },
+          "churn": {
+            "status": "exact",
+            "value": 18
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 4
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 2
+          },
+          "modified": {
+            "status": "exact",
+            "value": 6
+          },
+          "changed": {
+            "status": "exact",
+            "value": 12
+          }
+        },
+        "family": {
+          "id": "family-143b998438e3ccff58fbc372ab652c98d3ac04be61457a78bb5e7f134bc2711b",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-14a8a8cd2300cad9997f46585359c9f1f7c491aca45da4a1d19a2bf5301fc685",
+        "path": "src/libstd/fs.rs",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/libstd/fs.rs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 204
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 131
+          },
+          "churn": {
+            "status": "exact",
+            "value": 335
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 100
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 27
+          },
+          "modified": {
+            "status": "exact",
+            "value": 104
+          },
+          "changed": {
+            "status": "exact",
+            "value": 231
+          }
+        },
+        "family": {
+          "id": "family-dad329c3913f9723786d392555b051c9afbfd8133f0bbd4c744cd909764c2077",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-0443ba50443329a1c077d03735636c0da7caabd8ffe16baf0cb8f2a78f6a2e59",
+        "path": "src/libstd/io/buffered.rs",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/libstd/io/buffered.rs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 80
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 67
+          },
+          "churn": {
+            "status": "exact",
+            "value": 147
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 40
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 27
+          },
+          "modified": {
+            "status": "exact",
+            "value": 40
+          },
+          "changed": {
+            "status": "exact",
+            "value": 107
+          }
+        },
+        "family": {
+          "id": "family-ad4953f0ee1da261f81a318db5304c6aca204ef3be079fdcc6c809fff6dff05b",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-9c9dcc26411032cc6cc619555a22fbf085b9fa312759e2fe462630a2e8b4f626",
+        "path": "src/libstd/io/error.rs",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/libstd/io/error.rs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 29
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 36
+          },
+          "churn": {
+            "status": "exact",
+            "value": 65
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 4
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 11
+          },
+          "modified": {
+            "status": "exact",
+            "value": 25
+          },
+          "changed": {
+            "status": "exact",
+            "value": 40
+          }
+        },
+        "family": {
+          "id": "family-2e3f12dc6678e4904caea6ff869db191c9d00eab1da8a6bd8725bd97c137fa88",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-f954f0b737de3d509cdd1dd34b84a6af543236552f2a94a9725f15802627e037",
+        "path": "src/libstd/io/impls.rs",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/libstd/io/impls.rs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 46
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 18
+          },
+          "churn": {
+            "status": "exact",
+            "value": 64
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 31
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 3
+          },
+          "modified": {
+            "status": "exact",
+            "value": 15
+          },
+          "changed": {
+            "status": "exact",
+            "value": 49
+          }
+        },
+        "family": {
+          "id": "family-3f9d6f29ae9f87bb837176b031c51c4c14e3e8c462a544b2e408a3ed0fb049b0",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-c6b83e21d4b11e8736af55d904551beb4dbb671afc8a27292fa5177ce4204e23",
+        "path": "src/libstd/io/mod.rs",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/libstd/io/mod.rs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 89
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 79
+          },
+          "churn": {
+            "status": "exact",
+            "value": 168
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 45
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 35
+          },
+          "modified": {
+            "status": "exact",
+            "value": 44
+          },
+          "changed": {
+            "status": "exact",
+            "value": 124
+          }
+        },
+        "family": {
+          "id": "family-76003e6cc82b1838da6b1afb0cbc07fb3763fc800520a87791cf51d068b85b0f",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-923ab67706b32b075f78f21fd2d1e26efade60b3f0c5f0ee6c7450422317cc88",
+        "path": "src/libstd/io/prelude.rs",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/libstd/io/prelude.rs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 1
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 1
+          },
+          "churn": {
+            "status": "exact",
+            "value": 2
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 0
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 1
+          },
+          "changed": {
+            "status": "exact",
+            "value": 1
+          }
+        },
+        "family": {
+          "id": "family-b720bc3210ed6f9543e728ab93d6ade060f1a93ca993216febf08282b8139f7d",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-5c0f124e805c41100d13d161ee11da60ee531825b71064b27390a0310ab21b6f",
+        "path": "src/libstd/io/util.rs",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/libstd/io/util.rs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 38
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 14
+          },
+          "churn": {
+            "status": "exact",
+            "value": 52
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 24
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 14
+          },
+          "changed": {
+            "status": "exact",
+            "value": 38
+          }
+        },
+        "family": {
+          "id": "family-b0ae421abc58cb096c528a4eb8a47df197fa281576e3b403194ed8a493a5bd8a",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-774f756056efdababeec67a3d20aa76bca70696fb1e9dec20e8ebac71c590181",
+        "path": "src/libstd/macros.rs",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/libstd/macros.rs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 3
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 4
+          },
+          "churn": {
+            "status": "exact",
+            "value": 7
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 0
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 1
+          },
+          "modified": {
+            "status": "exact",
+            "value": 3
+          },
+          "changed": {
+            "status": "exact",
+            "value": 4
+          }
+        },
+        "family": {
+          "id": "family-fa00af6e140707dd89dd63439ea90e88d58f06224451391723863caa25f13baf",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-ad7e8f4c6652de97f885475ccbcdc40a74da27a6791f42021208612e2925e34b",
+        "path": "src/libstd/net/addr.rs",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/libstd/net/addr.rs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 56
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 35
+          },
+          "churn": {
+            "status": "exact",
+            "value": 91
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 31
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 10
+          },
+          "modified": {
+            "status": "exact",
+            "value": 25
+          },
+          "changed": {
+            "status": "exact",
+            "value": 66
+          }
+        },
+        "family": {
+          "id": "family-3dbd6a12f4dbe839ced223e920c99fdf2c4c78531907a89785d6dc7fe7f490d0",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-47f12515df814f80df0341767d8130e14a9b300c72593ac502e0532a4704824e",
+        "path": "src/libstd/net/parser.rs",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/libstd/net/parser.rs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 31
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 44
+          },
+          "churn": {
+            "status": "exact",
+            "value": 75
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 4
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 17
+          },
+          "modified": {
+            "status": "exact",
+            "value": 27
+          },
+          "changed": {
+            "status": "exact",
+            "value": 48
+          }
+        },
+        "family": {
+          "id": "family-e8dea263b4644291e5f035cb4c9b3e3478aa3eb88b6c53d391000b572e50b60d",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-efe3ebcf23af8be8599151b622a772147e1713034f86eca9f4694f7c5b38e739",
+        "path": "src/libstd/net/tcp.rs",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/libstd/net/tcp.rs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 146
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 93
+          },
+          "churn": {
+            "status": "exact",
+            "value": 239
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 59
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 6
+          },
+          "modified": {
+            "status": "exact",
+            "value": 87
+          },
+          "changed": {
+            "status": "exact",
+            "value": 152
+          }
+        },
+        "family": {
+          "id": "family-a451c88a165b477cb00b32ad06ff9084db851faa0d80b77135c08ddecccdaffc",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-1e54d940ead23bef55248d3548f3b0faa393ac26b90038ec96eb769ef84cf670",
+        "path": "src/libstd/net/test.rs",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/libstd/net/test.rs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 19
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 10
+          },
+          "churn": {
+            "status": "exact",
+            "value": 29
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 10
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 1
+          },
+          "modified": {
+            "status": "exact",
+            "value": 9
+          },
+          "changed": {
+            "status": "exact",
+            "value": 20
+          }
+        },
+        "family": {
+          "id": "family-4d79dca831ee57de19d609c791cc19f1e083eb86c3760a357c8c2e4a0aec2925",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-0ccf86a59ce9e298d3d55d5e35368f8f7e6b6a0d0ba1f1598149d0409801c6db",
+        "path": "src/libstd/net/udp.rs",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/libstd/net/udp.rs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 42
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 30
+          },
+          "churn": {
+            "status": "exact",
+            "value": 72
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 18
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 6
+          },
+          "modified": {
+            "status": "exact",
+            "value": 24
+          },
+          "changed": {
+            "status": "exact",
+            "value": 48
+          }
+        },
+        "family": {
+          "id": "family-a6220c5157c611815bd8f0be94dd7398d189c5c4ac267c9db005ff0901cf687b",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-254984c5b0b0bb3d8520053251371dc5c2991343b91ca89af3db6f2995f69f9d",
+        "path": "src/libstd/num.rs",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/libstd/num.rs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 66
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 53
+          },
+          "churn": {
+            "status": "exact",
+            "value": 119
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 19
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 6
+          },
+          "modified": {
+            "status": "exact",
+            "value": 47
+          },
+          "changed": {
+            "status": "exact",
+            "value": 72
+          }
+        },
+        "family": {
+          "id": "family-ee5b114d718a6d394b0a336ca072459b64987deccc31cbd0850159610ee195e7",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-33230ad0f2e1e9915ed6992dcb948669cf06d9b5320c8097a512062cd957f227",
+        "path": "src/libstd/panic.rs",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/libstd/panic.rs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 20
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 22
+          },
+          "churn": {
+            "status": "exact",
+            "value": 42
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 7
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 9
+          },
+          "modified": {
+            "status": "exact",
+            "value": 13
+          },
+          "changed": {
+            "status": "exact",
+            "value": 29
+          }
+        },
+        "family": {
+          "id": "family-15de2e155bb7784d58d441b4f39d4d52298c6fb3a15f6b70373757ddc8ed0d5c",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-b318ce678b7f4939ae3bef8a80f7babe261c763f6a3e7f754c53a4c2bb81dbe4",
+        "path": "src/libstd/path.rs",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/libstd/path.rs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 781
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 847
+          },
+          "churn": {
+            "status": "exact",
+            "value": 1628
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 28
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 94
+          },
+          "modified": {
+            "status": "exact",
+            "value": 753
+          },
+          "changed": {
+            "status": "exact",
+            "value": 875
+          }
+        },
+        "family": {
+          "id": "family-3dc128c74863097d0c2d3fa5f3a7bc557c585802517d5d01852ee238296f3cb3",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-0947d63d0f49e2a3e66724a587cce7f0f526693560d56e05b83ff46cbb6e31e7",
+        "path": "src/libstd/prelude/v1.rs",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/libstd/prelude/v1.rs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 12
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 46
+          },
+          "churn": {
+            "status": "exact",
+            "value": 58
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 0
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 34
+          },
+          "modified": {
+            "status": "exact",
+            "value": 12
+          },
+          "changed": {
+            "status": "exact",
+            "value": 46
+          }
+        },
+        "family": {
+          "id": "family-fd8830450cc91a81af699ab42e618281be3c38d991c3b835cbca9562d2e1efa0",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-26a851a1aec192815937d35e9d87e165ad537eb199d9eae6ebc7647cb53034d8",
+        "path": "src/libstd/process.rs",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/libstd/process.rs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 133
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 86
+          },
+          "churn": {
+            "status": "exact",
+            "value": 219
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 65
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 18
+          },
+          "modified": {
+            "status": "exact",
+            "value": 68
+          },
+          "changed": {
+            "status": "exact",
+            "value": 151
+          }
+        },
+        "family": {
+          "id": "family-0d471266f72be37773d2aef3160c33ac970b41086bdc9fcd22a7299a60c70417",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-30edf44cd53ffca0efa8b1c02f1d4cca0b23d3a986bfecf9f87a555e0995e2c5",
+        "path": "src/libstd/rt.rs",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/libstd/rt.rs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 16
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 10
+          },
+          "churn": {
+            "status": "exact",
+            "value": 26
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 7
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 1
+          },
+          "modified": {
+            "status": "exact",
+            "value": 9
+          },
+          "changed": {
+            "status": "exact",
+            "value": 17
+          }
+        },
+        "family": {
+          "id": "family-2fc33ea82e6f77ec898ecf13f03a635c7d0b7c9cda2e8dd341845e4584ad3b8b",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-9b095da860913a0feeeaacd4120a4002e04586718eacb4416ba9088fffbab813",
+        "path": "src/libstd/sync/barrier.rs",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/libstd/sync/barrier.rs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 9
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 13
+          },
+          "churn": {
+            "status": "exact",
+            "value": 22
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 3
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 7
+          },
+          "modified": {
+            "status": "exact",
+            "value": 6
+          },
+          "changed": {
+            "status": "exact",
+            "value": 16
+          }
+        },
+        "family": {
+          "id": "family-ffba6d1330c069092ba7200cf29a51f77f663730933437ae251b417f2091e6f0",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-b78f426668d2b0d0b6b77803483bcf3b99f33c4730e9ce68c0771d5fb3aab825",
+        "path": "src/libstd/sync/mpsc/blocking.rs",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/libstd/sync/mpsc/blocking.rs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 5
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 12
+          },
+          "churn": {
+            "status": "exact",
+            "value": 17
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 0
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 7
+          },
+          "modified": {
+            "status": "exact",
+            "value": 5
+          },
+          "changed": {
+            "status": "exact",
+            "value": 12
+          }
+        },
+        "family": {
+          "id": "family-c6df772480cdec8f86cba3eadc11ff3592939d72e638b2eb7e79877a73b362b2",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-2e7f5aa4c89bc438c8acddf9b8e86a616ff2fc31f1ee6cdfbc0cdc04a1f4af1e",
+        "path": "src/libstd/sync/mpsc/cache_aligned.rs",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/libstd/sync/mpsc/cache_aligned.rs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 7
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 7
+          },
+          "churn": {
+            "status": "exact",
+            "value": 14
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 0
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 7
+          },
+          "changed": {
+            "status": "exact",
+            "value": 7
+          }
+        },
+        "family": {
+          "id": "family-241c2a4a94482d9d0118a4c77f123fa5b7144d1eba7435c8d2489e6c2d029a98",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-9e65c2982dc32827500837eed8ebe7fd319ecd43dc8c43f36a61bde326a4bed7",
+        "path": "src/libstd/sync/mpsc/mod.rs",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/libstd/sync/mpsc/mod.rs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 251
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 259
+          },
+          "churn": {
+            "status": "exact",
+            "value": 510
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 58
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 66
+          },
+          "modified": {
+            "status": "exact",
+            "value": 193
+          },
+          "changed": {
+            "status": "exact",
+            "value": 317
+          }
+        },
+        "family": {
+          "id": "family-01b4af9bc49403a0cdab2fcc26c76362571803cb19723745fbe40000f0619a95",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-71f6fb3ec92fe4a2508cd9e9fd507a88f9601f42381d32b25d7c4b33f9f8f738",
+        "path": "src/libstd/sync/mpsc/mpsc_queue.rs",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/libstd/sync/mpsc/mpsc_queue.rs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 11
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 17
+          },
+          "churn": {
+            "status": "exact",
+            "value": 28
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 1
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 7
+          },
+          "modified": {
+            "status": "exact",
+            "value": 10
+          },
+          "changed": {
+            "status": "exact",
+            "value": 18
+          }
+        },
+        "family": {
+          "id": "family-346b043dde8954cc577aca4a688a29be4e1042cda231a2a11317aa825ed02ad8",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-b6a78251c0edadb179f97c98323fe6531f5b457c90e87f881a14eec8f616dca2",
+        "path": "src/libstd/sync/mpsc/oneshot.rs",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/libstd/sync/mpsc/oneshot.rs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 27
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 29
+          },
+          "churn": {
+            "status": "exact",
+            "value": 56
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 8
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 10
+          },
+          "modified": {
+            "status": "exact",
+            "value": 19
+          },
+          "changed": {
+            "status": "exact",
+            "value": 37
+          }
+        },
+        "family": {
+          "id": "family-495511d44c12e9c2bd3ef586a6e5042ea236c7ebccb18b67ee6c89ed246ff4e7",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-61c7b968527cc7aca97e8ec63db3fd5583c755d292f84e38206f33955eb3f1f5",
+        "path": "src/libstd/sync/mpsc/shared.rs",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/libstd/sync/mpsc/shared.rs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 37
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 20
+          },
+          "churn": {
+            "status": "exact",
+            "value": 57
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 20
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 3
+          },
+          "modified": {
+            "status": "exact",
+            "value": 17
+          },
+          "changed": {
+            "status": "exact",
+            "value": 40
+          }
+        },
+        "family": {
+          "id": "family-c510e17ec3aba0dbf5ad558725ded03a51230db0c873ee73bf98836b22536d54",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-087a2811045b0629782a9e3e112f4ebbbd6251e89dfb455f1495c15aac01bf94",
+        "path": "src/libstd/sync/mpsc/spsc_queue.rs",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/libstd/sync/mpsc/spsc_queue.rs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 24
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 23
+          },
+          "churn": {
+            "status": "exact",
+            "value": 47
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 5
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 4
+          },
+          "modified": {
+            "status": "exact",
+            "value": 19
+          },
+          "changed": {
+            "status": "exact",
+            "value": 28
+          }
+        },
+        "family": {
+          "id": "family-827cbae9095e8f8226ce15a1ddc5248c1cbb79e769caac607f8c78c76e75c09b",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-a136a5153c7ac286704d17a4e9ccf7e9927af894d8c24c0f668499e2d7c73270",
+        "path": "src/libstd/sync/mpsc/stream.rs",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/libstd/sync/mpsc/stream.rs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 62
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 50
+          },
+          "churn": {
+            "status": "exact",
+            "value": 112
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 22
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 10
+          },
+          "modified": {
+            "status": "exact",
+            "value": 40
+          },
+          "changed": {
+            "status": "exact",
+            "value": 72
+          }
+        },
+        "family": {
+          "id": "family-05b302ef28433e611d0ae7a34dc928bee116b3d003e21848755e94d83b8905e9",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-267d7b69190496952ff9c01ec068e6bea49fdea8be2de026e5136fea9a2335f0",
+        "path": "src/libstd/sync/mpsc/sync.rs",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/libstd/sync/mpsc/sync.rs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 66
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 55
+          },
+          "churn": {
+            "status": "exact",
+            "value": 121
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 25
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 14
+          },
+          "modified": {
+            "status": "exact",
+            "value": 41
+          },
+          "changed": {
+            "status": "exact",
+            "value": 80
+          }
+        },
+        "family": {
+          "id": "family-1aa5d5725eddf84851185ee7bd5ba19b9b7e4499d895e24f96ab719facf2a95b",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-8914bf550e8ed17e8d056655116e57587ca9562b84020e31e5b964c643ceaf55",
+        "path": "src/libstd/sys_common/alloc.rs",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/libstd/sys_common/alloc.rs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 17
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 13
+          },
+          "churn": {
+            "status": "exact",
+            "value": 30
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 4
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 13
+          },
+          "changed": {
+            "status": "exact",
+            "value": 17
+          }
+        },
+        "family": {
+          "id": "family-eef58bbc72258be72361473c7e370c286965c00a837a9b042e2a2e0a1640f34c",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-38ad3ad5a240e88b0148b6d1f3da175ada6f3257b1ecb464b73cadc9f44ed16c",
+        "path": "src/libstd/sys_common/bytestring.rs",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/libstd/sys_common/bytestring.rs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 2
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 2
+          },
+          "churn": {
+            "status": "exact",
+            "value": 4
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 0
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 2
+          },
+          "changed": {
+            "status": "exact",
+            "value": 2
+          }
+        },
+        "family": {
+          "id": "family-52b6e6d79853a6610d3313ed45a960219512184dbc90398d76b6be64b4579ec8",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-a530572ba9104838eb264a5c7c4088a419b7c98e550c54a8ff8ac29e2604861e",
+        "path": "src/libstd/sys_common/fs.rs",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/libstd/sys_common/fs.rs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 6
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 8
+          },
+          "churn": {
+            "status": "exact",
+            "value": 14
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 3
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 5
+          },
+          "modified": {
+            "status": "exact",
+            "value": 3
+          },
+          "changed": {
+            "status": "exact",
+            "value": 11
+          }
+        },
+        "family": {
+          "id": "family-29a27da6e13765f688eba5fcc78e6f561680c1730fbe0c9f1af6551f2a35b82b",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-14a4830dbb794508cf3b57bc7cd933967122544fba736f342f4285eb4a337b5a",
+        "path": "src/libstd/sys_common/io.rs",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/libstd/sys_common/io.rs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 1
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 1
+          },
+          "churn": {
+            "status": "exact",
+            "value": 2
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 1
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 1
+          },
+          "modified": {
+            "status": "exact",
+            "value": 0
+          },
+          "changed": {
+            "status": "exact",
+            "value": 2
+          }
+        },
+        "family": {
+          "id": "family-fd46c0a3ce87458660da802d23f31e8caa54e250eacb99d5ed4c6897d9923e65",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-94a37d36b787ea4c6d2ef7d293a883054b3e342df84f9ce8ff050ab515af5f0b",
+        "path": "src/libstd/sys_common/net.rs",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/libstd/sys_common/net.rs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 143
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 113
+          },
+          "churn": {
+            "status": "exact",
+            "value": 256
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 68
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 38
+          },
+          "modified": {
+            "status": "exact",
+            "value": 75
+          },
+          "changed": {
+            "status": "exact",
+            "value": 181
+          }
+        },
+        "family": {
+          "id": "family-eadd6e48a7dda249893a2ef7496609bc08249c027e9d9399e0a59ec6379ab001",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-d3f5f2ad73b12bc038dc67d4fe072e21e0b540707cff1456de4b7f29b720f19c",
+        "path": "src/libstd/sys_common/os_str_bytes.rs",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/libstd/sys_common/os_str_bytes.rs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 6
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 9
+          },
+          "churn": {
+            "status": "exact",
+            "value": 15
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 2
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 5
+          },
+          "modified": {
+            "status": "exact",
+            "value": 4
+          },
+          "changed": {
+            "status": "exact",
+            "value": 11
+          }
+        },
+        "family": {
+          "id": "family-95e5cd669712030cba98afcceff36061d70103bf7e7123b75794bccbaadea9cf",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-4b4aa5dcab5af67c10928d2760add8059845c3d36f5fa28b1142becbbf770463",
+        "path": "src/libstd/sys_common/poison.rs",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/libstd/sys_common/poison.rs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 25
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 19
+          },
+          "churn": {
+            "status": "exact",
+            "value": 44
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 10
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 4
+          },
+          "modified": {
+            "status": "exact",
+            "value": 15
+          },
+          "changed": {
+            "status": "exact",
+            "value": 29
+          }
+        },
+        "family": {
+          "id": "family-134b6dfa4c8908ef96819a069c749552f53ce084a65d71831143fd1f404ffc85",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-5587ba9c7d866416beac782c8daf9dd1a6e73514804bee330b7e90a8c0d1d175",
+        "path": "src/libstd/sys_common/process.rs",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/libstd/sys_common/process.rs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 3
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 11
+          },
+          "churn": {
+            "status": "exact",
+            "value": 14
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 0
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 8
+          },
+          "modified": {
+            "status": "exact",
+            "value": 3
+          },
+          "changed": {
+            "status": "exact",
+            "value": 11
+          }
+        },
+        "family": {
+          "id": "family-6d82ef10df6dafe685b9fb6ee68b6e3896e96e7e179ca7af9499a8322535e1da",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-8a8b655d19256fed6e5f02553ccc423267fc93bca5e0be16458a8e20b3f010d3",
+        "path": "src/libstd/sys_common/thread_info.rs",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/libstd/sys_common/thread_info.rs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 14
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 14
+          },
+          "churn": {
+            "status": "exact",
+            "value": 28
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 3
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 3
+          },
+          "modified": {
+            "status": "exact",
+            "value": 11
+          },
+          "changed": {
+            "status": "exact",
+            "value": 17
+          }
+        },
+        "family": {
+          "id": "family-23a3f01c7d81761f841ee5e89caaee706bc06cd231c4bd1c0c00dabf77f4649c",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-bf986b6dc9f693fde7c536b321003afe3a557d55da1154ab1f635b5ff71d8d78",
+        "path": "src/libstd/sys_common/util.rs",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/libstd/sys_common/util.rs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 7
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 3
+          },
+          "churn": {
+            "status": "exact",
+            "value": 10
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 4
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 3
+          },
+          "changed": {
+            "status": "exact",
+            "value": 7
+          }
+        },
+        "family": {
+          "id": "family-3337c76f9ec8a350f68eb4b4f6aa1544f581b6c71c6dc8599f540aa6da9ff6bf",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-d19c93bc3fb086c759801085bd8e983c1446dced3db6c547f62f5ff1444cc656",
+        "path": "src/libstd/sys_common/wtf8.rs",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/libstd/sys_common/wtf8.rs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 122
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 121
+          },
+          "churn": {
+            "status": "exact",
+            "value": 243
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 27
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 26
+          },
+          "modified": {
+            "status": "exact",
+            "value": 95
+          },
+          "changed": {
+            "status": "exact",
+            "value": 148
+          }
+        },
+        "family": {
+          "id": "family-6cf2f6adcc01231b26642221851563a12e0367ba58c9cc9ddf33ee73e467bd2f",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-32d35d3f0c80712fcd3532c7583ccfbfa26ed2762db2e998a171731589e266ea",
+        "path": "src/libstd/tests/env.rs",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/libstd/tests/env.rs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 5
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 10
+          },
+          "churn": {
+            "status": "exact",
+            "value": 15
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 1
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 6
+          },
+          "modified": {
+            "status": "exact",
+            "value": 4
+          },
+          "changed": {
+            "status": "exact",
+            "value": 11
+          }
+        },
+        "family": {
+          "id": "family-7912edfc5bae37e8cb5b61f8c42c8c694003b7f97a0ce6460bf4ef72408c2947",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-fedf38a7897322a1aed1edd7c21b32720cc545707315ef3858a01144ad2f9392",
+        "path": "src/libstd/thread/local.rs",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/libstd/thread/local.rs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 49
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 54
+          },
+          "churn": {
+            "status": "exact",
+            "value": 103
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 19
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 24
+          },
+          "modified": {
+            "status": "exact",
+            "value": 30
+          },
+          "changed": {
+            "status": "exact",
+            "value": 73
+          }
+        },
+        "family": {
+          "id": "family-a8c122bf94e6671aa7e2e877cb95c9e5254bbe535881391601c93ec6e5f574fa",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-47bd0469e3ebc4b988f9f8efdc34601edb84ec0b2d3db1538090fca23182f1dd",
+        "path": "src/test/ui/issues/issue-27033.stderr",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/test/ui/issues/issue-27033.stderr"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 2
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 2
+          },
+          "churn": {
+            "status": "exact",
+            "value": 4
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 0
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 2
+          },
+          "changed": {
+            "status": "exact",
+            "value": 2
+          }
+        },
+        "family": {
+          "id": "family-74ae8380945185019df8cdacd66c9dfb01097b2e7290d0c65ddc944dc2f4248a",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      }
+    ],
+    "totals": {
+      "raw": {
+        "added": {
+          "status": "exact",
+          "value": 2899
+        },
+        "deleted": {
+          "status": "exact",
+          "value": 2662
+        },
+        "churn": {
+          "status": "exact",
+          "value": 5561
+        }
+      },
+      "lines": {
+        "added": {
+          "status": "exact",
+          "value": 853
+        },
+        "deleted": {
+          "status": "exact",
+          "value": 616
+        },
+        "modified": {
+          "status": "exact",
+          "value": 2046
+        },
+        "changed": {
+          "status": "exact",
+          "value": 3515
+        }
+      },
+      "files": {
+        "total": {
+          "status": "exact",
+          "value": 51
+        },
+        "excluded": {
+          "status": "exact",
+          "value": 0
+        },
+        "included": {
+          "status": "exact",
+          "value": 51
+        },
+        "added": {
+          "status": "exact",
+          "value": 0
+        },
+        "deleted": {
+          "status": "exact",
+          "value": 0
+        },
+        "modified": {
+          "status": "exact",
+          "value": 51
+        },
+        "renamed": {
+          "status": "exact",
+          "value": 0
+        },
+        "copied": {
+          "status": "exact",
+          "value": 0
+        },
+        "binary": {
+          "status": "exact",
+          "value": 0
+        },
+        "unmeasurable": {
+          "status": "exact",
+          "value": 0
+        }
+      }
+    },
+    "measurement": {
+      "status": "exact",
+      "reasons": []
+    },
+    "reportId": "report-f4c3df3cfbcd1da4fd8f9e3140f21612cde763fd7f77bd8b85d882f565c39950"
+  }
+}

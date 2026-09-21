@@ -1,6 +1,7 @@
 import { stringify as stringifyYaml } from 'yaml';
 import { runEffectCommand } from './effects.js';
 import { resolve } from 'node:path';
+import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { captureAsync, fail, unwrap } from '../errors.js';
 import { formatQuery, formatReport, type QueryFormat, type ReportFormat, type Rendered } from '../format.js';
@@ -68,6 +69,16 @@ JSON/YAML policies and read-only GitHub sources are implemented.
 GitHub source: --repo OWNER/REPO --pr NUMBER. Token: GH_TOKEN or GITHUB_TOKEN.
 No credential is accepted in a command-line flag. Explicit apply and label commands reconcile only selected policy effects.
 `;
+function helpText(): string {
+  const installedSkill = fileURLToPath(new URL('../../../skills/diffdevil/SKILL.md', import.meta.url));
+  const skill = existsSync(installedSkill)
+    ? `  Included: ${installedSkill}\n`
+    : '';
+  return `${HELP}
+Agent Skill
+${skill}  Install or update: https://raw.githubusercontent.com/Wolfsblvt/diffdevil/main/docs/setup/skill.md
+`;
+}
 /** Acquire detail text without interpreting it or changing its original offsets. */
 async function readExpression(invocation: Invocation, cwd: string): Promise<ExpressionSource | undefined> {
   const values = invocation.values;
@@ -110,7 +121,7 @@ export function runCli(argv:readonly string[],defaultCwd=process.cwd(),host:CliH
   return captureAsync(async()=>{
     const invocation=parseInvocation(argv), v=invocation.values, cwd=resolve(defaultCwd,String(v.cwd??'.'));
     let output:Rendered;
-    if(v.help) output={stdout:HELP,exitCode:0};
+    if(v.help) output={stdout:helpText(),exitCode:0};
     else if(v.version) {
       const metadata: unknown = JSON.parse(await readUtf8(fileURLToPath(new URL('../../../package.json', import.meta.url))));
       const version = metadata && typeof metadata === 'object' && 'version' in metadata ? metadata.version : undefined;

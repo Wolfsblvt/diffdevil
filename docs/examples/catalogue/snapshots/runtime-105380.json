@@ -1,0 +1,1636 @@
+{
+  "kind": "diffdevil.example-snapshot",
+  "schemaVersion": "1.2",
+  "id": "runtime-105380",
+  "edition": "teaching-snapshot",
+  "repository": "dotnet/runtime",
+  "pullRequest": 105380,
+  "url": "https://github.com/dotnet/runtime/pull/105380",
+  "title": "Use ArgumentNullException.ThrowIfNull in more places",
+  "capturedAt": "2026-09-18T23:14:04.032Z",
+  "provenance": {
+    "baseTip": "7d64842fdc41340440b00795c3f39f4c917acc62",
+    "mergeBase": "7d64842fdc41340440b00795c3f39f4c917acc62",
+    "head": "83e7ccfa9a4122c4de2fd06ca152d6a34f673257"
+  },
+  "acquisition": {
+    "route": "github-rest-compare-three-dot",
+    "comparisonEndpoint": "/repos/dotnet/runtime/compare/7d64842fdc41340440b00795c3f39f4c917acc62...83e7ccfa9a4122c4de2fd06ca152d6a34f673257",
+    "identityEndpoint": "/repos/dotnet/runtime/compare/7d64842fdc41340440b00795c3f39f4c917acc62...83e7ccfa9a4122c4de2fd06ca152d6a34f673257",
+    "pullEndpoint": "/repos/dotnet/runtime/pulls/105380"
+  },
+  "notices": {
+    "declared": "MIT",
+    "records": [
+      {
+        "label": "MIT",
+        "repository": "dotnet/runtime",
+        "path": "LICENSE.TXT",
+        "role": "base",
+        "ref": "7d64842fdc41340440b00795c3f39f4c917acc62",
+        "sha": "984713a49622a96da110443c15477613bc12656b"
+      },
+      {
+        "label": "MIT",
+        "repository": "dotnet/runtime",
+        "path": "LICENSE.TXT",
+        "role": "head",
+        "ref": "83e7ccfa9a4122c4de2fd06ca152d6a34f673257",
+        "sha": "984713a49622a96da110443c15477613bc12656b"
+      }
+    ]
+  },
+  "rights": {
+    "retainedMaterial": "normalized-report-only",
+    "rawComparison": "analyzed-in-memory-not-committed",
+    "binaryBytes": "not-retained",
+    "review": "Pinned notices and every retained normalized file record were inspected; raw source lines, patch text, discussion, and provider responses are not retained."
+  },
+  "engine": {
+    "package": "1.0.0",
+    "reportSchema": "1.0",
+    "replacementLines": "replacement-lines-v1"
+  },
+  "payload": {
+    "sourceSha256": "553f78f90f957173573064a951f77958b70de9fbd96bfa08b86fddff3cccc5f5",
+    "normalizedReportSha256": "8dd72b03fc800aaff0920c2370080b02d9d1002a6bdd425c452f7b4d7443ac5d",
+    "providerFileSetSha256": "45d2b6a3588fe7438aa07199e026eea070e40202999ac37850ec3005cf9b8798"
+  },
+  "capabilities": {
+    "policyReplay": true,
+    "remeasurement": false,
+    "remeasurementReason": "No raw comparison material is retained in this teaching snapshot."
+  },
+  "lesson": {
+    "id": "runtime-null-guards",
+    "title": "A small helper can touch a wide surface"
+  },
+  "provider": {
+    "complete": true,
+    "observedCount": 21,
+    "reportedCount": 21,
+    "entries": [
+      {
+        "path": "src/coreclr/System.Private.CoreLib/src/System/GC.CoreCLR.cs",
+        "status": "modified",
+        "additions": 1,
+        "deletions": 4,
+        "changes": 5,
+        "patchAvailable": true
+      },
+      {
+        "path": "src/coreclr/System.Private.CoreLib/src/System/Reflection/Emit/SignatureHelper.cs",
+        "status": "modified",
+        "additions": 2,
+        "deletions": 2,
+        "changes": 4,
+        "patchAvailable": true
+      },
+      {
+        "path": "src/coreclr/System.Private.CoreLib/src/System/Reflection/RuntimeCustomAttributeData.cs",
+        "status": "modified",
+        "additions": 2,
+        "deletions": 2,
+        "changes": 4,
+        "patchAvailable": true
+      },
+      {
+        "path": "src/coreclr/nativeaot/Common/src/System/Collections/Generic/LowLevelDictionary.cs",
+        "status": "modified",
+        "additions": 8,
+        "deletions": 10,
+        "changes": 18,
+        "patchAvailable": true
+      },
+      {
+        "path": "src/coreclr/nativeaot/System.Private.CoreLib/src/System/GC.NativeAot.cs",
+        "status": "modified",
+        "additions": 1,
+        "deletions": 4,
+        "changes": 5,
+        "patchAvailable": true
+      },
+      {
+        "path": "src/coreclr/nativeaot/System.Private.CoreLib/src/System/Runtime/InteropServices/PInvokeMarshal.cs",
+        "status": "modified",
+        "additions": 2,
+        "deletions": 4,
+        "changes": 6,
+        "patchAvailable": true
+      },
+      {
+        "path": "src/libraries/System.Collections.Concurrent/src/Resources/Strings.resx",
+        "status": "modified",
+        "additions": 0,
+        "deletions": 3,
+        "changes": 3,
+        "patchAvailable": true
+      },
+      {
+        "path": "src/libraries/System.Collections.Concurrent/src/System/Collections/Concurrent/ConcurrentDictionary.cs",
+        "status": "modified",
+        "additions": 27,
+        "deletions": 116,
+        "changes": 143,
+        "patchAvailable": true
+      },
+      {
+        "path": "src/libraries/System.Collections.Concurrent/src/System/ThrowHelper.cs",
+        "status": "modified",
+        "additions": 1,
+        "deletions": 7,
+        "changes": 8,
+        "patchAvailable": true
+      },
+      {
+        "path": "src/libraries/System.Collections.Concurrent/tests/ConcurrentDictionary/ConcurrentDictionaryTests.cs",
+        "status": "modified",
+        "additions": 1,
+        "deletions": 1,
+        "changes": 2,
+        "patchAvailable": true
+      },
+      {
+        "path": "src/libraries/System.Collections/src/System/Collections/Generic/SortedDictionary.cs",
+        "status": "modified",
+        "additions": 2,
+        "deletions": 8,
+        "changes": 10,
+        "patchAvailable": true
+      },
+      {
+        "path": "src/libraries/System.Collections/src/System/Collections/Generic/SortedList.cs",
+        "status": "modified",
+        "additions": 6,
+        "deletions": 5,
+        "changes": 11,
+        "patchAvailable": true
+      },
+      {
+        "path": "src/libraries/System.Console/src/System/Console.cs",
+        "status": "modified",
+        "additions": 2,
+        "deletions": 1,
+        "changes": 3,
+        "patchAvailable": true
+      },
+      {
+        "path": "src/libraries/System.Net.Http/src/System/Net/Http/BrowserHttpHandler/BrowserHttpHandler.cs",
+        "status": "modified",
+        "additions": 1,
+        "deletions": 4,
+        "changes": 5,
+        "patchAvailable": true
+      },
+      {
+        "path": "src/libraries/System.Security.Cryptography/src/System/Security/Cryptography/DSA.Xml.cs",
+        "status": "modified",
+        "additions": 4,
+        "deletions": 9,
+        "changes": 13,
+        "patchAvailable": true
+      },
+      {
+        "path": "src/libraries/System.Security.Cryptography/src/System/Security/Cryptography/Helpers.cs",
+        "status": "modified",
+        "additions": 1,
+        "deletions": 4,
+        "changes": 5,
+        "patchAvailable": true
+      },
+      {
+        "path": "src/libraries/System.Threading.Tasks.Parallel/src/System/Threading/Tasks/Parallel.ForEachAsync.cs",
+        "status": "modified",
+        "additions": 6,
+        "deletions": 6,
+        "changes": 12,
+        "patchAvailable": true
+      },
+      {
+        "path": "src/libraries/System.Transactions.Local/src/System/Transactions/NonWindowsUnsupported.cs",
+        "status": "modified",
+        "additions": 0,
+        "deletions": 13,
+        "changes": 13,
+        "patchAvailable": true
+      },
+      {
+        "path": "src/libraries/System.Transactions.Local/src/System/Transactions/Transaction.cs",
+        "status": "modified",
+        "additions": 0,
+        "deletions": 29,
+        "changes": 29,
+        "patchAvailable": true
+      },
+      {
+        "path": "src/mono/System.Private.CoreLib/src/System/Reflection/Emit/RuntimeMethodBuilder.Mono.cs",
+        "status": "modified",
+        "additions": 1,
+        "deletions": 2,
+        "changes": 3,
+        "patchAvailable": true
+      },
+      {
+        "path": "src/mono/System.Private.CoreLib/src/System/Reflection/Emit/RuntimeTypeBuilder.Mono.cs",
+        "status": "modified",
+        "additions": 1,
+        "deletions": 2,
+        "changes": 3,
+        "patchAvailable": true
+      }
+    ]
+  },
+  "material": [
+    {
+      "path": "src/coreclr/System.Private.CoreLib/src/System/GC.CoreCLR.cs",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "src/coreclr/System.Private.CoreLib/src/System/Reflection/Emit/SignatureHelper.cs",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "src/coreclr/System.Private.CoreLib/src/System/Reflection/RuntimeCustomAttributeData.cs",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "src/coreclr/nativeaot/Common/src/System/Collections/Generic/LowLevelDictionary.cs",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "src/coreclr/nativeaot/System.Private.CoreLib/src/System/GC.NativeAot.cs",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "src/coreclr/nativeaot/System.Private.CoreLib/src/System/Runtime/InteropServices/PInvokeMarshal.cs",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "src/libraries/System.Collections.Concurrent/src/Resources/Strings.resx",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "src/libraries/System.Collections.Concurrent/src/System/Collections/Concurrent/ConcurrentDictionary.cs",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "src/libraries/System.Collections.Concurrent/src/System/ThrowHelper.cs",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "src/libraries/System.Collections.Concurrent/tests/ConcurrentDictionary/ConcurrentDictionaryTests.cs",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "src/libraries/System.Collections/src/System/Collections/Generic/SortedDictionary.cs",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "src/libraries/System.Collections/src/System/Collections/Generic/SortedList.cs",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "src/libraries/System.Console/src/System/Console.cs",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "src/libraries/System.Net.Http/src/System/Net/Http/BrowserHttpHandler/BrowserHttpHandler.cs",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "src/libraries/System.Security.Cryptography/src/System/Security/Cryptography/DSA.Xml.cs",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "src/libraries/System.Security.Cryptography/src/System/Security/Cryptography/Helpers.cs",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "src/libraries/System.Threading.Tasks.Parallel/src/System/Threading/Tasks/Parallel.ForEachAsync.cs",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "src/libraries/System.Transactions.Local/src/System/Transactions/NonWindowsUnsupported.cs",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "src/libraries/System.Transactions.Local/src/System/Transactions/Transaction.cs",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "src/mono/System.Private.CoreLib/src/System/Reflection/Emit/RuntimeMethodBuilder.Mono.cs",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    },
+    {
+      "path": "src/mono/System.Private.CoreLib/src/System/Reflection/Emit/RuntimeTypeBuilder.Mono.cs",
+      "kind": "text",
+      "normalizedFactsRetained": true,
+      "rawMaterialRetained": false,
+      "standing": "normalized-facts-only"
+    }
+  ],
+  "report": {
+    "kind": "diffdevil.report",
+    "schemaVersion": "1.0",
+    "semantics": {
+      "language": "diffdevil-expr/1",
+      "numbers": "diffdevil-number/1",
+      "replacementLines": "replacement-lines-v1",
+      "paths": "diffdevil-glob/1"
+    },
+    "source": {
+      "kind": "unified-diff",
+      "comparison": "three-dot",
+      "repository": "dotnet/runtime",
+      "pullRequest": 105380,
+      "base": "7d64842fdc41340440b00795c3f39f4c917acc62",
+      "baseTip": "7d64842fdc41340440b00795c3f39f4c917acc62",
+      "head": "83e7ccfa9a4122c4de2fd06ca152d6a34f673257",
+      "comparisonId": "github-compare-e1d53af2cac3c24a14163953934dc6a1d79bea1037dd640341c9f206dcd94bcd"
+    },
+    "fileSet": {
+      "complete": true,
+      "total": {
+        "status": "exact",
+        "value": 21
+      }
+    },
+    "files": [
+      {
+        "id": "file-b866ce94f5c028a7d9b068648ce9cb319002c17807cd36ac50d6a2bf6d96bbf6",
+        "path": "src/coreclr/System.Private.CoreLib/src/System/GC.CoreCLR.cs",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/coreclr/System.Private.CoreLib/src/System/GC.CoreCLR.cs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 1
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 4
+          },
+          "churn": {
+            "status": "exact",
+            "value": 5
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 0
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 3
+          },
+          "modified": {
+            "status": "exact",
+            "value": 1
+          },
+          "changed": {
+            "status": "exact",
+            "value": 4
+          }
+        },
+        "family": {
+          "id": "family-324c9ad9fdbe4f2f0c0c76bc3cbeca4721410401f1c3d1f587bb46af04a491b5",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-cd8e63a168a027cc8241c28ab56a15ccb1ed19a93295c2752a782f72713c3a48",
+        "path": "src/coreclr/System.Private.CoreLib/src/System/Reflection/Emit/SignatureHelper.cs",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/coreclr/System.Private.CoreLib/src/System/Reflection/Emit/SignatureHelper.cs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 2
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 2
+          },
+          "churn": {
+            "status": "exact",
+            "value": 4
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 0
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 2
+          },
+          "changed": {
+            "status": "exact",
+            "value": 2
+          }
+        },
+        "family": {
+          "id": "family-ac0ea02ba0fa73512824d283deafc13484ca6ded6cea3b23045db08a7eed93c6",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-0f409c3fe7d15d2911372635916b01276efcb21d64bfa0564cc5ea7a0297038d",
+        "path": "src/coreclr/System.Private.CoreLib/src/System/Reflection/RuntimeCustomAttributeData.cs",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/coreclr/System.Private.CoreLib/src/System/Reflection/RuntimeCustomAttributeData.cs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 2
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 2
+          },
+          "churn": {
+            "status": "exact",
+            "value": 4
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 0
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 2
+          },
+          "changed": {
+            "status": "exact",
+            "value": 2
+          }
+        },
+        "family": {
+          "id": "family-b82934b54df64da3c2f86700f409313753e3009f575c14ed3f53e7bac199a6d5",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-433fd10687a46ccea0d17a7ccb2f2a3bfaff8a3151703b6c8dd6d540a8d962ed",
+        "path": "src/coreclr/nativeaot/Common/src/System/Collections/Generic/LowLevelDictionary.cs",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/coreclr/nativeaot/Common/src/System/Collections/Generic/LowLevelDictionary.cs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 8
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 10
+          },
+          "churn": {
+            "status": "exact",
+            "value": 18
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 2
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 4
+          },
+          "modified": {
+            "status": "exact",
+            "value": 6
+          },
+          "changed": {
+            "status": "exact",
+            "value": 12
+          }
+        },
+        "family": {
+          "id": "family-3542624230d1cd90ddce803b4cb2e008d1d3372ccff6751d2369df2194c41bde",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-fab3d392336e28f12f2cb1b6563cb94fbbdaf96b2f3a0723253f6b083b7e716a",
+        "path": "src/coreclr/nativeaot/System.Private.CoreLib/src/System/GC.NativeAot.cs",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/coreclr/nativeaot/System.Private.CoreLib/src/System/GC.NativeAot.cs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 1
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 4
+          },
+          "churn": {
+            "status": "exact",
+            "value": 5
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 0
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 3
+          },
+          "modified": {
+            "status": "exact",
+            "value": 1
+          },
+          "changed": {
+            "status": "exact",
+            "value": 4
+          }
+        },
+        "family": {
+          "id": "family-aac155aaddf14c49375593248e62df7bc1f5a737a0884db75f5453d9b03d5f6b",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-844e866ae852b1697d5a9d66dbafcd67f0c9e8737f15d05bbbfcaf414f4edbdd",
+        "path": "src/coreclr/nativeaot/System.Private.CoreLib/src/System/Runtime/InteropServices/PInvokeMarshal.cs",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/coreclr/nativeaot/System.Private.CoreLib/src/System/Runtime/InteropServices/PInvokeMarshal.cs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 2
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 4
+          },
+          "churn": {
+            "status": "exact",
+            "value": 6
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 0
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 2
+          },
+          "modified": {
+            "status": "exact",
+            "value": 2
+          },
+          "changed": {
+            "status": "exact",
+            "value": 4
+          }
+        },
+        "family": {
+          "id": "family-cda3e07d6a40820710675f70ba1f4c44b06dbbf89f0bdbcb3d0d66e3d6858434",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-2cd0a0d5bdc356e89a36e15bdc082251bf7783ee2bf342d4127171b94312c49e",
+        "path": "src/libraries/System.Collections.Concurrent/src/Resources/Strings.resx",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/libraries/System.Collections.Concurrent/src/Resources/Strings.resx"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 0
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 3
+          },
+          "churn": {
+            "status": "exact",
+            "value": 3
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 0
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 3
+          },
+          "modified": {
+            "status": "exact",
+            "value": 0
+          },
+          "changed": {
+            "status": "exact",
+            "value": 3
+          }
+        },
+        "family": {
+          "id": "family-57668f6b89e00632fa99a63a92ad3b38f6023d398277178b3d0a5ec37aeb0070",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-63e44e8a342cd3c0f3083d953747e7da7f8c1aa05498699bc771cf7b49bdcbad",
+        "path": "src/libraries/System.Collections.Concurrent/src/System/Collections/Concurrent/ConcurrentDictionary.cs",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/libraries/System.Collections.Concurrent/src/System/Collections/Concurrent/ConcurrentDictionary.cs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 27
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 116
+          },
+          "churn": {
+            "status": "exact",
+            "value": 143
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 0
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 89
+          },
+          "modified": {
+            "status": "exact",
+            "value": 27
+          },
+          "changed": {
+            "status": "exact",
+            "value": 116
+          }
+        },
+        "family": {
+          "id": "family-8d9c806216e0826ee4d2a9e2b3651c6d087ef75e35898ae2dd7f9b5a3daa8a88",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-1711a18db3f6dad22dd1fb3cfbc4e8283a0e703ef9ef40c81e86a7a9cb35034c",
+        "path": "src/libraries/System.Collections.Concurrent/src/System/ThrowHelper.cs",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/libraries/System.Collections.Concurrent/src/System/ThrowHelper.cs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 1
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 7
+          },
+          "churn": {
+            "status": "exact",
+            "value": 8
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 0
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 6
+          },
+          "modified": {
+            "status": "exact",
+            "value": 1
+          },
+          "changed": {
+            "status": "exact",
+            "value": 7
+          }
+        },
+        "family": {
+          "id": "family-76db219419f558b69d92e188d31d545a66fc59081e51a6ee4b2607d38fe1d93a",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-5df5bd84a5a99530fe85c542d2870c34ada32d99b99ae563f64bf19d0394ddff",
+        "path": "src/libraries/System.Collections.Concurrent/tests/ConcurrentDictionary/ConcurrentDictionaryTests.cs",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/libraries/System.Collections.Concurrent/tests/ConcurrentDictionary/ConcurrentDictionaryTests.cs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 1
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 1
+          },
+          "churn": {
+            "status": "exact",
+            "value": 2
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 0
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 1
+          },
+          "changed": {
+            "status": "exact",
+            "value": 1
+          }
+        },
+        "family": {
+          "id": "family-85176e8f0de7ecee1418725897f50a7987bc69aee6ff9a1df03645bf53a82721",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-8d3cac189d4cf57cdfbc2c63bc76c1f49bad1a89497cbd8a761717a81ebd1dc7",
+        "path": "src/libraries/System.Collections/src/System/Collections/Generic/SortedDictionary.cs",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/libraries/System.Collections/src/System/Collections/Generic/SortedDictionary.cs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 2
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 8
+          },
+          "churn": {
+            "status": "exact",
+            "value": 10
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 0
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 6
+          },
+          "modified": {
+            "status": "exact",
+            "value": 2
+          },
+          "changed": {
+            "status": "exact",
+            "value": 8
+          }
+        },
+        "family": {
+          "id": "family-e0154204dc545be8e882228b14a2352d125e60342e2c8d60e9e10f87d299589b",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-a0962f5094f0c37e1ea6a971976e256f269f7a663010ea6ef859ec68d1d0a88b",
+        "path": "src/libraries/System.Collections/src/System/Collections/Generic/SortedList.cs",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/libraries/System.Collections/src/System/Collections/Generic/SortedList.cs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 6
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 5
+          },
+          "churn": {
+            "status": "exact",
+            "value": 11
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 1
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 5
+          },
+          "changed": {
+            "status": "exact",
+            "value": 6
+          }
+        },
+        "family": {
+          "id": "family-27bffa9d75b55ecd67d1f75407b36176249f742295f3abcb3669b5815465c92a",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-10ec3225d938b7ebb4f53864bcbc44f0a3408fe15f2dab782aa73cea17cf7eaf",
+        "path": "src/libraries/System.Console/src/System/Console.cs",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/libraries/System.Console/src/System/Console.cs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 2
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 1
+          },
+          "churn": {
+            "status": "exact",
+            "value": 3
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 1
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 1
+          },
+          "changed": {
+            "status": "exact",
+            "value": 2
+          }
+        },
+        "family": {
+          "id": "family-e0076b3e64ba81316bb71e07afca82035d1a488d89c8c079c4c1d2d195a76bde",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-33de6cce733863c8016a723aee9bcbaf35055814f73d96a5bce337c6147e3cdf",
+        "path": "src/libraries/System.Net.Http/src/System/Net/Http/BrowserHttpHandler/BrowserHttpHandler.cs",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/libraries/System.Net.Http/src/System/Net/Http/BrowserHttpHandler/BrowserHttpHandler.cs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 1
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 4
+          },
+          "churn": {
+            "status": "exact",
+            "value": 5
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 0
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 3
+          },
+          "modified": {
+            "status": "exact",
+            "value": 1
+          },
+          "changed": {
+            "status": "exact",
+            "value": 4
+          }
+        },
+        "family": {
+          "id": "family-d4bd01802a97363fb21eb8a1403c86265efb5aa29057e2c04ca33f7a748d22ab",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-a845a2bd4c44b77e9a0477ccfa9fc20f1578504b74368edb45dd72bee5b1a507",
+        "path": "src/libraries/System.Security.Cryptography/src/System/Security/Cryptography/DSA.Xml.cs",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/libraries/System.Security.Cryptography/src/System/Security/Cryptography/DSA.Xml.cs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 4
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 9
+          },
+          "churn": {
+            "status": "exact",
+            "value": 13
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 0
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 5
+          },
+          "modified": {
+            "status": "exact",
+            "value": 4
+          },
+          "changed": {
+            "status": "exact",
+            "value": 9
+          }
+        },
+        "family": {
+          "id": "family-d5a57ae46ad7f2d9915a85df4a0f73d1563a735bb83753159452eae95034f5f9",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-11356b6874f681138adfd34bb56b1373a28246ebb9c54114a61d169988b10903",
+        "path": "src/libraries/System.Security.Cryptography/src/System/Security/Cryptography/Helpers.cs",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/libraries/System.Security.Cryptography/src/System/Security/Cryptography/Helpers.cs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 1
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 4
+          },
+          "churn": {
+            "status": "exact",
+            "value": 5
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 0
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 3
+          },
+          "modified": {
+            "status": "exact",
+            "value": 1
+          },
+          "changed": {
+            "status": "exact",
+            "value": 4
+          }
+        },
+        "family": {
+          "id": "family-03da01600b39f2afc1a090f087af13dd88ab52b988436d5463d457040f6f7568",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-27bc54ab41a2657f5d8651f1b694dc48690f7ea0d473e2011445fdd9f214e14a",
+        "path": "src/libraries/System.Threading.Tasks.Parallel/src/System/Threading/Tasks/Parallel.ForEachAsync.cs",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/libraries/System.Threading.Tasks.Parallel/src/System/Threading/Tasks/Parallel.ForEachAsync.cs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 6
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 6
+          },
+          "churn": {
+            "status": "exact",
+            "value": 12
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 0
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 0
+          },
+          "modified": {
+            "status": "exact",
+            "value": 6
+          },
+          "changed": {
+            "status": "exact",
+            "value": 6
+          }
+        },
+        "family": {
+          "id": "family-276a31b0cc2f7e292b5bad36f770af9f70e118c9f2d018ab6a0d5580c1949a82",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-c58d928fdbc94efb2bd2b53b6788f19181f4f6c0f29b88ade7026cd52d9855a4",
+        "path": "src/libraries/System.Transactions.Local/src/System/Transactions/NonWindowsUnsupported.cs",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/libraries/System.Transactions.Local/src/System/Transactions/NonWindowsUnsupported.cs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 0
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 13
+          },
+          "churn": {
+            "status": "exact",
+            "value": 13
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 0
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 13
+          },
+          "modified": {
+            "status": "exact",
+            "value": 0
+          },
+          "changed": {
+            "status": "exact",
+            "value": 13
+          }
+        },
+        "family": {
+          "id": "family-ce4496080eb02f4faaa6f185b1b101d0fbbfc160f8b26a3c939e3bae8deb9af2",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-39a7b6122ebc72ef80260ba32cebf0bb0b4fe06c1a41a7c59c22016c93e97efc",
+        "path": "src/libraries/System.Transactions.Local/src/System/Transactions/Transaction.cs",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/libraries/System.Transactions.Local/src/System/Transactions/Transaction.cs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 0
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 29
+          },
+          "churn": {
+            "status": "exact",
+            "value": 29
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 0
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 29
+          },
+          "modified": {
+            "status": "exact",
+            "value": 0
+          },
+          "changed": {
+            "status": "exact",
+            "value": 29
+          }
+        },
+        "family": {
+          "id": "family-427f212aa387f03362850aa490e03e20be9a64a0681af04e57929a8499dcd7ef",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-1d2267dd2473b3899f048ed34668cb71113915423b9cba1518536a17a14f69d5",
+        "path": "src/mono/System.Private.CoreLib/src/System/Reflection/Emit/RuntimeMethodBuilder.Mono.cs",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/mono/System.Private.CoreLib/src/System/Reflection/Emit/RuntimeMethodBuilder.Mono.cs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 1
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 2
+          },
+          "churn": {
+            "status": "exact",
+            "value": 3
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 0
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 1
+          },
+          "modified": {
+            "status": "exact",
+            "value": 1
+          },
+          "changed": {
+            "status": "exact",
+            "value": 2
+          }
+        },
+        "family": {
+          "id": "family-5126fca2747ad2ffc831bb9e136d9734dba4ac2a31e48ff00cd13c890ca09364",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      },
+      {
+        "id": "file-eeef84269f69ea80712e6384617734058d1cb3a375c8e09d35f12502ffedef35",
+        "path": "src/mono/System.Private.CoreLib/src/System/Reflection/Emit/RuntimeTypeBuilder.Mono.cs",
+        "changeType": "modified",
+        "kind": "text",
+        "included": true,
+        "inclusionReasons": [
+          {
+            "code": "PATH_INCLUDED",
+            "subject": "src/mono/System.Private.CoreLib/src/System/Reflection/Emit/RuntimeTypeBuilder.Mono.cs"
+          }
+        ],
+        "raw": {
+          "added": {
+            "status": "exact",
+            "value": 1
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 2
+          },
+          "churn": {
+            "status": "exact",
+            "value": 3
+          }
+        },
+        "lines": {
+          "added": {
+            "status": "exact",
+            "value": 0
+          },
+          "deleted": {
+            "status": "exact",
+            "value": 1
+          },
+          "modified": {
+            "status": "exact",
+            "value": 1
+          },
+          "changed": {
+            "status": "exact",
+            "value": 2
+          }
+        },
+        "family": {
+          "id": "family-277d9004ffbab249c796b36c998cc436a5ab113c0f2470ff700fa1c4bf2d0be5",
+          "rawCountsExact": true,
+          "blocksComplete": true
+        },
+        "measurement": {
+          "status": "exact",
+          "reasons": []
+        }
+      }
+    ],
+    "totals": {
+      "raw": {
+        "added": {
+          "status": "exact",
+          "value": 69
+        },
+        "deleted": {
+          "status": "exact",
+          "value": 236
+        },
+        "churn": {
+          "status": "exact",
+          "value": 305
+        }
+      },
+      "lines": {
+        "added": {
+          "status": "exact",
+          "value": 4
+        },
+        "deleted": {
+          "status": "exact",
+          "value": 171
+        },
+        "modified": {
+          "status": "exact",
+          "value": 65
+        },
+        "changed": {
+          "status": "exact",
+          "value": 240
+        }
+      },
+      "files": {
+        "total": {
+          "status": "exact",
+          "value": 21
+        },
+        "excluded": {
+          "status": "exact",
+          "value": 0
+        },
+        "included": {
+          "status": "exact",
+          "value": 21
+        },
+        "added": {
+          "status": "exact",
+          "value": 0
+        },
+        "deleted": {
+          "status": "exact",
+          "value": 0
+        },
+        "modified": {
+          "status": "exact",
+          "value": 21
+        },
+        "renamed": {
+          "status": "exact",
+          "value": 0
+        },
+        "copied": {
+          "status": "exact",
+          "value": 0
+        },
+        "binary": {
+          "status": "exact",
+          "value": 0
+        },
+        "unmeasurable": {
+          "status": "exact",
+          "value": 0
+        }
+      }
+    },
+    "measurement": {
+      "status": "exact",
+      "reasons": []
+    },
+    "reportId": "report-050e2ccd051a5dc9a3e1d910824d59a7c26c60fb842d3a5b9faf53fb42c1dfbd"
+  }
+}

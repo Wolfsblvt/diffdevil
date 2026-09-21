@@ -1,0 +1,1 @@
+Install the official diffdevil skill using https://raw.githubusercontent.com/Wolfsblvt/diffdevil/main/docs/setup/skill.md. Use your harness's personal skill scope unless my instructions say otherwise. Include its references and verify it is available.

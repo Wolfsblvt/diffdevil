@@ -33,6 +33,9 @@ for (const path of ['LICENSES/README.md', 'LICENSES/MIT.txt', 'LICENSES/AGPL-3.0
 for (const path of ['docs/guides/auto-label-pull-requests.md', 'docs/guides/local-automation.md', 'docs/examples/diffs/review.diff', 'docs/examples/policies/review-signals.yml', 'docs/reference/README.md']) {
   assert.ok(paths.includes(path), `Missing consumer documentation asset: ${path}`);
 }
+for (const path of ['skills/versions.json', 'skills/diffdevil/SKILL.md', 'skills/diffdevil/references/install-and-update.md', 'skills/diffdevil/references/restricted-harnesses.md']) {
+  assert.ok(paths.includes(path), `Missing canonical Agent Skill asset: ${path}`);
+}
 assert.equal(paths.some(path => /(^|\/)(\.git|\.handoff|artifacts|node_modules|source-inputs)(\/|$)/.test(path)), false);
 assert.equal(paths.some(path => ['src/diffdevil/tests/', 'tools/', 'actions/', 'apps/'].some(prefix => path.startsWith(prefix))), false, 'The npm artifact must not include tests/tooling, AGPL applications, or the separate Action distribution.');
 // Keep the consumer outside the checkout so Node cannot borrow its dependencies.
