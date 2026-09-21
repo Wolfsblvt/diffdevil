@@ -360,10 +360,12 @@ same effects at once.
 <div class="faq-answer" id="code-data" tabindex="-1">
 
 No, not to another analysis provider. The CLI stays on your machine. Actions run in your GitHub
-runner. The Playground and browser extension evaluate with the shared engine in your browser.
+runner. The browser extension evaluates with the shared engine in your browser.
 
-Only the managed App processes repository data in the App runtime, and it does not forward or
-archive your source code. It retains only the specific operational or opted-in numeric data
+The public Playground uses a Cloudflare Worker to read and analyze public GitHub pull requests,
+then returns the result to your browser. It does not accept private PRs or archive your source.
+The managed App processes repository data in its own runtime and likewise does not forward or
+archive your source code; it retains only the specific operational or opted-in numeric data
 described by the service.
 
 </div>
