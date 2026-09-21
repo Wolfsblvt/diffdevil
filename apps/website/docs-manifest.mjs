@@ -28,7 +28,8 @@ export const groups = [
     { source: 'docs/guides/policy-recipes.md', slug: 'recipes/policy-recipes', tested: true },
   ] },
   { label: 'CLI', entries: [
-    { source: 'docs/integration/cli.md', faq: ["different-results", "machine-output"], slug: 'cli', title: 'CLI' },
+    { source: 'docs/integration/cli.md', slug: 'cli', title: 'CLI' },
+    { source: 'docs/PRESENTATION.md', slug: 'cli/presentation', title: 'Human and agent presentation' },
   ] },
   { label: 'Actions', entries: [
     { source: 'docs/integration/github-actions.md', faq: ["action-permissions", "fork-pull-requests", "checks-and-merge-blocking"], slug: 'actions/github-actions', tested: true },
@@ -60,7 +61,7 @@ export const groups = [
     { source: 'docs/setup/actions.md', slug: 'setup/actions', optional: true },
     { source: 'docs/setup/app.md', slug: 'setup/app', optional: true },
     { source: 'docs/setup/everything.md', slug: 'setup/everything', optional: true },
-    { link: '/docs/cli/#human-and-agent', label: 'Agent output (CLI)' },
+    { link: '/docs/cli/presentation/#agent-report-projection', label: 'Agent output contract' },
   ] },
   { label: 'Playground', entries: [
     { source: 'docs/integration/playground.md', faq: ["playground", "private-repositories"], slug: 'playground', title: 'Playground' },
