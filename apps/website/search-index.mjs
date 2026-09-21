@@ -1,14 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { readFile } from 'node:fs/promises';
-import { createRequire } from 'node:module';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import * as pagefind from 'pagefind';
+import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 import { faqRecords } from './faq-content.mjs';
 
-// Use the Pagefind version owned by the pinned Starlight toolchain, not an assumed
-// hoisted package or a second independently versioned search implementation.
-const starlightRequire = createRequire(import.meta.resolve('@astrojs/starlight'));
-const pagefind = await import(/* @vite-ignore */ pathToFileURL(starlightRequire.resolve('pagefind')).href);
+// The locked Starlight toolchain already supplies Pagefind. Use its ESM API directly;
+// CommonJS resolution does not support this package's import-only exports.
 function checked(result, operation) {
   if (result.errors?.length) throw new Error(`${operation}: ${result.errors.join('; ')}`);
   return result;
