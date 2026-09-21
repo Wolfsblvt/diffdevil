@@ -44,8 +44,8 @@ try {
   await page.goto(`${origin}/faq/`);
   await page.evaluate(() => document.fonts.ready);
   await expect(page.locator('h1')).toHaveCount(1);
-  await expect(page.locator('.faq-question')).toHaveCount(38);
-  await expect(page.locator('.faq-categories a')).toHaveCount(6);
+  await expect(page.locator('.faq-question')).toHaveCount(20);
+  await expect(page.locator('.faq-categories a')).toHaveCount(8);
   await expect(page.locator('.faq-answer a')).toHaveCount(authoredLinkCount);
   await expect(page.locator('.faq-question details[open]')).toHaveCount(2);
   await expect(page.locator('.sidebar-pane')).toHaveCount(0);
@@ -56,14 +56,14 @@ try {
     assert.ok(await page.locator(`[data-faq-id="${question.id}"] .faq-answer a`).count() <= 1, question.id);
   }
   await page.screenshot({ path: resolve(output, 'faq-dark-desktop.png') });
-  evidence.push('Standalone page, all 38 disclosures, category navigation, shared header/footer and one-link limit.');
+  evidence.push('Standalone page, all 20 disclosures, category navigation, shared header/footer and one-link limit.');
 
-  const custom = page.locator('[data-faq-id="custom-policy"]');
+  const custom = page.locator('[data-faq-id="no-language-required"]');
   await page.goto(`${origin}/faq/#changed-vs-churn`);
   await custom.locator('.faq-id').click();
   await expect(custom.locator('details')).toHaveAttribute('open', '');
   await expect(custom.locator('summary')).toBeFocused();
-  await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(`${FAQ_CANONICAL}#custom-policy`);
+  await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(`${FAQ_CANONICAL}#no-language-required`);
   await custom.locator('summary').press('Enter');
   await expect(custom.locator('details')).not.toHaveAttribute('open', '');
   await custom.locator('.faq-id').click();
@@ -72,7 +72,7 @@ try {
   await expect(page).toHaveURL(/#changed-vs-churn$/u);
   await expect(page.locator('#changed-vs-churn')).toBeVisible();
   await page.goForward();
-  await expect(page).toHaveURL(/#custom-policy$/u);
+  await expect(page).toHaveURL(/#no-language-required$/u);
   await expect(custom.locator('summary')).toBeFocused();
   await custom.locator('summary').press('Space');
   await expect(custom.locator('details')).not.toHaveAttribute('open', '');
@@ -93,20 +93,20 @@ try {
     }
     return observed;
   }, records.map(record => record.id));
-  assert.equal(indexed.length, 38);
-  assert.equal(indexed.find(record => record.id === 'extension-data').standing, 'In development');
+  assert.equal(indexed.length, 20);
+  assert.equal(indexed.find(record => record.id === 'extension-without-repo-setup').standing, 'In development');
   assert.ok(indexed.every(record => record.category && new URL(record.url, origin).hash === `#${record.id}`));
   await page.keyboard.press('Control+k');
   const input = page.locator('[data-search-input]');
-  await input.fill('browser sync stops');
-  const result = page.locator('.search-hit[data-kind="faq"][href$="#extension-data"]');
+  await input.fill('another analysis provider');
+  const result = page.locator('.search-hit[data-kind="faq"][href$="#code-data"]');
   await expect(result).toBeVisible();
   await expect(result.locator('.search-faq-context')).toContainText('In development');
   await result.click();
   await expect(page.locator('[data-search-dialog]')).not.toBeVisible();
-  await expect(page.locator('#extension-data')).toBeVisible();
-  await expect(page.locator('[data-faq-id="extension-data"] summary')).toBeFocused();
-  evidence.push('All 38 actual Pagefind records; visible FAQ kind/category/standing; search opens and focuses the answer outside the modal.');
+  await expect(page.locator('#code-data')).toBeVisible();
+  await expect(page.locator('[data-faq-id="code-data"] summary')).toBeFocused();
+  evidence.push('All 20 actual Pagefind records; visible FAQ kind/category/standing; search opens and focuses the answer outside the modal.');
 
   // Resolve the real built destinations and fragments selected by the FAQ's Markdown links.
   const links = await page.locator('.faq-answer a').evaluateAll(anchors => anchors.map(anchor => anchor.getAttribute('href')));
@@ -121,9 +121,9 @@ try {
     }
   }
   await page.goto(`${origin}/docs/actions/github-actions/`);
-  await expect(page.locator('a[href="/faq/#action-permissions"]').first()).toBeVisible();
-  await page.locator('a[href="/faq/#action-permissions"]').first().click();
-  await expect(page.locator('#action-permissions')).toBeVisible();
+  await expect(page.locator('a[href="/faq/#trusted-policy"]').first()).toBeVisible();
+  await page.locator('a[href="/faq/#trusted-policy"]').first().click();
+  await expect(page.locator('#trusted-policy')).toBeVisible();
   evidence.push('Rendered deeper links and fragments resolve; a contextual manual link opens the matching FAQ answer.');
 
   for (const width of [320, 375, 640, 1080, 1180, 1280, 1440]) {
@@ -142,7 +142,7 @@ try {
   await page.evaluate(() => localStorage.setItem('diffdevil.theme', 'light'));
   // A same-page hash navigation does not rerun the shared before-paint script.
   await page.reload();
-  await page.goto(`${origin}/faq/#extension-data`);
+  await page.goto(`${origin}/faq/#code-data`);
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
   await page.screenshot({ path: resolve(output, 'faq-light-mobile-answer.png') });
   await page.goto(`${origin}/faq/#%E0%A4%A`);

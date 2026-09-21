@@ -12,19 +12,19 @@ function specimen({ id = 'sample-question', title = 'A question?', extra = '', b
     <div id="${id}" class="faq-answer">${body}</div></details></article>`;
 }
 
-test('the complete FAQ preserves 38 unique question routes in its six ordered categories', () => {
+test('the focused FAQ preserves 20 unique question routes in its eight ordered categories', () => {
   const records = faqRecords(source);
-  assert.equal(records.length, 38);
+  assert.equal(records.length, 20);
   assert.equal(new Set(records.map(record => record.id)).size, records.length);
-  assert.deepEqual(records.slice(0, 2).map(record => record.id), ['why-diffdevil', 'changed-vs-churn']);
+  assert.deepEqual(records.slice(0, 2).map(record => record.id), ['changed-vs-churn', 'beyond-size-labels']);
   const counts = new Map();
   for (const record of records) {
     counts.set(record.category, (counts.get(record.category) ?? 0) + 1);
     assert.equal(record.url, `${FAQ_ROUTE}#${record.id}`);
     assert.equal(record.canonical, `${FAQ_CANONICAL}#${record.id}`);
-    assert.ok(record.title.endsWith('?'));
+    assert.ok(record.title.length > 0);
   }
-  assert.deepEqual([...counts.values()], [8, 5, 6, 6, 6, 7]);
+  assert.deepEqual([...counts.values()], [3, 3, 3, 2, 2, 2, 2, 3]);
 });
 
 test('question search records carry the actual answer HTML, title, identifier and category', () => {
@@ -37,13 +37,13 @@ test('question search records carry the actual answer HTML, title, identifier an
   assert.ok(record.html.includes('Who reads A &amp; B?'));
 });
 
-test('the development note follows each affected question into search, but not the Playground', () => {
+test('the subtle development note follows only affected answers into search', () => {
   const records = new Map(faqRecords(source).map(record => [record.id, record]));
-  assert.equal(records.get('extension-data').standing, 'In development');
-  assert.ok(records.get('extension-data').html.includes('Chrome Web Store'));
-  assert.equal(records.get('app-history').standing, 'In development');
-  assert.equal(records.get('playground').standing, '');
+  assert.equal(records.get('extension-without-repo-setup').standing, 'In development');
+  assert.ok(records.get('extension-without-repo-setup').html.includes('managed-service experience'));
+  assert.equal(records.get('why-managed').standing, 'In development');
   assert.equal(records.get('changed-vs-churn').standing, '');
+  assert.equal(records.get('no-language-required').standing, '');
 });
 
 test('a linked development note cannot disappear silently', () => {

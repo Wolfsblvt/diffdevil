@@ -11,24 +11,37 @@ answers consistent. Source implementation is not publication or feature availabi
 ## Reader journey
 
 The ordered categories are **Why diffdevil?**, **Understanding the numbers**, **Browser extension
-and Playground**, **Policies and automation**, **Managed App and your data**, and **Compatibility
-and help**. The opening earns adoption by answering why the product differs, when an existing
-size labeler is enough, which surface to choose, and how coding agents fit. Ordinary help stays
-later. The FAQ does not mirror the manual or collect leftover reference material.
+and Playground**, **Local use and policy**, **GitHub Actions, labels, and comments**, **Managed App
+and self-hosting**, **Privacy, history, and data**, and **Coding agents, releases, and the
+project**.
 
-Questions are plain and neutral. Answers are candid, personal and occasionally dry, within the
-[brand voice](BRANDING.md), without making privacy or permission claims into jokes. Start with
-the actual answer. Normally use 40–90 words, never more than 120; one or two paragraphs suffice.
-Zero or one unobtrusive deeper link may follow. An answer must remain useful without that link.
-Tutorials, workflows, option catalogues and long troubleshooting procedures belong in the manual.
+The opening earns adoption by explaining what diffdevil adds beyond provider counters, when a
+small script or ordinary size labeler is enough, and what diffdevil does not replace. Questions
+about everyday surfaces and deeper product relationships follow. Operational help remains in the
+manual. The FAQ does not mirror the manual or collect every answer that happened to fit inside a
+disclosure.
+
+Keep the complete FAQ between **10 and 25 questions**. For diffdevil, target **18–24**. A new
+question must answer a genuine adoption, connection, comparison, or non-obvious Why that the
+manual does not already answer directly. If it is a normal procedure, option, error lookup, or
+reference entry, it belongs elsewhere. When the FAQ grows past the target, improve or merge
+existing answers instead of teaching the documentation to wear a fake mustache.
+
+Question titles are short and natural. They may be direct questions, statements that carry an
+obvious implied question, or concise comparisons; they do not all need a question mark. Answers
+are candid and occasionally dry within the [brand voice](BRANDING.md), without making privacy or
+permission claims into jokes. Start with the actual answer. Normally use 30–80 words, never more
+than 110; one or two paragraphs suffice. Zero or one unobtrusive deeper link may follow. An answer
+must remain useful without that link. Tutorials, workflows, option catalogues and long
+troubleshooting procedures belong in the manual.
 
 ## One source, several entry points
 
 Edit `docs/manual/faq.md`, not generated content. Its native HTML disclosures and ordinary
 Markdown prose remain readable on GitHub. Semantic identifiers are authored explicitly and
-visible above each question; changing a title or category does not change its identifier.
-Retain an established identifier when wording evolves. A deliberate merge must preserve the
-retired fragment at the surviving answer and reconcile its search and inbound links.
+visible above each question; changing a title or category does not change its identifier. Retain
+an established identifier when wording evolves. A deliberate merge must preserve the retired
+fragment at the surviving answer and reconcile its search and inbound links.
 
 `apps/website/docs-manifest.mjs` declares the FAQ as a product route, not a Starlight collection
 entry. The existing `tools/website-docs.mjs` pipeline projects it to ignored
@@ -70,10 +83,11 @@ add another search dependency graph. Toolchain updates retain the build and brow
 
 ## Availability and deeper ownership
 
-Write for the complete selected release experience. Keep real extension or managed-service
-limitations in narrow development notes, not a page-wide provisional voice. A grouped note is
-attached to each affected answer's metadata so direct links and search do not lose it. Remove the
-note and its references together only when the corresponding availability is established.
+Write answers for the complete selected release experience. A single subtle note near the top of
+the page states that the browser extension and complete managed-service experience are in
+development. Questions that depend on either surface reference that note through metadata so a
+direct link or search result does not lose the standing. Do not repeat the disclaimer inside every
+answer or let provisional language weaken the explanation.
 
 The FAQ does not invent Store links, commercial prices, supported browsers or hosting adapters.
 Measurement and evidence semantics belong in the language/integration contracts; provider trust
@@ -83,14 +97,15 @@ guide. FAQ summaries must be reconciled when those facts change.
 
 ## Verification
 
-`node --test apps/website/faq.test.mjs` exercises question extraction, stable fragments, search metadata, development
-standing, the product/manual route distinction and contextual-link integrity. The ordinary root
-`npm test` discovers this suite through the existing `apps/**/*.test.mjs` convention.
+`node --test apps/website/faq.test.mjs` exercises question extraction, stable fragments, search
+metadata, development standing, the product/manual route distinction and contextual-link
+integrity. The ordinary root `npm test` discovers this suite through the existing
+`apps/**/*.test.mjs` convention.
 
-After `npm run website:build`, `node apps/website/qa/faq.mjs` exercises the real built page and Pagefind index:
-all question records, independent and keyboard disclosures, permalinks, clipboard, Back/Forward,
-search focus, manual/deeper links, compact navigation, responsive layouts and no-JavaScript use.
-It owns its local static server and browser and closes both. Results and selected screenshots are
-written under `artifacts/website/faq-qa/`. The read-only FAQ workflow runs that journey on the exact
-PR head and retains its evidence. No verification command deploys the website or applies provider
-effects.
+After `npm run website:build`, `node apps/website/qa/faq.mjs` exercises the real built page and
+Pagefind index: all question records, independent and keyboard disclosures, permalinks, clipboard,
+Back/Forward, search focus, manual/deeper links, compact navigation, responsive layouts and
+no-JavaScript use. It owns its local static server and browser and closes both. Results and
+selected screenshots are written under `artifacts/website/faq-qa/`. The read-only FAQ workflow
+runs that journey on the exact PR head and retains its evidence. No verification command deploys
+the website or applies provider effects.
