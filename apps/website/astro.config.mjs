@@ -6,6 +6,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { diffdevilSyntax } from './src/lib/shiki-theme.ts';
 import { themeScript } from './src/lib/theme-script.mjs';
+import searchIndex from './search-index.mjs';
 
 const repositoryRoot = fileURLToPath(new URL('../../', import.meta.url));
 const engine = path => fileURLToPath(new URL(`../../dist/lib/${path}`, import.meta.url));
@@ -23,6 +24,7 @@ export default defineConfig({
       title: 'diffdevil',
       description: 'The diffdevil manual: CLI, GitHub Actions, policies and the detail language, TypeScript API, playground and GitHub App.',
       sidebar,
+      pagefind: false,
       customCss: ['./src/styles/fonts.css', './src/styles/tokens.css', './src/styles/global.css', './src/styles/starlight.css'],
       components: {
         Header: './src/components/docs/Header.astro',
@@ -49,6 +51,7 @@ export default defineConfig({
       disable404Route: true,
     }),
     react(),
+    searchIndex(),
   ],
   markdown: { shikiConfig: { theme: diffdevilSyntax } },
   vite: {

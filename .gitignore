@@ -15,6 +15,7 @@ coverage/
 # Generated website docs collection (tools/website-docs.mjs) and Astro type output
 apps/website/src/content/docs/
 apps/website/src/content/sidebar.json
+apps/website/src/generated/faq.md
 apps/website/.astro/
 # Derived website icons/rasters (tools/website-assets.mjs): the identity SVGs are the source; no raster is committed
 apps/website/public/favicon.ico

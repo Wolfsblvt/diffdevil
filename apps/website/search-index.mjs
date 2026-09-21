@@ -1,24 +1,26 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { readFile } from 'node:fs/promises';
-import { fileURLToPath } from 'node:url';
+import { createRequire } from 'node:module';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { join } from 'node:path';
-import * as pagefind from 'pagefind';
 import { faqRecords } from './faq-content.mjs';
 
+// Use the Pagefind version owned by the pinned Starlight toolchain, not an assumed
+// hoisted package or a second independently versioned search implementation.
+const starlightRequire = createRequire(import.meta.resolve('@astrojs/starlight'));
+const pagefind = await import(pathToFileURL(starlightRequire.resolve('pagefind')).href);
 function checked(result, operation) {
   if (result.errors?.length) throw new Error(`${operation}: ${result.errors.join('; ')}`);
   return result;
 }
-/**
- * One Pagefind pass for site, manual and individual FAQ answers. Pagefind is already
- * supplied by the pinned Starlight dependency and locked with the website toolchain.
- * Starlight's automatic pass is disabled, not run again over this completed index.
- */
+/** One search index for selected site/manual bodies and independently linked FAQ answers. */
 export default function searchIndex() {
   return { name: 'diffdevil-search', hooks: {
     'astro:build:done': async ({ dir, logger }) => {
       const directory = fileURLToPath(dir);
-      const { index } = checked(await pagefind.createIndex(), 'Create search index');
+      // A page without this marker (legal pages or the complete FAQ) must not be
+      // indexed through header/footer text. FAQ entries supply their own body.
+      const { index } = checked(await pagefind.createIndex({ rootSelector: '[data-pagefind-body]' }), 'Create search index');
       if (!index) throw new Error('Pagefind returned no index.');
       try {
         checked(await index.addDirectory({ path: directory }), 'Index site and manual');
