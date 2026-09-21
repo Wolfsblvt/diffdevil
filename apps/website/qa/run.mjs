@@ -371,6 +371,7 @@ check('Escape closes the export dialog', (await page.locator('dialog[open]').cou
 await go('/playground/?example=runtime-null-guards&variant=implementation&view=explain');
 await page.waitForSelector('.pg-primary');
 check('deep link opens the named real-PR variant in the named view', /changed/u.test(await page.locator('.pg-primary').innerText()) && (await tiles.nth(3).getAttribute('aria-selected')) === 'true');
+check('real-PR policy keeps scopes that the controls cannot represent', (await page.locator('.notice-kept').innerText()).includes('scopes implementation, tests'));
 await go('/playground/?example=lockfile-scope&variant=all');
 await page.waitForSelector('.pg-primary');
 check('real-PR snapshot loads from the static catalogue with its provenance strip', (await page.locator('.pg-strip').innerText()).includes('teaching snapshot') && (await page.locator('.pg-strip').innerText()).includes('vitejs/vite'));
