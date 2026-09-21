@@ -74,7 +74,7 @@ export const copy = {
     links: [['How changed lines work', 'typesAndMeasurements'], ['Measurement versions and metric semantics', 'versioning']] as const,
     panelHead: 'docs/examples/reports/exact.json · policy full.yml',
     primaryLabel: 'Policy-focus metric · review', decomposition: 'Decomposition', raw: 'Raw · contrast',
-    tryIt: 'Try this fixture in the playground',
+    tryIt: 'Try this lesson in the playground',
   },
 
   query: {
@@ -195,8 +195,8 @@ export const copy = {
   },
 
   playground: {
-    title: 'Playground', sub: 'Read-only · public pull requests and curated examples · no account · nothing stored',
-    tabPr: 'Public pull request', tabExamples: 'Curated pull requests',
+    title: 'Playground', sub: 'Read-only · public pull requests and saved real-PR lessons · no account · nothing stored',
+    tabPr: 'Public pull request', tabExamples: 'Real pull-request lessons',
     inputLabel: 'Pull request URL', inputHint: 'Public github.com pull requests only. Never asks for a token.', inputButton: 'Analyze public PR',
     analyzed: 'Analyzed', edit: 'edit', copyUrl: 'copy URL',
     fixtures: 'Frozen fixtures', fixturesHint: 'Repository-owned, deterministic. Work without touching GitHub.',
@@ -230,9 +230,9 @@ export const copy = {
     whyThisPr: 'Why this PR',
     states: {
       refused: (input: string) => `× Not a public github.com pull-request URL. "${input}" is private or absent. The playground reads public pull requests only, never asks for a token, and does not fetch arbitrary URLs. Accepted shape: https://github.com/owner/repo/pull/123`,
-      budget: (minutes: number | undefined) => `GitHub read budget exhausted for this playground${minutes ? ` · retry in ${minutes} min` : ''}. The public playground shares GitHub’s 60 unauthenticated requests per hour per address. Curated examples and your previous result remain available. For an immediate answer locally: npx @wolfsblvt/diffdevil analyze`,
+      budget: (minutes: number | undefined) => `GitHub read budget exhausted for this playground${minutes ? ` · retry in ${minutes} min` : ''}. The public playground shares GitHub’s 60 unauthenticated requests per hour per address. Saved real-PR lessons and your previous result remain available. For an immediate answer locally: npx @wolfsblvt/diffdevil analyze`,
       upstream: 'GitHub did not answer; your input is kept. Retry.',
-      unreachable: 'The playground API could not be reached; your input is kept. Curated examples still work without it.',
+      unreachable: 'The playground API could not be reached; your input is kept. Saved real-PR lessons still work without it.',
       previous: 'from previous analysis',
       previousPolicy: 'from previous valid policy',
     },

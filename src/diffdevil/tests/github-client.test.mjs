@@ -3,6 +3,10 @@ import assert from 'node:assert/strict';
 import { GitHubClient, GitHubRequestError } from '../../../dist/lib/github/client.js';
 import { json } from './helpers/github.mjs';
 
+function rejectedCleanup(status) {
+  return { status, headers: new Headers(), body: { cancel: async () => { throw Error('fixture cleanup failure'); } } };
+}
+
 test('GitHub client uses the configured Enterprise root and does not follow redirects', async () => {
   let observed;
   const client = new GitHubClient({ apiUrl: 'https://git.example/api/v3', token: 'fixture-token', readRetries: 0,
@@ -63,6 +67,17 @@ test('GitHub client honors server delays and does not retry permission denials',
   const before = calls;
   await assert.rejects(denied.json('/repos/test/repo'), e => e.diagnostic.code === 'E_GITHUB_PERMISSION' && !e.message.includes('fixture-token'));
   assert.equal(calls, before + 1);
+});
+test('GitHub client retries a read when response cleanup fails', async () => {
+  const delays = []; let calls = 0;
+  const client = new GitHubClient({ readRetries: 1, sleep: async ms => { delays.push(ms); }, fetch: async () => ++calls === 1 ? rejectedCleanup(502) : json({ recovered: true }) });
+  assert.deepEqual(await client.json('/repos/test/repo'), { recovered: true });
+  assert.deepEqual(delays, [1000]);
+  assert.equal(calls, 2);
+});
+test('GitHub client preserves a typed HTTP error when response cleanup fails', async () => {
+  const client = new GitHubClient({ readRetries: 0, fetch: async () => rejectedCleanup(404) });
+  await assert.rejects(client.json('/repos/test/repo'), error => error instanceof GitHubRequestError && error.status === 404 && error.diagnostic.code === 'E_GITHUB_REQUEST');
 });
 test('GitHub client distinguishes write rate limits from permission denials', async () => {
   const client = new GitHubClient({ readRetries: 0, fetch: async () => json({}, 403, { 'retry-after': '2' }) });

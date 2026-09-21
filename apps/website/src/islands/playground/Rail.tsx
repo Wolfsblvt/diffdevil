@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-/** The rail: input tabs, public-PR input or the curated real pull requests, then configuration. A hard-edged column flush with the header; the desktop rail never collapses; ≤ 900 it becomes a sticky bottom sheet. */
+/** The rail: input tabs, public-PR input or the shared real-PR lessons, then configuration. A hard-edged column flush with the header; the desktop rail never collapses; ≤ 900 it becomes a sticky bottom sheet. */
 import { useEffect, useRef, useState, lazy, Suspense } from 'react';
 import { copy } from '../../data/copy';
 import { parsePullRequestUrl, prUrl, type PlaygroundState } from './state';
@@ -11,23 +11,24 @@ import { copyText } from '../../lib/clipboard';
 const PolicyEditor = lazy(() => import('./PolicyEditor'));
 
 export interface ExampleCard {
-  readonly id: string; readonly group: 'fixture' | 'curated'; readonly glyph?: string | undefined; readonly title: string; readonly hook?: string | undefined;
-  readonly meta?: string | undefined; readonly repository?: string | undefined; readonly pullRequest?: number | undefined; readonly reason?: string | undefined;
-  readonly head?: string | undefined; readonly analyzedAt?: string | undefined; readonly evidence?: string | undefined;
+  readonly id: string; readonly title: string; readonly lessons: readonly string[]; readonly summary: string;
+  readonly variants: readonly {
+    id: string; label: string; repository: string; pullRequest: number; head: string; capturedAt: string; edition: string; evidence: string;
+  }[];
 }
 
 interface Props {
-  state: PlaygroundState; curated: readonly ExampleCard[];
+  state: PlaygroundState; catalogue: readonly ExampleCard[];
   acquired: Acquired | undefined; evaluation: Evaluation | EvaluationFailure | undefined; lastValid: Evaluation | undefined;
   working: boolean; error: ApiError | undefined; policyText: string;
-  onSelectExample: (id: string) => void; onAnalyzePr: (pr: { owner: string; repo: string; number: number }) => void; onCancel: () => void;
+  onSelectExample: (id: string, variant: string) => void; onAnalyzePr: (pr: { owner: string; repo: string; number: number }) => void; onCancel: () => void;
   onMode: (mode: 'pr' | 'examples') => void; onCfg: (cfg: 'controls' | 'policy') => void; onPolicy: (text: string) => void;
 }
 
 export const GitHubMark = () => <svg className="gh" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z" /></svg>;
 
 export function Rail(props: Props) {
-  const { state, curated, acquired, working, error } = props;
+  const { state, catalogue, acquired, working, error } = props;
   const c = copy.playground;
   const [editing, setEditing] = useState(state.mode !== 'pr' || !state.pr);
   const [refused, setRefused] = useState<string | undefined>();
@@ -79,7 +80,7 @@ export function Rail(props: Props) {
     <>
       <div className="rail-tabs" role="tablist" aria-label="Input">
         <button type="button" role="tab" id="tab-pr" aria-selected={state.mode === 'pr'} aria-controls="panel-input" onClick={() => { props.onMode('pr'); setEditing(!lastPr); }}>{c.tabPr}</button>
-        <button type="button" role="tab" id="tab-examples" aria-selected={state.mode === 'examples'} aria-controls="panel-input" onClick={() => { if (state.example) props.onSelectExample(state.example); else props.onMode('examples'); }}>{c.tabExamples}</button>
+        <button type="button" role="tab" id="tab-examples" aria-selected={state.mode === 'examples'} aria-controls="panel-input" onClick={() => { const entry = catalogue.find(candidate => candidate.id === state.example) ?? catalogue[0]; if (entry?.variants[0]) props.onSelectExample(entry.id, state.variant ?? entry.variants[0].id); else props.onMode('examples'); }}>{c.tabExamples}</button>
       </div>
       <div id="panel-input" role="tabpanel" aria-labelledby={state.mode === 'pr' ? 'tab-pr' : 'tab-examples'} className="pg-input">
         {state.mode === 'pr' ? (
@@ -108,11 +109,11 @@ export function Rail(props: Props) {
           <div className="stack">
             <p className="field-hint">{c.prsHint}</p>
             <ul className="pg-examples">
-              {curated.map(card => (
+              {catalogue.map(card => (
                 <li key={card.id}>
-                  <button type="button" className="pg-card" aria-pressed={state.example === card.id} onClick={() => props.onSelectExample(card.id)}>
-                    <span className="pg-card-body pg-card-wide"><span className="pg-card-title pg-card-pr"><GitHubMark /><span><span className="pg-card-owner">{card.repository?.split('/')[0]}/</span>{card.repository?.split('/')[1]} <span className="pg-card-owner">· PR</span> #{card.pullRequest}</span><span className="pg-card-ev">{card.evidence}</span></span><span className="pg-card-hook">{card.reason}</span><span className="pg-card-meta">snapshot {card.head?.slice(0, 7)} · {card.analyzedAt?.slice(0, 10)}</span></span>
-                  </button>
+                  <span className="pg-card pg-card-lesson"><span className="pg-card-body pg-card-wide"><span className="pg-card-title">{card.title}</span><span className="pg-card-hook">{card.summary}</span><span className="pg-card-meta">{card.lessons.join(' · ')}</span></span>
+                    <span className="pg-card-variants">{card.variants.map(variant => <button key={variant.id} type="button" className="link-plain small" aria-pressed={state.example === card.id && state.variant === variant.id} onClick={() => props.onSelectExample(card.id, variant.id)}><GitHubMark /> {variant.label} · {variant.repository}#{variant.pullRequest} · {variant.evidence}</button>)}</span>
+                  </span>
                 </li>
               ))}
 

@@ -48,9 +48,15 @@ Current source contains the first read-only measurement playground under
 `apps/playground/`, backed by the shared engine and versioned response contract.
 That exact application is live at
 [`diffdevil-playground.wolfsblvt.workers.dev`](https://diffdevil-playground.wolfsblvt.workers.dev)
-on Cloudflare Workers. It does not yet establish the complete configurable
-playground, managed App runtime, dashboard, native App check lifecycle, persistent
-history, or commercial service.
+on Cloudflare Workers. It establishes the shared-engine browser measurement route,
+not the complete configurable playground or commercial service.
+
+The managed GitHub App runtime is also live on Cloudflare Workers and installed only
+on `Wolfsblvt/wolf-leitsatz`. Its contained canary exercised the native check,
+managed-label, and persisted operational-result path, then restored the repository to
+its pre-canary state. This establishes the managed transport and one installed-repository
+lifecycle, not the dashboard, broader repository admission, complete history,
+offboarding/export, settled product limits, or commercial service.
 
 The selected implementation direction is now explicit:
 
@@ -94,9 +100,9 @@ researched curated catalogue) are admitted through their own Work. The playgroun
 API gained `/api/report` and `/api/head` for browser-side replay and freshness;
 the live Worker still serves the earlier contract until it is redeployed.
 
-The live playground Worker consumes the same static, bundler-visible generated
-validator boundary as Node and the Actions. The managed App runtime must reuse that
-portable engine boundary rather than introduce a hosted engine fork.
+The live playground and managed App Workers consume the same static, bundler-visible
+generated validator boundary as Node and the Actions. The hosted applications reuse
+that portable engine boundary rather than introducing a hosted engine fork.
 
 The live measurement playground qualifies one operating path before the dashboard
 and all richer views exist. It does not satisfy the complete App or playground

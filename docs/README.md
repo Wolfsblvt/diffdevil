@@ -26,6 +26,7 @@ when a custom formula, scope, or policy needs it.
 | Current implementation outcome | [`DIRECTION.md`](DIRECTION.md) |
 | Complete implementation horizon | [`IMPLEMENTATION-HORIZON.md`](IMPLEMENTATION-HORIZON.md) |
 | Durable decisions and open forks | [`DECISIONS.md`](DECISIONS.md) |
+| Human, agent, and effect-plan presentation | [`PRESENTATION.md`](PRESENTATION.md) |
 | Repository structure | [`PROJECT-MAP.md`](PROJECT-MAP.md) |
 | Architecture boundaries | [`ARCHITECTURE.md`](ARCHITECTURE.md) |
 | Local development and verification | [`DEVELOPMENT.md`](DEVELOPMENT.md) |
@@ -49,6 +50,7 @@ when a custom formula, scope, or policy needs it.
 | --- | --- |
 | First useful CLI and Action routes | [`automation.md`](automation.md) |
 | CLI protocol and source selection | [`integration/cli.md`](integration/cli.md) |
+| Human, agent, and plan presentation | [`PRESENTATION.md`](PRESENTATION.md) |
 | GitHub Action interface | [`integration/github-actions.md`](integration/github-actions.md) |
 | Install-free Action distribution | [`integration/action-distribution.md`](integration/action-distribution.md) |
 | GitHub provider API and trust | [`integration/github-api.md`](integration/github-api.md) |

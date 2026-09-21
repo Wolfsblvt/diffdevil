@@ -2,7 +2,7 @@
 /**
  * Main column, contiguous and hard-edged: comparison strip → primary result frame →
  * "See this result as" tiles → view panel → Files → Other metrics. The frame never
- * changes shape between fixture, snapshot and live analysis; only the strip and the
+ * changes shape between snapshot and live analysis; only the strip and the
  * values change.
  */
 import { useEffect, useRef, useState } from 'react';
@@ -90,10 +90,9 @@ export function Result(props: Props) {
     <section className="pg-main" aria-busy={working}>
       <div className={`pg-strip ${stale || (working && acquired) ? 'is-dimmed' : ''}`}>
         <div className="pg-strip-main">
-          {acquired.kind === 'fixture' && example && <><span className="pg-strip-title">{example.glyph} {example.title}</span><span className="chip-meta">frozen fixture</span><span>{report.source.kind} · {report.source.base ?? 'supplied'}{report.source.head ? `…${report.source.head}` : ''}</span></>}
           {(acquired.kind === 'snapshot' || acquired.kind === 'live') && example && <><span className="pg-strip-title"><GitHubMark /><a href={example.url} rel="noopener">{example.repository} · PR #{example.pullRequest}</a></span>
             {acquired.kind === 'snapshot'
-              ? <><span className="chip-meta">curated snapshot</span><span>head {sha7(example.snapshot?.head)} · analyzed {example.snapshot?.analyzedAt.slice(0, 10)}</span><span>preset {example.snapshot?.engine.policy}</span></>
+              ? <><span className="chip-meta">teaching snapshot · {example.edition}</span><span>head {sha7(example.snapshot?.head)} · captured {example.snapshot?.analyzedAt.slice(0, 10)}</span><span>policy {acquired.policyName}</span></>
               : <><span className="chip-meta">live · head {sha7(acquired.liveHead)}</span><button type="button" className="btn btn-quiet pg-mini" onClick={() => props.onHead('snapshot')}>{c.backToSnapshot} {sha7(example.snapshot?.head)}</button></>}
           </>}
           {acquired.kind === 'pr' && acquired.pr && <><span className="pg-strip-title"><GitHubMark />{acquired.pr.owner}/{acquired.pr.repo} · PR #{acquired.pr.number}</span><span className="chip-meta">live · head {sha7(report.source.head)}</span></>}
@@ -107,8 +106,7 @@ export function Result(props: Props) {
             <button type="button" className="btn btn-secondary pg-mini" onClick={() => props.onHead('live')}>{c.analyzeLatest} · {sha7(newerHead)}</button>
           </div>
         )}
-        {example?.group === 'curated' && example.reason && <p className="pg-why"><strong>{c.whyThisPr}</strong> — {example.reason} {example.teaches}</p>}
-        {example?.group === 'fixture' && <p className="pg-why">{example.teaches}</p>}
+        {example && <p className="pg-why"><strong>{c.whyThisPr}</strong> — {example.id} · {example.variant} · source {example.sourceId}</p>}
         {error && acquired && <p className="status" role="alert">{errorText(error)} {props.previous ? `(${c.states.previous})` : ''}</p>}
         {stale && <p className="status" role="alert">Configuration error in the policy — showing the result {c.states.previousPolicy}.</p>}
       </div>

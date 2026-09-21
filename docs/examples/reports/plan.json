@@ -26,6 +26,10 @@
     "repository": "example/repository",
     "pullRequest": 42
   },
+  "preconditions": {
+    "head": "fixture-head",
+    "base": "fixture-base"
+  },
   "rules": {
     "size": {
       "band": {

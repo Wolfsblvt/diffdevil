@@ -101,7 +101,7 @@ Commands shown on narrative surfaces (`#query`, the `#agents` comparison) are ru
 | `src/styles/` | Canonical tokens import with the documented light-cascade correction, self-hosted fonts, surface grammar, playground and Starlight mappings |
 | `src/lib/` | Build-time engine access and executed CLI specimens, example catalogue reader, agent-source reader, Shiki theme, the pre-paint theme script, search, shared client behaviour |
 | `src/shims/` | `node:crypto` (SHA-256) and `node:util` stand-ins so the engine runs in the browser unchanged |
-| `catalogue/` | Frozen fixture list and captured real-PR snapshots ([contract](catalogue/README.md)). `/examples/` lists the real pull requests only; fixtures stay playground and regression inputs |
+| `../docs/examples/catalogue/` | The shared real-PR lesson catalogue: source identities, policies, snapshots and guide. `/examples/` and the Playground read this one source; fixtures remain engine-test inputs only |
 | `docs-manifest.mjs` | The manual's reader-facing selection; `tools/website-docs.mjs` generates the ignored Starlight collection from it |
 | `public/` | Static files. The derived favicons, touch icon, web-manifest and GitHub App logos, Open Graph image and manifest are **generated, ignored output** of `tools/website-assets.mjs` from the canonical identity SVGs; the build regenerates them and Astro copies them into the site |
 | `qa/run.mjs` | Browser qualification |

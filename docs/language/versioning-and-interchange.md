@@ -17,8 +17,25 @@ This document defines the public representation and evolution boundary for detai
 | `size@1` | Shipped size metric, thresholds, labels, path defaults, and comment policy. |
 | `diffdevil-limits/1` | Logical cost accounting and the selected default budget profile. |
 | Report/query/plan schema `1.0` | The corresponding serialized artifact shape. |
+| `diffdevil.agent-report/1` | Fixed-order compact textual report projection for coding-agent context. |
+| `diffdevil.agent-plan/1` | Fixed-order compact textual desired-plan projection for coding-agent context. |
 
 Expression version 1 binds its numeric and standard-library profile; users do not have to repeat every identity in a small config. Artifacts record the resolved set. A Chevrotain dependency version is implementation provenance, not a new language identity.
+
+## Textual presentation identities
+
+Human report and plan output are public reading interfaces, but their spacing, grouping, emphasis, and optional ANSI reinforcement are not serialized report fields. A deliberate compatible presentation correction therefore does not claim a report-schema change. Release notes still identify material human-interface changes.
+
+The agent projections have explicit first-line identities:
+
+```text
+diffdevil.agent-report/1
+diffdevil.agent-plan/1
+```
+
+Within one agent-presentation major, records retain their fixed semantic grouping, key meanings, quoting rules, and typed non-exact measurement grammar. An incompatible change to that record grammar requires a new projection major even when `diffdevil.report` or `diffdevil.plan` remains at schema `1.0`.
+
+These textual identities do not compete with JSON. JSON and JSONL remain the exhaustive stable extraction contracts; agent text is a compact, deterministic context interface. [Human and agent presentation](../PRESENTATION.md) owns the normative human/agent grouping, color, plan, and consumer contract.
 
 ## Report envelope
 

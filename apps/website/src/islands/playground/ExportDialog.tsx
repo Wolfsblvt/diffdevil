@@ -21,7 +21,7 @@ export function ExportDialog({ evaluation, acquired, policyText, onClose }: Prop
   const writes = !!evaluation.plan?.operations.length;
   const sourceNote = acquired.kind === 'pr' && acquired.pr
     ? `Source: GitHub pull request ${acquired.pr.owner}/${acquired.pr.repo}#${acquired.pr.number} (playground read it through the public API)`
-    : acquired.kind === 'fixture' ? `Source: local Git, base origin/main (playground used a frozen fixture, ${acquired.example?.source?.path})` : `Source: local Git, base origin/main (playground used a curated snapshot of ${acquired.example?.repository}#${acquired.example?.pullRequest})`;
+    : `Source: retained real-PR teaching snapshot of ${acquired.example?.repository}#${acquired.example?.pullRequest} (${acquired.example?.edition})`;
   const policyFlag = isPreset ? '' : ' --config .diffdevil.yml';
   const cli = acquired.kind === 'pr' && acquired.pr
     ? `npx @wolfsblvt/diffdevil analyze --repo ${acquired.pr.owner}/${acquired.pr.repo} --pr ${acquired.pr.number}${policyFlag} --format human\n# reads only; GH_TOKEN raises the unauthenticated read limit, it does not enable writes`
