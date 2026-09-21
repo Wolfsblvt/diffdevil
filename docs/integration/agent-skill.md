@@ -50,9 +50,11 @@ The current CLI requires Node.js 22 or newer. An existing project installation
 and version selection remain usable.
 
 Skill SemVer is independent of npm SemVer. On first relevant use, the agent checks
-the small [version map](../../skills/versions.json). Refresh follows your existing
-instructions and the host's ordinary installation permissions. Offline use remains
-available; a failed freshness check does not make a local report unusable.
+the stable release manifest named in the Skill frontmatter. The repository's
+[version map](../../skills/versions.json) is a strictly validated source projection,
+not a second update service. Refresh follows your existing instructions and the
+host's ordinary installation permissions. Offline use remains available; a
+failed freshness check does not make a local report unusable.
 
 Manual installation uses the complete canonical [skill folder](../../skills/diffdevil/).
 The detailed installation reference contains host-specific location suggestions,
@@ -60,7 +62,9 @@ copy/readback steps, local-modification handling, and refresh behavior.
 
 ## Package, website, and harness
 
-GitHub, the npm artifact, and the website distribute the same canonical files.
+GitHub Releases, the npm artifact, and the website distribute the same canonical files.
+The release family also offers an install-free Node 22+ runtime and a bundled
+Skill-plus-runtime carrier, both bound by the stable manifest and immutable digest.
 Obtaining the package does not automatically register its skill with a harness.
 Installing the skill does not automatically install a managed GitHub App.
 

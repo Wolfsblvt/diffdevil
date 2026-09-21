@@ -3,25 +3,25 @@
     "id": "cli",
     "label": "CLI locally",
     "path": "/setup/cli.md",
-    "text": "Set up diffdevil's CLI for this project using {url}. Reuse suitable tooling and policy, and verify a local analysis."
+    "text": "Set up diffdevil's CLI for this project using {url}."
   },
   {
     "id": "actions",
     "label": "GitHub Actions",
     "path": "/setup/actions.md",
-    "text": "Set up diffdevil for this project's GitHub Actions using {url}. Preserve its policy and CI, avoid competing writers, and verify the intended PR automation."
+    "text": "Set up diffdevil for this project's GitHub Actions using {url}."
   },
   {
     "id": "app",
     "label": "GitHub App",
     "path": "/setup/app.md",
-    "text": "Set up the diffdevil GitHub App for this repository using {url}. Reuse any existing installation, preserve its policy, and verify the result."
+    "text": "Set up the diffdevil GitHub App for this repository using {url}."
   },
   {
     "id": "everything",
     "label": "Everything",
     "path": "/setup/everything.md",
-    "text": "Set up diffdevil for this project using {url}: CLI, repository policy, the Agent Skill, and suitable GitHub automation. Use what you know about my needs; ask when a meaningful choice is unclear."
+    "text": "Set up diffdevil for this project using {url}: CLI, repository policy, the Agent Skill, and suitable GitHub automation."
   },
   {
     "id": "skill",

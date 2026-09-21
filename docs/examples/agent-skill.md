@@ -99,12 +99,14 @@ returning an uninstalled folder.
 
 ## Existing installation, update, and offline use
 
-On first relevant use, the agent fetches `skills/versions.json`.
+On first relevant use, the agent fetches the stable release manifest named in
+the Skill frontmatter.
 
-If equal, use the existing copy. If newer, obtain one complete source snapshot
-and refresh under the user's update instructions. If the installed files were
-customized, preserve and reconcile that actual difference rather than replacing
-it invisibly. A pinned or newer local version remains selected.
+If equal, use the existing copy. If newer, obtain the complete immutable Skill
+ZIP named by the manifest, verify its digest, and refresh under the user's update
+instructions. If the installed files were customized, preserve and reconcile
+that actual difference rather than replacing it invisibly. A pinned or newer
+local version remains selected.
 
 Offline, use the installed core/references and available local CLI/report.
 A failed update check means unknown freshness, not invalid source evidence.

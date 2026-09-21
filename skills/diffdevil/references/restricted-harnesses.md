@@ -32,10 +32,28 @@ A source archive without built output or dependency closure is not that complete
 installation. Follow its documented build route only when the necessary runtime
 and dependencies are actually available.
 
-A published standalone bundle can be used when the product actually provides
-one. Obtain its stated version, entry point, complete dependency closure and
-digest from its real release source. This reference does not invent a bundle
-filename, download URL, or publication claim.
+When a release has published the carriers, obtain the stable manifest from:
+
+```text
+https://github.com/Wolfsblvt/diffdevil/releases/latest/download/diffdevil-release-manifest.json
+```
+
+`assets.standalone` names the install-free Node 22+ CLI ZIP;
+`assets.bundled` names the same runtime together with the complete Skill. Verify
+the selected archive against its manifest SHA-256 before extracting it into a
+clean directory. Both carriers expose `scripts/run.mjs`:
+
+```sh
+node /path/to/extracted/scripts/run.mjs --version
+node /path/to/extracted/scripts/run.mjs analyze --cwd /path/to/mounted/repository --format agent
+```
+
+Their internal manifests bind the source commit, product version, file hashes,
+and dependency closure. The bundled carrier additionally binds Skill SemVer.
+The top-level release manifest records the archive's compressed/uncompressed
+size, member count, largest members, executable/native extensions, and major
+dependency contributors so a constrained harness can judge the real extraction
+cost before downloading it.
 
 ## Use the real supplied capability
 

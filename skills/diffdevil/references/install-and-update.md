@@ -66,10 +66,24 @@ Otherwise ordinary file copy/download is sufficient. When Git is the transport,
 use raw Git object bytes or a checkout configuration that preserves LF instead
 of silently converting the canonical payload to CRLF.
 
+Before the first carrier publication, the stable manifest may be absent. Do not
+describe mutable `main` as a stable release. When the user requested a development
+installation, resolve `main` once to a full commit and obtain the complete Skill
+folder from that immutable coordinate; report the commit and development standing.
+Otherwise retain an existing installation or report that the stable carrier is
+not yet available.
+
 A package already on disk may supply the same canonical `skills/diffdevil/`
-directory without a network fetch. Its skill version is read from its own
+directory without a network fetch. Its Skill version is read from its own
 frontmatter; it need not equal the containing npm version. A network check can
-discover a newer skill without upgrading that npm package.
+discover a newer Skill without upgrading that npm package.
+
+The manifest also names `assets.bundled`, which carries this Skill together with
+the complete install-free runtime, and `assets.standalone`, which carries only
+that runtime. Use the bundled carrier when the harness needs both instruction
+and transient CLI execution; verify its digest before extraction, then run
+`node scripts/run.mjs --version`. Installing or discovering the Skill and
+executing the supplied runtime remain separate observed facts.
 
 ## Confirm the usable installation
 
@@ -112,8 +126,8 @@ automatic consent to broaden privileges.
 Stage the whole new folder before replacing a working installation. Compare
 existing installed files with their published version or the native installer's
 recorded source so local modifications remain visible. When no source record
-exists, the history of `skills/versions.json` can identify a matching published
-version and its folder for comparison.
+exists, use the matching released Skill ZIP named by the stable manifest and
+verify its digest before comparing the folder.
 
 For a modified copy, preserve the modifications and explain the actual difference
 before choosing replacement, migration to separate local instructions, or keeping

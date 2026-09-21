@@ -3,8 +3,9 @@
 ## Meaning
 
 This document owns the source/version/content relationship for the diffdevil
-Agent Skill. It supports repository, package, and website delivery without a
-second manual or an update service. The installed installation reference owns
+Agent Skill and the three GitHub Release carriers built from it. It supports
+repository, package, website, standalone-runtime, and bundled delivery without
+a second manual or an update service. The installed installation reference owns
 consumer installation and refresh; this document owns publication mechanics.
 
 ## One independently versioned source folder
@@ -31,27 +32,43 @@ important known interface distinctions as teaching, not as a release gate.
 }
 ```
 
-Generate this projection from canonical frontmatter when releasing, or use the
-existing release tooling to update and verify it in the same source change.
-Its meaning is not maintained independently from `metadata.version`.
+This file is a native source projection, not a second release index. The release
+builder rejects extra keys, malformed versions, and any value that differs from
+canonical frontmatter. Change the frontmatter and projection together when the
+Skill's independently versioned instruction set changes.
 
-## Publish a coherent snapshot
+## Build one coherent release family
 
-Publish the complete accepted folder and matching index together on the authorized
-durable branch. A new consumer resolves `main` once to a Git commit and reads
-the descriptor and whole folder at that commit. This avoids a core/reference mix
-if main moves between downloads.
+`npm run build:release -- --source-ref COMMIT` builds four files from one full
+40-character source commit:
 
-The snapshot commit is the immutable source coordinate. No additional skill tags,
-hash manifest, release registry, scheduled check, new npm package, or service is
-required. Ordinary Git history of the version-map changes locates prior releases.
-Keep released version identity consistent: a change to released installed files
-increments the skill version rather than silently reusing it.
+- `diffdevil-release-manifest.json`, the stable machine-readable projection;
+- `diffdevil-skill-SKILL_VERSION.zip`, the complete canonical Skill folder;
+- `diffdevil-standalone-PRODUCT_VERSION-node22.zip`, the install-free Node 22+
+  CLI runtime and locked production dependency closure; and
+- `diffdevil-skill-SKILL_VERSION-with-diffdevil-PRODUCT_VERSION-node22.zip`,
+  the Skill plus that same runtime and a root launcher.
 
-A packaging or publication check should compare the canonical file set and raw
-bytes with the delivered set, including references and line endings, and check
-the frontmatter/index version match. The check proves byte delivery; actual
-host discovery/load remains a different qualification.
+The manifest binds every asset name, immutable download URL, SHA-256 digest,
+compressed and uncompressed byte budget, member count, largest members,
+executable/native extensions, and major dependency contributors. It also binds
+the independent product and Skill versions, source commit, and canonical Skill
+tree digest (the canonical source files, excluding the generated carrier
+`MANIFEST.json`). Release publication attaches these exact files to the authorized
+GitHub Release; `releases/latest/download/diffdevil-release-manifest.json` is the
+stable discovery route, while each asset URL is immutable through the release tag.
+
+Keep released identity consistent: a changed released Skill instruction set
+increments Skill SemVer rather than silently reusing it. Product and Skill
+versions may advance independently, so the bundled filename carries both.
+
+`npm run test:release` builds the family twice, compares bytes, reads every
+archive budget and digest back, extracts the standalone and bundled carriers
+into clean temporary directories, verifies their internal manifests, and runs
+`--version` plus real analysis through both launchers. Hosted Verify repeats this
+on Linux and Windows at Node 22 and 24. Those checks prove the source-built
+carriers; GitHub attachment readback and actual host discovery/load remain
+different qualifications.
 
 Preserve UTF-8 LF bytes for installed Markdown. Repository attributes for
 `skills/**` should express that behavior. Raw Git objects and transport bytes
@@ -62,7 +79,11 @@ normalized representation.
 
 | Public route | Canonical source and behavior |
 | --- | --- |
-| `/skill/version` | Serve `skills/versions.json` as JSON without another maintained version value |
+| Stable release manifest | Serve the released `diffdevil-release-manifest.json`; it is the update and immutable-asset projection |
+| Released Skill ZIP | Serve the complete canonical Skill folder named by `assets.skill` |
+| Released standalone ZIP | Serve the Node 22+ install-free CLI named by `assets.standalone` |
+| Released bundled ZIP | Serve the Skill and runtime named by `assets.bundled` |
+| `/skill/version` | Serve `skills/versions.json` as a source projection without another maintained version value |
 | `/skill/SKILL.md` | Serve canonical `skills/diffdevil/SKILL.md` as Markdown |
 | `/skill/references/cli-and-evidence.md` | Serve the corresponding installed reference |
 | `/skill/references/policy-and-effects.md` | Serve the corresponding installed reference |
@@ -92,9 +113,9 @@ are verified through the website's ordinary authorized delivery work.
 ## npm and discovery
 
 The npm artifact includes `skills/diffdevil/` in that same discoverable folder,
-plus `skills/versions.json`. Copy the canonical source unchanged. The containing
-npm release can carry an older skill; its own frontmatter remains the truth.
-A subsequent standalone skill update does not need a new CLI release.
+plus `skills/versions.json`. Package qualification rejects their absence. The
+containing npm release can carry an older Skill; its own frontmatter remains the
+truth. A subsequent standalone Skill update does not need a new CLI release.
 
 Link the folder and installation guide from the npm package's README surface.
 Do not silently rewrite the root project README to achieve an npm-only instruction.
@@ -113,11 +134,11 @@ A tool behavior change updates the affected product manual and agent teaching
 when needed. Reading views can contain compact examples, while complete existing
 example assets and schemas retain their authoritative homes.
 
-Qualify the actual payload: frontmatter, local links, version lookup, a same-commit
-download, existing clean/modified install, offline use, interrupted update, and
-host discovery/reload. Exercise representative CLI commands separately from
-provider writes. No new framework or universal compatibility test estate is
-required by this content contract.
+Qualify the actual payload: frontmatter/projection equality, local links, stable
+manifest lookup, immutable digest readback, existing clean/modified install,
+offline use, interrupted update, and host discovery/reload. Exercise representative
+CLI commands separately from provider writes. No universal compatibility test
+estate is required by this content contract.
 
 Source admission, npm inclusion, website raw delivery, native host installation,
 proactive activation, and provider effects each have their own observed result.
