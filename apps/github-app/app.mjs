@@ -36,7 +36,7 @@ async function readBodyWithinLimit(request) {
   for (const chunk of chunks) { body.set(chunk, offset); offset += chunk.byteLength; }
   return body;
 }
-function errorCode(error) { return error instanceof GitHubRequestError ? error.code : typeof error?.code === 'string' ? error.code : 'E_APP_EXECUTION'; }
+function errorCode(error) { return error instanceof GitHubRequestError ? error.diagnostic.code : typeof error?.code === 'string' ? error.code : 'E_APP_EXECUTION'; }
 function executionDiagnostic(error, fallbackCode, phase) {
   const code = errorCode(error) === 'E_APP_EXECUTION' ? fallbackCode : errorCode(error);
   const diagnostics = Array.isArray(error?.diagnostics) ? error.diagnostics : [];

@@ -3,6 +3,7 @@
 import assert from 'node:assert/strict';
 import { createHmac, createVerify, generateKeyPairSync } from 'node:crypto';
 import { test } from 'node:test';
+import { GitHubRequestError } from '@wolfsblvt/diffdevil/github';
 import { createGitHubAppWorker, createInstallationClient, listInstallationRepositories } from './app.mjs';
 import { APP_QUEUE_KIND, WEBHOOK_BODY_LIMIT, WORKER_RESULT_LIMIT, historyProjection, normalizeWebhookEvent } from './contracts.mjs';
 import { constantTimeEqual, createAppJwt } from './crypto.mjs';
@@ -95,6 +96,23 @@ test('pre-effect App failures retain a safe stable stage in their repair project
   assert.equal(repair[3].code, 'E_APP_INSTALLATION_CREDENTIAL');
   assert.deepEqual(repair[3].repair.projection.diagnostics, [{ code: 'E_APP_INSTALLATION_CREDENTIAL', phase: 'installation-credential' }]);
   assert.equal(JSON.stringify(repair[3]).includes('provider response details'), false);
+});
+
+test('provider failures retain their stable code and execution phase in repair state', async () => {
+  const run = queueMessage(), store = activeStore(run.calls);
+  await createGitHubAppWorker({ store, clientFactory: async () => { throw new GitHubRequestError(403, false, 'provider detail must not be retained', 'apply'); } }).queue({ messages: [run.message] }, {});
+  const repair = run.calls.find(call => Array.isArray(call) && call[0] === 'finish');
+  assert.equal(repair[3].code, 'E_GITHUB_PERMISSION');
+  assert.deepEqual(repair[3].repair.projection.diagnostics, [{ code: 'E_GITHUB_PERMISSION', phase: 'installation-credential' }]);
+  assert.equal(JSON.stringify(repair[3]).includes('provider detail'), false);
+});
+
+test('real GitHub rate-limit errors release the execution lease for retry', async () => {
+  const run = queueMessage(), store = activeStore(run.calls);
+  await createGitHubAppWorker({ store, clientFactory: async () => { throw new GitHubRequestError(429, false, 'rate limit detail must not be retained', 'apply', true); } }).queue({ messages: [run.message] }, {});
+  assert.equal(run.calls.at(-1), 'retry');
+  assert.equal(run.calls.find(call => Array.isArray(call) && call[0] === 'retry-state')[2], 'E_GITHUB_RATE_LIMIT');
+  assert.equal(JSON.stringify(run.calls).includes('rate limit detail'), false);
 });
 
 test('lifecycle deltas reconcile the current provider-selected repository identities before completion', async () => {
