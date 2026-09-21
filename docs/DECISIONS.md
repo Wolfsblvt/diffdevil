@@ -438,32 +438,38 @@ See [the project map](PROJECT-MAP.md) and [Qualification](QUALIFICATION.md).
 **Status:** Settled product destination, 2026-09-15. Implementation sequence remains current Work.
 
 **Decision.** The complete diffdevil product includes the public npm package and
-TypeScript API, CLI, root and three sub-actions, managed GitHub App, public read-only
-PR playground, and website/documentation experience. Every surface uses the same
-deterministic engine, policy semantics, report and plan contracts, and effect
-boundaries. Repository-owned policy remains authoritative over hosted defaults.
-The application surfaces remain in the same repository and release lifecycle; this
-decision does not freeze their exact directory layout.
+TypeScript API, CLI, root and three sub-actions, the *diffdevil for GitHub* browser
+extension, managed GitHub App, public read-only PR playground, and
+website/documentation experience. Every surface uses the same deterministic engine,
+policy semantics, report and plan contracts, and effect boundaries. The extension
+projects those same facts and local or repository policy into a personal GitHub view;
+it does not become a second analyser merely because it runs in the browser.
+Repository-owned policy remains authoritative over hosted defaults. The application
+surfaces remain in the same repository and release lifecycle; this decision does not
+freeze their exact directory layout.
 
-**Why.** A repository should be able to move from local scripts to Actions and then
-to managed operation without changing what a measurement, policy, decision, or
-effect means. The playground should demonstrate the real product rather than a
-hand-maintained approximation, and the GitHub App should remove operating burden
-rather than introduce a second engine or hidden policy system. Keeping the joined
-surfaces together also preserves contribution and documentation coherence.
+**Why.** A repository should be able to move from local scripts to Actions, add a
+personal in-place GitHub view, and then use managed operation without changing what a
+measurement, policy, decision, or effect means. The playground should demonstrate the
+real product rather than a hand-maintained approximation, the browser extension should
+bring Changed into GitHub without requiring repository installation or writes, and the
+GitHub App should remove operating burden rather than introduce a second engine or
+hidden policy system. Keeping the joined surfaces together also preserves contribution
+and documentation coherence.
 
 **Rejected.** Treating the current CLI/library/Action cut as the complete product;
-classifying the website, playground, or App as optional presentation; building a
-second hosted measurement or policy implementation; splitting application code
-into another repository before an independent lifecycle requires it; or reducing
+classifying the extension, website, playground, or App as optional presentation;
+making the extension a website-specific approximation or independent policy engine;
+building a second hosted measurement or policy implementation; splitting application
+code into another repository before an independent lifecycle requires it; or reducing
 the open product to create artificial hosted-service value.
 
 **Current consequence.** The MIT package, API, CLI, and Actions remain fully capable.
-Website, playground, GitHub App runtime, hosted configuration, orchestration, and
-service software use AGPL-3.0-only under D014. Hosted value comes from operation,
-administration, continuity, scheduling, history, scale, and support. Application
-implementation proceeds inside out from useful vertical behavior and shared
-contracts rather than beginning with a generic hosting control plane.
+Browser extension, website, playground, GitHub App runtime, hosted configuration,
+orchestration, and service software use AGPL-3.0-only under D014. Hosted value comes
+from operation, administration, continuity, scheduling, history, scale, and support.
+Application implementation proceeds inside out from useful vertical behavior and
+shared contracts rather than beginning with a generic hosting control plane.
 
 **Sources.** [Vision](VISION.md), [Direction](DIRECTION.md), and D014.
 
@@ -591,3 +597,40 @@ the distributed Action is rerun with both real tokens.
 **Current consequence.** `src/diffdevil/policy/yaml.ts` counts bytes with the portable helper instead of `Buffer`; the Action runtime was regenerated. The playground API gained `/api/report` (refusing, not truncating, above a file ceiling) and `/api/head`, with CORS on its read-only JSON. The engine's browser bundle is one lazy chunk on the playground page only.
 
 **Sources.** [Playground experience](integration/playground.md); [App architecture](integration/github-app.md#shared-engine-worker-prerequisite); the design-discovered replay consequence recorded during the public-surface co-design; `apps/website/website.test.mjs` and `apps/website/qa/run.mjs`.
+
+## D039: Keep one stable public shell across product pages and the generated manual
+
+**Decision.** The public website and generated manual use one shared product shell.
+Its stable header keeps the product identity and current location, one whole-site
+search, a page-only Install menu, direct source access, a Community disclosure, one
+compact cycling theme control, and at most one trailing product action. Install rows
+are whole-row links to the extension, GitHub App, and open CLI/Actions product pages;
+installation and store actions live on those destination pages rather than inside the
+navigation menu. The footer, Support surface, site routes, generated manual shell, and
+search index consume the same product-owned route and destination truth. Exact pixel
+geometry may adapt by product and viewport without changing that relationship.
+
+**Why.** Visitors should be able to move among the homepage, product routes,
+playground, and manual without relearning where search, source, community, install
+choices, or appearance live. One shell makes the website and repository-authored
+manual feel like one product while keeping navigation distinct from conversion
+actions. Whole-row destination links are clearer and more accessible than tiny nested
+install actions, and a single cycling theme control avoids three competing hit zones
+while preserving Dark, Automatic, and Light.
+
+**Rejected.** Separate website and manual navigation; page-specific header clusters;
+a header Install menu that mixes product-page navigation with direct store or App
+installation actions; one icon-sized hit target per theme state; runtime icon or search
+services; a second copy of manual content; and freezing invented Support/Sponsor art or
+copy merely because the shell needs a structural slot.
+
+**Current consequence.** `apps/website/` owns the shared shell, route/destination
+sources, before-paint theme behavior, Pagefind search integration, and the structural
+Support slot. D037 still owns how maintained repository Markdown becomes the manual;
+this decision joins that generated content to the public shell rather than changing its
+source authority. Unconfigured external destinations remain visibly unavailable and
+no URL is fabricated. Final Support/Sponsor treatment and the authenticated dashboard
+experience retain their separate owner/design custody. The website remains locally
+qualified source only until its publication boundary is separately satisfied.
+
+**Sources.** Wolf's complete [first lived website review](https://github.com/Wolfsblvt/emergency-meeting/issues/475#issuecomment-5736061064), [header and navigation round](https://github.com/Wolfsblvt/emergency-meeting/issues/475#issuecomment-5753098953), and [Install/theme correction](https://github.com/Wolfsblvt/emergency-meeting/issues/475#issuecomment-5753617604); [website implementation contract](../apps/website/README.md); [documentation design](DOCUMENTATION.md); and D037.
