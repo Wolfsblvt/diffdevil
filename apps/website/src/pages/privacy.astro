@@ -21,7 +21,7 @@ import { LIVE_PLAYGROUND_WORKER, docPaths, paths } from '../data/site';
       </ul>
       <h2 class="h3">The playground</h2>
       <ul class="small">
-        <li>Curated examples are analyzed in your browser from files shipped with the site. Nothing is sent to a server when you open one or edit its policy.</li>
+        <li>Saved real-PR lessons are analyzed in your browser from files shipped with the site. Nothing is sent to a server when you open one or edit its policy.</li>
         <li>When you analyze a public pull request, your browser asks the playground API (<code class="code-inline">{LIVE_PLAYGROUND_WORKER}</code> in production) to read that public pull request from GitHub and return the analysis. The API accepts public <code class="code-inline">github.com</code> pull-request URLs only, never asks for a token, performs no repository writes, and stores no analysis history. The unauthenticated GitHub read allowance is shared by everyone using the API; when it is exhausted the API says so instead of inventing a result.</li>
         <li>The edited policy travels in the page URL so a result can be shared and reloaded. It is not stored by the site.</li>
         <li>"Carry into the GitHub App" passes the policy in the URL of the App page; nothing from the playground session is kept.</li>

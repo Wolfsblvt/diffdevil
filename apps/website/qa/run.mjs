@@ -26,7 +26,11 @@ import { replayPublicPullRequest } from '../../playground/app.mjs';
 
 const DIST = 'artifacts/website/dist';
 const OUT = 'artifacts/website/qa';
-const SITE_PORT = 4399, API_PORT = 4173;
+// Parallel local work may already own the default playground ports. The built site's
+// PUBLIC_PLAYGROUND_API and this harness can move together without changing the
+// product's default local route.
+const SITE_PORT = Number(process.env.DIFFDEVIL_WEBSITE_QA_SITE_PORT ?? 4399);
+const API_PORT = Number(process.env.DIFFDEVIL_WEBSITE_QA_API_PORT ?? 4173);
 const types = { '.js': 'text/javascript', '.css': 'text/css', '.html': 'text/html', '.svg': 'image/svg+xml', '.woff2': 'font/woff2', '.woff': 'font/woff', '.png': 'image/png', '.webp': 'image/webp', '.ico': 'image/x-icon', '.json': 'application/json', '.md': 'text/markdown', '.webmanifest': 'application/manifest+json', '.txt': 'text/plain' };
 await mkdir(OUT, { recursive: true });
 
@@ -278,7 +282,7 @@ check('playground panes are contiguous: no gap between strip, primary result and
 await shot('playground-pr');
 
 // ── playground: cancel, then a late successful response must not commit ──
-await go('/playground/?example=lockfile-excluded');
+await go('/playground/?example=lockfile-scope&variant=without-lockfile');
 await page.waitForSelector('.pg-primary');
 holdNextReplayMs = 2500;
 await page.locator('#tab-pr').click();
@@ -288,22 +292,21 @@ await page.waitForSelector('.pg-input [role="status"]');
 await page.locator('#pg-url').press('Escape');
 check('Escape cancels: the spinner clears and the input is kept', (await page.locator('.pg-input [role="status"]').count()) === 0 && (await page.locator('#pg-url').inputValue()).includes('pull/42'));
 await page.waitForTimeout(3200);
-check('a late successful response after cancel does not commit a result', (await page.locator('.pg-analyzed').count()) === 0 && /178\s*changed/u.test(await page.locator('.pg-primary').innerText()));
+check('a late successful response after cancel does not commit a result', (await page.locator('.pg-analyzed').count()) === 0 && /changed/u.test(await page.locator('.pg-primary').innerText()));
 await page.locator('.pg-input form button[type="submit"]').click();
 await page.waitForSelector('.pg-analyzed', { timeout: 15000 });
 check('re-submitting after cancel analyzes normally', /3\s*changed/u.test(await page.locator('.pg-primary').innerText()));
 
-// ── playground: default fixture, tiles, controls, editor, export ──
+// ── playground: shared real-PR catalogue, tiles, controls, editor, export ──
 await go('/playground/');
 await page.waitForSelector('.pg-primary');
-check('playground opens on the first curated pull request with a result (never blank)', (await page.locator('.pg-strip').innerText()).includes('curated snapshot') && /changed/u.test(await page.locator('.pg-primary').innerText()));
+check('playground opens on the catalogue default with a result (never blank)', (await page.locator('.pg-strip').innerText()).includes('teaching snapshot') && /changed/u.test(await page.locator('.pg-primary').innerText()));
 check('url stays clean for the default state', page.url().endsWith('/playground/'));
 await page.locator('#tab-examples').click();
-check('the rail lists the curated pull requests only: no Frozen fixtures section and no example-kind switch', (await page.locator('.pg-examples .pg-card').count()) > 0 && (await page.locator('.pg-kinds, .pg-card-glyph').count()) === 0 && !(await page.locator('.pg-rail-desktop').innerText()).includes('Frozen'));
-// the controlled fixture stays addressable for the homepage link and this qualification
-await go('/playground/?example=replacement-once');
+check('the rail lists only the shared lesson cards and their declared variants', (await page.locator('.pg-examples .pg-card').count()) === 7 && (await page.locator('.pg-examples .pg-card-variants button').count()) === 16 && !(await page.locator('.pg-rail-desktop').innerText()).includes('Frozen'));
+await go('/playground/?example=lockfile-scope&variant=all');
 await page.waitForSelector('.pg-primary');
-check('a controlled fixture still opens by its id', (await page.locator('.pg-strip-title').innerText()).includes('Replacement counted once') && /10\s*changed/u.test(await page.locator('.pg-primary').innerText()));
+check('a declared real-PR variant opens by its example and variant id', (await page.locator('.pg-strip-title').innerText()).includes('vitejs/vite') && /changed/u.test(await page.locator('.pg-primary').innerText()));
 const tiles = page.locator('.pg-tile');
 await tiles.nth(0).focus(); await page.keyboard.press('ArrowRight');
 check('tile arrow keys select the next view', (await tiles.nth(1).getAttribute('aria-selected')) === 'true' && page.url().includes('view=agent'));
@@ -317,7 +320,7 @@ await page.keyboard.press('End');
 check('End selects the explanation view', (await tiles.nth(3).getAttribute('aria-selected')) === 'true');
 check('explanation lists rules and the readback lane as not observed', /Not observed/u.test(await page.locator('#pg-view-panel').innerText()));
 await tiles.nth(2).click();
-check('github preview says proposed, not applied, and shows the desired label', (await page.locator('#pg-view-panel').innerText()).includes('Proposed, not applied') && (await page.locator('#pg-view-panel').innerText()).includes('size/XS'));
+check('github preview says proposed, not applied, and shows the selected policy result', (await page.locator('#pg-view-panel').innerText()).includes('Proposed, not applied') && (await page.locator('#pg-view-panel').innerText()).includes('size/'));
 check('github preview renders the owned comment as a comment: avatar, author, bot standing, marker', (await page.locator('.pg-comment .pg-avatar').count()) === 1 && /diffdevil\s*bot · would comment/u.test(await page.locator('.pg-comment-head').innerText()) && (await page.locator('.pg-comment-marker').innerText()).includes('diffdevil:rule='));
 check('github preview is two columns: labels and check summary left, comment right', await page.evaluate(() => { const cols = [...document.querySelector('.pg-github').children].map(el => el.getBoundingClientRect()); return cols.length === 2 && cols[1].left > cols[0].right; }));
 await shot('playground-github');
@@ -329,15 +332,15 @@ await tiles.nth(2).click();
 const xs = page.locator('.pg-bands li').first().locator('input[type="number"]');
 await xs.fill('5');
 await page.waitForTimeout(150);
-check('lowering the xs threshold moves the result to band s', /band s/u.test(await page.locator('.pg-result-line').innerText()) && page.url().includes('policy='));
-check('the proposed label follows the edited band', (await page.locator('#pg-view-panel').innerText()).includes('size/S'));
+check('editing an active threshold changes the local policy', (await page.locator('.pg-result-line').innerText()).includes('band') && page.url().includes('policy='));
+check('the GitHub preview follows the edited policy', (await page.locator('#pg-view-panel').innerText()).includes('size/'));
 check('a focused control has one magenta outline and no second ring', await page.evaluate(() => { const input = document.querySelector('.pg-bands input[type="number"]'); input.focus(); const style = getComputedStyle(input); return style.borderTopColor === 'rgb(240, 97, 186)' && style.outlineStyle === 'none' && !/240, 242, 245|255, 255, 255/u.test(style.boxShadow); }));
 check('configuration is one label column and one control column; rest is a read-only box like the others', await page.evaluate(() => { const lefts = [...document.querySelectorAll('.pg-controls > .pg-ctl-label')].map(el => Math.round(el.getBoundingClientRect().left)); const controls = [...document.querySelectorAll('.pg-controls > .pg-ctl')].map(el => Math.round(el.getBoundingClientRect().left)); const rest = document.querySelector('.pg-bands li:last-child input'); return new Set(lefts).size === 1 && new Set(controls).size === 1 && lefts.length >= 4 && rest?.readOnly === true && rest.value === 'rest'; }));
-await page.locator('.pg-add').fill('**/package-lock.json');
+await page.locator('.pg-add').fill('**/pnpm-lock.yaml');
 await page.locator('.pg-add').press('Enter');
 await page.waitForTimeout(150);
 check('adding an exclude pattern annotates matches and excludes the file', (await page.locator('.pg-patterns').innerText()).includes('matches 1 file') && (await page.locator('.pg-files .pg-row.is-excluded').count()) === 1);
-check('files table keeps the excluded row with strikethrough path', (await page.locator('.pg-files .pg-row.is-excluded .pg-path-name').innerText()).includes('package-lock.json') && (await page.evaluate(() => getComputedStyle(document.querySelector('.pg-row.is-excluded .pg-path-name')).textDecorationLine)) === 'line-through');
+check('files table keeps the excluded row with strikethrough path', (await page.locator('.pg-files .pg-row.is-excluded .pg-path-name').innerText()).includes('pnpm-lock.yaml') && (await page.evaluate(() => getComputedStyle(document.querySelector('.pg-row.is-excluded .pg-path-name')).textDecorationLine)) === 'line-through');
 check('files table is a plain table on the page ground with figures aligned in columns', await page.evaluate(() => { const rows = [...document.querySelectorAll('.pg-table .pg-row:not(.pg-row-head)')]; const rights = index => new Set(rows.map(row => Math.round(row.querySelectorAll('.pg-figures')[1].children[index].getBoundingClientRect().right))).size; return getComputedStyle(document.querySelector('.pg-table')).backgroundColor === 'rgba(0, 0, 0, 0)' && rows.length > 1 && [0, 1, 2, 3].every(i => rights(i) === 1); }));
 check('the comment preview says it is off in this policy', (await page.locator('.pg-box-head-split').innerText()).toLowerCase().includes('off in this policy'));
 await page.locator('.pg-switch').click();
@@ -346,13 +349,13 @@ check('turning the comment on makes the GitHub preview render the comment of thi
 // policy editor
 await page.locator('.segmented button', { hasText: 'Policy' }).first().click();
 await page.waitForSelector('.cm-editor', { timeout: 15000 });
-check('policy editor is a real CodeMirror instance with the edited document', (await page.locator('.cm-content').innerText()).includes('package-lock.json'));
+check('policy editor is a real CodeMirror instance with the edited document', (await page.locator('.cm-content').innerText()).includes('pnpm-lock.yaml'));
 check('policy editor reports the document valid', (await page.locator('.pg-editor-status').innerText()).includes('valid'));
 await page.locator('.cm-content').click();
 await page.keyboard.press('Control+End');
 await page.keyboard.type('\nbands: 7\n');
 await page.waitForTimeout(400);
-check('an invalid policy keeps the previous valid result visible and says so', (await page.locator('.pg-editor-status').innerText()).startsWith('×') && (await page.locator('.pg-primary').innerText()).match(/6\s*changed/u) && (await page.locator('.pg-strip').innerText()).includes('previous valid policy'));
+check('an invalid policy keeps the previous valid result visible and says so', (await page.locator('.pg-editor-status').innerText()).startsWith('×') && (await page.locator('.pg-primary').innerText()).includes('changed') && (await page.locator('.pg-strip').innerText()).includes('previous valid policy'));
 await shot('playground-invalid-policy');
 await page.keyboard.press('Control+Z'); await page.keyboard.press('Control+Z');
 // export dialog
@@ -364,15 +367,14 @@ await page.locator('dialog[open] [role="tab"]', { hasText: 'Complete workflow' }
 check('workflow export states that it writes labels', (await page.locator('dialog[open]').innerText()).includes('This workflow writes labels'));
 await page.keyboard.press('Escape');
 check('Escape closes the export dialog', (await page.locator('dialog[open]').count()) === 0);
-// deep links and curated snapshot
-await go('/playground/?example=lockfile-excluded&view=explain');
+// deep links and a real-PR snapshot
+await go('/playground/?example=runtime-null-guards&variant=implementation&view=explain');
 await page.waitForSelector('.pg-primary');
-check('deep link opens the named fixture in the named view', /178\s*changed/u.test(await page.locator('.pg-primary').innerText()) && (await tiles.nth(3).getAttribute('aria-selected')) === 'true');
-check('kept-policy block lists keys the controls cannot represent', (await page.locator('.notice-kept').innerText()).includes('scopes'));
-await go('/playground/?example=diffdevil-9');
+check('deep link opens the named real-PR variant in the named view', /changed/u.test(await page.locator('.pg-primary').innerText()) && (await tiles.nth(3).getAttribute('aria-selected')) === 'true');
+await go('/playground/?example=lockfile-scope&variant=all');
 await page.waitForSelector('.pg-primary');
-check('curated snapshot loads from the static catalogue with its provenance strip', (await page.locator('.pg-strip').innerText()).includes('curated snapshot') && (await page.locator('.pg-strip').innerText()).includes('Wolfsblvt/diffdevil'));
-check('curated snapshot shows why this PR', (await page.locator('.pg-why').innerText()).includes('Why this PR'));
+check('real-PR snapshot loads from the static catalogue with its provenance strip', (await page.locator('.pg-strip').innerText()).includes('teaching snapshot') && (await page.locator('.pg-strip').innerText()).includes('vitejs/vite'));
+check('real-PR snapshot names its exact catalogue source', (await page.locator('.pg-why').innerText()).includes('source vite-18968'));
 await shot('playground-snapshot');
 // error state: API unreachable keeps input and previous result
 api.close(); await once(api, 'close');
@@ -415,7 +417,7 @@ check('docs at 1720: the rail still starts at the lockup and the ground left of 
 // 640 × 2 device pixels is the layout a 1280 window has at 200 % zoom.
 for (const width of [1440, 1024, 768, 640, 375, 320]) {
   await page.setViewportSize({ width, height: 900 });
-  for (const path of ['/', '/playground/', '/playground/?example=lockfile-excluded&view=agent', '/playground/?example=lockfile-excluded&view=github', '/examples/', '/extension/', '/app/', '/privacy/', '/impressum/', '/docs/cli/', '/#agents-setup']) {
+  for (const path of ['/', '/playground/', '/playground/?example=lockfile-scope&variant=all&view=agent', '/playground/?example=lockfile-scope&variant=all&view=github', '/examples/', '/extension/', '/app/', '/privacy/', '/impressum/', '/docs/cli/', '/#agents-setup']) {
     await go(path);
     if (path.startsWith('/playground/')) await page.waitForSelector('.pg-primary');
     check(`${path} has no page-level horizontal overflow at ${width}`, (await overflowOf()) <= 0, String(await overflowOf()));

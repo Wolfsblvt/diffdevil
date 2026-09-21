@@ -3,22 +3,35 @@
 // The dedicated playground page. The shared header already names the surface, so the page
 // carries no title block: the workbench starts directly under the header bar, on the same
 // page grid as every other route. The island is the justified interactive part. The rail
-// lists the curated real pull requests and opens on the first of them; controlled fixtures
-// stay addressable by ?example= for the homepage link and the qualification run, and are
-// not offered as a list.
+// lists the shared catalogue's real pull-request lessons and opens its declared default.
 import Base from '../layouts/Base.astro';
 import Playground from '../islands/playground/Playground.tsx';
 import { copy } from '../data/copy';
-import { DEFAULT_FIXTURE } from '../../catalogue/fixtures.mjs';
-import { curated } from '../lib/catalogue';
+import { catalogue } from '../lib/catalogue';
 import '../styles/playground.css';
 
-const curatedCards = curated().map(entry => ({ id: entry.id, group: 'curated' as const, title: entry.title, repository: entry.repository, pullRequest: entry.pullRequest, reason: entry.reason, head: entry.head, analyzedAt: entry.analyzedAt, evidence: entry.evidence }));
+const examples = catalogue();
+const catalogueCards = examples.entries.map(entry => ({
+  id: entry.id,
+  title: entry.title,
+  lessons: entry.lessons,
+  summary: entry.summary,
+  variants: entry.variants.map(variant => ({
+    id: variant.id,
+    label: variant.label,
+    repository: variant.repository,
+    pullRequest: variant.pullRequest,
+    head: variant.head,
+    capturedAt: variant.capturedAt,
+    edition: variant.edition,
+    evidence: variant.report.measurement.status,
+  })),
+}));
 ---
-<Base title={copy.playground.title} description="Read-only diffdevil playground: analyze a public pull request or a curated example and see the same result as terminal, data, GitHub preview and explanation." surface="Playground" current="playground">
+<Base title={copy.playground.title} description="Read-only diffdevil playground: analyze a public pull request or replay a saved real-PR lesson through terminal, data, GitHub preview and explanation." surface="Playground" current="playground">
   <h1 class="visually-hidden">{copy.playground.title}</h1>
   <p class="visually-hidden">{copy.playground.sub}</p>
   <div class="wrap pg-wrap">
-    <Playground client:only="react" curated={curatedCards} defaultExample={curatedCards[0]?.id ?? DEFAULT_FIXTURE} />
+    <Playground client:only="react" catalogue={catalogueCards} defaultExample={examples.defaultExample} />
   </div>
 </Base>

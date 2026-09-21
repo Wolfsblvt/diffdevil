@@ -47,7 +47,7 @@ const number = (value: number) => new Intl.NumberFormat('en').format(value);
         </div>
         <div class="machine-foot measure-foot">
           {excluded.map(file => <p>▣ <code>{file.path}</code> excluded by <code>{file.inclusionReasons?.[0]?.subject ?? 'defaults.paths.exclude'}</code> — observed churn would be {number(observed.churn)}.</p>)}
-          <p><a class="try-link" href={`${paths.playground}?example=lockfile-excluded`}>{c.tryIt} →</a></p>
+          <p><a class="try-link" href={`${paths.playground}?example=lockfile-scope&variant=without-lockfile`}>{c.tryIt} →</a></p>
         </div>
       </figure>
     </div>
