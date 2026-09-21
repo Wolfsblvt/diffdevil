@@ -2,7 +2,7 @@
 export { GitHubClient, GitHubRequestError } from './client.js';
 export type { GitHubClientOptions } from './client.js';
 export { analyzeGitHub, analyzeGitHubGit, readPullSnapshot } from './source.js';
-export { loadGitHubPolicy } from './policy.js';
+export { loadGitHubPolicy, readGitHubPolicy } from './policy.js';
 export type { GitHubPolicySource } from './policy.js';
 export { applyGitHubPolicy } from './apply.js';
 export type { GitHubApplyOptions, GitHubApplyResult } from './apply.js';

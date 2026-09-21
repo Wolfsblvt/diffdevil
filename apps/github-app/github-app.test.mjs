@@ -3,11 +3,12 @@
 import assert from 'node:assert/strict';
 import { createHmac, createVerify, generateKeyPairSync } from 'node:crypto';
 import { test } from 'node:test';
-import { GitHubRequestError } from '@wolfsblvt/diffdevil/github';
+import { GitHubClient, GitHubRequestError } from '@wolfsblvt/diffdevil/github';
 import { createGitHubAppWorker, createInstallationClient, listInstallationRepositories } from './app.mjs';
 import { APP_QUEUE_KIND, WEBHOOK_BODY_LIMIT, WORKER_RESULT_LIMIT, historyProjection, normalizeWebhookEvent } from './contracts.mjs';
 import { constantTimeEqual, createAppJwt } from './crypto.mjs';
 import { resolveEffectivePolicy } from './configuration.mjs';
+import { FakeGitHub } from '../../src/diffdevil/tests/helpers/github.mjs';
 
 const secret = 'fixture-webhook-secret';
 const payload = { action: 'opened', installation: { id: 9 }, repository: { id: 17 }, pull_request: { number: 42 } };
@@ -34,6 +35,23 @@ function activeStore(calls) {
     async recordLifecycle() { calls.push('lifecycle'); },
     async finishLifecycle() { calls.push('lifecycle-finish'); }
   };
+}
+function policyStore(calls, configuration = { repository: { presets: [] } }) {
+  return {
+    ...activeStore(calls),
+    async repositoryConfiguration() { return { value: configuration }; },
+    async check() { return undefined; },
+    async recordCheck() {},
+    async recordHistory() { return { status: 'disabled' }; }
+  };
+}
+async function runPolicyDelivery(fake, configuration) {
+  const run = queueMessage();
+  const fetch = async (input, init) => new URL(String(input)).pathname === '/repositories/17'
+    ? new Response(JSON.stringify({ id: 17, full_name: 'example/repository' }), { headers: { 'content-type': 'application/json' } })
+    : fake.fetch(input, init);
+  await createGitHubAppWorker({ store: policyStore(run.calls, configuration), clientFactory: async () => new GitHubClient({ fetch, readRetries: 0 }) }).queue({ messages: [run.message] }, {});
+  return run;
 }
 
 test('webhook verifies streamed raw bytes and queues only a minimized selected envelope', async () => {
@@ -113,6 +131,57 @@ test('real GitHub rate-limit errors release the execution lease for retry', asyn
   assert.equal(run.calls.at(-1), 'retry');
   assert.equal(run.calls.find(call => Array.isArray(call) && call[0] === 'retry-state')[2], 'E_GITHUB_RATE_LIMIT');
   assert.equal(JSON.stringify(run.calls).includes('rate limit detail'), false);
+});
+
+test('an absent trusted-base configuration uses the default policy only after repository and pull-base reads', async () => {
+  const fake = new FakeGitHub();
+  fake.before = async call => call.method === 'POST' && call.path === '/repos/example/repository/check-runs'
+    ? new Response(JSON.stringify({ id: 7 }), { status: 201, headers: { 'content-type': 'application/json' } })
+    : undefined;
+  const run = await runPolicyDelivery(fake);
+  const finish = run.calls.find(call => Array.isArray(call) && call[0] === 'finish');
+  const paths = fake.calls.map(call => call.path);
+  const policyRead = paths.indexOf('/repos/example/repository/contents/.diffdevil.yml');
+  assert.equal(finish[2], 'complete');
+  assert.equal(paths.indexOf('/repos/example/repository') < policyRead, true);
+  assert.equal(paths.indexOf('/repos/example/repository/pulls/42') < policyRead, true);
+  assert.deepEqual(fake.writes().map(call => call.path), ['/repos/example/repository/check-runs']);
+});
+
+test('a non-404 trusted-policy failure preserves its provider diagnostic without effects', async () => {
+  const fake = new FakeGitHub();
+  fake.before = async call => call.path === '/repos/example/repository/contents/.diffdevil.yml'
+    ? new Response(JSON.stringify({ message: 'private provider detail' }), { status: 403, headers: { 'content-type': 'application/json' } })
+    : undefined;
+  const run = await runPolicyDelivery(fake);
+  const repair = run.calls.find(call => Array.isArray(call) && call[0] === 'finish');
+  assert.equal(repair[3].code, 'E_GITHUB_PERMISSION');
+  assert.deepEqual(repair[3].repair.projection.diagnostics, [{ code: 'E_GITHUB_PERMISSION', phase: 'trusted-policy' }]);
+  assert.equal(JSON.stringify(repair[3]).includes('private provider detail'), false);
+  assert.deepEqual(fake.writes(), []);
+});
+
+test('a transient trusted-policy provider failure never defaults into a write', async () => {
+  const fake = new FakeGitHub();
+  fake.before = async call => call.path === '/repos/example/repository/contents/.diffdevil.yml'
+    ? new Response(JSON.stringify({ message: 'private provider detail' }), { status: 502, headers: { 'content-type': 'application/json' } })
+    : undefined;
+  const run = await runPolicyDelivery(fake);
+  const repair = run.calls.find(call => Array.isArray(call) && call[0] === 'finish');
+  assert.equal(repair[3].code, 'E_GITHUB_REQUEST');
+  assert.deepEqual(repair[3].repair.projection.diagnostics, [{ code: 'E_GITHUB_REQUEST', phase: 'trusted-policy' }]);
+  assert.equal(JSON.stringify(repair[3]).includes('private provider detail'), false);
+  assert.deepEqual(fake.writes(), []);
+});
+
+test('an unexpected trusted-policy failure retains the App fallback code without provider detail', async () => {
+  const fake = new FakeGitHub();
+  const run = await runPolicyDelivery(fake, { repository: { presets: 'not-an-array' } });
+  const repair = run.calls.find(call => Array.isArray(call) && call[0] === 'finish');
+  assert.equal(repair[3].code, 'E_APP_POLICY');
+  assert.deepEqual(repair[3].repair.projection.diagnostics, [{ code: 'E_APP_POLICY', phase: 'trusted-policy' }]);
+  assert.equal(JSON.stringify(repair[3]).includes('not-an-array'), false);
+  assert.deepEqual(fake.writes(), []);
 });
 
 test('lifecycle deltas reconcile the current provider-selected repository identities before completion', async () => {

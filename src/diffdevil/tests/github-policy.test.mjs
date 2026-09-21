@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { GitHubClient } from '../../../dist/lib/github/client.js';
-import { loadGitHubPolicy } from '../../../dist/lib/github/policy.js';
+import { GitHubClient, GitHubRequestError } from '../../../dist/lib/github/client.js';
+import { loadGitHubPolicy, readGitHubPolicy } from '../../../dist/lib/github/policy.js';
 import { analyzeGitHub } from '../../../dist/lib/github/source.js';
 import { evaluatePolicy } from '../../../dist/lib/policy/evaluate.js';
 import { createPlan } from '../../../dist/lib/policy/plan.js';
@@ -31,6 +31,10 @@ test('trusted GitHub policy refuses floating refs, symlinks and escaping templat
   fake.contents.set(`${BASE}:policy.yml`, config.replace('comments/result.md', '../outside.md'));
   const result = await loadGitHubPolicy(client, { repository: TARGET.repository, ref: BASE, path: 'policy.yml' });
   assert.equal(result.ok, false); assert.equal(fake.calls.some(c => c.path.includes('outside')), false);
+});
+test('throwing trusted-policy reads retain diagnostic status for a host default-policy decision', async () => {
+  const fake = new FakeGitHub(), client = new GitHubClient({ fetch: fake.fetch, readRetries: 0 });
+  await assert.rejects(readGitHubPolicy(client, { repository: TARGET.repository, ref: BASE, path: '.diffdevil.yml' }), error => error instanceof GitHubRequestError && error.status === 404 && error.diagnostic.code === 'E_GITHUB_REQUEST' && error.diagnostic.details?.status === 404);
 });
 test('GitHub API-backed CLI queries and checks use ordinary detail and machine-clean output', async () => {
   const fake = new FakeGitHub(), host = { githubClient: new GitHubClient({ fetch: fake.fetch }) };
