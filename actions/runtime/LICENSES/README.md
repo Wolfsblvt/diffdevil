@@ -10,7 +10,7 @@ The portable diff engine, public TypeScript API and npm package, CLI, GitHub Act
 
 ## Application and hosted-service software — AGPL-3.0-only
 
-Website and interactive demo application code, hosted runtime, GitHub App backend, hosted configuration, orchestration and management UI, and comparable service-side product code are selected for [GNU AGPL-3.0-only](AGPL-3.0-only.txt). These application/service surfaces may live in this same repository. The application surfaces are `apps/playground/` (local server, Worker adapter, browser code, styles, page assets), `apps/github-app/` (the managed-App runtime), `apps/website/` (the public website, its playground island, catalogue data and derived assets) and `apps/shared/` (presenters both applications use); each explicitly carries `AGPL-3.0-only`. MIT-covered engine code incorporated into an AGPL-covered application keeps its MIT notices. Future application paths must name their licence just as explicitly rather than inheriting it from a neighboring directory.
+Website and interactive demo application code, hosted runtime, GitHub App backend, hosted configuration, orchestration and management UI, and comparable service-side product code are selected for [GNU AGPL-3.0-only](AGPL-3.0-only.txt). These application/service surfaces may live in this same repository. The application surfaces are `apps/playground/` (local server, Worker adapter, browser code, styles, page assets), `apps/github-app/` (the managed-App runtime), `apps/website/` (the public website, its playground island, catalogue data and derived assets), `apps/browser-extension/` (Chrome application, settings, browser UI, tests and QA), and `apps/shared/` (presenters both applications use); each explicitly carries `AGPL-3.0-only`. MIT-covered engine code incorporated into an AGPL-covered application keeps its MIT notices. Future application paths must name their licence just as explicitly rather than inheriting it from a neighboring directory.
 
 ## Documentation and examples
 
@@ -25,14 +25,15 @@ The npm artifact includes MIT software, the CC BY 4.0 root README and documentat
 ## Third parties
 
 Vendored runtime dependencies in `actions/runtime/node_modules/` retain their own licences and notices, recorded in `actions/runtime/MANIFEST.json`; diffdevil's MIT notice does not replace them. Historical evidence in `docs/reference/` describes its original subject and date, not a newly licensed software component.
-
-### Website icon material
+### Website and extension icon material
 
 The website resolves selected icon geometry at build time and embeds it in generated HTML. `@iconify-json/lucide@1.2.135` supplies Lucide UI geometry under the ISC licence, and `@iconify-json/simple-icons@1.2.97` supplies Simple Icons brand geometry under CC0-1.0. The dependency packages are build inputs rather than browser requests, but the embedded geometry keeps its original terms. The built website publishes this component map at `/docs/licences/` so the notices travel with that distribution.
 
 The GitHub, Discord, Bluesky, Google Chrome, and GitHub Actions names and marks remain the property of their respective owners. Simple Icons' CC0 dedication covers the icon data; it does not waive trademark, patent, publicity, privacy, or other third-party rights. Inclusion describes the selected visual source and implies no sponsorship, affiliation, or endorsement. The full [CC0 1.0 legal code](https://creativecommons.org/publicdomain/zero/1.0/legalcode) remains the upstream terms for the selected Simple Icons data.
 
 The four `diffdevil/*` product glyphs embedded in `apps/website/src/data/icons.ts` are copied unchanged from `Wolfsblvt/wolfsblvt-icons@8596b6bc2ba7c4b950963b7ec26cee1a26974439`. They are original Wolfsblvt Works material under the [MIT licence](MIT.txt); incorporating them into the AGPL-covered website does not replace that MIT notice. `@wolfsblvt/icons` is the intended package route but is not yet published, so this exact source and licence coordinate remains the current vendored boundary.
+
+The browser extension likewise vendors the accepted centre-seam `diffdevil/brand` geometry unchanged at `apps/browser-extension/assets/diffdevil-brand.svg` from the same icon-system commit. Its recorded SHA-256 is `d33cf3b1a7a8ec52706da3311ac82e0500ec6c2eee8e35baeaaa2d5ef2b9b34e`; that SVG remains MIT software inside the AGPL-covered application. Full-colour wordmark and symbol identity assets remain reserved.
 
 #### Lucide ISC notice
 
@@ -47,11 +48,11 @@ copyright notice and this permission notice appear in all copies.
 
 THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
 WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
-MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
-ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
-WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
-ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
-OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
+OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
+CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 ```
 
 Some selected Lucide geometry is derived from Feather. The following notice accompanies those icons:

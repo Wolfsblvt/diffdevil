@@ -58,6 +58,7 @@ when a custom formula, scope, or policy needs it.
 | Presets and shortcut lowering | [`integration/presets-and-shortcuts.md`](integration/presets-and-shortcuts.md) |
 | Shared frozen examples and capture maintenance | [`integration/example-catalogue.md`](integration/example-catalogue.md) |
 | Templates and comment lifecycle | [`integration/templates.md`](integration/templates.md) |
+| GitHub browser extension and portable browser API | [`integration/browser-extension.md`](integration/browser-extension.md) |
 | TypeScript embedding | [`integration/typescript-api.md`](integration/typescript-api.md) |
 | Playground response schema | [`../apps/playground/contracts/response-v1.schema.json`](../apps/playground/contracts/response-v1.schema.json) |
 

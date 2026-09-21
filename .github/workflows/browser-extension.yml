@@ -1,0 +1,60 @@
+name: Browser extension
+on:
+  pull_request:
+    paths:
+      - 'apps/browser-extension/**'
+      - 'src/diffdevil/**'
+      - 'design/**'
+      - 'tools/browser-*.mjs'
+      - 'tools/build.mjs'
+      - 'package*.json'
+      - '.github/workflows/browser-extension.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: browser-extension-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  browser:
+    name: Chromium / Node 22
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '22'
+          package-manager-cache: false
+      - name: Restore locked dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Build portable engine and check extension types
+        run: npm run build && npm run extension:check
+      - name: Build font-free unpacked source candidate
+        run: node tools/browser-extension-build.mjs --without-fonts
+      - name: Focused browser-core and application checks
+        run: node --test src/diffdevil/tests/browser.test.mjs apps/browser-extension/tests/*.test.mjs
+      - name: Install the declared Chromium test runtime
+        run: node node_modules/playwright-core/cli.js install --with-deps chromium
+      - name: Rendered controller and source-acquisition fixtures
+        run: npm run extension:qa
+      - name: Actual installed MV3 worker and native storage
+        run: node apps/browser-extension/qa/installed.mjs --require
+      - name: Produce Store review assets, without publication
+        run: npm run extension:store
+      - name: Preserve exact evidence and unpublished artifacts
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: diffdevil-browser-extension-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            artifacts/browser-extension/unpacked/
+            artifacts/browser-extension/build-receipt.json
+            artifacts/browser-extension/bundle-metafile.json
+            artifacts/browser-extension/qa/*.json
+            artifacts/browser-extension/qa/*.png
+            artifacts/browser-extension/store/
+          retention-days: 7
+          if-no-files-found: error

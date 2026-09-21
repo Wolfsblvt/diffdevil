@@ -1,0 +1,61 @@
+{
+  "manifest_version": 3,
+  "name": "diffdevil for GitHub",
+  "version": "1.0.0",
+  "version_name": "1.0.0 unpublished source candidate",
+  "description": "See replacement-aware Changed lines, personal size bands and inspectable diff reports directly in GitHub pull requests.",
+  "minimum_chrome_version": "120",
+  "incognito": "not_allowed",
+  "permissions": [
+    "storage"
+  ],
+  "host_permissions": [
+    "https://api.github.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://github.com/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "css": [
+        "content.css"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  },
+  "action": {
+    "default_title": "diffdevil settings"
+  },
+  "icons": {
+    "16": "assets/icon-16.png",
+    "32": "assets/icon-32.png",
+    "48": "assets/icon-48.png",
+    "128": "assets/icon-128.png"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "assets/diffdevil-brand.svg",
+        "assets/diffdevil-symbol-micro-dark.svg",
+        "assets/diffdevil-symbol-micro-light.svg"
+      ],
+      "matches": [
+        "https://github.com/*"
+      ]
+    }
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'none'; base-uri 'none'; connect-src https://api.github.com; img-src 'self' data:; style-src 'self' 'unsafe-inline'"
+  }
+}
