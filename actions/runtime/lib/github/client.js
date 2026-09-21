@@ -86,12 +86,12 @@ export class GitHubClient {
             }
             const rateLimited = response.status === 429 || response.status === 403 && (response.headers.has('retry-after') || response.headers.get('x-ratelimit-remaining') === '0');
             if (method === 'GET' && attempt < this.#retries && (rateLimited || response.status >= 500)) {
-                await response.body?.cancel();
+                await this.discardBody(response);
                 await this.#sleep(this.retryDelay(response.headers, attempt, rateLimited));
                 continue;
             }
             if (response.status < 200 || response.status >= 300) {
-                await response.body?.cancel();
+                await this.discardBody(response);
                 const detail = rateLimited
                     ? 'GitHub rate limited the request. Honor Retry-After or the reset time before retrying.'
                     : response.status === 403 || response.status === 401
@@ -132,6 +132,13 @@ export class GitHubClient {
             }
             return { status: response.status, headers: response.headers, text, bytes };
         }
+    }
+    /** Cleanup is only an optimization; it must not replace the provider outcome. */
+    async discardBody(response) {
+        try {
+            await response.body?.cancel();
+        }
+        catch { /* A failed cleanup must not suppress a retry or typed HTTP error. */ }
     }
     retryDelay(headers, attempt, rateLimited) {
         const retry = headers.get('retry-after');
