@@ -8,6 +8,7 @@ This is the documentation map for diffdevil. It separates current product direct
 
 | You want to… | Start here |
 | --- | --- |
+| Understand why diffdevil differs, choose a surface, or check its trust boundaries | [FAQ](manual/faq.md) |
 | Automatically label PR size with one workflow | [Auto-labeling quickstart](guides/auto-label-pull-requests.md) |
 | Get a scalar, path list, or reliable shell condition | [Local automation](guides/local-automation.md) |
 | Add a source/test signal or one updated comment | [Policy recipes](guides/policy-recipes.md) |
@@ -34,6 +35,7 @@ when a custom formula, scope, or policy needs it.
 | Publication boundary | [`PUBLICATION-BOUNDARY.md`](PUBLICATION-BOUNDARY.md) |
 | Release notes and publication standing | [`releases/README.md`](releases/README.md) |
 | Documentation teaching and future site source | [`DOCUMENTATION.md`](DOCUMENTATION.md) |
+| FAQ editorial, route, search and verification contract | [`faq-authoring.md`](faq-authoring.md) |
 | Canonical textual brand | [`BRANDING.md`](BRANDING.md) |
 | Live and local public-PR playground | [`../apps/playground/README.md`](../apps/playground/README.md) |
 | Optional managed App experience and architecture (selected, not deployed) | [`integration/github-app.md`](integration/github-app.md) |

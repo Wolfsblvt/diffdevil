@@ -3,7 +3,7 @@
 // The one site header, identical on every route including the manual. It applies the
 // Wolfsblvt Works header grammar:
 //
-//   [brand + section label] [search]  Docs Playground Examples Install⌄ │ [GitHub] [Community⌄] [Theme] [one action]
+//   [brand + section label] [search]  Docs Playground Examples Install⌄ FAQ │ [GitHub] [Community⌄] [Theme] [one action]
 //
 // Identity → discovery → navigation → one divider → utilities → one trailing action.
 // · The section label sits outside the home link and is plain text.
@@ -54,6 +54,7 @@ const installCurrent = current === 'app' || current === 'extension';
               <InstallEntries kind="install" />
             </div>
           </li>
+          <li><a href={paths.faq} aria-current={current === 'faq' ? 'page' : undefined}><span class="nav-label" data-label={copy.nav.faq}>{copy.nav.faq}</span></a></li>
         </ul>
       </nav>
       <div class="disclosure-host compact-menu">
@@ -64,6 +65,7 @@ const installCurrent = current === 'app' || current === 'extension';
           </ul>
           <p class="dest-heading">{copy.nav.install}</p>
           <InstallEntries kind="menu" />
+          <ul class="dest-rows"><li><a class="dest-row dest-row-plain" href={paths.faq} aria-current={current === 'faq' ? 'page' : undefined}><span class="dest-label">{copy.nav.faq}</span></a></li></ul>
         </div>
       </div>
       <span class="header-sep" aria-hidden="true"></span>

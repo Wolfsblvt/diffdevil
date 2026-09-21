@@ -54,6 +54,7 @@ export const paths = {
   playground: '/playground/',
   examples: '/examples/',
   docs: '/docs/',
+  faq: '/faq/',
   app: '/app/',
   extension: '/extension/',
   security: '/docs/security/',

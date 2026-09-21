@@ -11,11 +11,13 @@ import { themeScript } from '../lib/theme-script.mjs';
 interface Props {
   title: string; description: string;
   /** The short top-level section label shown beside the lockup; never an article title. */
-  surface?: 'Playground' | 'Docs' | 'Examples' | 'GitHub App' | 'Extension' | undefined; current?: string | undefined;
+  surface?: 'Playground' | 'Docs' | 'Examples' | 'GitHub App' | 'Extension' | 'FAQ' | undefined; current?: string | undefined;
   /** Legal routes stay public and fetchable but out of search engines, snippets and the site's own search. */
   noindex?: boolean | undefined;
+  /** False when the page supplies finer-grained global search records instead. */
+  siteSearch?: boolean | undefined;
 }
-const { title, description, surface, current, noindex = false } = Astro.props;
+const { title, description, surface, current, noindex = false, siteSearch = true } = Astro.props;
 const pageTitle = title === 'diffdevil' ? 'diffdevil — The devil is in the diff.' : `${title} · diffdevil`;
 const canonical = ORIGIN_IS_PLACEHOLDER ? undefined : `${ORIGIN}${Astro.url.pathname}`;
 ---
@@ -45,7 +47,7 @@ const canonical = ORIGIN_IS_PLACEHOLDER ? undefined : `${ORIGIN}${Astro.url.path
   <body>
     <a class="visually-hidden" href="#main">Skip to content</a>
     <Header surface={surface} current={current} />
-    <main id="main" {...(noindex ? { 'data-pagefind-ignore': 'all' } : { 'data-pagefind-body': '' })}>
+    <main id="main" {...((noindex || !siteSearch) ? { 'data-pagefind-ignore': 'all' } : { 'data-pagefind-body': '' })}>
       <slot />
     </main>
     <Footer />

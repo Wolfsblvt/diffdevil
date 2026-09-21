@@ -7,7 +7,7 @@
  */
 export const copy = {
   nav: {
-    docs: 'Docs', playground: 'Playground', examples: 'Examples', menu: 'Menu', install: 'Install', dashboard: 'Dashboard',
+    docs: 'Docs', faq: 'FAQ', playground: 'Playground', examples: 'Examples', menu: 'Menu', install: 'Install', dashboard: 'Dashboard',
     command: 'npm i -D @wolfsblvt/diffdevil', copied: 'Copied ✓', source: 'Source on GitHub',
   },
   /** Install⌄: a menu of the site's own pages. Every entry is [title, short description]. */
@@ -26,8 +26,8 @@ export const copy = {
     discord: ['Discord', 'Wolfsblvt Works community'], bluesky: ['Bluesky', 'Development updates'], works: ['Wolfsblvt Works', 'About the maker'], github: ['GitHub', 'Source code'],
   },
   search: {
-    trigger: 'Search', title: 'Search diffdevil', placeholder: 'Search the site and the manual', close: 'Close search',
-    hint: 'Searches site pages and the manual. Every result says which one it is.', kindDocs: 'Docs', kindSite: 'Site',
+    trigger: 'Search', title: 'Search diffdevil', placeholder: 'Search the site, manual and FAQ', close: 'Close search',
+    hint: 'Searches site pages, the manual and individual FAQ answers.', kindDocs: 'Docs', kindSite: 'Site', kindFaq: 'FAQ',
     unavailable: 'The search index is part of the built site and is not available in this preview.',
     none: (query: string) => `Nothing found for "${query}".`,
     count: (total: number, shown: number) => (total > shown ? `${total} results · showing the first ${shown}` : `${total} result${total === 1 ? '' : 's'}`),
