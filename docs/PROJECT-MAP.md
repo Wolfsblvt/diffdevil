@@ -13,6 +13,7 @@ and disposable outputs without introducing independently versioned packages.
 | `src/diffdevil/` | Reusable MIT product core: shared engine, CLI, provider/Action hosts, core tests, contracts and presets. |
 | `apps/playground/` | AGPL application adapter: shared local/Worker public-PR route, browser assets, versioned response contract and application tests. |
 | `apps/github-app/` | AGPL managed-App adapter: verified webhook ingress, Queue execution, D1 recovery/history state, migrations and operator boundary. |
+| `apps/browser-extension/` | AGPL Chrome Manifest V3 application: GitHub pull-request projection, settings, provider acquisition, bounded local storage, browser qualification and unpublished Store-preparation material. |
 | `apps/website/` | AGPL public website: Astro static output + Starlight manual rendered from repository Markdown, the complete playground as one lazy React island running the shared engine in the browser, examples catalogue, browser-extension and App pages, legal/privacy routes. Built and qualified locally; not deployed by any command here. |
 | `apps/shared/` | Small presenters both AGPL applications use (currently the App check-summary composer). |
 | `actions/` | Three sub-action entry points and their shared, committed runtime. |
@@ -25,7 +26,7 @@ and disposable outputs without introducing independently versioned packages.
 | `wrangler.jsonc` | Source-owned Cloudflare Worker name, runtime compatibility and static-asset routing; it contains no account ID, token, custom domain or deployment state. |
 | `README.md`, `AGENTS.md` | Public product front door and repository-local contribution contract. |
 
-`apps/playground/`, `apps/github-app/` and `apps/website/` consume the built reusable engine from `dist/lib`; none duplicates measurement, policy, or provider semantics. The website's playground bundles that same engine for the browser through two small shims for its Node-only imports. Their browser/server/Worker and managed ingress/Queue/D1 adapters are application code, not npm-package contents.
+`apps/playground/`, `apps/github-app/`, `apps/browser-extension/` and `apps/website/` consume the built reusable engine; none duplicates measurement, policy, or provider semantics. The website's playground bundles that engine through two small shims for its Node-only imports, while the extension consumes the closed browser export and lightweight formatter. Their browser/server/Worker, managed ingress/Queue/D1 and GitHub-DOM adapters are application code, not npm-package contents.
 
 `dist/`, root `node_modules/` and `artifacts/` are ignored generated/local material,
 not extra products. They are recreated by documented commands and are not part of
@@ -53,8 +54,11 @@ All paths below are relative to `src/diffdevil/`:
 
 The playground server, browser assets, response schema, Worker adapter and application
 tests live under `apps/playground/`; the managed App has separate Worker/Queue/D1
-adapters, migrations, and focused application tests under `apps/github-app/`. Both reuse
-the core fake-provider fixture without moving application code into the MIT source boundary.
+adapters, migrations, and focused application tests under `apps/github-app/`. The
+browser extension owns its Chrome/GitHub lifecycle, settings and qualification under
+`apps/browser-extension/`, while reusable browser-safe engine code remains under
+`src/diffdevil/browser/`. These applications reuse the core without moving their
+AGPL application code into the MIT source boundary.
 `wrangler.jsonc` routes only the playground; `apps/github-app/wrangler.jsonc` carries
 source-level App bindings with a non-operational D1 placeholder. Remaining hosted state
 is deliberately outside source.

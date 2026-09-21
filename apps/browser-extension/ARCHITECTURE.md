@@ -2,7 +2,7 @@
 
 ## Meaning
 
-The browser is a new host for the existing measurement and policy system. DOM markup is placement and acquisition evidence, not a second analysis engine. This contribution is independent of the unmerged terminal-presenter candidate and does not modify the website or its public marketing surface.
+The browser is a new host for the existing measurement and policy system. DOM markup is placement and acquisition evidence, not a second analysis engine. The extension uses the presenter and application foundations already on its current `main` base without modifying the website or its public marketing surface.
 
 ## Boundaries and ownership
 

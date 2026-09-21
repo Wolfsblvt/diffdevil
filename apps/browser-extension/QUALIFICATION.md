@@ -4,7 +4,7 @@
 
 This is a full authored local extension source candidate, not a published extension or an accepted live-GitHub integration. Its source, reproducible build, configuration application, tests, Store assets and evidence are carried together. Provider publication and final acceptance remain separate.
 
-The initial verified source is `Wolfsblvt/diffdevil@86dcf193a3186467d5b5f24a4246767adaf0a069`, tree `0658aa5f8b0e97f1774d05abb2bfc4b9f22bf733`. This contribution does not depend on unmerged presenter PR #25. The earlier draft PR #26 contains a different bounded browser-core attempt; it is not evidence that this full application has been transferred or reviewed.
+The initial verified source is `Wolfsblvt/diffdevil@86dcf193a3186467d5b5f24a4246767adaf0a069`, tree `0658aa5f8b0e97f1774d05abb2bfc4b9f22bf733`. The final source was replayed onto current `main` after presenter PR #25 landed and preserves that accepted base without duplicating its implementation. The earlier draft PR #26 contains a different bounded browser-core attempt; it is not evidence for this full application.
 
 ## Executed evidence
 

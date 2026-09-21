@@ -35,7 +35,7 @@ The installed runner is fully authored. On an unrestricted browser it verifies a
 
 ## This source session
 
-The source was reconstructed and verified against main commit `86dcf193a3186467d5b5f24a4246767adaf0a069`, tree `0658aa5f8b0e97f1774d05abb2bfc4b9f22bf733`. The local recovery commit is synthetic; it is not that upstream commit's ancestry. The extension does not depend on unmerged presenter PR #25 or claim that earlier bounded PR #26 contains this full application.
+The source was reconstructed and verified against main commit `86dcf193a3186467d5b5f24a4246767adaf0a069`, tree `0658aa5f8b0e97f1774d05abb2bfc4b9f22bf733`, then replayed onto current `main` after presenter PR #25 landed. The final extension does not duplicate or modify that presenter implementation, and earlier bounded PR #26 does not contain this full application.
 
 The supplied receipts describe Linux Node 22.16.0, TypeScript 5.8.3 and managed Chromium 143. Core and application checks passed, as did rendered DOM and acquisition fixtures. The exact final counts, versions, hashes and durations belong to the generated receipts and room return, not a permanently frozen number in this manual.
 
