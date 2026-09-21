@@ -37,6 +37,15 @@ async function readBodyWithinLimit(request) {
   return body;
 }
 function errorCode(error) { return error instanceof GitHubRequestError ? error.code : typeof error?.code === 'string' ? error.code : 'E_APP_EXECUTION'; }
+function executionDiagnostic(error, fallbackCode, phase) {
+  const code = errorCode(error) === 'E_APP_EXECUTION' ? fallbackCode : errorCode(error);
+  const diagnostics = Array.isArray(error?.diagnostics) ? error.diagnostics : [];
+  return Object.assign(new Error(code), { code, diagnostics: [...diagnostics, { code, phase }] });
+}
+async function atExecutionStage(fallbackCode, phase, operation) {
+  try { return await operation(); }
+  catch (error) { throw executionDiagnostic(error, fallbackCode, phase); }
+}
 function failureDisposition(error) {
   const code = errorCode(error);
   if (code === 'E_GITHUB_RATE_LIMIT' || code === 'E_LEASE_LOST') return 'retry';
@@ -139,20 +148,20 @@ export async function executeDelivery(envelope, deliveryId, { env, store, lease,
     await store.assertLease(envelope, activeLease);
   };
   await renewLease();
-  const client = await clientFactory(env, envelope.installationId, envelope.repositoryId);
-  const target = await repositoryTarget(client, envelope);
-  const snapshot = await readPullSnapshot(client, target);
+  const client = await atExecutionStage('E_APP_INSTALLATION_CREDENTIAL', 'installation-credential', () => clientFactory(env, envelope.installationId, envelope.repositoryId));
+  const target = await atExecutionStage('E_APP_REPOSITORY_TARGET', 'repository-target', () => repositoryTarget(client, envelope));
+  const snapshot = await atExecutionStage('E_APP_PULL_SNAPSHOT', 'pull-snapshot', () => readPullSnapshot(client, target));
   if (snapshot.state !== 'open') throw appError('E_PULL_REQUEST_CLOSED');
-  const configuration = await store.repositoryConfiguration(envelope.repositoryId);
-  const policy = await trustedPolicy(client, target, snapshot.base, configuration?.value);
+  const configuration = await atExecutionStage('E_APP_REPOSITORY_CONFIGURATION', 'repository-configuration', () => store.repositoryConfiguration(envelope.repositoryId));
+  const policy = await atExecutionStage('E_APP_POLICY', 'trusted-policy', () => trustedPolicy(client, target, snapshot.base, configuration?.value));
   const provisionalIdentity = { repositoryId: envelope.repositoryId, pullRequest: envelope.pullRequest, repository: target.repository, base: snapshot.base, head: snapshot.head, policyId: policy.policy.id };
-  await assertRerequest(client, store, envelope, provisionalIdentity, Number(env.GITHUB_APP_ID));
-  const outcome = unwrap(await applyGitHubPolicy(client, target, policy.policy, { definitions: 'ensure', commentAuthor: { login: env.GITHUB_APP_BOT_LOGIN ?? 'diffdevil[bot]' }, occasionId: deliveryId, expectedPolicyBase: policy.expectedPolicyBase,
-    beforeWrite: renewLease }));
+  await atExecutionStage('E_APP_CHECK_REREQUEST', 'check-rerequest', () => assertRerequest(client, store, envelope, provisionalIdentity, Number(env.GITHUB_APP_ID)));
+  const outcome = await atExecutionStage('E_APP_POLICY_EXECUTION', 'policy-execution', async () => unwrap(await applyGitHubPolicy(client, target, policy.policy, { definitions: 'ensure', commentAuthor: { login: env.GITHUB_APP_BOT_LOGIN ?? 'diffdevil[bot]' }, occasionId: deliveryId, expectedPolicyBase: policy.expectedPolicyBase,
+    beforeWrite: renewLease })));
   const identity = { ...provisionalIdentity, comparisonId: outcome.report.source.comparisonId, appId: Number(env.GITHUB_APP_ID) };
   if (outcome.status !== 'verified') throw Object.assign(appError('E_EFFECT_INCOMPLETE'), { diagnostics: outcome.diagnostics, observations: outcome.observations, repairIdentity: identity });
-  try { await upsertCheck(client, store, identity, outcome.report, outcome, renewLease); }
-  catch (error) { throw Object.assign(appError('E_CHECK_PUBLICATION'), { cause: error, repairIdentity: identity }); }
+  try { await atExecutionStage('E_CHECK_PUBLICATION', 'check-publication', () => upsertCheck(client, store, identity, outcome.report, outcome, renewLease)); }
+  catch (error) { throw Object.assign(appError('E_CHECK_PUBLICATION'), { diagnostics: error.diagnostics, repairIdentity: identity }); }
   const history = await store.recordHistory(identity, historyProjection(outcome.report, outcome.observations));
   return { status: 'verified', policyId: outcome.plan.policyId, comparisonId: outcome.report.source.comparisonId, effectCount: outcome.changed, history: history.status };
 }

@@ -25,6 +25,9 @@ function activeStore(calls) {
   return {
     async claimDelivery() { calls.push('delivery'); return delivery; },
     async claimExecution(_envelope, candidate) { calls.push(['execution', candidate]); return lease; },
+    async executionAllowed() { return true; },
+    async renewLease() { return lease; },
+    async assertLease() {},
     async finish(_envelope, candidate, state, result) { calls.push(['finish', candidate, state, result]); },
     async retry(_envelope, candidate, code) { calls.push(['retry-state', candidate, code]); },
     async recordLifecycle() { calls.push('lifecycle'); },
@@ -83,6 +86,15 @@ test('rate limiting releases a fenced attempt for retry instead of calling it re
   await createGitHubAppWorker({ store, async execute() { throw Object.assign(new Error('rate'), { code: 'E_GITHUB_RATE_LIMIT' }); } }).queue({ messages: [run.message] }, {});
   assert.equal(run.calls.at(-1), 'retry');
   assert.equal(run.calls.find(call => Array.isArray(call) && call[0] === 'retry-state')[2], 'E_GITHUB_RATE_LIMIT');
+});
+
+test('pre-effect App failures retain a safe stable stage in their repair projection', async () => {
+  const run = queueMessage(), store = activeStore(run.calls);
+  await createGitHubAppWorker({ store, clientFactory: async () => { throw new TypeError('provider response details must not be retained'); } }).queue({ messages: [run.message] }, {});
+  const repair = run.calls.find(call => Array.isArray(call) && call[0] === 'finish');
+  assert.equal(repair[3].code, 'E_APP_INSTALLATION_CREDENTIAL');
+  assert.deepEqual(repair[3].repair.projection.diagnostics, [{ code: 'E_APP_INSTALLATION_CREDENTIAL', phase: 'installation-credential' }]);
+  assert.equal(JSON.stringify(repair[3]).includes('provider response details'), false);
 });
 
 test('lifecycle deltas reconcile the current provider-selected repository identities before completion', async () => {
