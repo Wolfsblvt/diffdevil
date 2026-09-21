@@ -44,15 +44,43 @@ function values(text: string, seed: number): ReactNode[] {
   return out;
 }
 
+const FIELD_TOKEN = /([A-Za-z_][\w.]*)(=)|("(?:[^"\\]|\\.)*")|(-?\d[\d,.]*)|([|→[\](),])/gu;
+
+/** Agent records are `keyword field=value …`; each field name reads as a key. */
+function fields(text: string, seed: number): ReactNode[] {
+  const out: ReactNode[] = [];
+  let last = 0, key = seed;
+  for (const match of text.matchAll(FIELD_TOKEN)) {
+    const index = match.index ?? 0;
+    if (index > last) out.push(text.slice(last, index));
+    const [whole, name, equals, string, number] = match;
+    if (name !== undefined) {
+      out.push(<span key={key++} className="tok-key">{name}</span>);
+      out.push(<span key={key++} className="tok-punct">{equals}</span>);
+    } else out.push(<span key={key++} className={string !== undefined ? 'tok-str' : number !== undefined ? 'tok-num' : 'tok-punct'}>{whole}</span>);
+    last = index + whole.length;
+  }
+  if (last < text.length) out.push(text.slice(last));
+  return out;
+}
+
 /**
- * The agent projection is line-oriented: a label, then its value, separated either by
- * `label: value` or by a run of spaces. The label reads as a key; numbers and quoted
- * strings in the value read as literals. Lines that are neither stay plain.
+ * The agent projection is line-oriented. Current records lead with a record keyword and
+ * carry `field=value` pairs, so the keyword and each field name read as keys. Older
+ * `label: value` and space-aligned rows keep their earlier reading. Lines that are
+ * neither stay plain.
  */
 export function highlightLines(text: string): ReactNode[] {
   return text.split('\n').flatMap((line, row) => {
-    const match = /^([A-Za-z][^:]*?:)(\s.*)$/u.exec(line) ?? /^(\S(?:.*?\S)?)(\s{2,}.*)$/u.exec(line);
-    const body = match ? [<span key={`k${row}`} className="tok-key">{match[1]}</span>, ...values(match[2]!, row * 1000)] : [line];
+    const seed = row * 1000;
+    const record = /^(\S+)(\s.*)$/u.exec(line);
+    let body: ReactNode[];
+    if (record && /[A-Za-z_][\w.]*=/u.test(record[2]!)) {
+      body = [<span key={`k${row}`} className="tok-key">{record[1]}</span>, ...fields(record[2]!, seed)];
+    } else {
+      const match = /^([A-Za-z][^:]*?:)(\s.*)$/u.exec(line) ?? /^(\S(?:.*?\S)?)(\s{2,}.*)$/u.exec(line);
+      body = match ? [<span key={`k${row}`} className="tok-key">{match[1]}</span>, ...values(match[2]!, seed)] : [line];
+    }
     return row === 0 ? body : ['\n', ...body];
   });
 }
