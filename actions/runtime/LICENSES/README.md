@@ -25,3 +25,57 @@ The npm artifact includes MIT software, the CC BY 4.0 root README and documentat
 ## Third parties
 
 Vendored runtime dependencies in `actions/runtime/node_modules/` retain their own licences and notices, recorded in `actions/runtime/MANIFEST.json`; diffdevil's MIT notice does not replace them. Historical evidence in `docs/reference/` describes its original subject and date, not a newly licensed software component.
+
+### Website icon material
+
+The website resolves selected icon geometry at build time and embeds it in generated HTML. `@iconify-json/lucide@1.2.135` supplies Lucide UI geometry under the ISC licence, and `@iconify-json/simple-icons@1.2.97` supplies Simple Icons brand geometry under CC0-1.0. The dependency packages are build inputs rather than browser requests, but the embedded geometry keeps its original terms. The built website publishes this component map at `/docs/licences/` so the notices travel with that distribution.
+
+The GitHub, Discord, Bluesky, Google Chrome, and GitHub Actions names and marks remain the property of their respective owners. Simple Icons' CC0 dedication covers the icon data; it does not waive trademark, patent, publicity, privacy, or other third-party rights. Inclusion describes the selected visual source and implies no sponsorship, affiliation, or endorsement. The full [CC0 1.0 legal code](https://creativecommons.org/publicdomain/zero/1.0/legalcode) remains the upstream terms for the selected Simple Icons data.
+
+The four `diffdevil/*` product glyphs embedded in `apps/website/src/data/icons.ts` are copied unchanged from `Wolfsblvt/wolfsblvt-icons@8596b6bc2ba7c4b950963b7ec26cee1a26974439`. They are original Wolfsblvt Works material under the [MIT licence](MIT.txt); incorporating them into the AGPL-covered website does not replace that MIT notice. `@wolfsblvt/icons` is the intended package route but is not yet published, so this exact source and licence coordinate remains the current vendored boundary.
+
+#### Lucide ISC notice
+
+```text
+ISC License
+
+Copyright (c) 2026 Lucide Icons and Contributors
+
+Permission to use, copy, modify, and/or distribute this software for any
+purpose with or without fee is hereby granted, provided that the above
+copyright notice and this permission notice appear in all copies.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+```
+
+Some selected Lucide geometry is derived from Feather. The following notice accompanies those icons:
+
+```text
+The MIT License (MIT)
+
+Copyright (c) 2013-present Cole Bemis
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
