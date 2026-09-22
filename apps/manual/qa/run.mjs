@@ -136,7 +136,7 @@ try {
   assert.equal(records.records.filter(record=>record.kind==='FAQ').length,faq.length);
   const indexedManual = records.records.filter(record=>new URL(record.url).hostname==='docs.diffdevil.dev').map(record=>new URL(record.url).pathname).sort();
   assert.deepEqual(indexedManual,manifest.records.filter(record=>record.current).map(record=>record.route).sort());
-  assert.equal(records.records.some(record=>['/source/','/privacy/','/impressum/'].includes(new URL(record.url).pathname) || new URL(record.url()).pathname.startsWith('/__qualification/')),false);
+  assert.equal(records.records.some(record=>['/source/','/privacy/','/impressum/'].includes(new URL(record.url).pathname) || new URL(record.url).pathname.startsWith('/__qualification/')),false);
   const hash=file=>createHash('sha256').update(readFileSync(file)).digest('hex');
   assert.equal(hash('artifacts/website/dist/pagefind/pagefind.js'),hash('artifacts/manual/dist/pagefind/pagefind.js'));
   await page.goto(origins.docs+'/'); await page.keyboard.press('Control+k');

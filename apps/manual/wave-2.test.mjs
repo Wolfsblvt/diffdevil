@@ -124,6 +124,7 @@ test('extension navigation, selected assets and canonical Skill sources have sep
  assert.ok(existsSync(join(root,'skills/diffdevil/references/install-and-update.md')));
  const source=read('apps/website/src/lib/sources.ts');assert.match(source,/skill: 'docs\/setup\/skill\.md'/u);
  // Public install snippets select the registry route, not a stale fixed patch release.
- for(const page of pages.filter(page=>page.wave===1||page.wave===2))
-  for(const [,kind,body] of blocks(page.source))if(['sh','bash','powershell'].includes(kind))assert.doesNotMatch(body,/@wolfsblvt\/diffdevil@\d/u,page.source);
+ const installSources=[...pages.filter(page=>page.wave===1||page.wave===2).map(page=>page.source),'docs/setup/cli.md'];
+ for(const source of installSources)
+  for(const [,kind,body] of blocks(source))if(['sh','bash','powershell'].includes(kind))assert.doesNotMatch(body,/@wolfsblvt\/diffdevil@\d/u,source);
 });
