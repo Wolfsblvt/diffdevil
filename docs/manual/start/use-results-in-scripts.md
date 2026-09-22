@@ -67,8 +67,8 @@ printf 'Changed: %s\n' "$changed"
 diffdevil check --report "$report" --metric changed --lt "$limit" --format json > "$work/check.json"
 decision=$?
 case "$decision" in
-  0) printf 'Changed is below %s.\n' "$limit" ;;
-  1) printf 'Changed is not below %s.\n' "$limit" ;;
+  0) printf '%s\n' "Changed is below $limit." ;;
+  1) printf '%s\n' "Changed is not below $limit." ;;
   *) exit "$decision" ;;
 esac
 
@@ -110,7 +110,7 @@ $previousEncoding = [Console]::OutputEncoding
 $pathsFile = $null
 try {
     [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
-    $cli = (Get-Command diffdevil -CommandType Application -ErrorAction Stop).Source
+    $cli = (Get-Command diffdevil -CommandType Application -ErrorAction Stop | Select-Object -First 1).Source
     $changed = & $cli query --report $Report --metric changed --format value
     $code = $LASTEXITCODE
     if ($code -ne 0) { exit $code }

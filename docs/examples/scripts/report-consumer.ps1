@@ -11,7 +11,7 @@ $previousEncoding = [Console]::OutputEncoding
 $pathsFile = $null
 try {
     [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
-    $cli = (Get-Command diffdevil -CommandType Application -ErrorAction Stop).Source
+    $cli = (Get-Command diffdevil -CommandType Application -ErrorAction Stop | Select-Object -First 1).Source
     $changed = & $cli query --report $Report --metric changed --format value
     $code = $LASTEXITCODE
     if ($code -ne 0) { exit $code }
