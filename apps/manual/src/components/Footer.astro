@@ -1,0 +1,35 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only
+import Pagination from '@astrojs/starlight/components/Pagination.astro';
+import SiteFooter from '../../../website/src/components/Footer.astro';
+import fragments from '../generated/fragments.json';
+const { entry } = Astro.locals.starlightRoute;
+const meta = entry.data.diffdevil;
+const aliases = meta ? fragments[meta.key as keyof typeof fragments] ?? {} : {};
+---
+<footer class="docs-footer" data-pagefind-ignore>
+  {meta && <div class="docs-provenance">
+    {entry.data.editUrl && <a href={String(entry.data.editUrl)} rel="noopener">Edit on GitHub</a>}
+    <a href={meta.sourceUrl} rel="noopener">View source · {meta.source}</a>
+    <span>Applies to v{meta.appliesTo}</span>
+  </div>}
+  <Pagination />
+  {Object.keys(aliases).length > 0 && <details class="fragment-compatibility"><summary>Earlier section links</summary><ul>{Object.entries(aliases).map(([id,url]) => <li><a id={id} href={String(url)}>{id}</a></li>)}</ul></details>}
+</footer>
+<script type="application/json" data-fragment-aliases set:html={JSON.stringify(aliases).replaceAll('<','\\u003c')}></script>
+<script>
+  const map = JSON.parse(document.querySelector('[data-fragment-aliases]')?.textContent ?? '{}');
+  const follow = () => {
+    let id; try { id = decodeURIComponent(location.hash.slice(1)); } catch { return; }
+    if (!Object.hasOwn(map,id)) return;
+    const target = new URL(map[id]);
+    if (target.href !== location.href) location.replace(target.href);
+  };
+  follow(); window.addEventListener('hashchange',follow);
+</script>
+<div class="docs-site-footer"><SiteFooter /></div>
+<style>
+.docs-site-footer { margin:40px calc(-1 * var(--sl-content-pad-x)) 0; }
+.docs-site-footer :global(.site-footer) { padding-inline:var(--sl-content-pad-x); }
+.docs-site-footer :global(.site-footer .grid) { padding-inline:0; }
+</style>
