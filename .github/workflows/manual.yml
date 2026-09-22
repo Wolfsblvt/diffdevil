@@ -39,6 +39,19 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
           persist-credentials: false
+      - name: Retain exact public source for Wave 3 authoring
+        run: |
+          mkdir -p artifacts/wave-three-source
+          git bundle create artifacts/wave-three-source/source.bundle HEAD refs/remotes/origin/main
+          git rev-parse HEAD HEAD^{tree} refs/remotes/origin/main refs/remotes/origin/main^{tree} > artifacts/wave-three-source/coordinates.txt
+          sha256sum artifacts/wave-three-source/source.bundle > artifacts/wave-three-source/SHA256SUMS
+      - name: Read-only source transport
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: wave-three-source-${{ github.event.pull_request.head.sha || github.sha }}
+          retention-days: 3
+          if-no-files-found: error
+          path: artifacts/wave-three-source/
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
         with:
           node-version: '22'
