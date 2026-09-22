@@ -51,6 +51,7 @@ const bin = join(home, 'node_modules/.bin/diffdevil');
 const packageVersion = JSON.parse(await readFile(join(packageRoot, 'package.json'), 'utf8')).version;
 assert.equal(JSON.parse(await readFile(join(packageRoot, 'package.json'), 'utf8')).license, 'SEE LICENSE IN LICENSE.md');
 assert.match(await readFile(join(packageRoot, 'LICENSE.md'), 'utf8'), /component-specific terms.*LICENSES\/README\.md/is);
+assert.equal(JSON.parse(await readFile(join(packageRoot, 'LICENSES/README.md'), 'utf8')).includes(''), false);
 assert.equal(JSON.parse(await readFile(join(packageRoot, 'package.json'), 'utf8')).author, 'Wolfsblvt Works');
 assert.match(await readFile(join(packageRoot, 'LICENSES/README.md'), 'utf8'), /documentation prose.*Creative Commons Attribution 4\.0/is);
 // npm owns platform-specific launcher selection and escaping on Windows. Do not
@@ -202,7 +203,13 @@ writeFileSync('path-report.json', JSON.stringify(unwrap(analyzeDiff(${JSON.strin
 // names need to be created on disk.
 run(process.execPath, ['path-report.mjs'], home);
 const shells = process.platform === 'win32' ? ['powershell', 'pwsh'] : ['bash'];
-const environment = { ...process.env, PATH: join(home, 'node_modules/.bin') + (process.platform === 'win32' ? ';' : ':') + process.env.PATH, NO_COLOR: '1' };
+const environment = { ...process.env, NO_COLOR: '1' };
+// Windows treats Path and PATH as one variable; a spread followed by PATH can
+// leave two keys and let the child receive the unmodified one. Emit exactly one.
+const pathKeys = Object.keys(environment).filter(key => process.platform === 'win32' ? key.toLowerCase() === 'path' : key === 'PATH');
+const inheritedPath = environment[pathKeys[0]] ?? '';
+for (const key of pathKeys) delete environment[key];
+environment.PATH = join(home, 'node_modules/.bin') + (process.platform === 'win32' ? ';' : ':') + inheritedPath;
 for (const shell of shells) {
   const script = join(packageRoot, 'docs/examples/scripts/report-consumer.' + (shell === 'bash' ? 'sh' : 'ps1'));
   for (const [report, limit, expected] of [
