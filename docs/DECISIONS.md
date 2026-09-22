@@ -13,7 +13,7 @@ This document records durable product and repository choices whose rationale wou
 
 **Why:** The name is self-explanatory enough for developer tooling and carries a small authored dark-cute edge through “The devil is in the diff.” The product language remains precise and composed.
 
-**Source:** `docs/BRANDING.md`.
+**Source:** `docs/branding.md`.
 
 ### D002 — One repository and one public npm package
 
@@ -142,7 +142,7 @@ through flags. Both routes continue to use one compiler with parity tests.
 
 **Why:** The selected identity gives diffdevil a memorable authored presence while retaining the serious, precise posture required for developer infrastructure. Keeping the complete supplied reference package avoids reducing the decision to a logo summary or treating a design sheet as executable website source.
 
-**Consequences:** `docs/BRANDING.md`, this decision, the project map, and the licence map name the settled system and its source home. The admitted reference bytes remain preserved; the explicit-light `--accent-text` cascade defect is recorded separately in [`../design/ERRATA.md`](../design/ERRATA.md). The GitHub App uses the same product mark. Favicon, App-upload, and social rasters are reproducible, untracked derivatives of the canonical SVGs unless a named consumer requires one exact source-served raster. Production still owes the derivation path, self-hosted font subsets, runtime theme behavior, and accessibility/responsive qualification through [the visual implementation Work](https://github.com/Wolfsblvt/emergency-meeting/issues/475). This decision does not implement those surfaces or settle later dashboard co-design.
+**Consequences:** `docs/branding.md`, this decision, the project map, and the licence map name the settled system and its source home. The admitted reference bytes remain preserved; the explicit-light `--accent-text` cascade defect is recorded separately in [`../design/ERRATA.md`](../design/ERRATA.md). The GitHub App uses the same product mark. Favicon, App-upload, and social rasters are reproducible, untracked derivatives of the canonical SVGs unless a named consumer requires one exact source-served raster. Production still owes the derivation path, self-hosted font subsets, runtime theme behavior, and accessibility/responsive qualification through [the visual implementation Work](https://github.com/Wolfsblvt/emergency-meeting/issues/475). This decision does not implement those surfaces or settle later dashboard co-design.
 
 **Rejected or superseded:** The prior open visual-co-design standing is superseded. Generic mascot-led, horror-oriented, or novelty-package visual directions were not selected; neither is a second identity exploration required before source adoption.
 
@@ -304,7 +304,7 @@ The private recovery archive carries the fifteen-package offline closure.
 
 **Sources:** Locked YAML/Ajv package closure; the maintained diagnostics/source-map
 contract; `tools/schema-build.mjs`; executed YAML, schema and package evidence in
-`docs/QUALIFICATION.md`.
+`docs/qualification.md`.
 
 ## D024: Verify executable contracts without freezing narrative
 
@@ -352,7 +352,7 @@ are not embedded as a product restriction.
 
 **Sources.** The accepted complete-product assignment; maintained GitHub and
 interchange contracts; [current API evidence](reference/2026-09-14/github-api.md);
-mocked provider and installed-package tests in `docs/QUALIFICATION.md`.
+mocked provider and installed-package tests in `docs/qualification.md`.
 
 ## D026: Keep local Git data-only without losing PR comparison identity
 
@@ -406,7 +406,7 @@ maintenance evidence, or a dependency shape that no longer fits native resolutio
 **Sources.** The accepted install-free Action frontier;
 [distribution manual](integration/action-distribution.md);
 [dated primary-source evidence](reference/2026-09-14/action-distribution.md);
-executed consumer and parity results in [Qualification](QUALIFICATION.md).
+executed consumer and parity results in [Qualification](qualification.md).
 
 ## D028: Group the single product and nest prerelease sub-actions
 
@@ -431,7 +431,7 @@ together. Generated runtime dependencies remain complete and notices are preserv
 **Limits.** This is a responsibility grouping, not an npm workspace split, a new
 build system, or a directory-count enforcement rule. Current consumers are proved
 by the ordinary suite, installed-package journey and isolated distributed Actions.
-See [the project map](PROJECT-MAP.md) and [Qualification](QUALIFICATION.md).
+See [the project map](PROJECT-MAP.md) and [Qualification](qualification.md).
 
 ## D029: Keep one engine across reusable and managed application surfaces
 
@@ -584,7 +584,7 @@ the distributed Action is rerun with both real tokens.
 
 **Current consequence.** `npm run website:build` and `check:website` regenerate the collection; the manifest is tested for existing sources and unique slugs. Optional sources (the Agent Skill, setup instructions) render and are served raw only when present. The playground's "Try it" companions are added by the generator where a page links to an asset the playground carries as a fixture.
 
-**Sources.** [Documentation design](DOCUMENTATION.md); [website README](../apps/website/README.md); the accepted public-surface design's build notes.
+**Sources.** [Documentation design](documentation.md); [website README](../apps/website/README.md); the accepted public-surface design's build notes.
 
 ## D038: Run the shared engine in the browser for the playground; replay saved reports instead of refetching
 
@@ -633,7 +633,7 @@ no URL is fabricated. Final Support/Sponsor treatment and the authenticated dash
 experience retain their separate owner/design custody. The website remains locally
 qualified source only until its publication boundary is separately satisfied.
 
-**Sources.** Wolf's complete [first lived website review](https://github.com/Wolfsblvt/emergency-meeting/issues/475#issuecomment-5736061064), [header and navigation round](https://github.com/Wolfsblvt/emergency-meeting/issues/475#issuecomment-5753098953), and [Install/theme correction](https://github.com/Wolfsblvt/emergency-meeting/issues/475#issuecomment-5753617604); [website implementation contract](../apps/website/README.md); [documentation design](DOCUMENTATION.md); and D037.
+**Sources.** Wolf's complete [first lived website review](https://github.com/Wolfsblvt/emergency-meeting/issues/475#issuecomment-5736061064), [header and navigation round](https://github.com/Wolfsblvt/emergency-meeting/issues/475#issuecomment-5753098953), and [Install/theme correction](https://github.com/Wolfsblvt/emergency-meeting/issues/475#issuecomment-5753617604); [website implementation contract](../apps/website/README.md); [documentation design](documentation.md); and D037.
 
 ## D040: Make Changed the human focus and give agents a versioned compact projection
 
@@ -643,9 +643,9 @@ qualified source only until its publication boundary is separately satisfied.
 
 **Rejected.** A configurable presentation-focus metric; making every configured number equally prominent; printing all zero exception states by default; separating `Changed` from its decomposition; using brand magenta for data/status/evidence; color-only meaning; agents receiving verbose human output by default; retaining `DIFFDEVIL REPORT` plus the human rows; inventing a second agent data model; reducing agent output to JSON merely because JSON already exists; deriving `size/M` from band `m`; a website-only formatter or hard-coded transcript.
 
-**Current consequence.** [`PRESENTATION.md`](PRESENTATION.md) is the normative interface. The CLI and public library share the report/plan presenters; the website consumes them rather than maintaining display semantics. `--detail` and `--color` are confined to human report/plan presentation. Agent and machine formats never contain ANSI. Material textual changes receive public interface/release documentation without changing the canonical report schema by fiction. Provider results continue to own applied/readback standing.
+**Current consequence.** [`presentation.md`](presentation.md) is the normative interface. The CLI and public library share the report/plan presenters; the website consumes them rather than maintaining display semantics. `--detail` and `--color` are confined to human report/plan presentation. Agent and machine formats never contain ANSI. Material textual changes receive public interface/release documentation without changing the canonical report schema by fiction. Provider results continue to own applied/readback standing.
 
-**Sources.** Wolf and Nyxara's owner co-design in [emergency-meeting #491](https://github.com/Wolfsblvt/emergency-meeting/issues/491#issuecomment-5737100063); [textual branding](BRANDING.md); [versioning and interchange](language/versioning-and-interchange.md); [human and agent presentation](PRESENTATION.md).
+**Sources.** Wolf and Nyxara's owner co-design in [emergency-meeting #491](https://github.com/Wolfsblvt/emergency-meeting/issues/491#issuecomment-5737100063); [textual branding](branding.md); [versioning and interchange](language/versioning-and-interchange.md); [human and agent presentation](presentation.md).
 
 
 ## D041: Separate manual source identity from routes and preserve whole-source cutovers
@@ -678,7 +678,7 @@ redirect file. Hosting and publication remain separate effects.
 publication glob; duplicated FAQ answers; arbitrary-path source resolution; partial
 retirement of split sources; and local copies of the shared navigation/alert package.
 
-**Sources.** [Documentation design](DOCUMENTATION.md), [manual implementation
+**Sources.** [Documentation design](documentation.md), [manual implementation
 contract](../apps/manual/README.md), its explicit source/route and migration
 manifests, and the accepted shared package at
 `Wolfsblvt/starlight-works@22d4567006ec7a33d890fab2f3d3515332498a90`.

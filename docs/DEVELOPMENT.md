@@ -14,7 +14,7 @@ native pass exercised Windows 11 with Node **24.19.0**, npm **11.17.0**, and
 PowerShell **7.6.5**. The preceding layout pass exercised Linux x64 with Node
 **22.16.0**, npm **10.9.2**, and Git **2.47.3** at `main@fe3d8b22`. Action
 metadata selects **node24** independently of the npm package's `>=22` floor.
-Native macOS remains unobserved; [Qualification](QUALIFICATION.md) binds each
+Native macOS remains unobserved; [Qualification](qualification.md) binds each
 result to its candidate and boundary.
 
 The lockfile pins TypeScript 5.8.3, Node typings 22.15.33, Chevrotain 13.2.0,
@@ -97,7 +97,7 @@ portable-cache proof.
 The ordinary runner rejects zero discovery and test files with no registered
 tests. Skips, expected fixtures and a wrapper file that Node happens to load are
 not counted as executed behavioral proof. Current counts and limitations belong
-in [Qualification](QUALIFICATION.md), not a numerical quota in the runner.
+in [Qualification](qualification.md), not a numerical quota in the runner.
 
 The release carriers are generated under `artifacts/release/` and remain ignored
 until an authorized release operator attaches the exact qualified files. Their
@@ -211,12 +211,12 @@ PowerShell launcher files separately. The Linux POSIX path remains its own resul
 
 The read-only repository CI runs these same commands on Linux Node 22/24 and
 Windows Node 24. A source-authored matrix is not a passed hosted run. The native
-Windows result is recorded in [Qualification](QUALIFICATION.md); hosted Windows
+Windows result is recorded in [Qualification](qualification.md); hosted Windows
 and Linux checks still require exact-head observation after publication.
 
 Publication, release identity, real credentials, live settings and provider
-writes require their own authority. See [licence boundaries](../LICENSES/README.md), [release procedure](PUBLICATION-BOUNDARY.md)
-and exact current [Qualification](QUALIFICATION.md).
+writes require their own authority. See [licence boundaries](../LICENSES/README.md), [release procedure](publication-boundary.md)
+and exact current [Qualification](qualification.md).
 
 
 ## Public-manual toolchain and qualification
