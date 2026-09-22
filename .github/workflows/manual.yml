@@ -29,6 +29,8 @@ jobs:
     name: Two hosts / Chromium
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    outputs:
+      diagnostic: ${{ steps.diagnostic.outputs.summary }}
     env:
       DIFFDEVIL_EDIT_REF: docs/public-manual
     steps:
@@ -50,6 +52,22 @@ jobs:
       - run: npm --prefix apps/manual run qa
       - name: Preserve the admitted FAQ journey
         run: node apps/website/qa/faq.mjs
+      - name: Summarize browser qualification
+        id: diagnostic
+        if: always()
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFileSync, existsSync, appendFileSync } from 'node:fs';
+          const path = 'artifacts/manual/qa/result.json';
+          let summary = 'Manual: no browser result; inspect the preceding build/check';
+          if (existsSync(path)) {
+            const result = JSON.parse(readFileSync(path, 'utf8'));
+            summary = result.ok ? 'Manual: all browser journeys passed' : result.failures.map(failure =>
+              failure.name + ': ' + failure.error.replace(/\u001b\[[0-9;]*m/g, '').replace(/\s+/g, ' ')
+            ).join(' | ');
+          }
+          appendFileSync(process.env.GITHUB_OUTPUT, 'summary=' + summary.slice(0, 240) + '\n');
+          NODE
       - name: Qualification evidence
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
@@ -66,3 +84,16 @@ jobs:
             artifacts/manual-toolchain/source-receipt.json
             artifacts/manual-toolchain/consumer-receipt.json
             apps/manual/package-lock.json
+
+  qualification-result:
+    needs: static-reading
+    if: always()
+    name: ${{ needs.static-reading.outputs.diagnostic || 'Manual qualification did not return a result' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    permissions: {}
+    steps:
+      - name: Preserve the qualification outcome
+        env:
+          RESULT: ${{ needs.static-reading.result }}
+        run: test "$RESULT" = success
