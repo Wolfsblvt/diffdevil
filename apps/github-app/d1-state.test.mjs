@@ -8,7 +8,7 @@ import { Miniflare } from 'miniflare';
 import { D1AppStore } from './storage.mjs';
 import { createAdmissionService } from './admission.mjs';
 
-const migrations = ['0001_initial.sql', '0002_consent-provenance.sql', '0003_preserve-active-consent.sql', '0004_admission-settings.sql'];
+const migrations = ['0001_initial.sql', '0002_consent-provenance.sql', '0003_preserve-active-consent.sql', '0004_admission-settings.sql', '0005_offboarding-consent-tombstones.sql'];
 const projection = {
   schemaVersion: 3, engineVersion: 'engine-v1', reportVersion: 'report-v1', metricVersion: 'metrics-v1', source: { base: 'base', head: 'head' }, evidence: 'exact', fileSet: { complete: true, total: { status: 'exact', value: 1 } }, totals: {}, configuredResults: [], gaps: [], files: [{ ordinal: 0, raw: {}, lines: {} }], effects: [{ kind: 'label.add', outcome: 'changed', request: 'accepted', readback: 'verified' }]
 };
@@ -80,12 +80,43 @@ test('local D1 keeps execution fences, repair claims, expiry, offboarding, and p
     assert.ok(await source.database.prepare("SELECT 1 FROM deletion_tombstones WHERE scope='repository:18'").first(), 'offboarding creates the repository tombstone after deletion');
     await source.store.recordLifecycle({ installationId: 10, action: 'created', addedRepositories: [18], removedRepositories: [] });
     assert.deepEqual(await source.store.repositoryConsentState(18), {
-      execution: { origin: 'unknown', reason: 're-consent-required' },
-      history: { origin: 'unknown', reason: 're-consent-required' },
+      execution: { origin: 'unknown', reason: 'never-enabled' },
+      history: { origin: 'unknown', reason: 'never-enabled' },
       configuration: { origin: 'unknown' }
-    }, 'a post-grace re-add preserves the tombstone\'s lost-reach consequence');
+    }, 'a post-grace re-add preserves the never-enabled standing');
   } finally {
     await source.runtime.dispose();
+  }
+});
+
+test('offboarding preserves every consent standing before and after the grace period', async () => {
+  for (const { label, readdedAt, expiresGrace } of [
+    { label: 'day 29', readdedAt: '2026-10-21T00:00:00.000Z', expiresGrace: false },
+    { label: 'day 31', readdedAt: '2026-10-23T00:00:00.000Z', expiresGrace: true }
+  ]) {
+    const clock = { value: '2026-09-22T00:00:00.000Z' };
+    const source = await localStore(clock);
+    try {
+      await source.store.recordLifecycle({ installationId: 9, action: 'created', addedRepositories: [31, 32, 33], removedRepositories: [] });
+      await source.store.setRepositoryExecution(32, { enabled: false, origin: 'fixture' });
+      await source.store.setRepositoryExecution(33, { enabled: true, origin: 'fixture' });
+      await source.store.setRepositoryConsent(33, { enabled: true, retentionDays: 30, policyId: 'fixture', origin: 'fixture' });
+      await source.store.recordLifecycle({ installationId: 9, action: 'removed', addedRepositories: [], removedRepositories: [31, 32, 33] });
+
+      clock.value = readdedAt;
+      if (expiresGrace) await source.store.maintain();
+      await source.store.recordLifecycle({ installationId: 10, action: 'created', addedRepositories: [31, 32, 33], removedRepositories: [] });
+
+      const consentReasons = async repositoryId => {
+        const consent = await source.store.repositoryConsentState(repositoryId);
+        return { execution: consent.execution.reason, history: consent.history.reason };
+      };
+      assert.deepEqual(await consentReasons(31), { execution: 'never-enabled', history: 'never-enabled' }, `${label} preserves a never-enabled repository`);
+      assert.deepEqual(await consentReasons(32), { execution: 'explicitly-disabled', history: 'never-enabled' }, `${label} preserves a deliberately disabled repository`);
+      assert.deepEqual(await consentReasons(33), { execution: 're-consent-required', history: 're-consent-required' }, `${label} requires new consent only for previously enabled capability`);
+    } finally {
+      await source.runtime.dispose();
+    }
   }
 });
 
