@@ -4,7 +4,6 @@
   "reservedIdentity": true,
   "fontsEmbedded": false,
   "imageRequirements": "https://developer.chrome.com/docs/webstore/images",
-  "generatedOn": "2026-09-22",
   "entries": [
     {
       "path": "screenshots/01-changed-on-github.png",
@@ -69,6 +68,7 @@
       "colorType": 2,
       "sha256": "8502063c3c7cd0c895864d106d9d7fe0b30e0565bad7a768055c55a7df7930bd",
       "editableSource": "promo/small-promo-440x280.svg",
+      "editableSourceSha256": "164930fee885329bb008d4a0dbdf4320fb9bb111de68e71445551429aa2200a0",
       "standing": "Authored promotional composition using accepted identity bytes and exact synthetic fixture measurements."
     },
     {
@@ -79,6 +79,7 @@
       "colorType": 2,
       "sha256": "98e524b6b19acb893d9cff57be87f72b81b1277825fe3bf301fb393e25c5f646",
       "editableSource": "promo/marquee-1400x560.svg",
+      "editableSourceSha256": "23f555cd57da09d84ea9fc1747dde05bd9a1353d86ad78e00b63ce3a0ede3368",
       "standing": "Authored promotional composition using accepted identity bytes and exact synthetic fixture measurements."
     },
     {

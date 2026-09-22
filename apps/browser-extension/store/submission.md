@@ -20,6 +20,15 @@ Confirm the full-colour/none choices and the pinned accepted centre-seam monochr
 
 Build the exact version without development harnesses, source maps, tokens, credentials, test browser profiles or dependency caches in the unpacked package. The manifest must remain MV3 with the declared minimal permissions and no remote-code allowance. The package must contain its applicable code/font notices and corresponding-source location. A font-free package is supported; do not advertise bundled typography in that package.
 
+Create the ignored extension archive only from an accepted unpacked build:
+
+```sh
+npm run extension:build
+npm run extension:package
+```
+
+`extension:package` requires the unpacked tree to match its build receipt exactly, packages only the explicit extension-member allowlist in stable member and timestamp order, then reads the ZIP back and verifies every member's path, size, CRC-32 and SHA-256. Its ZIP and receipt are local release artifacts, not Store publication evidence.
+
 The committed Store source must contain:
 
 - `assets/store-icon-128.png`;

@@ -31,7 +31,7 @@ apps/browser-extension/store/
       marquee-1400x560.svg
 ```
 
-`listing.md` is the Store copy source. `privacy-answers.md` maps the actual local-first behavior to Store declarations. `submission.md` owns the release gate and reviewer notes. The asset manifest records dimensions, colour format, SHA-256, provenance and standing for every submitted raster. Editable promotional SVGs live beside their rendered PNGs.
+`listing.md` is the Store copy source. `privacy-answers.md` maps the actual local-first behavior to Store declarations. `submission.md` owns the release gate and reviewer notes. The asset manifest records dimensions, colour format, SHA-256, provenance and standing for every submitted raster, plus the exact SHA-256 of each editable promotional SVG. It is deterministic from its retained source bytes: no generation date is tracked. The validator compares the complete recursive asset tree with its exact allowlist, so stale or unlisted files fail preparation.
 
 ## Ordinary preparation
 
@@ -46,6 +46,15 @@ artifacts/browser-extension/store/
 ```
 
 That ignored directory is a disposable submission kit. The committed `apps/browser-extension/store/` tree remains the authority.
+
+To create the separately ignored extension upload archive from a verified unpacked build:
+
+```sh
+npm run extension:build
+npm run extension:package
+```
+
+The package command validates the unpacked tree against `build-receipt.json`, admits only the extension's explicit member allowlist, writes members in stable order with a fixed timestamp, then reads every ZIP member back to verify its path, size, CRC-32 and SHA-256. It creates no Store submission or publication.
 
 ## Deliberate asset regeneration
 
