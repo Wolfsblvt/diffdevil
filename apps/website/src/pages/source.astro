@@ -2,12 +2,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { readFileSync, existsSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 import Base from '../layouts/Base.astro';
 import { sourceTargets } from '../../../manual/source-resolver.mjs';
 import { entries } from '../../docs-manifest.mjs';
-const root = fileURLToPath(new URL('../../../../',import.meta.url));
+// Repository commands run from the repository root. Astro relocates this module
+// during prerendering, so import.meta.url cannot identify maintained source files.
+const root = process.cwd();
 const ref = process.env.DIFFDEVIL_SOURCE_REF ?? execFileSync('git',['rev-parse','HEAD'],{cwd:root,encoding:'utf8'}).trim();
 const state = JSON.parse(readFileSync(join(root,'apps/manual/authoring-state.json'),'utf8'));
 const targets = sourceTargets({ref,state,exists:(path:string)=>existsSync(join(root,path)),legacySources:entries.map(entry=>entry.source)});
