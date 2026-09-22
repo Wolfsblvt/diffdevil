@@ -11,3 +11,27 @@ export function resolveSource(input, targets) {
  if (fragment && Object.hasOwn(target.fragments ?? {}, fragment)) return target.fragments[fragment];
  return target.url + (fragment ? '#' + encodeURIComponent(fragment) : '');
 }
+
+/** Keep the displayed source synchronized with same-document navigation.
+ * @param {{view: Window, targets: Record<string, {url: string, fragments?: Record<string, string>}>, link: HTMLAnchorElement, status: HTMLElement}} options
+ */
+export function bindSourceSelection({view, targets, link, status}) {
+ const refresh = () => {
+  const target = resolveSource(view.location.href, targets);
+  link.hidden = !target;
+  status.textContent = target ? 'Selected source found.' : 'No recognized source was selected.';
+  if (target) {
+   link.setAttribute('href', target);
+   link.focus();
+  } else {
+   link.removeAttribute('href');
+  }
+ };
+ view.addEventListener('hashchange', refresh);
+ view.addEventListener('popstate', refresh);
+ refresh();
+ return () => {
+  view.removeEventListener('hashchange', refresh);
+  view.removeEventListener('popstate', refresh);
+ };
+}

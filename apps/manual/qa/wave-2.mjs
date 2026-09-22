@@ -54,6 +54,19 @@ export async function qualifySurfaces({page,origins,check,screenshot}) {
     await expect(page.locator('[data-source-result]')).toHaveAttribute('href',`https://github.com/Wolfsblvt/diffdevil/blob/${ref}/${selected.source}#${target.anchor}`);
    }
   }
+  // Same-document Back/Forward must reselect the destination, not retain a stale link.
+  const [source,transfer]=Object.entries(state.transfers)[0];
+  const [[first,firstTarget],[second,secondTarget]]=Object.entries(transfer.anchors);
+  const expected=target=>`https://github.com/Wolfsblvt/diffdevil/blob/${ref}/${manualPages.find(page=>page.key===target.page).source}#${target.anchor}`;
+  await page.goto(origins.site+'/source/?f='+encodeURIComponent(source)+'#'+first);
+  await page.goto(origins.site+'/source/?f='+encodeURIComponent(source)+'#'+second);
+  await page.goBack();
+  await expect(page.locator('[data-source-result]')).toHaveAttribute('href',expected(firstTarget));
+  await page.goForward();
+  await expect(page.locator('[data-source-result]')).toHaveAttribute('href',expected(secondTarget));
+  await page.evaluate(()=>{location.hash='%E0%A4%A';});
+  await expect(page.locator('[data-source-result]')).toBeHidden();
+  await expect(page.locator('[data-source-result]')).not.toHaveAttribute('href');
   const {records}=JSON.parse(readFileSync('artifacts/public-search/records.json','utf8'));
   for(const route of ['/use/playground/','/use/coding-agent/','/use/reports-plans-and-apply/'])
    assert.ok(records.some(record=>record.url===origins.docs+route||record.canonical===origins.docs+route),route);

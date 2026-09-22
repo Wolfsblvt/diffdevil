@@ -40,8 +40,8 @@ commands. It is not an npm publication. `npm --prefix apps/manual run toolchain`
 records source and consumer receipts under `artifacts/manual-toolchain/`. The package
 supplies linked sidebar groups and the five GitHub alerts; this repository does not
 copy their implementation. The manual's isolated dependency graph supplies its
-supported Starlight 0.42.2 peer without upgrading the accepted website's locked
-Starlight 0.42.1 graph.
+supported Starlight 0.42.2 peer without rewriting the website's independent root
+lockfile. A later root-toolchain update remains its own qualified source change.
 
 The source package is unpacked from its verified local tarball and installed with
 `--install-links`, not linked into a sibling repository. Direct consumer versions
@@ -214,11 +214,14 @@ inputs. The library and canonical shell consumers remain packaged with the reusa
 open complete examples, admitted settings image, shared-workflow links, raw Skill
 setup, retired source/fragment destinations and selected search records. The common
 suite also exercises emitted 308 handlers, themes, five alerts, FAQ and no-JavaScript
-reading. Provider installation/publication and an actual screen-reader journey are
+reading. Source selection also follows fragment and Back/Forward navigation; a
+refused location removes any previously displayed destination. The read-only CI
+result check exposes the first browser failure to status-only clients without
+skipping tests or granting repository-write permission. Provider installation/publication and an actual screen-reader journey are
 not claimed by these tests.
 
 At this authoring boundary, extension source is admitted but Store publication is
-not established. Extension PR #45 at `5efea7761121d96cad29922158af8d5949cf30d7` is an
+not established. Extension PR #45 at `fbb127c1c30c98ab0d28670fa447b2476a1d31ef` is an
 open launch-target candidate, not adopted source. Full configurable Playground
 source and a deployed measurement-only service remain different availability
 claims. The enhanced CLI presenter must exist in the selected released executable;

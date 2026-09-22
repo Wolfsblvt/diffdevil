@@ -11,7 +11,11 @@ import { entries } from '../../docs-manifest.mjs';
 const root = process.cwd();
 const ref = process.env.DIFFDEVIL_SOURCE_REF ?? execFileSync('git',['rev-parse','HEAD'],{cwd:root,encoding:'utf8'}).trim();
 const state = JSON.parse(readFileSync(join(root,'apps/manual/authoring-state.json'),'utf8'));
-const targets = sourceTargets({ref,state,exists:(path:string)=>existsSync(join(root,path)),legacySources:entries.map(entry=>entry.source)});
+const legacySources = entries.map(entry => {
+  if (!entry.source) throw new Error('A selected legacy entry has no source identity.');
+  return entry.source;
+});
+const targets = sourceTargets({ref,state,exists:(path:string)=>existsSync(join(root,path)),legacySources});
 ---
 <Base title="Source" description="Open a selected diffdevil source document." noindex>
   <section class="wrap source-resolver">
@@ -23,15 +27,11 @@ const targets = sourceTargets({ref,state,exists:(path:string)=>existsSync(join(r
   </section>
   <script type="application/json" data-source-targets set:html={JSON.stringify(targets).replaceAll('<','\\u003c')}></script>
   <script>
-    import { resolveSource } from '../lib/source-resolution.mjs';
+    import { bindSourceSelection } from '../lib/source-resolution.mjs';
     const targets = JSON.parse(document.querySelector('[data-source-targets]')?.textContent ?? '{}');
-    const target = resolveSource(location.href,targets);
-    if (target) {
-      const link = document.querySelector<HTMLAnchorElement>('[data-source-result]')!;
-      link.href = target; link.hidden = false;
-      document.querySelector('[data-source-status]')!.textContent = 'Selected source found.';
-      link.focus();
-    }
+    const link = document.querySelector<HTMLAnchorElement>('[data-source-result]');
+    const status = document.querySelector<HTMLElement>('[data-source-status]');
+    if (link && status) bindSourceSelection({view: window, targets, link, status});
   </script>
 </Base>
 <style>.source-resolver { padding-block:3rem; overflow-wrap:anywhere; } .source-resolver details { margin-block:2rem; } [hidden] { display:none!important; }</style>

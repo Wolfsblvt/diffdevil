@@ -25,7 +25,10 @@ export function sourceUrl(source,ref) {
  if (!/^[a-f0-9]{40}$/u.test(ref)) throw new Error('Source provenance needs an exact commit SHA.');
  return `https://github.com/Wolfsblvt/diffdevil/blob/${ref}/${source.split('/').map(encodeURIComponent).join('/')}`;
 }
-/** The resolver receives this finite generated map, never a repository path template. */
+/** The resolver receives this finite generated map, never a repository path template.
+ * @param {{ref: string, state: object, exists: (source: string) => boolean, legacySources?: string[]}} options
+ * @returns {Record<string, {url: string, fragments: Record<string, string>}>}
+ */
 export function sourceTargets({ ref, state, exists, legacySources = [] }) {
  const targets = Object.create(null);
  const selected = new Set([...pages.map(page=>page.sourceId),...repositorySources,

@@ -20,3 +20,34 @@ test('maintained resolver destinations exist at their selected repository paths'
   assert.ok(existsSync(new URL('../../'+source,import.meta.url)),`Missing maintained resolver destination: ${source}`);
  }
 });
+
+import { bindSourceSelection } from '../website/src/lib/source-resolution.mjs';
+test('source links follow fragments and history, and refusal removes a previous destination', () => {
+ const view = new EventTarget();
+ view.location = {href: 'https://diffdevil.dev/source/?f=old#first'};
+ const attributes = new Map();
+ const link = {hidden: true, setAttribute: (key,value) => attributes.set(key,value), removeAttribute: key => attributes.delete(key), focus() {this.focused = true;}};
+ const status = {textContent: ''};
+ const first = 'https://github.com/example/repo/blob/ref/start.md#first';
+ const second = 'https://github.com/example/repo/blob/ref/use.md#second';
+ const targets = {old: {url: first, fragments: {first, second}}};
+ const dispose = bindSourceSelection({view, targets, link, status});
+ assert.equal(attributes.get('href'), first); assert.equal(link.hidden, false); assert.equal(link.focused, true);
+ view.location.href = 'https://diffdevil.dev/source/?f=old#second';
+ view.dispatchEvent(new Event('hashchange'));
+ assert.equal(attributes.get('href'), second);
+ view.location.href = 'https://diffdevil.dev/source/?f=old#first';
+ view.dispatchEvent(new Event('popstate'));
+ assert.equal(attributes.get('href'), first);
+ for (const url of ['https://diffdevil.dev/source/?f=old#%E0%A4%A', 'https://diffdevil.dev/source/?f=old&f=another']) {
+  view.location.href = url; view.dispatchEvent(new Event('popstate'));
+  assert.equal(link.hidden, true); assert.equal(attributes.has('href'), false);
+  assert.equal(status.textContent, 'No recognized source was selected.');
+ }
+ view.location.href = 'https://diffdevil.dev/source/?f=old#second';
+ view.dispatchEvent(new Event('popstate'));
+ assert.equal(attributes.get('href'), second); assert.equal(link.hidden, false);
+ dispose(); view.location.href = 'https://diffdevil.dev/source/?f=old#first';
+ view.dispatchEvent(new Event('hashchange')); view.dispatchEvent(new Event('popstate'));
+ assert.equal(attributes.get('href'), second);
+});
