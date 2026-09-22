@@ -1,0 +1,94 @@
+{
+  "kind": "diffdevil.store-assets/2",
+  "published": false,
+  "reservedIdentity": true,
+  "fontsEmbedded": false,
+  "imageRequirements": "https://developer.chrome.com/docs/webstore/images",
+  "generatedOn": "2026-09-22",
+  "entries": [
+    {
+      "path": "screenshots/01-changed-on-github.png",
+      "width": 1280,
+      "height": 800,
+      "depth": 8,
+      "colorType": 2,
+      "sha256": "4c9f184f10c3e06f00f510aa11216edb6a12b4a6cc02416b780189ccd5e71bec",
+      "generatedFrom": "artifacts/browser-extension/qa/github-dark.png",
+      "caption": "Aggregate and lazy per-file Changed, raw churn, dynamic policy bands and local provenance.",
+      "standing": "Actual production UI in an explicitly authored fixture; not a live or installed-extension capture."
+    },
+    {
+      "path": "screenshots/02-inspect-the-report.png",
+      "width": 1280,
+      "height": 800,
+      "depth": 8,
+      "colorType": 2,
+      "sha256": "3fbab34170388228262012f1ed706e1a86852828a65f683f1c42a71d9b4b49fb",
+      "generatedFrom": "artifacts/browser-extension/qa/report-light.png",
+      "caption": "The persistent anchored report keeps source identity, evidence, decomposition and policy details inspectable.",
+      "standing": "Actual production UI in an explicitly authored fixture; not a live or installed-extension capture."
+    },
+    {
+      "path": "screenshots/03-your-icon-preference.png",
+      "width": 1280,
+      "height": 800,
+      "depth": 8,
+      "colorType": 2,
+      "sha256": "167f2fcb0546dd6c8d0de78e81c910d47e64187d42301a7e3211dd466949e6e6",
+      "generatedFrom": "artifacts/browser-extension/qa/settings-icon-dark.png",
+      "caption": "Literal stable-setting anchors and the monochrome, full-colour or no-icon choices.",
+      "standing": "Actual production UI in an explicitly authored fixture; not a live or installed-extension capture."
+    },
+    {
+      "path": "screenshots/04-your-policy-bands.png",
+      "width": 1280,
+      "height": 800,
+      "depth": 8,
+      "colorType": 2,
+      "sha256": "fbed955f04623b8b3d339a75676e61a6c3796eab1e0d721b99cd4a6d0f983d01",
+      "generatedFrom": "artifacts/browser-extension/qa/settings-bands-light.png",
+      "caption": "Editable personal thresholds, colour metadata and optional existing-label mappings in the authored light theme.",
+      "standing": "Actual production UI in an explicitly authored fixture; not a live or installed-extension capture."
+    },
+    {
+      "path": "screenshots/05-honest-uncertainty.png",
+      "width": 1280,
+      "height": 800,
+      "depth": 8,
+      "colorType": 2,
+      "sha256": "f8ee2eb2c49d1c084b4a11aff054b860eca2039fadd77c2a3da06e4898a5bd5b",
+      "generatedFrom": "artifacts/browser-extension/qa/evidence-unknown.png",
+      "caption": "Incomplete evidence remains visibly unknown. No unsupported exact total or selected band is manufactured.",
+      "standing": "Actual production UI in an explicitly authored fixture; not a live or installed-extension capture."
+    },
+    {
+      "path": "promo/small-promo-440x280.png",
+      "width": 440,
+      "height": 280,
+      "depth": 8,
+      "colorType": 2,
+      "sha256": "8502063c3c7cd0c895864d106d9d7fe0b30e0565bad7a768055c55a7df7930bd",
+      "editableSource": "promo/small-promo-440x280.svg",
+      "standing": "Authored promotional composition using accepted identity bytes and exact synthetic fixture measurements."
+    },
+    {
+      "path": "promo/marquee-1400x560.png",
+      "width": 1400,
+      "height": 560,
+      "depth": 8,
+      "colorType": 2,
+      "sha256": "98e524b6b19acb893d9cff57be87f72b81b1277825fe3bf301fb393e25c5f646",
+      "editableSource": "promo/marquee-1400x560.svg",
+      "standing": "Authored promotional composition using accepted identity bytes and exact synthetic fixture measurements."
+    },
+    {
+      "path": "store-icon-128.png",
+      "width": 128,
+      "height": 128,
+      "depth": 8,
+      "colorType": 6,
+      "sha256": "be8066b848641a2da4758d6fdef622de5bc85e08a1af318baeb836eed1d73aa0",
+      "standing": "Accepted master symbol on a 96×96 consumer field with 16px transparent outer padding; no new product glyph geometry."
+    }
+  ]
+}

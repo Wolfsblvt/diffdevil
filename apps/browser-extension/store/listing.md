@@ -18,7 +18,7 @@ This file keeps the public Chrome Web Store text and provider-field values versi
 | In-app purchases | No |
 | Homepage URL | `https://github.com/Wolfsblvt/diffdevil` until the accepted public `/extension/` page is deployed and read back |
 | Support URL | `https://github.com/Wolfsblvt/diffdevil/issues` |
-| Privacy policy URL | `https://github.com/Wolfsblvt/diffdevil/blob/main/apps/browser-extension/PRIVACY.md` until the accepted public privacy route is deployed and read back |
+| Privacy policy URL | `https://github.com/Wolfsblvt/diffdevil/blob/main/apps/browser-extension/privacy.md` until the accepted public privacy route is deployed and read back |
 | Official URL | Leave unset until a verified public `diffdevil.dev` property is available in the provider dashboard |
 | Promotional video | None selected. Do not add a provider-only URL; any later video and exact URL must first be admitted here. |
 
