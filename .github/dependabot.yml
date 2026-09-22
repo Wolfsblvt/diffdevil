@@ -14,3 +14,14 @@ updates:
         update-types:
           - minor
           - patch
+    ignore:
+      # Node typings follow the supported engine floor (>=22); newer majors would
+      # type-check APIs that Node 22 does not have.
+      - dependency-name: "@types/node"
+        update-types:
+          - version-update:semver-major
+      # Only the website checker uses this alias, until Astro supports TypeScript 7
+      # (tools/website-typecheck.mjs); a major bump would hand it TypeScript 7.
+      - dependency-name: "typescript-6"
+        update-types:
+          - version-update:semver-major

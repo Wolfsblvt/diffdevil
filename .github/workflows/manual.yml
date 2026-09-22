@@ -58,6 +58,19 @@ jobs:
           cache: npm
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - run: npm --prefix apps/manual run toolchain
+      - name: Retain the exact prepared authoring toolchain
+        run: |
+          tar -czf artifacts/wave-three-source/dependencies.tgz node_modules apps/manual/node_modules artifacts/manual-toolchain apps/manual/package-lock.json
+          sha256sum artifacts/wave-three-source/dependencies.tgz > artifacts/wave-three-source/DEPENDENCIES.sha256
+      - name: Prepared read-only authoring dependencies
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: wave-three-dependencies-${{ github.event.pull_request.head.sha || github.sha }}
+          retention-days: 3
+          if-no-files-found: error
+          path: |
+            artifacts/wave-three-source/dependencies.tgz
+            artifacts/wave-three-source/DEPENDENCIES.sha256
       - run: npm run website:build
       - run: npm --prefix apps/manual test
       - run: npm --prefix apps/manual run check
