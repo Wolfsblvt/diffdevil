@@ -1,0 +1,61 @@
+name: Public manual foundation
+
+on:
+  pull_request:
+    paths:
+      - 'apps/manual/**'
+      - 'apps/website/**'
+      - 'docs/manual/**'
+      - 'tools/manual-*.mjs'
+      - 'tools/public-build.mjs'
+      - 'tools/website-*.mjs'
+      - 'package*.json'
+      - '.github/workflows/manual.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: manual-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  static-reading:
+    name: Two hosts / Chromium
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      DIFFDEVIL_EDIT_REF: docs/public-manual
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npm run website:build
+      - run: npm run manual:check
+      - run: npx --no-install playwright install --with-deps chromium
+      - run: npm run manual:qa
+      - name: Preserve the admitted FAQ journey
+        run: node apps/website/qa/faq.mjs
+      - name: Qualification evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: public-manual-${{ github.event.pull_request.head.sha || github.sha }}
+          retention-days: 10
+          if-no-files-found: warn
+          path: |
+            artifacts/manual/
+            artifacts/website/dist/
+            artifacts/website/qa/
+            artifacts/public-search/records.json
+            artifacts/manual-toolchain/source-receipt.json
+            artifacts/manual-toolchain/consumer-receipt.json
+            apps/manual/package-lock.json

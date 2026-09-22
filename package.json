@@ -9,7 +9,7 @@
     "build:offline": "npm run build",
     "test": "node tools/browser-extension-build.mjs --without-fonts && node tools/test.mjs",
     "verify": "npm run check:prep && npm run build && npm test && npm run test:release && npm run check:actions && npm run check:workers && npm run check:github-app && npm run check:website && npm run extension:check && node tools/browser-extension-build.mjs",
-    "verify:offline": "npm run verify",
+    "verify:offline": "node tools/verify-offline.mjs",
     "test:package": "node tools/package-smoke.mjs",
     "prepack": "npm run build",
     "demo:shortcuts": "node tools/shortcut-demo.mjs",
@@ -25,14 +25,21 @@
     "check:github-app": "node tools/run-wrangler.mjs deploy --dry-run --config apps/github-app/wrangler.jsonc --outdir ../../artifacts/github-app-wrangler-dry-run && node tools/github-app-runtime-smoke.mjs",
     "website:assets": "node tools/website-assets.mjs",
     "website:docs": "node tools/website-docs.mjs --report",
-    "website:build": "npm run build && npm run website:assets && npm run website:docs && astro build --root apps/website",
+    "website:build": "npm run build && node tools/public-build.mjs",
     "website:dev": "npm run build && npm run website:assets && npm run website:docs && astro dev --root apps/website",
     "website:preview": "astro preview --root apps/website",
     "website:check": "node tools/website-docs.mjs && astro check --root apps/website",
-    "check:website": "node tools/website-assets.mjs && node tools/website-docs.mjs && astro build --root apps/website",
+    "check:website": "node tools/public-build.mjs",
     "test:website": "node --test apps/website/website.test.mjs",
     "qa:website": "node apps/website/qa/run.mjs",
     "extension:dev": "npm run extension:build",
+    "manual:prepare": "node tools/manual-package.mjs",
+    "manual:check": "npm run build && node tools/manual-command.mjs check",
+    "manual:dev": "npm run build && node tools/manual-command.mjs dev",
+    "manual:test": "node --test apps/manual/foundation.test.mjs",
+    "test:manual": "npm run manual:test",
+    "manual:qa": "node tools/manual-qa.mjs",
+    "qa:manual": "npm run manual:qa",
     "extension:build": "npm run build && npm run extension:check && node tools/browser-extension-build.mjs",
     "extension:check": "node node_modules/typescript/bin/tsc -p apps/browser-extension/tsconfig.json --pretty false",
     "extension:test": "node tools/browser-extension-build.mjs --without-fonts && node --test apps/browser-extension/tests/*.test.mjs",
@@ -40,70 +47,25 @@
     "extension:qa:installed": "node apps/browser-extension/qa/installed.mjs",
     "extension:store": "node tools/browser-extension-store.mjs"
   },
-  "keywords": [
-    "git",
-    "diff",
-    "github-actions",
-    "ci",
-    "policy",
-    "pull-request",
-    "typescript"
-  ],
+  "keywords": ["git", "diff", "github-actions", "ci", "policy", "pull-request", "typescript"],
   "author": "Wolfsblvt Works",
   "license": "SEE LICENSE IN LICENSE.md",
   "main": "./dist/lib/index.js",
   "types": "./dist/lib/index.d.ts",
-  "bin": {
-    "diffdevil": "./dist/lib/cli/main.js"
-  },
+  "bin": {"diffdevil": "./dist/lib/cli/main.js"},
   "exports": {
-    ".": {
-      "types": "./dist/lib/index.d.ts",
-      "import": "./dist/lib/index.js"
-    },
-    "./core": {
-      "types": "./dist/lib/core.d.ts",
-      "import": "./dist/lib/core.js"
-    },
-    "./language": {
-      "types": "./dist/lib/language/index.d.ts",
-      "import": "./dist/lib/language/index.js"
-    },
-    "./policy": {
-      "types": "./dist/lib/policy/index.d.ts",
-      "import": "./dist/lib/policy/index.js"
-    },
-    "./git": {
-      "types": "./dist/lib/sources/git.d.ts",
-      "import": "./dist/lib/sources/git.js"
-    },
+    ".": {"types": "./dist/lib/index.d.ts", "import": "./dist/lib/index.js"},
+    "./core": {"types": "./dist/lib/core.d.ts", "import": "./dist/lib/core.js"},
+    "./language": {"types": "./dist/lib/language/index.d.ts", "import": "./dist/lib/language/index.js"},
+    "./policy": {"types": "./dist/lib/policy/index.d.ts", "import": "./dist/lib/policy/index.js"},
+    "./git": {"types": "./dist/lib/sources/git.d.ts", "import": "./dist/lib/sources/git.js"},
     "./package.json": "./package.json",
-    "./github": {
-      "types": "./dist/lib/github/index.d.ts",
-      "import": "./dist/lib/github/index.js"
-    },
-    "./browser": {
-      "types": "./dist/lib/browser/index.d.ts",
-      "import": "./dist/browser/index.js"
-    },
-    "./browser/text": {
-      "types": "./dist/lib/browser/text.d.ts",
-      "import": "./dist/lib/browser/text.js"
-    }
+    "./github": {"types": "./dist/lib/github/index.d.ts", "import": "./dist/lib/github/index.js"},
+    "./browser": {"types": "./dist/lib/browser/index.d.ts", "import": "./dist/browser/index.js"},
+    "./browser/text": {"types": "./dist/lib/browser/text.d.ts", "import": "./dist/lib/browser/text.js"}
   },
-  "files": [
-    "dist/lib",
-    "dist/browser",
-    "src/diffdevil/**/*.ts",
-    "src/diffdevil/contracts",
-    "src/diffdevil/presets/*.yml",
-    "docs",
-    "skills",
-    "LICENSES"
-  ],
-  "engines": {
-    "node": ">=22"
-  },
+  "files": ["dist/lib", "dist/browser", "src/diffdevil/**/*.ts", "src/diffdevil/contracts", "src/diffdevil/presets/*.yml", "docs", "skills", "LICENSES"],
+  "engines": {"node": ">=22"},
   "devDependencies": {
     "@astrojs/check": "0.9.10",
     "@astrojs/react": "6.0.6",
@@ -131,13 +93,6 @@
     "typescript": "5.8.3",
     "wrangler": "4.132.0"
   },
-  "dependencies": {
-    "ajv": "8.20.0",
-    "chevrotain": "13.2.0",
-    "yaml": "2.9.1"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/Wolfsblvt/diffdevil.git"
-  }
+  "dependencies": {"ajv": "8.20.0", "chevrotain": "13.2.0", "yaml": "2.9.1"},
+  "repository": {"type": "git", "url": "git+https://github.com/Wolfsblvt/diffdevil.git"}
 }
