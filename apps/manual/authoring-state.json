@@ -1,49 +1,334 @@
 {
   "version": 1,
   "pages": {
-    "what-is-diffdevil": {"status":"authored"},
-    "see-changed-lines-on-github": {"status":"authored"},
-    "label-pull-requests": {"status":"authored"},
-    "analyze-local-changes": {"status":"authored"},
-    "use-results-in-scripts": {"status":"authored"},
-    "try-public-pull-request": {"status":"authored"},
-    "surfaces": {"status":"scaffold"},
-    "cli": {"status":"scaffold"},
-    "github-actions": {"status":"scaffold"},
-    "browser-extension": {"status":"scaffold"},
-    "managed-app": {"status":"scaffold"},
-    "managed-service": {"status":"scaffold"},
-    "self-host-app": {"status":"scaffold"},
-    "typescript-library": {"status":"scaffold"},
-    "playground": {"status":"scaffold"},
-    "coding-agent": {"status":"scaffold"},
-    "shared-workflows": {"status":"scaffold"},
-    "reports-plans-and-apply": {"status":"scaffold"},
-    "labels-comments-definitions": {"status":"scaffold"},
-    "start-with-a-preset": {"status":"scaffold"},
-    "configure-policy": {"status":"scaffold"},
-    "paths-and-scopes": {"status":"scaffold"},
-    "measurements-to-rules": {"status":"scaffold"},
-    "effects-and-templates": {"status":"scaffold"},
-    "recipes": {"status":"scaffold"},
-    "how-diffdevil-reasons": {"status":"authored"},
-    "changed-lines-and-raw-churn": {"status":"authored"},
-    "evidence-and-uncertainty": {"status":"authored"},
-    "from-facts-to-provider-state": {"status":"authored"},
-    "source-identity-trust-and-mutation": {"status":"authored"},
-    "interfaces": {"status":"scaffold"},
-    "cli-reference": {"status":"scaffold"},
-    "github-actions-reference": {"status":"scaffold"},
-    "typescript-api-reference": {"status":"scaffold"},
-    "language-and-contracts": {"status":"scaffold"},
-    "schemas-and-compatibility": {"status":"scaffold"},
-    "detail-language": {"status":"scaffold"},
-    "faq": {"status":"external-admitted","sourceCommit":"ed795c97b3052441f02f899876122f1967f1f1e2"},
-    "troubleshooting": {"status":"scaffold"},
-    "security-and-data": {"status":"scaffold"},
-    "technical-project-docs": {"status":"scaffold"},
-    "releases": {"status":"scaffold"}
+    "what-is-diffdevil": {
+      "status": "authored"
+    },
+    "see-changed-lines-on-github": {
+      "status": "authored"
+    },
+    "label-pull-requests": {
+      "status": "authored"
+    },
+    "analyze-local-changes": {
+      "status": "authored"
+    },
+    "use-results-in-scripts": {
+      "status": "authored"
+    },
+    "try-public-pull-request": {
+      "status": "authored"
+    },
+    "surfaces": {
+      "status": "authored"
+    },
+    "cli": {
+      "status": "authored"
+    },
+    "github-actions": {
+      "status": "authored"
+    },
+    "browser-extension": {
+      "status": "authored"
+    },
+    "managed-app": {
+      "status": "scaffold"
+    },
+    "managed-service": {
+      "status": "scaffold"
+    },
+    "self-host-app": {
+      "status": "scaffold"
+    },
+    "typescript-library": {
+      "status": "authored"
+    },
+    "playground": {
+      "status": "authored"
+    },
+    "coding-agent": {
+      "status": "authored"
+    },
+    "shared-workflows": {
+      "status": "authored"
+    },
+    "reports-plans-and-apply": {
+      "status": "authored"
+    },
+    "labels-comments-definitions": {
+      "status": "authored"
+    },
+    "start-with-a-preset": {
+      "status": "scaffold"
+    },
+    "configure-policy": {
+      "status": "scaffold"
+    },
+    "paths-and-scopes": {
+      "status": "scaffold"
+    },
+    "measurements-to-rules": {
+      "status": "scaffold"
+    },
+    "effects-and-templates": {
+      "status": "scaffold"
+    },
+    "recipes": {
+      "status": "scaffold"
+    },
+    "how-diffdevil-reasons": {
+      "status": "authored"
+    },
+    "changed-lines-and-raw-churn": {
+      "status": "authored"
+    },
+    "evidence-and-uncertainty": {
+      "status": "authored"
+    },
+    "from-facts-to-provider-state": {
+      "status": "authored"
+    },
+    "source-identity-trust-and-mutation": {
+      "status": "authored"
+    },
+    "interfaces": {
+      "status": "scaffold"
+    },
+    "cli-reference": {
+      "status": "scaffold"
+    },
+    "github-actions-reference": {
+      "status": "scaffold"
+    },
+    "typescript-api-reference": {
+      "status": "scaffold"
+    },
+    "language-and-contracts": {
+      "status": "scaffold"
+    },
+    "schemas-and-compatibility": {
+      "status": "scaffold"
+    },
+    "detail-language": {
+      "status": "scaffold"
+    },
+    "faq": {
+      "status": "external-admitted",
+      "sourceCommit": "ed795c97b3052441f02f899876122f1967f1f1e2"
+    },
+    "troubleshooting": {
+      "status": "scaffold"
+    },
+    "security-and-data": {
+      "status": "scaffold"
+    },
+    "technical-project-docs": {
+      "status": "scaffold"
+    },
+    "releases": {
+      "status": "scaffold"
+    }
   },
-  "transfers": {},
-  "routes": {}
+  "transfers": {
+    "docs/guides/auto-label-pull-requests.md": {
+      "phase": "retired",
+      "primary": "label-pull-requests",
+      "fromRef": "65a1a45206909783e38a1309cb0cf7572bc40bca",
+      "fromSourceSha256": "5ec81e3b74e437725d075562d1aa087fb751b40a1bfbc0de8842ff9df968802f",
+      "oldAnchors": [
+        "_top",
+        "automatically-label-pull-request-size",
+        "meaning",
+        "add-one-workflow",
+        "what-the-labels-mean",
+        "why-these-permissions-and-this-event",
+        "make-one-useful-change",
+        "read-only-instead",
+        "troubleshooting"
+      ],
+      "anchors": {
+        "_top": {
+          "page": "label-pull-requests",
+          "anchor": "_top"
+        },
+        "automatically-label-pull-request-size": {
+          "page": "label-pull-requests",
+          "anchor": "_top"
+        },
+        "meaning": {
+          "page": "label-pull-requests",
+          "anchor": "_top"
+        },
+        "add-one-workflow": {
+          "page": "label-pull-requests",
+          "anchor": "add-the-complete-workflow"
+        },
+        "what-the-labels-mean": {
+          "page": "label-pull-requests",
+          "anchor": "make-it-active-and-inspect-one-result"
+        },
+        "why-these-permissions-and-this-event": {
+          "page": "github-actions",
+          "anchor": "select-trusted-configuration-and-credentials"
+        },
+        "make-one-useful-change": {
+          "page": "label-pull-requests",
+          "anchor": "customize-only-when-you-have-a-different-question"
+        },
+        "read-only-instead": {
+          "page": "github-actions",
+          "anchor": "keep-read-only-analysis-separate"
+        },
+        "troubleshooting": {
+          "page": "label-pull-requests",
+          "anchor": "when-no-label-appears"
+        }
+      },
+      "redirects": true,
+      "sourceIds": true,
+      "search": true
+    },
+    "docs/guides/local-automation.md": {
+      "phase": "retired",
+      "primary": "analyze-local-changes",
+      "fromRef": "65a1a45206909783e38a1309cb0cf7572bc40bca",
+      "fromSourceSha256": "ca594ca371af3bd9538214744d4f0b31df12fb5290da2c0548b46f91c2a0d2c4",
+      "oldAnchors": [
+        "_top",
+        "use-diff-facts-in-local-scripts",
+        "meaning",
+        "get-a-first-result-without-github",
+        "return-one-number",
+        "find-files-above-a-threshold",
+        "inspect-your-actual-working-changes",
+        "analyze-once-query-several-times"
+      ],
+      "anchors": {
+        "_top": {
+          "page": "analyze-local-changes",
+          "anchor": "_top"
+        },
+        "use-diff-facts-in-local-scripts": {
+          "page": "analyze-local-changes",
+          "anchor": "_top"
+        },
+        "meaning": {
+          "page": "analyze-local-changes",
+          "anchor": "_top"
+        },
+        "get-a-first-result-without-github": {
+          "page": "analyze-local-changes",
+          "anchor": "run-the-small-patch"
+        },
+        "return-one-number": {
+          "page": "use-results-in-scripts",
+          "anchor": "capture-once-and-query-an-exact-value"
+        },
+        "find-files-above-a-threshold": {
+          "page": "cli",
+          "anchor": "analyze-query-and-check-the-same-report"
+        },
+        "inspect-your-actual-working-changes": {
+          "page": "analyze-local-changes",
+          "anchor": "measure-the-tracked-worktree"
+        },
+        "analyze-once-query-several-times": {
+          "page": "cli",
+          "anchor": "analyze-query-and-check-the-same-report"
+        }
+      },
+      "redirects": true,
+      "sourceIds": true,
+      "search": true
+    },
+    "docs/integration/playground.md": {
+      "phase": "retired",
+      "primary": "playground",
+      "fromRef": "65a1a45206909783e38a1309cb0cf7572bc40bca",
+      "fromSourceSha256": "5c6e4c938f860b6b23377368ffaa126e42054e0eb2ca6d02e3d5e737659ac04c",
+      "oldAnchors": [
+        "_top",
+        "public-playground-experience",
+        "meaning",
+        "entry-and-page-structure",
+        "public-inputs-only",
+        "one-real-result-with-useful-views",
+        "configuration-without-a-language-prerequisite",
+        "curated-examples-with-a-reason",
+        "export-and-adoption",
+        "public-compute-github-budget-and-caching",
+        "website-integration-and-accessibility",
+        "qualification-boundary",
+        "provider-reference"
+      ],
+      "anchors": {
+        "_top": {
+          "page": "playground",
+          "anchor": "_top"
+        },
+        "public-playground-experience": {
+          "page": "playground",
+          "anchor": "_top"
+        },
+        "meaning": {
+          "page": "playground",
+          "anchor": "_top"
+        },
+        "entry-and-page-structure": {
+          "page": "playground",
+          "anchor": "start-with-a-frozen-source-edition"
+        },
+        "public-inputs-only": {
+          "page": "playground",
+          "anchor": "know-which-comparison-you-are-viewing"
+        },
+        "one-real-result-with-useful-views": {
+          "page": "playground",
+          "anchor": "read-four-views-of-one-result"
+        },
+        "configuration-without-a-language-prerequisite": {
+          "page": "playground",
+          "anchor": "edit-policy-without-changing-the-source"
+        },
+        "curated-examples-with-a-reason": {
+          "page": "playground",
+          "anchor": "start-with-a-frozen-source-edition"
+        },
+        "export-and-adoption": {
+          "page": "playground",
+          "anchor": "export-a-useful-next-step"
+        },
+        "public-compute-github-budget-and-caching": {
+          "page": "playground",
+          "anchor": "data-limits-and-failure-recovery"
+        },
+        "website-integration-and-accessibility": {
+          "page": "playground",
+          "anchor": "read-four-views-of-one-result"
+        },
+        "qualification-boundary": {
+          "page": "playground",
+          "anchor": "data-limits-and-failure-recovery"
+        },
+        "provider-reference": {
+          "page": "playground",
+          "anchor": "data-limits-and-failure-recovery"
+        }
+      },
+      "redirects": true,
+      "sourceIds": true,
+      "search": true
+    }
+  },
+  "routes": {
+    "/docs/get-started/auto-label-pull-requests/": {
+      "target": "label-pull-requests"
+    },
+    "/docs/get-started/local-automation/": {
+      "target": "analyze-local-changes"
+    },
+    "/docs/playground/": {
+      "target": "playground"
+    }
+  }
 }

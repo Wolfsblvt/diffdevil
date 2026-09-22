@@ -54,7 +54,7 @@ const rows = [
 const closed = new Set(['managed-app','interfaces','language-and-contracts']);
 export const sections = Object.freeze(['Start','Use diffdevil','Write policy','Understand','Reference','Help']);
 export const pages = Object.freeze(rows.map(([key,title,file,route,section,parent,wave,availability,legacyRoutes], order) => Object.freeze({
- key, title, source: `docs/manual/${file}`, sourceId: `docs/manual/${file}`, route, host: key === 'faq' ? 'site' : 'docs', kind: key === 'faq' ? 'FAQ' : 'DOCS', section, parent, order, wave, availability,
+ key, title, sidebarLabel: key === 'browser-extension' ? 'Browser extension' : title, source: `docs/manual/${file}`, sourceId: `docs/manual/${file}`, route, host: key === 'faq' ? 'site' : 'docs', kind: key === 'faq' ? 'FAQ' : 'DOCS', section, parent, order, wave, availability,
  aliases: key === 'what-is-diffdevil' ? ['/start/what-is-diffdevil/'] : [], legacyRoutes, defaultOpen: !closed.has(key),
 })));
 export const manualPages = Object.freeze(pages.filter(page => page.host === 'docs'));
@@ -65,7 +65,7 @@ export function sidebar({ includeFAQ = false } = {}) {
  function item(page) {
   const children = pages.filter(child => child.parent === page.key);
   const destination = page.host === 'docs' ? { slug: page.route === '/' ? 'index' : page.route.slice(1,-1) } : { link: pageUrl(page.key) };
-  return children.length ? { label: page.title, ...destination, defaultOpen: page.defaultOpen, items: children.map(item) } : { label: page.title, ...destination };
+  return children.length ? { label: page.sidebarLabel, ...destination, defaultOpen: page.defaultOpen, items: children.map(item) } : { label: page.sidebarLabel, ...destination };
  }
  return sections.map(section => ({ label: section.toUpperCase(), defaultOpen: section !== 'Reference', items: pages.filter(page => page.section === section && page.parent === null && (includeFAQ || page.key !== 'faq')).map(item) }));
 }

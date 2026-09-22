@@ -7,7 +7,9 @@ export const repositorySources = Object.freeze([
  'docs/publication-boundary.md','docs/documentation.md','docs/presentation.md',
  'docs/integration/github-api.md','docs/integration/github-app.md','docs/integration/action-distribution.md',
  'docs/integration/example-catalogue.md','docs/PRIVACY-AND-DATA.md','SECURITY.md','LICENSES/README.md',
- 'apps/playground/README.md','apps/github-app/README.md',
+ 'apps/playground/README.md','apps/github-app/README.md','apps/website/README.md',
+ 'skills/diffdevil/SKILL.md','skills/diffdevil/references/install-and-update.md',
+ 'skills/diffdevil/references/restricted-harnesses.md','skills/diffdevil/references/cli-and-evidence.md',
 ]);
 // These previously selected IDs survive the repository's filename-only migration.
 // The destination uses Git's exact casing, independent of the build filesystem.
