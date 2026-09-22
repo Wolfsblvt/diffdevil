@@ -75,7 +75,7 @@ export function generatedIsland(id,{root,ref}) {
   return table(['Example','Lessons','Inspect'],catalogue.entries.map(entry=>{
    const variant=entry.variants?.[0];
    if (!variant) throw new Error(`No catalogue variant for ${entry.id}`);
-   return [entry.title,entry.lessons.join(', '),`[Open in the playground](https://diffdevil.dev/playground/?example=${encodeURIComponent(entry.id+'--'+variant.id)})`];
+   return [entry.title,entry.lessons.join(', '),`[Open in the playground](https://diffdevil.dev/playground/?example=${encodeURIComponent(entry.id)}&variant=${encodeURIComponent(variant.id)})`];
   }));
  }
  if(id==='schemas') {
@@ -105,15 +105,16 @@ export function generatedIsland(id,{root,ref}) {
    `### Limits\n\n${link('Canonical limits and standing',directory+'/limits.json')}\n\n${table(['Limit','Value'],Object.entries(limits).filter(([,value])=>typeof value==='number').map(([name,value])=>[code(name),value]))}\n\n` +
    `### Language contract sources\n\n${inventory}`;
  }
- if(['presenter-small','presenter-report','presenter-plan'].includes(id)) {
+ if(['presenter-small','presenter-first-plan','presenter-report','presenter-plan'].includes(id)) {
   const report='docs/examples/reports/exact.json', policy='docs/examples/policies/full.yml';
-  const source=id==='presenter-small'?['--diff-file','docs/examples/diffs/review.diff','--no-config']:['--report',report,'--config',policy];
+  const small=['presenter-small','presenter-first-plan'].includes(id);
+  const source=small?['--diff-file','docs/examples/diffs/review.diff','--no-config']:['--report',report,'--config',policy];
   const facts=JSON.parse(run(['analyze',...source,'--format','json']));
   const scalar=JSON.parse(run(['query',...source,'--expr','totals.lines.changed','--format','value']));
-  assert.equal(scalar,id==='presenter-small'?10:178,'The small teaching input and large presenter input are different specimens.');
-  if(id==='presenter-small') assert.equal(JSON.parse(run(['query',...source,'--expr','totals.raw.churn','--format','value'])),16);
+  assert.equal(scalar,small?10:178,'The small teaching input and large presenter input are different specimens.');
+  if(small) assert.equal(JSON.parse(run(['query',...source,'--expr','totals.raw.churn','--format','value'])),16);
   assert.equal(facts.kind,'diffdevil.report');
-  const command=id==='presenter-plan'?['plan',...source,'--target-repo','example/repository','--target-pr','42','--definitions','ensure']:['analyze',...source];
+  const command=id==='presenter-first-plan'?['plan',...source,'--target-repo','example/repository','--target-pr','42']:id==='presenter-plan'?['plan',...source,'--target-repo','example/repository','--target-pr','42','--definitions','ensure']:['analyze',...source];
   return '```text\n'+run([...command,'--format','human','--color','never'])+'\n```';
  }
  throw new Error(`Unknown generated island: ${id}`);
