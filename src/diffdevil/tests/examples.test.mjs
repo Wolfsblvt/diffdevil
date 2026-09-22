@@ -172,12 +172,15 @@ test('repository CI calls the real verification surfaces without publishing or p
   assert.deepEqual(workflow.permissions, { contents: 'read' });
   assert.equal(workflow.on.pull_request_target, undefined);
   assert.ok(Object.hasOwn(workflow.on, 'pull_request'));
-  assert.deepEqual(workflow.on.push.branches, ['main']);
+  // The continuing manual draft has the same read-only checks even when base
+  // movement prevents GitHub from creating a synthetic PR merge for its event.
+  assert.deepEqual(workflow.on.push.branches, ['main', 'docs/public-manual']);
   const job = workflow.jobs.verify;
   const commands = job.steps.filter(step => step.run).map(step => step.run);
   for (const command of ['npm run verify', 'npm run test:conformance', 'npm run test:package', 'npm run test:actions']) assert.ok(commands.includes(command));
   assert.equal(commands.some(command => /npm publish|git push|--token/u.test(command)), false);
   for (const step of job.steps.filter(step => step.uses)) assert.match(step.uses, /^actions\/(?:checkout|setup-node)@[a-f0-9]{40}$/u);
+  assert.equal(job.steps[0].with['ref'], '${{ github.event.pull_request.head.sha || github.sha }}');
   assert.equal(job.steps[0].with['persist-credentials'], false);
   assert.equal(job.steps[1].with['package-manager-cache'], false);
   assert.ok(job.strategy.matrix.include.some(row => row.os === 'windows-latest' && row.node === '24'));
