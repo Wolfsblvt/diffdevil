@@ -27,8 +27,8 @@ apps/browser-extension/store/
     promo/
       small-promo-440x280.png
       small-promo-440x280.svg
-      marquee-promo-1400x560.png
-      marquee-promo-1400x560.svg
+      marquee-1400x560.png
+      marquee-1400x560.svg
 ```
 
 `listing.md` is the Store copy source. `privacy-answers.md` maps the actual local-first behavior to Store declarations. `submission.md` owns the release gate and reviewer notes. The asset manifest records dimensions, colour format, SHA-256, provenance and standing for every submitted raster. Editable promotional SVGs live beside their rendered PNGs.
