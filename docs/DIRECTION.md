@@ -80,7 +80,7 @@ The selected implementation direction is now explicit:
   labels, owned comments, native check summaries, and optional history.
   `Checks: write` belongs to the selected App permission contract. Earlier omission
   from the first canary is not a removal of that functionality.
-- Keep the [playground](integration/playground.md) public, unauthenticated, read-only,
+- Keep the [playground](manual/use/playground.md) public, unauthenticated, read-only,
   and independent of App history. Carry curated examples, configuration editing,
   terminal/agent/GitHub-preview/explanation views, and portable exports through one
   shared engine. Provide its own page and a compact homepage entry.

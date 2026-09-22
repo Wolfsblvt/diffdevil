@@ -160,7 +160,7 @@ The first managed adapter targets Workers, Queues, and D1. Keep engine/applicati
 
 ### Public playground and website
 
-Deliver the [independent public playground](integration/playground.md): public PR input without an account, curated reproducible examples, presets and editable settings, terminal/agent/GitHub-preview/explanation views, and portable configuration/CLI/Action exports.
+Deliver the [independent public playground](manual/use/playground.md): public PR input without an account, curated reproducible examples, presets and editable settings, terminal/agent/GitHub-preview/explanation views, and portable configuration/CLI/Action exports.
 
 A measurement form is a useful first result, not the complete configurable experience. All views use the shared engine, preserve incomplete evidence, and apply no effects. Private PR playground access and automatic enrollment in App history are not selected.
 
