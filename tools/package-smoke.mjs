@@ -186,7 +186,43 @@ if (process.platform === 'win32') {
   assert.match(cmd, /cli[/\\]main\.js/); assert.match(cmd, /%\*/);
   assert.match(ps1, /cli[/\\]main\.js/); assert.match(ps1, /\$args/);
 }
+// Exercise the complete manual consumers against this installed package, not a
+// copied executable. The CLI writes NUL paths to a file before either shell reads.
+const consumerCases = [];
+const reviewReport = runBin(['analyze', '--diff-file', join(packageRoot, 'docs/examples/diffs/review.diff'), '--no-config', '--preset', 'size@1', '--format', 'json']);
+await writeFile(join(home, 'review-report.json'), reviewReport);
+await writeFile(join(home, 'invalid-report.json'), '{not JSON');
+const pathNames = ['space name.ts', 'line\nbreak.ts', 'Grüße 日本.ts', '2026-09-22T14:00:00Z', 'quote"file.ts'];
+const pathPatch = pathNames.map(path => 'diff --git ' + JSON.stringify('a/' + path) + ' ' + JSON.stringify('b/' + path) + '\n--- /dev/null\n+++ ' + JSON.stringify('b/' + path) + '\n@@ -0,0 +1 @@\n+text\n').join('');
+await writeFile(join(home, 'path-report.mjs'), `import { analyzeDiff, unwrap } from '@wolfsblvt/diffdevil';
+import { writeFileSync } from 'node:fs';
+writeFileSync('path-report.json', JSON.stringify(unwrap(analyzeDiff(${JSON.stringify(pathPatch)}))));
+`);
+// Generate paths through the installed library; no files with platform-specific
+// names need to be created on disk.
+run(process.execPath, ['path-report.mjs'], home);
+const shells = process.platform === 'win32' ? ['powershell', 'pwsh'] : ['bash'];
+const environment = { ...process.env, PATH: join(home, 'node_modules/.bin') + (process.platform === 'win32' ? ';' : ':') + process.env.PATH, NO_COLOR: '1' };
+for (const shell of shells) {
+  const script = join(packageRoot, 'docs/examples/scripts/report-consumer.' + (shell === 'bash' ? 'sh' : 'ps1'));
+  for (const [report, limit, expected] of [
+    ['review-report.json', '100', 0], ['review-report.json', '10', 1], ['invalid-report.json', '100', 2],
+    [join(packageRoot, 'docs/examples/reports/bounded.json'), '100', 3], ['path-report.json', '100', 0],
+  ]) {
+    const args = shell === 'bash' ? [script, report, limit] : ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', script, '-Report', report, '-Limit', limit];
+    const result = spawnSync(shell, args, { cwd: home, encoding: 'utf8', env: environment, windowsHide: true });
+    assert.ifError(result.error); assert.equal(result.status, expected, `${shell} consumer ${report}: ${result.stdout}\n${result.stderr}`);
+    if (report === 'review-report.json') assert.match(result.stdout, /Changed: 10/u);
+    if (report === 'path-report.json') {
+      const paths = result.stdout.split(/\r?\n/u).filter(line => line.startsWith('Path: '));
+      assert.equal(paths.length, pathNames.length, `${shell}: arbitrary paths must not split on newlines`);
+      if (shell !== 'bash') assert.deepEqual(paths.map(line => JSON.parse(line.slice(6))).sort(), [...pathNames].sort());
+    }
+    consumerCases.push({ shell, report, limit, exit: result.status });
+  }
+}
 const observation = {
+  manualConsumers: consumerCases,
   node: process.version, platform: process.platform, arch: process.arch, npm: npm(['--version']).trim(), tarball,
   integrity: packed.integrity, shasum: packed.shasum, fileCount: paths.length, installMode,
   bytes: (await stat(tarball)).size,
