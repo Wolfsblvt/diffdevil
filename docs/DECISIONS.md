@@ -512,7 +512,7 @@ grant credentials, change provider permissions, or establish live behavior until
 the distributed Action is rerun with both real tokens.
 
 **Sources.** The current provider qualification and settled public-v1 direction;
-[Action guide](guides/auto-label-pull-requests.md); two-client Action tests.
+[Action guide](manual/start/label-pull-requests.md); two-client Action tests.
 
 ## D032: Keep the open tool primary and the optional App complete
 
@@ -524,7 +524,7 @@ the distributed Action is rerun with both real tokens.
 
 **Current consequence.** The full App and standalone playground journeys remain selected implementation beyond the current local measurement form. The source remains one repository: reusable software MIT, application/service software AGPL-3.0-only under D014, with D030's separate content/brand rights. Self-hosting is intentional and documented in the operator material, not hidden or made the primary homepage pitch. A source licence does not grant official-service identity.
 
-**Sources.** Owner-directed co-design settlement of 2026-09-17; [Vision](VISION.md); [App architecture](integration/github-app.md); [playground experience](integration/playground.md); [GitHub Checks API](https://docs.github.com/en/rest/checks/runs); [GNU AGPL v3](https://www.gnu.org/licenses/agpl-3.0.en.html).
+**Sources.** Owner-directed co-design settlement of 2026-09-17; [Vision](VISION.md); [App architecture](integration/github-app.md); [playground experience](manual/use/playground.md); [GitHub Checks API](https://docs.github.com/en/rest/checks/runs); [GNU AGPL v3](https://www.gnu.org/licenses/agpl-3.0.en.html).
 
 ## D033: One conventional config, explicit host layers, and partial settings
 
@@ -596,7 +596,7 @@ the distributed Action is rerun with both real tokens.
 
 **Current consequence.** `src/diffdevil/policy/yaml.ts` counts bytes with the portable helper instead of `Buffer`; the Action runtime was regenerated. The playground API gained `/api/report` (refusing, not truncating, above a file ceiling) and `/api/head`, with CORS on its read-only JSON. The engine's browser bundle is one lazy chunk on the playground page only.
 
-**Sources.** [Playground experience](integration/playground.md); [App architecture](integration/github-app.md#shared-engine-worker-prerequisite); the design-discovered replay consequence recorded during the public-surface co-design; `apps/website/website.test.mjs` and `apps/website/qa/run.mjs`.
+**Sources.** [Playground experience](manual/use/playground.md); [App architecture](integration/github-app.md#shared-engine-worker-prerequisite); the design-discovered replay consequence recorded during the public-surface co-design; `apps/website/website.test.mjs` and `apps/website/qa/run.mjs`.
 
 ## D039: Keep one stable public shell across product pages and the generated manual
 
