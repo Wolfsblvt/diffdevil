@@ -9,7 +9,7 @@ export class Popover {
   toggle(anchor: HTMLElement, panel: HTMLElement): void {
     if (this.anchor === anchor) { this.close(); return; }
     this.close(false); this.anchor = anchor; this.panel = panel;
-    panel.classList.add('ddx-popover'); panel.id = 'diffdevil-report-popover'; panel.setAttribute('role', 'dialog'); panel.setAttribute('aria-label', 'diffdevil analysis'); panel.tabIndex = -1;
+    panel.classList.add('ddx-popover'); panel.id = 'diffdevil-report-popover'; panel.setAttribute('role', 'dialog'); panel.tabIndex = -1;
     anchor.setAttribute('aria-expanded', 'true'); anchor.setAttribute('aria-controls', panel.id); document.body.append(panel); this.position(); panel.focus({ preventScroll: true });
     const controller = this.listeners = new AbortController();
     document.addEventListener('pointerdown', event => { const path = event.composedPath(); if (!path.includes(anchor) && !path.includes(panel)) this.close(false); }, { capture: true, signal: controller.signal });

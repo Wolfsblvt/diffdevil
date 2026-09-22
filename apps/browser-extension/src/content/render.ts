@@ -13,7 +13,8 @@ function facts(title: string, items: readonly (readonly [string, string])[]): HT
 function range(cell: Rail['cells'][number]): string { return `${cell.lower === undefined ? 'Unbounded below' : `At least ${cell.lower}`}${cell.upper === undefined ? '; no upper limit' : `; below ${cell.upper}`}${cell.selected ? '; selected' : ''}`; }
 export function reportPanel(view: HumanReportView, popover: Popover): HTMLElement {
   const panel = node('div'); const header = node('header', 'ddx-heading'); const close = button('×', () => popover.close(), 'ddx-close'); close.setAttribute('aria-label', 'Close report');
-  header.append(node('h2', '', 'diffdevil analysis'), close); panel.append(header);
+  const heading = node('h2', '', 'diffdevil analysis'); heading.id = 'diffdevil-report-heading'; panel.setAttribute('aria-labelledby', heading.id);
+  header.append(heading, close); panel.append(header);
   const source = view.report.source;
   panel.append(node('p', 'ddx-source', `${source.repository ?? source.kind}${source.pullRequest ? ` #${source.pullRequest}` : ''} · ${evidenceText(view.evidence.status)}`),
     node('p', 'ddx-revisions', `${source.base?.slice(0, 12) ?? '?'} → ${source.head?.slice(0, 12) ?? '?'} · ${source.comparison ?? 'supplied'}`));
