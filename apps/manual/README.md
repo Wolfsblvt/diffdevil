@@ -27,7 +27,8 @@ npm --prefix apps/manual run qa
 ```
 
 `check` builds the engine and checks the actual manual renderer. `test` checks the
-source contracts; `test:projection` additionally requires the prepared toolchain
+source contracts and executable START/UNDERSTAND specimens; both require the built
+engine. `test:projection` additionally requires the prepared toolchain
 and built engine. `dev` serves the manual on loopback port 4322. `qa` starts from an
 ordinary two-host production build and creates the isolated reading qualification
 build described below. The root package and its Action distribution are unchanged
@@ -61,8 +62,9 @@ public routes or the finite source resolver. Code blocks are never rewritten.
 Register public images in `assets.json`; the build copies only those assets.
 Full working examples stay open. Secondary variants may use native disclosures.
 
-The 41 page scaffolds are deliberately not complete prose. Their authoring comments
-are removed from the renderer, and their readiness is private build state in
+START and UNDERSTAND have eleven authored chapters. The other thirty manual
+chapters remain scaffolds; the accepted FAQ stays separate. Authoring comments
+are removed from the renderer, and readiness is private build state in
 `authoring-state.json`. Complete the selected reader job, examples, expected results,
 failure returns and source links before changing `scaffold` to `authored`.
 
@@ -119,6 +121,12 @@ are recorded before adapting only the transport origin, and the browser carries
 fragments across the actual 308 responses. Host adoption and live HTTP readback
 remain separate from this build. No hosting or DNS operation occurs.
 
+No legacy family is retired by START/UNDERSTAND alone: the auto-label guide still
+needs its Actions successor, local automation needs the CLI guide, the Playground
+guide needs its operating page, and language material needs Reference. Consequently
+authored pages with incomplete predecessor families remain outside joined search
+until the accepted whole-family transfer. This is not a second migration model.
+
 ## Search, FAQ and generated inventories
 
 One Pagefind build joins selected product/legacy pages, current manual pages and
@@ -135,17 +143,21 @@ FAQ browser qualification runs on the combined candidate as well.
 `<!-- manual:generated NAME -->` inserts a bounded mechanical inventory into an
 authored page. Supported names are `cli-help`, `actions`, `typescript-exports`,
 `schemas`, `detail`, `presets`, `real-pr-catalogue`, `presenter-small`,
-`presenter-report` and `presenter-plan`. These read the actual built CLI/API, Action
+`presenter-first-plan`, `presenter-report` and `presenter-plan`. These read the actual built CLI/API, Action
 metadata and canonical contracts/catalogue; they are not another manually maintained
 reference. Source links remain useful when reading on GitHub. Schema fields and
 language catalogues are mechanical inventories, not a claim that structural validity
 establishes semantic validity. Preset expansion is checked against the canonical
 preset through the real compiler. Presenter specimens execute the real CLI and keep
 the small 10-Changed/16-churn input distinct from the 178-Changed presentation input.
-A command failure fails generation.
+A command failure fails generation. `wave-1.test.mjs` also exercises scalar/check
+exits, incomplete paths, held plans, the admitted extension projection, catalogue
+identities and exported CLI replay. Open workflow, policy and shell blocks are
+checked against their complete canonical example files, not phrase-locked prose.
 
 The real-PR catalogue remains the one shared `docs/examples/catalogue` family.
-Playground links carry a real `example--variant` key. Controlled teaching patches
+Playground links carry separate `example=<id>&variant=<id>` parameters; the
+combined `example--variant` key names an asset, not the public query contract. Controlled teaching patches
 remain linked canonical assets, not fabricated gallery entries or obsolete synthetic
 playground IDs.
 
@@ -157,7 +169,11 @@ origins and loopback HTTP for redirects. It checks routes/aliases, the finite
 resolver, shared shell/theme, linked groups, five alerts, actual FAQ fragments,
 search kinds, native no-JavaScript disclosures and narrow/keyboard behavior.
 The normal production build never includes that fixture. Results and screenshots
-name the exact candidate under `artifacts/manual/qa/`.
+name the exact candidate under `artifacts/manual/qa/`. The authored first-success
+journey opens the retained PR lesson through its manual link, changes an exclusion,
+exports separate valid report and plan JSON, inspects the saved-report CLI commands,
+and rejects malformed public input. It checks actual authored pages at 1280 and
+320 pixels. Set `PLAYWRIGHT_EXECUTABLE_PATH` to use an existing Chromium binary.
 
 The cross-host theme handoff is limited to owned site/manual HTML links. It transfers
 only the existing preference and bounce side, then removes its query parameter

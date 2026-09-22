@@ -140,6 +140,20 @@ runtime, the evidence explicitly records which runtime was exercised. To verify
 the source and npm package under another Node version, run those commands with
 that version selected in the normal shell/toolchain environment too.
 
+START/UNDERSTAND executable examples are included in ordinary test discovery and in
+`npm --prefix apps/manual test` after the engine build. They exercise complete
+canonical examples, strict exits and evidence, desired plans, extension projection,
+catalogue URLs and saved-report CLI exports. The installed package smoke additionally
+runs the complete Bash consumer on Linux and both Windows PowerShell and PowerShell
+7 consumers on Windows, including true/false/error/unresolved exits and arbitrary
+UTF-8/NUL-delimited paths. These shell checks use the newly installed npm artifact;
+local source execution is not substituted for that boundary.
+
+The manual Chromium journey additionally covers actual authored pages at 1280/320px
+and the frozen-example exclusion/export journey. It uses built static assets and
+no live GitHub acquisition or provider write. `PLAYWRIGHT_EXECUTABLE_PATH` may select
+an already installed Chromium executable.
+
 ## Source and distribution ownership
 
 Public exports are root, `/core`, `/language`, `/policy`, `/git`, `/github`, and
