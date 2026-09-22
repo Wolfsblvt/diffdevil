@@ -76,6 +76,6 @@ npm run extension:store
 
 These commands follow a built candidate. The DOM/acquisition runs need Playwright Chromium (`npx playwright install chromium`) or an explicitly configured `CHROMIUM_EXECUTABLE`. Installed QA requires a browser/profile that permits extensions and records a distinct blocked state when managed policy forbids them. A blocked probe is not a passing installed test.
 
-The Store generator produces a 128px icon, five 1280×800 RGB screenshots, 440×280 and 1400×560 RGB promotional images, editable SVG compositions and a hash manifest. Captures retain the authored-fixture/source-candidate disclosure. Listing copy, privacy answers and a submission checklist live under [store](store/README.md). No public Store link is invented.
+The complete future Store submission source lives under [store](store/README.md): listing copy, privacy answers, reviewer notes, a 128px icon, five 1280×800 RGB screenshots, 440×280 and 1400×560 RGB promotional images, editable SVG compositions and a hash manifest. `npm run extension:store` validates those committed bytes and creates a disposable submission kit; `npm run extension:store:generate` deliberately refreshes the tracked assets from qualified authored fixtures. No public Store link is invented.
 
 The application is AGPL-3.0-only, reusable core/browser code is MIT, original prose is CC BY 4.0, and accepted visual identity remains reserved. [Licences](licenses.md) and the root component map define the boundaries.
