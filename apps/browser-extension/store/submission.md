@@ -40,7 +40,7 @@ npm run extension:store:generate
 
 That command rewrites tracked source and therefore requires visual inspection plus an ordinary source diff. Routine Store preparation validates and copies; it does not silently regenerate artwork.
 
-Use `LISTING.md` for the single purpose, short and detailed descriptions. Use `PRIVACY-ANSWERS.md` to disclose website content, limited PR-route activity and local/synchronized configuration. Set a real public privacy-policy URL and real owner contact identity. Do not invent a Store URL or hardcode a made-up extension ID into the footer. The source/options/product links can remain the existing repository links until the accepted public website supplies better canonical routes.
+Use `listing.md` for the single purpose, short and detailed descriptions. Use `privacy-answers.md` to disclose website content, limited PR-route activity and local/synchronized configuration. Set a real public privacy-policy URL and real owner contact identity. Do not invent a Store URL or hardcode a made-up extension ID into the footer. The source/options/product links can remain the existing repository links until the accepted public website supplies better canonical routes.
 
 ## Reviewer instructions
 
