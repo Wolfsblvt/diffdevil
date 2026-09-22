@@ -8,6 +8,8 @@ export function themeTransferUrl(href, current, preference, next) {
  return target.href;
 }
 export function wireThemeTransfer(resolve) {
+ // The before-paint preference capsule is also evaluated without a full DOM in tests.
+ if (typeof document.addEventListener !== 'function') return;
  const prepare = event => {
   const element = event.target instanceof Element ? event.target.closest('a[href]') : null;
   if (!element || element.hasAttribute('download')) return;

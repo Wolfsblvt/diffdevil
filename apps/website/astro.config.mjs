@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { diffdevilSyntax } from './src/lib/shiki-theme.ts';
 import { themeScript } from './src/lib/theme-script.mjs';
 import searchIndex from './search-index.mjs';
+import { origins } from './public-origins.mjs';
 
 const repositoryRoot = fileURLToPath(new URL('../../', import.meta.url));
 const engine = path => fileURLToPath(new URL(`../../dist/lib/${path}`, import.meta.url));
@@ -15,7 +16,7 @@ if (!existsSync(sidebarFile)) throw new Error('Run `node tools/website-docs.mjs`
 const sidebar = JSON.parse(readFileSync(sidebarFile, 'utf8'));
 
 export default defineConfig({
-  site: process.env.DIFFDEVIL_SITE_ORIGIN ?? 'https://diffdevil.invalid',
+  site: process.env.DIFFDEVIL_SITE_ORIGIN ?? origins.site,
   output: 'static',
   trailingSlash: 'always',
   outDir: fileURLToPath(new URL('../../artifacts/website/dist', import.meta.url)),
