@@ -25,7 +25,7 @@ jobs:
       - uses: Wolfsblvt/diffdevil@v1
 ```
 
-`@v1` follows the maintained Action major. Use the immutable `@v1.0.0` release or its verified full commit when your repository requires an immutable selection. The Action includes its runtime; the job does not run `npm install`.
+`@v1` follows the maintained Action major. Use the versioned `@v1.0.0` release for a fixed release selection, or its verified full commit SHA when your repository requires an immutable source. The Action includes its runtime; the job does not run `npm install`.
 
 This is an API-only workflow. It does **not** check out the PR or execute its code. `pull_request_target` supplies the trusted workflow context used for labeling, so keep this job separate from builds or tests that execute proposed code. Do not add a PR-head checkout to make this example work.
 

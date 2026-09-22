@@ -40,7 +40,7 @@ Do not scrape the human presentation. Its job is reading; the report JSON and st
 | 2 | The operation is invalid or failed | Repair the source, expression, configuration or format |
 | 3 | Evidence cannot establish the decision | The requested exact/complete representation was refused |
 
-A successful JSON analysis can still contain uncertainty. Converselyely, a valid check can return 1. Capture the exit immediately, before another native process overwrites it. Do not use `|| echo 0`, `try/catch` alone, or a pipeline whose status comes only from its final consumer.
+A successful JSON analysis can still contain uncertainty. Conversely, a valid check can return 1. Capture the exit immediately, before another native process overwrites it. Do not use `|| echo 0`, `try/catch` alone, or a pipeline whose status comes only from its final consumer.
 
 ## Complete Bash consumer
 
