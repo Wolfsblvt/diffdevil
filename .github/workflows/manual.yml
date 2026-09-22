@@ -37,6 +37,18 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
           persist-credentials: false
+      # Temporary read-only source transport for the continuing Wave 2 author.
+      # Git objects only; no Git configuration, credentials, or worktree archives.
+      - name: Retain exact authoring source
+        run: |
+          mkdir -p artifacts/manual-resume
+          git bundle create artifacts/manual-resume/source.bundle HEAD
+      - name: Offline authoring source
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: manual-wave-two-source-${{ github.event.pull_request.head.sha || github.sha }}
+          retention-days: 2
+          path: artifacts/manual-resume/source.bundle
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
         with:
           node-version: '22'
