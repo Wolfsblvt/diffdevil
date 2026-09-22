@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "diffdevil for GitHub",
   "version": "1.0.0",
-  "version_name": "1.0.0 unpublished source candidate",
+  "version_name": "1.0.0",
   "description": "See replacement-aware Changed lines, personal size bands and inspectable diff reports directly in GitHub pull requests.",
   "minimum_chrome_version": "120",
   "incognito": "not_allowed",
