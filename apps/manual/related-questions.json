@@ -1,0 +1,22 @@
+{
+  "what-is-diffdevil": ["beyond-size-labels", "why-managed"],
+  "see-changed-lines-on-github": ["playground-or-extension", "extension-without-repo-setup"],
+  "label-pull-requests": ["beyond-size-labels", "automation-overlap", "trusted-policy"],
+  "analyze-local-changes": ["non-javascript-projects", "no-language-required"],
+  "use-results-in-scripts": ["no-language-required"],
+  "cli": ["different-results", "no-language-required"],
+  "github-actions": ["automation-overlap", "trusted-policy"],
+  "browser-extension": ["playground-or-extension", "extension-without-repo-setup", "different-results"],
+  "managed-app": ["why-managed", "leaving-managed-service"],
+  "managed-service": ["why-managed", "app-history"],
+  "self-host-app": ["leaving-managed-service"],
+  "playground": ["playground-or-extension", "code-data"],
+  "coding-agent": ["coding-agents", "non-javascript-projects"],
+  "start-with-a-preset": ["no-language-required", "semantic-versioning"],
+  "paths-and-scopes": ["files-and-exclusions"],
+  "effects-and-templates": ["automation-overlap"],
+  "changed-lines-and-raw-churn": ["changed-vs-churn", "changed-makes-sense"],
+  "evidence-and-uncertainty": ["measurement-evidence"],
+  "source-identity-trust-and-mutation": ["trusted-policy", "code-data"],
+  "security-and-data": ["code-data", "app-history"]
+}
