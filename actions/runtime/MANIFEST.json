@@ -219,7 +219,7 @@
     "src/diffdevil/schema.ts": "4d21120411aebcddea9487fa8fa5c3aea8b981f138d36bcb9b0da4036d6521ee",
     "src/diffdevil/sources/git.ts": "acfe6763fee61a2194c24cbdca562a6a61241b8f743af0ff5b2de62ffc322b41",
     "src/diffdevil/sources/patch.ts": "89b44e4c4048095d30de8dc3775654e89ab42857b00ad701fa8950336a72a266",
-    "tools/build-actions.mjs": "6f1392fbdf85a9428679413d57e9f033d295f7b8f9ea74d64adafa3bd2b9f787",
+    "tools/build-actions.mjs": "2873a44b384d08940fb24fc7ae5ed96ea4ab997c92052a73cecf4c83d596c11f",
     "tools/build.mjs": "5f744df87e2cbb2492939cc0a19c0c52c63ca2880efd8e980cc8480cdb0e9c62",
     "tools/schema-build.mjs": "b8cd59de3cb6eab1f67d23a55a0234a02325e59ce647cc0b05a267dcb90d0f88",
     "tsconfig.json": "3467925f201122c2aa9df0d750263792dcc629410fb201b99d8e76bc46473f75"
@@ -232,7 +232,7 @@
     "actions/apply/index.mjs": "10c11454aa6ebc9b9c0d98ebd53e02cfdcbf28ed803a817df12219904ee0ee4a",
     "actions/runtime/LICENSES/AGPL-3.0-only.txt": "0d96a4ff68ad6d4b6f1f30f713b18d5184912ba8dd389f86aa7710db079abcb0",
     "actions/runtime/LICENSES/MIT.txt": "e4a1d35cf5f6df9e2279fda467a76ee4f972ef4576ba047253425e85924d7876",
-    "actions/runtime/LICENSES/README.md": "312e26a2239ee9990026846d7a661ae926ef9596ff7afc284f0aff66841d43b8",
+    "actions/runtime/LICENSES/README.md": "a52db44fb296eba910dd41c6bdbb9a4f2a5f849c1a7a9d4706a9ea556ddd3e14",
     "actions/runtime/README.md": "04969695fca45d5559a95871128b419d4af32af9325faacd7d794d8c5c6e341c",
     "actions/runtime/lib/actions/analyze.js": "4e4b5b4e79a5628040ba478b5f614d6f844cfade24e54fa1a6785f014d311b27",
     "actions/runtime/lib/actions/analyze.js.map": "9dd3ae50a3eeab35b5c6b79e4d6479d7d5030186a090eaf915c5f7551723bf13",
@@ -1384,6 +1384,6 @@
     "actions/runtime/package.json": "b5f610f31aab44b3ab886ff460e47f6289d551ca07fd4eb8c3daef8610448ec3",
     "actions/sync-labels/action.yml": "99bf817a39a320f17b245fc1ea786f31f0f22620c49685a4533a1e8e4774218d",
     "actions/sync-labels/index.mjs": "7a067e453728ec5a69d5951048662d13192a208af692673f00de2a03cc41ae32",
-    "src/diffdevil/contracts/detail/v1/action-surface.json": "d718924fcb204016b8bf3ab4f5f24f2f10d6fe239672f6763e50b27c4f025396"
+    "src/diffdevil/contracts/detail/v1/action-surface.json": "4eec02b1f5e723ff93f7ca0acdb9667fb14b3245e1847066d2ffca1a41ddec8f"
   }
 }
