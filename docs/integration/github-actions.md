@@ -52,7 +52,7 @@ The current GitHub metadata contract supports subdirectory Action references and
 
 ## Minimal complete workflow
 
-The [auto-labeling quickstart](../guides/auto-label-pull-requests.md) owns setup and troubleshooting. The YAML below is the same tested workflow asset.
+The [auto-labeling quickstart](../manual/start/label-pull-requests.md) owns setup and troubleshooting. The YAML below is the same tested workflow asset.
 
 
 ```yaml
