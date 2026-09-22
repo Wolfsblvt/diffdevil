@@ -2,9 +2,27 @@
 
 ## Meaning
 
-This file keeps the public Chrome Web Store text versioned with the repository. The Store dashboard receives these exact fields; it must not become an independent copy source. Publication still requires the accepted release gate and provider readback.
+This file keeps the public Chrome Web Store text and provider-field values versioned with the repository. The Store dashboard receives these exact fields; it must not become an independent copy source. Publication still requires the accepted release gate and provider readback.
 
 ## v1.0.0
+
+### Provider fields
+
+| Field | Source value |
+| --- | --- |
+| Name | `diffdevil for GitHub` |
+| Primary language | `English` |
+| Category | `Developer Tools` |
+| Distribution | Public; free; all supported regions unless a current legal/provider restriction requires an explicit narrower set |
+| Mature content | No |
+| In-app purchases | No |
+| Homepage URL | `https://github.com/Wolfsblvt/diffdevil` until the accepted public `/extension/` page is deployed and read back |
+| Support URL | `https://github.com/Wolfsblvt/diffdevil/issues` |
+| Privacy policy URL | `https://github.com/Wolfsblvt/diffdevil/blob/main/apps/browser-extension/PRIVACY.md` until the accepted public privacy route is deployed and read back |
+| Official URL | Leave unset until a verified public `diffdevil.dev` property is available in the provider dashboard |
+| Promotional video | None selected. Do not add a provider-only URL; any later video and exact URL must first be admitted here. |
+
+If the live dashboard vocabulary or required category list differs, stop at that visible provider mismatch and update this source before submission. Do not silently choose a nearby provider value.
 
 ### Name
 
@@ -21,7 +39,7 @@ See replacement-aware Changed lines, personal size bands and inspectable diff re
 ### Single purpose
 
 ```text
-Help users understand the size and evidence of the GitHub pull requests they are viewing by measuring available diffs locally and presenting the results in GitHub's interface.
+Help users understand the size and evidence of the GitHub pull request they are viewing by measuring available diffs locally and presenting the results in GitHub's interface.
 ```
 
 ### Detailed description
@@ -69,6 +87,6 @@ The committed manifest records the exact SHA-256, dimensions, colour format, cap
 - Editable sources: the sibling `.svg` files
 - Store icon: `assets/store-icon-128.png`
 
-### Links and fields
+### Provider consistency
 
-Use the existing `Wolfsblvt/diffdevil` repository for source, issues and release links until the accepted public website supplies the canonical published routes. Supply a real reachable public privacy-policy URL and the real developer/contact identity in the Store dashboard. Do not enter the local options page as a public privacy-policy URL and do not invent a Store URL or extension id before provider creation.
+Before submission, compare every dashboard field, listing image and privacy answer with this source, the exact uploaded package and the public privacy notice. A provider value that cannot be reconstructed from the repository is a release defect, not convenient dashboard state.
