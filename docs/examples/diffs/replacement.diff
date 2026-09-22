@@ -1,0 +1,10 @@
+diff --git a/settings.txt b/settings.txt
+--- a/settings.txt
++++ b/settings.txt
+@@ -1,3 +1,3 @@
+-colour=blue
+-retries=2
+-timeout=10
++colour=green
++retries=3
++timeout=20
