@@ -42,9 +42,9 @@ Open **Export**. Select **report.json / plan.json**, choose the `report.json` ar
 After the exclusion, also copy the **.diffdevil.yml** tab into that file. The **CLI** tab gives read-only commands for the saved comparison. With [Node.js and the CLI execution route available](analyze-local-changes.md), the excluded lockfile example is:
 
 ```sh
-npx @wolfsblvt/diffdevil@1.0.0 analyze --report report.json --format human
-npx @wolfsblvt/diffdevil@1.0.0 query --report report.json --metric changed --format value
-npx @wolfsblvt/diffdevil@1.0.0 plan --report report.json --config .diffdevil.yml --target-repo vitejs/vite --target-pr 18968 --format human
+npx @wolfsblvt/diffdevil analyze --report report.json --format human
+npx @wolfsblvt/diffdevil query --report report.json --metric changed --format value
+npx @wolfsblvt/diffdevil plan --report report.json --config .diffdevil.yml --target-repo vitejs/vite --target-pr 18968 --format human
 ```
 
 The scalar prints **1**. The plan desires `size/XS` and reports that nothing was applied; it does not contact or modify Vite's repository. The report commands retain the exported comparison. Planning explicitly uses the saved policy rather than an unrelated policy discovered in your current checkout.

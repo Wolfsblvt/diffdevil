@@ -10,11 +10,11 @@ Use Node.js 22 or newer. From the project where you want a local development
 dependency, install the package and check the executable:
 
 ```sh
-npm install --save-dev @wolfsblvt/diffdevil@1.0.0
+npm i -D @wolfsblvt/diffdevil
 npm exec -- diffdevil --version
 ```
 
-The version should be `1.0.0`. The following commands use `npm exec -- diffdevil`
+Read the version actually installed. The following commands use `npm exec -- diffdevil`
 so they select that project's executable. Installation needs access to the package;
 subsequent analysis of local files does not contact a provider. Git is only needed
 when the selected source is Git-backed.
@@ -30,7 +30,7 @@ The package includes the complete [payments review patch](../../examples/diffs/r
 It changes a source file, a test, documentation, and a lockfile. Run:
 
 ```sh
-npm exec -- diffdevil analyze --diff-file node_modules/@wolfsblvt/diffdevil/docs/examples/diffs/review.diff --no-config --preset size@1 --format human --color never
+npm exec -- diffdevil analyze --diff-file node_modules/@wolfsblvt/diffdevil/docs/examples/diffs/review.diff --no-config --preset size@1 --format human
 ```
 
 `--no-config` avoids discovering a policy in your working directory; the explicit
@@ -97,7 +97,9 @@ its **absolute path** from the target repository. Running a relative
 
 Read the source line before comparing counts. Check the source kind, comparison
 mode, and resolved revisions. To inspect aggregate identities, evidence, scopes,
-and policy results, use `--detail full`. Use `--format json` for the complete
+and policy results, use `--detail full` when the installed help lists it. The enhanced
+presenter is current source capability and requires a release carrying it; source
+qualification does not update an older registry package. Use `--format json` for the complete
 report, including individual file records.
 
 A report can successfully contain bounded or unknown values. “The command

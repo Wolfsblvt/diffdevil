@@ -14,6 +14,7 @@ import { join } from 'node:path';
 import { readReport, unwrap } from '../../dist/lib/index.js';
 import { compilePolicy, evaluatePolicy } from '../../dist/lib/policy/index.js';
 import { entries, groups } from './docs-manifest.mjs';
+import {isRetired, legacyRedirects, validateRetiredRoutes} from '../manual/migration.mjs';
 import { createHash as shimHash } from './src/shims/node-crypto.mjs';
 import { checkSummary } from '../shared/check-summary.mjs';
 
@@ -52,7 +53,13 @@ test('the website consumes the shared real-PR catalogue, with its complete decla
 
 test('the docs manifest names existing sources, unique slugs, and no internal record', () => {
   const slugs = new Set();
+  const state=JSON.parse(read('apps/manual/authoring-state.json'));
+  validateRetiredRoutes(state,entries,legacyRedirects(state));
   for (const entry of entries) {
+    if (isRetired(entry.source,state)) {
+      assert.equal(existsSync(entry.source),false,entry.source+' must not retain a duplicate current guide');
+      continue;
+    }
     if (!entry.optional) assert.ok(existsSync(entry.source), entry.source);
     assert.ok(!slugs.has(entry.slug), `duplicate slug ${entry.slug}`);
     slugs.add(entry.slug);
