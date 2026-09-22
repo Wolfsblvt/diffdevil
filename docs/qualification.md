@@ -336,8 +336,8 @@ source tests, build tools, Action distribution, local artifacts and dependencies
 The Action distribution is native ESM rather than a bundled/minified file. The
 builder copies the 12 locked runtime package trees with their package metadata,
 licence files and notices; compiles source and standalone validators; writes one
-runtime package, index wrappers and four `action.yml` files; then records every
-source and output SHA-256 in `MANIFEST.json`. The builder's `--check` mode rebuilds
+runtime package, index wrappers and four `action.yml` files; then records the
+shipped packages and their rights in `MANIFEST.json`. The builder's `--check` mode rebuilds
 in temporary storage and refuses missing, extra or changed tracked bytes.
 
 All ten Action consumer executions run the actual metadata-selected JavaScript

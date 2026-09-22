@@ -154,7 +154,7 @@ application is part of the npm or Action distributions.
 
 `actions/runtime/` is the committed native-ESM closure: compiled code, static
 validators, 12 locked runtime package trees, original third-party notices and a
-source/file hash manifest. It has its own `package.json`; root development
+manifest of the shipped packages and their rights. It has its own `package.json`; root development
 `node_modules` is not consulted. It is not a single-file minified bundle.
 `.gitattributes` preserves the exact vendor bytes, including original line
 endings; whitespace checks still apply to authored source.
@@ -199,7 +199,8 @@ under `docs/reference/`, not duplicated into each new return.
 Inspect `git status --short --branch` and recent commits before mutation.
 Root `node_modules/`, `artifacts/`, and `dist/` stay ignored. The deliberate
 exception is the shipped dependency closure **inside** `actions/runtime/`.
-`actions/runtime/MANIFEST.json` binds generated files and source inputs. Preserve
+`actions/runtime/MANIFEST.json` records the shipped packages and their rights;
+`npm run check:actions` owns parity by rebuilding and comparing bytes. Preserve
 original dependency bytes; do not normalize their line endings.
 
 `src/diffdevil/tests/examples.test.mjs` executes the actual task-guide CLI command specimens,

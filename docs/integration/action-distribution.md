@@ -95,11 +95,15 @@ ordinary `verify` includes that comparison. The generator owns the runtime,
 metadata, sub-action wrappers and generated surface fields in the catalog.
 Authored behavior and input/output definitions live under `src/diffdevil/actions/`.
 
-The manifest binds input source files and generated output hashes. It is evidence
-of content/parity, **not** a signature or authentication scheme. Restore the exact
-lock before rebuilding; do not upgrade or patch a vendored package by hand.
-`.gitattributes` disables text normalization for the runtime so Git does not
-change third-party CRLF bytes after hashing. Upstream whitespace is preserved,
+The manifest records what ships: the target, compiler version and each vendored
+package with its version, lock integrity, licence and notice paths. It does not
+hash source inputs or generated files; the `--check` rebuild compares every
+tracked byte, and Git already binds the committed distribution to the lockfile
+beside it. A development-only lockfile change therefore leaves the distribution
+current. The manifest is a rights and content record, **not** a signature or
+authentication scheme. Restore the exact lock before rebuilding; do not upgrade or
+patch a vendored package by hand. `.gitattributes` disables text normalization for
+the runtime so Git does not change third-party CRLF bytes. Upstream whitespace is preserved,
 while ordinary authored-source whitespace checking remains active.
 
 ## Consumer evidence
