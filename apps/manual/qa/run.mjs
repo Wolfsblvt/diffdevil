@@ -10,6 +10,7 @@ import { createHash } from 'node:crypto';
 import { manualPages, origins, pageUrl } from '../manifest.mjs';
 import { faqRecords } from '../../website/faq-content.mjs';
 import { qualifyRedirects } from './redirects.mjs';
+import { qualifyFirstSuccess } from './wave-1.mjs';
 const root = resolve('.'), out = join(root,'artifacts/manual/qa');
 mkdirSync(out,{recursive:true});
 const ref = execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim();
@@ -178,6 +179,7 @@ try {
    await expect(reader.locator('[data-slw-group="Managed App"] > details')).toHaveAttribute('open','');
   } finally { await plain.close(); }
  });
+ await qualifyFirstSuccess({ page, origins, check, screenshot });
  await check('Shared shell has no page-script errors or unexpected external requests',async()=>{
   assert.deepEqual(result.pageErrors,[]); assert.deepEqual(result.unexpectedRequests,[]);
  });
