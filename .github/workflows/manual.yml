@@ -11,13 +11,17 @@ on:
       - 'tools/website-*.mjs'
       - 'package*.json'
       - '.github/workflows/manual.yml'
+  # This continuing source carrier must remain qualifiable while base movement
+  # prevents GitHub from starting pull_request checks. It has no publication effects.
+  push:
+    branches: [docs/public-manual]
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: manual-${{ github.event.pull_request.number || github.ref }}
+  group: manual-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
