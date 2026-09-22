@@ -2,7 +2,7 @@
 
 A Chrome Manifest V3 application that puts replacement-aware **Changed** counts beside GitHub's pull-request and file statistics. Analysis uses the same diffdevil parser, measurements, policy compiler and report contracts as the reusable engine. It does not run a separate approximation in a DOM scraper.
 
-This is an authored source candidate, not a published Store extension. The implemented browser UI, settings, data management, provider acquisition, build, fixtures and Store-preparation pipeline are included. Installed Chrome, live GitHub and Windows acceptance are distinct from the deterministic browser evidence. See [QA](QA.md) and the generated receipts.
+This is an authored source candidate, not a published Store extension. The implemented browser UI, settings, data management, provider acquisition, build, fixtures and Store-preparation pipeline are included. Installed Chrome, live GitHub and Windows acceptance are distinct from the deterministic browser evidence. See [QA](qa.md) and the generated receipts.
 
 ## Build and load
 
@@ -63,7 +63,7 @@ The extension works without the hosted App. The portable identity classifier dis
 
 The manifest requests storage, the `github.com` content-script scope needed for client-side PR navigation, and `api.github.com` for a public read-only fallback. There is no PAT, account, cookie permission, browser-history API, localhost daemon, all-sites host permission, telemetry or source-upload backend. Incognito is deliberately unsupported to avoid mixing its observations into a normal profile's persistent cache.
 
-Raw diffs are processed in memory and discarded. Normalized reports can contain private paths and revision identities; trusted policy text and immutable missing-file results are rebuildable cache data. The LRU budget is bounded. Small settings can synchronize through Chrome; advanced YAML and repository overrides are local. A support snapshot is redacted; a deliberate full settings export is not. Read [Privacy](PRIVACY.md) before using private repositories.
+Raw diffs are processed in memory and discarded. Normalized reports can contain private paths and revision identities; trusted policy text and immutable missing-file results are rebuildable cache data. The LRU budget is bounded. Small settings can synchronize through Chrome; advanced YAML and repository overrides are local. A support snapshot is redacted; a deliberate full settings export is not. Read [Privacy](privacy.md) before using private repositories.
 
 ## Verification and distribution
 
@@ -78,4 +78,4 @@ These commands follow a built candidate. The DOM/acquisition runs need Playwrigh
 
 The Store generator produces a 128px icon, five 1280×800 RGB screenshots, 440×280 and 1400×560 RGB promotional images, editable SVG compositions and a hash manifest. Captures retain the authored-fixture/source-candidate disclosure. Listing copy, privacy answers and a submission checklist live under [store](store/README.md). No public Store link is invented.
 
-The application is AGPL-3.0-only, reusable core/browser code is MIT, original prose is CC BY 4.0, and accepted visual identity remains reserved. [Licences](LICENSES.md) and the root component map define the boundaries.
+The application is AGPL-3.0-only, reusable core/browser code is MIT, original prose is CC BY 4.0, and accepted visual identity remains reserved. [Licences](licenses.md) and the root component map define the boundaries.

@@ -30,7 +30,7 @@ No remotely hosted executable code is used. JavaScript, compiled validators, CSS
 
 ## Public notice and owner attestations
 
-The bundled privacy notice is `apps/browser-extension/PRIVACY.md`. A public, reachable version is required for the dashboard. The owner must attest to the current Limited Use requirements only after reviewing the exact package and public notice; this source session does not fabricate an owner's legal certification. Reviewer access and any required test account must be arranged by the owner without putting credentials in the repository or source archive.
+The bundled privacy notice is `apps/browser-extension/privacy.md`. A public, reachable version is required for the dashboard. The owner must attest to the current Limited Use requirements only after reviewing the exact package and public notice; this source session does not fabricate an owner's legal certification. Reviewer access and any required test account must be arranged by the owner without putting credentials in the repository or source archive.
 
 ## Primary references checked 2026-09-19
 

@@ -6,7 +6,7 @@ This records the September 15, 2026 final local review: defects repaired, useful
 user journeys added, references preserved, and the precise boundary handed to the
 release operator. It is not an independent review, live GitHub canary, licence
 selection, or public release. Current executed totals belong in
-[Qualification](../../QUALIFICATION.md).
+[Qualification](../../qualification.md).
 
 ## Runtime and qualification findings
 
@@ -42,7 +42,7 @@ comment without presenting a line count as code quality. Tests execute actual
 CLI specimens and policy/workflow files, not manually translated approximations.
 The root README links these first-use tasks; the detailed manuals remain available.
 
-`docs/DOCUMENTATION.md` owns the teaching plan and canonical source boundary for a
+`docs/documentation.md` owns the teaching plan and canonical source boundary for a
 future small site and wiki-like help. No separately maintained wiki or placeholder
 website was created. The complete portable engine remains the product, not merely
 its shortest labeling example.
@@ -85,5 +85,5 @@ licence/version/publication metadata, and the actual selected publication effect
 A source push can activate the included read-only verification workflow, but does
 not itself publish npm, create `v1`, establish Marketplace availability, or prove
 private security-reporting intake. Website and visual delivery may follow from
-these maintained sources. The [release procedure](../../PUBLICATION-BOUNDARY.md)
+these maintained sources. The [release procedure](../../publication-boundary.md)
 is the compact operator path.

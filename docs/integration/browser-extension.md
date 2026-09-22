@@ -41,4 +41,4 @@ The repeated SHA strings are explicit example identities, not real provider proo
 
 ## Build, licence and verification
 
-Reusable source and the browser bundle are MIT. The concrete Chrome application is AGPL-3.0-only; identity assets remain reserved. The closed-bundle smoke checks and browser/core tests are separate from installed and live-provider acceptance. The [qualification manual](../../apps/browser-extension/QA.md) identifies the commands, evidence files and unverified environments.
+Reusable source and the browser bundle are MIT. The concrete Chrome application is AGPL-3.0-only; identity assets remain reserved. The closed-bundle smoke checks and browser/core tests are separate from installed and live-provider acceptance. The [qualification manual](../../apps/browser-extension/qa.md) identifies the commands, evidence files and unverified environments.

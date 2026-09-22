@@ -38,11 +38,12 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci --ignore-scripts --no-audit --no-fund
-      - run: npm run manual:prepare
+      - run: npm --prefix apps/manual run toolchain
       - run: npm run website:build
-      - run: npm run manual:check
+      - run: npm --prefix apps/manual test
+      - run: npm --prefix apps/manual run check
       - run: npx --no-install playwright install --with-deps chromium
-      - run: npm run manual:qa
+      - run: npm --prefix apps/manual run qa
       - name: Preserve the admitted FAQ journey
         run: node apps/website/qa/faq.mjs
       - name: Qualification evidence

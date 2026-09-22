@@ -49,7 +49,8 @@ npm ci --offline --cache artifacts/dependencies/npm-cache --ignore-scripts --no-
 The public repository does not include a development cache or root dependencies.
 A local cache and its provenance are working data, not a second package manifest.
 Use `npm ci` to establish the lock instead of assuming copied dependencies are
-current. All fifteen locked packages are sufficient; no bundler is downloaded.
+current. The core runtime dependency closure needs no additional bundler.
+The public manual has a separate source-package preparation described below.
 
 `npm run build` emits JavaScript, declarations, source maps, generated preset data
 and standalone Ajv validators under ignored `dist/lib`. It removes only that
@@ -57,16 +58,17 @@ wholly generated output first, so deleted source cannot survive in a package.
 The ordinary npm build uses normal package dependencies; it is not bundled.
 
 `build:offline` and `verify:offline` remain compatibility aliases to the same build
-and verification commands. There is no separate compiler installation under
-`artifacts/toolchain`. Restore the exact lock offline first; the build and tests
-perform no registry installation themselves. One dependency closure is sufficient.
+and verification commands. Restore the exact root lock and prepare the manual
+consumer first. `npm --prefix apps/manual run verify:offline` additionally sets
+`DIFFDEVIL_DOCS_OFFLINE=1`, refusing source-package downloads during verification.
+There is no separate reusable compiler installation under `artifacts/toolchain`.
 
 ## Verification commands and boundaries
 
 | Command | What it proves |
 | --- | --- |
 | `npm run check:prep` | Parses machine assets and checks unique, nonempty declared case IDs. It does not execute cases or judge prose. |
-| `npm run verify` | Preparation, ordinary build, all registered core and `apps/**/*.test.mjs` application cases, exact Action regeneration parity, and no-write bundle checks for the playground and managed-App Workers. |
+| `npm run verify` | Preparation, ordinary build, all registered core and application cases, exact Action regeneration parity, no-write playground/App Worker checks, both public static builds and extension checks. |
 | `npm test` | Ordinary tests against the existing build; build first after source edits. |
 | `npm run test:conformance` | Actual production test events for every supplied conformance case, with separate failed/not-executed/harness totals. |
 | `npm run demo:shortcuts` | Four CLI pairs, a custom formula/named query, and pure Action-shorthand/full-policy parity. Not an Action host test. |
@@ -82,9 +84,12 @@ perform no registry installation themselves. One dependency closure is sufficien
 | `npm run check:github-app` | Bundles the managed-App Worker, Queue and placeholder D1 binding with Wrangler dry-run, then compiles the absent-policy default through that configuration in local `workerd`. It creates no App, Queue, D1 database, Worker, deployment, route or credentialed GitHub effect. |
 | `npm run check:website` | Generates selected sources and assets, builds both static hosts into `artifacts/website/dist` and `artifacts/manual/dist`, and mirrors one joined search index. Part of `verify`. No deployment or remote preview. |
 | `npm run website:assets` | Renders the ignored favicon, touch icon, web-manifest and GitHub App logos, Open Graph image and manifest from `design/assets/identity/`, measuring each framed mark against its declared occupancy. `--report` prints the measurements. |
-| `npm run website:build` / `website:dev` / `website:preview` / `website:check` | Full engine + website build, the Astro dev server, a local preview of the built output, and the Astro type check. See [the website README](../apps/website/README.md). |
+| `npm run website:build` / `website:dev` / `website:preview` / `website:check` | Full engine + two-host production build, the website Astro dev server, a local preview of the website output, and the website Astro type check. See [the website README](../apps/website/README.md). |
 | `npm run test:website` | Data-level website tests (also discovered by `npm test`): fixtures evaluate to the outcomes they teach, snapshots are valid engine reports, the docs manifest names real sources, browser shims match Node. |
 | `npm run qa:website` | Headless Chromium qualification of the built website against the real playground application server on the fake GitHub fixture. Needs Playwright's Chromium (`npx playwright install chromium`). Local behaviour only, not a deployment claim. |
+| `npm --prefix apps/manual test` | Manifest, source identity, migration, resolver, theme and static-handler contracts without the manual dependency installation. |
+| `npm --prefix apps/manual run check` | Builds the engine and checks the actual manual Astro components using its selected supported toolchain. |
+| `npm --prefix apps/manual run qa` | Rebuilds an isolated noindex reading fixture and qualifies the actual two-host outputs in Chromium, including real loopback 308 chains. Starts after an ordinary production build. |
 | `npm run extension:dev` | Rebuilds the extension into the stable local dogfood path `artifacts/browser-extension/unpacked`. Chrome still requires **Reload** on the extension card and a reload of already-open pull-request tabs; SHA-named witness copies are evidence, not the installed development path. |
 
 The fresh CI `npm ci` cache holds the locked project tarballs but lacks registry
@@ -218,29 +223,34 @@ Publication, release identity, real credentials, live settings and provider
 writes require their own authority. See [licence boundaries](../LICENSES/README.md), [release procedure](publication-boundary.md)
 and exact current [Qualification](qualification.md).
 
-
 ## Public-manual toolchain and qualification
 
 The manual uses an isolated supported peer graph: Node >=22.12, Astro 7.3.3,
 Starlight 0.42.2 and the source-only `@wolfsblvt/starlight-works` package from
 `Wolfsblvt/starlight-works@22d4567006ec7a33d890fab2f3d3515332498a90`.
-`npm run manual:prepare` fetches that exact source and invokes its own build/pack
-route. The website's existing locked graph is not upgraded for this consumer.
-Prepared source/package and consumer receipts live under `artifacts/manual-toolchain`.
-The generated child lock is retained in qualification artifacts; a clean transitive
-resolution is a new graph, not automatically reusable prior evidence.
+`npm --prefix apps/manual run toolchain` fetches that exact source and invokes its
+own build/pack route. The website's existing locked graph is not upgraded for this
+consumer. Prepared source/package and consumer receipts live under
+`artifacts/manual-toolchain`. The generated child lock is retained in qualification
+artifacts; a clean transitive resolution is a new graph, not automatically reusable
+prior evidence.
 
-`npm run website:build` builds the engine and both hosts. `npm run manual:check`
-checks the actual manual Astro components. `npm run manual:test` runs dependency-free
-source contracts; after preparation and engine build, `node --test
-apps/manual/render.spec.mjs` tests the AST projection and real generated inventories.
-`npm run manual:qa` builds its isolated noindex reading fixture and exercises both
-actual outputs, including the emitted static request handler, in Chromium. The
-normal production build excludes that fixture. The existing FAQ browser journey
-also runs against the combined candidate. Neither command deploys a host.
+The website's ordinary build-done hook builds the manual and joins search, so
+`npm run website:build` and root verification still exercise both hosts. Manual-only
+commands are owned by `apps/manual/package.json`, leaving the reusable package and
+Action distribution metadata unchanged. After preparation and engine build,
+`npm --prefix apps/manual run test:projection` exercises AST projection and actual
+generated inventories. The complete command contract lives in the
+[manual application README](../apps/manual/README.md).
 
-For an already prepared checkout, `DIFFDEVIL_DOCS_OFFLINE=1` reuses the verified
-source package and installed consumer graph or npm's populated cache without a
-network fallback. An empty cache cannot install an unpublished package offline.
-The ordinary runner prunes nested dependency and generated-output directories
-before discovering repository tests.
+Manual browser qualification builds an isolated noindex reading fixture and
+exercises both actual outputs, including the emitted static request handler, in
+Chromium. The normal production build excludes that fixture. The existing FAQ
+browser journey also runs against the combined candidate. Neither command deploys
+a host.
+
+For an already prepared checkout, `DIFFDEVIL_DOCS_OFFLINE=1` or npm's `--offline`
+mode reuses the verified source package and installed consumer graph or npm's
+populated cache without a network fallback. An empty cache cannot install an
+unpublished package offline. The ordinary runner prunes nested dependency and
+generated-output directories before discovering repository tests.

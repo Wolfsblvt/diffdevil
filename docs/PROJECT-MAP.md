@@ -4,7 +4,7 @@
 
 This map locates the single product, shipped Actions, documentation and repository
 tooling. It distinguishes authored code, executable contracts, committed distribution
-and disposable outputs without introducing independently versioned packages.
+and disposable outputs without introducing independently versioned products.
 
 ## Root responsibilities
 
@@ -14,16 +14,16 @@ and disposable outputs without introducing independently versioned packages.
 | `apps/playground/` | AGPL application adapter: shared local/Worker public-PR route, browser assets, versioned response contract and application tests. |
 | `apps/github-app/` | AGPL managed-App adapter: verified webhook ingress, Queue execution, D1 recovery/history state, migrations and operator boundary. |
 | `apps/browser-extension/` | AGPL Chrome Manifest V3 application: GitHub pull-request projection, settings, provider acquisition, bounded local storage, browser qualification and unpublished Store-preparation material. |
-| `apps/website/` | AGPL public website: Astro static output + Starlight manual rendered from repository Markdown, the complete playground as one lazy React island running the shared engine in the browser, examples catalogue, browser-extension and App pages, legal/privacy routes. Built and qualified locally; not deployed by any command here. |
+| `apps/website/` | AGPL public website: Astro static output, retained legacy guides, the complete playground as one lazy React island running the shared engine in the browser, examples catalogue, browser-extension and App pages, legal/privacy routes. Its build hook joins the public manual and search. No command deploys either host. |
 | `apps/shared/` | Small presenters both AGPL applications use (currently the App check-summary composer). |
 | `actions/` | Three sub-action entry points and their shared, committed runtime. |
-| `apps/manual/` | Explicit-source public manual renderer, source/route/migration manifests, shared-package consumption, generated reference inserts and qualification. Chapter prose stays in `docs/manual/`; the standalone FAQ stays with the product site. |
+| `apps/manual/` | Explicit-source public manual renderer, source/route/migration manifests, isolated application toolchain and commands, shared-package consumption, generated reference inserts and qualification. Chapter prose stays in `docs/manual/`; the standalone FAQ stays with the product site. |
 | `design/` | Canonical reusable visual reference: E3/W1/T2 with Foundation A grammars, tokens, explicit errata, and reserved production identity SVGs; not executable website source. |
 | `docs/` | Maintained manuals, runnable examples and dated technical research. |
 | `tools/` | Builds, generation and repository/consumer qualification, including the website docs collection, derived website assets and curated-snapshot capture/audit. |
 | `.github/` | Provider-owned workflow convention, not a second implementation. |
 | `action.yml` | One-step root Action, forwarding to the shared runtime. |
-| `package.json`, `package-lock.json`, `tsconfig.json` | One package, one lock and one compiler boundary. |
+| `package.json`, `package-lock.json`, `tsconfig.json` | Reusable product package, root development lock and core compiler boundary. The manual's private application toolchain has its own package metadata and qualification lock. |
 | `wrangler.jsonc` | Source-owned Cloudflare Worker name, runtime compatibility and static-asset routing; it contains no account ID, token, custom domain or deployment state. |
 | `README.md`, `AGENTS.md` | Public product front door and repository-local contribution contract. |
 
@@ -66,7 +66,8 @@ is deliberately outside source.
 
 The compiled public exports still live under `dist/lib/`. Consumer import names
 and the `diffdevil` CLI do not expose the source-tree nesting. There is no workspace
-federation, duplicated compiler, or second policy engine.
+federation or second policy engine. The isolated manual renderer does not compile
+a different reusable engine.
 
 ## Action distribution
 
@@ -87,12 +88,14 @@ committed, never hand-edited.
 ## Documentation and proof
 
 [The documentation map](README.md) enters current product and integration manuals.
-[Documentation design](DOCUMENTATION.md) owns the teaching approach and future site
+[Documentation design](documentation.md) owns the teaching approach and future site
 source; `docs/examples/` contains its executed specimens. `docs/reference/` retains
 dated research and implementation evidence, not alternate current instructions.
 
 [Development](DEVELOPMENT.md) owns restoration and commands.
-[Qualification](QUALIFICATION.md) records observed boundaries and limitations.
+[Qualification](qualification.md) records observed boundaries and limitations.
+[The manual application](../apps/manual/README.md) owns its selected source projection,
+chapter-authoring contract and two-host browser qualification.
 `tools/test.mjs` discovers core and application tests; `tools/conformance.mjs` reports actual
 supplied-case execution separately; `tools/package-smoke.mjs` tests the installed
 npm artifact. These tests use real filesystem/process boundaries and mock provider

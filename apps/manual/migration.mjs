@@ -31,7 +31,7 @@ export const retainedFamilies = Object.freeze([
  { sources: ['docs/integration/example-catalogue.md','docs/examples/catalogue/**'], disposition: 'retain-shared-catalogue', targets: ['try-public-pull-request','playground'], externalRoute: '/examples/' },
  { sources: ['README.md'], disposition: 'compress-at-final-reconciliation', targets: ['what-is-diffdevil','label-pull-requests','analyze-local-changes'] },
  { sources: ['docs/README.md'], disposition: 'retain-technical-map-update-links', targets: ['technical-project-docs'] },
- { sources: ['docs/VISION.md','docs/DIRECTION.md','docs/DECISIONS.md','docs/ARCHITECTURE.md','docs/DEVELOPMENT.md','docs/PROJECT-MAP.md','docs/QUALIFICATION.md','docs/PUBLICATION-BOUNDARY.md'], disposition: 'retain-repository-owned', targets: ['technical-project-docs'] },
+ { sources: ['docs/VISION.md','docs/DIRECTION.md','docs/DECISIONS.md','docs/ARCHITECTURE.md','docs/DEVELOPMENT.md','docs/PROJECT-MAP.md','docs/qualification.md','docs/publication-boundary.md'], disposition: 'retain-repository-owned', targets: ['technical-project-docs'] },
  { sources: ['docs/reference/**'], disposition: 'retain-dated-evidence', targets: ['technical-project-docs'] },
  { sources: ['apps/*/README.md','provider/runtime internals'], disposition: 'retain-component-operator-homes', targets: ['technical-project-docs','self-host-app'] },
  { sources: ['SECURITY.md','LICENSES/README.md','docs/PRIVACY-AND-DATA.md'], disposition: 'retain-authoritative-specialist-sources', targets: ['security-and-data','technical-project-docs'] },

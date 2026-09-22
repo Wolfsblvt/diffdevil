@@ -5,22 +5,42 @@
 The maintained Markdown is `docs/manual/`. This application renders only the
 explicit pages in `manifest.mjs` at `https://docs.diffdevil.dev/`. The product site
 and its admitted FAQ remain in `apps/website`; the FAQ is not a second manual page.
+Application source here is AGPL-3.0-only. Documentation, examples and visual assets
+keep their separate rights in the repository's licence map.
 
 ## Build and inspect
 
 From the repository root, use `npm ci --ignore-scripts`, then `npm run website:build`.
-This builds the engine, both static hosts and one joined Pagefind index. Output is
-`artifacts/website/dist` and `artifacts/manual/dist`. Neither command deploys anything.
-`npm run manual:check` checks the actual manual renderer; `npm run manual:test`
-checks source contracts. `npm run manual:dev` serves the manual on loopback port 4322.
+This builds the engine and product site, then the website's build hook builds the
+manual and one joined Pagefind index. Output is `artifacts/website/dist` and
+`artifacts/manual/dist`. Neither command deploys anything. Ordinary `npm run verify`
+uses this same two-host build through `check:website`.
+
+Manual-only commands belong to this application, not the reusable package's metadata:
+
+```sh
+npm --prefix apps/manual run check
+npm --prefix apps/manual test
+npm --prefix apps/manual run test:projection
+npm --prefix apps/manual run dev
+npm --prefix apps/manual run qa
+```
+
+`check` builds the engine and checks the actual manual renderer. `test` checks the
+source contracts; `test:projection` additionally requires the prepared toolchain
+and built engine. `dev` serves the manual on loopback port 4322. `qa` starts from an
+ordinary two-host production build and creates the isolated reading qualification
+build described below. The root package and its Action distribution are unchanged
+by these application-only commands.
 
 The manual consumes the exact accepted `Wolfsblvt/starlight-works` source commit
 `22d4567006ec7a33d890fab2f3d3515332498a90` through that repository's own build and pack
-commands. It is not an npm publication. `manual:prepare` records source and consumer
-receipts under `artifacts/manual-toolchain/`. The package supplies linked sidebar
-groups and the five GitHub alerts; this repository does not copy their implementation.
-The manual's isolated dependency graph supplies its supported Starlight 0.42.2 peer,
-without upgrading the accepted website's locked Starlight 0.42.1 graph.
+commands. It is not an npm publication. `npm --prefix apps/manual run toolchain`
+records source and consumer receipts under `artifacts/manual-toolchain/`. The package
+supplies linked sidebar groups and the five GitHub alerts; this repository does not
+copy their implementation. The manual's isolated dependency graph supplies its
+supported Starlight 0.42.2 peer without upgrading the accepted website's locked
+Starlight 0.42.1 graph.
 
 The source package is unpacked from its verified local tarball and installed with
 `--install-links`, not linked into a sibling repository. Direct consumer versions
@@ -28,8 +48,10 @@ are pinned. The child lock is generated, retained with each qualification artifa
 and reused by subsequent preparations of that checkout. A clean preparation resolves
 a new transitive graph and must earn its own evidence; it does not reproduce an
 earlier graph merely because the source SHA is unchanged. The exact Git coordinate
-and package receipt govern the unpublished package. `DIFFDEVIL_DOCS_OFFLINE=1` requires a previously prepared source/dependency
-cache and refuses to download it. A clean checkout needs one online preparation.
+and package receipt govern the unpublished package. `DIFFDEVIL_DOCS_OFFLINE=1` requires
+a previously prepared source/dependency cache and refuses to download it. A clean
+checkout needs one online preparation. `npm --prefix apps/manual run verify:offline`
+sets that control while running ordinary root verification.
 
 ## Author a chapter
 
@@ -76,9 +98,11 @@ map needs its separate explicit job. Incoming links must be updated in the same 
 A transfer also selects `redirects`, `sourceIds` and `search` together. Select each
 legacy public route in `state.routes` as `{target: "page-key"}`. Unknown routes,
 unready successors and partial family transfers refuse. No legacy route is
-activated merely because a replacement file exists. Every emitted retired route must
-have its explicit transfer, and selected source fragments must resolve. The resolver preserves old
-source IDs and can direct an old fragment to a different member of a split.
+activated merely because a replacement file exists. Every emitted retired route
+must have its explicit transfer, and selected source fragments must resolve. The
+resolver preserves old source IDs and can direct an old fragment to a different
+member of a split. Explicit filename aliases preserve selected pre-rename technical
+source IDs; unknown casing, paths and URLs still refuse.
 
 The build emits a small Cloudflare Pages advanced-mode `_worker.js` handler in each
 static output. It delegates ordinary requests to `env.ASSETS.fetch` and applies the
@@ -90,8 +114,10 @@ retain a usable link in plain static previews and preserve query/fragment when
 JavaScript is enabled. No Markdown source forwarding files are written.
 
 Browser qualification executes the emitted handler against a local static-assets
-binding; it does not implement a second redirect simulator. Host adoption and live
-HTTP readback remain separate from this build. No hosting or DNS operation occurs.
+binding. Redirect journeys use real loopback HTTP: canonical status and Location
+are recorded before adapting only the transport origin, and the browser carries
+fragments across the actual 308 responses. Host adoption and live HTTP readback
+remain separate from this build. No hosting or DNS operation occurs.
 
 ## Search, FAQ and generated inventories
 
@@ -109,14 +135,14 @@ FAQ browser qualification runs on the combined candidate as well.
 `<!-- manual:generated NAME -->` inserts a bounded mechanical inventory into an
 authored page. Supported names are `cli-help`, `actions`, `typescript-exports`,
 `schemas`, `detail`, `presets`, `real-pr-catalogue`, `presenter-small`,
-`presenter-report` and `presenter-plan`. These read the actual built
-CLI/API, Action metadata and canonical contracts/catalogue; they are not another
-manually maintained reference. Source links remain useful when reading on GitHub.
-Schema fields and language catalogues are mechanical inventories, not a claim that
-structural validity establishes semantic validity. Preset expansion is checked
-against the canonical preset through the real compiler. Presenter specimens execute
-the real CLI and keep the small 10-Changed/16-churn input distinct from the
-178-Changed presentation input. A command failure fails generation.
+`presenter-report` and `presenter-plan`. These read the actual built CLI/API, Action
+metadata and canonical contracts/catalogue; they are not another manually maintained
+reference. Source links remain useful when reading on GitHub. Schema fields and
+language catalogues are mechanical inventories, not a claim that structural validity
+establishes semantic validity. Preset expansion is checked against the canonical
+preset through the real compiler. Presenter specimens execute the real CLI and keep
+the small 10-Changed/16-churn input distinct from the 178-Changed presentation input.
+A command failure fails generation.
 
 The real-PR catalogue remains the one shared `docs/examples/catalogue` family.
 Playground links carry a real `example--variant` key. Controlled teaching patches
@@ -125,18 +151,19 @@ playground IDs.
 
 ## Qualification and deliberate limits
 
-`npm run manual:qa` builds an isolated noindex reading fixture, then runs Chromium
-against both actual static outputs under intercepted canonical HTTPS origins. It
-checks routes/aliases, the finite resolver, shared shell/theme, linked groups,
-five alerts, actual FAQ fragments, search kinds, native no-JavaScript disclosures,
-and narrow/keyboard behavior. The
-normal production build never includes that fixture. Results and screenshots name
-the exact candidate under `artifacts/manual/qa/`.
+`npm --prefix apps/manual run qa` builds an isolated noindex reading fixture, then
+runs Chromium against both actual static outputs under intercepted canonical HTTPS
+origins and loopback HTTP for redirects. It checks routes/aliases, the finite
+resolver, shared shell/theme, linked groups, five alerts, actual FAQ fragments,
+search kinds, native no-JavaScript disclosures and narrow/keyboard behavior.
+The normal production build never includes that fixture. Results and screenshots
+name the exact candidate under `artifacts/manual/qa/`.
 
 The cross-host theme handoff is limited to owned site/manual HTML links. It transfers
 only the existing preference and bounce side, then removes its query parameter
-before first paint. Direct visits retain each origin's local preference. No cookie,
-authentication or synchronization service is implied.
+before first paint. Direct visits retain each origin's local preference. Same-page
+fragment controls are not rewritten. No cookie, authentication or synchronization
+service is implied.
 
 Automated DOM and browser evidence does not establish an actual screen-reader user
 journey, live hosting, DNS, public App/Store availability or deployment acceptance.

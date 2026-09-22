@@ -35,7 +35,7 @@ The Node 24.11.1 binary already present with the container's Playwright driver w
 used directly. Nothing was installed or downloaded to obtain it. Node 22.16.0
 remained available as the default runtime. Both executed the actual distributed
 paths outside the checkout, and Node 24 also passed ordinary source verification.
-Exact final results belong to the current `docs/QUALIFICATION.md` and private
+Exact final results belong to the current `docs/qualification.md` and private
 execution logs; this record does not freeze a test count as a product requirement.
 
 No bundler or Action toolkit was added. The 15-package development lock restored

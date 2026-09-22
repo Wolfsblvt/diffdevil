@@ -164,7 +164,7 @@ Deliver the [independent public playground](integration/playground.md): public P
 
 A measurement form is a useful first result, not the complete configurable experience. All views use the shared engine, preserve incomplete evidence, and apply no effects. Private PR playground access and automatic enrollment in App history are not selected.
 
-Give the playground its own page and a compact homepage entry. The website teaches the open tool first, offers the free playground, and explains managed convenience as an optional route. Render selected repository-owned user documentation and examples through the [documentation design](DOCUMENTATION.md), not a duplicate wiki or a wholesale publication of internal product records.
+Give the playground its own page and a compact homepage entry. The website teaches the open tool first, offers the free playground, and explains managed convenience as an optional route. Render selected repository-owned user documentation and examples through the [documentation design](documentation.md), not a duplicate wiki or a wholesale publication of internal product records.
 
 ### Packaging and consumer truth
 

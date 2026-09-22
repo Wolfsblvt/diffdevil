@@ -27,7 +27,7 @@ not technical capability or meaningful unsuccessful observations.
 The following public evidence editions retain the complete substantive returned
 qualification or comparison content. Their count and feature claims apply only
 to their stated earlier checkpoint; current totals are in
-[Qualification](../QUALIFICATION.md).
+[Qualification](../qualification.md).
 
 | Historical edition | What changed at that boundary |
 | --- | --- |

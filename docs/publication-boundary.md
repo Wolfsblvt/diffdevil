@@ -50,7 +50,7 @@ it is not silently borrowed across a changed candidate.
 
 ## Qualification already established
 
-The maintained [Qualification](QUALIFICATION.md) records the accepted source
+The maintained [Qualification](qualification.md) records the accepted source
 boundaries separately:
 
 - native Windows Node 24 verification, conformance, installed-package launchers,

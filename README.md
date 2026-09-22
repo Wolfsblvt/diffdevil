@@ -298,7 +298,7 @@ hosted-runner and publication evidence.
 
 The ordinary source verification command is `npm run verify`. Installed-package,
 conformance, runtime, and live-provider evidence remain separate commands and
-claims: [Development](docs/DEVELOPMENT.md) · [Qualification](docs/QUALIFICATION.md)
+claims: [Development](docs/DEVELOPMENT.md) · [Qualification](docs/qualification.md)
 · [v1.0.0 release notes](docs/releases/v1.0.0.md).
 
 Suspected vulnerabilities can be [reported privately](SECURITY.md) through

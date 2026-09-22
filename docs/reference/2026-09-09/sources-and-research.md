@@ -21,7 +21,7 @@ preserves block-level replacement counting, raw facts, uncertainty, scopes,
 portable consumers, plans, effects, and managed ownership. Provisional names and
 the earlier no-default-label stance are superseded.
 
-**O3: Branding.** The [canonical reference](../../BRANDING.md) owns lowercase
+**O3: Branding.** The [canonical reference](../../branding.md) owns lowercase
 naming and measurement vocabulary. The dated [branding reconciliation](branding-reconciliation.md)
 records the narrow default-preset correction, rather than reopening the brand.
 

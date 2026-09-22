@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-import { run } from './manual-package.mjs';
+import { run, root } from './manual-package.mjs';
 import { readFileSync, copyFileSync } from 'node:fs';
+process.chdir(root);
 const manifest=JSON.parse(readFileSync('artifacts/manual/manifest.json','utf8'));
 if(manifest.qa) throw new Error('Build the ordinary production candidate before the isolated qualification build.');
 copyFileSync('artifacts/manual/manifest.json','artifacts/manual/production-manifest.json');

@@ -35,12 +35,12 @@ export function packageBin(packageName,bin,args,cwd=manualRoot,options={}) {
 }
 const sha256=file=>createHash('sha256').update(readFileSync(file)).digest('hex');
 export function prepareManual() {
- const offline = process.env.DIFFDEVIL_DOCS_OFFLINE === '1';
+ const offline = process.env.DIFFDEVIL_DOCS_OFFLINE === '1' || process.env.npm_config_offline === 'true';
  mkdirSync(cache,{recursive:true});
  let receipt=existsSync(receiptPath)?JSON.parse(readFileSync(receiptPath,'utf8')):undefined;
  if(receipt && (receipt.commit!==packageSource.commit || !existsSync(tarball) || receipt.tarballSha256!==sha256(tarball))) throw new Error('The manual source-package cache does not match the selected coordinate. Remove artifacts/manual-toolchain and rebuild.');
  if(!receipt) {
-  if (offline) throw new Error('The exact manual source package is not cached. Run npm run manual:prepare while online first.');
+  if (offline) throw new Error('The exact manual source package is not cached. Run npm --prefix apps/manual run toolchain while online first.');
   if(!existsSync(join(checkout,'.git'))) run('git',['init',checkout]);
   run('git',['-C',checkout,'fetch','--depth=1',`https://github.com/${packageSource.repository}.git`,packageSource.commit]);
   run('git',['-C',checkout,'config','core.autocrlf','false']);
