@@ -134,6 +134,17 @@ test('once-per-transition persists false state and unknown never resets a resolv
   textChange(fake, 3, 'f'); unwrap(await apply(fake, compiled)); assert.equal(fake.comments.length, 1);
   textChange(fake, 7, 'a'); unwrap(await apply(fake, compiled)); assert.equal(fake.comments.length, 2);
 });
+test('configured size labels and an XL transition comment compose through one shared policy', async () => {
+  const fake = new FakeGitHub();
+  const compiled = policy({ version: 1, presets: ['size@1'], rules: { xlTransition: { when: 'totals.lines.changed > 4', effects: { comment: { mode: 'once-per-transition', template: 'XL: {{ totals.lines.changed }}' } } } } });
+  textChange(fake, 3, 'a'); unwrap(await apply(fake, compiled));
+  assert.equal([...fake.labels].some(name => name.startsWith('size/')), true, 'the selected size policy assigns one managed size label');
+  assert.equal(fake.comments.length, 0);
+  textChange(fake, 6, 'b'); unwrap(await apply(fake, compiled)); assert.equal(fake.comments.length, 1);
+  textChange(fake, 7, 'c'); unwrap(await apply(fake, compiled)); assert.equal(fake.comments.length, 1, 'remaining XL does not duplicate the transition comment');
+  textChange(fake, 3, 'd'); unwrap(await apply(fake, compiled));
+  textChange(fake, 6, 'e'); unwrap(await apply(fake, compiled)); assert.equal(fake.comments.length, 2, 'leaving and re-entering XL creates the next transition');
+});
 test('band-change trigger ignores a new head in the same band and updates on a proven new band', async () => {
   const fake = new FakeGitHub();
   const compiled = policy({ version: 1, rules: { note: { band: 'size', effects: { comment: { mode: 'upsert', trigger: 'band-changed', template: 'Band: {{ bands.size }}' } } } } });

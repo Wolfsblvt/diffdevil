@@ -6,8 +6,10 @@ import { resolve } from 'node:path';
 import { test } from 'node:test';
 import { Miniflare } from 'miniflare';
 import { D1AppStore } from './storage.mjs';
+import { createAdmissionService } from './admission.mjs';
+import { DEFAULT_SIZE_POLICY, readConfigurationExport, resolveEffectivePolicy } from './configuration.mjs';
 
-const migrations = ['0001_initial.sql', '0002_consent-provenance.sql', '0003_preserve-active-consent.sql'];
+const migrations = ['0001_initial.sql', '0002_consent-provenance.sql', '0003_preserve-active-consent.sql', '0004_admission-settings.sql', '0005_offboarding-consent-tombstones.sql'];
 const projection = {
   schemaVersion: 3, engineVersion: 'engine-v1', reportVersion: 'report-v1', metricVersion: 'metrics-v1', source: { base: 'base', head: 'head' }, evidence: 'exact', fileSet: { complete: true, total: { status: 'exact', value: 1 } }, totals: {}, configuredResults: [], gaps: [], files: [{ ordinal: 0, raw: {}, lines: {} }], effects: [{ kind: 'label.add', outcome: 'changed', request: 'accepted', readback: 'verified' }]
 };
@@ -65,10 +67,11 @@ test('local D1 keeps execution fences, repair claims, expiry, offboarding, and p
 
     await source.store.deleteHistory(17);
     const exported = await source.store.exportState();
+    assert.equal(readConfigurationExport(exported).version, 5, 'the portable configuration reader accepts the current export version');
     const restored = await localStore(clock);
     try {
       await restored.store.importState(exported);
-      assert.deepEqual(await repositoryRow(restored.database, 17), { repository_id: 17, state: 'offboarding', access_state: 'removed', history_enabled: 0 }, 'a restored tombstone applies before the repository can be used');
+      assert.deepEqual(await repositoryRow(restored.database, 17), { repository_id: 17, state: 'pending-enable', access_state: 'unknown', history_enabled: 0 }, 'a history tombstone preserves restore resistance without offboarding execution');
       assert.equal(await restored.store.executionAllowed(17), false);
     } finally { await restored.runtime.dispose(); }
 
@@ -79,16 +82,47 @@ test('local D1 keeps execution fences, repair claims, expiry, offboarding, and p
     assert.ok(await source.database.prepare("SELECT 1 FROM deletion_tombstones WHERE scope='repository:18'").first(), 'offboarding creates the repository tombstone after deletion');
     await source.store.recordLifecycle({ installationId: 10, action: 'created', addedRepositories: [18], removedRepositories: [] });
     assert.deepEqual(await source.store.repositoryConsentState(18), {
-      execution: { origin: 'unknown', reason: 're-consent-required' },
-      history: { origin: 'unknown', reason: 're-consent-required' },
+      execution: { origin: 'unknown', reason: 'never-enabled' },
+      history: { origin: 'unknown', reason: 'never-enabled' },
       configuration: { origin: 'unknown' }
-    }, 'a post-grace re-add preserves the tombstone\'s lost-reach consequence');
+    }, 'a post-grace re-add preserves the never-enabled standing');
   } finally {
     await source.runtime.dispose();
   }
 });
 
-test('consent provenance is independent and suspension requires separate renewed consent', async () => {
+test('offboarding preserves every consent standing before and after the grace period', async () => {
+  for (const { label, readdedAt, expiresGrace } of [
+    { label: 'day 29', readdedAt: '2026-10-21T00:00:00.000Z', expiresGrace: false },
+    { label: 'day 31', readdedAt: '2026-10-23T00:00:00.000Z', expiresGrace: true }
+  ]) {
+    const clock = { value: '2026-09-22T00:00:00.000Z' };
+    const source = await localStore(clock);
+    try {
+      await source.store.recordLifecycle({ installationId: 9, action: 'created', addedRepositories: [31, 32, 33], removedRepositories: [] });
+      await source.store.setRepositoryExecution(32, { enabled: false, origin: 'fixture' });
+      await source.store.setRepositoryExecution(33, { enabled: true, origin: 'fixture' });
+      await source.store.setRepositoryConsent(33, { enabled: true, retentionDays: 30, policyId: 'fixture', origin: 'fixture' });
+      await source.store.recordLifecycle({ installationId: 9, action: 'removed', addedRepositories: [], removedRepositories: [31, 32, 33] });
+
+      clock.value = readdedAt;
+      if (expiresGrace) await source.store.maintain();
+      await source.store.recordLifecycle({ installationId: 10, action: 'created', addedRepositories: [31, 32, 33], removedRepositories: [] });
+
+      const consentReasons = async repositoryId => {
+        const consent = await source.store.repositoryConsentState(repositoryId);
+        return { execution: consent.execution.reason, history: consent.history.reason };
+      };
+      assert.deepEqual(await consentReasons(31), { execution: 'never-enabled', history: 'never-enabled' }, `${label} preserves a never-enabled repository`);
+      assert.deepEqual(await consentReasons(32), { execution: 'explicitly-disabled', history: 'never-enabled' }, `${label} preserves a deliberately disabled repository`);
+      assert.deepEqual(await consentReasons(33), { execution: 're-consent-required', history: 're-consent-required' }, `${label} requires new consent only for previously enabled capability`);
+    } finally {
+      await source.runtime.dispose();
+    }
+  }
+});
+
+test('consent provenance preserves a deliberate off state through interrupted access', async () => {
   const clock = { value: '2026-09-22T00:00:00.000Z' };
   const source = await localStore(clock);
   try {
@@ -111,7 +145,7 @@ test('consent provenance is independent and suspension requires separate renewed
     await source.store.recordLifecycle({ installationId: 9, action: 'suspend', addedRepositories: [], removedRepositories: [] });
     await source.store.recordLifecycle({ installationId: 9, action: 'unsuspend', addedRepositories: [], removedRepositories: [] });
     assert.deepEqual(await source.store.repositoryConsentState(17), {
-      execution: { origin: 'execution-control', reason: 're-consent-required' },
+      execution: { origin: 'execution-control', reason: 'explicitly-disabled' },
       history: { origin: 'history-control', reason: 're-consent-required' },
       configuration: { origin: 'dashboard' }
     });
@@ -130,6 +164,52 @@ test('consent provenance is independent and suspension requires separate renewed
   } finally {
     await source.runtime.dispose();
   }
+});
+
+test('the admission service validates settings, keeps history independent, and refuses stale or unavailable transitions', async () => {
+  const clock = { value: '2026-09-22T00:00:00.000Z' };
+  const source = await localStore(clock);
+  try {
+    await source.store.recordLifecycle({ installationId: 9, action: 'created', addedRepositories: [17], removedRepositories: [] });
+    const service = createAdmissionService({
+      store: source.store,
+      authorize: async request => request.actor?.role === 'repository-admin',
+      resolvePolicy: async ({ configuration }) => ({
+        ...resolveEffectivePolicy({ preset: DEFAULT_SIZE_POLICY, ...(configuration ?? {}), supplied: { presets: ['size@1'], rules: { xlTransition: { when: 'true', effects: { comment: { mode: 'once-per-transition', template: 'XL: {{ totals.lines.changed }}' } } } } } }),
+        source: 'trusted-base', sourceIdentity: '.diffdevil.yml@fixture'
+      })
+    });
+    const actor = { role: 'repository-admin' };
+    const initial = await service.read(17, actor);
+    assert.deepEqual(initial.execution, { origin: 'unknown', reason: 'never-enabled' });
+    assert.deepEqual(initial.next, { actor: 'repository-admin', action: 'declare-exclusive-writer' });
+    await assert.rejects(service.update(17, { actor, origin: 'dashboard', revision: initial.revision, execution: true }), { code: 'E_ADMISSION_WRITER_UNRESOLVED' });
+    const admitted = await service.update(17, { actor, origin: 'dashboard', revision: initial.revision, writer: { confidence: 'administrator-declared' }, execution: true });
+    assert.equal(admitted.execution.reason, null);
+    assert.equal(await source.store.executionAllowed(17), true);
+    assert.equal((await source.store.historySettings(17)).enabled, false, 'execution admission never enables history');
+    assert.equal(admitted.policy.source, 'trusted-base', 'repository-owned policy is the effective policy before admission');
+    assert.equal(admitted.writer.confidence, 'administrator-declared');
+    await source.store.deleteHistory(17);
+    assert.equal(await source.store.executionAllowed(17), true, 'history deletion does not stop enabled execution');
+    assert.equal((await service.read(17, actor)).reach.tombstoned, false, 'a history tombstone does not block the admission control plane');
+    const configured = await service.update(17, { actor, origin: 'dashboard', revision: admitted.revision, configuration: { repository: { presets: ['size@1'] } } });
+    assert.equal(configured.policy.source, 'trusted-base');
+    assert.equal(configured.policy.provenance['/presets'], 'supplied', 'the trusted base overrides stored configuration in effective readback');
+    assert.deepEqual(configured.policy.configuredEffects.rules, ['size', 'xlTransition']);
+    assert.equal((await source.store.repositoryConfiguration(17)).value.repository.presets[0], 'size@1');
+    await assert.rejects(service.update(17, { actor, origin: 'dashboard', revision: initial.revision, execution: false }), { code: 'E_ADMISSION_STALE' });
+    const disabled = await service.update(17, { actor, origin: 'dashboard', revision: configured.revision, execution: false });
+    assert.equal(disabled.execution.reason, 'explicitly-disabled');
+    const envelope = { installationId: 9, repositoryId: 17, pullRequest: 42, deliveryId: 'disabled-delivery' };
+    const delivery = await source.store.claimDelivery(envelope);
+    const lease = await source.store.claimExecution(envelope, delivery);
+    await source.store.finish(envelope, lease, 'rejected', { code: 'E_ACCESS_DISABLED' });
+    assert.equal((await service.read(17, actor)).lastDelivery.effect, 'not-attempted-execution-disabled');
+    await source.store.recordLifecycle({ installationId: 9, action: 'suspend', addedRepositories: [], removedRepositories: [] });
+    await assert.rejects(service.update(17, { actor, origin: 'dashboard', revision: disabled.revision, execution: true }), { code: 'E_ADMISSION_UNAVAILABLE' });
+    await assert.rejects(service.update(17, { actor: { role: 'reader' }, origin: 'dashboard', revision: disabled.revision, execution: true }), { code: 'E_ADMISSION_UNAUTHORIZED' });
+  } finally { await source.runtime.dispose(); }
 });
 
 test('the provenance migration keeps existing rows unknown instead of splitting one historical origin three ways', async () => {
