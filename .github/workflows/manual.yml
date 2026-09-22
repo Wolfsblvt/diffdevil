@@ -43,6 +43,20 @@ jobs:
           cache: npm
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - run: npm --prefix apps/manual run toolchain
+      # Temporary read-only transport for exact-head local Wave 1 qualification.
+      # Public Git objects and installed packages only; never Git config or credentials.
+      - name: Retain offline authoring inputs
+        run: |
+          mkdir -p artifacts/manual-resume
+          git bundle create artifacts/manual-resume/source.bundle HEAD
+          tar -czf artifacts/manual-resume/dependencies.tgz node_modules apps/manual/node_modules apps/manual/package-lock.json artifacts/manual-toolchain/package artifacts/manual-toolchain/starlight-works.tgz artifacts/manual-toolchain/source-receipt.json artifacts/manual-toolchain/consumer-receipt.json
+      - name: Offline authoring inputs
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: manual-authoring-inputs-${{ github.event.pull_request.head.sha || github.sha }}
+          retention-days: 2
+          compression-level: 0
+          path: artifacts/manual-resume/
       - run: npm run website:build
       - run: npm --prefix apps/manual test
       - run: npm --prefix apps/manual run check
