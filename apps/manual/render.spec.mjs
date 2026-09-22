@@ -60,7 +60,7 @@ test('Generated references consume actual metadata and checked runtime expansion
  assert.throws(()=>generatedIsland('unregistered',options),/Unknown generated/u);
 });
 test('Small, report and plan specimens execute the shared presenters with distinct fixture semantics',()=>{
- for(const id of ['presenter-small','presenter-report','presenter-plan']) assert.ok(generatedIsland(id,{root:repositoryRoot,ref}).startsWith('```text'));
+ for(const id of ['presenter-small','presenter-first-plan','presenter-report','presenter-plan']) assert.ok(generatedIsland(id,{root:repositoryRoot,ref}).startsWith('```text'));
 });
 
 test('Split-source fragments follow the selected old-route landing, not only its primary successor',()=>{
