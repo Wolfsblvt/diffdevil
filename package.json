@@ -128,7 +128,7 @@
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "shiki": "4.4.3",
-    "typescript": "5.8.3",
+    "typescript": "7.0.2",
     "wrangler": "4.135.0"
   },
   "dependencies": {
