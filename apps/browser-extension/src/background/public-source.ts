@@ -6,7 +6,7 @@ import type { PolicySource, PublicPull } from '../shared/protocol.js';
 const API = 'https://api.github.com';
 const safeInteger = (value: unknown): number => { if (!Number.isSafeInteger(value) || Number(value) < 0) throw new ExtensionError('PROVIDER_COUNTER', 'GitHub did not return valid comparison counters.'); return Number(value); };
 export class PublicSource {
-  constructor(private readonly fetcher: typeof fetch = fetch) {}
+  constructor(private readonly fetcher: typeof fetch = (input, init) => globalThis.fetch(input, init)) {}
   private async get(path: string, maximum: number): Promise<{ response: Response; value: unknown }> {
     const response = await this.fetcher(`${API}${path}`, { credentials: 'omit', cache: 'no-store', redirect: 'error', headers: { Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' }, signal: AbortSignal.timeout(20_000) });
     if (response.status === 403 || response.status === 429) throw new ExtensionError('GITHUB_RATE_LIMIT', 'GitHub declined the public API request. No token is collected; retry after the provider limit resets.');

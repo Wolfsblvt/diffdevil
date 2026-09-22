@@ -10,10 +10,12 @@ From the repository root, with Node 22.12 or newer:
 
 ```sh
 npm ci --ignore-scripts
-npm run extension:build
+npm run extension:dev
 ```
 
-The result is `artifacts/browser-extension/unpacked`. In an unrestricted Chrome profile, open `chrome://extensions`, enable Developer mode, choose **Load unpacked**, and select that directory. Open or reload a GitHub pull-request page. The toolbar action opens the full settings application. An organization's managed browser policy may prevent installation; do not bypass it.
+The development result always replaces `artifacts/browser-extension/unpacked`. In an unrestricted Chrome profile, open `chrome://extensions`, enable Developer mode, choose **Load unpacked**, and select that stable directory once. After each later build, use **Reload** on the extension card and then reload any open GitHub pull-request tab; Chrome does not retroactively replace an already injected content script. The toolbar action opens the full settings application. An organization's managed browser policy may prevent installation; do not bypass it.
+
+`npm run extension:build` is the underlying one-shot candidate build. SHA-named copies and generated receipts are immutable qualification evidence, not the development path Chrome should retain.
 
 A build without bundled font files uses the normal system-font fallbacks:
 

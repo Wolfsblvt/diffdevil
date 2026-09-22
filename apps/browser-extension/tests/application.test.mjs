@@ -69,6 +69,14 @@ test('public acquisition uses read-only anonymous requests and verifies revision
   const result = await source.pull('fixture/example', 42, true); assert.equal(result.files.length, 1); assert.equal(calls.length, 3);
   for (const { url, init } of calls) { assert.ok(url.startsWith('https://api.github.com/repos/fixture/example/')); assert.equal(init.credentials, 'omit'); assert.equal(init.method, undefined); assert.equal(init.redirect, 'error'); assert.equal(init.headers.Authorization, undefined); }
 });
+test('default public acquisition keeps the browser-global fetch receiver', async () => {
+  const originalFetch = globalThis.fetch; const receivers = [];
+  globalThis.fetch = function () { receivers.push(this); return Promise.resolve(response(metadata())); };
+  try {
+    const result = await new m.PublicSource().pull('fixture/example', 42);
+    assert.equal(result.comparison.head, comparison.head); assert.deepEqual(receivers, [globalThis]);
+  } finally { globalThis.fetch = originalFetch; }
+});
 test('public file pagination is capped at GitHub’s 3,000-file ceiling', async () => {
   let pages = 0; const source = new m.PublicSource(async url => url.includes('/files?') ? (pages++, response(Array.from({ length: 100 }, (_, i) => ({ filename: `${pages}-${i}` })))) : response(metadata({ changed_files: 3001 })));
   const result = await source.pull('fixture/example', 42, true); assert.equal(pages, 30); assert.equal(result.files.length, 3000); assert.equal(result.comparison.changedFiles, 3001);

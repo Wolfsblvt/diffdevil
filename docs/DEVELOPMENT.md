@@ -85,6 +85,7 @@ perform no registry installation themselves. One dependency closure is sufficien
 | `npm run website:build` / `website:dev` / `website:preview` / `website:check` | Full engine + website build, the Astro dev server, a local preview of the built output, and the Astro type check. See [the website README](../apps/website/README.md). |
 | `npm run test:website` | Data-level website tests (also discovered by `npm test`): fixtures evaluate to the outcomes they teach, snapshots are valid engine reports, the docs manifest names real sources, browser shims match Node. |
 | `npm run qa:website` | Headless Chromium qualification of the built website against the real playground application server on the fake GitHub fixture. Needs Playwright's Chromium (`npx playwright install chromium`). Local behaviour only, not a deployment claim. |
+| `npm run extension:dev` | Rebuilds the extension into the stable local dogfood path `artifacts/browser-extension/unpacked`. Chrome still requires **Reload** on the extension card and a reload of already-open pull-request tabs; SHA-named witness copies are evidence, not the installed development path. |
 
 The fresh CI `npm ci` cache holds the locked project tarballs but lacks registry
 metadata for a lockless tarball consumer. The hosted package step therefore sets
