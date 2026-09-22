@@ -16,8 +16,8 @@ Explain the three-line replacement before introducing the entire type system.
 
 | Reader task | First page | Observable success | Deeper source |
 | --- | --- | --- | --- |
-| Automatically label PR size | `guides/auto-label-pull-requests.md` | One size label, no comment, inspectable summary | `integration/github-actions.md` |
-| Get a number or condition into a script | `guides/local-automation.md` | Exact scalar, path list, meaningful exit status | `integration/cli.md` |
+| Automatically label PR size | `manual/start/label-pull-requests.md` | One size label, no comment, inspectable summary | `integration/github-actions.md` |
+| Get a number or condition into a script | `manual/start/use-results-in-scripts.md` | Exact scalar, path list, meaningful exit status | `integration/cli.md` |
 | Add a repository-specific signal | `guides/policy-recipes.md` | Source/test scoped rule, desired plan, managed label | `language/policies-and-bands.md` |
 | Keep one informative comment | `guides/policy-recipes.md` | One owned upsert comment without repeated noise | `integration/templates.md` |
 | Integrate the engine programmatically | `integration/typescript-api.md` | Typed report and policy from the installed package | Public exports and declarations |
@@ -72,7 +72,7 @@ and **Optional managed GitHub App**. They need not have identical prominence:
 the tool is the product, the playground teaches it, and hosting removes operating
 work. App installation is not the presumed outcome of every visitor journey.
 
-The [playground experience](integration/playground.md) has its own page and a
+The [playground experience](manual/use/playground.md) has its own page and a
 compact homepage entry. Curated examples, settings controls, terminal/agent output,
 GitHub-effect previews, explanation, and exports derive from the same engine.
 Keep this anonymous read-only experience distinct from the authenticated App
@@ -134,11 +134,13 @@ shared shell and theme behavior, and one joined SITE/DOCS/FAQ search index.
 Scaffolds are not authored chapters or current search results. Availability is a
 separate product fact, expressed by one top-only In development NOTE where needed.
 
-Existing guides in the table above remain current until every successor of their
-selected split is authored and its incoming links, source-ID and fragment mappings,
-public redirects and search selection transfer together. `apps/manual/migration.mjs`
-owns those exact source-family dispositions. No Markdown forwarding stubs are used.
-The root README's later compression is not performed by this foundation.
+Wave 2 transfers the complete auto-label, local-automation and Playground visitor
+families to their START/USE successors. Their incoming links, source-ID and fragment
+mappings, public redirects and search selection move together. Other legacy sources
+remain current until every destination of their selected split is authored.
+`apps/manual/migration.mjs` owns those exact source-family dispositions. No Markdown
+forwarding stubs are used. The root README's later compression remains a separate
+final reconciliation step.
 
 The authoring sequence is Start and Understand; open surfaces and shared workflows;
 Policy and Reference; Managed App and Help; then final cross-surface reconciliation.

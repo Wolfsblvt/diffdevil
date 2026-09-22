@@ -42,7 +42,7 @@ node dist/lib/cli/main.js query --report docs/examples/reports/exact.json \
 # 178
 ```
 
-**[Try the playground](https://diffdevil-playground.wolfsblvt.workers.dev)** · **[Label your PRs](docs/guides/auto-label-pull-requests.md)** · [Local scripts](docs/guides/local-automation.md) · [Policy recipes](docs/guides/policy-recipes.md) · [FAQ](docs/manual/faq.md) · [User manual](docs/automation.md) · [CLI reference](docs/integration/cli.md) · [Actions](docs/integration/github-actions.md) · [TypeScript API](docs/integration/typescript-api.md)
+**[Try the playground](https://diffdevil-playground.wolfsblvt.workers.dev)** · **[Label your PRs](docs/manual/start/label-pull-requests.md)** · [Local scripts](docs/manual/start/analyze-local-changes.md) · [Policy recipes](docs/guides/policy-recipes.md) · [FAQ](docs/manual/faq.md) · [User manual](docs/automation.md) · [CLI reference](docs/integration/cli.md) · [Actions](docs/integration/github-actions.md) · [TypeScript API](docs/integration/typescript-api.md)
 
 ## Label your PRs with one file
 
@@ -52,7 +52,7 @@ checkout, package install, personal token, or comment is required.
 
 The maintained `@v1` coordinate is public. Security-sensitive workflows can pin
 the immutable `@v1.0.0` release instead. The complete
-[auto-labeling quickstart](docs/guides/auto-label-pull-requests.md) explains setup,
+[auto-labeling quickstart](docs/manual/start/label-pull-requests.md) explains setup,
 permissions, label ranges, custom exclusions, and troubleshooting.
 
 ```yaml
@@ -105,7 +105,7 @@ node dist/lib/cli/main.js analyze --diff-file docs/examples/diffs/review.diff --
 ```
 
 The four-file teaching patch reports **10 changed lines** and **16 raw churn**.
-Follow [local automation](docs/guides/local-automation.md) for exact values, path
+Follow [local automation](docs/manual/start/analyze-local-changes.md) for exact values, path
 queries, shell conditions, and reusable reports. Offline dependency restoration
 is documented in [Development](docs/DEVELOPMENT.md#restore-and-build).
 The source commands below use the built entry point; the installed package exposes
