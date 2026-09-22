@@ -5,7 +5,7 @@ import { request as defaultRequest, type Packet } from '../shared/protocol.js';
 import { SETTINGS_KEY } from '../shared/settings-key.js';
 import { node, button } from '../shared/dom.js';
 import { acquire as defaultAcquire } from './acquire.js';
-import { route, aggregateHost, FILE_HEADERS, filePath, pageComparison, sameComparison, fullFilesView } from './github.js';
+import { route, aggregateHost, FILE_HEADERS, LIVE_DIFFSTAT, PROVIDER_CHANGE, filePath, pageComparison, sameComparison, fullFilesView } from './github.js';
 import { projection, reportPanel, type Projection } from './render.js';
 import { Popover } from './popover.js';
 /** Dependencies are explicit so lifecycle tests never need to impersonate a browser origin. */
@@ -25,12 +25,15 @@ function clear(): void {
   for (const node of document.querySelectorAll('.ddx-native-dim, .ddx-native-hidden')) node.classList.remove('ddx-native-dim', 'ddx-native-hidden');
 }
 function showStatus(message: string, error = false): void {
-  const host = aggregateHost(document); if (!host) return;
+  const host = aggregateHost(document);
   status?.remove(); status = node('span', `ddx-status${error ? ' ddx-error' : ''}`, message); status.setAttribute('role', 'status');
-  if (error) status.append(button('Retry', () => { void refresh(true); }, 'ddx-small')); host.insertAdjacentElement('afterend', status);
+  if (error) status.append(button('Retry', () => { void refresh(true); }, 'ddx-small'));
+  if (host) host.insertAdjacentElement('afterend', status);
+  else { status.classList.add('ddx-status-fallback'); document.body.append(status); }
 }
 function nativeStat(host: HTMLElement): void {
-  const candidates = host.matches('.diffstat, #diffstat, [data-testid$="diff-stats"]') ? [host] : [...host.querySelectorAll<HTMLElement>('.diffstat, [data-testid$="diff-stats"]')].filter(element => !own(element));
+  const selector = `.diffstat, #diffstat, [data-testid$="diff-stats"], ${LIVE_DIFFSTAT}`;
+  const candidates = host.matches(selector) ? [host] : [...host.querySelectorAll<HTMLElement>(selector)].filter(element => !own(element));
   for (const element of candidates) { element.classList.toggle('ddx-native-hidden', Boolean(settings['display.hideNativeDiffstat'])); element.classList.toggle('ddx-native-dim', Boolean(settings['display.dimNativeDiffstat']) && !settings['display.hideNativeDiffstat']); }
 }
 function mount(host: HTMLElement, view: HumanReportView, aggregate: boolean): void {
@@ -46,8 +49,10 @@ function render(): void {
   if (stopped) return;
   popover.reconcile(); for (const [host, item] of mounted) if (!host.isConnected || !item.root.isConnected || !fullFilesView(href()) && item.root.dataset.ddx === 'file') { item.cleanup(); mounted.delete(host); }
   if (!packet || acquiring || !settings['display.enabled']) return;
-  if (!fileError) { status?.remove(); status = undefined; }
-  const aggregate = aggregateHost(document); if (aggregate) { nativeStat(aggregate); if (settings['display.aggregateChanged']) mount(aggregate, packet.view, true); }
+  const aggregate = aggregateHost(document);
+  if (aggregate || !settings['display.aggregateChanged']) { if (!fileError) { status?.remove(); status = undefined; } }
+  else if (!fileError) showStatus('Changed ? · diffdevil could not find GitHub’s pull-request summary on this page.', true);
+  if (aggregate) { nativeStat(aggregate); if (settings['display.aggregateChanged']) mount(aggregate, packet.view, true); }
   if (fullFilesView(href())) for (const header of document.querySelectorAll<HTMLElement>(FILE_HEADERS)) {
     nativeStat(header); if (!settings['display.fileChanged']) continue;
     const path = filePath(header); if (!path || mounted.has(header)) continue; const view = fileViews.get(path);
@@ -77,7 +82,7 @@ function observe(): void {
       for (const added of [...record.addedNodes, ...record.removedNodes]) {
         if (!(added instanceof Element) || own(added)) continue;
         if (added.matches('script[type="application/json"]') || added.querySelector('script[type="application/json"]')) identityChanged = true;
-        if (!added.isConnected || added.matches(`${FILE_HEADERS}, .gh-header-meta, .diffstat`) || added.querySelector(`${FILE_HEADERS}, .gh-header-meta, .diffstat`)) providerChanged = true;
+        if (!added.isConnected || added.matches(PROVIDER_CHANGE) || added.querySelector(PROVIDER_CHANGE)) providerChanged = true;
       }
     }
     if (identityChanged) void refresh(false); else if (providerChanged) schedule();
