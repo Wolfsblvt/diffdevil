@@ -14,13 +14,12 @@
     "skipLibCheck": true,
     "noEmit": true,
     "types": [],
-    "baseUrl": "../..",
     "paths": {
       "@wolfsblvt/diffdevil/browser": [
-        "dist/lib/browser/index.d.ts"
+        "../../dist/lib/browser/index.d.ts"
       ],
       "@wolfsblvt/diffdevil/browser/text": [
-        "dist/lib/browser/text.d.ts"
+        "../../dist/lib/browser/text.d.ts"
       ]
     }
   },

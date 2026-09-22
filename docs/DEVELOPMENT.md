@@ -17,11 +17,13 @@ metadata selects **node24** independently of the npm package's `>=22` floor.
 Native macOS remains unobserved; [Qualification](qualification.md) binds each
 result to its candidate and boundary.
 
-The lockfile pins TypeScript 5.8.3, Node typings 22.15.33, Chevrotain 13.2.0,
-YAML 2.9.1, Ajv 8.20.0, the source-owned Worker CLI, Wrangler 4.132.0, and the
-website toolchain: Astro 7.3.3, Starlight 0.42.1, React 19.3.0, Shiki 4.4.3,
-CodeMirror 6, the self-hosted IBM Plex packages, resvg for derived assets and
-Playwright 1.63.0 for local browser qualification. The website closure is the
+The lockfile pins exact versions of TypeScript, Node typings, Chevrotain, YAML,
+Ajv, the source-owned Worker CLI, Wrangler, and the website toolchain: Astro,
+Starlight, React, Shiki, CodeMirror, the self-hosted IBM Plex packages, resvg for
+derived assets and Playwright for local browser qualification. `package.json`
+and the lockfile are the version record; this list names the toolchain, not its
+releases. TypeScript stays on 6.x until `astro check` supports the native
+TypeScript 7 compiler. The website closure is the
 largest part of the development install; none of it enters the npm package or
 the committed Action runtime.
 Wrangler contributes a 106-entry development-tooling closure, including optional
