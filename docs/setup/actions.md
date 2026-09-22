@@ -140,6 +140,6 @@ Installing this Action does not persistently teach an agent. When that is reques
 ## Deeper reference
 
 - [Action interface and trust](https://github.com/Wolfsblvt/diffdevil/blob/main/docs/integration/github-actions.md)
-- [Auto-labeling quickstart](https://github.com/Wolfsblvt/diffdevil/blob/main/docs/guides/auto-label-pull-requests.md)
+- [Auto-labeling quickstart](https://github.com/Wolfsblvt/diffdevil/blob/main/docs/manual/start/label-pull-requests.md)
 - [Presets and host layers](https://github.com/Wolfsblvt/diffdevil/blob/main/docs/integration/presets-and-shortcuts.md)
 - [GitHub privileged PR-data workflows](https://docs.github.com/en/actions/reference/security/securely-using-pull_request_target)
