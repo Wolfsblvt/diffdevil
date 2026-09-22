@@ -5,11 +5,10 @@ import { GitHubClient, applyGitHubPolicy, readGitHubPolicy, readPullSnapshot } f
 import { APP_QUEUE_KIND, WEBHOOK_BODY_LIMIT, WORKER_RESULT_LIMIT, historyProjection, normalizeWebhookEvent, readQueueEnvelope } from './contracts.mjs';
 import { createAppJwt, verifyWebhookSignature } from './crypto.mjs';
 import { D1AppStore } from './storage.mjs';
-import { resolveEffectivePolicy } from './configuration.mjs';
+import { DEFAULT_SIZE_POLICY, resolveEffectivePolicy } from './configuration.mjs';
 import { checkSummary } from '../shared/check-summary.mjs';
 
 const JSON_HEADERS = { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' };
-const DEFAULT_SIZE_POLICY = { version: 1, presets: ['size@1'] };
 
 function response(status, body) { return new Response(JSON.stringify(body), { status, headers: JSON_HEADERS }); }
 function deliveryId(request) { return request.headers.get('x-github-delivery') ?? ''; }
@@ -130,6 +129,19 @@ async function upsertCheck(client, store, identity, report, result, assertLease)
   await store.recordCheck(identity, value.id);
 }
 
+/** Policy failures still belong on the PR once its identity and head are known. */
+async function upsertDiagnosticCheck(client, store, identity, error, assertLease) {
+  const previous = await store.check(identity);
+  const code = errorCode(error);
+  const output = { title: 'diffdevil could not evaluate policy', summary: `diffdevil could not evaluate the trusted policy at .diffdevil.yml@${identity.base} (${code}).` };
+  const body = { name: 'diffdevil', head_sha: identity.head, status: 'completed', conclusion: 'neutral', output };
+  const route = previous?.check_run_id ? `/repos/${identity.repository}/check-runs/${previous.check_run_id}` : `/repos/${identity.repository}/check-runs`;
+  await assertLease();
+  const value = await client.json(route, { method: previous?.check_run_id ? 'PATCH' : 'POST', phase: 'apply', body });
+  if (!value || typeof value !== 'object' || !Number.isSafeInteger(value.id)) throw new TypeError('GitHub did not return a usable App-owned check run.');
+  await store.recordCheck(identity, value.id);
+}
+
 async function assertRerequest(client, store, envelope, identity, appId) {
   if (envelope.type !== 'check-rerequest') return;
   const expected = await store.check(identity);
@@ -153,7 +165,14 @@ export async function executeDelivery(envelope, deliveryId, { env, store, lease,
   const snapshot = await atExecutionStage('E_APP_PULL_SNAPSHOT', 'pull-snapshot', () => readPullSnapshot(client, target));
   if (snapshot.state !== 'open') throw appError('E_PULL_REQUEST_CLOSED');
   const configuration = await atExecutionStage('E_APP_REPOSITORY_CONFIGURATION', 'repository-configuration', () => store.repositoryConfiguration(envelope.repositoryId));
-  const policy = await atExecutionStage('E_APP_POLICY', 'trusted-policy', () => trustedPolicy(client, target, snapshot.base, configuration?.value));
+  let policy;
+  try { policy = await atExecutionStage('E_APP_POLICY', 'trusted-policy', () => trustedPolicy(client, target, snapshot.base, configuration?.value)); }
+  catch (error) {
+    const diagnosticIdentity = { repositoryId: envelope.repositoryId, pullRequest: envelope.pullRequest, repository: target.repository, base: snapshot.base, head: snapshot.head, policyId: 'diagnostic', appId: Number(env.GITHUB_APP_ID) };
+    try { await atExecutionStage('E_CHECK_PUBLICATION', 'check-publication', () => upsertDiagnosticCheck(client, store, diagnosticIdentity, error, renewLease)); }
+    catch (checkError) { error.diagnostics = [...(error.diagnostics ?? []), ...(checkError.diagnostics ?? [])]; }
+    throw Object.assign(error, { repairIdentity: diagnosticIdentity });
+  }
   const provisionalIdentity = { repositoryId: envelope.repositoryId, pullRequest: envelope.pullRequest, repository: target.repository, base: snapshot.base, head: snapshot.head, policyId: policy.policy.id };
   await atExecutionStage('E_APP_CHECK_REREQUEST', 'check-rerequest', () => assertRerequest(client, store, envelope, provisionalIdentity, Number(env.GITHUB_APP_ID)));
   const outcome = await atExecutionStage('E_APP_POLICY_EXECUTION', 'policy-execution', async () => unwrap(await applyGitHubPolicy(client, target, policy.policy, { definitions: 'ensure', commentAuthor: { login: env.GITHUB_APP_BOT_LOGIN ?? 'diffdevil[bot]' }, occasionId: deliveryId, expectedPolicyBase: policy.expectedPolicyBase,
