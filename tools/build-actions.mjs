@@ -69,7 +69,7 @@ try {
     await writeFile(join(directory, 'action.yml'), '# Generated from src/diffdevil/actions/surface.ts by npm run build:actions.\n' + stringify(metadata, { lineWidth: 110 }));
   }
   const catalog = JSON.parse(await readFile(join(root, 'src/diffdevil/contracts/detail/v1/action-surface.json'), 'utf8'));
-  catalog.standing = 'Implemented shared Action surface; local qualification is recorded in docs/QUALIFICATION.md. No publication or live-GitHub claim.';
+  catalog.standing = 'Implemented shared Action surface; local qualification is recorded in docs/qualification.md. No publication or live-GitHub claim.';
   catalog.inputs = Object.keys(ACTION_INPUTS);
   catalog.inputEntryPoints = Object.fromEntries(Object.entries(ACTION_INPUTS).map(([key, value]) => [key, value.entries]));
   catalog.outputArtifactDestinations = ['report-path', 'plan-path', 'effects-path'];

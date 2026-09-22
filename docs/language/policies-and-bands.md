@@ -226,4 +226,4 @@ reconciles explicit effects with current-policy/source checks, scoped ownership
 and readback; provider evidence is currently mocked. Pure evaluation and planning
 remain free of provider mutation. See [CLI](../integration/cli.md),
 [Actions](../integration/github-actions.md), [TypeScript](../integration/typescript-api.md)
-and [Qualification](../QUALIFICATION.md) for their distinct executable boundaries.
+and [Qualification](../qualification.md) for their distinct executable boundaries.

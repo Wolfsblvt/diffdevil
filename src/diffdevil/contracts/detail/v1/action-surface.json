@@ -1,5 +1,5 @@
 {
-  "standing": "Implemented shared Action surface; local qualification is recorded in docs/QUALIFICATION.md. No publication or live-GitHub claim.",
+  "standing": "Implemented shared Action surface; local qualification is recorded in docs/qualification.md. No publication or live-GitHub claim.",
   "entryPoints": {
     "root": {
       "defaultMode": "apply",

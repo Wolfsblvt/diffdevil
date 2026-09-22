@@ -26,7 +26,7 @@ reads to a separate credential; PR acquisition and all effects remain on
 
 All aliases remain supported. Simple arithmetic and matching examples use normal
 detail formulas; file selection and quantifier shortcuts retain their useful job.
-[The complete horizon](IMPLEMENTATION-HORIZON.md) remains selected beyond these
+[The complete horizon](implementation-horizon.md) remains selected beyond these
 release-candidate paths.
 
 ## Active application frontier
@@ -124,7 +124,7 @@ carry the selected product contract.
 
 The final pass adds task-first guides and tested examples for one-file PR labeling,
 local scripts, source/test signals, and opt-in comments. User documentation has a
-durable editorial/source home in [Documentation design](DOCUMENTATION.md). The
+durable editorial/source home in [Documentation design](documentation.md). The
 selected website/documentation tranche renders these sources rather than
 introducing a competing wiki.
 
@@ -169,7 +169,7 @@ consumer installed and exercised the registry artifact outside every checkout.
 Both immutable `v1.0.0` and maintained `v1` then exercised the root, `analyze`,
 `apply`, and `sync-labels` Action entries through the public refs. Current and
 historical runtime/consumer evidence remains separated in
-[Qualification](QUALIFICATION.md).
+[Qualification](qualification.md).
 
 The [GitHub Marketplace listing](https://github.com/marketplace/actions/diffdevil)
 is public for `v1.0.0`, owned by `Wolfsblvt`, with **Continuous integration**
