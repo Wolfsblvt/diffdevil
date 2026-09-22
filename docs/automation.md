@@ -10,7 +10,7 @@ consumers can still use a complete trusted checkout as explained in the
 [Action distribution manual](integration/action-distribution.md).
 The CLI and Action use the same facts, presets, and evaluator.
 
-For the complete first-use paths, start with [auto-labeling PRs](guides/auto-label-pull-requests.md), [local scripts](guides/local-automation.md), or [policy recipes](guides/policy-recipes.md).
+For the complete first-use paths, start with [auto-labeling PRs](manual/start/label-pull-requests.md), [local scripts](manual/start/analyze-local-changes.md), or [policy recipes](guides/policy-recipes.md).
 
 ## Automatic size labels, without a config file
 
@@ -221,10 +221,10 @@ An expression is one selector, not an add-on string mixed unpredictably with sho
 diffdevil analyze --format json --output report.json
 diffdevil query --report report.json --metric changed --format value
 diffdevil query --report report.json --files --select path --format lines
-diffdevil plan --report report.json --format json --output plan.json
+diffdevil plan --report report.json --no-config --preset size@1 --target-repo example/repository --target-pr 42 --format json --output plan.json
 ```
 
-`plan` produces intended effects without mutation. `apply` is the deliberate GitHub effect stage. A saved plan is validated against its current target and trusted policy before use; a matching hash alone does not authenticate an untrusted artifact.
+`plan` produces intended effects without mutation. The example explicitly selects the built-in size policy and an inert target; replace the target with the intended repository and PR when preparing a real plan. `apply` is the deliberate GitHub effect stage. A saved plan is validated against its current target and trusted policy before use; a matching hash alone does not authenticate an untrusted artifact.
 
 The TypeScript API exposes the same compilation and evaluation operations. Coding agents should use these interfaces rather than rebuilding diff arithmetic or scraping human output.
 

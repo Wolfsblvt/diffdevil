@@ -27,7 +27,7 @@ npm --prefix apps/manual run qa
 ```
 
 `check` builds the engine and checks the actual manual renderer. `test` checks the
-source contracts and executable START/UNDERSTAND specimens; both require the built
+source contracts and executable START/UNDERSTAND/USE specimens; both require the built
 engine. `test:projection` additionally requires the prepared toolchain
 and built engine. `dev` serves the manual on loopback port 4322. `qa` starts from an
 ordinary two-host production build and creates the isolated reading qualification
@@ -62,8 +62,8 @@ public routes or the finite source resolver. Code blocks are never rewritten.
 Register public images in `assets.json`; the build copies only those assets.
 Full working examples stay open. Secondary variants may use native disclosures.
 
-START and UNDERSTAND have eleven authored chapters. The other thirty manual
-chapters remain scaffolds; the accepted FAQ stays separate. Authoring comments
+START, UNDERSTAND and the open USE surfaces have twenty-one authored chapters.
+The thirteen Policy/Reference and seven Managed App/Help chapters remain scaffolds; the accepted FAQ stays separate. Authoring comments
 are removed from the renderer, and readiness is private build state in
 `authoring-state.json`. Complete the selected reader job, examples, expected results,
 failure returns and source links before changing `scaffold` to `authored`.
@@ -121,11 +121,14 @@ are recorded before adapting only the transport origin, and the browser carries
 fragments across the actual 308 responses. Host adoption and live HTTP readback
 remain separate from this build. No hosting or DNS operation occurs.
 
-No legacy family is retired by START/UNDERSTAND alone: the auto-label guide still
-needs its Actions successor, local automation needs the CLI guide, the Playground
-guide needs its operating page, and language material needs Reference. Consequently
-authored pages with incomplete predecessor families remain outside joined search
-until the accepted whole-family transfer. This is not a second migration model.
+Wave 2 retires the old auto-label guide, local-automation guide and Playground
+visitor guide. Their complete successor sets are authored; all old fragments,
+source IDs, inbound links, three legacy public routes and search ownership move
+together. Playground operator requirements remain in `apps/playground/README.md`.
+CLI, Actions, TypeScript, templates, language and the broad automation overview
+retain their old source ownership until their remaining Policy/Reference successors
+are authored. Thirteen manual pages are now current/searchable; authorship of the
+other eight completed chapters does not bypass their unfinished source families.
 
 ## Search, FAQ and generated inventories
 
@@ -184,3 +187,47 @@ service is implied.
 Automated DOM and browser evidence does not establish an actual screen-reader user
 journey, live hosting, DNS, public App/Store availability or deployment acceptance.
 None of those effects is performed by this foundation.
+
+## Wave 2 return boundary
+
+The ten open-surface/shared-workflow chapters are authored as one operating family.
+The three Managed App pages and all later-wave scaffolds are unchanged. The complete
+Skill tree, raw setup sources, real-PR catalogue and presenters remain their original
+canonical sources. The raw `/setup/skill.md` route now serves its already-maintained
+setup file rather than inventing a second installer.
+
+The inherited Windows consumer defect selected more than one native executable with
+`Get-Command`. Its same-carrier correction selects the first result, while the full
+installed-package test still covers Windows PowerShell 5.1 and PowerShell 7, paths
+with spaces, literal UTF-8/NUL path handling, and exits 0/1/2/3. No test is skipped or
+weakened. The temporary source-bundle workflow transport is removed.
+
+`wave-2.test.mjs` executes the complete report lifecycle and the actual two-step
+Action against fixture HTTP, including reacquisition and stale-source refusal. It
+checks complete example bytes, separate label/comment effects, finite migration,
+sidebar identity and unpinned npm installation snippets. Package qualification
+compiles and executes `docs/examples/library/inspect-change.mts` outside the checkout
+against the packed installation, including exact, bounded, incomplete and invalid
+inputs. The library and canonical shell consumers remain packaged with the reusable tool.
+
+`qa/wave-2.mjs` checks all ten built articles at desktop and narrow widths, their
+open complete examples, admitted settings image, shared-workflow links, raw Skill
+setup, retired source/fragment destinations and selected search records. The common
+suite also exercises emitted 308 handlers, themes, five alerts, FAQ and no-JavaScript
+reading. Provider installation/publication and an actual screen-reader journey are
+not claimed by these tests.
+
+At this authoring boundary, extension source is admitted but Store publication is
+not established. Extension PR #45 at `5efea7761121d96cad29922158af8d5949cf30d7` is an
+open launch-target candidate, not adopted source. Full configurable Playground
+source and a deployed measurement-only service remain different availability
+claims. The enhanced CLI presenter must exist in the selected released executable;
+plain npm installation is not pinned to an old package to disguise that release
+boundary. The Skill's version, release manifest and archive availability remain
+independent. None of these facts authorizes publication or widens the App wave.
+
+Continue on this same draft carrier for Policy/Reference. Re-read the exact head
+and hosted results returned in the PR discussion, preserving any later correction;
+this document intentionally does not contain its own commit hash. Three source
+families have transferred, not the whole manual. Final README compression, remaining
+retirements, whole-manual review and live host adoption remain later work.
