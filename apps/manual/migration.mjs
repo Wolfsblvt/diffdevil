@@ -83,3 +83,13 @@ export function migratedSource(source,state) {
  const transfer = transferFor(source,state);
  return isRetired(source,state) ? byKey.get(transfer.primary)?.source : undefined;
 }
+
+/** Every retired emitted page needs its explicit route transfer in the same cut. */
+export function validateRetiredRoutes(state, entries, redirects) {
+ const emitted = new Set(redirects.map(rule=>rule.from));
+ for (const entry of entries) {
+  if (!isRetired(entry.source,state)) continue;
+  const route = entry.route ?? (entry.slug ? `/docs/${entry.slug}/` : '/docs/');
+  if (!emitted.has(route)) throw new Error(`${entry.source}: missing legacy route transfer: ${route}`);
+ }
+}

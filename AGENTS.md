@@ -76,9 +76,11 @@ not real credentials or live repository mutation.
 ## Generated and public boundaries
 
 Edit `src/diffdevil/`, not the generated `actions/runtime/` implementation or `action.yml`
-files. The manual on the website is generated from repository Markdown selected in
-`apps/website/docs-manifest.mjs`; edit the Markdown, never the ignored generated
-collection. The Agent Skill and setup instructions are repository-owned product
+files. The new public manual is generated from `docs/manual/` through the explicit
+`apps/manual/manifest.mjs`. Existing guide projections remain selected in
+`apps/website/docs-manifest.mjs` until their complete source-family cutover. Edit
+maintained Markdown, never either ignored generated collection. See
+`apps/manual/README.md` for source, route, migration and qualification commands. The Agent Skill and setup instructions are repository-owned product
 content served by the site, not website copy. Commit reviewed Action distribution output because consumers do not install
 dependencies. Root `dist/`, `node_modules/`, and `artifacts/` are generated or local;
 do not force-add them. Never commit credentials, private raw conversations,

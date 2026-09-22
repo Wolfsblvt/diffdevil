@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import { pages, manualPages, byKey, sidebar, pageUrl, validateManifest, packageSource } from './manifest.mjs';
-import { migrations, retainedFamilies, pageIsCurrent, validateTransfer, legacyRedirects } from './migration.mjs';
+import { migrations, retainedFamilies, pageIsCurrent, validateTransfer, legacyRedirects, validateRetiredRoutes } from './migration.mjs';
 import { sourceTargets, resolveSource } from './source-resolver.mjs';
 import { themeScript } from '../website/src/lib/theme-script.mjs';
 import { themeTransferUrl } from '../website/src/lib/theme-transfer.mjs';
@@ -97,4 +97,33 @@ test('search kind is explicit metadata, independent of source layout or collapse
  assert.equal(searchKind('/faq/#changed-lines',{kind:'FAQ'}),'FAQ');
  assert.equal(searchKind('/anything/',{kind:'DOCS'}),'DOCS');
  assert.equal(searchKind('/playground/'),'SITE');
+});
+
+
+// The same handler is emitted into both actual static outputs.
+import { createStaticHandler } from './static-handler.mjs';
+test('Matching-host 308 aliases preserve query and unrelated requests reach static assets',async()=>{
+ const origins={site:'https://diffdevil.dev',docs:'https://docs.diffdevil.dev',compatibility:'https://www.diffdevil.dev'};
+ const seen=[];
+ const env={ASSETS:{fetch:async request=>{seen.push(request.url);return new Response('asset');}}};
+ const site=createStaticHandler({...origins,host:'site',redirects:[]});
+ const docs=createStaticHandler({...origins,host:'docs',redirects:[{from:'/start/what-is-diffdevil/',to:origins.docs+'/'}]});
+ for(const method of ['GET','POST']) {
+  const response=await site.fetch(new Request(origins.compatibility+'/faq/?q=hello%20world',{method}),env);
+  assert.equal(response.status,308);
+  assert.equal(response.headers.get('location'),origins.site+'/faq/?q=hello%20world');
+ }
+ const alias=await docs.fetch(new Request(origins.docs+'/start/what-is-diffdevil/?keep=1'),env);
+ assert.equal(alias.status,308);assert.equal(alias.headers.get('location'),origins.docs+'/?keep=1');
+ for(const url of [origins.docs+'/unknown/?f=https://evil.invalid',origins.docs+'/assets/site.css',origins.site+'/start/what-is-diffdevil/']) {
+  const response=await docs.fetch(new Request(url),env);assert.equal(await response.text(),'asset');
+ }
+ assert.equal(seen.length,3);
+});
+
+test('A source retirement cannot silently leave its public route behind',()=>{
+ const local={transfers:{'old.md':{phase:'retired'}}};
+ const entries=[{source:'old.md',slug:'old'}];
+ assert.throws(()=>validateRetiredRoutes(local,entries,[]),/missing legacy route/u);
+ assert.doesNotThrow(()=>validateRetiredRoutes(local,entries,[{from:'/docs/old/',to:pageUrl('cli'),status:308}]));
 });

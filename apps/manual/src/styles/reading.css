@@ -21,3 +21,12 @@
 @media (max-width:49.99rem) { .sl-markdown-content { font-size:1rem; } }
 @media (prefers-reduced-motion:reduce) { *,*::before,*::after { scroll-behavior:auto!important; transition:none!important; animation:none!important; } }
 @media (forced-colors:active) { .slw-alert { border:1px solid CanvasText; } :focus-visible { outline-color:Highlight; } .slw-category-link[aria-current="page"] { outline:1px solid Highlight; } }
+
+/* The shared footer sits inside the article, not a full-width landing page. */
+.docs-site-footer { container-type:inline-size; }
+.docs-site-footer .site-footer .grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+.docs-site-footer .site-footer .footer-row { white-space:normal; }
+.docs-site-footer .site-footer a { overflow-wrap:anywhere; }
+@container (max-width:32rem) {
+  .docs-site-footer .site-footer .grid { grid-template-columns:minmax(0,1fr); }
+}

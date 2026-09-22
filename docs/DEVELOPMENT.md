@@ -80,7 +80,7 @@ perform no registry installation themselves. One dependency closure is sufficien
 | `npm run playground:worker` | Builds the reusable engine and starts the same public route through local Wrangler/workerd. It disables Wrangler telemetry and does not contact Cloudflare. |
 | `npm run check:workers` | Bundles `wrangler.jsonc` and the static asset binding with telemetry disabled and `wrangler deploy --dry-run`. It creates no Worker, version, preview, deployment, route or domain. |
 | `npm run check:github-app` | Bundles the managed-App Worker, Queue and placeholder D1 binding with Wrangler dry-run, then compiles the absent-policy default through that configuration in local `workerd`. It creates no App, Queue, D1 database, Worker, deployment, route or credentialed GitHub effect. |
-| `npm run check:website` | Generates the derived website icons/rasters from the identity SVGs and the manual collection from the docs manifest, then builds the public website into `artifacts/website/dist`. Part of `verify`. It deploys, previews remotely or exposes nothing. |
+| `npm run check:website` | Generates selected sources and assets, builds both static hosts into `artifacts/website/dist` and `artifacts/manual/dist`, and mirrors one joined search index. Part of `verify`. No deployment or remote preview. |
 | `npm run website:assets` | Renders the ignored favicon, touch icon, web-manifest and GitHub App logos, Open Graph image and manifest from `design/assets/identity/`, measuring each framed mark against its declared occupancy. `--report` prints the measurements. |
 | `npm run website:build` / `website:dev` / `website:preview` / `website:check` | Full engine + website build, the Astro dev server, a local preview of the built output, and the Astro type check. See [the website README](../apps/website/README.md). |
 | `npm run test:website` | Data-level website tests (also discovered by `npm test`): fixtures evaluate to the outcomes they teach, snapshots are valid engine reports, the docs manifest names real sources, browser shims match Node. |
@@ -217,3 +217,30 @@ and Linux checks still require exact-head observation after publication.
 Publication, release identity, real credentials, live settings and provider
 writes require their own authority. See [licence boundaries](../LICENSES/README.md), [release procedure](PUBLICATION-BOUNDARY.md)
 and exact current [Qualification](QUALIFICATION.md).
+
+
+## Public-manual toolchain and qualification
+
+The manual uses an isolated supported peer graph: Node >=22.12, Astro 7.3.3,
+Starlight 0.42.2 and the source-only `@wolfsblvt/starlight-works` package from
+`Wolfsblvt/starlight-works@22d4567006ec7a33d890fab2f3d3515332498a90`.
+`npm run manual:prepare` fetches that exact source and invokes its own build/pack
+route. The website's existing locked graph is not upgraded for this consumer.
+Prepared source/package and consumer receipts live under `artifacts/manual-toolchain`.
+The generated child lock is retained in qualification artifacts; a clean transitive
+resolution is a new graph, not automatically reusable prior evidence.
+
+`npm run website:build` builds the engine and both hosts. `npm run manual:check`
+checks the actual manual Astro components. `npm run manual:test` runs dependency-free
+source contracts; after preparation and engine build, `node --test
+apps/manual/render.spec.mjs` tests the AST projection and real generated inventories.
+`npm run manual:qa` builds its isolated noindex reading fixture and exercises both
+actual outputs, including the emitted static request handler, in Chromium. The
+normal production build excludes that fixture. The existing FAQ browser journey
+also runs against the combined candidate. Neither command deploys a host.
+
+For an already prepared checkout, `DIFFDEVIL_DOCS_OFFLINE=1` reuses the verified
+source package and installed consumer graph or npm's populated cache without a
+network fallback. An empty cache cannot install an unpublished package offline.
+The ordinary runner prunes nested dependency and generated-output directories
+before discovering repository tests.

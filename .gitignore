@@ -42,3 +42,6 @@ apps/manual/src/generated/
 apps/manual/public/
 apps/manual/.astro/
 apps/website/src/generated/source-targets.json
+
+# The source-only manual toolchain retains its resolved lock with qualification evidence.
+apps/manual/package-lock.json

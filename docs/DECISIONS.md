@@ -646,3 +646,39 @@ qualified source only until its publication boundary is separately satisfied.
 **Current consequence.** [`PRESENTATION.md`](PRESENTATION.md) is the normative interface. The CLI and public library share the report/plan presenters; the website consumes them rather than maintaining display semantics. `--detail` and `--color` are confined to human report/plan presentation. Agent and machine formats never contain ANSI. Material textual changes receive public interface/release documentation without changing the canonical report schema by fiction. Provider results continue to own applied/readback standing.
 
 **Sources.** Wolf and Nyxara's owner co-design in [emergency-meeting #491](https://github.com/Wolfsblvt/emergency-meeting/issues/491#issuecomment-5737100063); [textual branding](BRANDING.md); [versioning and interchange](language/versioning-and-interchange.md); [human and agent presentation](PRESENTATION.md).
+
+
+## D041: Separate manual source identity from routes and preserve whole-source cutovers
+
+**Decision.** Maintain reader-facing chapters in `docs/manual/` and render only the
+explicit manifest at `docs.diffdevil.dev`. Keep the FAQ source there but render its
+single product-shell route at `diffdevil.dev/faq/`. Source paths, public routes and
+stable resolver identities remain separate explicit facts. Retain existing sources
+until every successor in a split and its links, fragments, redirects and search
+selection can transfer together. Do not create Markdown forwarding stubs.
+
+**Why.** A task-led manual should be readable on GitHub without exposing all internal
+records or making repository reorganizations change public URLs. Moving one part of
+a split prematurely would create two competing current explanations or lose readers'
+existing links. A finite resolver preserves selected technical source access without
+turning arbitrary query input into a repository path or redirect destination.
+
+**Implementation consequence.** D037's generated-collection model remains; the new
+manual uses its own selected manifest while legacy projections survive until their
+cutover. Source and Edit links identify maintained bytes. One Pagefind index joins
+both static outputs and individual FAQ records, with explicit result kinds. The
+shared Works shell and before-paint theme behavior remain product-owned under D039.
+Linked categories and five alerts come from the accepted `starlight-works` source
+package, using its supported isolated peer graph rather than copying implementation
+or claiming an npm release. The build emits a native static-assets request handler
+for the exact 308 host and route rules, not an unsupported domain rule in a static
+redirect file. Hosting and publication remain separate effects.
+
+**Rejected.** A second website-owned manual; source-derived public slugs; a broad
+publication glob; duplicated FAQ answers; arbitrary-path source resolution; partial
+retirement of split sources; and local copies of the shared navigation/alert package.
+
+**Sources.** [Documentation design](DOCUMENTATION.md), [manual implementation
+contract](../apps/manual/README.md), its explicit source/route and migration
+manifests, and the accepted shared package at
+`Wolfsblvt/starlight-works@22d4567006ec7a33d890fab2f3d3515332498a90`.

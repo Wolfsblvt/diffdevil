@@ -118,3 +118,30 @@ is not a released Action merely because YAML parses. A CI badge must refer to an
 actual run; package badges require a real published package. Local qualification
 belongs in Qualification, not an eternal launch checklist at the top of the user
 README.
+
+
+## Public-manual source foundation
+
+The purpose-built manual is maintained under `docs/manual/` and rendered by
+[`apps/manual/`](../apps/manual/README.md) at `docs.diffdevil.dev`. Its explicit
+manifest selects source identities, routes, aliases, task-led navigation and
+capability standing. The product FAQ remains the single `docs/manual/faq.md`
+source at `diffdevil.dev/faq/`, in the product shell without a manual sidebar.
+
+The foundation supplies chapter scaffolds, generated mechanical reference inserts,
+executed presenter specimens, Source/Edit links, finite technical-source access,
+shared shell and theme behavior, and one joined SITE/DOCS/FAQ search index.
+Scaffolds are not authored chapters or current search results. Availability is a
+separate product fact, expressed by one top-only In development NOTE where needed.
+
+Existing guides in the table above remain current until every successor of their
+selected split is authored and its incoming links, source-ID and fragment mappings,
+public redirects and search selection transfer together. `apps/manual/migration.mjs`
+owns those exact source-family dispositions. No Markdown forwarding stubs are used.
+The root README's later compression is not performed by this foundation.
+
+The authoring sequence is Start and Understand; open surfaces and shared workflows;
+Policy and Reference; Managed App and Help; then final cross-surface reconciliation.
+All continue the same draft manual carrier. The FAQ answers are already authored
+and are not duplicated by those chapter contributions. Source readiness, joined
+reader qualification and publication remain different claims.

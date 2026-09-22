@@ -1,5 +1,7 @@
 # Public manual foundation
 
+## Meaning
+
 The maintained Markdown is `docs/manual/`. This application renders only the
 explicit pages in `manifest.mjs` at `https://docs.diffdevil.dev/`. The product site
 and its admitted FAQ remain in `apps/website`; the FAQ is not a second manual page.
@@ -21,9 +23,12 @@ The manual's isolated dependency graph supplies its supported Starlight 0.42.2 p
 without upgrading the accepted website's locked Starlight 0.42.1 graph.
 
 The source package is unpacked from its verified local tarball and installed with
-`--install-links`, not linked into a sibling repository. The child lock governs its
-transitive graph; the exact Git coordinate and package receipt govern the unpublished
-package. `DIFFDEVIL_DOCS_OFFLINE=1` requires a previously prepared source/dependency
+`--install-links`, not linked into a sibling repository. Direct consumer versions
+are pinned. The child lock is generated, retained with each qualification artifact,
+and reused by subsequent preparations of that checkout. A clean preparation resolves
+a new transitive graph and must earn its own evidence; it does not reproduce an
+earlier graph merely because the source SHA is unchanged. The exact Git coordinate
+and package receipt govern the unpublished package. `DIFFDEVIL_DOCS_OFFLINE=1` requires a previously prepared source/dependency
 cache and refuses to download it. A clean checkout needs one online preparation.
 
 ## Author a chapter
@@ -71,13 +76,22 @@ map needs its separate explicit job. Incoming links must be updated in the same 
 A transfer also selects `redirects`, `sourceIds` and `search` together. Select each
 legacy public route in `state.routes` as `{target: "page-key"}`. Unknown routes,
 unready successors and partial family transfers refuse. No legacy route is
-activated merely because a replacement file exists. The resolver preserves old
+activated merely because a replacement file exists. Every emitted retired route must
+have its explicit transfer, and selected source fragments must resolve. The resolver preserves old
 source IDs and can direct an old fragment to a different member of a split.
 
-The build writes actual `_redirects` rules and noindex HTML compatibility documents
-for plain static previews. No source forwarding files are written. The product
-output includes the matching-route `www` to apex 308 rule. HTTP rules still need
-adoption by the eventual host; a successful local build is not live-host evidence.
+The build emits a small Cloudflare Pages advanced-mode `_worker.js` handler in each
+static output. It delegates ordinary requests to `env.ASSETS.fetch` and applies the
+selected matching-route `www` to apex 308 and exact route aliases. This uses the
+[native handler contract](https://developers.cloudflare.com/pages/functions/advanced-mode/),
+because [domain-level redirects are not supported in `_redirects`](https://developers.cloudflare.com/pages/configuration/redirects/).
+The accompanying `_redirects` files contain path rules only. Noindex HTML aliases
+retain a usable link in plain static previews and preserve query/fragment when
+JavaScript is enabled. No Markdown source forwarding files are written.
+
+Browser qualification executes the emitted handler against a local static-assets
+binding; it does not implement a second redirect simulator. Host adoption and live
+HTTP readback remain separate from this build. No hosting or DNS operation occurs.
 
 ## Search, FAQ and generated inventories
 
@@ -94,18 +108,28 @@ FAQ browser qualification runs on the combined candidate as well.
 
 `<!-- manual:generated NAME -->` inserts a bounded mechanical inventory into an
 authored page. Supported names are `cli-help`, `actions`, `typescript-exports`,
-`schemas`, `detail`, `presets` and `real-pr-catalogue`. These read the actual built
+`schemas`, `detail`, `presets`, `real-pr-catalogue`, `presenter-small`,
+`presenter-report` and `presenter-plan`. These read the actual built
 CLI/API, Action metadata and canonical contracts/catalogue; they are not another
 manually maintained reference. Source links remain useful when reading on GitHub.
-The controlled-fixture playground companions reuse the website's existing map.
+Schema fields and language catalogues are mechanical inventories, not a claim that
+structural validity establishes semantic validity. Preset expansion is checked
+against the canonical preset through the real compiler. Presenter specimens execute
+the real CLI and keep the small 10-Changed/16-churn input distinct from the
+178-Changed presentation input. A command failure fails generation.
+
 The real-PR catalogue remains the one shared `docs/examples/catalogue` family.
+Playground links carry a real `example--variant` key. Controlled teaching patches
+remain linked canonical assets, not fabricated gallery entries or obsolete synthetic
+playground IDs.
 
 ## Qualification and deliberate limits
 
 `npm run manual:qa` builds an isolated noindex reading fixture, then runs Chromium
 against both actual static outputs under intercepted canonical HTTPS origins. It
 checks routes/aliases, the finite resolver, shared shell/theme, linked groups,
-five alerts, actual FAQ fragments, search kinds and narrow/keyboard behavior. The
+five alerts, actual FAQ fragments, search kinds, native no-JavaScript disclosures,
+and narrow/keyboard behavior. The
 normal production build never includes that fixture. Results and screenshots name
 the exact candidate under `artifacts/manual/qa/`.
 

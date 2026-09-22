@@ -7,3 +7,9 @@
 [Canonical source](../../../src/diffdevil/cli/main.ts)
 
 <!-- manual:generated cli-help -->
+
+## Report presentation specimen
+
+[Canonical input](../../examples/reports/exact.json)
+
+<!-- manual:generated presenter-report -->

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 /** Exercise actual static files under intercepted canonical HTTPS origins. */
+import { pathToFileURL } from 'node:url';
 import { chromium, expect } from '@playwright/test';
 import assert from 'node:assert/strict';
 import { readFileSync, existsSync, mkdirSync, writeFileSync, statSync } from 'node:fs';
@@ -16,40 +17,36 @@ assert.equal(manifest.ref,ref); assert.equal(manifest.qa,true);
 const records = JSON.parse(readFileSync('artifacts/public-search/records.json','utf8'));
 const faq = faqRecords(readFileSync('artifacts/website/dist/faq/index.html','utf8'));
 const result = {ref,checks:[],failures:[],unexpectedRequests:[],pageErrors:[],screenshots:[],limitations:['Intercepted static origins, not live deployment.','DOM/keyboard evidence, not an actual screen-reader user journey.']};
-const mime = {'.html':'text/html','.css':'text/css','.js':'text/javascript','.mjs':'text/javascript','.json':'application/json','.svg':'image/svg+xml','.png':'image/png','.ico':'image/x-icon','.woff2':'font/woff2','.wasm':'application/wasm','.pf_fragment':'application/octet-stream','.pf_index':'application/octet-stream','.pf_meta':'application/octet-stream'};
-const browser = await chromium.launch();
+const mime = {'.html':'text/html','.css':'text/css','.js':'text/javascript','.mjs':'text/javascript','.json':'application/json','.svg':'image/svg+xml','.png':'image/png','.ico':'image/x-icon','.woff2':'font/woff2','.woff':'font/woff','.webp':'image/webp','.wasm':'application/wasm','.pf_fragment':'application/octet-stream','.pf_index':'application/octet-stream','.pf_meta':'application/octet-stream'};
+const browser = await chromium.launch({executablePath:process.env.PLAYWRIGHT_EXECUTABLE_PATH});
 const context = await browser.newContext({viewport:{width:1280,height:900},colorScheme:'dark',reducedMotion:'reduce'});
-const redirects = [];
-for (const host of ['website','manual']) {
- const file = `artifacts/${host}/dist/_redirects`;
- for (const line of readFileSync(file,'utf8').split('\n').filter(Boolean)) {
-  const [from,to,status] = line.trim().split(/\s+/u);
-  redirects.push({origin:host==='manual'?origins.docs:origins.site,from,to,status:Number(status)});
- }
-}
-await context.route('**/*',async route=>{
- const url = new URL(route.request().url());
- if (!Object.values(origins).includes(url.origin)) { result.unexpectedRequests.push(url.href); await route.abort(); return; }
- for (const rule of redirects) {
-  const source = rule.from.startsWith('http') ? rule.from : rule.origin+rule.from;
-  const stem = source.endsWith('*') ? source.slice(0,-1) : source;
-  const path = url.origin+url.pathname;
-  if (source.endsWith('*') ? path.startsWith(stem) : path===source) {
-   const target = new URL(rule.to.replace(':splat',path.slice(stem.length)),url.origin);
-   target.search = url.search;
-   await route.fulfill({status:rule.status,headers:{location:target.href}}); return;
-  }
- }
- const host = url.origin===origins.docs?'manual':url.origin===origins.site?'website':undefined;
- if (!host) { await route.fulfill({status:404,body:'No selected static host'}); return; }
+const handlers = {
+ site: (await import(pathToFileURL(join(root,'artifacts/website/dist/_worker.js')).href)).default,
+ docs: (await import(pathToFileURL(join(root,'artifacts/manual/dist/_worker.js')).href)).default,
+};
+async function asset(request, host) {
+ const url = new URL(request.url);
  let path;
- try { path = decodeURIComponent(url.pathname); } catch { await route.fulfill({status:400}); return; }
- if (path.split('/').includes('..') || path.includes('\\')) { await route.fulfill({status:400}); return; }
+ try { path = decodeURIComponent(url.pathname); } catch { return new Response('Bad path',{status:400}); }
+ if (path.split('/').includes('..') || path.includes('\\')) return new Response('Bad path',{status:400});
  let file = join(root,`artifacts/${host}/dist`,path);
  if (path.endsWith('/')) file=join(file,'index.html');
- if (!existsSync(file) || !statSync(file).isFile()) { await route.fulfill({status:404,body:'Not found'}); return; }
- await route.fulfill({status:200,contentType:mime[extname(file)]??'application/octet-stream',body:readFileSync(file)});
-});
+ if (!existsSync(file) || !statSync(file).isFile()) return new Response('Not found',{status:404});
+ return new Response(readFileSync(file),{headers:{'Content-Type':mime[extname(file)]??'application/octet-stream'}});
+}
+const serve = async route=>{
+ const url = new URL(route.request().url());
+ if (![origins.site,origins.docs,origins.compatibility].includes(url.origin)) {
+  result.unexpectedRequests.push(url.href); await route.abort(); return;
+ }
+ const host = url.origin===origins.docs?'docs':'site';
+ const request = new Request(url.href,{method:route.request().method()});
+ // Execute the emitted production handler. Only the static-assets service binding
+ // is local; redirect behavior is not reimplemented by this browser fixture.
+ const response = await handlers[host].fetch(request,{ASSETS:{fetch:request=>asset(request,host==='docs'?'manual':'website')}});
+ await route.fulfill({status:response.status,headers:Object.fromEntries(response.headers),body:Buffer.from(await response.arrayBuffer())});
+};
+await context.route('**/*',serve);
 const page = await context.newPage();
 page.on('pageerror',error=>result.pageErrors.push(error.message));
 async function check(name,fn) {
@@ -65,7 +62,8 @@ try {
    await expect(page.locator('.docs-provenance a').filter({hasText:'View source'})).toHaveAttribute('href',`https://github.com/Wolfsblvt/diffdevil/blob/${ref}/${selected.source}`);
    await expect(page.locator('.docs-provenance a').filter({hasText:'Edit on GitHub'})).toHaveAttribute('href',`https://github.com/Wolfsblvt/diffdevil/edit/docs/public-manual/${selected.source}`);
    assert.equal(await page.locator('link[rel=canonical]').getAttribute('href'),pageUrl(selected.key));
-   assert.match(await page.locator('meta[name=robots]').getAttribute('content'),/noindex/u);
+   const current = manifest.records.find(row=>row.key===selected.key).current;
+   if (!current) assert.match(await page.locator('meta[name=robots]').getAttribute('content'),/noindex/u);
   }
   assert.equal(existsSync('artifacts/manual/dist/faq/index.html'),false);
  });
@@ -138,8 +136,9 @@ try {
   assert.equal(records.ref,ref);
   assert.deepEqual([...new Set(records.records.map(record=>record.kind))].sort(),['DOCS','FAQ','SITE']);
   assert.equal(records.records.filter(record=>record.kind==='FAQ').length,faq.length);
-  assert.equal(records.records.some(record=>new URL(record.url).hostname==='docs.diffdevil.dev'),false);
-  assert.equal(records.records.some(record=>/\/(source|privacy|impressum|__qualification)\//u.test(record.url)),false);
+  const indexedManual = records.records.filter(record=>new URL(record.url).hostname==='docs.diffdevil.dev').map(record=>new URL(record.url).pathname).sort();
+  assert.deepEqual(indexedManual,manifest.records.filter(record=>record.current).map(record=>record.route).sort());
+  assert.equal(records.records.some(record=>['/source/','/privacy/','/impressum/'].includes(new URL(record.url).pathname) || new URL(record.url).pathname.startsWith('/__qualification/')),false);
   const hash=file=>createHash('sha256').update(readFileSync(file)).digest('hex');
   assert.equal(hash('artifacts/website/dist/pagefind/pagefind.js'),hash('artifacts/manual/dist/pagefind/pagefind.js'));
   await page.goto(origins.docs+'/'); await page.keyboard.press('Control+k');
@@ -158,10 +157,30 @@ try {
    if(width===390 || width===320) await screenshot(`reading-${width}.png`);
   }
   const menu=page.locator('.sl-menu-button'); await expect(menu).toBeVisible(); await menu.focus(); await page.keyboard.press('Enter');
-  await expect(menu).toHaveAttribute('aria-expanded','true'); await page.keyboard.press('Enter'); await expect(menu).toHaveAttribute('aria-expanded','false');
+  await expect(page.locator('#starlight__sidebar')).toHaveJSProperty('popover','auto');
+  assert.equal(await page.locator('#starlight__sidebar').evaluate(node=>node.matches(':popover-open')),true);
+  await page.keyboard.press('Escape');
+  assert.equal(await page.locator('#starlight__sidebar').evaluate(node=>node.matches(':popover-open')),false);
   await page.emulateMedia({forcedColors:'active',reducedMotion:'reduce'}); await screenshot('reading-forced-colors.png');
   await page.locator('.sl-markdown-content details > summary').focus();
   assert.notEqual(await page.locator('.sl-markdown-content details > summary').evaluate(node=>getComputedStyle(node).outlineStyle),'none');
+ });
+ await check('Native linked groups and article disclosures work without JavaScript',async()=>{
+  const plain=await browser.newContext({javaScriptEnabled:false,viewport:{width:1280,height:900}});
+  await plain.route('**/*',serve);
+  try {
+   const reader=await plain.newPage();
+   await reader.goto(origins.docs+'/__qualification/reading/');
+   const group=reader.locator('[data-slw-group="Managed App"] > details');
+   await expect(group).not.toHaveAttribute('open','');
+   await group.locator(':scope > summary').focus(); await reader.keyboard.press('Enter');
+   await expect(group).toHaveAttribute('open','');
+   await reader.locator('.sl-markdown-content details > summary').click();
+   await expect(reader.locator('.sl-markdown-content details')).toHaveAttribute('open','');
+   await reader.locator('[data-slw-group="Managed App"] > .slw-group-heading a').click();
+   await expect(reader.locator('h1').first()).toHaveText('Managed App');
+   await expect(reader.locator('[data-slw-group="Managed App"] > details')).toHaveAttribute('open','');
+  } finally { await plain.close(); }
  });
  await check('Shared shell has no page-script errors or unexpected external requests',async()=>{
   assert.deepEqual(result.pageErrors,[]); assert.deepEqual(result.unexpectedRequests,[]);

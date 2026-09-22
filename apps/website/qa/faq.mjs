@@ -26,7 +26,8 @@ const server = createServer(async (request, response) => {
   } catch { response.writeHead(404); response.end('Not found'); }
 });
 await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
-const origin = `http://127.0.0.1:${server.address().port}`;
+const localOrigin = `http://127.0.0.1:${server.address().port}`;
+const origin = new URL(FAQ_CANONICAL).origin;
 const failures = [], evidence = [];
 let browser, page;
 try {
@@ -36,11 +37,15 @@ try {
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   page = await context.newPage();
   page.on('pageerror', error => failures.push(error.message));
-  await context.route('**/*', route => {
-    if (new URL(route.request().url()).origin === origin) return route.continue();
+  const serveStatic = async route => {
+    if (new URL(route.request().url()).origin === origin) {
+      const url = new URL(route.request().url());
+      return route.fulfill({ response: await route.fetch({url:localOrigin + url.pathname + url.search}) });
+    }
     failures.push(`Unexpected external request: ${route.request().url()}`);
     return route.abort();
-  });
+  };
+  await context.route('**/*', serveStatic);
   await page.goto(`${origin}/faq/`);
   await page.evaluate(() => document.fonts.ready);
   await expect(page.locator('h1')).toHaveCount(1);
@@ -113,7 +118,7 @@ try {
   for (const href of links) {
     if (!href.startsWith('/')) continue;
     const target = new URL(href, origin);
-    const response = await context.request.get(target.href);
+    const response = await context.request.get(localOrigin + target.pathname + target.search);
     assert.equal(response.status(), 200, href);
     if (target.hash) {
       const html = await response.text();
@@ -150,6 +155,7 @@ try {
   evidence.push('Responsive layout at 320–1440px, compact FAQ navigation, light/mobile deep link and malformed-fragment recovery.');
 
   const plain = await browser.newContext({ javaScriptEnabled: false, viewport: { width: 1280, height: 900 } });
+  await plain.route('**/*', serveStatic);
   const noScript = await plain.newPage();
   await noScript.goto(`${origin}/faq/`);
   const featured = noScript.locator('[data-faq-id="beyond-size-labels"]');

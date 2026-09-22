@@ -5,6 +5,7 @@ import starlightWorks from '@wolfsblvt/starlight-works';
 import { fileURLToPath } from 'node:url';
 import { existsSync } from 'node:fs';
 import { sidebar, origins } from './manifest.mjs';
+import { engineAliases } from '../website/engine-aliases.mjs';
 import { themeScript } from '../website/src/lib/theme-script.mjs';
 import { diffdevilSyntax } from '../website/src/lib/shiki-theme.ts';
 const root = fileURLToPath(new URL('../../',import.meta.url));
@@ -26,5 +27,5 @@ export default defineConfig({
   pagination:true,lastUpdated:false,credits:false,favicon:'/favicon.svg',
  })],
  markdown:{shikiConfig:{theme:diffdevilSyntax}},
- vite:{server:{fs:{allow:[root]}}},
+ vite:{resolve:{alias:engineAliases},server:{fs:{allow:[root]}}},
 });

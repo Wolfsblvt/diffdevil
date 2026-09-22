@@ -12,7 +12,7 @@ From the repository root:
 
 ```sh
 npm ci --ignore-scripts --no-audit --no-fund
-npm run website:build        # engine build → docs collection → astro build → artifacts/website/dist
+npm run website:build        # engine → site + manual builds → one joined search index
 npm run website:preview      # serve the built output locally
 npm run website:dev          # engine build → docs collection → astro dev server
 npm run website:check        # astro type check
@@ -22,11 +22,14 @@ npm run qa:website           # headless Chromium qualification of the built outp
 
 `npm run verify` includes `check:website`, so the site must build for ordinary verification to pass. The browser qualification (`qa:website`) needs Playwright's Chromium in the user cache (`npx playwright install chromium`); it serves the build, runs the real playground application server against the in-memory fake GitHub fixture, and writes results and screenshots to `artifacts/website/qa/`.
 
-Configuration is environment at build time, never a decided domain:
+Public origins are selected in `public-origins.mjs`: the product uses `diffdevil.dev`,
+the manual uses `docs.diffdevil.dev`, and `app.diffdevil.dev` is reserved for managed
+operation. The compound build uses those canonical origins. Other live destinations
+remain explicit configuration rather than being invented from the host selection:
 
 | Variable | Meaning | Default |
 | --- | --- | --- |
-| `DIFFDEVIL_SITE_ORIGIN` | Public origin used for canonical URLs, the Open Graph image and every absolute URL copied to an agent | `https://diffdevil.invalid` (placeholder; canonical links are omitted) |
+| `DIFFDEVIL_SITE_ORIGIN` | Public origin used for canonical URLs, the Open Graph image and every absolute URL copied to an agent | `https://diffdevil.dev` (canonical product origin) |
 | `PUBLIC_PLAYGROUND_API` | Origin of the playground API Worker the playground calls for live public pull requests | `http://127.0.0.1:4173` (the local `npm run playground` server) |
 | `PUBLIC_APP_INSTALL_URL` | Canonical GitHub App installation route. Every "Install the App" / "Install on GitHub" links here directly | unset |
 | `PUBLIC_CHROME_WEB_STORE_URL` | Canonical Chrome Web Store listing of diffdevil for GitHub. Every "Add to Chrome" links here directly | unset |
@@ -55,17 +58,27 @@ The header applies the Wolfsblvt Works header grammar: **identity → search →
 
 `ThemeControl.astro` is one native button over three preferences and four traversal positions: **Dark → Auto → Light → Auto → Dark → …** The whole control is one target; there are no per-side hit zones and no direct Light → Dark wrap. One capsule previews the real appearance (`#111318` when dark, `#F5F6F8` when light) and, in Automatic, stretches to take the centre dot inside it. ArrowRight/ArrowLeft step forwards/backwards while it is focused; its tooltip and `aria-description` state the current preference and the next click.
 
-`lib/theme-script.mjs` is the single before-paint rule, shared verbatim by `Base.astro` and the manual's Starlight head: `diffdevil.theme` holds `dark | auto | light`, `diffdevil.theme.next` the manual side the bounce is heading for, and `<html data-theme>` is always the resolved appearance. With nothing valid stored the theme is **explicit Dark**. Migration: a legacy `system` value becomes `auto`; an Auto without a stored bounce side gets the opposite of its resolved appearance, once; earlier builds removed the key for Auto, which cannot be told from "never chosen", so an absent key takes the dark-first default. Auto follows the system live; explicit choices ignore it. The preference is origin-local storage; carrying it across product hosts belongs to the documentation-host work, not to this control.
+`lib/theme-script.mjs` is the single before-paint rule, shared verbatim by `Base.astro` and the manual's Starlight head: `diffdevil.theme` holds `dark | auto | light`, `diffdevil.theme.next` the manual side the bounce is heading for, and `<html data-theme>` is always the resolved appearance. With nothing valid stored the theme is **explicit Dark**. Migration: a legacy `system` value becomes `auto`; an Auto without a stored bounce side gets the opposite of its resolved appearance, once; earlier builds removed the key for Auto, which cannot be told from "never chosen", so an absent key takes the dark-first default. Auto follows the system live; explicit choices ignore it. The preference remains origin-local storage. `theme-transfer.mjs` carries only preference and bounce direction on owned site/manual HTML links; the before-paint capsule consumes and removes that parameter. Direct visits retain their origin-local preference. There is no cookie, authentication or synchronization service.
 
 The page never scrolls sideways. Grid tracks are `minmax(0, …)`, code and prompts wrap, and only a deliberately bounded inner block (the playground's files table on a narrow screen, a long report document, a long presenter pane) may scroll. `qa/run.mjs` measures page-level overflow on every route at 1280, 1024, 768, 640 (the layout of a 1280 window at 200 % zoom) and 390.
 
 Section anchors: the literal `#id` eyebrow carries the `id`, is the scroll target under the sticky header, and is a link to itself; the magenta `#` after the title is the same link for pointer users, and hovering or focusing either lights both (`SectionHead.astro`). Cross-links into the manual always close a section (`SectionLinks.astro`); the hero is the one exception.
 
-The manual keeps that shell. `src/components/docs/Header.astro` renders the site header inside Starlight's fixed header; `src/styles/starlight.css` puts Starlight's frame on the page grid: the navigation rail starts under the lockup, everything left of its divider (header included) is the raised ground, the divider runs through the header, and the rail scrolls on its own beneath the fixed header. Article typography in that file is provisional until the docs-page design lands.
+The manual keeps that shell. `src/components/docs/Header.astro` renders the site header inside Starlight's fixed header; `src/styles/starlight.css` puts Starlight's frame on the page grid: the navigation rail starts under the lockup, everything left of its divider (header included) is the raised ground, the divider runs through the header, and the rail scrolls on its own beneath the fixed header. The new manual adds the reading-led article treatment from `apps/manual/src/styles/reading.css`; the product shell and tokens remain shared.
 
 ## Search
 
-`src/components/Search.astro` and `src/lib/search.ts` are the one search on every route. The build's Pagefind index covers the whole output: site pages opt in with `data-pagefind-body` on `<main>` (from `Base.astro`), manual pages through Starlight. Each hit is marked **Docs** or **Site** from its URL. Legal routes (`/privacy/`, `/impressum/`) pass `noindex` to `Base.astro`: they stay public and fetchable, carry `noindex, nosnippet`, and are left out of the index. The index exists only in built output; `astro dev` shows an honest "not available in this preview" instead.
+`src/components/Search.astro` and `src/lib/search.ts` are the shared search on both
+hosts. The compound build runs Pagefind once over the selected site bodies, current
+legacy or replacement manual pages, and individual rendered FAQ questions. It
+mirrors that same index into both static outputs. The client uses explicit `SITE`,
+`DOCS` and `FAQ` metadata, independent of source directory or host-relative path.
+
+The complete FAQ page is not an additional search record. Legal/noindex routes,
+private chapter scaffolds, the source resolver and qualification fixtures are not
+indexed. Search exists in built output; development servers still report its absence
+honestly. [The manual implementation contract](../manual/README.md) owns source
+projection, migration, cross-host routing and the exact qualification commands.
 
 ## Open design seams, and the slots that wait for them
 

@@ -17,7 +17,7 @@ const checkout = join(cache,'source');
 const tarball = join(cache,'starlight-works.tgz');
 const receiptPath = join(cache,'source-receipt.json');
 export function run(command,args,options={}) {
- return execFileSync(command,args,{cwd:root,stdio:'inherit',shell:false,...options});
+ return execFileSync(command,args,{cwd:root,stdio:'inherit',shell:false,windowsHide:true,...options});
 }
 export function npm(args,cwd=root,options={}) {
  const cli=process.env.npm_execpath;
@@ -55,12 +55,29 @@ export function prepareManual() {
   receipt={repository:packageSource.repository,commit:actual,name:packed.name,version:packed.version,integrity:packed.integrity,tarballSha256:sha256(tarball)};
   writeFileSync(receiptPath,JSON.stringify(receipt,null,2)+'\n');
  }
+ const consumerPath = join(cache,'consumer-receipt.json');
+ const installedPackage = join(manualRoot,'node_modules/@wolfsblvt/starlight-works/package.json');
+ const lockPath = join(manualRoot,'package-lock.json');
+ const dependencies = JSON.parse(readFileSync(join(manualRoot,'package.json'),'utf8')).dependencies;
+ const locked = existsSync(lockPath) ? JSON.parse(readFileSync(lockPath,'utf8')).packages?.['']?.dependencies : undefined;
+ const unchangedDependencies = locked && Object.keys(dependencies).length === Object.keys(locked).length && Object.entries(dependencies).every(([name,version]) => locked[name] === version);
+ const consumer = existsSync(consumerPath) ? JSON.parse(readFileSync(consumerPath,'utf8')) : undefined;
+ // Reuse a prepared consumer instead of reinstalling the identical graph on every
+ // build/check. Offline use needs this actual installed graph or npm's own cache.
+ if (unchangedDependencies && consumer?.commit === receipt.commit && consumer.tarballSha256 === receipt.tarballSha256 &&
+     existsSync(lockPath) && consumer.lockSha256 === sha256(lockPath) && existsSync(installedPackage) &&
+     existsSync(join(manualRoot,'node_modules/astro/package.json')) &&
+     existsSync(join(manualRoot,'node_modules/@astrojs/starlight/package.json'))) {
+  const version = name => JSON.parse(readFileSync(join(manualRoot,'node_modules',name,'package.json'),'utf8')).version;
+  if (version('astro') === packageSource.astro && version('@astrojs/starlight') === packageSource.starlight &&
+      version('@wolfsblvt/starlight-works') === packageSource.version) return receipt;
+ }
  const unpacked=join(cache,'package');
  rmSync(unpacked,{recursive:true,force:true}); mkdirSync(unpacked,{recursive:true});
  run('tar',['-xzf',tarball,'-C',unpacked,'--strip-components=1']);
  // Directory packaging plus install-links preserves a portable lock: source identity
  // is proven by the accepted Git SHA and package receipt, not OS-specific tar headers.
- npm([existsSync(join(manualRoot,'package-lock.json'))?'ci':'install','--install-links','--ignore-scripts','--no-audit','--no-fund',...(offline?['--offline']:[])],manualRoot);
+ npm([unchangedDependencies?'ci':'install','--install-links','--ignore-scripts','--no-audit','--no-fund',...(offline?['--offline']:[])],manualRoot);
  const installed=name=>JSON.parse(readFileSync(join(manualRoot,'node_modules',name,'package.json'),'utf8')).version;
  const actualPackage=JSON.parse(readFileSync(join(manualRoot,'node_modules/@wolfsblvt/starlight-works/package.json'),'utf8'));
  if(installed('@astrojs/starlight')!==packageSource.starlight || installed('astro')!==packageSource.astro || actualPackage.name!==packageSource.name || actualPackage.version!==packageSource.version) throw new Error('The manual must use the accepted package and its supported peer graph.');
