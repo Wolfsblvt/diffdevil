@@ -38,7 +38,7 @@ manual look smaller, and do not force a first-time label user to learn detail.
 Distinguish four things wherever they affect a decision: measured facts,
 repository policy, desired effects, and observed provider results. Raw churn is
 not replacement-aware changed lines. No measurement establishes quality, risk,
-importance, or merge authority. Use the canonical [branding reference](BRANDING.md)
+importance, or merge authority. Use the canonical [branding reference](branding.md)
 for naming and operational vocabulary, not a mascot voice in examples.
 
 ## Own examples as executable assets
