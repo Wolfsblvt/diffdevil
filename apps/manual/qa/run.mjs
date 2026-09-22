@@ -11,6 +11,7 @@ import { manualPages, origins, pageUrl } from '../manifest.mjs';
 import { faqRecords } from '../../website/faq-content.mjs';
 import { qualifyRedirects } from './redirects.mjs';
 import { qualifyFirstSuccess } from './wave-1.mjs';
+import { qualifySurfaces } from './wave-2.mjs';
 const root = resolve('.'), out = join(root,'artifacts/manual/qa');
 mkdirSync(out,{recursive:true});
 const ref = execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim();
@@ -19,7 +20,7 @@ assert.equal(manifest.ref,ref); assert.equal(manifest.qa,true);
 const records = JSON.parse(readFileSync('artifacts/public-search/records.json','utf8'));
 const faq = faqRecords(readFileSync('artifacts/website/dist/faq/index.html','utf8'));
 const result = {ref,checks:[],failures:[],unexpectedRequests:[],pageErrors:[],screenshots:[],limitations:['Intercepted canonical origins and loopback HTTP, not live deployment.','DOM/keyboard evidence, not an actual screen-reader user journey.']};
-const mime = {'.html':'text/html','.css':'text/css','.js':'text/javascript','.mjs':'text/javascript','.json':'application/json','.svg':'image/svg+xml','.png':'image/png','.ico':'image/x-icon','.woff2':'font/woff2','.woff':'font/woff','.webp':'image/webp','.wasm':'application/wasm','.pf_fragment':'application/octet-stream','.pf_index':'application/octet-stream','.pf_meta':'application/octet-stream'};
+const mime = {'.md':'text/markdown; charset=utf-8','.html':'text/html','.css':'text/css','.js':'text/javascript','.mjs':'text/javascript','.json':'application/json','.svg':'image/svg+xml','.png':'image/png','.ico':'image/x-icon','.woff2':'font/woff2','.woff':'font/woff','.webp':'image/webp','.wasm':'application/wasm','.pf_fragment':'application/octet-stream','.pf_index':'application/octet-stream','.pf_meta':'application/octet-stream'};
 const browser = await chromium.launch({executablePath:process.env.PLAYWRIGHT_EXECUTABLE_PATH});
 const context = await browser.newContext({viewport:{width:1280,height:900},colorScheme:'dark',reducedMotion:'reduce'});
 const handlers = {
@@ -135,7 +136,7 @@ try {
   assert.equal(records.records.filter(record=>record.kind==='FAQ').length,faq.length);
   const indexedManual = records.records.filter(record=>new URL(record.url).hostname==='docs.diffdevil.dev').map(record=>new URL(record.url).pathname).sort();
   assert.deepEqual(indexedManual,manifest.records.filter(record=>record.current).map(record=>record.route).sort());
-  assert.equal(records.records.some(record=>['/source/','/privacy/','/impressum/'].includes(new URL(record.url).pathname) || new URL(record.url).pathname.startsWith('/__qualification/')),false);
+  assert.equal(records.records.some(record=>['/source/','/privacy/','/impressum/'].includes(new URL(record.url).pathname) || new URL(record.url()).pathname.startsWith('/__qualification/')),false);
   const hash=file=>createHash('sha256').update(readFileSync(file)).digest('hex');
   assert.equal(hash('artifacts/website/dist/pagefind/pagefind.js'),hash('artifacts/manual/dist/pagefind/pagefind.js'));
   await page.goto(origins.docs+'/'); await page.keyboard.press('Control+k');
@@ -180,6 +181,7 @@ try {
   } finally { await plain.close(); }
  });
  await qualifyFirstSuccess({ page, origins, check, screenshot });
+ await qualifySurfaces({ page, origins, check, screenshot });
  await check('Shared shell has no page-script errors or unexpected external requests',async()=>{
   assert.deepEqual(result.pageErrors,[]); assert.deepEqual(result.unexpectedRequests,[]);
  });

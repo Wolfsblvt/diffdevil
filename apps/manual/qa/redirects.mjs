@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
+import {readFileSync} from 'node:fs';
+import {legacyRedirects} from '../migration.mjs';
 
 /** Exercise real HTTP redirects through the emitted handlers. Playwright's route
  * interception does not cover a redirect's second hop, so this journey uses three
@@ -55,11 +57,20 @@ export async function qualifyRedirects(browser, handlers, asset, origins) {
   assert.equal(response.status(),200);
   assert.equal(page.url(),local.get(origins.site)+'/faq/?keep=2#changed-vs-churn');
   assert.equal(await page.locator('[data-faq-page]').count(),1);
-  assert.equal(responses.length,2);
-  assert.deepEqual(observed,[
+  const expected = [
    {from:origins.docs+'/start/what-is-diffdevil/?keep=1',status:308,to:origins.docs+'/?keep=1'},
    {from:origins.compatibility+'/faq/?keep=2',status:308,to:origins.site+'/faq/?keep=2'},
-  ]);
+  ];
+  const state=JSON.parse(readFileSync('apps/manual/authoring-state.json','utf8'));
+  for(const redirect of legacyRedirects(state)){
+   const from=new URL(redirect.from,origins.site),to=new URL(redirect.to);
+   const response=await page.goto(local.get(from.origin)+from.pathname+'?migration=1#kept-fragment');
+   assert.equal(response.status(),200,redirect.from);
+   assert.equal(page.url(),local.get(to.origin)+to.pathname+'?migration=1#kept-fragment');
+   expected.push({from:from.href+'?migration=1',status:308,to:redirect.to+'?migration=1'});
+  }
+  assert.equal(responses.length,expected.length);
+  assert.deepEqual(observed,expected);
   assert.deepEqual(failures,[]);
   return {transport:'loopback HTTP through emitted handlers',observed,browserFragmentInheritance:true};
  } finally {

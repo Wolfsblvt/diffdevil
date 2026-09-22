@@ -115,7 +115,7 @@ test('The Playground exported commands replay the displayed exclusion report and
     assert.equal(applied.report.bands.size.id, band);
     writeFileSync(join(home, 'report.json'), JSON.stringify(applied.report));
     writeFileSync(join(home, '.diffdevil.yml'), JSON.stringify(policies[name]));
-    const text = production.exportCli(json('package.json').version, name === 'standard', { repository: 'vitejs/vite', pullRequest: 18968 });
+    const text = production.exportCli(name === 'standard', { repository: 'vitejs/vite', pullRequest: 18968 });
     const commands = text.split('\n').filter(line => !line.startsWith('#'));
     assert.equal(commands.length, 3);
     for (const line of commands) {
