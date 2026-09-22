@@ -14,7 +14,7 @@ platform and evidence boundaries remain explicit below.
 Shared Action runners implement root, analyze, apply and sync-labels through
 `src/diffdevil/actions/run.ts`. Focused tests execute runner inputs, event files,
 output/summary files, policy trust, artifact revalidation, controlled Git, and
-provider readback against fake GitHub HTTP. [Qualification](../QUALIFICATION.md)
+provider readback against fake GitHub HTTP. [Qualification](../qualification.md)
 owns exact native, hosted, installed-package, Action-consumer, and live-provider
 evidence.
 
@@ -350,4 +350,4 @@ Multiline outputs use independent collision-checked delimiters. Summary markup i
 escaped and truncated only at the presentation boundary, with the full journal
 retained. Local process tests do not prove GitHub's own secret masking or rendered UI.
 
-[Distribution paths and rebuilds](action-distribution.md) · [Qualification](../QUALIFICATION.md)
+[Distribution paths and rebuilds](action-distribution.md) · [Qualification](../qualification.md)

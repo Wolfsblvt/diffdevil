@@ -32,7 +32,7 @@ separate integration cycle.
 
 ## Start with the relevant source
 
-Read `docs/VISION.md`, `docs/DIRECTION.md`, and `docs/BRANDING.md` for product intent
+Read `docs/VISION.md`, `docs/DIRECTION.md`, and `docs/branding.md` for product intent
 and naming, then use `docs/README.md` to enter the subject being changed. Maintained
 manuals plus `src/diffdevil/contracts/schemas/`, `src/diffdevil/contracts/detail/v1/`, and `src/diffdevil/presets/` own executable contracts.
 `docs/reference/` retains dated rationale and evidence, not newer authority over those
@@ -87,6 +87,6 @@ personal instructions, or local transfer archives.
 Inspect Git status and the exact staged diff before committing. Preserve unrelated
 work and attributable history. Public tags, releases, package publication, live
 provider effects, and security settings are not side effects of running tests.
-Follow the explicit release procedure in `docs/PUBLICATION-BOUNDARY.md` when those
+Follow the explicit release procedure in `docs/publication-boundary.md` when those
 operations are authorized. Reusable software is MIT; application/service software is
 AGPL-3.0-only. Documentation, examples, and reserved brand/visual rights are mapped in `LICENSES/README.md`.

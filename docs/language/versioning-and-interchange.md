@@ -35,7 +35,7 @@ diffdevil.agent-plan/1
 
 Within one agent-presentation major, records retain their fixed semantic grouping, key meanings, quoting rules, and typed non-exact measurement grammar. An incompatible change to that record grammar requires a new projection major even when `diffdevil.report` or `diffdevil.plan` remains at schema `1.0`.
 
-These textual identities do not compete with JSON. JSON and JSONL remain the exhaustive stable extraction contracts; agent text is a compact, deterministic context interface. [Human and agent presentation](../PRESENTATION.md) owns the normative human/agent grouping, color, plan, and consumer contract.
+These textual identities do not compete with JSON. JSON and JSONL remain the exhaustive stable extraction contracts; agent text is a compact, deterministic context interface. [Human and agent presentation](../presentation.md) owns the normative human/agent grouping, color, plan, and consumer contract.
 
 ## Report envelope
 
@@ -167,7 +167,7 @@ The supplied Draft 2020-12 schemas cover the selected structural contracts. Sema
 The package qualification report distinguishes structural/schema/example checks
 from executed parser, evaluator, shell, package, and Action consumer evidence.
 Live provider and hosted-runner claims remain bounded to the separate evidence in
-[Qualification](../QUALIFICATION.md); a well-formed schema alone is not evidence
+[Qualification](../qualification.md); a well-formed schema alone is not evidence
 of a working Action.
 
 ## Pre-release saved metric type repair

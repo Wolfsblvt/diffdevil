@@ -86,12 +86,12 @@ committed, never hand-edited.
 ## Documentation and proof
 
 [The documentation map](README.md) enters current product and integration manuals.
-[Documentation design](DOCUMENTATION.md) owns the teaching approach and future site
+[Documentation design](documentation.md) owns the teaching approach and future site
 source; `docs/examples/` contains its executed specimens. `docs/reference/` retains
 dated research and implementation evidence, not alternate current instructions.
 
 [Development](DEVELOPMENT.md) owns restoration and commands.
-[Qualification](QUALIFICATION.md) records observed boundaries and limitations.
+[Qualification](qualification.md) records observed boundaries and limitations.
 `tools/test.mjs` discovers core and application tests; `tools/conformance.mjs` reports actual
 supplied-case execution separately; `tools/package-smoke.mjs` tests the installed
 npm artifact. These tests use real filesystem/process boundaries and mock provider

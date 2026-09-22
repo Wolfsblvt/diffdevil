@@ -6,7 +6,7 @@ This is the public technical edition of the September 14 Action candidate
 qualification returned before the final September 15 pass. All results below
 belong to that earlier candidate, not current source. It preserves complete
 evidence and limitations; private transfer instructions are not product authority.
-Current proof is in [Qualification](../../QUALIFICATION.md).
+Current proof is in [Qualification](../../qualification.md).
 
 ## Observed environment
 
@@ -185,7 +185,7 @@ qualification. That is a coherent **local release candidate**, not a public rele
 Native Windows/macOS, hosted Actions, a live GitHub canary, independent security
 and dependency-advisory review, public-source admission, licence selection,
 security intake, publication and a documentation site remain unobserved or
-unselected. [Publication boundary](../../PUBLICATION-BOUNDARY.md) identifies the current
+unselected. [Publication boundary](../../publication-boundary.md) identifies the current
 tracked-tree/private-carrier distinction and outstanding public-source decisions.
 
 Mocked API evidence does not certify token permission configuration, App actor

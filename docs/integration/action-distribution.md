@@ -115,7 +115,7 @@ root planning, saved-report/plan application, stale report refusal, base policy,
 explicit multiline comments, definition verification/reconciliation and partial
 write journals. Each successful or partial result checks every declared output.
 The current distributed paths execute under Node 24, with the native and hosted
-consumer results bound in [Qualification](../QUALIFICATION.md). These local
+consumer results bound in [Qualification](../qualification.md). These local
 processes do not emulate every GitHub-runner behavior or certify secret masking,
 fork execution or the summary UI.
 
@@ -124,7 +124,7 @@ runtime. The published `v1.0.0` and `v1` refs have additionally been exercised
 by private live canaries across all four entry points, with real provider reads
 and bounded effects. Native macOS, a genuine external-fork event, a live
 partial-write failure, and the summary UI remain separate unobserved boundaries.
-Full standing is in [Qualification](../QUALIFICATION.md).
+Full standing is in [Qualification](../qualification.md).
 
 ## Primary sources
 

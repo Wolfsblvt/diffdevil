@@ -209,14 +209,14 @@
       },
       {
         "id": "file-628edcf662c91774cb276981d1eb83eb05968af25d19fe6d4e42f89988fdc9af",
-        "path": "docs/PUBLICATION-BOUNDARY.md",
+        "path": "docs/publication-boundary.md",
         "changeType": "modified",
         "kind": "text",
         "included": true,
         "inclusionReasons": [
           {
             "code": "PATH_INCLUDED",
-            "subject": "docs/PUBLICATION-BOUNDARY.md"
+            "subject": "docs/publication-boundary.md"
           }
         ],
         "raw": {
@@ -263,14 +263,14 @@
       },
       {
         "id": "file-e34a406cba4f84e5f4763904016f8e31d3d0f3bbbc6b89e5a073b8fd301c7def",
-        "path": "docs/QUALIFICATION.md",
+        "path": "docs/qualification.md",
         "changeType": "modified",
         "kind": "text",
         "included": true,
         "inclusionReasons": [
           {
             "code": "PATH_INCLUDED",
-            "subject": "docs/QUALIFICATION.md"
+            "subject": "docs/qualification.md"
           }
         ],
         "raw": {

@@ -90,7 +90,7 @@ normalized representation.
 | `/skill/references/integrations.md` | Serve the corresponding installed reference |
 | `/skill/references/install-and-update.md` | Serve the corresponding installed reference |
 | `/skill/references/restricted-harnesses.md` | Serve the corresponding installed reference |
-| `/skill/NOTICE.md` | Serve the accompanying source and licence notice |
+| `/skill/notice.md` | Serve the accompanying source and licence notice |
 | `/setup/skill.md` | Serve `docs/setup/skill.md` |
 | Human installation page | Render `docs/integration/agent-skill.md` through the selected docs source mapping |
 | Copy installation prompt | Use `docs/setup/skill-prompt.txt` |

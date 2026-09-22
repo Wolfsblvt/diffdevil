@@ -163,7 +163,7 @@ preserved. Templates cannot inject adapter-owned markers. See
 
 ## Qualification boundary
 
-See [Qualification](../QUALIFICATION.md) for executed cases and artifacts.
+See [Qualification](../qualification.md) for executed cases and artifacts.
 The mock suite and installed npm consumer prove the shared adapter and its
 observable HTTP behavior. The private release canary separately proves selected
 real provider reads and bounded effects through the distributed Actions; it does

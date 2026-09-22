@@ -29,7 +29,7 @@ export const groups = [
   ] },
   { label: 'CLI', entries: [
     { source: 'docs/integration/cli.md', faq: ["different-results", "no-language-required"], slug: 'cli', title: 'CLI' },
-    { source: 'docs/PRESENTATION.md', slug: 'cli/presentation', title: 'Human and agent presentation' },
+    { source: 'docs/presentation.md', slug: 'cli/presentation', title: 'Human and agent presentation' },
   ] },
   { label: 'Actions', entries: [
     { source: 'docs/integration/github-actions.md', faq: ["automation-overlap", "trusted-policy"], slug: 'actions/github-actions', tested: true },
@@ -76,7 +76,7 @@ export const groups = [
   // They render as soon as that source is in the repository; until then the group is empty.
   { label: 'Browser extension', entries: [
     { source: 'apps/browser-extension/README.md', faq: ["playground-or-extension", "extension-without-repo-setup"], slug: 'browser-extension', title: 'diffdevil for GitHub', optional: true },
-    { source: 'apps/browser-extension/PRIVACY.md', faq: ["code-data"], slug: 'browser-extension/privacy', title: 'Extension privacy', optional: true },
+    { source: 'apps/browser-extension/privacy.md', faq: ["code-data"], slug: 'browser-extension/privacy', title: 'Extension privacy', optional: true },
     { source: 'docs/integration/browser-extension.md', faq: ["different-results"], slug: 'browser-extension/integration', title: 'Browser integration', optional: true },
   ] },
   { label: 'Help', entries: [

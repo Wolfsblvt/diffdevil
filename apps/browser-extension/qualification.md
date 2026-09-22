@@ -31,7 +31,7 @@ The container's managed Chromium policy blocks extension installation and ordina
 
 ## Remaining qualification
 
-An unrestricted authorized browser must run the installed MV3/native-storage suite and the live journeys described in QA.md. That includes representative public and accessible private pull requests, the current GitHub DOM on all supported tabs, real lazy rendering and a real head refresh, keyboard/zoom/theme behavior, and the native label-picker handoff with visible readback. The authored CI job requires the installed suite rather than accepting a managed-policy skip as success.
+An unrestricted authorized browser must run the installed MV3/native-storage suite and the live journeys described in qa.md. That includes representative public and accessible private pull requests, the current GitHub DOM on all supported tabs, real lazy rendering and a real head refresh, keyboard/zoom/theme behavior, and the native label-picker handoff with visible readback. The authored CI job requires the installed suite rather than accepting a managed-policy skip as success.
 
 Trusted App-report delivery is not implemented because there is no accepted authenticated transport for this browser client. Its identity/standing interface and explicit preferences are preserved; local analysis remains functional and never invents App approval. Managed-App label writes and Firefox remain separate work.
 
@@ -41,4 +41,4 @@ The compact default is the accepted shared centre-seam `diffdevil/brand` glyph, 
 
 The delivery manifest records the exact local source commit/tree and any actual remote branch/PR state. A created remote branch is not proof of a transferred source tree. Source ZIP, patch, font-free unpacked build, Store pack and evidence pack each have independent SHA-256 digests. No font files, browser profile, credentials, development dependency installation or downloaded toolchain archive are part of that handoff. The full source snapshot retains the repository’s already-tracked install-free Action dependency closure.
 
-Run the commands in README.md and QA.md against the exact source. The existing root Verify workflow remains intact. The new read-only browser job builds and tests the extension, requires actual installed MV3 verification, creates review assets and uploads evidence. It does not write repository source or publish anything.
+Run the commands in README.md and qa.md against the exact source. The existing root Verify workflow remains intact. The new read-only browser job builds and tests the extension, requires actual installed MV3 verification, creates review assets and uploads evidence. It does not write repository source or publish anything.

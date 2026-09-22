@@ -7,7 +7,7 @@ return from the pre-Action implementation sequence, as archived before the
 September 15, 2026 publication-preparation pass. Counts, commands, limits, and
 recommendations below describe that earlier checkpoint, not current standing.
 The exact original is preserved privately. Current behavior and proof are in
-[Qualification](../../QUALIFICATION.md) and the maintained manuals. Artifact
+[Qualification](../../qualification.md) and the maintained manuals. Artifact
 paths below identify historical local evidence, not downloadable public files.
 
 ## Observed environment

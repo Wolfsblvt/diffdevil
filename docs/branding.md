@@ -13,7 +13,7 @@ The document defines the **textual brand**. The selected visual identity and its
 ## Standing
 
 - **Canonical product name:** `diffdevil`
-- **Canonical repository path for this document:** `docs/BRANDING.md`
+- **Canonical repository path for this document:** `docs/branding.md`
 - **Textual brand status:** settled
 - **Visual brand status:** settled as E3/W1/T2 with Foundation A; [`../design/`](../design/) is the reusable visual source
 - **Primary product category:** composable diff analysis and automation
@@ -1032,7 +1032,7 @@ Rules:
 - do not write human prose to stdout in machine formats;
 - send diagnostics to stderr where piping semantics require it.
 
-[Human and agent presentation](PRESENTATION.md) owns the complete summary, full-detail, evidence, color, plan, and wrapping contract.
+[Human and agent presentation](presentation.md) owns the complete summary, full-detail, evidence, color, plan, and wrapping contract.
 
 ### Machine output
 
@@ -1086,7 +1086,7 @@ It may optimize for context efficiency, but it must not:
 - use ANSI color or appearance-only alignment padding;
 - become a second incompatible data model or a substitute for canonical JSON.
 
-Non-exact values remain typed (`bounded(...)`, `unknown(...)`, `unmeasurable(...)`). Dynamic strings use JSON quoting. The projection has its own public identity (`diffdevil.agent-report/1` or `diffdevil.agent-plan/1`) so its record grammar can evolve without pretending the report or plan schema changed. Structured consumers that need exhaustive stable fields use JSON or JSONL. [Human and agent presentation](PRESENTATION.md) owns the full agent grammar.
+Non-exact values remain typed (`bounded(...)`, `unknown(...)`, `unmeasurable(...)`). Dynamic strings use JSON quoting. The projection has its own public identity (`diffdevil.agent-report/1` or `diffdevil.agent-plan/1`) so its record grammar can evolve without pretending the report or plan schema changed. Structured consumers that need exhaustive stable fields use JSON or JSONL. [Human and agent presentation](presentation.md) owns the full agent grammar.
 
 ### Workflow summaries
 

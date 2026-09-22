@@ -23,7 +23,7 @@ GitHub acquisition/application and label definition verify/apply are implemented
 through the shared adapter. Finer per-value provenance explanations remain open. Discovery loads `.diffdevil.yml`
 at the Git root (or non-repository working directory). YAML uses core 1.2 semantics,
 bounded aliases and original source coordinates. Invalid policy is never ignored.
-See [Qualification](../QUALIFICATION.md) for evidence.
+See [Qualification](../qualification.md) for evidence.
 
 ### Current configured commands
 
@@ -138,7 +138,7 @@ Human report and plan output support `--color auto|always|never`, defaulting to 
 
 `--format agent` emits a materially different fixed-order record projection headed by `diffdevil.agent-report/1` or `diffdevil.agent-plan/1`. It preserves semantic/source identity, evidence, replacement-aware and raw facts, files, scopes, metrics, bands, rules, desired effects, and absent readback without human prose, ANSI color, or generated review judgment. It is optimized for coding-agent context, not offered as a second semantic model.
 
-`--format markdown` remains readable documentation/workflow prose. Human and agent text are public projections, not stable field-extraction protocols; automation requiring structured fields uses canonical JSON or JSONL. [Human and agent presentation](../PRESENTATION.md) owns the full grouping, density, color, agent-record, plan, and projection-versioning contract.
+`--format markdown` remains readable documentation/workflow prose. Human and agent text are public projections, not stable field-extraction protocols; automation requiring structured fields uses canonical JSON or JSONL. [Human and agent presentation](../presentation.md) owns the full grouping, density, color, agent-record, plan, and projection-versioning contract.
 
 ### Canonical JSON
 

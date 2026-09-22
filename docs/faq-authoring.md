@@ -29,7 +29,7 @@ existing answers instead of teaching the documentation to wear a fake mustache.
 
 Question titles are short and natural. They may be direct questions, statements that carry an
 obvious implied question, or concise comparisons; they do not all need a question mark. Answers
-are candid and occasionally dry within the [brand voice](BRANDING.md), without making privacy or
+are candid and occasionally dry within the [brand voice](branding.md), without making privacy or
 permission claims into jokes. Start with the actual answer. Normally use 30–80 words, never more
 than 110; one or two paragraphs suffice. Zero or one unobtrusive deeper link may follow. An answer
 must remain useful without that link. Tutorials, workflows, option catalogues and long

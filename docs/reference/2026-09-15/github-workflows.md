@@ -47,7 +47,7 @@ Provider statements above were checked against official documentation on this
 date. The workflow examples are parsed and their inputs drive real local runners
 against mock HTTP. That does not establish hosted event delivery, policy settings,
 real token grants, or publication. Native runtime and consumer results belong in
-`docs/QUALIFICATION.md`.
+`docs/qualification.md`.
 
 ## CI dependency choice
 

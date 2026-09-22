@@ -911,14 +911,14 @@
       },
       {
         "id": "file-2a4882a2d642cea703bbee79a2950be0337d84006abba3291bc1cb08c7f752c1",
-        "path": "docs/QUALIFICATION.md",
+        "path": "docs/qualification.md",
         "changeType": "modified",
         "kind": "text",
         "included": true,
         "inclusionReasons": [
           {
             "code": "PATH_INCLUDED",
-            "subject": "docs/QUALIFICATION.md"
+            "subject": "docs/qualification.md"
           }
         ],
         "raw": {

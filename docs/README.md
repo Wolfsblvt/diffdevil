@@ -24,19 +24,19 @@ when a custom formula, scope, or policy needs it.
 | --- | --- |
 | Durable product destination | [`VISION.md`](VISION.md) |
 | Current implementation outcome | [`DIRECTION.md`](DIRECTION.md) |
-| Complete implementation horizon | [`IMPLEMENTATION-HORIZON.md`](IMPLEMENTATION-HORIZON.md) |
+| Complete implementation horizon | [`implementation-horizon.md`](implementation-horizon.md) |
 | Durable decisions and open forks | [`DECISIONS.md`](DECISIONS.md) |
-| Human, agent, and effect-plan presentation | [`PRESENTATION.md`](PRESENTATION.md) |
+| Human, agent, and effect-plan presentation | [`presentation.md`](presentation.md) |
 | Repository structure | [`PROJECT-MAP.md`](PROJECT-MAP.md) |
 | Architecture boundaries | [`ARCHITECTURE.md`](ARCHITECTURE.md) |
 | Local development and verification | [`DEVELOPMENT.md`](DEVELOPMENT.md) |
-| Executed qualification and remaining evidence | [`QUALIFICATION.md`](QUALIFICATION.md) |
-| Shortcut ergonomics comparison | [`SHORTCUT-COMPARISON.md`](SHORTCUT-COMPARISON.md) |
-| Publication boundary | [`PUBLICATION-BOUNDARY.md`](PUBLICATION-BOUNDARY.md) |
+| Executed qualification and remaining evidence | [`qualification.md`](qualification.md) |
+| Shortcut ergonomics comparison | [`shortcut-comparison.md`](shortcut-comparison.md) |
+| Publication boundary | [`publication-boundary.md`](publication-boundary.md) |
 | Release notes and publication standing | [`releases/README.md`](releases/README.md) |
-| Documentation teaching and future site source | [`DOCUMENTATION.md`](DOCUMENTATION.md) |
+| Documentation teaching and future site source | [`documentation.md`](documentation.md) |
 | FAQ editorial, route, search and verification contract | [`faq-authoring.md`](faq-authoring.md) |
-| Canonical textual brand | [`BRANDING.md`](BRANDING.md) |
+| Canonical textual brand | [`branding.md`](branding.md) |
 | Live and local public-PR playground | [`../apps/playground/README.md`](../apps/playground/README.md) |
 | Optional managed App experience and architecture (selected, not deployed) | [`integration/github-app.md`](integration/github-app.md) |
 | Hosted data, opt-in history, and retention contract | [`PRIVACY-AND-DATA.md`](PRIVACY-AND-DATA.md) |
@@ -50,7 +50,7 @@ when a custom formula, scope, or policy needs it.
 | --- | --- |
 | First useful CLI and Action routes | [`automation.md`](automation.md) |
 | CLI protocol and source selection | [`integration/cli.md`](integration/cli.md) |
-| Human, agent, and plan presentation | [`PRESENTATION.md`](PRESENTATION.md) |
+| Human, agent, and plan presentation | [`presentation.md`](presentation.md) |
 | GitHub Action interface | [`integration/github-actions.md`](integration/github-actions.md) |
 | Install-free Action distribution | [`integration/action-distribution.md`](integration/action-distribution.md) |
 | GitHub provider API and trust | [`integration/github-api.md`](integration/github-api.md) |
