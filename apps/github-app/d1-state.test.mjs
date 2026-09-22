@@ -7,19 +7,19 @@ import { test } from 'node:test';
 import { Miniflare } from 'miniflare';
 import { D1AppStore } from './storage.mjs';
 
-const migrations = ['0001_initial.sql'];
+const migrations = ['0001_initial.sql', '0002_consent-provenance.sql', '0003_preserve-active-consent.sql'];
 const projection = {
   schemaVersion: 3, engineVersion: 'engine-v1', reportVersion: 'report-v1', metricVersion: 'metrics-v1', source: { base: 'base', head: 'head' }, evidence: 'exact', fileSet: { complete: true, total: { status: 'exact', value: 1 } }, totals: {}, configuredResults: [], gaps: [], files: [{ ordinal: 0, raw: {}, lines: {} }], effects: [{ kind: 'label.add', outcome: 'changed', request: 'accepted', readback: 'verified' }]
 };
 
-async function localStore(clock, attemptIds = []) {
+async function localStore(clock, attemptIds = [], schema = migrations) {
   const databaseId = `diffdevil-test-${crypto.randomUUID()}`;
   const runtime = new Miniflare({ workers: [{
     config: { name: 'diffdevil-test', type: 'worker', compatibilityDate: '2026-09-17', env: { APP_DB: { type: 'd1', id: databaseId } }, manifest: { mainModule: 'worker.mjs', modulesRoot: resolve('.'), modules: { 'worker.mjs': { type: 'esm', contents: 'export default { fetch() { return new Response("ok"); } };' } } } }
   }] });
   const database = await runtime.getD1Database('APP_DB');
   const store = new D1AppStore(database, { now: () => clock.value, leaseMs: 60_000, attemptId: () => attemptIds.shift() ?? 'attempt-default' });
-  for (const migration of migrations) await store.migrate(await readFile(resolve('apps/github-app/migrations', migration), 'utf8'));
+  for (const migration of schema) await store.migrate(await readFile(resolve('apps/github-app/migrations', migration), 'utf8'));
   return { runtime, database, store };
 }
 
@@ -77,6 +77,94 @@ test('local D1 keeps execution fences, repair claims, expiry, offboarding, and p
     await source.store.maintain();
     assert.equal(await repositoryRow(source.database, 18), null, 'offboarding grace removes the repository projection');
     assert.ok(await source.database.prepare("SELECT 1 FROM deletion_tombstones WHERE scope='repository:18'").first(), 'offboarding creates the repository tombstone after deletion');
+    await source.store.recordLifecycle({ installationId: 10, action: 'created', addedRepositories: [18], removedRepositories: [] });
+    assert.deepEqual(await source.store.repositoryConsentState(18), {
+      execution: { origin: 'unknown', reason: 're-consent-required' },
+      history: { origin: 'unknown', reason: 're-consent-required' },
+      configuration: { origin: 'unknown' }
+    }, 'a post-grace re-add preserves the tombstone\'s lost-reach consequence');
+  } finally {
+    await source.runtime.dispose();
+  }
+});
+
+test('consent provenance is independent and suspension requires separate renewed consent', async () => {
+  const clock = { value: '2026-09-22T00:00:00.000Z' };
+  const source = await localStore(clock);
+  try {
+    await source.store.recordLifecycle({ installationId: 9, action: 'created', addedRepositories: [17], removedRepositories: [] });
+    assert.deepEqual(await source.store.repositoryConsentState(17), {
+      execution: { origin: 'unknown', reason: 'never-enabled' },
+      history: { origin: 'unknown', reason: 'never-enabled' },
+      configuration: { origin: 'unknown' }
+    });
+
+    await source.store.setRepositoryConfiguration(17, { repository: { presets: [] } }, 'dashboard');
+    await source.store.setRepositoryConsent(17, { enabled: true, retentionDays: 30, policyId: 'history', origin: 'history-control' });
+    await source.store.setRepositoryExecution(17, { enabled: false, origin: 'execution-control' });
+    assert.deepEqual(await source.store.repositoryConsentState(17), {
+      execution: { origin: 'execution-control', reason: 'explicitly-disabled' },
+      history: { origin: 'history-control', reason: null },
+      configuration: { origin: 'dashboard' }
+    });
+
+    await source.store.recordLifecycle({ installationId: 9, action: 'suspend', addedRepositories: [], removedRepositories: [] });
+    await source.store.recordLifecycle({ installationId: 9, action: 'unsuspend', addedRepositories: [], removedRepositories: [] });
+    assert.deepEqual(await source.store.repositoryConsentState(17), {
+      execution: { origin: 'execution-control', reason: 're-consent-required' },
+      history: { origin: 'history-control', reason: 're-consent-required' },
+      configuration: { origin: 'dashboard' }
+    });
+    await source.store.setRepositoryExecution(17, { enabled: true, origin: 'execution-renewal' });
+    assert.equal(await source.store.executionAllowed(17), true);
+    assert.equal((await source.store.historySettings(17)).enabled, false, 'renewing execution cannot silently renew history');
+    await source.store.setRepositoryConsent(17, { enabled: true, retentionDays: 30, policyId: 'history', origin: 'history-renewal' });
+    assert.equal((await source.store.historySettings(17)).enabled, true);
+    await source.store.reconcileRepositories(9, []);
+    await source.store.reconcileRepositories(9, [17]);
+    assert.deepEqual(await source.store.repositoryConsentState(17), {
+      execution: { origin: 'execution-renewal', reason: 're-consent-required' },
+      history: { origin: 'history-renewal', reason: 're-consent-required' },
+      configuration: { origin: 'dashboard' }
+    });
+  } finally {
+    await source.runtime.dispose();
+  }
+});
+
+test('the provenance migration keeps existing rows unknown instead of splitting one historical origin three ways', async () => {
+  const clock = { value: '2026-09-22T00:00:00.000Z' };
+  const source = await localStore(clock, [], ['0001_initial.sql']);
+  try {
+    await source.database.prepare("INSERT INTO installations (installation_id, state, updated_at) VALUES (9, 'active', ?)").bind(clock.value).run();
+    await source.database.prepare("INSERT INTO repositories (repository_id, installation_id, history_enabled, state, access_state, updated_at) VALUES (17, 9, 0, 'pending-enable', 'available', ?)").bind(clock.value).run();
+    await source.database.prepare("UPDATE repositories SET consent_origin='legacy-last-write' WHERE repository_id=17").run();
+    await source.store.migrate(await readFile(resolve('apps/github-app/migrations/0002_consent-provenance.sql'), 'utf8'));
+    assert.deepEqual(await source.store.repositoryConsentState(17), {
+      execution: { origin: 'unknown', reason: 'unknown' },
+      history: { origin: 'unknown', reason: 'unknown' },
+      configuration: { origin: 'unknown' }
+    });
+  } finally {
+    await source.runtime.dispose();
+  }
+});
+
+test('the forward consent migration preserves active legacy execution and history consent without inventing origins', async () => {
+  const clock = { value: '2026-09-22T00:00:00.000Z' };
+  const source = await localStore(clock, [], ['0001_initial.sql']);
+  try {
+    await source.database.prepare("INSERT INTO installations (installation_id, state, updated_at) VALUES (9, 'active', ?)").bind(clock.value).run();
+    await source.database.prepare("INSERT INTO repositories (repository_id, installation_id, history_enabled, retention_days, state, access_state, updated_at) VALUES (17, 9, 1, 30, 'active', 'available', ?)").bind(clock.value).run();
+    await source.store.migrate(await readFile(resolve('apps/github-app/migrations/0002_consent-provenance.sql'), 'utf8'));
+    await source.store.migrate(await readFile(resolve('apps/github-app/migrations/0003_preserve-active-consent.sql'), 'utf8'));
+    assert.deepEqual(await source.store.repositoryConsentState(17), {
+      execution: { origin: 'unknown', reason: null },
+      history: { origin: 'unknown', reason: null },
+      configuration: { origin: 'unknown' }
+    });
+    assert.equal(await source.store.executionAllowed(17), true);
+    assert.equal((await source.store.historySettings(17)).enabled, true);
   } finally {
     await source.runtime.dispose();
   }
