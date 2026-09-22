@@ -53,6 +53,6 @@ export function validateRepositoryConfiguration(value) {
 
 /** Versioned, non-secret portable App configuration: history/evidence records are intentionally not included. */
 export function readConfigurationExport(value) {
-  if (!value || value.kind !== 'diffdevil.github-app-export' || ![3, 4].includes(value.version) || !Array.isArray(value.configurations) || !Array.isArray(value.tombstones)) throw new TypeError('Unsupported App configuration export.');
+  if (!value || value.kind !== 'diffdevil.github-app-export' || ![3, 4, 5].includes(value.version) || !Array.isArray(value.configurations) || !Array.isArray(value.tombstones)) throw new TypeError('Unsupported App configuration export.');
   return value;
 }

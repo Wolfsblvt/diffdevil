@@ -185,12 +185,12 @@ test('an unexpected trusted-policy failure creates a neutral diagnostic check wi
     : undefined;
   const run = await runPolicyDelivery(fake, { repository: { presets: 'not-an-array' } });
   const repair = run.calls.find(call => Array.isArray(call) && call[0] === 'finish');
-  assert.equal(repair[3].code, 'E_APP_POLICY');
-  assert.deepEqual(repair[3].repair.projection.diagnostics, [{ code: 'E_APP_POLICY', phase: 'trusted-policy' }]);
+  assert.equal(repair[3].code, 'E_APP_REPOSITORY_CONFIGURATION');
+  assert.deepEqual(repair[3].repair.projection.diagnostics, [{ code: 'E_APP_REPOSITORY_CONFIGURATION', phase: 'repository-configuration' }]);
   assert.equal(JSON.stringify(repair[3]).includes('not-an-array'), false);
   assert.deepEqual(fake.writes().map(call => call.path), ['/repos/example/repository/check-runs']);
-  assert.match(fake.writes()[0].body.output.summary, /E_APP_POLICY/);
-  assert.match(fake.writes()[0].body.output.summary, /\.diffdevil\.yml@b{40}/);
+  assert.match(fake.writes()[0].body.output.summary, /E_APP_REPOSITORY_CONFIGURATION/);
+  assert.match(fake.writes()[0].body.output.summary, /stored repository configuration/);
 });
 
 test('lifecycle deltas reconcile the current provider-selected repository identities before completion', async () => {

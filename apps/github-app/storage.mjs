@@ -144,7 +144,7 @@ export class D1AppStore {
   async historySettings(repositoryId) {
     const row = await this.statement(`SELECT r.history_enabled, r.history_consent_reason, r.retention_days, r.state, r.access_state, i.state AS installation_state
       FROM repositories r JOIN installations i ON i.installation_id=r.installation_id WHERE r.repository_id=?`, repositoryId).first();
-    const tombstone = await this.statement('SELECT 1 AS blocked FROM deletion_tombstones WHERE scope=? AND reapply_until > ?', `repository:${repositoryId}`, this.now()).first();
+    const tombstone = await this.statement('SELECT 1 AS blocked FROM deletion_tombstones WHERE scope IN (?, ?) AND reapply_until > ?', `history:${repositoryId}`, `repository:${repositoryId}`, this.now()).first();
     return { enabled: !tombstone?.blocked && row?.history_enabled === 1 && row?.history_consent_reason === null && row?.state === 'active' && row?.access_state === 'available' && row?.installation_state === 'active', retentionDays: boundedDays(row?.retention_days) };
   }
 
@@ -163,10 +163,10 @@ export class D1AppStore {
       record = await this.statement(`INSERT INTO history_records (repository_id, pull_request, comparison_id, policy_id, schema_version, engine_version, report_version, metric_version, base_sha, head_sha, observed_at, expires_at, projection_json, coverage_json, results_json, gaps_json, state)
         SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'publishing'
         WHERE EXISTS (SELECT 1 FROM repositories r JOIN installations i ON i.installation_id=r.installation_id WHERE r.repository_id=? AND r.history_enabled=1 AND r.state='active' AND r.access_state='available' AND i.state='active')
-          AND NOT EXISTS (SELECT 1 FROM deletion_tombstones WHERE scope=? AND reapply_until > ?)
+          AND NOT EXISTS (SELECT 1 FROM deletion_tombstones WHERE scope IN (?, ?) AND reapply_until > ?)
         ON CONFLICT(repository_id, comparison_id, policy_id, schema_version, engine_version, report_version, metric_version) DO NOTHING RETURNING id`,
       identity.repositoryId, identity.pullRequest, identity.comparisonId, identity.policyId, projection.schemaVersion, projection.engineVersion, projection.reportVersion, projection.metricVersion,
-      projection.source?.base ?? null, projection.source?.head ?? null, now, expires, JSON.stringify({ evidence: projection.evidence, totals: projection.totals }), JSON.stringify(projection.fileSet), JSON.stringify(projection.configuredResults), JSON.stringify(projection.gaps), identity.repositoryId, `repository:${identity.repositoryId}`, now).first();
+       projection.source?.base ?? null, projection.source?.head ?? null, now, expires, JSON.stringify({ evidence: projection.evidence, totals: projection.totals }), JSON.stringify(projection.fileSet), JSON.stringify(projection.configuredResults), JSON.stringify(projection.gaps), identity.repositoryId, `history:${identity.repositoryId}`, `repository:${identity.repositoryId}`, now).first();
       if (!record?.id) return { status: 'disabled' };
       const statements = [
         ...projection.files.map(file => this.statement('INSERT INTO history_file_rows (history_id, ordinal, values_json) VALUES (?, ?, ?)', record.id, file.ordinal, JSON.stringify({ raw: file.raw, lines: file.lines }))),
@@ -175,7 +175,7 @@ export class D1AppStore {
       for (const batch of batches(statements)) await this.database.batch(batch);
       const published = await this.statement(`UPDATE history_records SET state='published' WHERE id=? AND state='publishing'
         AND EXISTS (SELECT 1 FROM repositories r JOIN installations i ON i.installation_id=r.installation_id WHERE r.repository_id=? AND r.history_enabled=1 AND r.state='active' AND r.access_state='available' AND i.state='active')
-        AND NOT EXISTS (SELECT 1 FROM deletion_tombstones WHERE scope=? AND reapply_until > ?)`, record.id, identity.repositoryId, `repository:${identity.repositoryId}`, this.now()).run();
+        AND NOT EXISTS (SELECT 1 FROM deletion_tombstones WHERE scope IN (?, ?) AND reapply_until > ?)`, record.id, identity.repositoryId, `history:${identity.repositoryId}`, `repository:${identity.repositoryId}`, this.now()).run();
       if ((published.meta?.changes ?? 0) !== 1) {
         await this.statement("UPDATE history_records SET state='incomplete' WHERE id=? AND state='publishing'", record.id).run();
         if ((await this.historySettings(identity.repositoryId)).enabled) await this.recordHistoryRepair(identity, projection, 'E_HISTORY_CONSENT_CHANGED');
@@ -267,7 +267,7 @@ export class D1AppStore {
     const statements = [this.statement(`UPDATE repositories SET settings_revision=?, updated_at=? WHERE repository_id=? AND settings_revision=?
       AND access_state='available' AND state NOT IN ('removed', 'offboarding')
       AND EXISTS (SELECT 1 FROM installations WHERE installation_id=repositories.installation_id AND state='active')
-      AND NOT EXISTS (SELECT 1 FROM deletion_tombstones WHERE scope=? AND reapply_until > ?)`, nextRevision, now, repositoryId, revision, `repository:${repositoryId}`, now)];
+       AND NOT EXISTS (SELECT 1 FROM deletion_tombstones WHERE scope=? AND reapply_until > ?)`, nextRevision, now, repositoryId, revision, `repository:${repositoryId}`, now)];
     if (configuration) statements.push(this.statement('UPDATE repositories SET configuration_json=?, configuration_origin=?, configuration_policy_id=? WHERE repository_id=? AND settings_revision=?', JSON.stringify(configuration.value), origin, configuration.policyId, repositoryId, nextRevision));
     if (writer) statements.push(this.statement('UPDATE repositories SET writer_standing=?, writer_origin=? WHERE repository_id=? AND settings_revision=?', writer.confidence, origin, repositoryId, nextRevision));
     if (execution !== undefined) statements.push(this.statement(`UPDATE repositories SET state=CASE WHEN ?=1 THEN 'active' ELSE 'pending-enable' END, execution_consent_origin=?, execution_consent_reason=? WHERE repository_id=? AND settings_revision=?`, execution ? 1 : 0, origin, execution ? null : 'explicitly-disabled', repositoryId, nextRevision));
@@ -336,7 +336,7 @@ export class D1AppStore {
     await this.removeHistoryRecords(repositoryId);
     await this.database.batch([
       this.statement("UPDATE repositories SET history_enabled=0, history_consent_reason='explicitly-disabled', updated_at=? WHERE repository_id=?", now, repositoryId),
-      this.statement('INSERT INTO deletion_tombstones (scope, deleted_at, reapply_until) VALUES (?, ?, ?) ON CONFLICT(scope) DO UPDATE SET deleted_at=excluded.deleted_at, reapply_until=excluded.reapply_until', `repository:${repositoryId}`, now, until),
+       this.statement('INSERT INTO deletion_tombstones (scope, deleted_at, reapply_until) VALUES (?, ?, ?) ON CONFLICT(scope) DO UPDATE SET deleted_at=excluded.deleted_at, reapply_until=excluded.reapply_until', `history:${repositoryId}`, now, until),
       this.statement('DELETE FROM app_checks WHERE repository_id=?', repositoryId),
       this.statement('DELETE FROM repairs WHERE repository_id=?', repositoryId)
     ]);
@@ -376,7 +376,7 @@ export class D1AppStore {
     const recordIds = new Map();
     for (const record of value.records) {
       if (!Number.isSafeInteger(record?.repository_id) || record.repository_id < 1 || !Number.isSafeInteger(record.pull_request) || record.pull_request < 1 || typeof record.comparison_id !== 'string' || typeof record.policy_id !== 'string' || !Number.isSafeInteger(record.schema_version) || typeof record.engine_version !== 'string' || typeof record.report_version !== 'string' || typeof record.metric_version !== 'string' || typeof record.observed_at !== 'string' || !Number.isFinite(Date.parse(record.observed_at)) || record.state !== 'published') throw new TypeError('Invalid numeric history export.');
-      if (liveTombstones.has(`repository:${record.repository_id}`)) continue;
+      if (liveTombstones.has(`history:${record.repository_id}`) || liveTombstones.has(`repository:${record.repository_id}`)) continue;
       const inserted = await this.statement(`INSERT INTO history_records (repository_id, pull_request, comparison_id, policy_id, schema_version, engine_version, report_version, metric_version, base_sha, head_sha, observed_at, expires_at, projection_json, coverage_json, results_json, gaps_json, state)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'published') ON CONFLICT(repository_id, comparison_id, policy_id, schema_version, engine_version, report_version, metric_version) DO NOTHING RETURNING id`, record.repository_id, record.pull_request, record.comparison_id, record.policy_id, record.schema_version, record.engine_version, record.report_version, record.metric_version, record.base_sha ?? null, record.head_sha ?? null, record.observed_at, record.expires_at ?? null, record.projection_json, record.coverage_json, record.results_json, record.gaps_json).first();
       if (inserted?.id) recordIds.set(record.id, inserted.id);

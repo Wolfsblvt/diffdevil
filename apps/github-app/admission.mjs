@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { DEFAULT_SIZE_POLICY, resolveEffectivePolicy, validateRepositoryConfiguration } from './configuration.mjs';
+import { validateRepositoryConfiguration } from './configuration.mjs';
 
 const originPattern = /^[A-Za-z0-9._-]{1,100}$/u;
 const boundedDays = value => Number.isSafeInteger(value) && value >= 1 && value <= 3660 ? value : undefined;
@@ -10,16 +10,17 @@ function requireOrigin(value) {
   if (typeof value !== 'string' || !originPattern.test(value)) throw admissionError('E_ADMISSION_ORIGIN');
   return value;
 }
-function policyProjection(configuration) {
-  const selected = configuration.value === undefined
-    ? resolveEffectivePolicy({ preset: DEFAULT_SIZE_POLICY })
-    : validateRepositoryConfiguration(configuration.value);
-  const document = selected.document;
+async function policyProjection(admission, resolvePolicy) {
+  if (typeof resolvePolicy !== 'function') return { standing: 'unobserved', reason: 'E_EFFECTIVE_POLICY_UNAVAILABLE' };
+  const selected = await resolvePolicy({ repositoryId: admission.repositoryId, installationId: admission.installationId, configuration: admission.configuration.value });
+  if (!selected?.policy || !selected?.document || typeof selected.source !== 'string') throw admissionError('E_EFFECTIVE_POLICY_UNAVAILABLE');
   return {
-    source: configuration.value === undefined ? 'default' : 'stored',
-    policyId: configuration.policyId === 'unknown' ? selected.policy.id : configuration.policyId,
+    standing: 'observed',
+    source: selected.source,
+    sourceIdentity: selected.sourceIdentity,
+    policyId: selected.policy.id,
     provenance: selected.provenance,
-    configuredEffects: { labelDefinitions: Object.keys(document.labelDefinitions ?? {}), rules: Object.keys(document.rules ?? {}), behavior: 'creates-declared-labels-if-missing-without-rewriting-existing-definitions' }
+    configuredEffects: { labelDefinitions: Object.keys(selected.document.labelDefinitions ?? {}), rules: Object.keys(selected.document.rules ?? {}), behavior: 'creates-declared-labels-if-missing-without-rewriting-existing-definitions' }
   };
 }
 function nextAction(admission) {
@@ -29,16 +30,16 @@ function nextAction(admission) {
   if (!['detected', 'administrator-declared'].includes(admission.writer.confidence)) return { actor: 'repository-admin', action: 'declare-exclusive-writer' };
   return { actor: 'repository-admin', action: admission.execution.reason === 're-consent-required' ? 're-consent-execution' : 'enable-execution' };
 }
-function projectAdmission(admission) {
+async function projectAdmission(admission, resolvePolicy) {
   const lastDelivery = admission.lastDelivery === undefined ? undefined : {
     ...admission.lastDelivery,
     effect: admission.lastDelivery.code === 'E_ACCESS_DISABLED' ? 'not-attempted-execution-disabled' : 'unobserved'
   };
-  return { ...admission, lastDelivery, policy: policyProjection(admission.configuration), next: nextAction(admission) };
+  return { ...admission, lastDelivery, policy: await policyProjection(admission, resolvePolicy), next: nextAction(admission) };
 }
 
 /** The non-visual App boundary for a future authenticated dashboard or operator adapter. */
-export function createAdmissionService({ store, authorize = async () => false }) {
+export function createAdmissionService({ store, authorize = async () => false, resolvePolicy }) {
   if (!store || typeof store.repositoryAdmission !== 'function' || typeof store.updateRepositoryAdmission !== 'function') throw new TypeError('Admission service requires a repository admission store.');
 
   async function authorizeRequest(request) {
@@ -48,7 +49,7 @@ export function createAdmissionService({ store, authorize = async () => false })
     await authorizeRequest({ kind: 'read', repositoryId, actor });
     const admission = await store.repositoryAdmission(repositoryId);
     if (!admission) throw admissionError('E_ADMISSION_UNKNOWN_REPOSITORY');
-    return projectAdmission(admission);
+    return projectAdmission(admission, resolvePolicy);
   }
   async function update(repositoryId, request) {
     const origin = requireOrigin(request?.origin);
@@ -77,7 +78,7 @@ export function createAdmissionService({ store, authorize = async () => false })
     if (!configuration && !writer && execution === undefined && !history) throw admissionError('E_ADMISSION_NO_CHANGE');
     const after = await store.updateRepositoryAdmission(repositoryId, { revision: request.revision, configuration, execution, history, writer, origin });
     if (!after) throw admissionError('E_ADMISSION_STALE');
-    return projectAdmission(after);
+    return projectAdmission(after, resolvePolicy);
   }
   return { read, update };
 }

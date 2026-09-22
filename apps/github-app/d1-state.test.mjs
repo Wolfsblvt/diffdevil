@@ -7,6 +7,7 @@ import { test } from 'node:test';
 import { Miniflare } from 'miniflare';
 import { D1AppStore } from './storage.mjs';
 import { createAdmissionService } from './admission.mjs';
+import { DEFAULT_SIZE_POLICY, readConfigurationExport, resolveEffectivePolicy } from './configuration.mjs';
 
 const migrations = ['0001_initial.sql', '0002_consent-provenance.sql', '0003_preserve-active-consent.sql', '0004_admission-settings.sql', '0005_offboarding-consent-tombstones.sql'];
 const projection = {
@@ -66,10 +67,11 @@ test('local D1 keeps execution fences, repair claims, expiry, offboarding, and p
 
     await source.store.deleteHistory(17);
     const exported = await source.store.exportState();
+    assert.equal(readConfigurationExport(exported).version, 5, 'the portable configuration reader accepts the current export version');
     const restored = await localStore(clock);
     try {
       await restored.store.importState(exported);
-      assert.deepEqual(await repositoryRow(restored.database, 17), { repository_id: 17, state: 'offboarding', access_state: 'removed', history_enabled: 0 }, 'a restored tombstone applies before the repository can be used');
+      assert.deepEqual(await repositoryRow(restored.database, 17), { repository_id: 17, state: 'pending-enable', access_state: 'unknown', history_enabled: 0 }, 'a history tombstone preserves restore resistance without offboarding execution');
       assert.equal(await restored.store.executionAllowed(17), false);
     } finally { await restored.runtime.dispose(); }
 
@@ -169,7 +171,14 @@ test('the admission service validates settings, keeps history independent, and r
   const source = await localStore(clock);
   try {
     await source.store.recordLifecycle({ installationId: 9, action: 'created', addedRepositories: [17], removedRepositories: [] });
-    const service = createAdmissionService({ store: source.store, authorize: async request => request.actor?.role === 'repository-admin' });
+    const service = createAdmissionService({
+      store: source.store,
+      authorize: async request => request.actor?.role === 'repository-admin',
+      resolvePolicy: async ({ configuration }) => ({
+        ...resolveEffectivePolicy({ preset: DEFAULT_SIZE_POLICY, ...(configuration ?? {}), supplied: { presets: ['size@1'], rules: { xlTransition: { when: 'true', effects: { comment: { mode: 'once-per-transition', template: 'XL: {{ totals.lines.changed }}' } } } } } }),
+        source: 'trusted-base', sourceIdentity: '.diffdevil.yml@fixture'
+      })
+    });
     const actor = { role: 'repository-admin' };
     const initial = await service.read(17, actor);
     assert.deepEqual(initial.execution, { origin: 'unknown', reason: 'never-enabled' });
@@ -179,10 +188,15 @@ test('the admission service validates settings, keeps history independent, and r
     assert.equal(admitted.execution.reason, null);
     assert.equal(await source.store.executionAllowed(17), true);
     assert.equal((await source.store.historySettings(17)).enabled, false, 'execution admission never enables history');
-    assert.equal(admitted.policy.source, 'default', 'repository-owned policy may land on the trusted base before admission');
+    assert.equal(admitted.policy.source, 'trusted-base', 'repository-owned policy is the effective policy before admission');
     assert.equal(admitted.writer.confidence, 'administrator-declared');
+    await source.store.deleteHistory(17);
+    assert.equal(await source.store.executionAllowed(17), true, 'history deletion does not stop enabled execution');
+    assert.equal((await service.read(17, actor)).reach.tombstoned, false, 'a history tombstone does not block the admission control plane');
     const configured = await service.update(17, { actor, origin: 'dashboard', revision: admitted.revision, configuration: { repository: { presets: ['size@1'] } } });
-    assert.equal(configured.policy.source, 'stored');
+    assert.equal(configured.policy.source, 'trusted-base');
+    assert.equal(configured.policy.provenance['/presets'], 'supplied', 'the trusted base overrides stored configuration in effective readback');
+    assert.deepEqual(configured.policy.configuredEffects.rules, ['size', 'xlTransition']);
     assert.equal((await source.store.repositoryConfiguration(17)).value.repository.presets[0], 'size@1');
     await assert.rejects(service.update(17, { actor, origin: 'dashboard', revision: initial.revision, execution: false }), { code: 'E_ADMISSION_STALE' });
     const disabled = await service.update(17, { actor, origin: 'dashboard', revision: configured.revision, execution: false });

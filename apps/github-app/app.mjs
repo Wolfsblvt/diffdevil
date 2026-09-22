@@ -5,7 +5,7 @@ import { GitHubClient, applyGitHubPolicy, readGitHubPolicy, readPullSnapshot } f
 import { APP_QUEUE_KIND, WEBHOOK_BODY_LIMIT, WORKER_RESULT_LIMIT, historyProjection, normalizeWebhookEvent, readQueueEnvelope } from './contracts.mjs';
 import { createAppJwt, verifyWebhookSignature } from './crypto.mjs';
 import { D1AppStore } from './storage.mjs';
-import { DEFAULT_SIZE_POLICY, resolveEffectivePolicy } from './configuration.mjs';
+import { DEFAULT_SIZE_POLICY, resolveEffectivePolicy, validateRepositoryConfiguration } from './configuration.mjs';
 import { checkSummary } from '../shared/check-summary.mjs';
 
 const JSON_HEADERS = { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' };
@@ -107,15 +107,17 @@ async function repositoryTarget(client, envelope) {
 }
 
 async function trustedPolicy(client, target, base, configuration) {
-  let supplied = {};
+  let supplied = {}, source = configuration ? 'stored' : 'default', sourceIdentity = configuration ? 'stored repository configuration' : 'bundled default policy';
   try {
     const ordinary = await readGitHubPolicy(client, { repository: target.repository, ref: base, path: '.diffdevil.yml' });
     supplied = { ...explainPolicy(ordinary).document, presets: ordinary.semantics.presets };
+    source = 'trusted-base'; sourceIdentity = `.diffdevil.yml@${base}`;
   }
   catch (error) {
     if (error?.diagnostic?.details?.status !== 404) throw error;
   }
-  return { policy: resolveEffectivePolicy({ preset: DEFAULT_SIZE_POLICY, ...(configuration ?? {}), supplied }).policy, expectedPolicyBase: base };
+  const effective = resolveEffectivePolicy({ preset: DEFAULT_SIZE_POLICY, ...(configuration ?? {}), supplied });
+  return { ...effective, source, sourceIdentity, expectedPolicyBase: base };
 }
 
 async function upsertCheck(client, store, identity, report, result, assertLease) {
@@ -133,7 +135,9 @@ async function upsertCheck(client, store, identity, report, result, assertLease)
 async function upsertDiagnosticCheck(client, store, identity, error, assertLease) {
   const previous = await store.check(identity);
   const code = errorCode(error);
-  const output = { title: 'diffdevil could not evaluate policy', summary: `diffdevil could not evaluate the trusted policy at .diffdevil.yml@${identity.base} (${code}).` };
+  const configurationFailure = error?.diagnostics?.some(diagnostic => diagnostic?.phase === 'repository-configuration');
+  const source = configurationFailure ? 'stored repository configuration' : `.diffdevil.yml@${identity.base}`;
+  const output = { title: 'diffdevil could not evaluate policy', summary: `diffdevil could not evaluate policy from ${source} (${code}).` };
   const body = { name: 'diffdevil', head_sha: identity.head, status: 'completed', conclusion: 'neutral', output };
   const route = previous?.check_run_id ? `/repos/${identity.repository}/check-runs/${previous.check_run_id}` : `/repos/${identity.repository}/check-runs`;
   await assertLease();
@@ -164,9 +168,14 @@ export async function executeDelivery(envelope, deliveryId, { env, store, lease,
   const target = await atExecutionStage('E_APP_REPOSITORY_TARGET', 'repository-target', () => repositoryTarget(client, envelope));
   const snapshot = await atExecutionStage('E_APP_PULL_SNAPSHOT', 'pull-snapshot', () => readPullSnapshot(client, target));
   if (snapshot.state !== 'open') throw appError('E_PULL_REQUEST_CLOSED');
-  const configuration = await atExecutionStage('E_APP_REPOSITORY_CONFIGURATION', 'repository-configuration', () => store.repositoryConfiguration(envelope.repositoryId));
   let policy;
-  try { policy = await atExecutionStage('E_APP_POLICY', 'trusted-policy', () => trustedPolicy(client, target, snapshot.base, configuration?.value)); }
+  try {
+    const configuration = await atExecutionStage('E_APP_REPOSITORY_CONFIGURATION', 'repository-configuration', async () => {
+      const stored = await store.repositoryConfiguration(envelope.repositoryId);
+      return stored === undefined ? undefined : validateRepositoryConfiguration(stored.value);
+    });
+    policy = await atExecutionStage('E_APP_POLICY', 'trusted-policy', () => trustedPolicy(client, target, snapshot.base, configuration?.value));
+  }
   catch (error) {
     const diagnosticIdentity = { repositoryId: envelope.repositoryId, pullRequest: envelope.pullRequest, repository: target.repository, base: snapshot.base, head: snapshot.head, policyId: 'diagnostic', appId: Number(env.GITHUB_APP_ID) };
     try { await atExecutionStage('E_CHECK_PUBLICATION', 'check-publication', () => upsertDiagnosticCheck(client, store, diagnosticIdentity, error, renewLease)); }
