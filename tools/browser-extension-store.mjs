@@ -19,8 +19,8 @@ const screenshots = [
 ];
 const expected = new Map([
   ...screenshots.map(([name]) => [`screenshots/${name}`, { width: 1280, height: 800, colorType: 2 }]),
-  ['promo/small-promo-440x280.png', { width: 440, height: 280, colorType: 2 }],
-  ['promo/marquee-1400x560.png', { width: 1400, height: 560, colorType: 2 }],
+  ['promo/small-promo-440x280.png', { width: 440, height: 280, colorType: 2, editableSource: 'promo/small-promo-440x280.svg' }],
+  ['promo/marquee-1400x560.png', { width: 1400, height: 560, colorType: 2, editableSource: 'promo/marquee-1400x560.svg' }],
   ['store-icon-128.png', { width: 128, height: 128 }],
 ]);
 
@@ -80,28 +80,38 @@ async function generateSourceAssets() {
     const png = rgbPng(new Resvg(svg, { font: { loadSystemFonts: true, defaultFontFamily: 'DejaVu Sans' } }).render());
     const editableSource = `promo/${stem}.svg`; const path = `promo/${stem}.png`;
     await writeFile(join(sourceRoot, editableSource), svg); await writeFile(join(sourceRoot, path), png);
-    entries.push({ path, ...pngInfo(png), sha256: sha256(png), editableSource, standing: 'Authored promotional composition using accepted identity bytes and exact synthetic fixture measurements.' });
+    entries.push({ path, ...pngInfo(png), sha256: sha256(png), editableSource, editableSourceSha256: sha256(Buffer.from(svg)), standing: 'Authored promotional composition using accepted identity bytes and exact synthetic fixture measurements.' });
   }
   const icon = await readFile('artifacts/browser-extension/unpacked/assets/icon-128.png');
   const iconInfo = pngInfo(icon);
   if (iconInfo.width !== 128 || iconInfo.height !== 128) throw new Error('The Store icon must be 128×128.');
   await writeFile(join(sourceRoot, 'store-icon-128.png'), icon);
   entries.push({ path: 'store-icon-128.png', ...iconInfo, sha256: sha256(icon), standing: 'Accepted master symbol on a 96×96 consumer field with 16px transparent outer padding; no new product glyph geometry.' });
-  await writeFile(join(sourceRoot, 'asset-manifest.json'), `${JSON.stringify({ kind: 'diffdevil.store-assets/2', published: false, reservedIdentity: true, fontsEmbedded: false, imageRequirements: 'https://developer.chrome.com/docs/webstore/images', generatedOn: new Date().toISOString().slice(0, 10), entries }, null, 2)}\n`);
+  await writeFile(join(sourceRoot, 'asset-manifest.json'), `${JSON.stringify({ kind: 'diffdevil.store-assets/2', published: false, reservedIdentity: true, fontsEmbedded: false, imageRequirements: 'https://developer.chrome.com/docs/webstore/images', entries }, null, 2)}\n`);
 }
 
 async function validateSourceAssets() {
   const manifest = JSON.parse(await readFile(join(sourceRoot, 'asset-manifest.json'), 'utf8'));
   if (manifest.kind !== 'diffdevil.store-assets/2' || manifest.published !== false || !Array.isArray(manifest.entries)) throw new Error('The committed Store asset manifest is invalid. Run npm run extension:store:generate and inspect the resulting source diff.');
+  if ('generatedOn' in manifest) throw new Error('The committed Store asset manifest must not include wall-clock identity.');
   const actual = new Map(manifest.entries.map(entry => [entry.path, entry]));
+  if (actual.size !== manifest.entries.length) throw new Error('The committed Store asset manifest has duplicate entries.');
   for (const [path, requirement] of expected) {
     const entry = actual.get(path); if (!entry) throw new Error(`The committed Store manifest is missing ${path}.`);
     const bytes = await readFile(join(sourceRoot, path)); const info = pngInfo(bytes);
     if (info.width !== requirement.width || info.height !== requirement.height || info.depth !== 8 || requirement.colorType !== undefined && info.colorType !== requirement.colorType) throw new Error(`${path} has invalid PNG dimensions or colour format.`);
     if (sha256(bytes) !== entry.sha256) throw new Error(`${path} does not match its committed SHA-256.`);
-    if (entry.editableSource) await readFile(join(sourceRoot, entry.editableSource));
+    if (requirement.editableSource) {
+      if (entry.editableSource !== requirement.editableSource || !/^[0-9a-f]{64}$/u.test(entry.editableSourceSha256)) throw new Error(`${path} must name and hash its exact editable promotional SVG.`);
+      if (sha256(await readFile(join(sourceRoot, entry.editableSource))) !== entry.editableSourceSha256) throw new Error(`${entry.editableSource} does not match its committed SHA-256.`);
+    }
   }
   if (actual.size !== expected.size) throw new Error(`The committed Store manifest has ${actual.size} entries; expected ${expected.size}.`);
+  const allowed = new Set(['asset-manifest.json', ...expected.keys(), ...[...expected.values()].flatMap(requirement => requirement.editableSource ? [requirement.editableSource] : [])]);
+  const found = [];
+  async function collect(directory, prefix = '') { for (const entry of await readdir(directory, { withFileTypes: true })) { const path = `${prefix}${entry.name}`; if (entry.isDirectory()) await collect(join(directory, entry.name), `${path}/`); else if (entry.isFile()) found.push(path); else throw new Error(`The Store asset tree has an unsupported entry: ${path}`); } }
+  await collect(sourceRoot);
+  if (found.length !== allowed.size || found.some(path => !allowed.has(path))) throw new Error('The committed Store asset tree does not match its exact recursive allowlist.');
   return manifest;
 }
 

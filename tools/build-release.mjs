@@ -3,8 +3,8 @@ import { cp, mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promi
 import { extname, join, relative, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
-import { deflateRawSync } from 'node:zlib';
 import { files, sha256, stageRuntimeClosure } from './distribution.mjs';
+import { writeDeterministicZip } from './deterministic-zip.mjs';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 const options = new Map(process.argv.slice(2).flatMap((value, index, values) => value.startsWith('--') ? [[value.slice(2), values[index + 1]]] : []));
@@ -28,44 +28,10 @@ const releaseBase = options.get('release-base') ?? `https://github.com/Wolfsblvt
 const epoch = Number(options.get('epoch') ?? 0);
 if (!Number.isInteger(epoch) || epoch < 0 || epoch > 0x7fffffff) throw new Error('--epoch must be a non-negative Unix timestamp.');
 
-function crc32(bytes) {
-  let crc = 0xffffffff;
-  for (const byte of bytes) {
-    crc ^= byte;
-    for (let bit = 0; bit < 8; bit += 1) crc = (crc >>> 1) ^ (0xedb88320 & -(crc & 1));
-  }
-  return (crc ^ 0xffffffff) >>> 0;
-}
-function dosTime(unixSeconds) {
-  const date = new Date(Math.max(unixSeconds, 315532800) * 1000);
-  const time = (date.getUTCHours() << 11) | (date.getUTCMinutes() << 5) | Math.floor(date.getUTCSeconds() / 2);
-  const day = ((date.getUTCFullYear() - 1980) << 9) | ((date.getUTCMonth() + 1) << 5) | date.getUTCDate();
-  return { time, day };
-}
-function u16(value) { const bytes = Buffer.alloc(2); bytes.writeUInt16LE(value); return bytes; }
-function u32(value) { const bytes = Buffer.alloc(4); bytes.writeUInt32LE(value >>> 0); return bytes; }
 async function writeZip(directory, destination) {
-  const entries = [];
-  const stamp = dosTime(epoch);
-  for (const path of await files(directory)) {
-    const name = relative(directory, path).replaceAll('\\', '/');
-    const source = await readFile(path);
-    const payload = deflateRawSync(source, { level: 9 });
-    entries.push({ name, source, payload, crc: crc32(source) });
-  }
-  const chunks = [], central = [];
-  let offset = 0;
-  for (const entry of entries) {
-    const name = Buffer.from(entry.name);
-    const header = Buffer.concat([Buffer.from([0x50, 0x4b, 0x03, 0x04]), u16(20), u16(0x0800), u16(8), u16(stamp.time), u16(stamp.day), u32(entry.crc), u32(entry.payload.length), u32(entry.source.length), u16(name.length), u16(0), name]);
-    chunks.push(header, entry.payload);
-    central.push(Buffer.concat([Buffer.from([0x50, 0x4b, 0x01, 0x02]), u16(0x0314), u16(20), u16(0x0800), u16(8), u16(stamp.time), u16(stamp.day), u32(entry.crc), u32(entry.payload.length), u32(entry.source.length), u16(name.length), u16(0), u16(0), u16(0), u16(0), u32(0), u32(offset), name]));
-    offset += header.length + entry.payload.length;
-  }
-  const centralBytes = Buffer.concat(central);
-  chunks.push(centralBytes, Buffer.concat([Buffer.from([0x50, 0x4b, 0x05, 0x06]), u16(0), u16(0), u16(entries.length), u16(entries.length), u32(centralBytes.length), u32(offset), u16(0)]));
-  await writeFile(destination, Buffer.concat(chunks));
-  return entries.map(entry => ({ name: entry.name, size: entry.source.length, compressedSize: entry.payload.length }));
+  const members = await Promise.all((await files(directory)).map(async path => ({ name: relative(directory, path).replaceAll('\\', '/'), source: await readFile(path) })));
+  const entries = await writeDeterministicZip(members, destination, { epoch });
+  return entries.map(entry => ({ name: entry.name, size: entry.size, compressedSize: entry.compressedSize }));
 }
 
 const executableOrNativeExtensions = new Set(['.cmd', '.dll', '.dylib', '.exe', '.node', '.ps1', '.sh', '.so']);
