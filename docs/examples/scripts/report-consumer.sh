@@ -18,8 +18,8 @@ printf 'Changed: %s\n' "$changed"
 diffdevil check --report "$report" --metric changed --lt "$limit" --format json > "$work/check.json"
 decision=$?
 case "$decision" in
-  0) printf 'Changed is below %s.\n' "$limit" ;;
-  1) printf 'Changed is not below %s.\n' "$limit" ;;
+  0) printf '%s\n' "Changed is below $limit." ;;
+  1) printf '%s\n' "Changed is not below $limit." ;;
   *) exit "$decision" ;;
 esac
 
