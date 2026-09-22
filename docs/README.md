@@ -9,8 +9,8 @@ This is the documentation map for diffdevil. It separates current product direct
 | You want to… | Start here |
 | --- | --- |
 | Understand why diffdevil differs, choose a surface, or check its trust boundaries | [FAQ](manual/faq.md) |
-| Automatically label PR size with one workflow | [Auto-labeling quickstart](guides/auto-label-pull-requests.md) |
-| Get a scalar, path list, or reliable shell condition | [Local automation](guides/local-automation.md) |
+| Automatically label PR size with one workflow | [Auto-labeling quickstart](manual/start/label-pull-requests.md) |
+| Get a scalar, path list, or reliable shell condition | [Local automation](manual/start/analyze-local-changes.md) |
 | Add a source/test signal or one updated comment | [Policy recipes](guides/policy-recipes.md) |
 | Copy a complete tested input | [Example map](examples/README.md) |
 | Inspect one public PR in a browser | [Live playground](https://diffdevil-playground.wolfsblvt.workers.dev) · [Application and local route](../apps/playground/README.md) |
@@ -40,7 +40,7 @@ when a custom formula, scope, or policy needs it.
 | Live and local public-PR playground | [`../apps/playground/README.md`](../apps/playground/README.md) |
 | Optional managed App experience and architecture (selected, not deployed) | [`integration/github-app.md`](integration/github-app.md) |
 | Hosted data, opt-in history, and retention contract | [`PRIVACY-AND-DATA.md`](PRIVACY-AND-DATA.md) |
-| Complete public playground experience (beyond the local measurement form) | [`integration/playground.md`](integration/playground.md) |
+| Complete public playground experience (beyond the local measurement form) | [`manual/use/playground.md`](manual/use/playground.md) |
 | Public website source, build and local qualification (not deployed) | [`../apps/website/README.md`](../apps/website/README.md) |
 | Playground example catalogue and snapshot contract | [`../apps/website/catalogue/README.md`](../apps/website/catalogue/README.md) |
 

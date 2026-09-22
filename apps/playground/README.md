@@ -112,3 +112,13 @@ repair; do not delete the Worker or blindly upload another version.
 ## Licence
 
 Application code and assets under `apps/playground/` are licensed under **GNU AGPL-3.0-only**. They consume the reusable diffdevil engine under its MIT terms. Documentation and brand rights remain governed by the repository licence map rather than inheriting the application licence by proximity.
+
+## Public-service operating boundary
+
+The configurable visitor journey is maintained in [Playground](../../docs/manual/use/playground.md). This component owns acquisition and operation, not a second visitor manual. A source build, local Worker, deployment and qualified live visitor journey remain separate observations.
+
+Production admission must establish visitor and service-wide compute/upstream budgets, bounded requests and responses, understandable retry behavior, credential isolation and the actual configured website/API connection. Anonymous GitHub reads share the upstream allowance of the service's originating IP; compute capacity does not remove that constraint. No authentication, persistent visitor history or permanent CAPTCHA is implied by the open experience.
+
+Do not introduce shared caching of contextual public PR data without explicit bounded expiry and public-visibility revalidation. Repository visibility can change after capture. Separate immutable numeric analysis from contextual data, and keep source text and PR prose out of permanent shared history. These are operator acceptance requirements, not a claim that this adapter already supplies a production cache, traffic gateway or every service-level control. The [data contract](../../docs/PRIVACY-AND-DATA.md#public-playground) remains authoritative.
+
+Qualify both a retained example and a real public PR through the configured service, including malformed/private input, throttling, source movement, policy editing and supported exports. A measurement-only deployment does not qualify the complete website interaction. Publication and provider configuration require their separate operator grant.
