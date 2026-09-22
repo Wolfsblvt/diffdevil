@@ -17,7 +17,7 @@ await build({ ...common, entryPoints: [join(root, 'src/options/theme.ts')], outf
 await build({ entryPoints: [join(root, 'src/options/options.css')], outfile: join(out, 'options.css'), bundle: true, target: 'chrome120', loader: { '.svg': 'file' }, assetNames: 'assets/[name]-[hash]' });
 await copyFile(join(root, 'src/content/content.css'), join(out, 'content.css'));
 await copyFile(join(root, 'options.html'), join(out, 'options.html'));
-const manifest = JSON.parse(await readFile(join(root, 'manifest.json'), 'utf8')); manifest.version = packageJson.version;
+const manifest = JSON.parse(await readFile(join(root, 'manifest.json'), 'utf8')); manifest.version = packageJson.version; manifest.version_name = packageJson.version;
 await writeFile(join(out, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
 const identity = resolve('packages/design/assets/identity'); const identities = [];
 const acceptedBrand = await readFile(join(root, 'assets/diffdevil-brand.svg'));
