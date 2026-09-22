@@ -199,3 +199,11 @@ not add a bundler merely to hide the generated file count; reconsider packaging
 when it has a demonstrated consumer benefit. Do not replace selected source,
 query, policy, effect, or hosted-application capabilities with a size labeler to
 make the release checklist shorter.
+
+diffdevil compiles with TypeScript 7, but the website type check still runs Astro's
+checker on an aliased TypeScript 6 (`typescript-6`, `tools/website-typecheck.mjs`):
+tools that embed TypeScript cannot use 7 until its programmatic API stabilizes
+([withastro/roadmap#1321](https://github.com/withastro/roadmap/discussions/1321)).
+When Astro's checker supports the TypeScript 7 API, return
+`website:check` to it and remove the alias, its `@astrojs/check` override and
+Dependabot ignore, and the script.

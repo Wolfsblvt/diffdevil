@@ -28,7 +28,7 @@
     "website:build": "npm run build && npm run website:assets && npm run website:docs && astro build --root apps/website",
     "website:dev": "npm run build && npm run website:assets && npm run website:docs && astro dev --root apps/website",
     "website:preview": "astro preview --root apps/website",
-    "website:check": "node tools/website-docs.mjs && astro check --root apps/website",
+    "website:check": "node tools/website-docs.mjs && astro sync --root apps/website && node tools/website-typecheck.mjs apps/website",
     "check:website": "node tools/website-assets.mjs && node tools/website-docs.mjs && astro build --root apps/website",
     "test:website": "node --test apps/website/website.test.mjs",
     "qa:website": "node apps/website/qa/run.mjs",
@@ -128,7 +128,8 @@
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "shiki": "4.4.3",
-    "typescript": "6.0.3",
+    "typescript": "7.0.2",
+    "typescript-6": "npm:typescript@6.0.3",
     "wrangler": "4.135.0"
   },
   "dependencies": {
@@ -139,5 +140,10 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Wolfsblvt/diffdevil.git"
+  },
+  "overrides": {
+    "@astrojs/check": {
+      "typescript": "$typescript"
+    }
   }
 }
