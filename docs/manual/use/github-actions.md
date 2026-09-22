@@ -1,21 +1,23 @@
 # GitHub Actions
 
-Use Actions when repository automation should live in reviewed workflow files. The Action obtains a PR comparison, evaluates the same policy as the CLI, and publishes results in GitHub's job environment. Choose separately whether that job is allowed to apply effects.
+Use Actions when the repository should own diffdevil automation through reviewed workflow files. The runtime is shipped with the Action: a consumer job does not install Node packages or build diffdevil. You choose the event, trusted policy and allowed effects; the shared engine supplies the measurements and decisions.
 
 ## Choose an entry point
 
-| Entry at the selected ref | Job |
+| Entry | Responsibility |
 | --- | --- |
-| `Wolfsblvt/diffdevil@v1` | Convenient size-label application by default; `mode` can select analyze, plan or apply |
-| `Wolfsblvt/diffdevil/actions/analyze@v1` | Read-only analysis and decisions |
-| `Wolfsblvt/diffdevil/actions/apply@v1` | Deliberate application, with fresh acquisition and artifact validation |
-| `Wolfsblvt/diffdevil/actions/sync-labels@v1` | Repository label-definition verification by default; explicit application available |
+| `Wolfsblvt/diffdevil@v1` | The complete default size-label workflow; root `mode` can instead select analysis or planning |
+| `Wolfsblvt/diffdevil/actions/analyze@v1` | Read-only analysis and selected decision outputs, even when its credential can write |
+| `Wolfsblvt/diffdevil/actions/apply@v1` | Fresh acquisition, revalidation and explicit policy application |
+| `Wolfsblvt/diffdevil/actions/sync-labels@v1` | Repository definition verification or explicit synchronization |
 
-Actions ship their runtime. An API-only job does not need npm, a source checkout, or a build of the PR. You need permission to maintain the workflow, Actions enabled, and an allowed Action ref. `v1` is a moving compatibility alias. A version tag names a release; only a full commit SHA pins exact Git source. The [release account](../../releases/v1.0.0.md) identifies the published version separately from current development source.
+The root Action defaults to `apply`: choosing it deliberately chooses its documented label effects. The analyze sub-action rejects effect inputs. Sync-labels defaults to read-only verification. These distinctions are more useful than memorizing every option; the [Actions reference](../reference/github-actions.md) owns exact generated inputs and outputs.
 
-## Start with the default applying workflow
+`@v1` is the maintained major Action coordinate, not an npm version pin. A repository can choose an immutable reviewed commit according to its own dependency policy. Current-source additions must be present in the selected distributed Action; successful tests of this checkout do not move a published tag.
 
-This complete [size workflow](../../examples/workflows/size.yml) maintains the preset's size group, creates missing required definitions, preserves unrelated labels and posts no comment:
+## Add the complete default workflow
+
+Save this complete [size workflow](../../examples/workflows/size.yml) as `.github/workflows/diffdevil.yml` and make it active through the repository's normal change process:
 
 ```yaml
 name: Pull-request size
@@ -34,16 +36,13 @@ jobs:
       - uses: Wolfsblvt/diffdevil@v1
 ```
 
-Make it available through the repository's normal workflow change process. Then inspect a matching PR event and its job summary. The useful result is the correct label, including a successful no-op when that label is already present. An unresolved classification can select the preset's explicit `size/Unknown` label; it is not a failed parser or a zero-size PR.
+Actions must be enabled and the repository's policy must permit the selected Action and token permissions. This API-only job uses `pull_request_target` and never checks out or executes PR code. Keep privileged metadata automation separate from build/test jobs that run untrusted code.
 
-> [!WARNING]
-> This job runs with write authority on `pull_request_target`. Keep it API-only. Do not check out or execute PR-head code in this privileged job. Build and test untrusted code in a separate job with the appropriate read-only boundary.
+The first useful result is a matching managed size label, or a successful no-op if it is already correct. Missing required definitions are created; unrelated labels and existing definition metadata are preserved. The default posts no comment. The [first-success guide](../start/label-pull-requests.md) covers activation and inspection.
 
-The event provides repository and PR identity. For another event, supply the explicit target the Action requires. A local Git source is an explicit alternative requiring the relevant objects already present in a controlled checkout; it is not an implicit fallback from missing API evidence.
+## Keep read-only analysis separate
 
-## Use a separate read-only workflow
-
-The complete [analysis workflow](../../examples/workflows/analyze.yml) asks whether Changed exceeds 100 without giving the job label or comment authority:
+This complete [read-only workflow](../../examples/workflows/analyze.yml) can run on `pull_request` without selecting any label or comment writes:
 
 ```yaml
 name: Analyze pull-request diff
@@ -67,48 +66,65 @@ jobs:
         run: echo "The comparison exceeds 100 replacement-aware changed lines."
 ```
 
-The second step deliberately runs only for the string `true`. A false or unknown result does not automatically fail the analysis step. Select your workflow's consequence explicitly; neither an empty output nor the string `false` should be treated as a numeric zero or tested by generic truthiness. Read-only fork events can have restricted tokens and approval requirements even when the workflow itself is valid.
+Its threshold tests whether Changed is greater than 100. `decision` is a string: `true`, `false` or `unknown`. Only the true case enters the displayed follow-up step. Neither false nor unknown automatically fails an analysis Action. Add your own deliberate handling when the workflow needs a gate; do not let a missing numeric output become zero.
 
 ## Select trusted configuration and credentials
 
-Omitting `config` selects the bundled policy, not a discovered workspace file. For custom repository policy, place `.diffdevil.yml` in the trusted base and select it explicitly:
+No config selects the built-in policy. To use a repository policy, add `config: .diffdevil.yml` to the step and grant `contents: read` as well as the permissions needed by the selected operation. Policy and referenced templates are loaded from the immutable current PR base, not the PR's proposed file. Changing configuration in the PR does not give that PR authority over privileged effects.
+
+`policy-source: pinned` requires an explicit config and full immutable `policy-ref`; `policy-repository` can deliberately select another repository. `policy-source: workspace` is available for read-only analysis and cannot authorize Action writes. The adapter confines workspace policy/template reads, including symlinks, to the chosen workspace.
+
+`github-token` owns PR acquisition and effects. Optional `policy-token` is confined to trusted base/pinned configuration and template reads. Omitting it preserves the single-token route. Use that split when the effect credential should not acquire Contents access solely to read policy. Keep credentials in the workflow's supported secret or token mechanism, never in formulas or exported policy.
+
+Full policies and simple shorthand use one compiler. For a single threshold rule, `metric`, `threshold` and `comparison` can be sufficient. A full config preserves its authored effects; conflicting shorthand is rejected rather than silently overriding it. Bind untrusted strings through typed parameters, not GitHub interpolation inside a formula.
+
+## Read outputs and retain the right artifacts
+
+Each numeric output has status and bound companions. A plain numeric value is present only when exact. Inspect those companions before numeric comparisons. A selected band or decision is not proof of a label operation.
+
+`report-json` and `plan-json` are **compact Action summaries**, not full replayable artifacts. The complete versions are at `report-path` and `plan-path`; effect execution writes its operation/readback journal to `effects-path`. These are runner files. Copying their path into another job does not transfer their bytes, and diffdevil does not upload them automatically.
+
+For cross-job retention, use your workflow's explicit artifact transport and access/retention policy. Reports can contain private paths and revisions; plans can contain rendered comments and policy details. File provenance, schema validity and a successful upload do not authenticate untrusted input. Destination parents must exist, and output paths must not overwrite inputs, event data or runner command files.
+
+## Analyze, then explicitly apply
+
+The complete [two-step workflow](../../examples/workflows/analyze-and-apply.yml) demonstrates a same-job carrier:
 
 ```yaml
-# Step excerpt for the applying workflow above.
-- uses: Wolfsblvt/diffdevil@v1
-  with:
-    config: .diffdevil.yml
-    policy-source: base
+name: Inspect and apply pull-request size
+on:
+  pull_request_target:
+    types: [opened, reopened, synchronize, edited]
+permissions:
+  pull-requests: write
+concurrency:
+  group: diffdevil-size-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+jobs:
+  size:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: Wolfsblvt/diffdevil/actions/analyze@v1
+        id: measured
+      - uses: Wolfsblvt/diffdevil/actions/apply@v1
+        with:
+          input-report: ${{ steps.measured.outputs.report-path }}
 ```
 
-That job additionally needs `contents: read` for policy and template acquisition. The full file must be available at the selected base revision; a new policy in this PR is diff data, not this run's write authority. Pinned policy uses an explicit immutable commit and may select a different policy repository. Workspace policy is available for read-only analysis, never as Action write authority.
+The first step remains read-only even though this job has write permission. The second step **does write** when its revalidation succeeds. It is not an approval pause: a normal successful first step proceeds to apply.
 
-`github-token` owns PR acquisition and effects. Optional `policy-token` can separately read trusted base/pinned policy and templates; omitting it retains the single-credential route. Select only the permissions needed by the job. A separate policy token must be able to read its actual repository, not merely the PR repository.
+Apply always reacquires current evidence, including for same-job reports. It re-evaluates under the selected trusted policy and compares the supplied artifact. There is no Action `trust-report` input. A plan supplies expected desired operations, not arbitrary instructions to execute. See [Reports, plans, and apply](shared-workflows/reports-plans-and-apply.md) for the lifecycle and CLI difference.
 
-Inputs are strings. Use documented `true`/`false`, quote numeric thresholds, and preserve newline-list structure. A complete config and the single-rule threshold/condition shorthand are not silently merged when their contracts conflict. [Configure policy](../policy/configure.md) explains the shared declarations; the [Actions reference](../reference/github-actions.md) owns the generated exact input/default/output inventory.
+## Definitions, reruns and coexistence
 
-## Outputs are not all interchangeable artifacts
+Use sync-labels for a deliberate repository-definition check or metadata synchronization, not as a mandatory setup job before the default root Action. `operation: verify` is read-only; `operation: apply` selects synchronization, with `definitions: ensure` available when only missing names should be created. No PR assignment is changed by that definition-only operation.
 
-A numeric output has evidence companions. Read `lines-changed-status` before treating `lines-changed` as an exact number; bounds belong in the corresponding minimum/maximum outputs. A resolved band need not imply an exact metric. A selected `decision` is `true`, `false` or `unknown`; when no single decision is selected it can be empty.
+A repository/PR concurrency group serializes this workflow's runs. Freshness checks still matter before effects, and the group does not coordinate an independently operated App. Select one owner of overlapping labels/comments. The minimal events deliberately omit label events to avoid a self-triggering loop. A manually removed managed label is restored on the next selected event, not continuously between runs.
 
-`report-json` and `plan-json` are compact Action summaries. They are not the full canonical artifacts consumed by the library readers or apply. Use `report-path`, `plan-path` and `effects-path` for the full files, including the operation journal. Default paths are unique runner-local files. Custom destination parents must exist, and artifact/output/summary paths must not collide.
+## Recover by stage
 
-A file on one runner is not automatically present on the next. Deliberately upload and download the full artifact when crossing jobs, with access and retention suitable for its paths, policy and source identities. Do not put full private reports in a public job log just because the summary was safe to display.
+**No run:** check workflow activation, event, repository restrictions and the selected revision. **Failed acquisition or policy:** inspect the source/configuration diagnostic; invalid or inaccessible policy is not permission to default. **Denied write:** check the actual credential's permissions rather than adding a checkout of PR code.
 
-## Plan first; apply deliberately
+**Unknown decision:** inspect evidence, bounds and holds. The default policy can select `size/Unknown`; custom rules may hold effects. **Stale artifact:** capture a new comparison and plan. **Partial or ambiguous effects:** read `effects-path` and current GitHub state before retrying. Multiple provider requests are not one atomic transaction.
 
-The complete [plan/apply workflow](../../examples/workflows/plan-and-apply.yml) passes full files between two steps in one trusted job. It selects the same base policy for both steps. Planning needs read permissions; this combined job has write permission because its second step applies.
-
-The apply entry consumes `input-report` and `input-plan`. It does not use a pre-existing `report-path` as an input. It reacquires current evidence and recomputes the selected policy even for same-job artifacts; no `trust-report` switch exists in Actions. A stale or tampered plan cannot supply additional effects. An output file, matching hash, green earlier job or manual approval alone does not authenticate its contents as current write authority.
-
-For definition maintenance without PR assignments, use `actions/sync-labels`: default verification is read-only; `operation: apply` is the explicit write route. [Shared workflows](shared-workflows/README.md) owns the detailed artifact and effect lifecycle.
-
-## Reruns, coexistence and recovery
-
-Serialize overlapping effects by PR and keep `cancel-in-progress: false` for an applying job so a new event does not deliberately interrupt an operation sequence. Freshness checks still matter: concurrency does not freeze the PR. Do not subscribe to label events merely to maintain labels unless the surrounding automation has a deliberate loop-safe arrangement.
-
-Choose one writer for each managed label group and comment lifecycle. A read-only Action can coexist with an App or another tool, but two applying hosts with different policies can fight over the same state.
-
-When nothing appears, first check whether the workflow ran and which event/revision it used. When it ran, distinguish acquisition, policy, permissions, held decisions and effect readback. An acknowledged request without verified readback remains partial. Keep the effects file, inspect what already changed, and then retry or repair the affected operation. Do not repeatedly create comments to test whether the first one arrived.
-
-Updates change the selected Action ref through normal workflow review. Recheck your actual config, event and consuming outputs. A successful job proves its executed contract, not live App availability, extension installation or code quality.
+Actions return 0 for completed analysis/planning or verified reconciliation, 1 for known definition-verification drift, and 2 for invalid/failed operations or incomplete application. This differs deliberately from CLI `check` exits. A rerun must preserve comment actor and occasion identity where relevant. [Labels, comments, and definitions](shared-workflows/labels-comments-and-definitions.md) carries that shared contract.

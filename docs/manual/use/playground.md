@@ -1,64 +1,59 @@
 # Playground
 
-Use the [Playground](https://diffdevil.dev/playground/) to understand a real public change and try policy before installing anything. It is read-only: configuration and GitHub previews do not apply labels, post comments or enable an App.
+Use the [Playground](https://diffdevil.dev/playground/) to inspect a real change, experiment with policy and leave with reusable inputs before installing anything. It is a read-only learning surface. It does not install an App, request a personal access token or apply repository labels/comments.
 
-## Choose a frozen example or a live comparison
+The complete configurable experience is implemented in the website source. Public hosting is a separate release step; the earlier measurement-only Worker is not evidence that every view and export described here is deployed. For source-checkout access, use the [website development route](../../../apps/website/README.md) and open its local `/playground/` page. Its configured API must supply the report and head contracts for live acquisition; frozen examples need no GitHub access.
 
-For a repeatable first result, open [the lockfile example without its lockfile](https://diffdevil.dev/playground/?example=lockfile-scope&variant=without-lockfile). The URL selects both a lesson and a source/policy variant. A retained real-PR edition has exact revisions, capture and engine information, and provenance. It does not silently change when the upstream PR moves.
+## Start with a frozen source edition
 
-The [Examples catalogue](https://diffdevil.dev/examples/) contains seven complementary lessons: lockfiles, null guards, formatter/snapshot changes, binary material, distribution across files, bounded decisions and incomplete file sets. Their short guides live with the selected Playground result. They are not seven unrelated calculators or copied manual chapters.
+Open the [lockfile lesson, all-files variant](https://diffdevil.dev/playground/?example=lockfile-scope&variant=all). It selects the retained Vite PR snapshot and standard policy, not whatever that upstream PR looks like today. Expect **22 Changed**, **25 raw churn** and band `s`. The source strip identifies the teaching snapshot and immutable revisions.
 
-For live acquisition, enter a public `https://github.com/OWNER/REPO/pull/NUMBER` URL. The browser calls the configured public acquisition API and evaluates the returned report. Live input starts with the explicit size preset; it does not automatically inherit private App settings or turn proposed PR-head policy into trusted configuration.
+Switch to the [without-lockfile variant](https://diffdevil.dev/playground/?example=lockfile-scope&variant=without-lockfile). The selected policy excludes `pnpm-lock.yaml`, leaving **1 Changed**, **2 raw churn** and band `xs`. This changes the question, not the acquired patch. [Try a public pull request](../start/try-a-public-pull-request.md) walks through that first experiment.
 
-No account or token is required. Private PRs, Enterprise URLs and arbitrary fetch targets are outside this route. A repository visible through your signed-in GitHub tab is not necessarily public. The website and acquisition service must actually be reachable for live use; a local static build does not establish a deployed backend.
+The [Examples catalogue](https://diffdevil.dev/examples/) and Playground share one set of lessons and source editions. The other guides cover runtime guards, formatting/snapshots, binary material, similar size with different spread, bounded decisions and incomplete file sets. A link carries separate `example` and `variant` identities. Reuse those links rather than copying a detached count or inventing a synthetic gallery entry.
 
-## Read the source edition before the number
+## Know which comparison you are viewing
 
-Inspect whether the result is a retained snapshot or a newly acquired PR. Keep the reported base/head, source edition, policy and evidence together. Changing a setting evaluates the already acquired comparison locally; it does not fetch newer code just to adjust a threshold.
+A frozen edition retains its source, policy and provenance. A live refresh is a distinct acquisition and can produce a different result. The same PR number does not establish that two views measured the same head/base.
 
-The lockfile variants illustrate the consequence. The retained all-files view gives 22 Changed and 25 raw churn. Excluding the lockfile gives 1 Changed and 2 raw churn. That is a narrower included question over the same source, not a claim that the other changes disappeared. [Evidence and uncertainty](../understand/evidence-and-uncertainty.md) explains why some views retain bounds or incomplete membership.
+On the public-PR tab, enter a supported `https://github.com/OWNER/REPO/pull/NUMBER` URL and select **Analyze public PR**. Only public GitHub.com input is accepted. A private PR, arbitrary URL or Enterprise host is not a different way to use the same public endpoint. Anonymous acquisition can be throttled or receive incomplete material; inspect the resulting evidence before concluding that the comparison is exact.
 
-## Start with controls; use policy for depth
+## Edit policy without changing the source
 
-Controls expose the preset, measurement, available band thresholds and label mappings, exclusions and an optional comment preview. Adjust one setting, then inspect the new result. Exclusion annotations help show which observed paths match.
+Simple controls let you choose supported preset/metric settings, bands and explicit path exclusions. For the lockfile lesson, add `pnpm-lock.yaml` in the exclusion control and press Enter. The file remains visible as excluded while included totals change. Editing a threshold or exclusion reevaluates the acquired report locally instead of refetching the PR.
 
-The Policy editor contains ordinary `.diffdevil.yml`, not a second website language. Form controls and the editor use the same compiler. Configuration that the controls cannot represent remains visible as preserved advanced content; switching views must not silently discard it. A custom formula can therefore remain an expression rather than being replaced with a nearby simple metric.
+Advanced policy editing uses ordinary `.diffdevil.yml` through the shared compiler. It is not JavaScript and does not fetch remote templates or inherit private App account settings. When a policy contains settings the simple controls cannot represent, keep it in the policy editor rather than assuming that switching to controls can preserve arbitrary declarations.
 
-Invalid YAML, an invalid declaration or incompatible policy is a configuration failure. The editor preserves your input and can show the previous valid result with that standing clearly marked. A previous result is not evidence that the current invalid edit worked. Repair the reported source location, or deliberately restore a known policy.
+Invalid YAML, an unsupported declaration or a type error remains a configuration failure. Correct the marked input and evaluate again; a visible older result must not be read as proof that the failed edit took effect. No silent fallback should be treated as a successful policy change.
 
-## Four views of one result
+## Read four views of one result
 
-| View | What it is for |
-| --- | --- |
-| Terminal | The shared human report, including Changed, decomposition and evidence |
-| Agent | A compact readable projection for an agent or reviewer |
-| GitHub preview | Desired labels and optional comment presentation, not observed provider changes |
-| Explanation | Policy origins, scopes, exclusions and the decisions behind the display |
+**Terminal** uses the shared human presenter. **Agent/data** exposes a compact agent reading and structured data. **GitHub preview** displays desired labels and optional comment/check-style presentation. **Explanation** shows the configured metrics, rules, paths and evidence behind that result.
 
-Switching tabs changes presentation, not the source comparison. Unknown or unmeasurable values do not become exact because a different view has a simpler layout. The [facts-to-provider-state model](../understand/facts-to-provider-state.md) applies here too: a useful desired preview is still not an applied effect or a current native check.
+The views do not acquire four different comparisons. A desired `size/XS` label is not an observed GitHub assignment; previewing a comment does not post it. Bounded, unknown, unmeasurable and incomplete membership remain meaningful across views. The [shared evidence model](../understand/evidence-and-uncertainty.md) explains when a band or condition can resolve without an exact scalar.
 
-## Export the right thing
+## Export a useful next step
 
-Open Export and choose the consumer. The CLI tab replays a saved report: first save `report.json` from the data tab, and save the current `.diffdevil.yml` when the example uses custom policy. Its commands analyze, query and plan that captured comparison; they do not acquire a new live head. An exact scalar query can still exit 3 for a bounded result.
+Open **Export** and select the consumer you need. The tabs supply CLI commands, a complete workflow, `.diffdevil.yml`, or separate report/plan JSON. Save the full report as `report.json`; save the policy too when the selected configuration is not just the default preset.
 
-The data tab offers the canonical report and, when available, a desired plan. Agent text is not a substitute for either JSON artifact. The policy tab carries reusable configuration; [Reports, plans, and apply](shared-workflows/reports-plans-and-apply.md) explains the validation and trust required when moving those files elsewhere.
+The CLI export replays that saved comparison, not your current worktree or a newly moving PR. It analyzes the report, queries Changed and previews a desired plan with the actual target identity. It does not apply effects. An unresolved strict scalar exits 3; use query JSON when you need the bounds and reasons.
 
-The Action step tab is a starter excerpt. In particular, the applying step by itself does not embed your custom editor policy. For that policy, use the complete workflow together with `.diffdevil.yml`, and make the policy available at the selected trusted base. Read the export's permissions and read/write note before adoption. Running an exported workflow measures its own current event, not the frozen report shown in your browser.
+The Action step export is a starter excerpt, not a complete workflow. In particular, an applying step does not embed custom policy from the editor. Use the complete workflow together with the exported `.diffdevil.yml` for that configuration.
 
-An App adoption link can carry the policy toward a different product surface. It does not install, authenticate, enable effects or consent to history. Managed operation retains its own [availability and setup boundary](managed-app/README.md).
+The complete workflow export is different: it operates on future workflow events under its selected trusted policy and permissions. Inspect those permissions and put the exported policy at the declared location before adopting it. A locally valid preview neither activates the workflow nor grants write access. [GitHub Actions](github-actions.md) owns that operating journey.
 
-## Refresh explicitly
+Report JSON, plan JSON and agent text are not interchangeable exports. Use [Reports, plans, and apply](shared-workflows/reports-plans-and-apply.md) before carrying one into a different host. A copied plan remains desired data.
 
-Switching a catalogue example to live analysis is a new source edition. A newer-head indication offers a deliberate refresh rather than combining fresh paths with old counts. Keep a useful report export when you need to compare before and after.
+## Refresh and share deliberately
 
-Cancellation and superseding an in-flight request are not provider errors. A late completion cannot replace the result for a different selected input. After a failed request, inspect the retained result's source and standing; do not assume it describes the URL you most recently attempted.
+Use the explicit live/current-head route when you want new provider evidence. Rechecking whether the head moved is not the same as refreshing the analyzed report. Keep the snapshot identity attached to the result until reacquisition succeeds; do not combine an older count with new file identities.
 
-## Privacy, limits and recovery
+The share URL records selected example/variant, view and configuration mode. Edited policy may be encoded in the `policy` query parameter. Encoding is **not encryption**: the URL can disclose configuration through copied links, browser history or the host receiving the navigation. Do not put secrets or private repository policy in it. A frozen-example URL without custom policy is the safer reproducible lesson link.
 
-The live route sends the public PR URL to the acquisition service, which reads public GitHub data. The interface has no private-token input or raw-diff upload control. Policy evaluation is local, but edited policy is encoded into the shareable page URL. Base64url is not encryption: the URL can enter browser history, copied links, screenshots and infrastructure logs. Do not put secrets or private repository configuration in a public Playground URL.
+## Data limits and failure recovery
 
-The source has no permanent visitor-history feature. Full reports and source data can remain in active memory and deliberate exports. Browser and network infrastructure have their own handling; the [product data contract](../../PRIVACY-AND-DATA.md#public-playground) is not a claim that no network request exists.
+The browser evaluates acquired reports and edited policy locally. Live public acquisition sends the target PR identity to the configured backend, which performs bounded read-only GitHub requests. It must not borrow private App installation credentials. There is no visitor account/history requirement or private-PR mode. Exported files remain under your control and can contain paths, revisions or policy details.
 
-Invalid URLs fail before acquisition. An inaccessible/private PR, rate limit, unavailable service, changed revision, invalid report or size ceiling has a distinct failure. Honor a supplied retry delay; repeated reloads consume the same shared upstream budget. Frozen examples remain a useful alternative when GitHub is unavailable. A result ceiling must not silently turn a prefix into a complete file list.
+**Invalid URL:** correct the public GitHub PR input; no analysis has succeeded. **Private/unavailable PR:** use an authorized local/CLI route, not a token pasted into the Playground. **Throttled or failed acquisition:** keep the input, inspect the error and retry after the indicated constraint or use a frozen lesson. **Invalid policy:** repair the editor content. **Moved head:** choose an explicit new acquisition. **Incomplete or oversized result:** retain the evidence/limit rather than treating a displayed subset as the whole PR.
 
-For a reproducible problem report, include the public example and variant, source edition, policy without secrets and displayed diagnostic. [Try a public pull request](../start/try-a-public-pull-request.md) provides the first-use journey; the [shared catalogue contract](../../integration/example-catalogue.md) explains retained editions and provenance.
+A source-only API or older deployed Worker may not provide the complete report/head routes. That is an access/version boundary, not an empty result. The [application/operator home](../../../apps/playground/README.md) owns backend setup, while this guide owns the visitor experience. Continue with [CLI](cli.md) or [With a coding agent](coding-agent.md) when the experiment becomes ordinary work.

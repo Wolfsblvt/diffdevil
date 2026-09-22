@@ -2,87 +2,81 @@
 
 > [!NOTE]
 > **In development**
-> The extension can be built and loaded locally. A published Chrome Web Store listing is not yet established by this source.
+> The local source build is available; public Store distribution and live release acceptance remain separate.
 
-See Changed while reviewing a pull request, without adding a repository workflow or installing the managed App. The extension uses the shared engine in its worker; its virtual classification is your reading aid, not a GitHub label, approval or quality judgment.
+The browser extension brings Changed into the GitHub review you are already doing. It needs no repository workflow, App installation or write permission. Your browser acquires the comparison and runs the same engine as the CLI; the extension changes your view, not repository automation.
 
 ## Install and update
 
-This build targets Chrome Manifest V3 on `github.com`. Firefox, GitHub Enterprise hosts and incognito operation are not supported. You need access to the PR and a browser profile that permits extension installation.
-
-For local source use, obtain the repository at the source revision you intend to test. From its root with Node.js 22.12 or newer:
+The source build targets Chrome Manifest V3. Use an unrestricted supported Chrome profile and a diffdevil checkout with Node.js 22.12 or newer. From the checkout root:
 
 ```sh
 npm ci --ignore-scripts
 npm run extension:dev
 ```
 
-Open `chrome://extensions`, enable Developer mode, choose **Load unpacked**, and select `artifacts/browser-extension/unpacked`. This is the stable development directory; do not retain a temporary SHA-named qualification copy as your everyday extension path. The toolbar action opens settings.
+Open `chrome://extensions`, enable **Developer mode**, choose **Load unpacked**, and select `artifacts/browser-extension/unpacked/`. That stable directory is the development entry, not a SHA-named qualification archive. An organization's browser restrictions still apply; do not bypass them.
 
-After an update, rebuild, reload the extension card and reload open GitHub PR tabs. Already injected content scripts are not replaced retroactively. Managed browser policy can prohibit installation; that is an installation limitation, not something to bypass. A source build is not a Store installation or a guarantee that every current GitHub layout has been qualified.
+After rebuilding, use **Reload** on the extension card **and reload the GitHub tab**. Updating files does not replace an already injected content script. For released installation, the [extension product page](https://diffdevil.dev/extension/) supplies an actual Store destination when available. An unpublished listing is not an alternative download route. [Source build and qualification](../../../apps/browser-extension/README.md) remain the exact development instructions.
 
-## Read a pull request and a file
+## Read the pull-request view
 
-Open a supported PR and find Changed beside the native statistics. The aggregate follows the complete PR across Conversation, Commits, Checks and Files changed. Per-file augmentation belongs to the full-PR Files changed comparison. A commit-only or explicitly narrowed comparison must not borrow whole-PR file measurements.
+Open `https://github.com/OWNER/REPO/pull/NUMBER` for a PR you can read. Aggregate Changed follows the whole PR across Conversation, Commits, Checks and Files changed. The native raw additions/deletions stay available beside replacement-aware counts.
 
-Click Changed to open the non-modal report. Click it again, press Escape, click outside, or use Close to dismiss it. The report contains source revisions, evidence, files, metrics, bands, scopes, rules and policy provenance. An unacquired file keeps its native presentation instead of receiving an invented value.
+Click Changed to open its nonmodal report panel. Inspect the exact base/head, evidence, included files, metrics, scopes, bands, rules and policy origins. Escape, Close, clicking outside or clicking the anchor again dismisses it. The panel closes when its anchor is replaced rather than floating over unrelated content.
 
-The [first-use guide](../start/see-changed-lines-on-github.md) joins this view to the small 10 Changed / 16 raw churn specimen. [Changed lines and raw churn](../understand/changed-lines-and-churn.md) owns the counting explanation. Per-file classification uses that file's facts, not the aggregate tier. An excluded file can still have measured facts without belonging to the included classification.
+On the whole-PR **Files changed** view, each acquired file has its own Changed result and classification. A file does not inherit the aggregate PR tier. Excluded files retain measured facts but do not receive an included-policy classification. Per-file augmentation is deliberately absent from commit-only or narrowed comparisons, where whole-PR facts would describe the wrong input.
 
-Bounds, unknown and unmeasurable material stay visible. Compare the actual base/head and evidence before treating a cached display as current. Reload or retry acquisition after a moving revision; do not read missing augmentation as zero.
+The [small shared specimen](../../examples/diffs/review.diff) produces 10 Changed and 16 raw churn under the default policy, including in the production browser projection. These are the same measurements explained in [Changed lines and raw churn](../understand/changed-lines-and-churn.md). Missing, bounded or binary evidence never becomes an invented exact count.
 
-## Understand policy origin
+## Interpret a virtual band correctly
 
-The extension offers three deliberate policy modes:
+The pill and rail describe the effective policy in **your view**. They are not a GitHub label, an App check or proof that a workflow ran. A different classification can be legitimate when another surface uses different paths or thresholds; compare source and policy identities first.
 
-| Mode | Configuration source |
-| --- | --- |
-| Composed | Personal defaults, then trusted repository policy, then an explicit personal repository override |
-| Repository | Repository policy when present; personal defaults when it is genuinely absent |
-| Personal only | Deliberately bypass repository policy; explicit personal repository overrides can still apply |
+An optional existing-label mapping can support a native handoff when GitHub exposes a writable label picker. The extension opens and filters that picker. **You make the actual GitHub selection.** The extension does not create labels, remove other labels or issue a hidden provider write. No writable picker means no native handoff, not a request for broader credentials.
 
-Repository `.diffdevil.yml` and explicitly referenced templates are read at the exact trusted base SHA, not from proposed PR-head configuration. A 404 on an inaccessible private base is not proof that the file is absent. Invalid or unavailable repository policy stays visible; it does not silently become a personal size classification. The acquired factual report can remain useful while classification is unavailable.
+The implemented App identity comparison does not supply an authenticated App report. This build presents local results; App-related preferences are inactive until a verified delivery source exists. It never guesses a report endpoint or launches a hosted analysis. The [App guide](managed-app/README.md) remains a separate in-development surface.
 
-Your personal overrides are not repository changes. Different settings or source revisions can explain disagreement with an Action. Use the report's provenance and [trust model](../understand/trust-and-mutation.md) to compare like with like.
+## Choose which policy you are seeing
 
-## Basic and Advanced settings
+Composed mode layers personal defaults, trusted repository policy, then an explicit personal repository override. Repository mode uses repository policy when present and personal defaults only when it is absent. Personal only deliberately excludes repository policy and can retain an explicit personal repository override.
 
-Settings have human-readable labels and literal deep links, such as `#display.brandIcon` and `#policy.advancedYaml`. Search includes Advanced descriptions even in the Basic view. A deep link reveals and focuses its target, while Basic reports active advanced changes. Unsaved editor content survives searching, view changes and theme changes.
+Repository `.diffdevil.yml` and referenced templates come from the exact base revision, not the proposed head. An inaccessible or invalid policy is not an absent policy. Its failure remains visible; usable factual measurements can remain inspectable without inventing a replacement classification.
 
-![The admitted settings application in its dark display view.](../../../apps/website/src/assets/extension/settings-display-dark.png)
+The report's provenance tells you which layer supplied a declaration. Settings in this browser do not edit the repository file, workflow inputs or App account defaults. Use [Source identity, trust, and mutation](../understand/trust-and-mutation.md) when comparing hosts.
 
-Guided controls cover display and policy choices, including band thresholds, names, colors and optional mappings to existing native labels. Colors never establish an otherwise unknown band. The monochrome brand icon is the default; full color and no icon are explicit choices.
+## Find and change a setting
 
-A nonempty Advanced YAML document replaces the guided personal policy. It preserves the guided preferences for later reuse rather than silently merging incompatible declarations into the advanced document. Saving uses the real compiler; invalid edits do not overwrite the saved policy. Keep a complete map where the policy contract requires one, rather than assuming the partial mapping conveniences in a browser form are portable policy syntax.
+The toolbar icon opens the settings application. Search finds settings by human name, description and stable ID, including Advanced settings while Basic remains selected. A fragment such as `#policy.bands`, `#display.brandIcon` or `#policy.advancedYaml` on the extension's options page reveals and focuses that control. These are not product-site URLs.
 
-![The admitted settings application with guided policy bands in the light theme.](../../../apps/website/src/assets/extension/settings-policy-bands-light.png)
+![Source-owned light-theme settings capture showing the searchable bands and existing-label mappings editor](../../../apps/website/src/assets/extension/settings-policy-bands-light.png)
 
-These images show the repository-owned settings UI, not a live GitHub result or proof of a published Store listing.
+This retained settings capture illustrates the source UI, not a live PR or evidence of Store publication. The current compiler and saved values govern the actual result.
 
-## Export, reset and repository overrides
+Guided settings expose metric selection, paths and bands without requiring YAML. Band thresholds are ordered exclusive upper bounds; the last band is unbounded. Names, colors and optional existing-label mappings are distinct choices. Changing the classification metric does not redefine Changed.
 
-Use the settings application's import/export route to move explicit preferences. A full settings export can contain private repository names and policy text; inspect it before sharing. Import is subject to settings and policy validation, not an unrestricted merge of arbitrary JSON.
+Advanced YAML uses the full policy dialect. A nonempty Advanced document replaces the guided personal policy while preserving those guided preferences for later reuse. It does not grant effect authority. Searching, switching Basic/Advanced and changing theme retain unsaved editor content. Saving validates through the real schema/compiler; an invalid edit cannot replace the saved policy. Use a per-setting reset for a small correction rather than resetting everything.
 
-Per-setting reset restores that setting. Clearing overrides, caches or all extension data is a separate destructive operation with confirmation. Export configuration you intend to keep before a whole-data reset. Removing a local override does not modify `.diffdevil.yml` in the repository.
+## Export, import and manage local data
 
-When a native writable label picker is available, a deliberate handoff can open it and search for the mapped existing label. You perform the native selection. The extension does not select or create labels, reconcile a group, issue a hidden POST, or claim a write succeeded because the picker opened. Keep actual automation with its [chosen effect owner](shared-workflows/labels-comments-and-definitions.md).
+A full settings export contains configuration, including potentially private repository names and policy text. Import only a trusted configuration, inspect its validation result and provenance, and verify the intended saved settings. Do not confuse it with a redacted support snapshot. Repository overrides are explicit per-repository choices, not an automatically discovered organization policy.
 
-## Data, caches and diagnostics
+Small display and guided-policy preferences use Chrome synchronized storage. Advanced YAML and repository overrides use local extension storage. The bounded least-recently-used cache holds normalized reports, paths, revisions, trusted policy text and exact-base absence results. It is rebuildable, but it is not independently encrypted and may disclose private repository details to someone with profile access.
 
-The extension reads the signed-in GitHub page when available and can fall back to anonymous public API reads that omit credentials. It does not request a PAT, collect cookies, run a localhost daemon, enumerate browser history or upload source to a Works backend. Analysis happens locally. GitHub still receives requests to its own resources.
+Use the data controls to clear reports, clear repository-policy caches, clear overrides or reset all extension data. Destructive operations require confirmation. Clearing a cache does not change repository truth; an already rendered page may retain its view until refreshed. If storage fails, retain the diagnostic and retry the intended settings operation after repairing storage, rather than assuming a reset succeeded.
 
-Raw diffs and template contents are held in memory, not retained as the analysis cache. The bounded rebuildable LRU cache holds normalized reports, file paths, revisions, trusted repository-policy text and exact-base missing-file observations. Those can expose private repository information to someone with access to the browser profile; they are not independently encrypted.
+## Permissions and limitations
 
-Small display and guided-policy preferences use Chrome synchronized storage. Browser synchronization may send them to the browser provider. Large Advanced YAML and repository overrides stay in local extension storage. Local analysis therefore does not mean every preference stays on one device.
+The manifest requests storage, the `github.com` content-script scope needed for PR navigation, and `api.github.com` for anonymous public fallback. Signed-in page acquisition and anonymous API fallback are different access routes. A private PR unavailable through the page cannot be made readable by the anonymous fallback.
 
-Diagnostic history contains codes and timestamps rather than raw patches or policy expressions. A support snapshot removes repository identities, paths, policy and source. Use that redacted route for a public report, not an unexamined settings export. The [extension privacy notice](../../../apps/browser-extension/privacy.md) owns the full data contract.
+Raw diffs and referenced template content are processed in memory rather than persisted as an analysis cache. There is no PAT prompt, cookie permission, browser-history API, all-sites permission, telemetry or diffdevil source-upload service. Browser sync is still a possible data transfer. Read the [extension privacy notice](../../../apps/browser-extension/privacy.md) before using private repositories or sharing configuration.
 
-## Recover a missing or incorrect result
+GitHub Enterprise hosts, Firefox and incognito are not supported by this build. GitHub DOM changes, provider throttling, missing patches, incomplete file acquisition and head movement can limit the result. The live-DOM/Store-assets repair in [PR #45](https://github.com/Wolfsblvt/diffdevil/pull/45) is a launch-target candidate, not landed behavior or a published extension.
 
-First check the installation and whether the route is supported. Then separate a missing mount from acquisition failure, inaccessible policy, stale revisions or bounded evidence. Open settings and diagnostics for the relevant code; retry a transient acquisition, repair invalid configuration, or deliberately select Personal only when a personal interpretation is the job. Clearing caches is not a repair for missing permission or an invalid policy.
+## Recover and remove
 
-GitHub changes its DOM independently. Additional tokenized-header mounting and durable Store-asset work is an open [launch-target candidate in PR #45](https://github.com/Wolfsblvt/diffdevil/pull/45), not part of the admitted implementation described here. Missing provider anchors in that boundary can prevent visible augmentation. Do not interpret an open candidate or a prepared asset generator as a released fix or a submitted listing.
+**Nothing appears:** confirm the supported route, enabled setting, browser permission and post-install tab reload. **Only file results are absent:** check whether the comparison is narrowed, then inspect acquisition. **Facts without bands:** inspect policy origin and its diagnostic. **Stale result:** reacquire and compare the new revisions. **Rate-limited fallback:** retain the failure and retry later; thresholds cannot repair access.
 
-The extension currently presents local results. It has no authenticated delivery of managed-App reports; its App matching preferences do not establish a matching remote check or trigger hosted analysis. This does not require the App to use ordinary local analysis.
+For a useful support report, use the redacted diagnostic snapshot and include the affected route family and installed version without private source or credentials. A full settings export is not automatically safe to attach publicly.
 
-To stop using it, disable augmentation or remove the extension through Chrome. Clear reports, repository-policy caches or all settings first when that is your intended data operation. An open page can retain already rendered facts until reloaded or closed. Uninstallation removes extension storage according to the browser's behavior; it does not delete GitHub data or revoke a separately installed App.
+To stop augmentation, disable it in settings or disable the extension. To remove it, use Chrome's extension removal control. Extension storage follows the browser's uninstall behavior; exported files remain wherever you saved them. This does not remove repository labels or uninstall a GitHub App. Return to [See changed lines on GitHub](../start/see-changed-lines-on-github.md) to verify a repaired first result.

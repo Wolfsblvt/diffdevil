@@ -1,98 +1,107 @@
 # CLI
 
-Use the CLI to inspect a local change, ask a precise question in a script, or deliberately operate GitHub policy. You select the input and execution environment; diffdevil supplies the same [measurement and evidence model](../understand/README.md) used by the other surfaces.
+Use the CLI when you want to inspect a change, ask a precise question, put a result in a script, or deliberately operate GitHub metadata. It works in repositories of any programming language. Local analysis needs neither a diffdevil account nor a GitHub token.
 
 ## Install and identify the executable
 
-The package requires Node.js 22 or newer. Git is needed for Git-backed comparisons, not for a supplied patch or saved report. From a JavaScript project, install a selected version as a development dependency:
+Use Node.js 22 or newer. In a project that keeps development tools in npm, run:
 
 ```sh
-npm install --save-dev @wolfsblvt/diffdevil@1.0.0
-npx --no-install diffdevil --version
-npx --no-install diffdevil --help
+npm i -D @wolfsblvt/diffdevil
+npm exec -- diffdevil --version
+npm exec -- diffdevil --help
 ```
 
-For a repository in another ecosystem, run it without creating a package manifest:
+The version command reports the executable actually selected. Commit your project's dependency and lockfile changes through its normal process; the guide does not prescribe a fixed package version. To update that installation, use `npm update @wolfsblvt/diffdevil`, then repeat the version/help check and your affected commands.
+
+For a one-off run without adding a dependency to a non-JavaScript project:
 
 ```sh
-npm exec --yes --package=@wolfsblvt/diffdevil@1.0.0 -- diffdevil --version
+npm exec --yes --package=@wolfsblvt/diffdevil -- diffdevil --version
 ```
 
-The examples below use `diffdevil` for the executable you selected. Use that npm prefix, or put your project's `node_modules/.bin` on this shell's PATH as shown in [Use results in scripts](../start/use-results-in-scripts.md). Do not assume a globally installed command and the project's package are the same version.
+Registry access is needed to obtain an uncached package, not to analyze an already available local input. An existing global installation can be used directly as `diffdevil`. The remaining examples use `npm exec -- diffdevil` for the project-local route; do not accidentally select a different global executable midway through a workflow.
 
-The [release account](../../releases/v1.0.0.md) identifies the stable cut. Current source can contain later presentation or browser work without changing that published artifact. Use the selected executable's help and release notes when a newer source example differs from an older installation. Install-free runtime archives, where published, are described by the [Skill's runtime acquisition guide](../../../skills/diffdevil/references/restricted-harnesses.md); a source ZIP alone is not an executable bundle.
+This manual describes the current source interface. The installed release's `--help` governs the options you can run. The enhanced human presenter, `--detail` and `--color` require the release carrying them; an older published package may have the same measurement semantics and a different presentation. Source-checkout use is documented in [Development](../../DEVELOPMENT.md): build the checkout and substitute its absolute `dist/lib/cli/main.js` entry after `node`. Do not run a relative source-checkout path from a different repository.
 
-## Select the comparison you actually mean
+## Select the comparison before reading its size
 
-With no source flags, analysis compares HEAD with the final tracked worktree. Staged and unstaged changes are counted together once. Untracked files are not included.
+The [local first-success guide](../start/analyze-local-changes.md) runs the supplied four-file patch. For ordinary work, choose one source family:
+
+| Invocation after `npm exec -- diffdevil` | What it measures |
+| --- | --- |
+| `analyze` | `HEAD` against final tracked worktree content, staged and unstaged together once |
+| `analyze --staged` | `HEAD` against the index |
+| `analyze --base origin/main --head HEAD` | Merge base to the selected head |
+| `analyze --base origin/main --head HEAD --comparison direct` | The two revisions directly |
+| `analyze --diff-file change.diff` | A supplied unified diff |
+| `analyze --stdin` | A unified diff from standard input |
+| `analyze --report report.json` | A validated saved report, not a live refresh |
+| `analyze --repo OWNER/REPO --pr NUMBER` | A current GitHub PR through the provider adapter |
+
+`OWNER/REPO` and `NUMBER` are placeholders for the actual target. Both local revisions must already exist; analysis does not fetch, check out, stage or execute repository code. Untracked files are outside the default comparison. A non-Git directory without an explicit input is a source error, not an empty diff. Standard input can carry a diff or an expression, not both at once.
+
+GitHub acquisition can need credentials for private access or provider capacity. Supply them through the host's `GH_TOKEN` or `GITHUB_TOKEN` environment, not a command argument, policy parameter or pasted transcript. A token grants no implicit mutation. [Source identity, trust, and mutation](../understand/trust-and-mutation.md) explains how local and provider comparisons differ.
+
+## Choose configuration deliberately
+
+Ordinary local commands discover `.diffdevil.yml` at the Git root, or the working directory outside a Git repository. `--config PATH` selects a YAML or JSON file. `--no-config` disables discovery, not presets; add `--preset none` to opt out of the default `size@1` policy.
+
+Validate before depending on a new policy:
 
 ```sh
-diffdevil analyze --format human
-diffdevil analyze --staged --format agent
-diffdevil analyze --base origin/main --head HEAD --format human
-diffdevil analyze --base origin/main --head HEAD --comparison direct --format json
+npm exec -- diffdevil validate --config .diffdevil.yml --format json
+npm exec -- diffdevil explain --policy --config .diffdevil.yml --format yaml
 ```
 
-The branch comparison normally starts at the merge base. `--comparison direct` compares the two named endpoints instead. Both refs must already exist locally: this command does not fetch a missing branch for you. `--cwd PATH` selects a different local repository.
+The second command exports an expanded ordinary policy, not a proprietary CLI dialect. Template paths resolve beside the selected config. Repeated `--param NAME=VALUE` binds declared scalar types; `--params-file PATH` supplies a JSON object. Duplicate bindings are errors. Pass data as parameters rather than inserting it into expression text.
 
-For a controlled first result, follow [Analyze local changes](../start/analyze-local-changes.md), whose complete package-supplied patch produces 10 Changed and 16 raw churn. Other input families are a UTF-8 `--diff-file PATH`, `--stdin`, a canonical `--report PATH`, or `--repo OWNER/REPO --pr NUMBER` for GitHub acquisition. Select one family; do not combine a patch with a PR selector and assume one silently wins. Stdin also cannot simultaneously carry both a patch and an expression.
+Path overrides append unless their corresponding `--exclude-mode`, `--include-only-mode` or `--force-include-mode` selects replacement. A discovered but invalid file is never silently ignored. Continue with [Configure policy](../policy/configure.md) for layering and [Paths and scopes](../policy/paths-and-scopes.md) for selection semantics.
 
-Read the report's source and revision fields before comparing runs. A pasted diff need not establish the same complete source identity as a Git or GitHub acquisition.
+## Analyze, query and check the same report
 
-## Select or bypass configuration
-
-Ordinary local commands discover `.diffdevil.yml` at the Git root, or in the working directory outside Git. Select another YAML or JSON file with `--config PATH`. An unreadable or invalid selected file is an error, not permission to fall back silently.
+These complete commands use the packaged teaching input and do not write to GitHub:
 
 ```sh
-diffdevil validate --config .diffdevil.yml --format json
-diffdevil explain --policy --config .diffdevil.yml --format yaml
-diffdevil analyze --no-config --preset size@1 --format human
-diffdevil analyze --no-config --preset none --format json
+npm exec -- diffdevil analyze --diff-file node_modules/@wolfsblvt/diffdevil/docs/examples/diffs/review.diff --no-config --preset size@1 --format json --output report.json
+npm exec -- diffdevil query --report report.json --metric changed --format value
+npm exec -- diffdevil check --report report.json --metric changed --lt 100
+npm exec -- diffdevil query --report report.json --files --select path --format nul --output paths.nul
 ```
 
-`--no-config` bypasses discovery; it does not disable the default preset. `--preset none` is the separate opt-out. No hidden lockfile or generated-file exclusion is added by the default size policy.
+Expect Changed **10**, raw churn **16**, four included files and a true below-100 check. `check` is quiet by default; its exit is the decision. The last command writes a determined path collection with NUL separators. An arbitrary Git path can contain spaces or newlines, so do not split it as shell words.
 
-Use `--param NAME=VALUE` for declared typed parameters, or `--params-file PATH` for a JSON object. Duplicate or unknown parameters are rejected. An expression is data for detail, never a shell command or JavaScript program. [Configure policy](../policy/configure.md) owns layering and complete declarations.
-
-## Analyze, query and check
-
-Analysis gives an overview. Query selects data. Check asks a boolean question:
+The same captured report supports the weighted formula and file selection without changing the comparison:
 
 ```sh
-diffdevil analyze --format agent
-diffdevil query --path 'src/**' --metric changed --format json
-diffdevil query --expr 'totals.lines.deleted + totals.lines.modified' --format json
-diffdevil check --metric changed --lt 100
-diffdevil query --files --path 'src/**' --select path --format nul --output paths.bin
+npm exec -- diffdevil query --report report.json --expr 'totals.lines.deleted + 2 * totals.lines.modified' --format value
+npm exec -- diffdevil query --report report.json --files --metric changed --gt 2 --select path --format lines
 ```
 
-Quote globs and expressions so your shell does not expand them first. For difficult quoting, use `--expr-file PATH`; a named policy query uses `--name NAME`. Shortcuts and expressions are alternative ways of asking the same engine, not competing languages.
+The formula returns **12**, deliberately counting modified lines twice. It does not rename the standard Changed metric. The path query returns `package-lock.json` and `src/payments.ts`; use NUL or JSON for arbitrary names.
 
-Choose `human` for reading, `agent` for a compact text projection, and `json` for reusable structured results. Human `--detail full` expands aggregate identity, categories and scopes; it is not a dump of every file. Human color and detail controls do not apply to machine formats. Exact `value` and determined `lines`/`nul` output refuse uncertainty they cannot represent. Use NUL-delimited files for arbitrary Git paths; PowerShell's native line pipeline is not a byte-preserving path transport.
+For deeper questions use an ordinary expression, for example `query --expr 'totals.lines.deleted + totals.lines.modified' --format json`. An expression file avoids nested shell quoting. `--name` selects a configured saved query, while `--metric metrics.NAME` selects a named metric. Expressions and shortcut selectors are alternatives, not two competing instructions in one invocation.
 
-The [complete Bash and PowerShell consumers](../start/use-results-in-scripts.md) demonstrate exits 0, 1, 2 and 3, including a false condition, corrupt input, and an unresolved scalar. Do not scrape colored human output or execute `env` output with `eval`.
+## Choose output for its consumer
 
-## Save facts, then decide about effects
+Human output is for reading. In the enhanced presenter, `--detail full` expands aggregate evidence, policy and identities; it does not dump every file. `--color never` is useful for plain human transcripts. Agent output is a compact record projection for a coding agent, not a second numeric model and not a replayable report.
 
-```sh
-diffdevil analyze --no-config --preset size@1 --format json --output report.json
-diffdevil query --report report.json --metric changed --format json
-```
+Use canonical report JSON to retain all file facts, evidence and identities. Query JSON is a different envelope; plan JSON is different again. Strict `value`, `lines` and `nul` formats refuse what they cannot represent faithfully. Unknown data can be a successful JSON result but cannot become an exact scalar by changing the output flag.
 
-These commands keep repeated questions on one comparison. A saved-report query preserves captured policy results unless you explicitly select re-evaluation. Saving JSON does not freeze the worktree or provider. Reports can contain private filenames, repository identities and policy material; choose storage and sharing accordingly.
+Machine output goes to stdout and diagnostics to stderr. `--output PATH` validates before replacing the destination and leaves stdout empty. A failed run does not make an older file at that path current. [Use results in scripts](../start/use-results-in-scripts.md) supplies complete Bash and PowerShell consumers preserving exits 0, 1, 2 and 3.
 
-[Reports, plans, and apply](shared-workflows/reports-plans-and-apply.md) carries the complete capture, planning, trust and application journey. Local `plan` with explicit target fields prepares desired effects without contacting that target. Only an explicit provider operation performs writes.
+## Reuse reports, then cross the write boundary explicitly
 
-GitHub reads and effects use the selected provider endpoint and credentials such as `GH_TOKEN` or `GITHUB_TOKEN`. Keep tokens out of command arguments, policy, reports and source control. Provider operations are not offline, and possessing a token does not replace authority to use it.
+A report query bypasses local discovery and uses captured compatible results. Explicit configuration or preset selection requests reevaluation and new policy metadata. Saving a report freezes an observation, not the external PR.
 
-Apply does not use ordinary implicit workspace configuration discovery. Its default policy source is the current trusted PR base; bundled defaults apply when no custom configuration is selected. CLI workspace trust is an explicit operator choice. Actions deliberately have a different, stricter write-source contract. Do not copy a local preview command into privileged automation without resolving that distinction.
+`plan` evaluates desired effects without sending requests. `apply` performs selected effects and returns request/readback observations. Its policy rules differ from local discovery: an explicit config normally comes from the current PR base, and no config selects the built-in policy. A saved plan must match the newly derived desired plan. Read the complete [report-to-apply workflow](shared-workflows/reports-plans-and-apply.md) before using `apply`.
 
-## Definitions, updates and failure return
+`labels verify` reads repository-wide definitions; `labels apply` reconciles only selected definitions. They are not PR label assignment. The [effect ownership guide](shared-workflows/labels-comments-and-definitions.md) explains ensure, verify, sync and comment lifecycles.
 
-Label definitions have their own commands: `labels verify` reads and reports drift; `labels apply` performs the selected reconciliation. They do not mean “attach this label to a PR.” [Labels, comments, and definitions](shared-workflows/labels-comments-and-definitions.md) explains verify, ensure, sync and ownership.
+## Recover the failing stage
 
-Update a project dependency through its normal reviewed package/lock change, then check the actual executable version again. Re-run the consuming script or policy example, not only `--version`. Updating the Skill alone does not update the executable.
+An invalid input, missing revision, unreadable config, unsupported option or provider failure exits **2** with a diagnostic. Correct that cause; it is not unknown measurement evidence. A valid false check or known definition drift exits **1**. A decision or strict output that evidence cannot establish exits **3**. Successful operations exit **0**, including JSON carrying uncertainty and plans containing holds.
 
-A missing ref, unavailable input, invalid policy or provider failure returns exit 2 with diagnostics on stderr. A check's false result is exit 1. An unresolved decision or strict output refusal is exit 3, not a fabricated zero. A plan can validly contain held rules; `--require-resolved` emits that plan but returns 3. An incomplete application retains its operation journal and exits 2. Read back possibly completed effects before retrying them.
+For an older executable, inspect its help and update through the installation route you selected rather than removing evidence checks from a script. For a stale report or plan, reacquire the intended comparison and re-evaluate. After an ambiguous or partial write, inspect the effects journal and actual provider state before retrying. Do not assume rollback or repeat a possibly completed comment creation.
 
-Continue to the [CLI reference](../reference/cli.md) for exact combinations and formats, or [Source identity, trust, and mutation](../understand/trust-and-mutation.md) when a saved result is being promoted into a provider action.
+Use [CLI commands and output formats](../reference/cli.md) for exact enumeration, [Evidence and uncertainty](../understand/evidence-and-uncertainty.md) for interpretation, and [Troubleshooting](../help/troubleshooting.md) for the next useful repair.

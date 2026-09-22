@@ -1,71 +1,78 @@
 # With a coding agent
 
-The diffdevil Agent Skill teaches an agent when measured changes help, how to choose a source and output, and how to use policy without inventing certainty. It complements reading code. It does not turn line counts into a review, install a runtime by being read, or grant permission to write to GitHub.
+Give an agent the diffdevil Skill when measured changes would help its ordinary work: review, PR preparation, change summaries, local checks or policy editing. The Skill teaches the existing tool, its evidence boundaries and deeper references. It does not supply a second counting engine, replace reading code or grant permission to mutate a repository.
 
-## Install the complete Skill
+## Install the complete Skill, not a pasted introduction
 
-Use the [canonical installation procedure](../../../skills/diffdevil/references/install-and-update.md) and your harness's actual persistent Skill route. Personal scope is the default for an unqualified installation request unless your instructions select another scope. Opening a repository does not automatically select repository-wide installation.
+Use the maintained [Skill setup instructions](https://diffdevil.dev/setup/skill.md) with the actual harness's native installer or documented persistent Skill location. The [canonical installation procedure](../../../skills/diffdevil/references/install-and-update.md) owns the source selection, folder contents, update and recovery mechanics; this human guide does not replace it.
 
-The canonical artifact is the whole `skills/diffdevil/` tree, including `SKILL.md`, its references and notices. Copying only the core leaves its deeper instructions broken. The [setup handoff](../../setup/skill.md) uses this same installation procedure; it is not another independently maintained installer.
+A useful setup request is:
 
-For a released carrier, read the stable release manifest, select `assets.skill`, verify the archive SHA-256 before extraction, and compare the Skill's `metadata.version` with `skills.diffdevil.version`. Verify the complete tree and preserve its bytes. Do not combine a core from one revision with references from another.
+> Follow https://diffdevil.dev/setup/skill.md to install the complete diffdevil Skill in my normal persistent Skill scope and verify its discovery and executable access.
 
-A missing manifest or unpublished archive is an acquisition fact. For an explicitly selected development installation, resolve `main` once to a full commit and copy the complete tree at that coordinate, reporting development standing. Do not invent a stable download URL. An already installed npm package can also supply its own complete Skill tree; its Skill version is read from the Skill, not inferred from the npm version.
+The default is personal scope unless your instructions select repository scope. An open repository is not itself that selection. Inspect an existing installation first so a second copy does not silently win host precedence. Managed plugins and custom copies need their actual update route rather than another competing folder.
 
-After copying, verify that the host discovers the installed Skill and can load both its core and a reference. Files present, host discovery and active loaded content are distinct checks. A managed plugin or customized copy has its own ownership; inspect it before overwriting it or adding a competing active copy. Harness-specific paths and reload behavior belong to the linked current installation source, not a second table here that can drift.
+Obtain the complete `skills/diffdevil/` tree, including its references and notice. For a stable release, use the manifest and archive it actually names, verify the archive SHA-256, check the Skill version and tree digest, and preserve the original UTF-8 bytes. Do not copy only `SKILL.md`, rewrite it for the harness or infer an archive URL from a package version.
 
-## Establish the executable separately
+A missing stable carrier is a publication boundary. For an explicitly selected development installation, resolve repository `main` once to an immutable full commit and take the complete folder from that source. Report development standing rather than calling mutable source a stable release. A local package can also supply its canonical Skill folder; inspect that folder's own metadata.
 
-In the environment where the agent will run commands, verify:
+## Prove persistent discovery separately from reading
+
+After copying or installing, use the host's Skill listing/discovery and load both the installed core and one local reference. Report the actual scope/location, version and any required reload. Files copied, Skill discovered, updated content loaded and executable available are four different observations.
+
+Reading an online `SKILL.md` in a conversation is useful instructions, **not a persistent installation**. A folder in a disposable execution sandbox is not automatically the user's persistent harness directory. When the host exposes no persistent route, retain the complete folder and state that limit rather than claiming installation.
+
+The canonical procedure maintains host-specific location/reload suggestions. Use its current source and the actual harness instead of reproducing a second host-location table here.
+
+## Establish the executable
+
+Reuse the installed CLI and check it:
 
 ```sh
-diffdevil --version
-diffdevil --help
+npm exec -- diffdevil --version
+npm exec -- diffdevil --help
 ```
 
-Reuse the project's selected executable. When acquisition is part of the task, the [CLI guide](cli.md) supplies npm and non-JavaScript-project routes. A Skill directory need not include Node.js or the executable; an installed CLI need not establish persistent Skill discovery.
+For a one-off route without adding a dependency:
 
-An agent can also use the [TypeScript library](typescript-library.md) when its host supplies that route. That is library execution, not proof that a CLI launcher, workflow or remote provider operation was exercised.
+```sh
+npm exec --yes --package=@wolfsblvt/diffdevil -- diffdevil --version
+```
+
+Use the selected prefix consistently for subsequent commands. The [CLI guide](cli.md) covers project installation and updates. Node.js is needed to execute the CLI, Git for local Git sources, and network/credentials only for the selected acquisition or effects. Installing Markdown does not install Node, update npm or authorize provider writes.
 
 ## Use it in ordinary work
 
-The Skill is useful during PR preparation, change summaries, policy work and code review, even when the user did not explicitly name diffdevil. Ask the tool for facts that improve the actual task rather than adding a ceremonial size report to every response.
+Ask the agent to select the actual comparison before measuring. A worktree question, a staged change, a merge-base comparison, a saved report and a current GitHub PR are not synonyms. For example:
 
-For example, after selecting the repository and comparison:
+> Compare my branch with origin/main, inspect the changed files and summarize what needs review. Use diffdevil for measurements, keep incomplete evidence visible, and do not apply GitHub metadata changes.
 
-```sh
-diffdevil analyze --base origin/main --head HEAD --format agent
-diffdevil query --path 'src/**' --metric changed --format json
-diffdevil query --files --path 'src/**' --select path --format nul --output paths.bin
-diffdevil check --metric changed --lt 100
-```
+A suitable local analysis is `diffdevil analyze --base origin/main --head HEAD --format agent`, using the established executable route and existing refs. Capture canonical JSON when several queries should share one observation. The Skill is useful proactively; the user need not say “run diffdevil” whenever measurements help.
 
-These are independent examples. The first uses a branch comparison; the later commands use the ordinary tracked-worktree source. Keep the same explicit source flags, or capture and reuse one report, when several questions must concern the same comparison. Do not quietly mix a branch report with a worktree threshold.
+The result complements code inspection. A small count is not proof of correctness, and a large count is not a risk verdict. Preserve [evidence and uncertainty](../understand/evidence-and-uncertainty.md) rather than hand-counting unavailable patches to produce a tidier answer.
 
-Use the resulting paths to focus reading, measurements to explain what changed, and policy decisions for their configured purpose. A large change is not automatically risky; a small one is not automatically correct. Preserve incomplete file membership rather than claiming the visible files are the complete review scope.
+## Choose output and effect authority
 
-## Choose output for its consumer
+Use agent format for compact reading, full report JSON for reusable facts, query JSON for structured selections and strict scalar/path formats only when the result is representable. Agent text is not a report reader's input. The [complete shell consumers](../start/use-results-in-scripts.md) show why false, failure and unresolved exits must remain separate.
 
-`agent` is a compact readable report. `json` is the canonical structured analysis artifact. Query JSON is a different envelope, while `value` and NUL path output have strict representation requirements. Use [the complete script consumers](../start/use-results-in-scripts.md) rather than treating every nonzero exit as the same failure.
+An agent can validate configuration and inspect a desired plan without changing a repository. `apply` and `labels apply` cross the effect boundary under your existing one-off or standing grant. The Skill does not require ceremonial reconfirmation for already-authorized writes, but neither the Skill nor a token creates that authority.
 
-A successful JSON result can carry unknown evidence. Exit 1 can mean a valid false check; exit 2 is invalid or failed; exit 3 means unresolved or unrepresentable strict output. Keep that distinction in the agent's explanation and subsequent decisions. The installed [CLI and evidence reference](../../../skills/diffdevil/references/cli-and-evidence.md) gives operational depth without requiring the agent to reconstruct it from a screenshot.
+Before reporting an effect, distinguish the plan, attempted operations and observed readback. Keep comment ownership/occasion identity on retries. [Reports, plans, and apply](shared-workflows/reports-plans-and-apply.md) and [Labels, comments, and definitions](shared-workflows/labels-comments-and-definitions.md) are the shared operating references, not agent-specific exceptions.
 
-## Effects stay under the existing grant
+Reports and tool output can enter the agent harness or provider context. Local diffdevil processing does not establish that the surrounding agent platform keeps those results on your machine. Use its actual access, retention and sharing policy, and redact sensitive artifacts before public posting.
 
-The Skill supports planning and actual application. It is not intrinsically read-only, but installation itself authorizes no provider effect. Under an existing one-off or standing grant, the agent can use the normal apply route without asking again for each already-authorized operation.
+## Update without breaking a working installation
 
-Before application, identify the target, trusted policy source, current revisions, credential scope and selected effect owner. Use [Reports, plans, and apply](shared-workflows/reports-plans-and-apply.md) for the complete workflow. A copied report or confident chat summary is not a trust receipt. An ambiguous write requires readback, not another blind comment creation.
+The Skill checks its release manifest on first relevant use. Its version is independent of the package and need not match the CLI. Read versions and digests from the source metadata; do not stamp a version into this guide.
 
-The agent's own access and data handling remain relevant. Reports, tool output and attachments may enter the harness or provider context; local diffdevil analysis does not imply that an agent platform never transmits the results. Share the smallest useful evidence and redact private source, credentials and configuration before public posting.
+Stage a complete new folder, compare local modifications with known source, replace only the selected installation and repeat discovery/load checks. Preserve customized material and unknown lineage rather than calling it official byte-identical content. A failed download leaves the last complete installation usable; do not activate a mixture of old core and new references.
 
-## Versions, updates and offline use
+Updating the Skill alone does not add commands to an older executable. Inspect the actual `--help` and use the normal package update route when a newer capability is required. Conversely, an unavailable freshness check does not invalidate a local analysis that the installed tool can perform.
 
-The Skill checks the stable release metadata on first relevant use in a session. Its SemVer is independent of the CLI package version. Follow your existing update instructions, stage a complete replacement and preserve modified copies before switching. A failed update must leave the previous complete installation usable, not half updated.
+## Offline and restricted harnesses
 
-Offline, use the installed Skill and executable with local files or saved reports. Unknown update freshness is not a failed analysis. Conversely, a connector that can read GitHub does not prove that the execution shell can reach npm or the provider API.
+Local files and saved reports remain useful offline. A blocked registry and an absent runtime are different problems. The canonical [restricted-harness reference](../../../skills/diffdevil/references/restricted-harnesses.md) explains the selected bundled and standalone carriers, their manifests and `node scripts/run.mjs` launcher. A carrier includes the needed tool files; it does not magically include Node or persistent host storage.
 
-The [restricted-harness reference](../../../skills/diffdevil/references/restricted-harnesses.md) distinguishes a complete supplied npm installation, an install-free runtime archive and a source-only ZIP. Published bundled carriers can supply both Skill and runtime, but still require their digest checks and an actual Node execution route. Loading files in this conversation or a disposable sandbox is not necessarily a persistent personal installation.
+A browser that can read an artifact is not proof that a shell can download it. Use actually mounted files and the exposed execution route. Do not pretend that a transient run installed the Skill, or that an offline check established release freshness.
 
-Return the exact missing piece when setup fails: incomplete tree, digest/version mismatch, undiscoverable Skill, missing runtime, unavailable registry or provider access, or unknown offline freshness. Do not replace that with a universal claim that the tool cannot work in the host.
-
-For broader repository setup, use the maintained [CLI](../../setup/cli.md), [Actions](../../setup/actions.md) or [combined setup](../../setup/everything.md) handoff. Those are purposeful tasks with their own selected effects, not consequences of installing tool knowledge.
+For broader adoption, the maintained [CLI setup](https://diffdevil.dev/setup/cli.md), [Actions setup](https://diffdevil.dev/setup/actions.md) and [combined setup](https://diffdevil.dev/setup/everything.md) keep their own task-specific payloads. App setup remains subject to its actual availability and separate authority. No new agent protocol is needed to use the same product.
