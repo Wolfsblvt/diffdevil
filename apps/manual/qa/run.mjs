@@ -9,6 +9,7 @@ import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { manualPages, origins, pageUrl } from '../manifest.mjs';
 import { faqRecords } from '../../website/faq-content.mjs';
+import { qualifyRedirects } from './redirects.mjs';
 const root = resolve('.'), out = join(root,'artifacts/manual/qa');
 mkdirSync(out,{recursive:true});
 const ref = execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim();
@@ -16,7 +17,7 @@ const manifest = JSON.parse(readFileSync('artifacts/manual/manifest.json','utf8'
 assert.equal(manifest.ref,ref); assert.equal(manifest.qa,true);
 const records = JSON.parse(readFileSync('artifacts/public-search/records.json','utf8'));
 const faq = faqRecords(readFileSync('artifacts/website/dist/faq/index.html','utf8'));
-const result = {ref,checks:[],failures:[],unexpectedRequests:[],pageErrors:[],screenshots:[],limitations:['Intercepted static origins, not live deployment.','DOM/keyboard evidence, not an actual screen-reader user journey.']};
+const result = {ref,checks:[],failures:[],unexpectedRequests:[],pageErrors:[],screenshots:[],limitations:['Intercepted canonical origins and loopback HTTP, not live deployment.','DOM/keyboard evidence, not an actual screen-reader user journey.']};
 const mime = {'.html':'text/html','.css':'text/css','.js':'text/javascript','.mjs':'text/javascript','.json':'application/json','.svg':'image/svg+xml','.png':'image/png','.ico':'image/x-icon','.woff2':'font/woff2','.woff':'font/woff','.webp':'image/webp','.wasm':'application/wasm','.pf_fragment':'application/octet-stream','.pf_index':'application/octet-stream','.pf_meta':'application/octet-stream'};
 const browser = await chromium.launch({executablePath:process.env.PLAYWRIGHT_EXECUTABLE_PATH});
 const context = await browser.newContext({viewport:{width:1280,height:900},colorScheme:'dark',reducedMotion:'reduce'});
@@ -68,12 +69,7 @@ try {
   assert.equal(existsSync('artifacts/manual/dist/faq/index.html'),false);
  });
  await check('Root alias and www compatibility are matching 308 rules preserving query and fragment',async()=>{
-  const seen=[]; const observe=response=>{if(response.status()===308)seen.push(response.url());}; page.on('response',observe);
-  await page.goto(origins.docs+'/start/what-is-diffdevil/?keep=1#related-questions');
-  assert.equal(page.url(),origins.docs+'/?keep=1#related-questions');
-  await page.goto(origins.compatibility+'/faq/?keep=2#changed-vs-churn');
-  assert.equal(page.url(),origins.site+'/faq/?keep=2#changed-vs-churn');
-  page.off('response',observe); assert.equal(seen.length,2);
+  result.redirects = await qualifyRedirects(browser,handlers,asset,origins);
  });
  await check('Resolver succeeds only for allow-listed IDs and refuses arbitrary files, URLs and duplicate parameters',async()=>{
   await page.goto(origins.site+'/source/?f=docs%2Fmanual%2Fuse%2Fcli.md#related-questions');

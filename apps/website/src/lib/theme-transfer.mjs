@@ -14,7 +14,10 @@ export function wireThemeTransfer(resolve) {
   const element = event.target instanceof Element ? event.target.closest('a[href]') : null;
   if (!element || element.hasAttribute('download')) return;
   const d = document.documentElement;
-  element.href = resolve(element.href,location.href,d.dataset.themePref,d.dataset.themeNext);
+  const target = resolve(element.href,location.href,d.dataset.themePref,d.dataset.themeNext);
+  // Preserve the authored attribute when there is no handoff. Same-page controls
+  // such as FAQ permalinks deliberately consume their literal #fragment href.
+  if (target !== element.href) element.href = target;
  };
  for (const event of ['pointerdown','focusin','click','auxclick','contextmenu']) document.addEventListener(event,prepare,true);
 }
