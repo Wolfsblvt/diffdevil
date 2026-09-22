@@ -13,7 +13,7 @@ import { skillVersionOf } from './skill-version.mjs';
 /** The canonical Skill home is the repository's skills tree, not a docs copy. */
 export const SKILL_SOURCE = 'skills/diffdevil/SKILL.md';
 export const SETUP_SOURCES = {
-  cli: 'docs/setup/cli.md', actions: 'docs/setup/actions.md', app: 'docs/setup/app.md', everything: 'docs/setup/everything.md',
+  skill: 'docs/setup/skill.md', cli: 'docs/setup/cli.md', actions: 'docs/setup/actions.md', app: 'docs/setup/app.md', everything: 'docs/setup/everything.md',
 } as const;
 export type SetupIntent = keyof typeof SETUP_SOURCES;
 

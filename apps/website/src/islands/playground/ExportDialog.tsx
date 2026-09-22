@@ -24,7 +24,7 @@ export function ExportDialog({ evaluation, acquired, policyText, onClose }: Prop
   const sourceNote = acquired.kind === 'snapshot'
     ? `Source: retained real-PR teaching snapshot of ${acquired.example?.repository}#${acquired.example?.pullRequest} (${acquired.example?.edition})`
     : `Source: acquired public GitHub comparison of ${evaluation.report.source.repository}#${evaluation.report.source.pullRequest} at ${evaluation.report.source.head ?? 'the reported source identity'}`;
-  const cli = exportCli(PACKAGE_VERSION, isPreset, evaluation.plan?.target ?? targetFor(evaluation.report));
+  const cli = exportCli(isPreset, evaluation.plan?.target ?? targetFor(evaluation.report));
   const step = writes
     ? `- uses: Wolfsblvt/diffdevil@v1\n  # writes labels from the policy in the PR base; needs pull-requests: write on pull_request_target`
     : `- uses: Wolfsblvt/diffdevil/actions/analyze@v1\n  id: diff\n  # read-only facts and outputs; needs pull-requests: read`;

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 /** Replay the displayed artifact, not an unrelated worktree or a newly moving PR. */
-export function exportCli(version: string, preset: boolean, target: { readonly repository: string; readonly pullRequest: number }): string {
-  const executable = `npx @wolfsblvt/diffdevil@${version}`;
+export function exportCli(preset: boolean, target: { readonly repository: string; readonly pullRequest: number }): string {
+  const executable = 'npx @wolfsblvt/diffdevil';
   const policy = preset ? '--no-config --preset size@1' : '--config .diffdevil.yml';
   return [
     '# Save report.json from the report.json / plan.json tab.',
