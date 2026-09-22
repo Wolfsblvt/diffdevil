@@ -646,3 +646,15 @@ qualified source only until its publication boundary is separately satisfied.
 **Current consequence.** [`presentation.md`](presentation.md) is the normative interface. The CLI and public library share the report/plan presenters; the website consumes them rather than maintaining display semantics. `--detail` and `--color` are confined to human report/plan presentation. Agent and machine formats never contain ANSI. Material textual changes receive public interface/release documentation without changing the canonical report schema by fiction. Provider results continue to own applied/readback standing.
 
 **Sources.** Wolf and Nyxara's owner co-design in [emergency-meeting #491](https://github.com/Wolfsblvt/emergency-meeting/issues/491#issuecomment-5737100063); [textual branding](branding.md); [versioning and interchange](language/versioning-and-interchange.md); [human and agent presentation](presentation.md).
+
+## D041: Record what the Action ships, not hashes of its inputs
+
+**Decision.** `actions/runtime/MANIFEST.json` records the distribution's target, compiler version and each vendored runtime package with its version, lock integrity, licence and notice paths. It no longer records SHA-256 hashes of source inputs (including whole `package.json` and `package-lock.json`) or of generated files. `npm run check:actions` remains the stale-distribution check: it rebuilds in temporary storage and compares every tracked byte.
+
+**Why.** Whole-file input hashes made every development-only dependency update, such as Astro, wrangler or type packages, fail Verify on a stale manifest although no shipped byte changed. Every Dependabot PR then needed a local rebuild commit, and parallel PRs editing `package.json` conflicted on the manifest. Git already binds the committed distribution to the lockfile in the same tree, and the byte comparison catches every change that alters what runs. Wolf selected this directly: "I never asked for hash recording. … This is not needed, it just makes everything more complicated."
+
+**Rejected.** Keeping exact-lockfile provenance with a local rebuild on every dependency PR; keeping it and letting an automated writer commit the refreshed manifest on dependency PRs, which adds a privileged machine writer for a claim no consumer reads.
+
+**Current consequence.** A development-only dependency update can pass Verify on its own. A change to the shipped closure, compiler output or project version still fails until `npm run build:actions` is run and the generated diff is inspected. The separate release-carrier manifests used for published Skill and standalone archives are unchanged by this decision.
+
+**Sources.** Juno's finding in [emergency-meeting #453](https://github.com/Wolfsblvt/emergency-meeting/issues/453#issuecomment-5770682443); Wolf's decision in [#453](https://github.com/Wolfsblvt/emergency-meeting/issues/453#issuecomment-5782985671); [Action distribution](integration/action-distribution.md).

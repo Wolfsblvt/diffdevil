@@ -127,7 +127,7 @@ process.on('exit',()=>writeFileSync(process.env.FIXTURE_STATE,JSON.stringify({la
   const manifest = JSON.parse(await readFile(join(distribution, 'actions/runtime/MANIFEST.json'), 'utf8'));
   const evidence = { kind: 'diffdevil.action-consumer-verification', verifiedAt: new Date().toISOString(), platform: platform(), arch: arch(),
     runtimeVersions: [...new Set(observations.map(row => row.runtime))], node24Executed: observations.some(row => row.runtime.startsWith('v24.')),
-    distribution: { format: manifest.format, files: Object.keys(manifest.files).length + 1, packages: manifest.dependencies.length },
+    distribution: { format: manifest.format, packages: manifest.dependencies.length },
     outsideCheckout: true, developmentNodeModulesAbsent: true, installCommandsInConsumer: 0, provider: 'in-memory fake HTTP; no live GitHub',
     executions: observations, limitations: ['Not a GitHub-hosted runner', ...(platform() === 'win32' ? [] : ['No native Windows execution']), 'No live permissions/effects', 'No publication'] };
   await writeFile(join(evidenceRoot, 'consumer.json'), JSON.stringify(evidence, null, 2) + '\n');

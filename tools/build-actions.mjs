@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import { cp, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { join, relative, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -9,7 +8,6 @@ import { ACTION_INPUTS, ENTRY_POINTS, NUMERIC_OUTPUTS, REPORT_OUTPUTS, PLAN_OUTP
 // Native Node resolution is the packager. No module transformation, global tool, install or network.
 const root = fileURLToPath(new URL('..', import.meta.url));
 const check = process.argv.includes('--check');
-const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
 async function files(directory) {
   const found = [];
   for (const entry of await readdir(directory, { withFileTypes: true })) {
@@ -78,16 +76,12 @@ try {
   catalog.entryPointOutputs = Object.fromEntries(ENTRY_POINTS.map(entry => [entry, outputNames(entry)]));
   await mkdir(join(temporary, 'src/diffdevil/contracts/detail/v1'), { recursive: true });
   await writeFile(join(temporary, 'src/diffdevil/contracts/detail/v1/action-surface.json'), JSON.stringify(catalog, null, 2) + '\n');
-  const sourceFiles = [...(await files(join(root, 'src/diffdevil'))).filter(path => path.endsWith('.ts') && !relative(join(root, 'src/diffdevil'), path).split(/[\\/]/u).some(part => part === 'tests' || part === 'contracts')), ...await files(join(root, 'src/diffdevil/contracts/schemas')),
-    ...['src/diffdevil/contracts/detail/v1/ast.schema.json', 'src/diffdevil/contracts/detail/v1/values.schema.json', 'src/diffdevil/presets/size-v1.yml', 'tsconfig.json', 'package.json', 'package-lock.json', 'tools/build.mjs', 'tools/schema-build.mjs', 'tools/build-actions.mjs'].map(path => join(root, path))];
-  const sources = {};
-  for (const path of sourceFiles.sort()) sources[relative(root, path).replaceAll('\\', '/')] = sha256(await readFile(path));
-  const shipped = {};
-  for (const path of await files(temporary)) shipped[relative(temporary, path).replaceAll('\\', '/')] = sha256(await readFile(path));
-  await writeFile(join(runtime, 'MANIFEST.json'), JSON.stringify({ kind: 'diffdevil.action-distribution', schemaVersion: '1.0', format: 'native-esm-closure', target: 'node24',
-    compiler: lock.packages['node_modules/typescript'].version, dependencies, sources, files: shipped }, null, 2) + '\n');
+  // Records what ships and its rights, not hashes of inputs: --check rebuilds and compares
+  // every tracked byte, so a development-only lockfile change leaves the distribution current.
+  await writeFile(join(runtime, 'MANIFEST.json'), JSON.stringify({ kind: 'diffdevil.action-distribution', schemaVersion: '2.0', format: 'native-esm-closure', target: 'node24',
+    compiler: lock.packages['node_modules/typescript'].version, dependencies }, null, 2) + '\n');
+  const expected = (await files(temporary)).map(path => relative(temporary, path));
   if (check) {
-    const expected = (await files(temporary)).map(path => relative(temporary, path));
     const actualRuntime = (await files(join(root, 'actions/runtime'))).map(path => relative(root, path));
     if (actualRuntime.some(path => !expected.includes(path))) throw new Error('Unexpected file in tracked Action distribution. Rebuild and inspect.');
     for (const path of expected) {
@@ -97,9 +91,9 @@ try {
     console.log(`Action distribution is current: ${expected.length} generated files; ${dependencies.length} locked runtime packages; node24.`);
   } else {
     await rm(join(root, 'actions/runtime'), { recursive: true, force: true });
-    for (const path of await files(temporary)) {
-      const to = join(root, relative(temporary, path)); await mkdir(resolve(to, '..'), { recursive: true }); await cp(path, to);
+    for (const path of expected) {
+      const to = join(root, path); await mkdir(resolve(to, '..'), { recursive: true }); await cp(join(temporary, path), to);
     }
-    console.log(`Built install-free Action distribution: ${Object.keys(shipped).length + 1} generated files; ${dependencies.length} locked runtime packages; node24.`);
+    console.log(`Built install-free Action distribution: ${expected.length} generated files; ${dependencies.length} locked runtime packages; node24.`);
   }
 } finally { await rm(temporary, { recursive: true, force: true }); }
