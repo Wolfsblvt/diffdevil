@@ -3,7 +3,7 @@
   "schemaVersion": "2.0",
   "format": "native-esm-closure",
   "target": "node24",
-  "compiler": "6.0.3",
+  "compiler": "7.0.2",
   "dependencies": [
     {
       "name": "@chevrotain/cst-dts-gen",

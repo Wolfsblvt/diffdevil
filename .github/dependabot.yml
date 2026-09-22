@@ -20,3 +20,8 @@ updates:
       - dependency-name: "@types/node"
         update-types:
           - version-update:semver-major
+      # Only the website checker uses this alias, until Astro supports TypeScript 7
+      # (tools/website-typecheck.mjs); a major bump would hand it TypeScript 7.
+      - dependency-name: "typescript-6"
+        update-types:
+          - version-update:semver-major

@@ -22,8 +22,9 @@ Ajv, the source-owned Worker CLI, Wrangler, and the website toolchain: Astro,
 Starlight, React, Shiki, CodeMirror, the self-hosted IBM Plex packages, resvg for
 derived assets and Playwright for local browser qualification. `package.json`
 and the lockfile are the version record; this list names the toolchain, not its
-releases. TypeScript stays on 6.x until `astro check` supports the native
-TypeScript 7 compiler. The website closure is the
+releases. diffdevil compiles with TypeScript 7; the `typescript-6` alias serves
+only the website type check (`tools/website-typecheck.mjs`) until `astro check`
+supports the native TypeScript 7 compiler. The website closure is the
 largest part of the development install; none of it enters the npm package or
 the committed Action runtime.
 Wrangler contributes a 106-entry development-tooling closure, including optional
