@@ -49,14 +49,25 @@ export function pageComparison(document: Document, current: Route): BrowserCompa
 }
 export function sameComparison(a: BrowserComparison, b: BrowserComparison): boolean { return a.repository.toLowerCase() === b.repository.toLowerCase() && a.pullRequest === b.pullRequest && a.base === b.base && a.head === b.head; }
 export const FILE_HEADERS = '.file-header, [data-testid="file-header"], [data-test-selector="file-header"], [data-testid="diff-file-header"]';
+export const LIVE_DIFFSTAT = '[data-testid~="diffstat"]';
+export const PROVIDER_CHANGE = `${FILE_HEADERS}, .gh-header-meta, .diffstat, ${LIVE_DIFFSTAT}, [data-testid="pull-request-header"]`;
 export function filePath(header: Element): string | undefined {
   const ancestor = header.closest('[data-path], [data-file-path]');
   return header.getAttribute('data-path') ?? header.getAttribute('data-file-path') ?? ancestor?.getAttribute('data-path') ?? ancestor?.getAttribute('data-file-path')
     ?? header.querySelector('[data-tagsearch-path]')?.getAttribute('data-tagsearch-path') ?? header.querySelector('a[title]')?.getAttribute('title') ?? undefined;
 }
 export function aggregateHost(document: Document): HTMLElement | undefined {
-  const selectors = '[data-testid="pull-request-diff-stats"], [data-testid="pr-diff-stats"], #diffstat, .gh-header-meta .diffstat, #partial-discussion-header .diffstat, .pr-toolbar .diffstat';
-  for (const element of document.querySelectorAll<HTMLElement>(selectors)) if (!element.closest(FILE_HEADERS)) return element;
+  const established = '[data-testid="pull-request-diff-stats"], [data-testid="pr-diff-stats"], #diffstat, .gh-header-meta .diffstat, #partial-discussion-header .diffstat, .pr-toolbar .diffstat';
+  for (const element of document.querySelectorAll<HTMLElement>(established)) if (!element.closest(FILE_HEADERS)) return element;
+  // GitHub's current React summary exposes sibling tokens such as
+  // `addition diffstat` and `neutral diffstat`, rather than one legacy
+  // `.diffstat` container. Mount beside their shared immediate group.
+  for (const element of document.querySelectorAll<HTMLElement>(LIVE_DIFFSTAT)) {
+    if (element.closest(FILE_HEADERS)) continue;
+    const parent = element.parentElement;
+    if (parent && !parent.closest(FILE_HEADERS)) return parent;
+    return element;
+  }
   return document.querySelector<HTMLElement>('#partial-discussion-header .gh-header-meta, .gh-header-meta, [data-testid="pull-request-header"]') ?? undefined;
 }
 export function blobText(document: Document): string | undefined {
