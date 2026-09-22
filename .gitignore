@@ -35,3 +35,10 @@ Thumbs.db
 # Deliberately shipped native-ESM Action closure, not the developer install.
 !actions/runtime/
 !actions/runtime/**
+
+# Explicit-source manual projection and selected public assets
+apps/manual/src/content/docs/
+apps/manual/src/generated/
+apps/manual/public/
+apps/manual/.astro/
+apps/website/src/generated/source-targets.json
