@@ -139,8 +139,12 @@ try {
       assert.ok(html.includes(`id="${decodeURIComponent(target.hash.slice(1))}"`), href);
     }
   }
-  await page.goto(`${origin}/docs/actions/github-actions/`);
-  await expect(page).toHaveURL(pageUrl('github-actions'));
+  const legacyManualUrl = new URL(`${origin}/docs/actions/github-actions/`);
+  const legacyManualResponse = await builtResponse(legacyManualUrl);
+  assert.equal(legacyManualResponse.status, 308);
+  const manualDestination = new URL(legacyManualResponse.headers.get('Location'), legacyManualUrl);
+  assert.equal(manualDestination.href, pageUrl('github-actions'));
+  await page.goto(manualDestination.href);
   const related = page.locator(`a[href="${FAQ_CANONICAL}#trusted-policy"]`).first();
   await expect(related).toBeVisible();
   await related.click();
