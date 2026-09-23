@@ -12,6 +12,8 @@ import {sourceTargets,resolveSource,repositorySources} from './source-resolver.m
 import {pageIsCurrent,isRetired,legacyRedirects} from './migration.mjs';
 import {generatedIsland} from './generated-islands.mjs';
 import {committedIslands} from './generated-content.mjs';
+import {indexable} from './search-index.mjs';
+import {entries as legacyEntries} from '../website/docs-manifest.mjs';
 const root=resolve(import.meta.dirname,'../..'),read=p=>readFileSync(join(root,p),'utf8');
 const base='c708cebe95fd9325f7ef548148ab9d24b31b2f7e';
 const state=JSON.parse(read('apps/manual/authoring-state.json'));
@@ -104,4 +106,14 @@ test('App diagnostics and release metadata stay inside reproducible paired islan
   assert.ok(body.includes('|'));
   assert.throws(()=>committedIslands(read(source).replace(`<!-- manual:generated ${island} -->\n`,`<!-- manual:generated ${island} -->\nBROKEN\n`),{root,source}),/drift/u);
  }
+});
+
+test('dated release notes remain reachable but never become default current search results',()=>{
+ const entry=legacyEntries.find(e=>e.source==='docs/releases/v1.0.0.md');
+ assert.ok(entry);
+ const route=entry.route??`/docs/${entry.slug}/`;
+ assert.equal(indexable(route,'<article data-pagefind-body>Historic release</article>'),false);
+ assert.equal(indexable('/help/releases/','<article data-pagefind-body>Choose a release</article>'),true);
+ const targets=sourceTargets({ref:'1'.repeat(40),state,exists:p=>existsSync(join(root,p))});
+ assert.ok(resolveSource('/source/?f='+encodeURIComponent(entry.source),targets));
 });

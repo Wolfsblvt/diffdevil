@@ -89,7 +89,7 @@ export const groups = [
   ] },
   { label: 'Releases', entries: [
     { source: 'docs/releases/README.md', slug: 'releases', title: 'Releases' },
-    { source: 'docs/releases/v1.0.0.md', slug: 'releases/v1-0-0', title: 'v1.0.0' },
+    { source: 'docs/releases/v1.0.0.md', slug: 'releases/v1-0-0', title: 'v1.0.0', historical: true },
   ] },
   { label: 'Project', entries: [
     { source: 'SECURITY.md', slug: 'security', title: 'Security' },

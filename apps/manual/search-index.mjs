@@ -6,6 +6,9 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import * as pagefind from 'pagefind';
 import { searchKind } from '../website/src/lib/search-kinds.mjs';
 import { origins } from './manifest.mjs';
+import { entries as legacyEntries } from '../website/docs-manifest.mjs';
+// Historical sources keep their finite route/source identity, not a current-search hit.
+const historicalRoutes = new Set(legacyEntries.filter(entry=>entry.historical).map(entry=>entry.route ?? `/docs/${entry.slug}/`));
 const root = fileURLToPath(new URL('../../',import.meta.url));
 function checked(result,label) { if (result.errors?.length) throw new Error(`${label}: ${result.errors.join('; ')}`); return result; }
 function escape(value) { return String(value).replace(/[&<>"']/gu,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[char]); }
@@ -18,7 +21,7 @@ async function htmlFiles(directory) {
  return files.sort();
 }
 export function indexable(path,html) {
- return !['/faq/','/source/','/privacy/','/impressum/','/terms/','/404/'].includes(path) && !path.startsWith('/__qualification/') && !/name=["']robots["'][^>]*content=["'][^"']*noindex/iu.test(html) && /\bdata-pagefind-body\b/u.test(html);
+ return !historicalRoutes.has(path) && !['/faq/','/source/','/privacy/','/impressum/','/terms/','/404/'].includes(path) && !path.startsWith('/__qualification/') && !/name=["']robots["'][^>]*content=["'][^"']*noindex/iu.test(html) && /\bdata-pagefind-body\b/u.test(html);
 }
 export function qualifyFaqRecords(records) {
  const seen = new Set();

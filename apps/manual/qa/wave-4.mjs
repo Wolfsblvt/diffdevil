@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import {expect} from '@playwright/test';
 import {readFileSync} from 'node:fs';
 import {manualPages,pageUrl} from '../manifest.mjs';
+import {entries as legacyEntries} from '../../website/docs-manifest.mjs';
 export async function qualifyManagedHelp({page,origins,check,screenshot}) {
  await check('Seven Managed App and Help articles reflow in both themes without hiding operating prerequisites',async()=>{
   await page.emulateMedia({forcedColors:'none'});
@@ -54,7 +55,11 @@ export async function qualifyManagedHelp({page,origins,check,screenshot}) {
  await check('Joined current search contains all seven chapters and no historical or retired duplicate',async()=>{
   const {records}=JSON.parse(readFileSync('artifacts/public-search/records.json','utf8'));
   for(const selected of manualPages.filter(p=>p.wave===4||p.key==='detail-language'))assert.ok(records.some(r=>r.url===pageUrl(selected.key)),selected.key);
-  assert.equal(records.some(r=>r.url?.includes('/releases/v1.0.0')||r.url?.includes('/docs/policies-and-detail/')),false);
+  for(const entry of legacyEntries.filter(e=>e.historical)){
+   const route=entry.route??`/docs/${entry.slug}/`;
+   assert.equal(records.some(r=>r.url===origins.site+route),false,entry.source);
+  }
+  assert.equal(records.some(r=>r.url?.includes('/docs/policies-and-detail/')),false);
   await page.goto(pageUrl('technical-project-docs'));
   await page.locator('.sl-markdown-content a[href*="f=docs%2Freleases%2Fv1.0.0.md"]').click();
   await expect(page.locator('[data-source-result]')).toHaveAttribute('href',/\/docs\/releases\/v1\.0\.0\.md$/u);
