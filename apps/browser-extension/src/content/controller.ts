@@ -26,10 +26,17 @@ function clear(): void {
 }
 function showStatus(message: string, error = false): void {
   const host = aggregateHost(document);
-  status?.remove(); status = node('span', `ddx-status${error ? ' ddx-error' : ''}`, message); status.setAttribute('role', 'status');
-  if (error) status.append(button('Retry', () => { void refresh(true); }, 'ddx-small'));
+  status ??= node('span', 'ddx-status');
+  status.setAttribute('role', 'status');
+  if (status.dataset.message !== message || status.classList.contains('ddx-error') !== error) {
+    status.dataset.message = message;
+    status.replaceChildren(message);
+    status.classList.toggle('ddx-error', error);
+    if (error) status.append(button('Retry', () => { if (packet && status?.classList.contains('ddx-status-fallback') && !fileError) schedule(); else void refresh(true); }, 'ddx-small'));
+  }
+  status.classList.toggle('ddx-status-fallback', !host);
   if (host) host.insertAdjacentElement(host.matches('[data-testid="progressive-diffs-list"]') ? 'beforebegin' : 'afterend', status);
-  else { status.classList.add('ddx-status-fallback'); document.body.append(status); }
+  else if (!status.isConnected) document.body.append(status);
 }
 function nativeStat(host: HTMLElement): void {
   const selector = `.diffstat, #diffstat, [data-testid$="diff-stats"], ${LIVE_DIFFSTAT}`;

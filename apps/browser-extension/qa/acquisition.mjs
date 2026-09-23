@@ -4,7 +4,7 @@ import { chromium } from 'playwright-core';
 import { build } from 'esbuild';
 import { mkdir, readFile, writeFile, access } from 'node:fs/promises';
 import { resolve, join } from 'node:path';
-import { githubHtml, comparison, diff } from './fixtures.mjs';
+import { githubHtml, githubChangesHtml, comparison, diff } from './fixtures.mjs';
 const out = resolve('artifacts/browser-extension/qa'); await mkdir(out, { recursive: true });
 await build({ entryPoints: ['apps/browser-extension/qa/dom-entry.ts'], outfile: join(out, 'acquisition-test-entry.js'), bundle: true, platform: 'browser', format: 'iife', globalName: 'ExtensionQA', target: 'chrome120', alias: { '@wolfsblvt/diffdevil/browser/text': resolve('dist/lib/browser/text.js'), '@wolfsblvt/diffdevil/browser': resolve('dist/browser/index.js') } });
 let executablePath = process.env.CHROMIUM_EXECUTABLE; if (!executablePath) try { await access('/usr/bin/chromium'); executablePath = '/usr/bin/chromium'; } catch {}
@@ -13,8 +13,8 @@ const receipt = { kind: 'diffdevil.acquisition-qa/1', browser: browser.version()
 async function run(options = {}) {
   const page = await browser.newPage();
   try {
-    await page.setContent(githubHtml({ data: options.empty ? { ...comparison, changedFiles: 0, additions: 0, deletions: 0 } : comparison }));
-    await page.evaluate(({ options, comparison, diff, afterHtml }) => {
+    await page.setContent(options.changes ? githubChangesHtml(options.stale ? { ...comparison, base: 'd'.repeat(40) } : comparison) : githubHtml({ data: options.empty ? { ...comparison, changedFiles: 0, additions: 0, deletions: 0 } : comparison }));
+    await page.evaluate(({ options, comparison, diff, afterHtml, lateHtml }) => {
       window.transport = []; window.analysisInputs = []; window.fetches = [];
       const source = options.empty ? { ...comparison, changedFiles: 0, additions: 0, deletions: 0 } : comparison;
       window.chrome = { runtime: { sendMessage: async message => {
@@ -37,17 +37,18 @@ async function run(options = {}) {
           if (options.missingPolicy && path.endsWith('.diffdevil.yml')) status = 404;
           else body = `<script type="application/json">${JSON.stringify({ payload: { blob: { rawLines: path.endsWith('.diffdevil.yml') ? ['version: 1'] : ['Changed: {{ totals.lines.changed }}'], isTruncated: Boolean(options.truncatedPolicy) } } })}</script>`;
         } else if (path.includes('/commit/')) status = options.inaccessibleBase ? 404 : 200;
-        else body = afterHtml;
+        else if (options.changes && path.endsWith('/pull/42')) body = '<script type="application/json" data-target="react-app.embeddedData">{"payload":{"pullRequestsConversationsRoute":{"pullRequest":{"headSha":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}}}}</script>';
+        else body = options.lateMoved && window.fetches.filter(request => request.path.endsWith('/changes')).length > 1 ? lateHtml : afterHtml;
         const response = new Response(body, { status, headers: { 'content-type': type } }); Object.defineProperty(response, 'url', { value: url }); return response;
       };
       window.controller = new AbortController(); if (options.aborted) window.controller.abort(new Error('Cancelled fixture'));
-    }, { options, comparison, diff, afterHtml: githubHtml({ data: options.moved ? { ...comparison, head: 'c'.repeat(40) } : options.empty ? { ...comparison, changedFiles: 0, additions: 0, deletions: 0 } : comparison }) });
+    }, { options, comparison, diff, afterHtml: options.changes ? githubChangesHtml(options.moved ? { ...comparison, head: 'c'.repeat(40) } : comparison) : githubHtml({ data: options.moved ? { ...comparison, head: 'c'.repeat(40) } : options.empty ? { ...comparison, changedFiles: 0, additions: 0, deletions: 0 } : comparison }), lateHtml: githubChangesHtml({ ...comparison, head: 'c'.repeat(40) }) });
     await page.addScriptTag({ path: join(out, 'acquisition-test-entry.js') });
-    return await page.evaluate(async () => {
+    return await page.evaluate(async changes => {
       let result; let error;
-      try { result = await ExtensionQA.acquire(ExtensionQA.route('https://github.com/example/cinder/pull/42/files'), document, window.controller.signal); } catch (exception) { error = { code: exception.code, message: exception.message }; }
+      try { result = await ExtensionQA.acquire(ExtensionQA.route(`https://github.com/example/cinder/pull/42/${changes ? 'changes' : 'files'}`), document, window.controller.signal); } catch (exception) { error = { code: exception.code, message: exception.message }; }
       return { ok: Boolean(result), error, inputs: window.analysisInputs, requests: window.fetches, messages: window.transport };
-    });
+    }, Boolean(options.changes));
   } finally { await page.close(); }
 }
 async function check(name, action) { try { await action(); receipt.checks.push({ name, passed: true }); } catch (error) { receipt.checks.push({ name, passed: false, error: String(error.stack ?? error) }); throw error; } }
@@ -56,6 +57,10 @@ try {
     const result = await run(); assert.equal(result.ok, true); assert.equal(result.inputs[0].acquisition.text, diff); assert.equal(result.inputs[0].policy.text, 'version: 1'); assert.equal(result.requests.length, 3); assert.ok(result.requests.every(request => request.method === 'GET' && request.credentials === 'same-origin')); assert.ok(result.requests.some(request => request.path.includes(`/blob/${comparison.base}/.diffdevil.yml`))); assert.ok(!result.requests.some(request => request.path.includes(`/blob/${comparison.head}/`)));
   });
   await check('Force-push during acquisition prevents analysis from being submitted', async () => { const result = await run({ moved: true }); assert.equal(result.error.code, 'COMPARISON_MOVED'); assert.equal(result.inputs.length, 0); });
+  await check('React /changes binds before trusted-base policy and confirms on the same page form', async () => { const result = await run({ changes: true }); assert.equal(result.ok, true); assert.equal(result.inputs[0].comparison.base, comparison.base); assert.equal(result.requests.filter(request => request.path.endsWith('/changes')).length, 2); assert.ok(!result.requests.some(request => request.path.endsWith('/pull/42'))); });
+  await check('Stale embedded /changes base cannot select policy or submit analysis', async () => { const result = await run({ changes: true, stale: true }); assert.equal(result.error.code, 'COMPARISON_MOVED'); assert.equal(result.inputs.length, 0); assert.ok(!result.requests.some(request => request.path.includes('/blob/'))); });
+  await check('Moved React /changes comparison cannot submit analysis', async () => { const result = await run({ changes: true, moved: true }); assert.equal(result.error.code, 'COMPARISON_MOVED'); assert.equal(result.inputs.length, 0); });
+  await check('React /changes moving after policy lookup cannot submit analysis', async () => { const result = await run({ changes: true, lateMoved: true }); assert.equal(result.error.code, 'COMPARISON_MOVED'); assert.equal(result.inputs.length, 0); assert.ok(result.requests.some(request => request.path.includes('/blob/'))); });
   await check('Cache hit still rechecks the comparison but does not reacquire raw source', async () => { const result = await run({ cached: true, cachedPolicy: true }); assert.equal(result.ok, true); assert.equal(result.requests.length, 1); assert.equal(result.inputs[0].acquisition, undefined); });
   await check('A missing policy is absent only after independent exact-base access proof', async () => { const result = await run({ missingPolicy: true }); assert.equal(result.inputs[0].policy.status, 'absent'); assert.ok(result.requests.some(request => request.path.endsWith(`/commit/${comparison.base}`))); });
   await check('A private/inaccessible-base 404 is unavailable, not an absent policy', async () => { const result = await run({ missingPolicy: true, inaccessibleBase: true }); assert.equal(result.inputs[0].policy.status, 'unavailable'); });

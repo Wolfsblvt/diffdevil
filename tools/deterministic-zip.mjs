@@ -19,6 +19,7 @@ export function zipTimestamp(unixSeconds) {
 function u16(value) { const bytes = Buffer.alloc(2); bytes.writeUInt16LE(value); return bytes; }
 function u32(value) { const bytes = Buffer.alloc(4); bytes.writeUInt32LE(value >>> 0); return bytes; }
 function safeName(name) { return typeof name === 'string' && name && !name.startsWith('/') && !name.includes('\\') && !name.split('/').includes('..'); }
+export const memberOrder = (left, right) => left < right ? -1 : left > right ? 1 : 0;
 
 /** Writes regular source members in byte-stable order without platform metadata. */
 export async function writeDeterministicZip(members, destination, { epoch = 0 } = {}) {
@@ -27,7 +28,7 @@ export async function writeDeterministicZip(members, destination, { epoch = 0 } 
     if (!safeName(name)) throw new Error(`Unsafe ZIP member path: ${name}`);
     if (!Buffer.isBuffer(source)) throw new Error(`ZIP member ${name} is not bytes.`);
     return { name, source, payload: deflateRawSync(source, { level: 9 }), crc: crc32(source) };
-  }).sort((left, right) => left.name.localeCompare(right.name));
+  }).sort((left, right) => memberOrder(left.name, right.name));
   if (entries.some((entry, index) => entry.name === entries[index - 1]?.name)) throw new Error('ZIP member paths must be unique.');
   if (entries.length > 0xffff) throw new Error('ZIP has too many members for the supported archive format.');
   const stamp = zipTimestamp(epoch);

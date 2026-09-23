@@ -54,13 +54,14 @@ async function scene(summary) {
   const fileViews = Object.fromEntries(report.files.map(file => [file.path, m.decorateView(unwrap(m.humanReport(report, policy, file.path)), settings)]));
   await page.evaluate(({ packet, settings, fileViews, summary }) => {
     const listeners = new Set();
+    globalThis.acquireCalls = 0;
     globalThis.chrome = {
       runtime: { id: 'test-extension', getURL: path => `chrome-extension://test-extension/${path}`, sendMessage: async message => message.type === 'settings.get' ? { ok: true, value: settings } : { ok: false, code: 'UNEXPECTED', message: message.type } },
       storage: { onChanged: { addListener: callback => listeners.add(callback), removeListener: callback => listeners.delete(callback) } },
     };
     globalThis.controller = DiffdevilUnderTest.startContent({
       href: () => `https://github.com/example/cinder/pull/42/${summary === 'changes' ? 'changes' : 'files'}`,
-      acquire: async () => ({ packet, settings }),
+      acquire: async () => { globalThis.acquireCalls++; return { packet, settings }; },
       request: async message => {
         if (message.type === 'settings.get') return settings;
         if (message.type === 'analysis.files') return Object.fromEntries(message.paths.filter(path => fileViews[path]).map(path => [path, fileViews[path]]));
@@ -75,6 +76,8 @@ try {
   await changes.page.locator('[data-ddx="file"]').nth(1).waitFor();
   assert.equal(await changes.page.locator('[data-ddx="aggregate"]').count(), 1);
   assert.equal(await changes.page.locator('[data-testid="progressive-diffs-list"] [data-ddx="aggregate"]').count(), 0);
+  assert.equal(await changes.page.locator('[data-testid="pull-request-diff-stats"] + [data-ddx="aggregate"]').count(), 1);
+  assert.equal(await changes.page.locator('[data-testid="file-tree"] [data-ddx="aggregate"]').count(), 0);
   assert.equal(await changes.page.locator('[data-ddx="file"]').count(), 2);
   assert.deepEqual(await changes.page.evaluate(() => {
     const current = DiffdevilUnderTest.route('https://github.com/example/cinder/pull/42/changes');
@@ -97,6 +100,11 @@ try {
   await missing.page.locator('.ddx-status-fallback').waitFor();
   assert.match(await missing.page.locator('.ddx-status-fallback').textContent(), /could not find GitHub’s pull-request summary/u);
   assert.equal(await missing.page.getByRole('button', { name: 'Retry', exact: true }).count(), 1);
+  await missing.page.getByRole('button', { name: 'Retry', exact: true }).focus();
+  await missing.page.evaluate(() => { const item = document.createElement('span'); item.className = 'diffstat'; document.querySelector('main').append(item); });
+  assert.equal(await missing.page.evaluate(() => document.activeElement?.textContent), 'Retry');
+  await missing.page.getByRole('button', { name: 'Retry', exact: true }).click();
+  assert.equal(await missing.page.evaluate(() => acquireCalls), 1);
   results.push({ name: 'missing-anchor-self-reports', status: 'passed' });
   await missing.page.evaluate(() => {
     const host = document.querySelector('.fixture-summary-slot');
