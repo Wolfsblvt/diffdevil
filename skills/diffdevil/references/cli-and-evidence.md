@@ -4,7 +4,7 @@
 
 This reference teaches diffdevil acquisition, queries, output consumption, and
 evidence through concrete commands. It extends the everyday skill core; the
-[CLI manual](https://github.com/Wolfsblvt/diffdevil/blob/main/docs/integration/cli.md)
+[CLI manual](https://github.com/Wolfsblvt/diffdevil/blob/main/docs/manual/use/cli.md)
 owns the complete command contract.
 
 ## Run the CLI in the existing environment
@@ -179,7 +179,7 @@ objects, select a source whose actual evidence is available. For truncated upstr
 evidence, local exact Git objects may improve the comparison. Report what was
 actually acquired rather than relabeling a partial source as complete.
 
-[Presets and shortcuts](https://github.com/Wolfsblvt/diffdevil/blob/main/docs/integration/presets-and-shortcuts.md)
-and [interchange](https://github.com/Wolfsblvt/diffdevil/blob/main/docs/language/versioning-and-interchange.md)
+[Presets and shortcuts](https://github.com/Wolfsblvt/diffdevil/blob/main/docs/manual/policy/README.md)
+and [interchange](https://github.com/Wolfsblvt/diffdevil/blob/main/docs/manual/reference/language-and-contracts/schemas-and-compatibility.md)
 provide the deeper catalogs. Use documentation for the executable release when
 a current-source example differs from the installed interface.

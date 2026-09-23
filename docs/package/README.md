@@ -71,9 +71,9 @@ Local reads discover root `.diffdevil.yml`. No custom policy is required to star
 
 The package exposes the root API and `/core`, `/language`, `/policy`, `/git`, and `/github` entry points. Use its shipped TypeScript declarations and validated readers rather than casting arbitrary JSON.
 
-[CLI reference](https://github.com/Wolfsblvt/diffdevil/blob/main/docs/integration/cli.md) ·
-[TypeScript integration](https://github.com/Wolfsblvt/diffdevil/blob/main/docs/integration/typescript-api.md) ·
-[Policy and shortcuts](https://github.com/Wolfsblvt/diffdevil/blob/main/docs/integration/presets-and-shortcuts.md)
+[CLI reference](https://github.com/Wolfsblvt/diffdevil/blob/main/docs/manual/use/cli.md) ·
+[TypeScript integration](https://github.com/Wolfsblvt/diffdevil/blob/main/docs/manual/use/typescript-library.md) ·
+[Policy and shortcuts](https://github.com/Wolfsblvt/diffdevil/blob/main/docs/manual/policy/README.md)
 
 Matching manuals are included under `docs/`. Help and schemas describe the actual installed interface when reading newer online documentation.
 

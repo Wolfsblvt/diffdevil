@@ -2,6 +2,7 @@
 import { pages, origins } from './manifest.mjs';
 import { migrations, migratedSource, isRetired } from './migration.mjs';
 export const repositorySources = Object.freeze([
+ 'docs/language/parser-architecture.md','src/diffdevil/contracts/detail/v1/README.md',
  'README.md','docs/README.md','docs/VISION.md','docs/DIRECTION.md','docs/DECISIONS.md',
  'docs/ARCHITECTURE.md','docs/DEVELOPMENT.md','docs/PROJECT-MAP.md','docs/qualification.md',
  'docs/publication-boundary.md','docs/documentation.md','docs/presentation.md',

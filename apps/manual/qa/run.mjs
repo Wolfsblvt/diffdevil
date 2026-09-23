@@ -12,6 +12,7 @@ import { faqRecords } from '../../website/faq-content.mjs';
 import { qualifyRedirects } from './redirects.mjs';
 import { qualifyFirstSuccess } from './wave-1.mjs';
 import { qualifySurfaces } from './wave-2.mjs';
+import { qualifyPolicyReference } from './wave-3.mjs';
 const root = resolve('.'), out = join(root,'artifacts/manual/qa');
 mkdirSync(out,{recursive:true});
 const ref = execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim();
@@ -182,6 +183,7 @@ try {
  });
  await qualifyFirstSuccess({ page, origins, check, screenshot });
  await qualifySurfaces({ page, origins, check, screenshot });
+ await qualifyPolicyReference({ page, origins, check, screenshot });
  await check('Shared shell has no page-script errors or unexpected external requests',async()=>{
   assert.deepEqual(result.pageErrors,[]); assert.deepEqual(result.unexpectedRequests,[]);
  });

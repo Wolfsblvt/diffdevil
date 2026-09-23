@@ -14,4 +14,4 @@ Keep one compiled function/operator catalog in the implementation and derive com
 
 All paths and schema IDs are local/static; no remote schema fetch is required for validation. Build tooling resolves the declared URNs to package files. Structural validation and relational semantic checks remain separate.
 
-The [language reference](../../../../../docs/language.md) defines human-readable meaning. If a case or schema contradicts it, reconcile that defect rather than introducing two interpretations.
+The [language reference](../../../../../docs/manual/reference/language-and-contracts/README.md) defines human-readable meaning. If a case or schema contradicts it, reconcile that defect rather than introducing two interpretations.

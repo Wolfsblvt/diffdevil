@@ -17,11 +17,14 @@ metadata selects **node24** independently of the npm package's `>=22` floor.
 Native macOS remains unobserved; [Qualification](qualification.md) binds each
 result to its candidate and boundary.
 
-The lockfile pins TypeScript 5.8.3, Node typings 22.15.33, Chevrotain 13.2.0,
-YAML 2.9.1, Ajv 8.20.0, the source-owned Worker CLI, Wrangler 4.132.0, and the
-website toolchain: Astro 7.3.3, Starlight 0.42.1, React 19.3.0, Shiki 4.4.3,
-CodeMirror 6, the self-hosted IBM Plex packages, resvg for derived assets and
-Playwright 1.63.0 for local browser qualification. The website closure is the
+The lockfile pins exact versions of TypeScript, Node typings, Chevrotain, YAML,
+Ajv, the source-owned Worker CLI, Wrangler, and the website toolchain: Astro,
+Starlight, React, Shiki, CodeMirror, the self-hosted IBM Plex packages, resvg for
+derived assets and Playwright for local browser qualification. `package.json`
+and the lockfile are the version record; this list names the toolchain, not its
+releases. diffdevil compiles with TypeScript 7; the `typescript-6` alias serves
+only the website type check (`tools/website-typecheck.mjs`) until `astro check`
+supports the native TypeScript 7 compiler. The website closure is the
 largest part of the development install; none of it enters the npm package or
 the committed Action runtime.
 Wrangler contributes a 106-entry development-tooling closure, including optional
@@ -173,7 +176,7 @@ application is part of the npm or Action distributions.
 
 `actions/runtime/` is the committed native-ESM closure: compiled code, static
 validators, 12 locked runtime package trees, original third-party notices and a
-source/file hash manifest. It has its own `package.json`; root development
+manifest of the shipped packages and their rights. It has its own `package.json`; root development
 `node_modules` is not consulted. It is not a single-file minified bundle.
 `.gitattributes` preserves the exact vendor bytes, including original line
 endings; whitespace checks still apply to authored source.
@@ -218,7 +221,8 @@ under `docs/reference/`, not duplicated into each new return.
 Inspect `git status --short --branch` and recent commits before mutation.
 Root `node_modules/`, `artifacts/`, and `dist/` stay ignored. The deliberate
 exception is the shipped dependency closure **inside** `actions/runtime/`.
-`actions/runtime/MANIFEST.json` binds generated files and source inputs. Preserve
+`actions/runtime/MANIFEST.json` records the shipped packages and their rights;
+`npm run check:actions` owns parity by rebuilding and comparing bytes. Preserve
 original dependency bytes; do not normalize their line endings.
 
 `src/diffdevil/tests/examples.test.mjs` executes the actual task-guide CLI command specimens,
@@ -268,3 +272,15 @@ mode reuses the verified source package and installed consumer graph or npm's
 populated cache without a network fallback. An empty cache cannot install an
 unpublished package offline. The ordinary runner prunes nested dependency and
 generated-output directories before discovering repository tests.
+
+
+## Policy and reference inventories
+
+Run `npm --prefix apps/manual run generate` after a selected canonical inventory
+input changes, then `npm --prefix apps/manual run check:generated` to prove committed
+Markdown parity. The ordinary renderer also refuses drift. Authored prose and complete
+examples stay outside paired generated boundaries. Exact input identities and emitted
+body digests are in `artifacts/manual/generated-islands.json`. The manual's `test`
+discovers its `*.test.mjs` suite, including independent policy chapters, CLI invocations,
+schema/reader distinctions and migration guards. Its separate `qa` command additionally
+exercises the full policy/reference family through the built browser surface.

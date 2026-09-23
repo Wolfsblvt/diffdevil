@@ -11,7 +11,7 @@ This is the documentation map for diffdevil. It separates current product direct
 | Understand why diffdevil differs, choose a surface, or check its trust boundaries | [FAQ](manual/faq.md) |
 | Automatically label PR size with one workflow | [Auto-labeling quickstart](manual/start/label-pull-requests.md) |
 | Get a scalar, path list, or reliable shell condition | [Local automation](manual/start/analyze-local-changes.md) |
-| Add a source/test signal or one updated comment | [Policy recipes](guides/policy-recipes.md) |
+| Add a source/test signal or one updated comment | [Policy recipes](manual/policy/recipes.md) |
 | Copy a complete tested input | [Example map](examples/README.md) |
 | Inspect one public PR in a browser | [Live playground](https://diffdevil-playground.wolfsblvt.workers.dev) · [Application and local route](../apps/playground/README.md) |
 
@@ -48,23 +48,23 @@ when a custom formula, scope, or policy needs it.
 
 | Subject | Source |
 | --- | --- |
-| First useful CLI and Action routes | [`automation.md`](automation.md) |
-| CLI protocol and source selection | [`integration/cli.md`](integration/cli.md) |
+| First useful CLI and Action routes | [`automation.md`](manual/use/README.md) |
+| CLI protocol and source selection | [`integration/cli.md`](manual/use/cli.md) |
 | Human, agent, and plan presentation | [`presentation.md`](presentation.md) |
-| GitHub Action interface | [`integration/github-actions.md`](integration/github-actions.md) |
+| GitHub Action interface | [`integration/github-actions.md`](manual/use/github-actions.md) |
 | Install-free Action distribution | [`integration/action-distribution.md`](integration/action-distribution.md) |
 | GitHub provider API and trust | [`integration/github-api.md`](integration/github-api.md) |
 | Planned optional App and dashboard | [`integration/github-app.md`](integration/github-app.md) |
-| Presets and shortcut lowering | [`integration/presets-and-shortcuts.md`](integration/presets-and-shortcuts.md) |
+| Presets and shortcut lowering | [`integration/presets-and-shortcuts.md`](manual/policy/README.md) |
 | Shared frozen examples and capture maintenance | [`integration/example-catalogue.md`](integration/example-catalogue.md) |
-| Templates and comment lifecycle | [`integration/templates.md`](integration/templates.md) |
+| Templates and comment lifecycle | [`integration/templates.md`](manual/policy/from-measurements-to-rules/effects-and-templates.md) |
 | GitHub browser extension and portable browser API | [`integration/browser-extension.md`](integration/browser-extension.md) |
-| TypeScript embedding | [`integration/typescript-api.md`](integration/typescript-api.md) |
+| TypeScript embedding | [`integration/typescript-api.md`](manual/use/typescript-library.md) |
 | Playground response schema | [`../apps/playground/contracts/response-v1.schema.json`](../apps/playground/contracts/response-v1.schema.json) |
 
 ## detail language
 
-Start with [`language.md`](language.md).
+Start with [`language.md`](manual/reference/language-and-contracts/README.md).
 
 | Subject | Source |
 | --- | --- |
@@ -72,10 +72,10 @@ Start with [`language.md`](language.md).
 | Types and evidence | [`language/types-and-measurements.md`](language/types-and-measurements.md) |
 | Collections and scopes | [`language/collections-and-scopes.md`](language/collections-and-scopes.md) |
 | Standard library | [`language/standard-library.md`](language/standard-library.md) |
-| Policies and bands | [`language/policies-and-bands.md`](language/policies-and-bands.md) |
+| Policies and bands | [`language/policies-and-bands.md`](manual/policy/from-measurements-to-rules/README.md) |
 | Diagnostics and limits | [`language/diagnostics-and-limits.md`](language/diagnostics-and-limits.md) |
 | Parser architecture | [`language/parser-architecture.md`](language/parser-architecture.md) |
-| Versioning and interchange | [`language/versioning-and-interchange.md`](language/versioning-and-interchange.md) |
+| Versioning and interchange | [`language/versioning-and-interchange.md`](manual/reference/language-and-contracts/schemas-and-compatibility.md) |
 
 Core machine contracts live under [`../src/diffdevil/contracts/detail/v1/`](../src/diffdevil/contracts/detail/v1/), [`../src/diffdevil/contracts/schemas/`](../src/diffdevil/contracts/schemas/), and [`../src/diffdevil/presets/`](../src/diffdevil/presets/). Application-specific transport contracts stay with their application, including the [playground response schema](../apps/playground/contracts/response-v1.schema.json).
 

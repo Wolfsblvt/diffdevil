@@ -97,9 +97,9 @@ test('label and comment teaching policies retain false-removal, optional comment
  assert.match(comments.operations[0].body,/changed lines: 10\nRaw churn: 16\nDeleted-only or modified lines: 6\nIncluded files: 4/u);
 });
 
-test('the wave transfers only completed families while preserving later-wave source and scaffolds',()=>{
+test('accepted Wave 2 transfers survive later waves while Managed App and Help stay scaffolded',()=>{
  for(const page of pages.filter(page=>page.wave===2))assert.equal(state.pages[page.key].status,'authored',page.key);
- for(const page of pages.filter(page=>page.wave===3||page.wave===4))assert.equal(state.pages[page.key].status,'scaffold',page.key);
+ for(const page of pages.filter(page=>page.wave===4))assert.equal(state.pages[page.key].status,'scaffold',page.key);
  const ref='1'.repeat(40),targets=sourceTargets({ref,state,exists:path=>existsSync(join(root,path))});
  for(const source of ['docs/guides/auto-label-pull-requests.md','docs/guides/local-automation.md','docs/integration/playground.md']){
   assert.equal(isRetired(source,state),true);assert.equal(existsSync(join(root,source)),false);
@@ -108,11 +108,13 @@ test('the wave transfers only completed families while preserving later-wave sou
    assert.equal(resolveSource('/source/?f='+encodeURIComponent(source)+'#'+old,targets),`https://github.com/Wolfsblvt/diffdevil/blob/${ref}/${page.source}#${destination.anchor}`);
   }
  }
- assert.equal(legacyRedirects(state).length,3);
- for(const source of ['docs/automation.md','docs/integration/cli.md','docs/integration/github-actions.md','docs/integration/typescript-api.md','docs/integration/templates.md']){
+ assert.ok(legacyRedirects(state).some(rule=>rule.from==='/docs/get-started/auto-label-pull-requests/'));
+ assert.ok(legacyRedirects(state).some(rule=>rule.from==='/docs/get-started/local-automation/'));
+ assert.ok(legacyRedirects(state).some(rule=>rule.from==='/docs/playground/'));
+ for(const source of ['docs/language/diagnostics-and-limits.md']){
   assert.equal(isRetired(source,state),false);assert.ok(existsSync(join(root,source)));
  }
- assert.equal(pageIsCurrent('playground',state),true);assert.equal(pageIsCurrent('cli',state),false);
+ assert.equal(pageIsCurrent('playground',state),true);assert.equal(pageIsCurrent('cli',state),true);
 });
 
 test('extension navigation, selected assets and canonical Skill sources have separate identities',()=>{

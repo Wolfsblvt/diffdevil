@@ -87,7 +87,7 @@ Complete maintained examples:
 [source/test signal](https://github.com/Wolfsblvt/diffdevil/blob/main/docs/examples/policies/review-signals.yml),
 [owned comment](https://github.com/Wolfsblvt/diffdevil/blob/main/docs/examples/policies/review-comment.yml),
 and [full policy](https://github.com/Wolfsblvt/diffdevil/blob/main/docs/examples/policies/full.yml).
-The [policy manual](https://github.com/Wolfsblvt/diffdevil/blob/main/docs/language/policies-and-bands.md)
+The [policy manual](https://github.com/Wolfsblvt/diffdevil/blob/main/docs/manual/policy/from-measurements-to-rules/README.md)
 owns rule, band, and unknown-behavior syntax.
 
 ## Preview desired effects
@@ -181,7 +181,7 @@ upsert, or act on a transition according to the selected mode.
 an optional `--comment-author-id ID` further identifies it.
 Create-mode retry uses the same `--occasion ID` so the attempt retains its identity.
 
-The [template manual](https://github.com/Wolfsblvt/diffdevil/blob/main/docs/integration/templates.md)
+The [template manual](https://github.com/Wolfsblvt/diffdevil/blob/main/docs/manual/policy/from-measurements-to-rules/effects-and-templates.md)
 owns placeholder and lifecycle details; the
 [GitHub API manual](https://github.com/Wolfsblvt/diffdevil/blob/main/docs/integration/github-api.md)
 owns current provider acquisition and reconciliation.

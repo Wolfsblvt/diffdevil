@@ -20,7 +20,7 @@ A normal adoption journey is: install the App on selected repositories, accept o
 
 ## Configuration and dashboard
 
-The [presets and shortcuts contract](presets-and-shortcuts.md#configuration-layering) owns policy composition. The App resolves:
+The [presets and shortcuts contract](../manual/policy/configure.md#know-which-host-supplies-each-layer) owns policy composition. The App resolves:
 
 ```text
 selected bundled preset
@@ -155,7 +155,7 @@ Bounded retries end in the DLQ. The per-PR lease prevents two creates claiming t
 
 ## Trusted policy and freshness
 
-Read `.diffdevil.yml` from the current PR base or an explicit immutable trusted source, never the PR head. Relative templates follow the same trusted source. Apply the host-specific layering from [presets and shortcuts](presets-and-shortcuts.md#configuration-layering); the bundled default fills only undeclared settings.
+Read `.diffdevil.yml` from the current PR base or an explicit immutable trusted source, never the PR head. Relative templates follow the same trusted source. Apply the host-specific layering from [presets and shortcuts](../manual/policy/configure.md#know-which-host-supplies-each-layer); the bundled default fills only undeclared settings.
 
 Repository access errors, invalid policy, and an unavailable configured source are not proof that no policy exists. Do not silently apply the default instead. Proposed PR-head policy can be previewed as data, not used as automatic write authority.
 

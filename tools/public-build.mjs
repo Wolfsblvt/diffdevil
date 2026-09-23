@@ -28,7 +28,7 @@ export function buildManualAndJoin() {
       const target = join(directory, rule.from.slice(1), 'index.html');
       mkdirSync(dirname(target), { recursive: true });
       const destination = JSON.stringify(rule.to);
-      writeFileSync(target, `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="robots" content="noindex, nosnippet"><link rel="canonical" href="${rule.to}"><title>Moved</title><script>const target=new URL(${destination});target.search=location.search;target.hash=location.hash;location.replace(target.href);</script></head><body><a href="${rule.to}">Continue to the manual</a></body></html>`);
+      writeFileSync(target, `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="robots" content="noindex, nosnippet"><link rel="canonical" href="${rule.to}"><title>Moved</title><script>const target=new URL(${destination});target.search=location.search;target.hash=location.hash;location.replace(target.href);</script></head><body><a href="${rule.to}">Continue to the maintained source</a></body></html>`);
     }
   }
   run(process.execPath, ['apps/manual/search-index.mjs']);

@@ -80,7 +80,7 @@ are not automatically uploaded across jobs. `effects-path` preserves the journal
 including partial outcomes. Inspect evidence companions rather than treating an
 empty scalar output as zero.
 
-The [Actions manual](https://github.com/Wolfsblvt/diffdevil/blob/main/docs/integration/github-actions.md)
+The [Actions manual](https://github.com/Wolfsblvt/diffdevil/blob/main/docs/manual/use/github-actions.md)
 owns the full input/output catalog and workflow contract. The
 [workflow examples](https://github.com/Wolfsblvt/diffdevil/tree/main/docs/examples/workflows)
 provide complete runnable source for common jobs.
@@ -116,7 +116,7 @@ A successful result can contain an unknown decision or bounded measurement.
 `GitHubClient`, `analyzeGitHub`, `loadGitHubPolicy`, `applyGitHubPolicy`,
 and `syncGitHubLabels` for explicit provider work.
 
-Use the [TypeScript guide](https://github.com/Wolfsblvt/diffdevil/blob/main/docs/integration/typescript-api.md)
+Use the [TypeScript guide](https://github.com/Wolfsblvt/diffdevil/blob/main/docs/manual/use/typescript-library.md)
 and shipped declarations for embedding. A cast after `JSON.parse` does not perform
 the reader's semantic validation.
 

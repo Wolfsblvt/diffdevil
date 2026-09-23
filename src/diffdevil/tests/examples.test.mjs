@@ -26,6 +26,10 @@ function commandArgs(line) {
     assert.deepEqual(tokens.slice(0, 4), ['npm', 'exec', '--', 'diffdevil']);
     return tokens.slice(4).map(value => value.startsWith('node_modules/@wolfsblvt/diffdevil/') ? join(root, value.slice('node_modules/@wolfsblvt/diffdevil/'.length)) : value);
   }
+  if (tokens[0] === 'npx') {
+    assert.deepEqual(tokens.slice(0, 2), ['npx', 'diffdevil']);
+    return tokens.slice(2);
+  }
   assert.deepEqual(tokens.slice(0, 2), ['node', 'dist/lib/cli/main.js']);
   return tokens.slice(2);
 }
@@ -71,13 +75,13 @@ test('copyable local recipe commands execute the CLI, not an approximation of th
 
 test('copyable named policy query and local desired-plan commands are valid', async t => {
   const dir = await workspace(t);
-  const commands = (await read('docs/guides/policy-recipes.md')).split('\n').filter(line => line.startsWith('node dist/lib/cli/main.js '));
+  const commands = (await read('docs/manual/policy/recipes.md')).split('\n').filter(line => line.startsWith('npx diffdevil '));
   assert.ok(commands.length > 0);
   for (const line of commands) {
     const args = commandArgs(line);
     const result = spawnSync(process.execPath, [cli, ...args], { cwd: dir, encoding: 'utf8' });
     assert.ifError(result.error); assert.equal(result.status, 0, `${line}\n${result.stderr}`);
-    if (args[0] === 'query') assert.equal(result.stdout, '3\n');
+    if (args[0] === 'query') assert.equal(result.stdout, '2\n');
     if (args[0] === 'plan') assert.equal(JSON.parse(result.stdout).stage, 'desired');
   }
 });

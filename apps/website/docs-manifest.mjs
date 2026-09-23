@@ -47,7 +47,7 @@ export const groups = [
     { source: 'docs/language/standard-library.md', slug: 'policies-and-detail/standard-library' },
     { source: 'docs/language/diagnostics-and-limits.md', slug: 'policies-and-detail/diagnostics-and-limits' },
     { source: 'docs/language/versioning-and-interchange.md', slug: 'policies-and-detail/versioning-and-interchange' },
-    { source: 'docs/language/parser-architecture.md', slug: 'policies-and-detail/parser-architecture' },
+    { source: 'docs/language/parser-architecture.md', slug: 'policies-and-detail/parser-architecture', repositoryOnly: true },
   ] },
   { label: 'Library API', entries: [
     { source: 'docs/integration/typescript-api.md', slug: 'library-api', title: 'Library API' },

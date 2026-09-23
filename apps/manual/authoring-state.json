@@ -59,22 +59,22 @@
       "status": "authored"
     },
     "start-with-a-preset": {
-      "status": "scaffold"
+      "status": "authored"
     },
     "configure-policy": {
-      "status": "scaffold"
+      "status": "authored"
     },
     "paths-and-scopes": {
-      "status": "scaffold"
+      "status": "authored"
     },
     "measurements-to-rules": {
-      "status": "scaffold"
+      "status": "authored"
     },
     "effects-and-templates": {
-      "status": "scaffold"
+      "status": "authored"
     },
     "recipes": {
-      "status": "scaffold"
+      "status": "authored"
     },
     "how-diffdevil-reasons": {
       "status": "authored"
@@ -92,25 +92,25 @@
       "status": "authored"
     },
     "interfaces": {
-      "status": "scaffold"
+      "status": "authored"
     },
     "cli-reference": {
-      "status": "scaffold"
+      "status": "authored"
     },
     "github-actions-reference": {
-      "status": "scaffold"
+      "status": "authored"
     },
     "typescript-api-reference": {
-      "status": "scaffold"
+      "status": "authored"
     },
     "language-and-contracts": {
-      "status": "scaffold"
+      "status": "authored"
     },
     "schemas-and-compatibility": {
-      "status": "scaffold"
+      "status": "authored"
     },
     "detail-language": {
-      "status": "scaffold"
+      "status": "authored"
     },
     "faq": {
       "status": "external-admitted",
@@ -318,6 +318,916 @@
       "redirects": true,
       "sourceIds": true,
       "search": true
+    },
+    "docs/automation.md": {
+      "phase": "retired",
+      "primary": "surfaces",
+      "fromRef": "a9df2c151da1f3bc36e4d2f4608ace62eca6d330",
+      "fromSourceSha256": "9b7da24ac8abaede75fccf8fab87d386636eaab2f3725d53ce5f91e8212773dc",
+      "oldAnchors": [
+        "_top",
+        "use-diffdevil-in-scripts-and-github-actions",
+        "meaning",
+        "automatic-size-labels-without-a-config-file",
+        "default-size-meaning",
+        "read-only-github-analysis",
+        "local-analysis-and-values",
+        "thresholds-and-file-checks",
+        "matching-paths-and-records",
+        "a-small-configuration-change",
+        "add-language-only-where-it-is-useful",
+        "analyze-once-consume-many-times",
+        "detailed-integration-references"
+      ],
+      "anchors": {
+        "_top": {
+          "page": "surfaces",
+          "anchor": "_top"
+        },
+        "use-diffdevil-in-scripts-and-github-actions": {
+          "page": "surfaces",
+          "anchor": "_top"
+        },
+        "meaning": {
+          "page": "surfaces",
+          "anchor": "_top"
+        },
+        "automatic-size-labels-without-a-config-file": {
+          "page": "start-with-a-preset",
+          "anchor": "see-the-default-result"
+        },
+        "default-size-meaning": {
+          "page": "start-with-a-preset",
+          "anchor": "what-size1-selects"
+        },
+        "read-only-github-analysis": {
+          "page": "surfaces",
+          "anchor": "_top"
+        },
+        "local-analysis-and-values": {
+          "page": "surfaces",
+          "anchor": "_top"
+        },
+        "thresholds-and-file-checks": {
+          "page": "surfaces",
+          "anchor": "_top"
+        },
+        "matching-paths-and-records": {
+          "page": "surfaces",
+          "anchor": "_top"
+        },
+        "a-small-configuration-change": {
+          "page": "start-with-a-preset",
+          "anchor": "choose-the-next-amount-of-policy"
+        },
+        "add-language-only-where-it-is-useful": {
+          "page": "start-with-a-preset",
+          "anchor": "choose-the-next-amount-of-policy"
+        },
+        "analyze-once-consume-many-times": {
+          "page": "shared-workflows",
+          "anchor": "carry-the-right-thing"
+        },
+        "detailed-integration-references": {
+          "page": "surfaces",
+          "anchor": "_top"
+        }
+      },
+      "redirects": true,
+      "sourceIds": true,
+      "search": true
+    },
+    "docs/guides/policy-recipes.md": {
+      "phase": "retired",
+      "primary": "recipes",
+      "fromRef": "a9df2c151da1f3bc36e4d2f4608ace62eca6d330",
+      "fromSourceSha256": "4e02e785dc72bbeb4944182dc51a03a53b397178f165882f6fb2468d3f94a60f",
+      "oldAnchors": [
+        "_top",
+        "add-useful-review-signals-and-comments",
+        "meaning",
+        "signal-source-changes-without-test-path-changes",
+        "try-the-same-policy-locally",
+        "keep-one-useful-comment-up-to-date",
+        "use-a-threshold-without-a-policy-file",
+        "deliberately-check-or-synchronize-definitions"
+      ],
+      "anchors": {
+        "_top": {
+          "page": "recipes",
+          "anchor": "_top"
+        },
+        "add-useful-review-signals-and-comments": {
+          "page": "recipes",
+          "anchor": "_top"
+        },
+        "meaning": {
+          "page": "recipes",
+          "anchor": "_top"
+        },
+        "signal-source-changes-without-test-path-changes": {
+          "page": "recipes",
+          "anchor": "signal-source-changes-without-test-changes"
+        },
+        "try-the-same-policy-locally": {
+          "page": "recipes",
+          "anchor": "signal-source-changes-without-test-changes"
+        },
+        "keep-one-useful-comment-up-to-date": {
+          "page": "recipes",
+          "anchor": "preview-one-comment-without-automatic-size-labels"
+        },
+        "use-a-threshold-without-a-policy-file": {
+          "page": "recipes",
+          "anchor": "measure-deleted-or-rewritten-lines"
+        },
+        "deliberately-check-or-synchronize-definitions": {
+          "page": "recipes",
+          "anchor": "maintain-definitions-deliberately"
+        }
+      },
+      "redirects": true,
+      "sourceIds": true,
+      "search": true
+    },
+    "docs/integration/cli.md": {
+      "phase": "retired",
+      "primary": "cli",
+      "fromRef": "a9df2c151da1f3bc36e4d2f4608ace62eca6d330",
+      "fromSourceSha256": "884f73c92abe7818d48aaf4c9e26313093aea3e50657e73a13522f4786348aca",
+      "oldAnchors": [
+        "_top",
+        "cli-integration-contract",
+        "meaning",
+        "current-executable-standing",
+        "current-configured-commands",
+        "command-surface",
+        "source-selection",
+        "configuration-and-semantic-selection",
+        "query-and-check-selectors",
+        "output-formats",
+        "human-and-agent",
+        "canonical-json",
+        "exact-scalar-value",
+        "lines-and-nul-delimited-values",
+        "json-lines",
+        "environment-data",
+        "stdout-stderr-and-output-files",
+        "exit-statuses",
+        "powershell-examples",
+        "bash-examples",
+        "label-definitions-and-explicit-application",
+        "discovery-and-validation",
+        "explicit-github-writes"
+      ],
+      "anchors": {
+        "_top": {
+          "page": "cli",
+          "anchor": "_top"
+        },
+        "cli-integration-contract": {
+          "page": "cli",
+          "anchor": "_top"
+        },
+        "meaning": {
+          "page": "cli",
+          "anchor": "_top"
+        },
+        "current-executable-standing": {
+          "page": "cli",
+          "anchor": "_top"
+        },
+        "current-configured-commands": {
+          "page": "cli-reference",
+          "anchor": "_top"
+        },
+        "command-surface": {
+          "page": "cli-reference",
+          "anchor": "_top"
+        },
+        "source-selection": {
+          "page": "cli-reference",
+          "anchor": "invocation-and-source-families"
+        },
+        "configuration-and-semantic-selection": {
+          "page": "cli",
+          "anchor": "choose-configuration-deliberately"
+        },
+        "query-and-check-selectors": {
+          "page": "cli-reference",
+          "anchor": "query"
+        },
+        "output-formats": {
+          "page": "cli-reference",
+          "anchor": "output-formats-and-stream-guarantees"
+        },
+        "human-and-agent": {
+          "page": "cli-reference",
+          "anchor": "output-formats-and-stream-guarantees"
+        },
+        "canonical-json": {
+          "page": "cli-reference",
+          "anchor": "output-formats-and-stream-guarantees"
+        },
+        "exact-scalar-value": {
+          "page": "cli-reference",
+          "anchor": "output-formats-and-stream-guarantees"
+        },
+        "lines-and-nul-delimited-values": {
+          "page": "cli-reference",
+          "anchor": "output-formats-and-stream-guarantees"
+        },
+        "json-lines": {
+          "page": "cli-reference",
+          "anchor": "output-formats-and-stream-guarantees"
+        },
+        "environment-data": {
+          "page": "cli-reference",
+          "anchor": "output-formats-and-stream-guarantees"
+        },
+        "stdout-stderr-and-output-files": {
+          "page": "cli-reference",
+          "anchor": "output-formats-and-stream-guarantees"
+        },
+        "exit-statuses": {
+          "page": "cli-reference",
+          "anchor": "exit-codes-and-recovery"
+        },
+        "powershell-examples": {
+          "page": "cli-reference",
+          "anchor": "exit-codes-and-recovery"
+        },
+        "bash-examples": {
+          "page": "cli-reference",
+          "anchor": "exit-codes-and-recovery"
+        },
+        "label-definitions-and-explicit-application": {
+          "page": "cli-reference",
+          "anchor": "labels"
+        },
+        "discovery-and-validation": {
+          "page": "cli-reference",
+          "anchor": "validate-and-explain"
+        },
+        "explicit-github-writes": {
+          "page": "cli-reference",
+          "anchor": "plan-and-apply"
+        }
+      },
+      "redirects": true,
+      "sourceIds": true,
+      "search": true
+    },
+    "docs/integration/github-actions.md": {
+      "phase": "retired",
+      "primary": "github-actions",
+      "fromRef": "a9df2c151da1f3bc36e4d2f4608ace62eca6d330",
+      "fromSourceSha256": "c11516ac10b083fddda102dbce869bbaadd591375da6b8c49350f0385cd98ca6",
+      "oldAnchors": [
+        "_top",
+        "github-actions-integration",
+        "meaning",
+        "current-executable-boundary",
+        "entry-points",
+        "minimal-complete-workflow",
+        "split-trusted-policy-reads-from-effects",
+        "what-the-size-default-manages",
+        "simple-customization-without-detail",
+        "core-inputs",
+        "read-only-outputs",
+        "analyze-then-revalidate-and-apply-explicitly",
+        "definition-synchronization",
+        "trusted-policy-and-hostile-diff-separation",
+        "concurrency-and-events",
+        "comments-remain-explicit",
+        "existing-labels-that-cannot-be-assigned",
+        "process-result-and-error-transport"
+      ],
+      "anchors": {
+        "_top": {
+          "page": "github-actions",
+          "anchor": "_top"
+        },
+        "github-actions-integration": {
+          "page": "github-actions",
+          "anchor": "_top"
+        },
+        "meaning": {
+          "page": "github-actions",
+          "anchor": "_top"
+        },
+        "current-executable-boundary": {
+          "page": "github-actions",
+          "anchor": "_top"
+        },
+        "entry-points": {
+          "page": "github-actions",
+          "anchor": "choose-an-entry-point"
+        },
+        "minimal-complete-workflow": {
+          "page": "github-actions",
+          "anchor": "add-the-complete-default-workflow"
+        },
+        "split-trusted-policy-reads-from-effects": {
+          "page": "github-actions",
+          "anchor": "select-trusted-configuration-and-credentials"
+        },
+        "what-the-size-default-manages": {
+          "page": "github-actions-reference",
+          "anchor": "four-entry-points"
+        },
+        "simple-customization-without-detail": {
+          "page": "github-actions",
+          "anchor": "select-trusted-configuration-and-credentials"
+        },
+        "core-inputs": {
+          "page": "github-actions-reference",
+          "anchor": "exact-inputs-defaults-and-outputs"
+        },
+        "read-only-outputs": {
+          "page": "github-actions-reference",
+          "anchor": "exact-inputs-defaults-and-outputs"
+        },
+        "analyze-then-revalidate-and-apply-explicitly": {
+          "page": "github-actions-reference",
+          "anchor": "revalidate-before-applying"
+        },
+        "definition-synchronization": {
+          "page": "github-actions-reference",
+          "anchor": "trusted-configuration-and-input-combinations"
+        },
+        "trusted-policy-and-hostile-diff-separation": {
+          "page": "github-actions-reference",
+          "anchor": "revalidate-before-applying"
+        },
+        "concurrency-and-events": {
+          "page": "github-actions",
+          "anchor": "definitions-reruns-and-coexistence"
+        },
+        "comments-remain-explicit": {
+          "page": "github-actions",
+          "anchor": "definitions-reruns-and-coexistence"
+        },
+        "existing-labels-that-cannot-be-assigned": {
+          "page": "github-actions-reference",
+          "anchor": "process-result-and-recovery"
+        },
+        "process-result-and-error-transport": {
+          "page": "github-actions-reference",
+          "anchor": "process-result-and-recovery"
+        }
+      },
+      "redirects": true,
+      "sourceIds": true,
+      "search": true
+    },
+    "docs/integration/typescript-api.md": {
+      "phase": "retired",
+      "primary": "typescript-library",
+      "fromRef": "a9df2c151da1f3bc36e4d2f4608ace62eca6d330",
+      "fromSourceSha256": "90bb40a5db60501ed635efb084798901ec199555e0f79ed02ab89be02b96a68a",
+      "oldAnchors": [
+        "_top",
+        "typescript-embedding",
+        "meaning",
+        "current-implemented-api",
+        "executable-policy-api",
+        "one-package-explicit-boundaries",
+        "compilation-and-evaluation",
+        "numeric-measurements",
+        "structured-shortcuts",
+        "policies-and-artifacts",
+        "source-and-diagnostic-types",
+        "host-supplied-facts",
+        "runtimetooling-choices",
+        "testable-integration-promises",
+        "implemented-github-api"
+      ],
+      "anchors": {
+        "_top": {
+          "page": "typescript-library",
+          "anchor": "_top"
+        },
+        "typescript-embedding": {
+          "page": "typescript-library",
+          "anchor": "_top"
+        },
+        "meaning": {
+          "page": "typescript-library",
+          "anchor": "_top"
+        },
+        "current-implemented-api": {
+          "page": "typescript-library",
+          "anchor": "_top"
+        },
+        "executable-policy-api": {
+          "page": "typescript-library",
+          "anchor": "compile-policy-once-evaluate-the-intended-lifecycle"
+        },
+        "one-package-explicit-boundaries": {
+          "page": "typescript-library",
+          "anchor": "install-a-public-entry"
+        },
+        "compilation-and-evaluation": {
+          "page": "typescript-library",
+          "anchor": "compile-policy-once-evaluate-the-intended-lifecycle"
+        },
+        "numeric-measurements": {
+          "page": "typescript-library",
+          "anchor": "separate-result-success-from-evidence"
+        },
+        "structured-shortcuts": {
+          "page": "typescript-api-reference",
+          "anchor": "analysis-policy-and-query-lifecycle"
+        },
+        "policies-and-artifacts": {
+          "page": "typescript-library",
+          "anchor": "serialize-data-not-trust"
+        },
+        "source-and-diagnostic-types": {
+          "page": "typescript-api-reference",
+          "anchor": "result-evidence-and-diagnostics"
+        },
+        "host-supplied-facts": {
+          "page": "typescript-library",
+          "anchor": "add-acquisition-and-effects-only-when-the-host-needs-them"
+        },
+        "runtimetooling-choices": {
+          "page": "typescript-library",
+          "anchor": "update-and-diagnose-at-the-package-boundary"
+        },
+        "testable-integration-promises": {
+          "page": "typescript-library",
+          "anchor": "update-and-diagnose-at-the-package-boundary"
+        },
+        "implemented-github-api": {
+          "page": "typescript-library",
+          "anchor": "add-acquisition-and-effects-only-when-the-host-needs-them"
+        }
+      },
+      "redirects": true,
+      "sourceIds": true,
+      "search": true
+    },
+    "docs/integration/presets-and-shortcuts.md": {
+      "phase": "retired",
+      "primary": "start-with-a-preset",
+      "fromRef": "a9df2c151da1f3bc36e4d2f4608ace62eca6d330",
+      "fromSourceSha256": "64162c12bb8be2bd19ff2830a60bcb467648cc9261c301a0444623b39ec6592b",
+      "oldAnchors": [
+        "_top",
+        "presets-and-shortcuts",
+        "meaning",
+        "the-three-authoring-levels",
+        "preset-identity-and-default-selection",
+        "default-size-policy",
+        "small-size-overrides",
+        "configuration-layering",
+        "current-compiler-and-invocation-behavior",
+        "one-conventional-repository-file",
+        "selected-host-specific-resolution",
+        "partial-settings-without-accidental-policy-merging",
+        "explain-and-export-the-result",
+        "metric-shortcut-catalog",
+        "cli-scalar-and-threshold-lowering",
+        "file-shortcut-lowering",
+        "scopes-and-immediate-paths",
+        "action-shortcuts",
+        "expression-selectors",
+        "growth-without-a-rewrite"
+      ],
+      "anchors": {
+        "_top": {
+          "page": "start-with-a-preset",
+          "anchor": "_top"
+        },
+        "presets-and-shortcuts": {
+          "page": "start-with-a-preset",
+          "anchor": "_top"
+        },
+        "meaning": {
+          "page": "start-with-a-preset",
+          "anchor": "_top"
+        },
+        "the-three-authoring-levels": {
+          "page": "start-with-a-preset",
+          "anchor": "see-the-default-result"
+        },
+        "preset-identity-and-default-selection": {
+          "page": "start-with-a-preset",
+          "anchor": "select-it-explicitly"
+        },
+        "default-size-policy": {
+          "page": "start-with-a-preset",
+          "anchor": "what-size1-selects"
+        },
+        "small-size-overrides": {
+          "page": "start-with-a-preset",
+          "anchor": "choose-the-next-amount-of-policy"
+        },
+        "configuration-layering": {
+          "page": "configure-policy",
+          "anchor": "know-which-host-supplies-each-layer"
+        },
+        "current-compiler-and-invocation-behavior": {
+          "page": "configure-policy",
+          "anchor": "inspect-effective-configuration"
+        },
+        "one-conventional-repository-file": {
+          "page": "configure-policy",
+          "anchor": "know-which-host-supplies-each-layer"
+        },
+        "selected-host-specific-resolution": {
+          "page": "configure-policy",
+          "anchor": "selected-host-layering-and-current-limitations"
+        },
+        "partial-settings-without-accidental-policy-merging": {
+          "page": "configure-policy",
+          "anchor": "selected-host-layering-and-current-limitations"
+        },
+        "explain-and-export-the-result": {
+          "page": "start-with-a-preset",
+          "anchor": "inspect-the-complete-expansion"
+        },
+        "metric-shortcut-catalog": {
+          "page": "language-and-contracts",
+          "anchor": "which-contract-owns-the-question"
+        },
+        "cli-scalar-and-threshold-lowering": {
+          "page": "language-and-contracts",
+          "anchor": "which-contract-owns-the-question"
+        },
+        "file-shortcut-lowering": {
+          "page": "language-and-contracts",
+          "anchor": "which-contract-owns-the-question"
+        },
+        "scopes-and-immediate-paths": {
+          "page": "language-and-contracts",
+          "anchor": "which-contract-owns-the-question"
+        },
+        "action-shortcuts": {
+          "page": "language-and-contracts",
+          "anchor": "which-contract-owns-the-question"
+        },
+        "expression-selectors": {
+          "page": "language-and-contracts",
+          "anchor": "which-contract-owns-the-question"
+        },
+        "growth-without-a-rewrite": {
+          "page": "start-with-a-preset",
+          "anchor": "choose-the-next-amount-of-policy"
+        }
+      },
+      "redirects": true,
+      "sourceIds": true,
+      "search": true
+    },
+    "docs/integration/templates.md": {
+      "phase": "retired",
+      "primary": "effects-and-templates",
+      "fromRef": "a9df2c151da1f3bc36e4d2f4608ace62eca6d330",
+      "fromSourceSha256": "be37928242e38609b46700cb0b7c860eadf9b14aefec575c68af6f23af3902d8",
+      "oldAnchors": [
+        "_top",
+        "optional-comment-templates",
+        "meaning",
+        "placeholder-syntax",
+        "display-semantics",
+        "validation-and-source-positions",
+        "comment-configuration",
+        "ownership-and-identity",
+        "provider-boundaries",
+        "operational-writing",
+        "implemented-provider-ownership-and-lifecycle-state"
+      ],
+      "anchors": {
+        "_top": {
+          "page": "effects-and-templates",
+          "anchor": "_top"
+        },
+        "optional-comment-templates": {
+          "page": "effects-and-templates",
+          "anchor": "_top"
+        },
+        "meaning": {
+          "page": "effects-and-templates",
+          "anchor": "_top"
+        },
+        "placeholder-syntax": {
+          "page": "effects-and-templates",
+          "anchor": "substitute-data-not-expressions"
+        },
+        "display-semantics": {
+          "page": "effects-and-templates",
+          "anchor": "substitute-data-not-expressions"
+        },
+        "validation-and-source-positions": {
+          "page": "effects-and-templates",
+          "anchor": "substitute-data-not-expressions"
+        },
+        "comment-configuration": {
+          "page": "effects-and-templates",
+          "anchor": "select-lifecycle-trigger-and-occasion"
+        },
+        "ownership-and-identity": {
+          "page": "effects-and-templates",
+          "anchor": "select-lifecycle-trigger-and-occasion"
+        },
+        "provider-boundaries": {
+          "page": "effects-and-templates",
+          "anchor": "apply-through-the-selected-host"
+        },
+        "operational-writing": {
+          "page": "effects-and-templates",
+          "anchor": "apply-through-the-selected-host"
+        },
+        "implemented-provider-ownership-and-lifecycle-state": {
+          "page": "effects-and-templates",
+          "anchor": "select-lifecycle-trigger-and-occasion"
+        }
+      },
+      "redirects": true,
+      "sourceIds": true,
+      "search": true
+    },
+    "docs/language.md": {
+      "phase": "retired",
+      "primary": "language-and-contracts",
+      "fromRef": "a9df2c151da1f3bc36e4d2f4608ace62eca6d330",
+      "fromSourceSha256": "308129af28a56cbb2fa7181493a94554e3c2da6a6b4852c8528b29593d4133f6",
+      "oldAnchors": [
+        "_top",
+        "detail-the-diffdevil-expression-language",
+        "meaning",
+        "start-without-learning-a-language",
+        "a-first-formula",
+        "a-first-condition",
+        "a-first-query",
+        "four-contexts-one-meaning",
+        "explicit-roots",
+        "names-and-literals",
+        "evidence-is-part-of-the-value",
+        "beyond-the-basics",
+        "design-limits"
+      ],
+      "anchors": {
+        "_top": {
+          "page": "language-and-contracts",
+          "anchor": "_top"
+        },
+        "detail-the-diffdevil-expression-language": {
+          "page": "language-and-contracts",
+          "anchor": "_top"
+        },
+        "meaning": {
+          "page": "language-and-contracts",
+          "anchor": "_top"
+        },
+        "start-without-learning-a-language": {
+          "page": "language-and-contracts",
+          "anchor": "which-contract-owns-the-question"
+        },
+        "a-first-formula": {
+          "page": "measurements-to-rules",
+          "anchor": "separate-measures-formulas-and-scopes"
+        },
+        "a-first-condition": {
+          "page": "measurements-to-rules",
+          "anchor": "query-then-check"
+        },
+        "a-first-query": {
+          "page": "measurements-to-rules",
+          "anchor": "query-then-check"
+        },
+        "four-contexts-one-meaning": {
+          "page": "language-and-contracts",
+          "anchor": "expressions-have-phases-too"
+        },
+        "explicit-roots": {
+          "page": "language-and-contracts",
+          "anchor": "expressions-have-phases-too"
+        },
+        "names-and-literals": {
+          "page": "language-and-contracts",
+          "anchor": "expressions-have-phases-too"
+        },
+        "evidence-is-part-of-the-value": {
+          "page": "language-and-contracts",
+          "anchor": "envelopes-do-not-grant-execution"
+        },
+        "beyond-the-basics": {
+          "page": "language-and-contracts",
+          "anchor": "which-contract-owns-the-question"
+        },
+        "design-limits": {
+          "page": "language-and-contracts",
+          "anchor": "envelopes-do-not-grant-execution"
+        }
+      },
+      "redirects": true,
+      "sourceIds": true,
+      "search": true
+    },
+    "docs/language/policies-and-bands.md": {
+      "phase": "retired",
+      "primary": "measurements-to-rules",
+      "fromRef": "a9df2c151da1f3bc36e4d2f4608ace62eca6d330",
+      "fromSourceSha256": "a591f162746e6897654923a4119dab42f85880bd74c523c82e38ce364dac5a4c",
+      "oldAnchors": [
+        "_top",
+        "policies-metrics-bands-and-rules",
+        "meaning",
+        "configuration-entry",
+        "main-sections",
+        "metrics",
+        "standard-measure-catalog",
+        "dependency-graph-and-phases",
+        "parameters",
+        "bands",
+        "validation",
+        "resolution-with-evidence",
+        "rules",
+        "labels-and-conflicts",
+        "comments-and-templates",
+        "plan-boundary",
+        "complete-specimens-and-evolution",
+        "current-implementation-standing"
+      ],
+      "anchors": {
+        "_top": {
+          "page": "measurements-to-rules",
+          "anchor": "_top"
+        },
+        "policies-metrics-bands-and-rules": {
+          "page": "measurements-to-rules",
+          "anchor": "_top"
+        },
+        "meaning": {
+          "page": "measurements-to-rules",
+          "anchor": "_top"
+        },
+        "configuration-entry": {
+          "page": "measurements-to-rules",
+          "anchor": "name-the-question-in-a-complete-policy"
+        },
+        "main-sections": {
+          "page": "measurements-to-rules",
+          "anchor": "name-the-question-in-a-complete-policy"
+        },
+        "metrics": {
+          "page": "measurements-to-rules",
+          "anchor": "separate-measures-formulas-and-scopes"
+        },
+        "standard-measure-catalog": {
+          "page": "measurements-to-rules",
+          "anchor": "separate-measures-formulas-and-scopes"
+        },
+        "dependency-graph-and-phases": {
+          "page": "measurements-to-rules",
+          "anchor": "respect-evaluation-phases"
+        },
+        "parameters": {
+          "page": "measurements-to-rules",
+          "anchor": "name-the-question-in-a-complete-policy"
+        },
+        "bands": {
+          "page": "measurements-to-rules",
+          "anchor": "classify-the-whole-possible-value"
+        },
+        "validation": {
+          "page": "measurements-to-rules",
+          "anchor": "classify-the-whole-possible-value"
+        },
+        "resolution-with-evidence": {
+          "page": "measurements-to-rules",
+          "anchor": "classify-the-whole-possible-value"
+        },
+        "rules": {
+          "page": "measurements-to-rules",
+          "anchor": "declare-and-inspect-a-rule"
+        },
+        "labels-and-conflicts": {
+          "page": "measurements-to-rules",
+          "anchor": "declare-and-inspect-a-rule"
+        },
+        "comments-and-templates": {
+          "page": "measurements-to-rules",
+          "anchor": "declare-and-inspect-a-rule"
+        },
+        "plan-boundary": {
+          "page": "measurements-to-rules",
+          "anchor": "declare-and-inspect-a-rule"
+        },
+        "complete-specimens-and-evolution": {
+          "page": "measurements-to-rules",
+          "anchor": "_top"
+        },
+        "current-implementation-standing": {
+          "page": "measurements-to-rules",
+          "anchor": "_top"
+        }
+      },
+      "redirects": true,
+      "sourceIds": true,
+      "search": true
+    },
+    "docs/language/versioning-and-interchange.md": {
+      "phase": "retired",
+      "primary": "schemas-and-compatibility",
+      "fromRef": "a9df2c151da1f3bc36e4d2f4608ace62eca6d330",
+      "fromSourceSha256": "5ad97e09a59a859c7f90f8dba1e06c45cea6cc48d3c3d6d7701d150a76774ca9",
+      "oldAnchors": [
+        "_top",
+        "versioning-and-interchange",
+        "meaning",
+        "separate-versioned-meanings",
+        "textual-presentation-identities",
+        "report-envelope",
+        "files-and-completeness",
+        "query-result-encoding",
+        "report-jsonl-and-compact-action-summaries",
+        "plan-encoding",
+        "source-identity-and-freshness",
+        "forward-compatible-consumption",
+        "no-silent-semantic-drift",
+        "persist-authored-source-not-parser-internals",
+        "migration-posture",
+        "schema-scope-and-qualification",
+        "pre-release-saved-metric-type-repair"
+      ],
+      "anchors": {
+        "_top": {
+          "page": "schemas-and-compatibility",
+          "anchor": "_top"
+        },
+        "versioning-and-interchange": {
+          "page": "schemas-and-compatibility",
+          "anchor": "_top"
+        },
+        "meaning": {
+          "page": "schemas-and-compatibility",
+          "anchor": "_top"
+        },
+        "separate-versioned-meanings": {
+          "page": "schemas-and-compatibility",
+          "anchor": "version-identities"
+        },
+        "textual-presentation-identities": {
+          "page": "schemas-and-compatibility",
+          "anchor": "version-identities"
+        },
+        "report-envelope": {
+          "page": "schemas-and-compatibility",
+          "anchor": "report-and-query-envelopes"
+        },
+        "files-and-completeness": {
+          "page": "schemas-and-compatibility",
+          "anchor": "report-and-query-envelopes"
+        },
+        "query-result-encoding": {
+          "page": "schemas-and-compatibility",
+          "anchor": "report-and-query-envelopes"
+        },
+        "report-jsonl-and-compact-action-summaries": {
+          "page": "schemas-and-compatibility",
+          "anchor": "transport-distinctions"
+        },
+        "plan-encoding": {
+          "page": "schemas-and-compatibility",
+          "anchor": "plans-and-effects"
+        },
+        "source-identity-and-freshness": {
+          "page": "schemas-and-compatibility",
+          "anchor": "plans-and-effects"
+        },
+        "forward-compatible-consumption": {
+          "page": "schemas-and-compatibility",
+          "anchor": "forward-reading-and-strict-execution"
+        },
+        "no-silent-semantic-drift": {
+          "page": "schemas-and-compatibility",
+          "anchor": "forward-reading-and-strict-execution"
+        },
+        "persist-authored-source-not-parser-internals": {
+          "page": "schemas-and-compatibility",
+          "anchor": "forward-reading-and-strict-execution"
+        },
+        "migration-posture": {
+          "page": "schemas-and-compatibility",
+          "anchor": "migration-standing"
+        },
+        "schema-scope-and-qualification": {
+          "page": "schemas-and-compatibility",
+          "anchor": "structural-versus-semantic-reading"
+        },
+        "pre-release-saved-metric-type-repair": {
+          "page": "schemas-and-compatibility",
+          "anchor": "migration-standing"
+        }
+      },
+      "redirects": true,
+      "sourceIds": true,
+      "search": true
     }
   },
   "routes": {
@@ -329,6 +1239,36 @@
     },
     "/docs/playground/": {
       "target": "playground"
+    },
+    "/docs/get-started/automation/": {
+      "target": "surfaces"
+    },
+    "/docs/recipes/policy-recipes/": {
+      "target": "recipes"
+    },
+    "/docs/cli/": {
+      "target": "cli"
+    },
+    "/docs/actions/github-actions/": {
+      "target": "github-actions"
+    },
+    "/docs/library-api/": {
+      "target": "typescript-library"
+    },
+    "/docs/policies-and-detail/presets-and-shortcuts/": {
+      "target": "start-with-a-preset"
+    },
+    "/docs/policies-and-detail/templates/": {
+      "target": "effects-and-templates"
+    },
+    "/docs/policies-and-detail/language/": {
+      "target": "language-and-contracts"
+    },
+    "/docs/policies-and-detail/policies-and-bands/": {
+      "target": "measurements-to-rules"
+    },
+    "/docs/policies-and-detail/versioning-and-interchange/": {
+      "target": "schemas-and-compatibility"
     }
   }
 }

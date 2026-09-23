@@ -536,7 +536,7 @@ the distributed Action is rerun with both real tokens.
 
 **Current consequence.** Only supplied values override inherited settings. Partial convenience maps, including individual size thresholds/labels, resolve against lower layers before complete validation and coherent generated-group rewriting. Named executable declarations continue to replace the same-ID declaration as a whole; arrays retain their documented replace/explicit-append semantics. The current compiler still requires complete supplied size maps, so shared resolver/schema/CLI/Action support is an explicit implementation remainder, not a claim that new partial examples run already. The dashboard and `explain` show origins and export ordinary policy.
 
-**Sources.** Owner-directed co-design settlement of 2026-09-17; D001; [presets and shortcuts](integration/presets-and-shortcuts.md#configuration-layering); [current Action interface](integration/github-actions.md).
+**Sources.** Owner-directed co-design settlement of 2026-09-17; D001; [presets and shortcuts](manual/policy/configure.md#know-which-host-supplies-each-layer); [current Action interface](manual/use/github-actions.md).
 
 ## D034: Separate seven-day recovery from opted-in quantitative history
 
@@ -645,10 +645,22 @@ qualified source only until its publication boundary is separately satisfied.
 
 **Current consequence.** [`presentation.md`](presentation.md) is the normative interface. The CLI and public library share the report/plan presenters; the website consumes them rather than maintaining display semantics. `--detail` and `--color` are confined to human report/plan presentation. Agent and machine formats never contain ANSI. Material textual changes receive public interface/release documentation without changing the canonical report schema by fiction. Provider results continue to own applied/readback standing.
 
-**Sources.** Wolf and Nyxara's owner co-design in [emergency-meeting #491](https://github.com/Wolfsblvt/emergency-meeting/issues/491#issuecomment-5737100063); [textual branding](branding.md); [versioning and interchange](language/versioning-and-interchange.md); [human and agent presentation](presentation.md).
+**Sources.** Wolf and Nyxara's owner co-design in [emergency-meeting #491](https://github.com/Wolfsblvt/emergency-meeting/issues/491#issuecomment-5737100063); [textual branding](branding.md); [versioning and interchange](manual/reference/language-and-contracts/schemas-and-compatibility.md); [human and agent presentation](presentation.md).
 
 
-## D041: Separate manual source identity from routes and preserve whole-source cutovers
+## D041: Record what the Action ships, not hashes of its inputs
+
+**Decision.** `actions/runtime/MANIFEST.json` records the distribution's target, compiler version and each vendored runtime package with its version, lock integrity, licence and notice paths. It no longer records SHA-256 hashes of source inputs (including whole `package.json` and `package-lock.json`) or of generated files. `npm run check:actions` remains the stale-distribution check: it rebuilds in temporary storage and compares every tracked byte.
+
+**Why.** Whole-file input hashes made every development-only dependency update, such as Astro, wrangler or type packages, fail Verify on a stale manifest although no shipped byte changed. Every Dependabot PR then needed a local rebuild commit, and parallel PRs editing `package.json` conflicted on the manifest. Git already binds the committed distribution to the lockfile in the same tree, and the byte comparison catches every change that alters what runs. Wolf selected this directly: "I never asked for hash recording. … This is not needed, it just makes everything more complicated."
+
+**Rejected.** Keeping exact-lockfile provenance with a local rebuild on every dependency PR; keeping it and letting an automated writer commit the refreshed manifest on dependency PRs, which adds a privileged machine writer for a claim no consumer reads.
+
+**Current consequence.** A development-only dependency update can pass Verify on its own. A change to the shipped closure, compiler output or project version still fails until `npm run build:actions` is run and the generated diff is inspected. The separate release-carrier manifests used for published Skill and standalone archives are unchanged by this decision.
+
+**Sources.** Juno's finding in [emergency-meeting #453](https://github.com/Wolfsblvt/emergency-meeting/issues/453#issuecomment-5770682443); Wolf's decision in [#453](https://github.com/Wolfsblvt/emergency-meeting/issues/453#issuecomment-5782985671); [Action distribution](integration/action-distribution.md).
+
+## D042: Separate manual source identity from routes and preserve whole-source cutovers
 
 **Decision.** Maintain reader-facing chapters in `docs/manual/` and render only the
 explicit manifest at `docs.diffdevil.dev`. Keep the FAQ source there but render its

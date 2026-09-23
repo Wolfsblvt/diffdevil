@@ -122,8 +122,8 @@ State the executable/version and installation location or executor, the policy p
 
 ## Deeper reference
 
-- [CLI commands, sources, formats and exit codes](https://github.com/Wolfsblvt/diffdevil/blob/main/docs/integration/cli.md)
-- [Presets, configuration and shortcuts](https://github.com/Wolfsblvt/diffdevil/blob/main/docs/integration/presets-and-shortcuts.md)
+- [CLI commands, sources, formats and exit codes](https://github.com/Wolfsblvt/diffdevil/blob/main/docs/manual/use/cli.md)
+- [Presets, configuration and shortcuts](https://github.com/Wolfsblvt/diffdevil/blob/main/docs/manual/policy/README.md)
 - [Local automation examples](https://github.com/Wolfsblvt/diffdevil/blob/main/docs/manual/start/analyze-local-changes.md)
 - [npm execution](https://docs.npmjs.com/cli/v11/commands/npm-exec/)
 - [npm installation locations](https://docs.npmjs.com/cli/v11/configuring-npm/folders/)

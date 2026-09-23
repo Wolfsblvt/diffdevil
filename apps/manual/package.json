@@ -3,16 +3,20 @@
   "private": true,
   "type": "module",
   "license": "AGPL-3.0-only",
-  "engines": {"node": ">=22.12.0"},
+  "engines": {
+    "node": ">=22.12.0"
+  },
   "scripts": {
     "toolchain": "node ../../tools/manual-package.mjs",
     "build": "node ../../tools/public-build.mjs",
     "check": "npm --prefix ../.. run build && node ../../tools/manual-command.mjs check",
     "dev": "npm --prefix ../.. run build && node ../../tools/manual-command.mjs dev",
-    "test": "node --test foundation.test.mjs source-resolver.test.mjs wave-1.test.mjs wave-2.test.mjs",
+    "test": "node --test *.test.mjs",
     "test:projection": "node --test render.spec.mjs",
     "qa": "node ../../tools/manual-qa.mjs",
-    "verify:offline": "node ../../tools/verify-offline.mjs"
+    "verify:offline": "node ../../tools/verify-offline.mjs",
+    "generate": "npm --prefix ../.. run build && node generated-content.mjs --write",
+    "check:generated": "node generated-content.mjs --check"
   },
   "dependencies": {
     "@astrojs/check": "0.9.10",

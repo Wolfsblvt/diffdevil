@@ -1,0 +1,39 @@
+version: 1
+presets: [size@1]
+defaults:
+  paths:
+    exclude: ['**/package-lock.json']
+scopes:
+  source:
+    includeOnly: ['src/**']
+  tests:
+    includeOnly: ['tests/**']
+parameters:
+  attentionAt:
+    type: integer
+    default: 5
+metrics:
+  sourceReview:
+    measure: lines.changed
+    scope: source
+  testReview:
+    measure: lines.changed
+    scope: tests
+  attention:
+    formula: metrics.sourceReview + metrics.testReview
+bands:
+  attention:
+    value: metrics.attention
+    minimum: 0
+    ranges:
+      - id: small
+        lt: 5
+      - id: substantial
+        otherwise: true
+queries:
+  attention:
+    expression: metrics.attention
+rules:
+  attention:
+    when: metrics.attention >= params.attentionAt
+    onUnknown: hold

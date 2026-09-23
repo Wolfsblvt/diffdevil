@@ -45,7 +45,7 @@ An already-correct label is success when provider readback confirms it. It need 
 
 The no-config workflow selects the bundled preset, with no hidden lockfile or generated-file exclusions. It does not automatically adopt a similarly named file merely because that file exists in a checkout.
 
-For reviewed repository policy, use the explicit base-policy route in [GitHub Actions](../use/github-actions.md). A trusted base configuration additionally needs content-read capability. The [current Actions integration](../../integration/github-actions.md#split-trusted-policy-reads-from-effects) gives the complete token separation example when policy reads and effects use different credentials. Keep policy trusted independently of the PR data being measured.
+For reviewed repository policy, use the explicit base-policy route in [GitHub Actions](../use/github-actions.md). A trusted base configuration additionally needs content-read capability. The [current Actions integration](../use/github-actions.md#select-trusted-configuration-and-credentials) gives the complete token separation example when policy reads and effects use different credentials. Keep policy trusted independently of the PR data being measured.
 
 [Start with a preset](../policy/README.md) owns preset selection and customization. Exact input/default/output names come from the [Actions reference](../reference/github-actions.md) and [canonical root Action metadata](../../../action.yml), not an extra option table here.
 

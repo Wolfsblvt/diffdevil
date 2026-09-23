@@ -121,7 +121,7 @@ npm exec -- diffdevil plan --diff-file node_modules/@wolfsblvt/diffdevil/docs/ex
 
 The desired body displays **10 Changed**, **16 churn**, **6 deleted-only or modified lines**, and **4 included files**. `presets: []` deliberately opts out of automatic size behavior. Nothing is posted by this preview. An applying host must select this trusted config and the expected comment author before the effect can occur.
 
-Templates substitute completed values; they do not execute arithmetic or programs inside braces. Define arithmetic as a metric, then reference it. Authored Markdown remains yours, while the normal display formatter escapes substituted data and neutralizes accidental mentions. A misspelled placeholder is an error; a valid measurement with uncertain evidence displays its actual standing. [Effects and templates](../../policy/from-measurements-to-rules/effects-and-templates.md) owns the policy-writing treatment; the [maintained template contract](../../../integration/templates.md) remains the exact reference during migration.
+Templates substitute completed values; they do not execute arithmetic or programs inside braces. Define arithmetic as a metric, then reference it. Authored Markdown remains yours, while the normal display formatter escapes substituted data and neutralizes accidental mentions. A misspelled placeholder is an error; a valid measurement with uncertain evidence displays its actual standing. [Effects and templates](../../policy/from-measurements-to-rules/effects-and-templates.md) owns the policy-writing treatment; the [maintained template contract](../../policy/from-measurements-to-rules/effects-and-templates.md) remains the exact reference during migration.
 
 ## Choose mode and trigger separately
 

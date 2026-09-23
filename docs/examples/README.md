@@ -15,12 +15,12 @@ consumer ran it successfully.
 | Automatic size labels with no config or comments | [size workflow](workflows/size.yml) | [Quickstart](../manual/start/label-pull-requests.md) |
 | Transparent local counts, scalars and path queries | [four-file patch](diffs/review.diff) | [Local automation](../manual/start/analyze-local-changes.md) |
 | File count and line count as separate facts | [two large files beside fourteen small ones](diffs/few-vs-many.diff) | Controlled teaching specimen, not a public catalogue entry |
-| Source changes without test-path changes | [policy](policies/review-signals.yml), [workflow](workflows/review-signals.yml) | [Policy recipes](../guides/policy-recipes.md) |
-| One updated comment, no size labels | [policy](policies/review-comment.yml), [workflow](workflows/review-comment.yml) | [Policy recipes](../guides/policy-recipes.md) |
-| Read-only Action facts and a threshold decision | [analyze workflow](workflows/analyze.yml) | [Action manual](../integration/github-actions.md) |
-| Inline removed-or-rewritten threshold | [threshold workflow](workflows/destructive.yml) | [Policy recipes](../guides/policy-recipes.md) |
-| Change preset thresholds without replacing its ownership | [threshold policy](policies/thresholds.yml) | [Presets](../integration/presets-and-shortcuts.md) |
-| Full explicit metrics, scopes, bands and labels | [full policy](policies/full.yml) | [Policy manual](../language/policies-and-bands.md) |
+| Source changes without test-path changes | [policy](policies/review-signals.yml), [workflow](workflows/review-signals.yml) | [Policy recipes](../manual/policy/recipes.md) |
+| One updated comment, no size labels | [policy](policies/review-comment.yml), [workflow](workflows/review-comment.yml) | [Policy recipes](../manual/policy/recipes.md) |
+| Read-only Action facts and a threshold decision | [analyze workflow](workflows/analyze.yml) | [Action manual](../manual/use/github-actions.md) |
+| Inline removed-or-rewritten threshold | [threshold workflow](workflows/destructive.yml) | [Policy recipes](../manual/policy/recipes.md) |
+| Change preset thresholds without replacing its ownership | [threshold policy](policies/thresholds.yml) | [Presets](../manual/policy/README.md) |
+| Full explicit metrics, scopes, bands and labels | [full policy](policies/full.yml) | [Policy manual](../manual/policy/from-measurements-to-rules/README.md) |
 
 The source/test signal is an explicit repository rule, not a test-quality judgment.
 The comment recipe uses `presets: []` so commenting does not silently add labels.

@@ -12,7 +12,7 @@ import GithubSlugger from 'github-slugger';
 import { manualPages, pages, pageUrl, validateManifest } from './manifest.mjs';
 import { migrations, validateTransfer, cutoverPlan, legacyRedirects, pageIsCurrent, validateRetiredRoutes } from './migration.mjs';
 import { sourceTargets, sourceResolverUrl, sourceUrl } from './source-resolver.mjs';
-import { generatedIsland } from './generated-islands.mjs';
+import { projectIslands } from './generated-content.mjs';
 import { entries as legacyEntries } from '../website/docs-manifest.mjs';
 import { faqRecords, FAQ_SOURCE, FAQ_CANONICAL } from '../website/faq-content.mjs';
 import relatedQuestions from './related-questions.json' with { type: 'json' };
@@ -133,6 +133,7 @@ export function generateManual({root = repositoryRoot, qa = process.env.DIFFDEVI
  }
  const out = join(root,'apps/manual/src/content/docs'), evidence = join(root,'artifacts/manual');
  rmSync(out,{recursive:true,force:true}); mkdirSync(out,{recursive:true}); mkdirSync(evidence,{recursive:true});
+ const generatedReceipts = [];
  const records = [], anchorInventory = {}, sourceLinks = {}, fragmentReferences = [];
  for (const page of manualPages) {
   let raw = readFileSync(join(root,page.source),'utf8');
@@ -141,7 +142,7 @@ export function generateManual({root = repositoryRoot, qa = process.env.DIFFDEVI
   if (standing === 'authored' && /<!--\s*authoring:\s*scaffold/u.test(raw)) throw new Error(`${page.source}: remove the scaffold marker after authoring.`);
   validateAvailability(raw,page);
   const digest = createHash('sha256').update(raw).digest('hex');
-  raw = raw.replace(/<!-- manual:generated ([a-z-]+) -->/gu, (_,id) => generatedIsland(id,{root,ref}));
+  raw = projectIslands(raw,{root,ref,source:page.source,receipts:generatedReceipts});
   const projection = projectMarkdown(raw,page,{root,ref,targets,assets:publicAssets});
   if (relatedQuestions[page.key]?.length) projection.body += '\n## Related questions\n\n' + relatedQuestions[page.key].map(id => {
    const question = questions.get(id);
@@ -183,11 +184,16 @@ export function generateManual({root = repositoryRoot, qa = process.env.DIFFDEVI
   }
   validateTransfer(row,transfer,state,{sourceExists:exists(row.source),inboundLinks:incoming[row.source] ?? [],targetAnchors:anchorInventory});
  }
- const redirects = legacyRedirects(state);
+ const repositoryRedirects = legacyEntries.filter(entry=>entry.repositoryOnly).map(entry=> {
+  if (!exists(entry.source) || !Object.hasOwn(targets,entry.source)) throw new Error(`Unqualified repository-only destination: ${entry.source}`);
+  return {from:entry.route ?? `/docs/${entry.slug}/`,to:sourceUrl(entry.source,ref),status:308};
+ });
+ const redirects = [...legacyRedirects(state),...repositoryRedirects];
  validateRetiredRoutes(state,legacyEntries,redirects);
  const aliases = manualPages.flatMap(page=>page.aliases.map(from=>({from,to:pageUrl(page.key),status:308})));
  const fragments = fragmentAliases(state,anchorInventory);
  const report = {ref,version,records,aliases,redirects,fragments,cutover:cutoverPlan(state),faq:{source:'docs/manual/faq.md',present:exists('docs/manual/faq.md'),shellPresent:exists('apps/website/src/pages/faq.astro')},qa};
+ writeFileSync(join(evidence,'generated-islands.json'),JSON.stringify(generatedReceipts,null,2)+'\n');
  writeFileSync(join(evidence,'manifest.json'),JSON.stringify(report,null,2)+'\n');
  const generated = join(root,'apps/website/src/generated'); mkdirSync(generated,{recursive:true});
  writeFileSync(join(generated,'source-targets.json'),JSON.stringify(targets,null,2)+'\n');
