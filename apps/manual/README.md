@@ -1,4 +1,4 @@
-# Public manual foundation
+# Public manual source and rendering
 
 ## Meaning
 
@@ -27,7 +27,7 @@ npm --prefix apps/manual run qa
 ```
 
 `check` builds the engine and checks the actual manual renderer. `test` checks the
-source contracts and executable START/UNDERSTAND/USE specimens; both require the built
+source contracts and executable START/UNDERSTAND/USE/POLICY specimens; both require the built
 engine. `test:projection` additionally requires the prepared toolchain
 and built engine. `dev` serves the manual on loopback port 4322. `qa` starts from an
 ordinary two-host production build and creates the isolated reading qualification
@@ -62,8 +62,9 @@ public routes or the finite source resolver. Code blocks are never rewritten.
 Register public images in `assets.json`; the build copies only those assets.
 Full working examples stay open. Secondary variants may use native disclosures.
 
-START, UNDERSTAND and the open USE surfaces have twenty-one authored chapters.
-The thirteen Policy/Reference and seven Managed App/Help chapters remain scaffolds; the accepted FAQ stays separate. Authoring comments
+START, UNDERSTAND, the open USE surfaces and WRITE POLICY/REFERENCE have thirty-four
+authored chapters. Seven Managed App/Help chapters remain scaffolds; the accepted
+FAQ stays separate. Authoring comments
 are removed from the renderer, and readiness is private build state in
 `authoring-state.json`. Complete the selected reader job, examples, expected results,
 failure returns and source links before changing `scaffold` to `authored`.
@@ -125,10 +126,15 @@ Wave 2 retires the old auto-label guide, local-automation guide and Playground
 visitor guide. Their complete successor sets are authored; all old fragments,
 source IDs, inbound links, three legacy public routes and search ownership move
 together. Playground operator requirements remain in `apps/playground/README.md`.
-CLI, Actions, TypeScript, templates, language and the broad automation overview
-retain their old source ownership until their remaining Policy/Reference successors
-are authored. Thirteen manual pages are now current/searchable; authorship of the
-other eight completed chapters does not bypass their unfinished source families.
+Wave 3 additionally transfers the broad automation overview, recipes, CLI, Actions,
+TypeScript, presets/shortcuts, templates, language overview, policies/bands and
+versioning/interchange. Their 156 old fragments and ten old public routes move in
+the same cut. Thirty-one manual pages are current/searchable. Five detailed language
+sources remain current until the shared detail-language/troubleshooting destination
+is complete in Wave 4; authoring the detail reference does not bypass that join.
+Parser architecture remains repository-owned: its old public route redirects to
+the exact repository source, the finite source resolver remains available, and the
+old article is no longer projected or indexed as public manual content.
 
 ## Search, FAQ and generated inventories
 
@@ -143,20 +149,45 @@ admitted `docs/manual/faq.md`; answers, stable IDs, native disclosures and the
 product-shell route remain owned by that source. Missing IDs refuse. The ordinary
 FAQ browser qualification runs on the combined candidate as well.
 
-`<!-- manual:generated NAME -->` inserts a bounded mechanical inventory into an
-authored page. Supported names are `cli-help`, `actions`, `typescript-exports`,
-`schemas`, `detail`, `presets`, `real-pr-catalogue`, `presenter-small`,
-`presenter-first-plan`, `presenter-report` and `presenter-plan`. These read the actual built CLI/API, Action
-metadata and canonical contracts/catalogue; they are not another manually maintained
-reference. Source links remain useful when reading on GitHub. Schema fields and
-language catalogues are mechanical inventories, not a claim that structural validity
-establishes semantic validity. Preset expansion is checked against the canonical
-preset through the real compiler. Presenter specimens execute the real CLI and keep
-the small 10-Changed/16-churn input distinct from the 178-Changed presentation input.
-A command failure fails generation. `wave-1.test.mjs` also exercises scalar/check
-exits, incomplete paths, held plans, the admitted extension projection, catalogue
-identities and exported CLI replay. Open workflow, policy and shell blocks are
-checked against their complete canonical example files, not phrase-locked prose.
+The Policy/Reference inventories are committed inside paired edit boundaries:
+
+```markdown
+<!-- manual:generated NAME -->
+... mechanically emitted Markdown ...
+<!-- /manual:generated NAME -->
+```
+
+Edit authored framing outside those boundaries. Change canonical metadata, code,
+schemas or catalogues for a mechanical fact, then run:
+
+```sh
+npm --prefix apps/manual run generate
+npm --prefix apps/manual run check:generated
+```
+
+The renderer also refuses exact-byte drift, missing closing boundaries, duplicate
+islands and malformed markers. `generated-content.mjs` updates only paired bodies,
+never prose, examples, troubleshooting, conclusions or migration judgment. CLI
+reference remains authored and checked against real help and option declarations.
+Earlier waves retain their existing dynamic presenter and example markers.
+
+Eleven committed blocks cover Action metadata, public exports and complete resolved
+declarations, schema fields, the checked size preset, and detail operators, functions,
+diagnostics, limits, environment, versions and shortcuts. Public aliases, overloads,
+generics, optional/readonly members and source links survive; external public
+re-exports retain their dependency identity. Schema pointers and branch-local
+requiredness remain explicit, with references, unions, definitions and boolean schemas
+unflattened. Exact inputs and SHA-256, emitted bytes and SHA-256 are recorded in
+`artifacts/manual/generated-islands.json` as reproducible build evidence, not a
+second authored source registry.
+
+Presenter specimens use the shared engine and distinguish the small 10-Changed /
+16-churn input from the 178-Changed presentation input. Complete excerpts are compared
+with canonical files. `wave-3.test.mjs` executes every displayed read-only CLI invocation
+and six independent policy chapters, proves false versus unresolved behavior, and
+checks structurally valid but semantically invalid report/policy/plan counterparts.
+The root test discovery and this application's `test` include the wave. Tests preserve
+contracts and behavior rather than prose wording.
 
 The real-PR catalogue remains the one shared `docs/examples/catalogue` family.
 Playground links carry separate `example=<id>&variant=<id>` parameters; the
@@ -229,8 +260,39 @@ plain npm installation is not pinned to an old package to disguise that release
 boundary. The Skill's version, release manifest and archive availability remain
 independent. None of these facts authorizes publication or widens the App wave.
 
-Continue on this same draft carrier for Policy/Reference. Re-read the exact head
-and hosted results returned in the PR discussion, preserving any later correction;
-this document intentionally does not contain its own commit hash. Three source
-families have transferred, not the whole manual. Final README compression, remaining
+This accepted Wave 2 boundary remains historical contribution context. The exact
+head and hosted results live in the PR discussion; this document does not contain
+its own commit hash. Wave 3 extends the same draft carrier, not a second manual. Final README compression, remaining
 retirements, whole-manual review and live host adoption remain later work.
+
+
+## Wave 3 return boundary
+
+All six policy chapters and seven reference chapters are authored. The controlled
+story files are `docs/examples/policies/story/{preset,configure,paths,rules,labels,comments}.yml`.
+Every chapter starts from its complete file without loading earlier chapters. The
+checked progression preserves 10 Changed / 16 churn, the 6 / 8 selected comparison,
+source 3 plus tests 2, configurable attention bands/rules, desired label definitions,
+and an explicitly optional owned comment. Real-PR depth uses the shared immutable
+catalogue and exact example/variant identities, never synthetic gallery cards.
+
+Ten additional source families are retired without Markdown forwarding stubs. The
+complete prior source bytes are identified by historical commit and SHA-256. Old
+source IDs, fragments, redirects, inbound links and search ownership move together;
+existing Wave 2 transfers remain intact. The substantial detail reference has stable
+section anchors. Parser architecture remains repository-only. Five old detailed-language
+sources remain current because diagnostics also belongs to the uncompleted Wave 4
+troubleshooting page. The seven Wave 4 chapters and landed FAQ are preserved byte-for-byte.
+Earlier authored chapters receive only necessary link repair when their source moved.
+
+`qa/wave-3.mjs` adds the thirteen-page, two-theme/two-width reading journey and exact
+API/source-depth checks to the existing two-host browser qualification. Neither its
+source nor a static build claims that the browser journey passed. Current candidate
+evidence, environment limitations and hosted conclusions belong in the exact-head
+Return; old-head green is not inherited.
+
+Mainline reconciliation preserves the Action-distribution D041 and separate manual
+source-identity decision as D042, plus the later development note and Node typings
+update. Source reconciliation alone does not prove a fresh dependency installation
+or hosted Windows/Node compatibility. No merge, publication, live preview, package
+release, App/Store installation or provider write belongs to this contribution.
