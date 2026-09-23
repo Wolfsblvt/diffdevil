@@ -6,6 +6,10 @@ const originPattern = /^[A-Za-z0-9._-]{1,100}$/u;
 const boundedDays = value => Number.isSafeInteger(value) && value >= 1 && value <= 3660 ? value : undefined;
 
 function admissionError(code, message = code) { return Object.assign(new Error(message), { code }); }
+function validatedConfiguration(value) {
+  try { return validateRepositoryConfiguration(value); }
+  catch { throw admissionError('E_ADMISSION_CONFIGURATION'); }
+}
 function requireOrigin(value) {
   if (typeof value !== 'string' || !originPattern.test(value)) throw admissionError('E_ADMISSION_ORIGIN');
   return value;
@@ -60,12 +64,12 @@ export function createAdmissionService({ store, authorize = async () => false, r
     if (before.reach.repository !== 'available' || before.reach.installation !== 'active') throw admissionError('E_ADMISSION_UNAVAILABLE');
     if (!Number.isSafeInteger(request?.revision) || request.revision !== before.revision) throw admissionError('E_ADMISSION_STALE');
 
-    const configuration = request.configuration === undefined ? undefined : validateRepositoryConfiguration(request.configuration);
+    const configuration = request.configuration === undefined ? undefined : validatedConfiguration(request.configuration);
     const writer = request.writer === undefined ? undefined : request.writer?.confidence === 'administrator-declared' ? { confidence: 'administrator-declared' } : (() => { throw admissionError('E_ADMISSION_WRITER'); })();
     const execution = request.execution;
     if (execution !== undefined && typeof execution !== 'boolean') throw admissionError('E_ADMISSION_EXECUTION');
     const finalWriter = writer?.confidence ?? before.writer.confidence;
-    const finalConfiguration = configuration ?? (before.configuration.value === undefined ? undefined : validateRepositoryConfiguration(before.configuration.value));
+    const finalConfiguration = configuration ?? (before.configuration.value === undefined ? undefined : validatedConfiguration(before.configuration.value));
     if (execution === true && !['detected', 'administrator-declared'].includes(finalWriter)) throw admissionError('E_ADMISSION_WRITER_UNRESOLVED');
 
     let history;
