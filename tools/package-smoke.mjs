@@ -188,7 +188,10 @@ if (process.platform === 'win32') {
 }
 // Compile and run the complete published library example outside the checkout.
 await writeFile(join(home, 'inspect-change.mts'), await readFile(join(packageRoot, 'docs/examples/library/inspect-change.mts'), 'utf8'));
-run(process.execPath, [compiler, '--strict', '--target', 'ES2022', '--module', 'NodeNext', '--moduleResolution', 'NodeNext', '--typeRoots', resolve(root, 'node_modules/@types'), '--outDir', 'manual-out', 'inspect-change.mts'], home);
+// TypeScript 7 does not automatically include every visible `@types` package when
+// `--typeRoots` is explicit. This published example imports Node built-ins, so
+// qualify it with the Node ambient declarations deliberately.
+run(process.execPath, [compiler, '--strict', '--target', 'ES2022', '--module', 'NodeNext', '--moduleResolution', 'NodeNext', '--typeRoots', resolve(root, 'node_modules/@types'), '--types', 'node', '--outDir', 'manual-out', 'inspect-change.mts'], home);
 const inspect = (...args) => JSON.parse(run(process.execPath, ['manual-out/inspect-change.mjs', ...args], home));
 const inspected = inspect('diff', join(packageRoot, 'docs/examples/diffs/review.diff'));
 assert.deepEqual(inspected.changed, {status: 'exact', value: 10});
