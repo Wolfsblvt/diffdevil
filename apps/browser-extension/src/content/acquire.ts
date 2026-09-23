@@ -70,7 +70,7 @@ export async function acquire(current: Route, document: Document, signal: AbortS
   }
   if (!publicResult) {
     const after = await html(current.path, signal); const observed = pageComparison(after.document, current);
-    if (!after.response.ok || !observed || !sameComparison(comparison, observed) || comparison.changedFiles !== observed.changedFiles) throw new ExtensionError('COMPARISON_MOVED', 'GitHub did not confirm the same base, head and file count after acquisition.');
+    if (!after.response.ok || !observed || !sameComparison(comparison, observed) || comparison.changedFiles !== undefined && observed.changedFiles !== undefined && comparison.changedFiles !== observed.changedFiles) throw new ExtensionError('COMPARISON_MOVED', 'GitHub did not confirm the same base, head and file count after acquisition.');
   } else {
     const after = await request<PublicPull>({ type: 'source.public', repository: current.repository, pullRequest: current.pullRequest });
     if (!sameComparison(comparison, after.comparison) || comparison.changedFiles !== after.comparison.changedFiles) throw new ExtensionError('COMPARISON_MOVED', 'The comparison changed while policy was acquired.');
