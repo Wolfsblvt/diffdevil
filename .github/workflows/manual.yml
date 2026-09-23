@@ -71,7 +71,7 @@ jobs:
           const clean = value => String(value).replace(/\u001b\[[0-9;]*m/g, '').replace(/\s+/g, ' ');
           const summary = [
             !manual ? 'Manual: no browser result' : manual.ok ? 'Manual: passed' : 'Manual: ' + manual.failures.map(failure => clean(failure.name + ': ' + failure.error)).join(' | '),
-            !faq ? 'FAQ: no browser result' : faq.ok ? 'FAQ: passed' : 'FAQ: ' + faq.failures.map(clean).join(' | '),
+            !faq ? 'FAQ: no browser result' : faq.passed ? 'FAQ: passed' : 'FAQ: ' + (faq.failures?.length ? faq.failures.map(clean).join(' | ') : clean(faq.error ?? 'failed')),
           ].join(' | ');
           appendFileSync(process.env.GITHUB_OUTPUT, 'summary=' + summary.slice(0, 240) + '\n');
           NODE
