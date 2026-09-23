@@ -8,6 +8,8 @@
 
 **Measure changes. Match rules. Act on the result.**
 
+diffdevil is a product in development.
+
 A composable CLI, TypeScript library and GitHub Action for turning Git diffs into
 queryable facts, configured rules, and inspectable label/comment effects. Raw churn counts a
 three-line replacement as six lines. Replacement-aware changed lines count it
@@ -42,7 +44,7 @@ node dist/lib/cli/main.js query --report docs/examples/reports/exact.json \
 # 178
 ```
 
-**[Try the playground](https://diffdevil-playground.wolfsblvt.workers.dev)** · **[Label your PRs](docs/manual/start/label-pull-requests.md)** · [Local scripts](docs/manual/start/analyze-local-changes.md) · [Policy recipes](docs/guides/policy-recipes.md) · [FAQ](docs/manual/faq.md) · [User manual](docs/automation.md) · [CLI reference](docs/integration/cli.md) · [Actions](docs/integration/github-actions.md) · [TypeScript API](docs/integration/typescript-api.md)
+**[Try the playground](https://diffdevil-playground.wolfsblvt.workers.dev)** · **[Label your PRs](docs/manual/start/label-pull-requests.md)** · [Local scripts](docs/manual/start/analyze-local-changes.md) · [Policy recipes](docs/manual/policy/recipes.md) · [FAQ](docs/manual/faq.md) · [User manual](docs/manual/use/README.md) · [CLI reference](docs/manual/use/cli.md) · [Actions](docs/manual/use/github-actions.md) · [TypeScript API](docs/manual/use/typescript-library.md)
 
 ## Label your PRs with one file
 
@@ -121,7 +123,7 @@ node dist/lib/cli/main.js analyze --diff-file docs/examples/diffs/review.diff --
 
 `--base main --head HEAD` uses the selected merge-base comparison. Reports retain
 source revisions, inclusion reasons, raw facts, replacement-aware facts, and the
-quality of the evidence. See [sources and output](docs/integration/cli.md).
+quality of the evidence. See [sources and output](docs/manual/use/cli.md).
 
 ## Ask for the answer your script needs
 
@@ -147,7 +149,7 @@ output refuses an unresolved result rather than inventing a value. Diagnostics
 go to stderr. Use `--format nul` for NUL-delimited path output, and `--expr-file`
 or `--expr-stdin` for expressions that are awkward to quote.
 
-[Complete formats and exit codes](docs/integration/cli.md) · [detail reference](docs/language.md)
+[Complete formats and exit codes](docs/manual/use/cli.md) · [detail reference](docs/manual/reference/language-and-contracts/README.md)
 
 ## Write policy once
 
@@ -191,7 +193,7 @@ bands, and conflicting assignments. YAML errors preserve original source
 positions through quoting, folding, and aliases. Plans keep unresolved rules
 held; they never interpret unknown as false or remove an unrelated label.
 
-[Policy and band manual](docs/language/policies-and-bands.md) · [Templates](docs/integration/templates.md)
+[Policy and band manual](docs/manual/policy/from-measurements-to-rules/README.md) · [Templates](docs/manual/policy/from-measurements-to-rules/effects-and-templates.md)
 
 ## Know what the numbers mean
 
@@ -247,7 +249,7 @@ pinned policy controls effects, never a PR's changed workspace config. Do not ru
 untrusted PR scripts in a privileged job. Partial writes remain an incomplete
 result with a full readback journal, not a success-shaped guess.
 
-[Complete Action inputs and trust](docs/integration/github-actions.md) ·
+[Complete Action inputs and trust](docs/manual/use/github-actions.md) ·
 [Install-free distribution](docs/integration/action-distribution.md)
 
 ## Use the same engine from TypeScript
@@ -265,7 +267,7 @@ const report = unwrap(analyzeDiff(await readFile('change.diff', 'utf8')));
 console.log(report.totals.lines.changed);
 ```
 
-[API signatures and examples](docs/integration/typescript-api.md) · [Architecture](docs/ARCHITECTURE.md)
+[API signatures and examples](docs/manual/use/typescript-library.md) · [Architecture](docs/ARCHITECTURE.md)
 
 ## Read GitHub changes and reconcile declared effects
 
@@ -292,7 +294,7 @@ partial-write recovery.
 
 Start with the [task guides](docs/README.md#start-with-a-task), then use the
 [documentation map](docs/README.md) for complete language and integration
-contracts. The [GitHub Action guide](docs/integration/github-actions.md)
+contracts. The [GitHub Action guide](docs/manual/use/github-actions.md)
 documents the implemented interfaces and keeps local qualification separate from
 hosted-runner and publication evidence.
 
