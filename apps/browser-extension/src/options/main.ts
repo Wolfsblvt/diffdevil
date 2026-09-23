@@ -187,7 +187,7 @@ async function showDiagnostics(): Promise<void> {
     host.replaceChildren(list);
     if (info.last) host.append(node('p', 'last-source', `Last analysis: ${info.last.repository} #${info.last.pullRequest} · ${info.last.base.slice(0, 12)} → ${info.last.head.slice(0, 12)} · ${new Date(info.last.at).toLocaleString()}`));
     host.append(node('p', 'control-note', 'Raw diffs are processed in memory and discarded. Cached reports can contain private paths and numeric facts; cached repository policy contains configuration text. These caches are not browser-synchronized.'));
-    if (info.errors.length) { const details = node('details', 'recent-errors'); details.append(node('summary', '', `${info.errors.length} recent diagnostic codes`)); for (const item of info.errors) details.append(node('p', '', `${new Date(item.at).toLocaleString()} · ${item.code}`)); host.append(details); }
+    if (info.errors.length) { const details = node('details', 'recent-errors'); details.append(node('summary', '', `${info.errors.length} recent diagnostic events`)); for (const item of info.errors) details.append(node('p', '', `${new Date(item.at).toLocaleString()} · ${item.code} · ${item.phase ?? 'unknown phase'} · frame ${item.frameId ?? '?'} · document ${item.documentId ?? '?'} · sender ${item.senderUrl ?? '?'} · tab ${item.tabUrl ?? '?'} · routes ${item.routeAgreement ?? 'unavailable'}`)); host.append(details); }
   } catch (exception) { host.textContent = exception instanceof Error ? exception.message : 'Extension details are unavailable.'; }
 }
 async function manage(item: Setting, error: HTMLElement): Promise<void> {

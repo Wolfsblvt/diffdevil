@@ -14,6 +14,7 @@ export async function productionModules() {
     `export * from './apps/browser-extension/src/background/preferences.ts';`,
     `export * from './apps/browser-extension/src/background/cache.ts';`,
     `export * from './apps/browser-extension/src/background/authorization.ts';`,
+    `export * from './apps/browser-extension/src/background/diagnostic.ts';`,
     `export * from './apps/browser-extension/src/background/public-source.ts';`,
     `export * from './apps/browser-extension/src/content/github.ts';`,
     `export * from './dist/browser/index.js';`,

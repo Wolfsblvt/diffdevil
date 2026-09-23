@@ -38,6 +38,7 @@
     "extension:test": "node tools/browser-extension-build.mjs --without-fonts && node --test apps/browser-extension/tests/*.test.mjs",
     "extension:qa": "node apps/browser-extension/qa/run.mjs && node apps/browser-extension/qa/acquisition.mjs",
     "extension:qa:installed": "node apps/browser-extension/qa/installed.mjs",
+    "extension:qa:public": "node apps/browser-extension/qa/public-installed.mjs",
     "extension:store": "node tools/browser-extension-store.mjs",
     "extension:store:generate": "node tools/browser-extension-store.mjs --generate",
     "extension:package": "node tools/browser-extension-package.mjs"

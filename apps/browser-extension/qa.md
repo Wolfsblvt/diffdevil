@@ -15,6 +15,7 @@ node --test src/diffdevil/tests/browser.test.mjs
 npm run extension:test
 npm run extension:qa
 npm run extension:qa:installed -- --require
+npm run extension:qa:public
 npm run extension:store
 npm run check:actions
 ```
@@ -32,6 +33,8 @@ The rendered-browser suite executes the real options and content controllers. It
 A separate browser acquisition suite exercises the production signed-in adapter with authored HTTP responses. It checks immutable-base policy/template acquisition, after-fetch head validation, cache reuse, private/inaccessible 404 handling, truncated policy, deliberate Personal only, traversal rejection, HTML/error response rejection, byte limits, cancellation and independently confirmed empty comparisons. These are adapter tests, not live network, cookies or CORS evidence.
 
 The installed runner is fully authored. On an unrestricted browser it verifies actual MV3 startup/CSP, real synchronized/local storage separation, engine execution, IndexedDB normalization, browser/worker restart, cache reuse and explicit clear/reset behavior. It uses a synthetic report submitted through the real worker and does not impersonate live provider evidence.
+
+The public installed runner uses a disposable anonymous Chromium profile and the built unpacked extension against a current public PR. It checks direct aggregate and per-file Changed, opens the aggregate report, follows GitHub's Files link, and exercises a same-document route change that separates frame and tab URL. The receipt records whether GitHub's own click was a soft or full navigation. On failure it keeps a screenshot, page and worker console, and a Playwright trace under `artifacts/browser-extension/qa/public-installed/`. It does not establish signed-in layout or private-repository behavior.
 
 ## This source session
 

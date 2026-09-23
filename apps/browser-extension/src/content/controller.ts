@@ -68,7 +68,7 @@ async function renderFiles(): Promise<void> {
   } catch (error) {
     if (revision !== generation) return;
     if ((error as { code?: string }).code === 'CONTEXT_EXPIRED') { void refresh(true); return; }
-    paths.forEach(path => failed.add(path)); fileError = true; showStatus(error instanceof Error ? error.message : 'File evidence is unavailable.', true);
+    paths.forEach(path => failed.add(path)); fileError = true; const code = (error as { code?: string }).code ?? 'FILE_PROJECTION'; showStatus(`Changed ? · ${code}: ${error instanceof Error ? error.message : 'File evidence is unavailable.'}`, true);
   } finally { fileBusy = false; schedule(); }
 }
 function observe(): void {
@@ -107,7 +107,7 @@ async function refresh(force: boolean): Promise<void> {
     packet = result.packet; settings = result.settings; failedIdentity = '';
   } catch (error) {
     if (revision !== generation || signal.aborted) return;
-    packet = undefined; failedIdentity = identityKey; showStatus(`Changed ? · ${error instanceof Error ? error.message : 'Source is unavailable.'}`, true);
+    packet = undefined; failedIdentity = identityKey; const code = (error as { code?: string }).code ?? 'ACQUISITION_FAILED'; showStatus(`Changed ? · ${code}: ${error instanceof Error ? error.message : 'Source is unavailable.'}`, true);
   } finally { if (revision === generation) { acquiring = false; schedule(); } }
 }
 let navigationQueued = false;
