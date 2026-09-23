@@ -62,14 +62,46 @@ jobs:
         run: |
           tar -czf artifacts/wave-three-source/dependencies.tgz node_modules apps/manual/node_modules artifacts/manual-toolchain apps/manual/package-lock.json
           sha256sum artifacts/wave-three-source/dependencies.tgz > artifacts/wave-three-source/DEPENDENCIES.sha256
-      - name: Prepared read-only authoring dependencies
+          split -b 128M -d artifacts/wave-three-source/dependencies.tgz artifacts/wave-three-source/dependencies.part-
+      - name: Prepared authoring dependencies 00
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: wave-three-dependencies-${{ github.event.pull_request.head.sha || github.sha }}
+          name: wave-three-dependencies-00-${{ github.event.pull_request.head.sha || github.sha }}
           retention-days: 3
+          compression-level: 0
           if-no-files-found: error
           path: |
-            artifacts/wave-three-source/dependencies.tgz
+            artifacts/wave-three-source/dependencies.part-00
+            artifacts/wave-three-source/DEPENDENCIES.sha256
+      - name: Prepared authoring dependencies 01
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: wave-three-dependencies-01-${{ github.event.pull_request.head.sha || github.sha }}
+          retention-days: 3
+          compression-level: 0
+          if-no-files-found: error
+          path: |
+            artifacts/wave-three-source/dependencies.part-01
+            artifacts/wave-three-source/DEPENDENCIES.sha256
+      - name: Prepared authoring dependencies 02
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: wave-three-dependencies-02-${{ github.event.pull_request.head.sha || github.sha }}
+          retention-days: 3
+          compression-level: 0
+          if-no-files-found: error
+          path: |
+            artifacts/wave-three-source/dependencies.part-02
+            artifacts/wave-three-source/DEPENDENCIES.sha256
+      - name: Prepared authoring dependencies 03
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: wave-three-dependencies-03-${{ github.event.pull_request.head.sha || github.sha }}
+          retention-days: 3
+          compression-level: 0
+          if-no-files-found: error
+          path: |
+            artifacts/wave-three-source/dependencies.part-03
             artifacts/wave-three-source/DEPENDENCIES.sha256
       - run: npm run website:build
       - run: npm --prefix apps/manual test
