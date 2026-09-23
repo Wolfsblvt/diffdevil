@@ -10,6 +10,11 @@ export function filePatch(path, modified, added, deleted) {
 }
 export const diff = filePatch('src/cache.ts', 20, 10, 2) + filePatch('src/renderer.ts', 80, 50, 16);
 export const fileHeader = (path, modern = false) => `<section class="fixture-file" data-path="${path}"><div ${modern ? 'data-testid="file-header"' : 'class="file-header"'} data-path="${path}"><span class="fixture-file-name">${path}</span><span class="diffstat"><span class="color-fg-success">+${path === 'src/cache.ts' ? 30 : 130}</span> <span class="color-fg-danger">−${path === 'src/cache.ts' ? 22 : 96}</span></span></div><pre class="fixture-code"><span class="line-context">  export function ${path === 'src/cache.ts' ? 'readCache' : 'renderReport'}(input) {</span>\n<span class="line-removed">−   return previousBehavior(input);</span>\n<span class="line-added">+   return currentBehavior(input);</span>\n<span class="line-context">  }</span></pre></section>`;
+export function githubChangesHtml(data = comparison) {
+  const header = (path, attribute) => `<div class="PullRequestDiffsList-module__diffEntry__fixture"><div data-diff-header-wrapper><div class="DiffFileHeader-module__diff-file-header__fixture"><div class="DiffFileHeader-module__file-path-section__fixture">${attribute ? `<button data-file-path="${path}">Path</button>` : ''}<h3 class="DiffFileHeader-module__file-name__fixture">${path}</h3></div><span data-testid="addition diffstat">+30</span></div></div></div>`;
+  const embedded = { payload: { pullRequestsChangesRoute: { comparison: { fullDiff: { baseOid: data.base, headOid: data.head, changedFiles: data.changedFiles } } } } };
+  return `<!doctype html><html><body><main><h1>Pull request #42</h1><div data-testid="progressive-diffs-list">${header('src/cache.ts', true)}${header('src/renderer.ts', false)}</div><script type="application/json" data-target="react-app.embeddedData">${JSON.stringify(embedded)}</script></main></body></html>`;
+}
 function summaryHtml(mode, data) {
   if (mode === 'missing') return '<div class="fixture-summary-slot"></div>';
   if (mode === 'current') return `<div class="fixture-current-summary"><span data-testid="addition diffstat">+${data.additions ?? 0}</span><span data-testid="deletion diffstat">−${data.deletions ?? 0}</span><span data-testid="neutral diffstat">${data.changedFiles} files</span></div>`;

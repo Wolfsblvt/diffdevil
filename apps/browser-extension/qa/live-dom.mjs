@@ -11,7 +11,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { productionModules, unwrap } from '../tests/support.mjs';
-import { comparison, diff, githubCss, githubHtml } from './fixtures.mjs';
+import { comparison, diff, githubCss, githubHtml, githubChangesHtml } from './fixtures.mjs';
 
 const loaded = await productionModules();
 const m = loaded.module;
@@ -48,28 +48,42 @@ async function scene(summary) {
   const context = await browser.newContext({ viewport: { width: 1280, height: 800 }, colorScheme: 'dark', reducedMotion: 'reduce' });
   const page = await context.newPage();
   page.setDefaultTimeout(4000);
-  await page.setContent(githubHtml({ dark: true, files: false, summary }));
+  await page.setContent(summary === 'changes' ? githubChangesHtml() : githubHtml({ dark: true, files: false, summary }));
   await page.addStyleTag({ content: githubCss + contentCss });
   await page.addScriptTag({ content: domCode });
-  await page.evaluate(({ packet, settings }) => {
+  const fileViews = Object.fromEntries(report.files.map(file => [file.path, m.decorateView(unwrap(m.humanReport(report, policy, file.path)), settings)]));
+  await page.evaluate(({ packet, settings, fileViews, summary }) => {
     const listeners = new Set();
     globalThis.chrome = {
       runtime: { id: 'test-extension', getURL: path => `chrome-extension://test-extension/${path}`, sendMessage: async message => message.type === 'settings.get' ? { ok: true, value: settings } : { ok: false, code: 'UNEXPECTED', message: message.type } },
       storage: { onChanged: { addListener: callback => listeners.add(callback), removeListener: callback => listeners.delete(callback) } },
     };
     globalThis.controller = DiffdevilUnderTest.startContent({
-      href: () => 'https://github.com/example/cinder/pull/42/files',
+      href: () => `https://github.com/example/cinder/pull/42/${summary === 'changes' ? 'changes' : 'files'}`,
       acquire: async () => ({ packet, settings }),
       request: async message => {
         if (message.type === 'settings.get') return settings;
-        if (message.type === 'analysis.files') return {};
+        if (message.type === 'analysis.files') return Object.fromEntries(message.paths.filter(path => fileViews[path]).map(path => [path, fileViews[path]]));
         throw new Error(`Unexpected focused fixture request: ${message.type}`);
       },
     });
-  }, { packet, settings });
+  }, { packet, settings, fileViews, summary });
   return { context, page };
 }
 try {
+  const changes = await scene('changes');
+  await changes.page.locator('[data-ddx="file"]').nth(1).waitFor();
+  assert.equal(await changes.page.locator('[data-ddx="aggregate"]').count(), 1);
+  assert.equal(await changes.page.locator('[data-testid="progressive-diffs-list"] [data-ddx="aggregate"]').count(), 0);
+  assert.equal(await changes.page.locator('[data-ddx="file"]').count(), 2);
+  assert.deepEqual(await changes.page.evaluate(() => {
+    const current = DiffdevilUnderTest.route('https://github.com/example/cinder/pull/42/changes');
+    const value = DiffdevilUnderTest.pageComparison(document, current);
+    return { base: value?.base, head: value?.head, secondPath: DiffdevilUnderTest.filePath(document.querySelectorAll('[data-diff-header-wrapper]')[1]), full: DiffdevilUnderTest.fullFilesView('https://github.com/example/cinder/pull/42/changes') };
+  }), { base: comparison.base, head: comparison.head, secondPath: 'src/renderer.ts', full: true });
+  results.push({ name: 'signed-in-changes-structure', status: 'passed' });
+  await changes.page.evaluate(() => controller.stop());
+  await changes.context.close();
   const current = await scene('current');
   await current.page.locator('[data-ddx="aggregate"]').waitFor();
   assert.equal(await current.page.locator('[data-ddx="aggregate"] .ddx-value').textContent(), '178');

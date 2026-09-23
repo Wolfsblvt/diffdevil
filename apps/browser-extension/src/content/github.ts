@@ -33,6 +33,18 @@ function fileCount(document: Document, current: Route): number | undefined {
   return undefined;
 }
 export function pageComparison(document: Document, current: Route): BrowserComparison | undefined {
+  const embedded = document.querySelector('script[data-target="react-app.embeddedData"]');
+  if (embedded?.textContent) {
+    try {
+      const data = JSON.parse(embedded.textContent) as { payload?: { pullRequestsChangesRoute?: { comparison?: { fullDiff?: Record<string, unknown> } } } };
+      const diff = data.payload?.pullRequestsChangesRoute?.comparison?.fullDiff;
+      const base = sha(diff?.baseOid); const head = sha(diff?.headOid);
+      if (base && head) {
+        const files = count(diff?.changedFiles ?? diff?.changedFileCount) ?? fileCount(document, current);
+        return { host: 'github.com', repository: current.repository, pullRequest: current.pullRequest, base, head, ...(files === undefined ? {} : { changedFiles: files }) };
+      }
+    } catch { /* Unreadable provider data does not establish comparison identity. */ }
+  }
   for (const object of providerObjects(document)) {
     const base = sha(object.baseRefOid ?? object.baseOid ?? object.baseSha); const head = sha(object.headRefOid ?? object.headOid ?? object.headSha);
     if (!base || !head || object.number !== undefined && object.number !== current.pullRequest) continue;
@@ -48,10 +60,15 @@ export function pageComparison(document: Document, current: Route): BrowserCompa
   return base && head ? { host: 'github.com', repository: current.repository, pullRequest: current.pullRequest, base, head, ...(files === undefined ? {} : { changedFiles: files }) } : undefined;
 }
 export function sameComparison(a: BrowserComparison, b: BrowserComparison): boolean { return a.repository.toLowerCase() === b.repository.toLowerCase() && a.pullRequest === b.pullRequest && a.base === b.base && a.head === b.head; }
-export const FILE_HEADERS = '.file-header, [data-testid="file-header"], [data-test-selector="file-header"], [data-testid="diff-file-header"]';
+export const FILE_HEADERS = '.file-header, [data-testid="file-header"], [data-test-selector="file-header"], [data-testid="diff-file-header"], [data-diff-header-wrapper]';
 export const LIVE_DIFFSTAT = '[data-testid~="diffstat"]';
 export const PROVIDER_CHANGE = `${FILE_HEADERS}, .gh-header-meta, .diffstat, ${LIVE_DIFFSTAT}, [data-testid="pull-request-header"]`;
 export function filePath(header: Element): string | undefined {
+  if (header.matches('[data-diff-header-wrapper]')) {
+    const section = header.querySelector('[class*="DiffFileHeader-module__file-path-section__"]') ?? header;
+    return section.querySelector('button[data-file-path]')?.getAttribute('data-file-path')
+      ?? section.querySelector('h3[class*="DiffFileHeader-module__file-name__"]')?.textContent?.trim() ?? undefined;
+  }
   const ancestor = header.closest('[data-path], [data-file-path]');
   return header.getAttribute('data-path') ?? header.getAttribute('data-file-path') ?? ancestor?.getAttribute('data-path') ?? ancestor?.getAttribute('data-file-path')
     ?? header.querySelector('[data-tagsearch-path]')?.getAttribute('data-tagsearch-path') ?? header.querySelector('a[title]')?.getAttribute('title') ?? undefined;
@@ -68,7 +85,7 @@ export function aggregateHost(document: Document): HTMLElement | undefined {
     if (parent && !parent.closest(FILE_HEADERS)) return parent;
     return element;
   }
-  return document.querySelector<HTMLElement>('#partial-discussion-header .gh-header-meta, .gh-header-meta, [data-testid="pull-request-header"]') ?? undefined;
+  return document.querySelector<HTMLElement>('#partial-discussion-header .gh-header-meta, .gh-header-meta, [data-testid="pull-request-header"], [data-testid="progressive-diffs-list"]') ?? undefined;
 }
 export function blobText(document: Document): string | undefined {
   for (const value of providerObjects(document)) {
@@ -84,6 +101,6 @@ export function blobText(document: Document): string | undefined {
 export function fullFilesView(url: string): boolean {
   const current = route(url); if (!current) return false;
   const parsed = new URL(url);
-  return parsed.pathname.replace(/\/$/u, '') === `${current.path}/files`
+  return [`${current.path}/files`, `${current.path}/changes`].includes(parsed.pathname.replace(/\/$/u, ''))
     && !['base_oid', 'head_oid', 'commit', 'sha', 'base', 'head'].some(key => parsed.searchParams.has(key));
 }

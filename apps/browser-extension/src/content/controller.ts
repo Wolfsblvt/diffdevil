@@ -28,7 +28,7 @@ function showStatus(message: string, error = false): void {
   const host = aggregateHost(document);
   status?.remove(); status = node('span', `ddx-status${error ? ' ddx-error' : ''}`, message); status.setAttribute('role', 'status');
   if (error) status.append(button('Retry', () => { void refresh(true); }, 'ddx-small'));
-  if (host) host.insertAdjacentElement('afterend', status);
+  if (host) host.insertAdjacentElement(host.matches('[data-testid="progressive-diffs-list"]') ? 'beforebegin' : 'afterend', status);
   else { status.classList.add('ddx-status-fallback'); document.body.append(status); }
 }
 function nativeStat(host: HTMLElement): void {
@@ -40,7 +40,7 @@ function mount(host: HTMLElement, view: HumanReportView, aggregate: boolean): vo
   if (mounted.has(host)) return;
   const item = projection(view, settings, popover, aggregate); mounted.set(host, item);
   const interactive = host.closest('button, a');
-  if (interactive) interactive.insertAdjacentElement('afterend', item.root); else if (aggregate) host.insertAdjacentElement('afterend', item.root); else host.append(item.root);
+  if (interactive) interactive.insertAdjacentElement('afterend', item.root); else if (aggregate) host.insertAdjacentElement(host.matches('[data-testid="progressive-diffs-list"]') ? 'beforebegin' : 'afterend', item.root); else host.append(item.root);
   nativeStat(host);
   if (aggregate && settings['display.detailDefaultOpen'] && !opened) { opened = true; popover.toggle(item.trigger, reportPanel(view, popover)); }
 }
