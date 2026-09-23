@@ -4,6 +4,7 @@ import { Preferences } from './preferences.js';
 import { AnalysisCache } from './cache.js';
 import { PublicSource } from './public-source.js';
 import { authorize } from './authorization.js';
+import { operationDiagnostic } from './diagnostic.js';
 import { bytes, decorateView, selectedPolicy } from '../shared/settings.js';
 import { advancedChanges, type Settings } from '../shared/catalogue.js';
 import { ExtensionError } from '../shared/errors.js';
@@ -17,9 +18,11 @@ const inFlight = new Map<string, Promise<Packet>>();
 const reportKey = (comparison: BrowserComparison): string => `report:${comparisonKey(comparison)}:${__ENGINE_VERSION__}:${SEMANTICS.replacementLines}`;
 const policyKey = (comparison: BrowserComparison): string => `policy:${comparison.host}/${comparison.repository.toLowerCase()}@${comparison.base}/.diffdevil.yml`;
 const errorDiagnostic = (code: string, message: string): Diagnostic => ({ code, message, severity: 'error', phase: 'config' });
-async function recordError(error: unknown): Promise<void> {
+async function recordError(error: unknown, phase = 'background', sender?: chrome.runtime.Sender): Promise<void> {
+  const diagnostic = operationDiagnostic(error, phase, sender);
+  console.error('diffdevil extension operation failed', diagnostic);
   const state = await chrome.storage.local.get('diagnosticCodes'); const previous = Array.isArray(state.diagnosticCodes) ? state.diagnosticCodes : [];
-  await chrome.storage.local.set({ diagnosticCodes: [...previous.slice(-19), { code: error instanceof ExtensionError ? error.code : 'EXTENSION_OPERATION', at: Date.now() }] });
+  await chrome.storage.local.set({ diagnosticCodes: [...previous.slice(-19), diagnostic] });
 }
 async function optionalCache<T>(operation: () => Promise<T>): Promise<T | undefined> {
   try { return await operation(); } catch { await recordError(new ExtensionError('CACHE_UNAVAILABLE', 'Rebuildable cache unavailable.')); return undefined; }
@@ -131,7 +134,7 @@ chrome.runtime.onMessage.addListener((input, sender, reply) => {
       if (bytes(input) > 24 * 1024 * 1024) throw new ExtensionError('MESSAGE_LIMIT', 'The request exceeds 24 MiB.');
       reply({ ok: true, value: await handle(input as Message, sender) });
     } catch (error) {
-      await recordError(error).catch(() => undefined);
+      await recordError(error, (input as Message).type, sender).catch(() => undefined);
       reply({ ok: false, code: error instanceof ExtensionError ? error.code : 'EXTENSION_OPERATION', message: error instanceof Error ? error.message : 'The extension operation failed.' });
     }
   })(); return true;
