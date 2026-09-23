@@ -8,6 +8,8 @@
 
 **Measure changes. Match rules. Act on the result.**
 
+diffdevil is a product in development.
+
 A composable CLI, TypeScript library and GitHub Action for turning Git diffs into
 queryable facts, configured rules, and inspectable label/comment effects. Raw churn counts a
 three-line replacement as six lines. Replacement-aware changed lines count it
