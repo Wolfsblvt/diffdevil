@@ -80,7 +80,7 @@ export function aggregateHost(document: Document): HTMLElement | undefined {
   // `addition diffstat` and `neutral diffstat`, rather than one legacy
   // `.diffstat` container. Mount beside their shared immediate group.
   for (const element of document.querySelectorAll<HTMLElement>(LIVE_DIFFSTAT)) {
-    if (element.closest(FILE_HEADERS)) continue;
+    if (element.closest(`${FILE_HEADERS}, [data-testid="progressive-diffs-list"], [data-testid*="file-tree"], [data-testid*="fileTree"], [role="tree"], aside, nav`)) continue;
     const parent = element.parentElement;
     if (parent && !parent.closest(FILE_HEADERS)) return parent;
     return element;

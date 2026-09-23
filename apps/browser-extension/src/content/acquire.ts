@@ -30,6 +30,16 @@ async function policyFile(comparison: BrowserComparison, path: string, signal: A
 /** Reads source through the signed-in page; all analysis runs in the extension worker. */
 export async function acquire(current: Route, document: Document, signal: AbortSignal): Promise<{ packet: Packet; settings: Lookup['settings'] }> {
   let comparison = pageComparison(document, current); let publicResult: PublicPull | undefined;
+  // The embedded /changes payload has no independent PR number. A fresh read
+  // of that exact route binds its base and head to the requested PR before
+  // either value can select trusted-base policy or cached analysis.
+  const changes = Boolean(document.querySelector('script[data-target="react-app.embeddedData"]'));
+  const confirmationPath = changes ? `${current.path}/changes` : current.path;
+  if (comparison && changes) {
+    const before = await html(confirmationPath, signal);
+    const observed = pageComparison(before.document, current);
+    if (!before.response.ok || new URL(before.response.url).pathname !== confirmationPath || !observed || !sameComparison(comparison, observed) || comparison.changedFiles !== undefined && observed.changedFiles !== undefined && comparison.changedFiles !== observed.changedFiles) throw new ExtensionError('COMPARISON_MOVED', 'GitHub did not confirm this pull request’s base, head and file count.');
+  }
   if (!comparison) {
     try { const refreshed = await html(current.path, signal); if (refreshed.response.ok) comparison = pageComparison(refreshed.document, current); }
     catch (error) { if (signal.aborted) throw error; }
@@ -69,8 +79,8 @@ export async function acquire(current: Route, document: Document, signal: AbortS
     catch (error) { if (signal.aborted) throw error; } // The compiler reports missing trusted template text.
   }
   if (!publicResult) {
-    const after = await html(current.path, signal); const observed = pageComparison(after.document, current);
-    if (!after.response.ok || !observed || !sameComparison(comparison, observed) || comparison.changedFiles !== undefined && observed.changedFiles !== undefined && comparison.changedFiles !== observed.changedFiles) throw new ExtensionError('COMPARISON_MOVED', 'GitHub did not confirm the same base, head and file count after acquisition.');
+    const after = await html(confirmationPath, signal); const observed = pageComparison(after.document, current);
+    if (!after.response.ok || new URL(after.response.url).pathname !== confirmationPath || !observed || !sameComparison(comparison, observed) || comparison.changedFiles !== undefined && observed.changedFiles !== undefined && comparison.changedFiles !== observed.changedFiles) throw new ExtensionError('COMPARISON_MOVED', 'GitHub did not confirm the same base, head and file count after acquisition.');
   } else {
     const after = await request<PublicPull>({ type: 'source.public', repository: current.repository, pullRequest: current.pullRequest });
     if (!sameComparison(comparison, after.comparison) || comparison.changedFiles !== after.comparison.changedFiles) throw new ExtensionError('COMPARISON_MOVED', 'The comparison changed while policy was acquired.');

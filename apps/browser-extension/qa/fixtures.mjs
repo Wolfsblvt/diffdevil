@@ -13,7 +13,8 @@ export const fileHeader = (path, modern = false) => `<section class="fixture-fil
 export function githubChangesHtml(data = comparison) {
   const header = (path, attribute) => `<div class="PullRequestDiffsList-module__diffEntry__fixture"><div data-diff-header-wrapper><div class="DiffFileHeader-module__diff-file-header__fixture"><div class="DiffFileHeader-module__file-path-section__fixture">${attribute ? `<button data-file-path="${path}">Path</button>` : ''}<h3 class="DiffFileHeader-module__file-name__fixture">${path}</h3></div><span data-testid="addition diffstat">+30</span></div></div></div>`;
   const embedded = { payload: { pullRequestsChangesRoute: { comparison: { fullDiff: { baseOid: data.base, headOid: data.head, changedFiles: data.changedFiles } } } } };
-  return `<!doctype html><html><body><main><h1>Pull request #42</h1><div data-testid="progressive-diffs-list">${header('src/cache.ts', true)}${header('src/renderer.ts', false)}</div><script type="application/json" data-target="react-app.embeddedData">${JSON.stringify(embedded)}</script></main></body></html>`;
+  const treeStats = Array.from({ length: 20 }, (_, index) => `<span data-testid="${index % 2 ? 'deletion' : 'addition'} diffstat">${index + 1}</span>`).join('');
+  return `<!doctype html><html><body><main><h1>Pull request #42</h1><aside data-testid="file-tree">${treeStats}</aside><div class="fixture-toolbar"><div data-testid="pull-request-diff-stats"><span data-testid="addition diffstat">+160</span><span data-testid="deletion diffstat">−118</span></div></div><div data-testid="progressive-diffs-list">${header('src/cache.ts', true)}${header('src/renderer.ts', false)}</div><script type="application/json" data-target="react-app.embeddedData">${JSON.stringify(embedded)}</script></main></body></html>`;
 }
 function summaryHtml(mode, data) {
   if (mode === 'missing') return '<div class="fixture-summary-slot"></div>';

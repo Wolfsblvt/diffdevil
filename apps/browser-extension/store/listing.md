@@ -4,6 +4,8 @@
 
 This file keeps the public Chrome Web Store text and provider-field values versioned with the repository. The Store dashboard receives these exact fields; it must not become an independent copy source. Publication still requires the accepted release gate and provider readback.
 
+The current visual asset set shows the superseded interface. Regenerate and review it from the accepted #522 design before any Store submission.
+
 ## v1.0.0
 
 ### Provider fields

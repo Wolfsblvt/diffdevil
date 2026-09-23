@@ -10,6 +10,8 @@ Record the accepted commit and base, Node/TypeScript/browser versions, package-l
 
 Store copy and upload bytes come from `apps/browser-extension/store/`. Run `npm run extension:store` to validate the committed asset manifest and copy the exact source-backed kit into `artifacts/browser-extension/store/`. Do not edit descriptions only in the Chrome Web Store dashboard and do not upload an image that has no committed counterpart.
 
+The committed visual set shows the superseded interface. Regenerate and review it from the accepted #522 design before any Store submission.
+
 ## Browser release gate
 
 Accept installed MV3 behavior in an unrestricted allowed Chrome profile, including CSP, real settings storage, IndexedDB, worker and browser restart, quotas, disabling/reset and no raw-source persistence. Accept real public and authorized private GitHub PRs and current modern/legacy placement where applicable. Check the full PR and narrowed/commit comparisons, head changes and native label handoff with and without permission. Execute Windows and real Chrome zoom/accessibility acceptance. Managed-policy-blocked evidence and authored fixtures do not satisfy these gates.

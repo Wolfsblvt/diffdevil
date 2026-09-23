@@ -18,7 +18,7 @@ The bounded rebuildable cache contains normalized reports, file paths, revision 
 
 Small display and guided-policy preferences use Chrome synchronized storage. When browser synchronization is enabled, the browser provider may synchronize those preferences across the user’s signed-in browsers. Large advanced YAML and repository overrides remain in local extension storage. “Local analysis” does not mean synchronized preferences never leave the device.
 
-Runtime context and last-analysis identity are session-scoped. Diagnostic history retains codes and timestamps, not raw patches, response bodies or policy expressions. A deliberate support snapshot excludes repository identities, paths, policy text and source. A deliberate settings export contains the user’s configuration and may include private repository names or policy text; share it carefully.
+Runtime context and last-analysis identity are session-scoped. Diagnostic history retains codes, timestamps, phase, frame, document and tab identifiers, and coarse sender/tab route standings; it does not retain raw patches, response bodies, policy expressions or full route URLs. A deliberate support snapshot excludes repository identities, paths, policy text and source. A deliberate settings export contains the user’s configuration and may include private repository names or policy text; share it carefully.
 
 ## Use and sharing
 

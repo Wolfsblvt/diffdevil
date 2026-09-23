@@ -39,7 +39,7 @@ Data is used only to provide the visible PR-analysis feature and its local setti
 
 There is no telemetry endpoint, sale, advertising use, creditworthiness use or unrelated transfer. The extension does not transmit source to Wolfsblvt Works or a hosted diffdevil analyzer. A user-requested export/copy remains the user's deliberate action.
 
-Support diagnostics persist codes and timestamps, not raw response bodies or policy expressions. Full settings exports are not support snapshots and must not be described as redacted. Rebuildable storage has a visible limit, LRU eviction and independent clear controls; reset and destructive override removal require confirmation. Incognito is disabled. There is no independent cache encryption, and no universal encrypted-profile assertion is made. The release owner must assess the exact package's storage/security posture against current Store requirements before publication.
+Support diagnostics persist codes, timestamps, phase, frame, document and tab identifiers, and coarse sender/tab route standings; they do not keep raw response bodies, policy expressions or full route URLs. Full settings exports are not support snapshots and must not be described as redacted. Rebuildable storage has a visible limit, LRU eviction and independent clear controls; reset and destructive override removal require confirmation. Incognito is disabled. There is no independent cache encryption, and no universal encrypted-profile assertion is made. The release owner must assess the exact package's storage/security posture against current Store requirements before publication.
 
 ## Remote code
 

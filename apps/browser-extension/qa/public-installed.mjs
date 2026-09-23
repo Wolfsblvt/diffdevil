@@ -53,6 +53,19 @@ try {
   // A provider click may fully reload the anonymous page. Keep another GitHub
   // document alive while moving its tab route to exercise Chrome's split
   // between sender.url (document URL) and sender.tab.url (current tab URL).
+  await worker.evaluate(() => {
+    globalThis.__diffdevilRouteProbe = undefined;
+    chrome.runtime.onMessage.addListener((message, sender) => {
+      if (message?.type !== 'cache.lookup') return;
+      const frame = sender.url && new URL(sender.url);
+      const tab = sender.tab?.url && new URL(sender.tab.url);
+      globalThis.__diffdevilRouteProbe = {
+        frame: frame?.pathname.endsWith('/files') ? 'pr-files' : frame?.pathname.includes('/pull/') ? 'pr-other' : 'other',
+        tab: tab?.pathname.endsWith('/files') ? 'pr-files' : tab?.pathname.includes('/pull/') ? 'pr-other' : 'other',
+        routeAgreement: frame && tab ? frame.origin === tab.origin && frame.pathname === tab.pathname ? 'same' : 'different' : 'unavailable',
+      };
+    });
+  });
   const historyPage = await context.newPage();
   historyPage.on('pageerror', error => receipt.errors.push({ surface: 'history-page', text: error.message }));
   historyPage.on('console', message => { if (message.type() === 'error') { const item = { surface: 'history-console', text: message.text() }; receipt.console.push(item); if (item.text.includes('diffdevil')) receipt.errors.push(item); } });
@@ -65,6 +78,8 @@ try {
     document.dispatchEvent(new Event('soft-nav:payload'));
   }, files);
   await historyPage.locator('[data-ddx="aggregate"] .ddx-value').waitFor({ timeout: 45_000 });
+  receipt.routeAgreement = await worker.evaluate(() => globalThis.__diffdevilRouteProbe);
+  assert.ok(receipt.routeAgreement, 'The passing route step must record Chrome sender agreement.');
   receipt.checks.push('same-document route change reaches the installed worker');
   assert.deepEqual(receipt.errors, []);
   receipt.status = 'passed';

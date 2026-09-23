@@ -4,7 +4,7 @@ import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { files } from './distribution.mjs';
-import { readDeterministicZip, writeDeterministicZip, zipTimestamp } from './deterministic-zip.mjs';
+import { memberOrder, readDeterministicZip, writeDeterministicZip, zipTimestamp } from './deterministic-zip.mjs';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 const unpacked = join(root, 'artifacts/browser-extension/unpacked');
@@ -36,7 +36,7 @@ async function verifiedMembers(receipt) {
     if (source.length !== entry.bytes || sha256(source) !== entry.sha256) throw new Error(`The unpacked extension member does not match its accepted build receipt: ${name}`);
     members.push({ name, source });
   }
-  return members.sort((left, right) => left.name.localeCompare(right.name));
+  return members.sort((left, right) => memberOrder(left.name, right.name));
 }
 
 const receipt = JSON.parse(await readFile(receiptPath, 'utf8'));
