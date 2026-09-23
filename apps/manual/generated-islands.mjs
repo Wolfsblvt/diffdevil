@@ -45,7 +45,9 @@ export function schemaFields(schema, path = '$', required = false, pointer = '#'
 }
 /** Public aliases, overloads and type declarations come from the built package exports. */
 function publicApi(root, pkg, link, recordSource) {
- const ts = createRequire(new URL('./package.json', import.meta.url))('typescript');
+ // The root compiler is TypeScript 7; its CLI is not the compiler API. Use
+ // the already-pinned API alias on both root-only and manual-toolchain installs.
+ const ts = createRequire(join(root,'package.json'))('typescript-6');
  const entries = Object.entries(pkg.exports).filter(([,value]) => value && typeof value === 'object' && typeof value.types === 'string');
  const program = ts.createProgram(entries.map(([,value]) => join(root,value.types)), {skipLibCheck:true,module:ts.ModuleKind.NodeNext,moduleResolution:ts.ModuleResolutionKind.NodeNext,target:ts.ScriptTarget.ES2022});
  const checker = program.getTypeChecker(), printer = ts.createPrinter({removeComments:true,newLine:ts.NewLineKind.LineFeed});
@@ -93,6 +95,35 @@ export function generatedIsland(id,{root,ref,source,onSource = () => {}}) {
  const entry=typeof pkg.bin==='string'?pkg.bin:pkg.bin.diffdevil;
  const run=args=>cli(root,entry,args);
  const link=(label,path)=>{ recordSource(path); const url = source ? posix.relative(posix.dirname(source),path) : sourceUrl(path,ref); return `[${label}](${url})`; };
+ if(id==='app-execution-stages') {
+  const path='apps/github-app/app.mjs';
+  const stages=new Map();
+  for (const [,fallback,phase] of read(path).matchAll(/atExecutionStage\('([A-Z0-9_]+)', '([a-z-]+)'/gu)) {
+   if(stages.has(fallback) && stages.get(fallback)!==phase) throw new Error(`Ambiguous execution stage: ${fallback}`);
+   stages.set(fallback,phase);
+  }
+  if(!stages.size) throw new Error('The App execution-stage inventory is empty.');
+  return link('Canonical execution boundary',path)+'\n\n'+table(['Fallback diagnostic','Execution phase'],[...stages].map(([fallback,phase])=>[code(fallback),code(phase)]));
+ }
+ if(id==='release-source-identities') {
+  const {parse}=require('yaml');
+  const skillPath='skills/diffdevil/SKILL.md', skillText=read(skillPath);
+  const front=skillText.match(/^---\n([\s\S]*?)\n---/u);
+  if(!front) throw new Error('The canonical Skill has no metadata.');
+  const skill=parse(front[1]);
+  if(typeof skill.metadata?.version!=='string') throw new Error('The Skill version is absent.');
+  const rows=[
+   ['Package source version',code(pkg.version),link('Package metadata','package.json')],
+   ['Package Node.js floor',code(pkg.engines.node),link('Runtime requirement','package.json')],
+   ['Skill source version',code(skill.metadata.version),link('Complete Skill source',skillPath)],
+  ];
+  for(const path of ['action.yml','actions/analyze/action.yml','actions/apply/action.yml','actions/sync-labels/action.yml']) {
+   const action=parse(read(path));
+   if(!action.runs?.using) throw new Error(`Action runtime missing: ${path}`);
+   rows.push([path,code(action.runs.using),link('Action runtime declaration',path)]);
+  }
+  return table(['Source identity','Declared value','Canonical metadata'],rows);
+ }
  if(id==='actions') {
   const {parse}=require('yaml');
   return ['action.yml','actions/analyze/action.yml','actions/apply/action.yml','actions/sync-labels/action.yml'].map(path=>{

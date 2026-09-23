@@ -104,7 +104,7 @@ export function projectMarkdown(raw, page, {root, ref, targets, assets = {}}) {
 export function validateAvailability(raw, page) {
  const body = parser.parse(raw).children.filter(node => node.type !== 'heading' || node.depth !== 1)
   .filter(node => !(node.type === 'html' && /^<!--/u.test(node.value.trim())));
- const notes = body.filter(node => node.type === 'blockquote' && /^\[!NOTE\]\s+In development(?:\s|$)/u.test(text(node)));
+ const notes = body.filter(node => node.type === 'blockquote' && /^\[!NOTE\]\s+In development(?:\s|$)/u.test(text(node.children?.[0] ?? node)));
  const expected = page.availability === 'in-development';
  if (notes.length !== (expected ? 1 : 0) || (expected && body[0] !== notes[0])) throw new Error(`${page.source}: capability standing requires one top-only In development NOTE, or none for current capability.`);
 }

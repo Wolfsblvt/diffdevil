@@ -32,13 +32,13 @@
       "status": "authored"
     },
     "managed-app": {
-      "status": "scaffold"
+      "status": "authored"
     },
     "managed-service": {
-      "status": "scaffold"
+      "status": "authored"
     },
     "self-host-app": {
-      "status": "scaffold"
+      "status": "authored"
     },
     "typescript-library": {
       "status": "authored"
@@ -117,16 +117,16 @@
       "sourceCommit": "ed795c97b3052441f02f899876122f1967f1f1e2"
     },
     "troubleshooting": {
-      "status": "scaffold"
+      "status": "authored"
     },
     "security-and-data": {
-      "status": "scaffold"
+      "status": "authored"
     },
     "technical-project-docs": {
-      "status": "scaffold"
+      "status": "authored"
     },
     "releases": {
-      "status": "scaffold"
+      "status": "authored"
     }
   },
   "transfers": {
@@ -1228,6 +1228,625 @@
       "redirects": true,
       "sourceIds": true,
       "search": true
+    },
+    "docs/language/syntax.md": {
+      "phase": "retired",
+      "fromRef": "c708cebe95fd9325f7ef548148ab9d24b31b2f7e",
+      "fromSourceSha256": "d7e3184917ec2833b3bb918b9b424c9289771c0fc4b67da9f3a6a69bea8e032c",
+      "oldAnchors": [
+        "_top",
+        "detail-syntax",
+        "meaning",
+        "source-unit-and-character-model",
+        "identifiers-and-reserved-words",
+        "numbers",
+        "strings",
+        "operators-and-precedence",
+        "property-access",
+        "calls-and-lambda-binders",
+        "lists-and-records",
+        "conditional-expressions",
+        "complete-grammar-and-ast-contract",
+        "syntax-is-not-the-sandbox"
+      ],
+      "primary": "detail-language",
+      "anchors": {
+        "_top": {
+          "page": "detail-language",
+          "anchor": "_top"
+        },
+        "detail-syntax": {
+          "page": "detail-language",
+          "anchor": "syntax-and-source-locations"
+        },
+        "meaning": {
+          "page": "detail-language",
+          "anchor": "_top"
+        },
+        "source-unit-and-character-model": {
+          "page": "detail-language",
+          "anchor": "source-unit-and-character-model"
+        },
+        "identifiers-and-reserved-words": {
+          "page": "detail-language",
+          "anchor": "identifiers-and-reserved-words"
+        },
+        "numbers": {
+          "page": "detail-language",
+          "anchor": "numbers"
+        },
+        "strings": {
+          "page": "detail-language",
+          "anchor": "strings"
+        },
+        "operators-and-precedence": {
+          "page": "detail-language",
+          "anchor": "operators-and-precedence"
+        },
+        "property-access": {
+          "page": "detail-language",
+          "anchor": "property-access"
+        },
+        "calls-and-lambda-binders": {
+          "page": "detail-language",
+          "anchor": "calls-and-lambda-binders"
+        },
+        "lists-and-records": {
+          "page": "detail-language",
+          "anchor": "lists-and-records"
+        },
+        "conditional-expressions": {
+          "page": "detail-language",
+          "anchor": "conditional-expressions"
+        },
+        "complete-grammar-and-ast-contract": {
+          "page": "detail-language",
+          "anchor": "complete-grammar-and-ast-contract"
+        },
+        "syntax-is-not-the-sandbox": {
+          "page": "detail-language",
+          "anchor": "syntax-is-not-the-sandbox"
+        }
+      },
+      "redirects": true,
+      "sourceIds": true,
+      "search": true
+    },
+    "docs/language/types-and-measurements.md": {
+      "phase": "retired",
+      "fromRef": "c708cebe95fd9325f7ef548148ab9d24b31b2f7e",
+      "fromSourceSha256": "62100df469347dd3de057541685d6fc965cd55ec910b9f025c7ff3276b1102b0",
+      "oldAnchors": [
+        "_top",
+        "types-measurements-and-decisions",
+        "meaning",
+        "static-types-and-runtime-evidence",
+        "numeric-domains",
+        "numeric-evidence-states",
+        "structural-absence-null-uncertainty-and-errors",
+        "optional-values-and-guards",
+        "arithmetic-over-intervals",
+        "primitive-correlations",
+        "numeric-comparisons",
+        "boolean-algebra-and-evaluation-order",
+        "conditional-values",
+        "explicit-projections-and-requirements",
+        "deterministic-evidence-and-diagnostics",
+        "file-counter-population"
+      ],
+      "primary": "detail-language",
+      "anchors": {
+        "_top": {
+          "page": "detail-language",
+          "anchor": "_top"
+        },
+        "types-measurements-and-decisions": {
+          "page": "detail-language",
+          "anchor": "values-types-and-measurements"
+        },
+        "meaning": {
+          "page": "detail-language",
+          "anchor": "_top"
+        },
+        "static-types-and-runtime-evidence": {
+          "page": "detail-language",
+          "anchor": "static-types-and-runtime-evidence"
+        },
+        "numeric-domains": {
+          "page": "detail-language",
+          "anchor": "numeric-domains"
+        },
+        "numeric-evidence-states": {
+          "page": "detail-language",
+          "anchor": "numeric-evidence-states"
+        },
+        "structural-absence-null-uncertainty-and-errors": {
+          "page": "detail-language",
+          "anchor": "structural-absence-null-uncertainty-and-errors"
+        },
+        "optional-values-and-guards": {
+          "page": "detail-language",
+          "anchor": "optional-values-and-guards"
+        },
+        "arithmetic-over-intervals": {
+          "page": "detail-language",
+          "anchor": "arithmetic-over-intervals"
+        },
+        "primitive-correlations": {
+          "page": "detail-language",
+          "anchor": "primitive-correlations"
+        },
+        "numeric-comparisons": {
+          "page": "detail-language",
+          "anchor": "numeric-comparisons"
+        },
+        "boolean-algebra-and-evaluation-order": {
+          "page": "detail-language",
+          "anchor": "boolean-algebra-and-evaluation-order"
+        },
+        "conditional-values": {
+          "page": "detail-language",
+          "anchor": "conditional-values"
+        },
+        "explicit-projections-and-requirements": {
+          "page": "detail-language",
+          "anchor": "explicit-projections-and-requirements"
+        },
+        "deterministic-evidence-and-diagnostics": {
+          "page": "detail-language",
+          "anchor": "deterministic-evidence-and-diagnostics"
+        },
+        "file-counter-population": {
+          "page": "detail-language",
+          "anchor": "file-counter-population"
+        }
+      },
+      "redirects": true,
+      "sourceIds": true,
+      "search": true
+    },
+    "docs/language/collections-and-scopes.md": {
+      "phase": "retired",
+      "fromRef": "c708cebe95fd9325f7ef548148ab9d24b31b2f7e",
+      "fromSourceSha256": "f6e75e1feb6c6787535c8f1ec16e64000a0c50f89e4c4a614ba24df669b8769c",
+      "oldAnchors": [
+        "_top",
+        "collections-scopes-and-paths",
+        "meaning",
+        "logical-collection-model",
+        "stable-file-order",
+        "filtering",
+        "mapping",
+        "any-and-all",
+        "count",
+        "sum-and-numeric-aggregation",
+        "sorting-and-taking-a-prefix",
+        "explicit-definite-only-projection",
+        "included-files-and-scopes",
+        "path-matching-profile",
+        "renames",
+        "strict-output-boundary",
+        "cardinality-constraints-and-deterministic-prefix-precision"
+      ],
+      "primary": "detail-language",
+      "anchors": {
+        "_top": {
+          "page": "detail-language",
+          "anchor": "_top"
+        },
+        "collections-scopes-and-paths": {
+          "page": "detail-language",
+          "anchor": "collections"
+        },
+        "meaning": {
+          "page": "detail-language",
+          "anchor": "_top"
+        },
+        "logical-collection-model": {
+          "page": "detail-language",
+          "anchor": "logical-collection-model"
+        },
+        "stable-file-order": {
+          "page": "detail-language",
+          "anchor": "stable-file-order"
+        },
+        "filtering": {
+          "page": "detail-language",
+          "anchor": "filtering"
+        },
+        "mapping": {
+          "page": "detail-language",
+          "anchor": "mapping"
+        },
+        "any-and-all": {
+          "page": "detail-language",
+          "anchor": "any-and-all"
+        },
+        "count": {
+          "page": "detail-language",
+          "anchor": "count"
+        },
+        "sum-and-numeric-aggregation": {
+          "page": "detail-language",
+          "anchor": "sum-and-numeric-aggregation"
+        },
+        "sorting-and-taking-a-prefix": {
+          "page": "detail-language",
+          "anchor": "sorting-and-taking-a-prefix"
+        },
+        "explicit-definite-only-projection": {
+          "page": "detail-language",
+          "anchor": "explicit-definite-only-projection"
+        },
+        "included-files-and-scopes": {
+          "page": "detail-language",
+          "anchor": "included-files-and-scopes"
+        },
+        "path-matching-profile": {
+          "page": "detail-language",
+          "anchor": "path-matching-profile"
+        },
+        "renames": {
+          "page": "detail-language",
+          "anchor": "renames"
+        },
+        "strict-output-boundary": {
+          "page": "detail-language",
+          "anchor": "strict-output-boundary"
+        },
+        "cardinality-constraints-and-deterministic-prefix-precision": {
+          "page": "detail-language",
+          "anchor": "cardinality-constraints-and-deterministic-prefix-precision"
+        }
+      },
+      "redirects": true,
+      "sourceIds": true,
+      "search": true
+    },
+    "docs/language/standard-library.md": {
+      "phase": "retired",
+      "fromRef": "c708cebe95fd9325f7ef548148ab9d24b31b2f7e",
+      "fromSourceSha256": "d33afa34ee290d76e6ad20af1b12264dd4694d90ea20bef76c80553d0d79fd97",
+      "oldAnchors": [
+        "_top",
+        "detail-standard-library",
+        "meaning",
+        "evidence-and-optional-values",
+        "statusvalue-n---string",
+        "isexactvalue-n---boolean",
+        "lowerboundvalue-n---n-and-upperboundvalue-n---n",
+        "requireexactvalue-n---n",
+        "ismissingvalue-optionalt---boolean",
+        "isnullvalue-optionalt---boolean",
+        "requirepresentvalue-optionalt---t",
+        "orelsevalue-optionalt-fallback-t---t",
+        "numeric-helpers",
+        "absvalue-n---n",
+        "floorvalue-n---integer-and-ceilvalue-n---integer",
+        "roundvalue-n-digits-integer---float",
+        "collection-operations",
+        "filteritems-ct-predicate-t---boolean---ct",
+        "mapitems-ct-selector-t---u---cu",
+        "anyitems-ct-predicate-t---boolean---boolean",
+        "allitems-ct-predicate-t---boolean---boolean",
+        "countitems-ct---integer",
+        "sumitems-cn---n",
+        "sumitems-ct-selector-t---n---n",
+        "minitems-cn---optionaln",
+        "minitems-ct-selector-t---n---optionaln",
+        "maxitems-cn---optionaln",
+        "maxitems-ct-selector-t---n---optionaln",
+        "avgitems-cn---optionalfloat",
+        "avgitems-ct-selector-t---n---optionalfloat",
+        "sortbyitems-ct-key-t---k--direction-string---ct",
+        "takeitems-ct-count-integer---ct",
+        "certainitems-ct---ct",
+        "string-and-path-helpers",
+        "startswithtext-string-prefix-string---boolean",
+        "endswithtext-string-suffix-string---boolean",
+        "containstext-string-fragment-string---boolean",
+        "lengthtext-string---integer",
+        "globpath-string-pattern-string---boolean",
+        "pathmatchesfile-file-pattern-string---boolean",
+        "membership-operator",
+        "deliberately-absent-facilities",
+        "errors-and-discovery"
+      ],
+      "primary": "detail-language",
+      "anchors": {
+        "_top": {
+          "page": "detail-language",
+          "anchor": "_top"
+        },
+        "detail-standard-library": {
+          "page": "detail-language",
+          "anchor": "functions"
+        },
+        "meaning": {
+          "page": "detail-language",
+          "anchor": "_top"
+        },
+        "evidence-and-optional-values": {
+          "page": "detail-language",
+          "anchor": "evidence-and-optional-values"
+        },
+        "statusvalue-n---string": {
+          "page": "detail-language",
+          "anchor": "statusvalue-n---string"
+        },
+        "isexactvalue-n---boolean": {
+          "page": "detail-language",
+          "anchor": "isexactvalue-n---boolean"
+        },
+        "lowerboundvalue-n---n-and-upperboundvalue-n---n": {
+          "page": "detail-language",
+          "anchor": "lowerboundvalue-n---n-and-upperboundvalue-n---n"
+        },
+        "requireexactvalue-n---n": {
+          "page": "detail-language",
+          "anchor": "requireexactvalue-n---n"
+        },
+        "ismissingvalue-optionalt---boolean": {
+          "page": "detail-language",
+          "anchor": "ismissingvalue-optionalt---boolean"
+        },
+        "isnullvalue-optionalt---boolean": {
+          "page": "detail-language",
+          "anchor": "isnullvalue-optionalt---boolean"
+        },
+        "requirepresentvalue-optionalt---t": {
+          "page": "detail-language",
+          "anchor": "requirepresentvalue-optionalt---t"
+        },
+        "orelsevalue-optionalt-fallback-t---t": {
+          "page": "detail-language",
+          "anchor": "orelsevalue-optionalt-fallback-t---t"
+        },
+        "numeric-helpers": {
+          "page": "detail-language",
+          "anchor": "numeric-helpers"
+        },
+        "absvalue-n---n": {
+          "page": "detail-language",
+          "anchor": "absvalue-n---n"
+        },
+        "floorvalue-n---integer-and-ceilvalue-n---integer": {
+          "page": "detail-language",
+          "anchor": "floorvalue-n---integer-and-ceilvalue-n---integer"
+        },
+        "roundvalue-n-digits-integer---float": {
+          "page": "detail-language",
+          "anchor": "roundvalue-n-digits-integer---float"
+        },
+        "collection-operations": {
+          "page": "detail-language",
+          "anchor": "collection-operations"
+        },
+        "filteritems-ct-predicate-t---boolean---ct": {
+          "page": "detail-language",
+          "anchor": "filteritems-ct-predicate-t---boolean---ct"
+        },
+        "mapitems-ct-selector-t---u---cu": {
+          "page": "detail-language",
+          "anchor": "mapitems-ct-selector-t---u---cu"
+        },
+        "anyitems-ct-predicate-t---boolean---boolean": {
+          "page": "detail-language",
+          "anchor": "anyitems-ct-predicate-t---boolean---boolean"
+        },
+        "allitems-ct-predicate-t---boolean---boolean": {
+          "page": "detail-language",
+          "anchor": "allitems-ct-predicate-t---boolean---boolean"
+        },
+        "countitems-ct---integer": {
+          "page": "detail-language",
+          "anchor": "countitems-ct---integer"
+        },
+        "sumitems-cn---n": {
+          "page": "detail-language",
+          "anchor": "sumitems-cn---n"
+        },
+        "sumitems-ct-selector-t---n---n": {
+          "page": "detail-language",
+          "anchor": "sumitems-ct-selector-t---n---n"
+        },
+        "minitems-cn---optionaln": {
+          "page": "detail-language",
+          "anchor": "minitems-cn---optionaln"
+        },
+        "minitems-ct-selector-t---n---optionaln": {
+          "page": "detail-language",
+          "anchor": "minitems-ct-selector-t---n---optionaln"
+        },
+        "maxitems-cn---optionaln": {
+          "page": "detail-language",
+          "anchor": "maxitems-cn---optionaln"
+        },
+        "maxitems-ct-selector-t---n---optionaln": {
+          "page": "detail-language",
+          "anchor": "maxitems-ct-selector-t---n---optionaln"
+        },
+        "avgitems-cn---optionalfloat": {
+          "page": "detail-language",
+          "anchor": "avgitems-cn---optionalfloat"
+        },
+        "avgitems-ct-selector-t---n---optionalfloat": {
+          "page": "detail-language",
+          "anchor": "avgitems-ct-selector-t---n---optionalfloat"
+        },
+        "sortbyitems-ct-key-t---k--direction-string---ct": {
+          "page": "detail-language",
+          "anchor": "sortbyitems-ct-key-t---k--direction-string---ct"
+        },
+        "takeitems-ct-count-integer---ct": {
+          "page": "detail-language",
+          "anchor": "takeitems-ct-count-integer---ct"
+        },
+        "certainitems-ct---ct": {
+          "page": "detail-language",
+          "anchor": "certainitems-ct---ct"
+        },
+        "string-and-path-helpers": {
+          "page": "detail-language",
+          "anchor": "string-and-path-helpers"
+        },
+        "startswithtext-string-prefix-string---boolean": {
+          "page": "detail-language",
+          "anchor": "startswithtext-string-prefix-string---boolean"
+        },
+        "endswithtext-string-suffix-string---boolean": {
+          "page": "detail-language",
+          "anchor": "endswithtext-string-suffix-string---boolean"
+        },
+        "containstext-string-fragment-string---boolean": {
+          "page": "detail-language",
+          "anchor": "containstext-string-fragment-string---boolean"
+        },
+        "lengthtext-string---integer": {
+          "page": "detail-language",
+          "anchor": "lengthtext-string---integer"
+        },
+        "globpath-string-pattern-string---boolean": {
+          "page": "detail-language",
+          "anchor": "globpath-string-pattern-string---boolean"
+        },
+        "pathmatchesfile-file-pattern-string---boolean": {
+          "page": "detail-language",
+          "anchor": "pathmatchesfile-file-pattern-string---boolean"
+        },
+        "membership-operator": {
+          "page": "detail-language",
+          "anchor": "membership-operator"
+        },
+        "deliberately-absent-facilities": {
+          "page": "detail-language",
+          "anchor": "deliberately-absent-facilities"
+        },
+        "errors-and-discovery": {
+          "page": "detail-language",
+          "anchor": "errors-and-discovery"
+        }
+      },
+      "redirects": true,
+      "sourceIds": true,
+      "search": true
+    },
+    "docs/language/diagnostics-and-limits.md": {
+      "phase": "retired",
+      "fromRef": "c708cebe95fd9325f7ef548148ab9d24b31b2f7e",
+      "fromSourceSha256": "ad1ec0c8e7668732be06014a972c6ab3126629cba6327945286f1733e22e4979",
+      "oldAnchors": [
+        "_top",
+        "diagnostics-deterministic-limits-and-execution-boundaries",
+        "meaning",
+        "diagnostic-phases",
+        "stable-codes-not-frozen-sentences",
+        "coordinates",
+        "error-collection-and-ordering",
+        "limit-profile",
+        "work-accounting",
+        "parser-and-matcher-complexity",
+        "inert-input-boundary",
+        "no-ambient-capabilities",
+        "effects-and-hostile-inputs",
+        "release-qualification"
+      ],
+      "primary": "detail-language",
+      "anchors": {
+        "_top": {
+          "page": "detail-language",
+          "anchor": "_top"
+        },
+        "diagnostics-deterministic-limits-and-execution-boundaries": {
+          "page": "detail-language",
+          "anchor": "diagnostics"
+        },
+        "meaning": {
+          "page": "detail-language",
+          "anchor": "_top"
+        },
+        "diagnostic-phases": {
+          "page": "detail-language",
+          "anchor": "diagnostics"
+        },
+        "stable-codes-not-frozen-sentences": {
+          "page": "troubleshooting",
+          "anchor": "report-a-useful-problem-safely"
+        },
+        "coordinates": {
+          "page": "troubleshooting",
+          "anchor": "a-diagnostic-points-into-yaml-an-expression-or-a-unicode-line"
+        },
+        "error-collection-and-ordering": {
+          "page": "troubleshooting",
+          "anchor": "a-diagnostic-points-into-yaml-an-expression-or-a-unicode-line"
+        },
+        "limit-profile": {
+          "page": "detail-language",
+          "anchor": "deterministic-limits"
+        },
+        "work-accounting": {
+          "page": "detail-language",
+          "anchor": "deterministic-limits"
+        },
+        "parser-and-matcher-complexity": {
+          "page": "detail-language",
+          "anchor": "deterministic-limits"
+        },
+        "inert-input-boundary": {
+          "page": "detail-language",
+          "anchor": "syntax-is-not-the-sandbox"
+        },
+        "no-ambient-capabilities": {
+          "page": "detail-language",
+          "anchor": "syntax-is-not-the-sandbox"
+        },
+        "effects-and-hostile-inputs": {
+          "page": "troubleshooting",
+          "anchor": "labels-or-comments-disagree-with-a-successful-analysis"
+        },
+        "release-qualification": {
+          "page": "troubleshooting",
+          "anchor": "report-a-useful-problem-safely"
+        }
+      },
+      "redirects": true,
+      "sourceIds": true,
+      "search": true
+    },
+    "docs/releases/README.md": {
+      "phase": "maintainer-map",
+      "fromRef": "c708cebe95fd9325f7ef548148ab9d24b31b2f7e",
+      "fromSourceSha256": "1ac359302bd56aabd740e26b5093c94fbb082c7a79867bea688539be706ec079",
+      "oldAnchors": [
+        "_top",
+        "diffdevil-releases",
+        "meaning",
+        "releases"
+      ],
+      "primary": "releases",
+      "anchors": {
+        "_top": {
+          "page": "releases",
+          "anchor": "_top"
+        },
+        "diffdevil-releases": {
+          "page": "releases",
+          "anchor": "_top"
+        },
+        "meaning": {
+          "page": "releases",
+          "anchor": "_top"
+        },
+        "releases": {
+          "page": "releases",
+          "anchor": "compatibility-and-historical-accounts"
+        }
+      },
+      "redirects": true,
+      "sourceIds": true,
+      "search": true,
+      "residueJob": "Maintainer index of dated release notes; current distribution and upgrade guidance belongs to the manual Releases page."
     }
   },
   "routes": {
@@ -1269,6 +1888,39 @@
     },
     "/docs/policies-and-detail/versioning-and-interchange/": {
       "target": "schemas-and-compatibility"
+    },
+    "/docs/github-app/architecture/": {
+      "target": "managed-app"
+    },
+    "/docs/setup/app/": {
+      "target": "managed-service"
+    },
+    "/docs/github-app/self-hosting/": {
+      "target": "self-host-app"
+    },
+    "/docs/policies-and-detail/syntax/": {
+      "target": "detail-language"
+    },
+    "/docs/policies-and-detail/types-and-measurements/": {
+      "target": "detail-language"
+    },
+    "/docs/policies-and-detail/collections-and-scopes/": {
+      "target": "detail-language"
+    },
+    "/docs/policies-and-detail/standard-library/": {
+      "target": "detail-language"
+    },
+    "/docs/policies-and-detail/diagnostics-and-limits/": {
+      "target": "detail-language"
+    },
+    "/docs/github-app/privacy-and-data/": {
+      "target": "security-and-data"
+    },
+    "/docs/security/": {
+      "target": "security-and-data"
+    },
+    "/docs/releases/": {
+      "target": "releases"
     }
   }
 }

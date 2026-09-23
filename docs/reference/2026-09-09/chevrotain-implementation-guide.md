@@ -4,7 +4,7 @@
 
 This dated guide gives the local implementer a concrete route from the selected detail grammar to a maintainable Chevrotain lexer/parser, binder, evaluator, and shared shortcut integration. It preserves implementation reasoning, pitfalls, and proof boundaries that would be expensive to reconstruct. It is advice for this design cut, not a current work queue or a claim that the parser has been implemented.
 
-The durable [parser architecture](../../language/parser-architecture.md), [syntax](../../language/syntax.md), and [semantic reference](../../language/types-and-measurements.md) own the resulting contract. This guide proposes how to build it, not another grammar.
+The durable [parser architecture](../../language/parser-architecture.md), [syntax](../../manual/reference/language-and-contracts/detail-language.md), and [semantic reference](../../manual/reference/language-and-contracts/detail-language.md) own the resulting contract. This guide proposes how to build it, not another grammar.
 
 ## Before writing source
 

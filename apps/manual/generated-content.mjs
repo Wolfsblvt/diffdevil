@@ -23,7 +23,7 @@ export function committedIslands(raw, { root, source, write = false, receipts = 
  });
  const closed = [...raw.matchAll(/<!-- \/manual:generated ([a-z-]+) -->/gu)];
  const openings = [...raw.matchAll(/<!-- manual:generated ([a-z-]+) -->/gu)];
- if (manualPages.some(page => page.source === source && page.wave === 3) && openings.length !== seen.size) throw new Error(`${source}: missing committed generated edit boundary`);
+ if (manualPages.some(page => page.source === source && page.wave >= 3) && openings.length !== seen.size) throw new Error(`${source}: missing committed generated edit boundary`);
  if (closed.length !== seen.size) throw new Error(`${source}: malformed generated edit boundary`);
  return result;
 }

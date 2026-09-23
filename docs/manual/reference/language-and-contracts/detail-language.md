@@ -613,6 +613,8 @@ Aggregates may use the resulting proven non-emptiness. The version-1 sum fallbac
 
 ## Functions
 
+In the descriptions below, `C<T>` is a logical collection, `Optional<T>` includes structural absence and null, and `N` is integer or float. Numeric results carry measurement evidence; boolean results carry three-valued decisions. Arguments evaluate left to right and reached errors propagate unless a function explicitly documents lazy evaluation.
+
 The following signatures are exact catalogue data. Their semantics, optional results,
 empty-input behavior and deliberate omissions are explained immediately afterward.
 
@@ -1041,6 +1043,8 @@ values. Error ordering and bounded diagnostics retain useful context without raw
 unbounded input dumps. Parser implementation internals and token/CST adaptation
 remain in [parser architecture](../../../language/parser-architecture.md), not a
 second public parser-construction tutorial.
+
+For an observed failure, use [Troubleshooting](../../help/troubleshooting.md#an-expression-is-rejected) to select a repair by symptom, code and phase, then return to the task.
 
 <!-- manual:generated detail-diagnostics -->
 | Code | Phase | Meaning |

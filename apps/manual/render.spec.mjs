@@ -74,6 +74,7 @@ test('Availability is one top note, independent of private authoring comments',(
  const page={source:'page.md',availability:'in-development'};
  const note='> [!NOTE]\n> **In development**\n';
  assert.doesNotThrow(()=>validateAvailability('# Title\n\n<!-- authoring: scaffold -->\n\n'+note,page));
+ assert.doesNotThrow(()=>validateAvailability('# Title\n\n'+note+'>\n> Capability explanation in its own paragraph.\n',page));
  assert.throws(()=>validateAvailability('# Title\n\nBody first.\n\n'+note,page),/top-only/u);
  assert.throws(()=>validateAvailability('# Title\n\n'+note+'\nText\n\n'+note,page),/top-only/u);
  assert.throws(()=>validateAvailability('# Title\n\n'+note,{...page,availability:'current'}),/top-only/u);

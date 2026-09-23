@@ -39,19 +39,12 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
           persist-credentials: false
-      - name: Retain exact public source for Wave 4 authoring
+      - name: Preserve exact candidate history with qualification evidence
         run: |
-          mkdir -p artifacts/wave-four-source
-          git bundle create artifacts/wave-four-source/source.bundle HEAD refs/remotes/origin/main
-          git rev-parse HEAD HEAD^{tree} refs/remotes/origin/main refs/remotes/origin/main^{tree} > artifacts/wave-four-source/coordinates.txt
-          sha256sum artifacts/wave-four-source/source.bundle > artifacts/wave-four-source/SHA256SUMS
-      - name: Read-only source transport
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: wave-four-source-${{ github.event.pull_request.head.sha || github.sha }}
-          retention-days: 3
-          if-no-files-found: error
-          path: artifacts/wave-four-source/
+          mkdir -p artifacts/manual/source
+          git bundle create artifacts/manual/source/candidate.bundle HEAD refs/remotes/origin/main
+          git rev-parse HEAD HEAD^{tree} refs/remotes/origin/main > artifacts/manual/source/coordinates.txt
+          sha256sum artifacts/manual/source/candidate.bundle > artifacts/manual/source/SHA256SUMS
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
         with:
           node-version: '22'
@@ -71,14 +64,15 @@ jobs:
         run: |
           node --input-type=module <<'NODE'
           import { readFileSync, existsSync, appendFileSync } from 'node:fs';
-          const path = 'artifacts/manual/qa/result.json';
-          let summary = 'Manual: no browser result; inspect the preceding build/check';
-          if (existsSync(path)) {
-            const result = JSON.parse(readFileSync(path, 'utf8'));
-            summary = result.ok ? 'Manual: all browser journeys passed' : result.failures.map(failure =>
-              failure.name + ': ' + failure.error.replace(/\u001b\[[0-9;]*m/g, '').replace(/\s+/g, ' ')
-            ).join(' | ');
-          }
+          const manualPath = 'artifacts/manual/qa/result.json';
+          const faqPath = 'artifacts/website/faq-qa/result.json';
+          const manual = existsSync(manualPath) ? JSON.parse(readFileSync(manualPath, 'utf8')) : null;
+          const faq = existsSync(faqPath) ? JSON.parse(readFileSync(faqPath, 'utf8')) : null;
+          const clean = value => String(value).replace(/\u001b\[[0-9;]*m/g, '').replace(/\s+/g, ' ');
+          const summary = [
+            !manual ? 'Manual: no browser result' : manual.ok ? 'Manual: passed' : 'Manual: ' + manual.failures.map(failure => clean(failure.name + ': ' + failure.error)).join(' | '),
+            !faq ? 'FAQ: no browser result' : faq.ok ? 'FAQ: passed' : 'FAQ: ' + faq.failures.map(clean).join(' | '),
+          ].join(' | ');
           appendFileSync(process.env.GITHUB_OUTPUT, 'summary=' + summary.slice(0, 240) + '\n');
           NODE
       - name: Qualification evidence

@@ -62,9 +62,8 @@ public routes or the finite source resolver. Code blocks are never rewritten.
 Register public images in `assets.json`; the build copies only those assets.
 Full working examples stay open. Secondary variants may use native disclosures.
 
-START, UNDERSTAND, the open USE surfaces and WRITE POLICY/REFERENCE have thirty-four
-authored chapters. Seven Managed App/Help chapters remain scaffolds; the accepted
-FAQ stays separate. Authoring comments
+START, UNDERSTAND, USE, WRITE POLICY/REFERENCE and Managed App/Help have forty-one
+authored chapters. The accepted FAQ stays separate. Authoring comments
 are removed from the renderer, and readiness is private build state in
 `authoring-state.json`. Complete the selected reader job, examples, expected results,
 failure returns and source links before changing `scaffold` to `authored`.
@@ -129,9 +128,12 @@ together. Playground operator requirements remain in `apps/playground/README.md`
 Wave 3 additionally transfers the broad automation overview, recipes, CLI, Actions,
 TypeScript, presets/shortcuts, templates, language overview, policies/bands and
 versioning/interchange. Their 156 old fragments and ten old public routes move in
-the same cut. Thirty-one manual pages are current/searchable. Five detailed language
-sources remain current until the shared detail-language/troubleshooting destination
-is complete in Wave 4; authoring the detail reference does not bypass that join.
+the same cut. Wave 4 completes the seven Managed App/Help pages and joins the five
+detailed language sources to detail reference and symptom-led Troubleshooting. Their
+complete old-fragment inventories, source IDs, inbound links and legacy routes move
+together; all forty-one manual chapters are current/searchable. The release directory
+keeps only its distinct maintainer map over dated notes. Final carrier-10 cross-surface
+reconciliation and fresh review remain separate from this source-authoring result.
 Parser architecture remains repository-owned: its old public route redirects to
 the exact repository source, the finite source resolver remains available, and the
 old article is no longer projected or indexed as public manual content.
@@ -147,7 +149,13 @@ the resolver, qualification pages and the whole FAQ page are not indexed.
 `related-questions.json` stores existing FAQ IDs only. Titles are read from the
 admitted `docs/manual/faq.md`; answers, stable IDs, native disclosures and the
 product-shell route remain owned by that source. Missing IDs refuse. The ordinary
-FAQ browser qualification runs on the combined candidate as well.
+FAQ browser qualification runs on the combined candidate as well. It executes the
+emitted handlers for both canonical hosts, including legacy-to-manual links, rather
+than assuming every FAQ destination is a page in the product host. The hosted
+summary reports manual and FAQ outcomes separately. Its existing qualification
+artifact includes a read-only Git bundle and commit/tree receipt under
+`artifacts/manual/source/`, so source history remains recoverable even after a red
+qualification; that transport is not publication or evidence of a passing run.
 
 The Policy/Reference inventories are committed inside paired edit boundaries:
 
@@ -167,13 +175,15 @@ npm --prefix apps/manual run check:generated
 
 The renderer also refuses exact-byte drift, missing closing boundaries, duplicate
 islands and malformed markers. `generated-content.mjs` updates only paired bodies,
-never prose, examples, troubleshooting, conclusions or migration judgment. CLI
+never prose, examples, recovery advice, conclusions or migration judgment. CLI
 reference remains authored and checked against real help and option declarations.
 Earlier waves retain their existing dynamic presenter and example markers.
 
-Eleven committed blocks cover Action metadata, public exports and complete resolved
+Thirteen committed blocks cover Action metadata, public exports and complete resolved
 declarations, schema fields, the checked size preset, and detail operators, functions,
-diagnostics, limits, environment, versions and shortcuts. Public aliases, overloads,
+diagnostics, limits, environment, versions and shortcuts, plus App execution-stage
+fallback codes/phases and checkout package/Action/Skill identities. Source metadata
+does not prove provider publication. Public aliases, overloads,
 generics, optional/readonly members and source links survive; external public
 re-exports retain their dependency identity. Schema pointers and branch-local
 requiredness remain explicit, with references, unions, definitions and boolean schemas
@@ -186,7 +196,11 @@ Presenter specimens use the shared engine and distinguish the small 10-Changed /
 with canonical files. `wave-3.test.mjs` executes every displayed read-only CLI invocation
 and six independent policy chapters, proves false versus unresolved behavior, and
 checks structurally valid but semantically invalid report/policy/plan counterparts.
-The root test discovery and this application's `test` include the wave. Tests preserve
+`wave-4.test.mjs` checks the joined source-family/fragment cut, finite router IDs,
+canonical read-only troubleshooting specimens, and unchanged prior-wave/FAQ bytes
+except the explicit joined detail additions. App D1 and operator-helper suites remain
+the real isolated operating-contract tests, not a documentation-only simulation.
+The root test discovery and this application's `test` include both waves. Tests preserve
 contracts and behavior rather than prose wording.
 
 The real-PR catalogue remains the one shared `docs/examples/catalogue` family.

@@ -33,12 +33,12 @@ when a custom formula, scope, or policy needs it.
 | Executed qualification and remaining evidence | [`qualification.md`](qualification.md) |
 | Shortcut ergonomics comparison | [`shortcut-comparison.md`](shortcut-comparison.md) |
 | Publication boundary | [`publication-boundary.md`](publication-boundary.md) |
-| Release notes and publication standing | [`releases/README.md`](releases/README.md) |
+| Release notes and publication standing | [Releases](manual/help/releases.md) |
 | Documentation teaching and future site source | [`documentation.md`](documentation.md) |
 | FAQ editorial, route, search and verification contract | [`faq-authoring.md`](faq-authoring.md) |
 | Canonical textual brand | [`branding.md`](branding.md) |
 | Live and local public-PR playground | [`../apps/playground/README.md`](../apps/playground/README.md) |
-| Optional managed App experience and architecture (selected, not deployed) | [`integration/github-app.md`](integration/github-app.md) |
+| Managed App architecture (source and contained backend canary; complete public experience in development) | [`integration/github-app.md`](integration/github-app.md) |
 | Hosted data, opt-in history, and retention contract | [`PRIVACY-AND-DATA.md`](PRIVACY-AND-DATA.md) |
 | Complete public playground experience (beyond the local measurement form) | [`manual/use/playground.md`](manual/use/playground.md) |
 | Public website source, build and local qualification (not deployed) | [`../apps/website/README.md`](../apps/website/README.md) |
@@ -54,7 +54,9 @@ when a custom formula, scope, or policy needs it.
 | GitHub Action interface | [`integration/github-actions.md`](manual/use/github-actions.md) |
 | Install-free Action distribution | [`integration/action-distribution.md`](integration/action-distribution.md) |
 | GitHub provider API and trust | [`integration/github-api.md`](integration/github-api.md) |
-| Planned optional App and dashboard | [`integration/github-app.md`](integration/github-app.md) |
+| Managed service adoption | [Use the managed service](manual/use/managed-app/service.md) |
+| Operate your own App | [Self-host the App](manual/use/managed-app/self-hosting.md) · [Complete operator source](../apps/github-app/README.md) |
+| Failed task, data handling, or release standing | [Troubleshooting](manual/help/troubleshooting.md) · [Security and data](manual/help/security-and-data.md) · [Releases](manual/help/releases.md) |
 | Presets and shortcut lowering | [`integration/presets-and-shortcuts.md`](manual/policy/README.md) |
 | Shared frozen examples and capture maintenance | [`integration/example-catalogue.md`](integration/example-catalogue.md) |
 | Templates and comment lifecycle | [`integration/templates.md`](manual/policy/from-measurements-to-rules/effects-and-templates.md) |
@@ -68,12 +70,12 @@ Start with [`language.md`](manual/reference/language-and-contracts/README.md).
 
 | Subject | Source |
 | --- | --- |
-| Syntax | [`language/syntax.md`](language/syntax.md) |
-| Types and evidence | [`language/types-and-measurements.md`](language/types-and-measurements.md) |
-| Collections and scopes | [`language/collections-and-scopes.md`](language/collections-and-scopes.md) |
-| Standard library | [`language/standard-library.md`](language/standard-library.md) |
+| Syntax | [Syntax reference](manual/reference/language-and-contracts/detail-language.md#syntax-and-source-locations) |
+| Types and evidence | [Types and measurements](manual/reference/language-and-contracts/detail-language.md#values-types-and-measurements) |
+| Collections and scopes | [Collections and scopes](manual/reference/language-and-contracts/detail-language.md#collections) |
+| Standard library | [Function catalogue and semantics](manual/reference/language-and-contracts/detail-language.md#functions) |
 | Policies and bands | [`language/policies-and-bands.md`](manual/policy/from-measurements-to-rules/README.md) |
-| Diagnostics and limits | [`language/diagnostics-and-limits.md`](language/diagnostics-and-limits.md) |
+| Diagnostics and limits | [Diagnostic reference](manual/reference/language-and-contracts/detail-language.md#diagnostics) |
 | Parser architecture | [`language/parser-architecture.md`](language/parser-architecture.md) |
 | Versioning and interchange | [`language/versioning-and-interchange.md`](manual/reference/language-and-contracts/schemas-and-compatibility.md) |
 

@@ -97,9 +97,8 @@ test('label and comment teaching policies retain false-removal, optional comment
  assert.match(comments.operations[0].body,/changed lines: 10\nRaw churn: 16\nDeleted-only or modified lines: 6\nIncluded files: 4/u);
 });
 
-test('accepted Wave 2 transfers survive later waves while Managed App and Help stay scaffolded',()=>{
+test('accepted Wave 2 transfers survive later completed source waves',()=>{
  for(const page of pages.filter(page=>page.wave===2))assert.equal(state.pages[page.key].status,'authored',page.key);
- for(const page of pages.filter(page=>page.wave===4))assert.equal(state.pages[page.key].status,'scaffold',page.key);
  const ref='1'.repeat(40),targets=sourceTargets({ref,state,exists:path=>existsSync(join(root,path))});
  for(const source of ['docs/guides/auto-label-pull-requests.md','docs/guides/local-automation.md','docs/integration/playground.md']){
   assert.equal(isRetired(source,state),true);assert.equal(existsSync(join(root,source)),false);
@@ -111,9 +110,6 @@ test('accepted Wave 2 transfers survive later waves while Managed App and Help s
  assert.ok(legacyRedirects(state).some(rule=>rule.from==='/docs/get-started/auto-label-pull-requests/'));
  assert.ok(legacyRedirects(state).some(rule=>rule.from==='/docs/get-started/local-automation/'));
  assert.ok(legacyRedirects(state).some(rule=>rule.from==='/docs/playground/'));
- for(const source of ['docs/language/diagnostics-and-limits.md']){
-  assert.equal(isRetired(source,state),false);assert.ok(existsSync(join(root,source)));
- }
  assert.equal(pageIsCurrent('playground',state),true);assert.equal(pageIsCurrent('cli',state),true);
 });
 

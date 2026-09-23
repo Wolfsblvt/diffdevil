@@ -138,18 +138,13 @@ test('CLI argument inventory and real help remain reachable from authored refere
  for(const command of ['analyze','query','check','validate','explain','plan','apply','labels','schema']) assert.ok(help.stdout.includes(command)&&reference.includes(command),command);
 });
 
-test('Wave 3 migrates only complete families and preserves prior content and Wave 4 scaffolds',()=>{
+test('Wave 3 source transfers and the separately admitted FAQ survive the completed Help join',()=>{
  for(const page of wave)assert.equal(state.pages[page.key].status,'authored',page.key);
- for(const page of pages.filter(page=>page.wave===4))assert.equal(state.pages[page.key].status,'scaffold',page.key);
  const baseline='a9df2c151da1f3bc36e4d2f4608ace62eca6d330';
- for(const page of pages.filter(page=>page.wave===4||page.key==='faq')) {
+ for(const page of pages.filter(page=>page.key==='faq')) {
   const previous=execFileSync('git',['show',`${baseline}:${page.source}`],{cwd:root,encoding:'utf8'});
   assert.equal(read(page.source),previous,`${page.key} must remain unchanged`);
  }
- for(const name of ['types-and-measurements','collections-and-scopes','syntax','standard-library','diagnostics-and-limits']) {
-  const source=`docs/language/${name}.md`;assert.equal(isRetired(source,state),false);assert.ok(existsSync(join(root,source)));
- }
- assert.equal(pageIsCurrent('detail-language',state),false,'Troubleshooting remains an untransferred co-owner.');
  const ref='1'.repeat(40),targets=sourceTargets({ref,state,exists:path=>existsSync(join(root,path))});
  for(const [source,transfer] of Object.entries(state.transfers)) if(transfer.fromRef===baseline) {
   assert.equal(existsSync(join(root,source)),false,source);

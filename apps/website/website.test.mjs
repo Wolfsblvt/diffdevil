@@ -57,7 +57,12 @@ test('the docs manifest names existing sources, unique slugs, and no internal re
   validateRetiredRoutes(state,entries,legacyRedirects(state));
   for (const entry of entries) {
     if (isRetired(entry.source,state)) {
-      assert.equal(existsSync(entry.source),false,entry.source+' must not retain a duplicate current guide');
+      const transfer=state.transfers[entry.source];
+      if(transfer.phase==='retired') assert.equal(existsSync(entry.source),false,entry.source+' must not retain a duplicate current guide');
+      else {
+        assert.ok(['operator-residue','maintainer-map'].includes(transfer.phase));
+        assert.ok(existsSync(entry.source)&&transfer.residueJob,entry.source+' needs an explicit separate repository job');
+      }
       continue;
     }
     if (!entry.optional) assert.ok(existsSync(entry.source), entry.source);

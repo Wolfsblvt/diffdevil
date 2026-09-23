@@ -213,7 +213,7 @@ It cannot supply a fabricated exact scalar. Binary changes do not become zero
 text lines. Neither line counts nor file counts measure importance, risk,
 complexity, quality, or whether a change should merge.
 
-[Evidence and arithmetic](docs/language/types-and-measurements.md) · [Scopes and collections](docs/language/collections-and-scopes.md)
+[Evidence and arithmetic](docs/manual/reference/language-and-contracts/detail-language.md) · [Scopes and collections](docs/manual/reference/language-and-contracts/detail-language.md)
 
 ## Use one of four Actions
 

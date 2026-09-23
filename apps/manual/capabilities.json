@@ -1,13 +1,59 @@
 {
-  "extension-admission": {"state":"source-admitted","source":"apps/browser-extension/README.md","admittedAt":"b1bd2f7212874039a413216cf73edc5192962a83","remaining":"Store coordinate and public release qualification are separate."},
-  "store-coordinate": {"state":"unobserved","source":"apps/browser-extension/README.md","remaining":"Published and verified Chrome Web Store URL."},
-  "dashboard-controls": {"state":"requires-source","source":"docs/integration/github-app.md","remaining":"Exact admitted screen controls, labels and browser qualification."},
-  "official-app-coordinate": {"state":"requires-configuration","source":"apps/website/src/data/site.ts","remaining":"Configured and verified official installation/dashboard destinations."},
-  "live-service-qualification": {"state":"unobserved","source":"apps/github-app/README.md","remaining":"Real installation, enablement, execution and readback journey."},
-  "operator-runbook": {"state":"requires-qualification","source":"apps/github-app/README.md","remaining":"Complete supported Cloudflare operator lifecycle; no fictional one-command deployment."},
-  "unsupported-docker-route": {"state":"not-selected","source":"docs/integration/github-app.md","remaining":"No Docker instructions until that adapter is selected and implemented."},
-  "partial-size-maps": {"state":"requires-source","source":"src/diffdevil/contracts/detail/v1/shortcuts.json","remaining":"Compiler/schema support and executed partial threshold/label-map examples."},
-  "stable-skill-carrier": {"state":"publication-unobserved","source":"skills/diffdevil/SKILL.md","remaining":"Published manifest/assets and actual stable-install readback."},
-  "commercial-terms": {"state":"requires-authority","source":"docs/integration/github-app.md","remaining":"Selected public prices, quotas and entitlements; do not invent them."},
-  "faq-candidate-admission": {"state":"source-admitted","source":"docs/manual/faq.md","admittedAt":"ed795c97b3052441f02f899876122f1967f1f1e2","remaining":"Preserve its answers and qualify only the shared foundation interfaces."}
+  "extension-admission": {
+    "state": "source-admitted",
+    "source": "apps/browser-extension/README.md",
+    "admittedAt": "b1bd2f7212874039a413216cf73edc5192962a83",
+    "remaining": "Store coordinate and public release qualification are separate."
+  },
+  "store-coordinate": {
+    "state": "unobserved",
+    "source": "apps/browser-extension/README.md",
+    "remaining": "Published and verified Chrome Web Store URL."
+  },
+  "dashboard-controls": {
+    "state": "active-owner-co-design",
+    "source": "docs/integration/github-app.md",
+    "remaining": "Final wording, labels, composition, user routes, controls, interaction sequence and complete first journey remain Wolf + Nyxara co-design. Backend functionality does not select them."
+  },
+  "official-app-coordinate": {
+    "state": "configured-not-public",
+    "source": "apps/website/src/data/site.ts",
+    "remaining": "Registration/installation/backend coordinates do not establish a public authenticated installation or dashboard journey. Public release and current route readback are separate."
+  },
+  "live-service-qualification": {
+    "state": "contained-backend-canary",
+    "source": "docs/DIRECTION.md",
+    "remaining": "A deployed one-repository backend result exists; general admission, complete authenticated administration, history, export, deletion, restore and public release still need qualification."
+  },
+  "operator-runbook": {
+    "state": "source-available-partial-qualification",
+    "source": "apps/github-app/README.md",
+    "remaining": "Worker/Queue/D1, migrations, fenced recovery, admission use cases and credential helper are source-owned. Full production lifecycle, authenticated adapter, backup restoration and deletion readback remain separate."
+  },
+  "unsupported-docker-route": {
+    "state": "not-selected",
+    "source": "docs/integration/github-app.md",
+    "remaining": "No Docker instructions until that adapter is selected and implemented."
+  },
+  "partial-size-maps": {
+    "state": "requires-source",
+    "source": "src/diffdevil/contracts/detail/v1/shortcuts.json",
+    "remaining": "Compiler/schema support and executed partial threshold/label-map examples."
+  },
+  "stable-skill-carrier": {
+    "state": "publication-unobserved",
+    "source": "skills/diffdevil/SKILL.md",
+    "remaining": "Published manifest/assets and actual stable-install readback."
+  },
+  "commercial-terms": {
+    "state": "requires-authority",
+    "source": "docs/integration/github-app.md",
+    "remaining": "Free 30-day and paid no-age-expiry quantitative-history tiers are selected. Prices, quotas, billing journey and service commitments remain undefined; do not invent them."
+  },
+  "faq-candidate-admission": {
+    "state": "source-admitted",
+    "source": "docs/manual/faq.md",
+    "admittedAt": "ed795c97b3052441f02f899876122f1967f1f1e2",
+    "remaining": "Preserve its answers and qualify only the shared foundation interfaces."
+  }
 }
