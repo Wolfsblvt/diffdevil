@@ -12,7 +12,7 @@ import { createAdmissionService } from './admission.mjs';
 
 const migrationNames = [
   '0001_initial.sql', '0002_consent-provenance.sql', '0003_preserve-active-consent.sql',
-  '0004_admission-settings.sql', '0005_offboarding-consent-tombstones.sql', '0006_user-authorization.sql'
+  '0004_admission-settings.sql', '0005_offboarding-consent-tombstones.sql', '0006_user-authorization.sql', '0007_consent-actors.sql'
 ];
 const ORIGIN = 'https://dashboard.example.test';
 const CALLBACK = `${ORIGIN}/oauth/callback`;
@@ -148,7 +148,7 @@ test('mutations require a same-origin non-GET request and current administrator 
     const initial = await service.readAdmission({ session, repositoryId: 17 });
     assert.equal(initial.headers['Cache-Control'], 'private, no-store');
     assert.equal(initial.body.execution.reason, 'never-enabled');
-    const settings = { origin: 'account-default', revision: initial.body.revision, writer: { confidence: 'administrator-declared' }, execution: true };
+    const settings = { origin: 'account-default', actor: { userId: 999, role: 'repository-admin' }, revision: initial.body.revision, writer: { confidence: 'administrator-declared' }, execution: true };
     await assert.rejects(service.updateAdmission({ session, repositoryId: 17, method: 'GET', origin: ORIGIN, settings }), { code: 'E_AUTH_METHOD' });
     await assert.rejects(service.updateAdmission({ session, repositoryId: 17, method: 'POST', origin: 'https://evil.example', settings }), { code: 'E_AUTH_ORIGIN' });
     await assert.rejects(service.updateAdmission({ session, repositoryId: 17, method: 'POST', settings }), { code: 'E_AUTH_ORIGIN' });
@@ -157,6 +157,8 @@ test('mutations require a same-origin non-GET request and current administrator 
     assert.equal(changed.body.writer.confidence, 'administrator-declared');
     assert.equal(changed.body.writer.origin, 'dashboard');
     assert.equal(changed.body.execution.origin, 'dashboard');
+    assert.equal(changed.body.execution.actorId, 123, 'the current session supplies the acting administrator, not browser settings');
+    assert.equal((await database.prepare('SELECT execution_consent_actor_id FROM repositories WHERE repository_id=17').first()).execution_consent_actor_id, 123);
     assert.equal((await appStore.historySettings(17)).enabled, false);
     await assert.rejects(service.updateAdmission({ session, repositoryId: 17, method: 'POST', origin: ORIGIN, settings }), { code: 'E_ADMISSION_STALE' });
     await assert.rejects(service.updateAdmission({ session, repositoryId: 17, method: 'POST', origin: ORIGIN,
@@ -175,6 +177,54 @@ test('mutations require a same-origin non-GET request and current administrator 
     await appStore.recordLifecycle({ installationId: 9, action: 'unsuspend', addedRepositories: [], removedRepositories: [] });
     await database.prepare('INSERT INTO deletion_tombstones (scope, deleted_at, reapply_until) VALUES (?, ?, ?)').bind('repository:17', clock.value, '2026-09-24T00:00:00.000Z').run();
     await assert.rejects(service.updateAdmission({ session, repositoryId: 17, method: 'POST', origin: ORIGIN, settings: { ...settings, revision: changed.body.revision } }), { code: 'E_ADMISSION_TOMBSTONED' });
+  } finally { await source.runtime.dispose(); }
+});
+
+test('consent decisions retain the session administrator only in protected repository state until deletion', async () => {
+  const source = await fixture();
+  try {
+    const { service, appStore, database, clock } = source;
+    const { session } = await signIn(service);
+    const initial = await service.readAdmission({ session, repositoryId: 17 });
+    const enabled = await service.updateAdmission({ session, repositoryId: 17, method: 'POST', origin: ORIGIN,
+      settings: { revision: initial.body.revision, actor: { userId: 999 }, history: { enabled: true, retentionDays: 30 } } });
+    assert.equal(enabled.body.history.actorId, 123);
+    assert.equal(enabled.body.execution.actorId, null);
+    assert.equal((await service.readAdmission({ session, repositoryId: 17 })).body.history.actorId, 123);
+
+    const retention = await service.updateAdmission({ session, repositoryId: 17, method: 'POST', origin: ORIGIN,
+      settings: { revision: enabled.body.revision, history: { enabled: true, retentionDays: 20 } } });
+    assert.equal(retention.body.history.actorId, 123, 'retention changes do not replace the consent actor');
+    assert.equal(retention.body.history.origin, 'dashboard');
+    const disabled = await service.updateAdmission({ session, repositoryId: 17, method: 'POST', origin: ORIGIN,
+      settings: { revision: retention.body.revision, history: { enabled: false } } });
+    assert.equal(disabled.body.history.reason, 'explicitly-disabled');
+    assert.equal(disabled.body.history.actorId, 123);
+
+    const configuration = await appStore.exportState();
+    assert.equal(configuration.version, 6);
+    assert.equal(configuration.configurations[0].history_consent_actor_id, 123);
+    assert.equal(configuration.configurations[0].execution_consent_actor_id, null);
+    const restored = await fixture();
+    try {
+      await assert.rejects(restored.appStore.importState({ ...configuration,
+        configurations: [{ ...configuration.configurations[0], history_consent_actor_id: '123' }] }), TypeError);
+      await restored.appStore.importState(configuration);
+      assert.equal((await restored.appStore.repositoryAdmission(17)).history.actorId, 123,
+        'protected configuration export preserves consent provenance across restore');
+      await restored.appStore.deleteHistory(17);
+      assert.equal((await restored.appStore.repositoryAdmission(17)).history.actorId, null,
+        'a non-session history deletion cannot inherit the previous administrator identity');
+    } finally { await restored.runtime.dispose(); }
+    assert.equal(JSON.stringify(await appStore.repositoryConsentState(17)).includes('actor'), false, 'execution projection does not receive administrator identity');
+    assert.equal(JSON.stringify(await appStore.exportHistory()).includes('actor'), false, 'numeric history export does not receive administrator identity');
+
+    await appStore.recordLifecycle({ installationId: 9, action: 'deleted', addedRepositories: [], removedRepositories: [] });
+    clock.value = '2026-10-24T00:00:00.000Z';
+    await appStore.maintain();
+    assert.equal(await database.prepare('SELECT * FROM repositories WHERE repository_id=17').first(), null);
+    assert.equal(JSON.stringify((await database.prepare('SELECT * FROM deletion_tombstones').all()).results).includes('123'), false,
+      'deletion tombstones retain consent standing without administrator identity');
   } finally { await source.runtime.dispose(); }
 });
 

@@ -80,7 +80,17 @@ export function createAdmissionService({ store, authorize = async () => false, r
       history = { enabled: request.history.enabled, retentionDays, policyId: finalConfiguration?.policyId ?? null };
     }
     if (!configuration && !writer && execution === undefined && !history) throw admissionError('E_ADMISSION_NO_CHANGE');
-    const after = await store.updateRepositoryAdmission(repositoryId, { revision: request.revision, configuration, execution, history, writer, origin });
+    const executionConsentChanged = execution !== undefined
+      && (execution ? before.execution.reason !== null : before.execution.reason !== 'explicitly-disabled');
+    const historyConsentChanged = history !== undefined
+      && (history.enabled ? !before.history.enabled : before.history.reason !== 'explicitly-disabled');
+    const actorId = executionConsentChanged || historyConsentChanged ? request.actor?.userId : undefined;
+    if (origin === 'dashboard' && (executionConsentChanged || historyConsentChanged)
+      && (!Number.isSafeInteger(actorId) || actorId <= 0)) throw admissionError('E_ADMISSION_ACTOR');
+    const after = await store.updateRepositoryAdmission(repositoryId, {
+      revision: request.revision, configuration, execution, history, writer, origin, actorId,
+      executionConsentChanged, historyConsentChanged
+    });
     if (!after) throw admissionError('E_ADMISSION_STALE');
     return projectAdmission(after, resolvePolicy);
   }

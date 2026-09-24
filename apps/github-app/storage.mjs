@@ -213,7 +213,7 @@ export class D1AppStore {
   async setRepositoryConsent(repositoryId, { enabled, retentionDays, policyId, origin }) {
     const retention = enabled ? boundedDays(retentionDays) : null;
     if (enabled && retention === null) throw new TypeError('History consent requires a bounded retention period.');
-    await this.statement('UPDATE repositories SET history_enabled=?, retention_days=?, policy_id=?, history_consent_origin=?, history_consent_reason=?, updated_at=? WHERE repository_id=?', enabled ? 1 : 0, retention, policyId ?? null, origin ?? null, enabled ? null : 'explicitly-disabled', this.now(), repositoryId).run();
+    await this.statement('UPDATE repositories SET history_enabled=?, retention_days=?, policy_id=?, history_consent_origin=?, history_consent_reason=?, history_consent_actor_id=NULL, updated_at=? WHERE repository_id=?', enabled ? 1 : 0, retention, policyId ?? null, origin ?? null, enabled ? null : 'explicitly-disabled', this.now(), repositoryId).run();
   }
 
   async setRepositoryConfiguration(repositoryId, configuration, origin, policyId = null) {
@@ -222,7 +222,7 @@ export class D1AppStore {
   }
   async setRepositoryExecution(repositoryId, { enabled, origin }) {
     if (typeof enabled !== 'boolean') throw new TypeError('Execution consent must be boolean.');
-    await this.statement(`UPDATE repositories SET state=CASE WHEN ?=1 AND access_state='available' THEN 'active' ELSE 'pending-enable' END, execution_consent_origin=?, execution_consent_reason=?, updated_at=? WHERE repository_id=?`, enabled ? 1 : 0, origin ?? null, enabled ? null : 'explicitly-disabled', this.now(), repositoryId).run();
+    await this.statement(`UPDATE repositories SET state=CASE WHEN ?=1 AND access_state='available' THEN 'active' ELSE 'pending-enable' END, execution_consent_origin=?, execution_consent_reason=?, execution_consent_actor_id=NULL, updated_at=? WHERE repository_id=?`, enabled ? 1 : 0, origin ?? null, enabled ? null : 'explicitly-disabled', this.now(), repositoryId).run();
   }
   async repositoryConfiguration(repositoryId) {
     const row = await this.statement('SELECT configuration_json, configuration_origin, configuration_policy_id FROM repositories WHERE repository_id=?', repositoryId).first();
@@ -234,7 +234,7 @@ export class D1AppStore {
   /** Read persisted admission facts without inferring live provider reach or dashboard authorization. */
   async repositoryAdmission(repositoryId) {
     const row = await this.statement(`SELECT r.repository_id, r.installation_id, r.state, r.access_state, r.settings_revision,
-      r.execution_consent_origin, r.execution_consent_reason, r.history_enabled, r.retention_days, r.history_consent_origin, r.history_consent_reason,
+      r.execution_consent_origin, r.execution_consent_reason, r.execution_consent_actor_id, r.history_enabled, r.retention_days, r.history_consent_origin, r.history_consent_reason, r.history_consent_actor_id,
       r.configuration_origin, r.configuration_json, r.configuration_policy_id, r.writer_standing, r.writer_origin, i.state AS installation_state
       FROM repositories r JOIN installations i ON i.installation_id=r.installation_id WHERE r.repository_id=?`, repositoryId).first();
     if (!row) return undefined;
@@ -251,8 +251,8 @@ export class D1AppStore {
       state: row.state,
       reach: { repository: row.access_state, installation: row.installation_state, tombstoned: Boolean(tombstone?.blocked) },
       revision: Number.isSafeInteger(row.settings_revision) ? row.settings_revision : 0,
-      execution: { origin: row.execution_consent_origin ?? 'unknown', reason: row.execution_consent_reason ?? null },
-      history: { enabled: row.history_enabled === 1, retentionDays: boundedDays(row.retention_days), origin: row.history_consent_origin ?? 'unknown', reason: row.history_consent_reason ?? null },
+      execution: { origin: row.execution_consent_origin ?? 'unknown', reason: row.execution_consent_reason ?? null, actorId: row.execution_consent_actor_id ?? null },
+      history: { enabled: row.history_enabled === 1, retentionDays: boundedDays(row.retention_days), origin: row.history_consent_origin ?? 'unknown', reason: row.history_consent_reason ?? null, actorId: row.history_consent_actor_id ?? null },
       configuration: { origin: row.configuration_origin ?? 'unknown', policyId: row.configuration_policy_id ?? 'unknown', value: configuration },
       writer: { confidence: row.writer_standing ?? 'unverified', origin: row.writer_origin ?? 'unknown' },
       lastDelivery: delivery ? { receivedAt: delivery.received_at, state: delivery.state, code: delivery.code ?? undefined } : undefined
@@ -260,7 +260,7 @@ export class D1AppStore {
   }
 
   /** Compare-and-set update for the future dashboard/operator boundary; it never changes provider reach. */
-  async updateRepositoryAdmission(repositoryId, { revision, configuration, execution, history, writer, origin }) {
+  async updateRepositoryAdmission(repositoryId, { revision, configuration, execution, history, writer, origin, actorId, executionConsentChanged, historyConsentChanged }) {
     if (!Number.isSafeInteger(revision) || revision < 0) throw Object.assign(new TypeError('Admission revision must be a non-negative integer.'), { code: 'E_ADMISSION_REVISION' });
     if (!origin || typeof origin !== 'string') throw Object.assign(new TypeError('Admission origin is required.'), { code: 'E_ADMISSION_ORIGIN' });
     const nextRevision = revision + 1, now = this.now();
@@ -270,8 +270,11 @@ export class D1AppStore {
        AND NOT EXISTS (SELECT 1 FROM deletion_tombstones WHERE scope=? AND reapply_until > ?)`, nextRevision, now, repositoryId, revision, `repository:${repositoryId}`, now)];
     if (configuration) statements.push(this.statement('UPDATE repositories SET configuration_json=?, configuration_origin=?, configuration_policy_id=? WHERE repository_id=? AND settings_revision=?', JSON.stringify(configuration.value), origin, configuration.policyId, repositoryId, nextRevision));
     if (writer) statements.push(this.statement('UPDATE repositories SET writer_standing=?, writer_origin=? WHERE repository_id=? AND settings_revision=?', writer.confidence, origin, repositoryId, nextRevision));
-    if (execution !== undefined) statements.push(this.statement(`UPDATE repositories SET state=CASE WHEN ?=1 THEN 'active' ELSE 'pending-enable' END, execution_consent_origin=?, execution_consent_reason=? WHERE repository_id=? AND settings_revision=?`, execution ? 1 : 0, origin, execution ? null : 'explicitly-disabled', repositoryId, nextRevision));
-    if (history) statements.push(this.statement('UPDATE repositories SET history_enabled=?, retention_days=?, policy_id=?, history_consent_origin=?, history_consent_reason=? WHERE repository_id=? AND settings_revision=?', history.enabled ? 1 : 0, history.retentionDays, history.policyId ?? null, origin, history.enabled ? null : 'explicitly-disabled', repositoryId, nextRevision));
+    if (executionConsentChanged) statements.push(this.statement(`UPDATE repositories SET state=CASE WHEN ?=1 THEN 'active' ELSE 'pending-enable' END, execution_consent_origin=?, execution_consent_reason=?, execution_consent_actor_id=? WHERE repository_id=? AND settings_revision=?`, execution ? 1 : 0, origin, execution ? null : 'explicitly-disabled', actorId ?? null, repositoryId, nextRevision));
+    if (history) {
+      statements.push(this.statement('UPDATE repositories SET history_enabled=?, retention_days=?, policy_id=? WHERE repository_id=? AND settings_revision=?', history.enabled ? 1 : 0, history.retentionDays, history.policyId ?? null, repositoryId, nextRevision));
+      if (historyConsentChanged) statements.push(this.statement('UPDATE repositories SET history_consent_origin=?, history_consent_reason=?, history_consent_actor_id=? WHERE repository_id=? AND settings_revision=?', origin, history.enabled ? null : 'explicitly-disabled', actorId ?? null, repositoryId, nextRevision));
+    }
     const results = await this.database.batch(statements);
     if ((results[0]?.meta?.changes ?? 0) !== 1) return undefined;
     return this.repositoryAdmission(repositoryId);
@@ -335,7 +338,7 @@ export class D1AppStore {
     const now = this.now(), until = new Date(Date.parse(now) + 37 * DAY).toISOString();
     await this.removeHistoryRecords(repositoryId);
     await this.database.batch([
-      this.statement("UPDATE repositories SET history_enabled=0, history_consent_reason='explicitly-disabled', updated_at=? WHERE repository_id=?", now, repositoryId),
+      this.statement("UPDATE repositories SET history_enabled=0, history_consent_origin='history-deletion', history_consent_reason='explicitly-disabled', history_consent_actor_id=NULL, updated_at=? WHERE repository_id=?", now, repositoryId),
        this.statement('INSERT INTO deletion_tombstones (scope, deleted_at, reapply_until) VALUES (?, ?, ?) ON CONFLICT(scope) DO UPDATE SET deleted_at=excluded.deleted_at, reapply_until=excluded.reapply_until', `history:${repositoryId}`, now, until),
       this.statement('DELETE FROM app_checks WHERE repository_id=?', repositoryId),
       this.statement('DELETE FROM repairs WHERE repository_id=?', repositoryId)
@@ -343,9 +346,9 @@ export class D1AppStore {
   }
 
   async exportState() {
-    const configurations = await this.statement('SELECT repository_id, installation_id, history_enabled, retention_days, policy_id, execution_consent_origin, execution_consent_reason, history_consent_origin, history_consent_reason, configuration_origin, configuration_json, configuration_policy_id, writer_standing, writer_origin, settings_revision FROM repositories').all();
+    const configurations = await this.statement('SELECT repository_id, installation_id, history_enabled, retention_days, policy_id, execution_consent_origin, execution_consent_reason, execution_consent_actor_id, history_consent_origin, history_consent_reason, history_consent_actor_id, configuration_origin, configuration_json, configuration_policy_id, writer_standing, writer_origin, settings_revision FROM repositories').all();
     const tombstones = await this.statement('SELECT scope, deleted_at, reapply_until, execution_consent_reason, history_consent_reason FROM deletion_tombstones').all();
-    return { kind: 'diffdevil.github-app-export', version: 5, exportedAt: this.now(), configurations: configurations.results ?? [], tombstones: tombstones.results ?? [] };
+    return { kind: 'diffdevil.github-app-export', version: 6, exportedAt: this.now(), configurations: configurations.results ?? [], tombstones: tombstones.results ?? [] };
   }
 
   /** Quantitative history travels separately from protected configuration and remains blocked by deletion tombstones. */
@@ -385,10 +388,10 @@ export class D1AppStore {
     for (const row of value.effectRows) if (recordIds.has(row?.history_id) && Number.isSafeInteger(row.ordinal) && typeof row.effect_json === 'string') await this.statement('INSERT INTO history_effect_rows (history_id, ordinal, effect_json) VALUES (?, ?, ?)', recordIds.get(row.history_id), row.ordinal, row.effect_json).run();
   }
   async importState(value) {
-    if (!value || value.kind !== 'diffdevil.github-app-export' || ![3, 4, 5].includes(value.version) || !Array.isArray(value.configurations) || !Array.isArray(value.tombstones)) throw new TypeError('Unsupported App state export.');
+    if (!value || value.kind !== 'diffdevil.github-app-export' || ![3, 4, 5, 6].includes(value.version) || !Array.isArray(value.configurations) || !Array.isArray(value.tombstones)) throw new TypeError('Unsupported App state export.');
     const repositoryIds = new Set(), scopes = new Set();
     for (const configuration of value.configurations) {
-      if (!Number.isSafeInteger(configuration?.repository_id) || configuration.repository_id < 1 || repositoryIds.has(configuration.repository_id) || !Number.isSafeInteger(configuration?.installation_id) || configuration.installation_id < 1 || ![0, 1].includes(configuration.history_enabled) || (configuration.retention_days !== null && configuration.retention_days !== undefined && boundedDays(configuration.retention_days) === null) || (configuration.policy_id !== null && configuration.policy_id !== undefined && typeof configuration.policy_id !== 'string') || !['execution_consent_origin', 'history_consent_origin', 'configuration_origin', 'writer_origin'].every(key => configuration[key] === null || configuration[key] === undefined || typeof configuration[key] === 'string') || !validConsentReason(configuration.execution_consent_reason) || !validConsentReason(configuration.history_consent_reason) || (configuration.configuration_policy_id !== null && configuration.configuration_policy_id !== undefined && typeof configuration.configuration_policy_id !== 'string') || (configuration.writer_standing !== undefined && !['unverified', 'administrator-declared', 'detected'].includes(configuration.writer_standing)) || (configuration.settings_revision !== undefined && (!Number.isSafeInteger(configuration.settings_revision) || configuration.settings_revision < 0))) throw new TypeError('Invalid repository configuration export.');
+      if (!Number.isSafeInteger(configuration?.repository_id) || configuration.repository_id < 1 || repositoryIds.has(configuration.repository_id) || !Number.isSafeInteger(configuration?.installation_id) || configuration.installation_id < 1 || ![0, 1].includes(configuration.history_enabled) || (configuration.retention_days !== null && configuration.retention_days !== undefined && boundedDays(configuration.retention_days) === null) || (configuration.policy_id !== null && configuration.policy_id !== undefined && typeof configuration.policy_id !== 'string') || !['execution_consent_origin', 'history_consent_origin', 'configuration_origin', 'writer_origin'].every(key => configuration[key] === null || configuration[key] === undefined || typeof configuration[key] === 'string') || !['execution_consent_actor_id', 'history_consent_actor_id'].every(key => configuration[key] === null || configuration[key] === undefined || (Number.isSafeInteger(configuration[key]) && configuration[key] > 0)) || !validConsentReason(configuration.execution_consent_reason) || !validConsentReason(configuration.history_consent_reason) || (configuration.configuration_policy_id !== null && configuration.configuration_policy_id !== undefined && typeof configuration.configuration_policy_id !== 'string') || (configuration.writer_standing !== undefined && !['unverified', 'administrator-declared', 'detected'].includes(configuration.writer_standing)) || (configuration.settings_revision !== undefined && (!Number.isSafeInteger(configuration.settings_revision) || configuration.settings_revision < 0))) throw new TypeError('Invalid repository configuration export.');
       if (configuration.configuration_json !== null && configuration.configuration_json !== undefined) {
         try { const parsed = JSON.parse(configuration.configuration_json); if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new TypeError(); }
         catch { throw new TypeError('Invalid repository configuration export.'); }
@@ -401,8 +404,8 @@ export class D1AppStore {
       ...value.configurations.map(configuration => {
         const executionReason = configuration.execution_consent_reason === null ? 're-consent-required' : configuration.execution_consent_reason ?? 'unknown';
         const historyReason = configuration.history_consent_reason === null ? 're-consent-required' : configuration.history_consent_reason ?? 'unknown';
-        return this.statement(`INSERT INTO repositories (repository_id, installation_id, history_enabled, retention_days, policy_id, execution_consent_origin, execution_consent_reason, history_consent_origin, history_consent_reason, configuration_origin, configuration_json, configuration_policy_id, writer_standing, writer_origin, settings_revision, state, access_state, updated_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending-enable', 'unknown', ?) ON CONFLICT(repository_id) DO UPDATE SET installation_id=excluded.installation_id, history_enabled=excluded.history_enabled, retention_days=excluded.retention_days, policy_id=excluded.policy_id, execution_consent_origin=excluded.execution_consent_origin, execution_consent_reason=excluded.execution_consent_reason, history_consent_origin=excluded.history_consent_origin, history_consent_reason=excluded.history_consent_reason, configuration_origin=excluded.configuration_origin, configuration_json=excluded.configuration_json, configuration_policy_id=excluded.configuration_policy_id, writer_standing=excluded.writer_standing, writer_origin=excluded.writer_origin, settings_revision=excluded.settings_revision, state='pending-enable', access_state='unknown', updated_at=excluded.updated_at`, configuration.repository_id, configuration.installation_id, configuration.history_enabled, configuration.retention_days ?? null, configuration.policy_id ?? null, configuration.execution_consent_origin ?? null, executionReason, configuration.history_consent_origin ?? null, historyReason, configuration.configuration_origin ?? null, configuration.configuration_json ?? null, configuration.configuration_policy_id ?? null, configuration.writer_standing ?? 'unverified', configuration.writer_origin ?? null, configuration.settings_revision ?? 0, this.now());
+        return this.statement(`INSERT INTO repositories (repository_id, installation_id, history_enabled, retention_days, policy_id, execution_consent_origin, execution_consent_reason, execution_consent_actor_id, history_consent_origin, history_consent_reason, history_consent_actor_id, configuration_origin, configuration_json, configuration_policy_id, writer_standing, writer_origin, settings_revision, state, access_state, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending-enable', 'unknown', ?) ON CONFLICT(repository_id) DO UPDATE SET installation_id=excluded.installation_id, history_enabled=excluded.history_enabled, retention_days=excluded.retention_days, policy_id=excluded.policy_id, execution_consent_origin=excluded.execution_consent_origin, execution_consent_reason=excluded.execution_consent_reason, execution_consent_actor_id=excluded.execution_consent_actor_id, history_consent_origin=excluded.history_consent_origin, history_consent_reason=excluded.history_consent_reason, history_consent_actor_id=excluded.history_consent_actor_id, configuration_origin=excluded.configuration_origin, configuration_json=excluded.configuration_json, configuration_policy_id=excluded.configuration_policy_id, writer_standing=excluded.writer_standing, writer_origin=excluded.writer_origin, settings_revision=excluded.settings_revision, state='pending-enable', access_state='unknown', updated_at=excluded.updated_at`, configuration.repository_id, configuration.installation_id, configuration.history_enabled, configuration.retention_days ?? null, configuration.policy_id ?? null, configuration.execution_consent_origin ?? null, executionReason, configuration.execution_consent_actor_id ?? null, configuration.history_consent_origin ?? null, historyReason, configuration.history_consent_actor_id ?? null, configuration.configuration_origin ?? null, configuration.configuration_json ?? null, configuration.configuration_policy_id ?? null, configuration.writer_standing ?? 'unverified', configuration.writer_origin ?? null, configuration.settings_revision ?? 0, this.now());
       }),
       ...value.tombstones.map(tombstone => this.statement('INSERT INTO deletion_tombstones (scope, deleted_at, reapply_until, execution_consent_reason, history_consent_reason) VALUES (?, ?, ?, ?, ?) ON CONFLICT(scope) DO UPDATE SET deleted_at=excluded.deleted_at, reapply_until=excluded.reapply_until, execution_consent_reason=excluded.execution_consent_reason, history_consent_reason=excluded.history_consent_reason', tombstone.scope, tombstone.deleted_at, tombstone.reapply_until, tombstone.execution_consent_reason ?? null, tombstone.history_consent_reason ?? null)),
       ...value.tombstones.filter(tombstone => /^repository:[1-9][0-9]*$/u.test(tombstone.scope)).map(tombstone => this.statement("UPDATE repositories SET history_enabled=0, state='offboarding', access_state='removed', execution_consent_reason=?, history_consent_reason=?, updated_at=? WHERE repository_id=?", tombstone.execution_consent_reason ?? 're-consent-required', tombstone.history_consent_reason ?? 're-consent-required', this.now(), Number(tombstone.scope.slice('repository:'.length))))

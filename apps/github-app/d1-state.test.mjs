@@ -9,7 +9,7 @@ import { D1AppStore } from './storage.mjs';
 import { createAdmissionService } from './admission.mjs';
 import { DEFAULT_SIZE_POLICY, readConfigurationExport, resolveEffectivePolicy } from './configuration.mjs';
 
-const migrations = ['0001_initial.sql', '0002_consent-provenance.sql', '0003_preserve-active-consent.sql', '0004_admission-settings.sql', '0005_offboarding-consent-tombstones.sql'];
+const migrations = ['0001_initial.sql', '0002_consent-provenance.sql', '0003_preserve-active-consent.sql', '0004_admission-settings.sql', '0005_offboarding-consent-tombstones.sql', '0006_user-authorization.sql', '0007_consent-actors.sql'];
 const projection = {
   schemaVersion: 3, engineVersion: 'engine-v1', reportVersion: 'report-v1', metricVersion: 'metrics-v1', source: { base: 'base', head: 'head' }, evidence: 'exact', fileSet: { complete: true, total: { status: 'exact', value: 1 } }, totals: {}, configuredResults: [], gaps: [], files: [{ ordinal: 0, raw: {}, lines: {} }], effects: [{ kind: 'label.add', outcome: 'changed', request: 'accepted', readback: 'verified' }]
 };
@@ -67,7 +67,7 @@ test('local D1 keeps execution fences, repair claims, expiry, offboarding, and p
 
     await source.store.deleteHistory(17);
     const exported = await source.store.exportState();
-    assert.equal(readConfigurationExport(exported).version, 5, 'the portable configuration reader accepts the current export version');
+    assert.equal(readConfigurationExport(exported).version, 6, 'the portable configuration reader accepts the current export version');
     const restored = await localStore(clock);
     try {
       await restored.store.importState(exported);
@@ -179,9 +179,9 @@ test('the admission service validates settings, keeps history independent, and r
         source: 'trusted-base', sourceIdentity: '.diffdevil.yml@fixture'
       })
     });
-    const actor = { role: 'repository-admin' };
+    const actor = { role: 'repository-admin', userId: 123 };
     const initial = await service.read(17, actor);
-    assert.deepEqual(initial.execution, { origin: 'unknown', reason: 'never-enabled' });
+    assert.deepEqual(initial.execution, { origin: 'unknown', reason: 'never-enabled', actorId: null });
     assert.deepEqual(initial.next, { actor: 'repository-admin', action: 'declare-exclusive-writer' });
     await assert.rejects(service.update(17, { actor, origin: 'dashboard', revision: initial.revision, execution: true }), { code: 'E_ADMISSION_WRITER_UNRESOLVED' });
     const admitted = await service.update(17, { actor, origin: 'dashboard', revision: initial.revision, writer: { confidence: 'administrator-declared' }, execution: true });
