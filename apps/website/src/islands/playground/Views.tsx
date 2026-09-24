@@ -18,9 +18,12 @@ import type { View } from './state';
 interface Props { view: View; evaluation: Evaluation; acquired: Acquired }
 
 const explanationAnchors: Record<string, string> = {
-  presets: `${docPaths.presets}#presets`, size: `${docPaths.presets}#size-overrides`, measurement: `${docPaths.versioning}`, defaults: `${docPaths.policies}#defaults`,
-  scopes: `${docPaths.policies}#scopes`, metrics: `${docPaths.policies}#metrics`, bands: `${docPaths.policies}#bands`, rules: `${docPaths.policies}#rules`,
-  labelGroups: `${docPaths.templates}#label-groups`, labelDefinitions: `${docPaths.policies}#label-definitions`, queries: `${docPaths.policies}#queries`, parameters: `${docPaths.policies}#parameters`,
+  presets: `${docPaths.presets}#what-size1-selects`, size: `${docPaths.presets}#choose-the-next-amount-of-policy`,
+  measurement: docPaths.versioning, defaults: `${docPaths.configure}#know-which-host-supplies-each-layer`,
+  scopes: `${docPaths.scopes}#name-reusable-selections`, metrics: `${docPaths.policies}#separate-measures-formulas-and-scopes`,
+  bands: `${docPaths.policies}#classify-the-whole-possible-value`, rules: `${docPaths.policies}#declare-and-inspect-a-rule`,
+  labelGroups: `${docPaths.templates}#own-labels-and-their-definitions`, labelDefinitions: `${docPaths.templates}#own-labels-and-their-definitions`,
+  queries: `${docPaths.policies}#query-then-check`, parameters: `${docPaths.configure}#bind-typed-parameters`,
 };
 
 const Code = ({ children }: { children: ReactNode }) => <code className="pg-code">{children}</code>;

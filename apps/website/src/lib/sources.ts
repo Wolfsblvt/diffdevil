@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 /**
- * Repository-owned agent sources the site serves unchanged: the persistent Agent Skill
- * and the one-off setup instructions. The website consumes them; it never authors them.
+ * Repository-owned agent sources: the unchanged persistent Agent Skill and
+ * the deterministically bound one-off setup instructions. The website consumes them; it never authors them.
  * When a source is absent at build time the site reports it in the build's sources
  * report and the affected raw route is simply not emitted — no placeholder file.
  */
@@ -9,6 +9,8 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { repositoryRoot } from './engine-node';
 import { skillVersionOf } from './skill-version.mjs';
+import { renderSetup } from '../../setup-render.mjs';
+import { origins } from '../../public-origins.mjs';
 
 /** The canonical Skill home is the repository's skills tree, not a docs copy. */
 export const SKILL_SOURCE = 'skills/diffdevil/SKILL.md';
@@ -25,7 +27,15 @@ function readIfPresent(relative: string): SourceFile | undefined {
 }
 
 export function skillSource(): SourceFile | undefined { return readIfPresent(SKILL_SOURCE); }
-export function setupSource(intent: SetupIntent): SourceFile | undefined { return readIfPresent(SETUP_SOURCES[intent]); }
+export function setupSource(intent: SetupIntent): (SourceFile & { available: boolean; missing: string[] }) | undefined {
+  const source = readIfPresent(SETUP_SOURCES[intent]);
+  if (!source) return undefined;
+  return { path: source.path, ...renderSetup(source.text, {
+    PUBLIC_ORIGIN: import.meta.env.DIFFDEVIL_SITE_ORIGIN ?? origins.site,
+    APP_INSTALL_URL: import.meta.env.PUBLIC_APP_INSTALL_URL,
+    APP_DASHBOARD_URL: import.meta.env.PUBLIC_DASHBOARD_URL,
+  }) };
+}
 
 /** The skill's version is `metadata.version` in its YAML front matter (Agent Skills schema); the site never hard-codes one. */
 export function skillVersion(source: SourceFile | undefined): string | undefined {
@@ -42,6 +52,6 @@ export function sourcesReport(): SourcesReport {
   };
 }
 
-/** The extension's manual pages are authored with the extension application; links to them are live once that source is present. */
-export const EXTENSION_DOCS_SOURCE = 'apps/browser-extension/README.md';
+/** The canonical manual chapter owns the public operation link, independently of Store publication. */
+export const EXTENSION_DOCS_SOURCE = 'docs/manual/use/browser-extension.md';
 export function extensionDocsPresent(): boolean { return existsSync(join(repositoryRoot, EXTENSION_DOCS_SOURCE)); }

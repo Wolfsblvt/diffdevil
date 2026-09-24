@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
+import { origins } from '../../public-origins.mjs';
+export function sourceResolverUrl(id) { return `${origins.site}/source/?f=${encodeURIComponent(id)}`; }
 /** A finite map is the complete resolver authority. No path or URL fallback. */
 export function resolveSource(input, targets) {
  let url;
