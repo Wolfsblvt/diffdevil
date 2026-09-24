@@ -87,7 +87,7 @@ export function validateFragments(references, inventory) {
 export function generateManual({root = repositoryRoot, qa = process.env.DIFFDEVIL_DOCS_QA === '1'} = {}) {
  validateManifest();
  const ref = sourceRef(root), branch = editRef(root), state = JSON.parse(readFileSync(join(root,'apps/manual/authoring-state.json'),'utf8'));
- const version = JSON.parse(readFileSync(join(root,'package.json'),'utf8')).version;
+ const packageVersion = JSON.parse(readFileSync(join(root,'package.json'),'utf8')).version;
  const exists = path => existsSync(join(root,path));
  for (const key of Object.keys(state.pages ?? {})) if (!pages.some(page => page.key === key)) throw new Error(`Unknown authoring page: ${key}`);
  for (const key of Object.keys(state.transfers ?? {})) if (!migrations.some(row => row.source === key)) throw new Error(`Unknown source transfer: ${key}`);
@@ -126,7 +126,7 @@ export function generateManual({root = repositoryRoot, qa = process.env.DIFFDEVI
    title: page.title, editUrl: `https://github.com/Wolfsblvt/diffdevil/edit/${branch}/${page.source}`,
    pagefind: current,
    head: [{tag:'meta',attrs:{name:'diffdevil-availability',content:page.availability}}, ...(!current ? [{tag:'meta',attrs:{name:'robots',content:'noindex, nosnippet'}}] : [])],
-   diffdevil: { key:page.key,source:page.source,sourceUrl:sourceUrl(page.source,ref),sourceRef:ref,appliesTo:version,availability:page.availability },
+   diffdevil: { key:page.key,source:page.source,sourceUrl:sourceUrl(page.source,ref),sourceRef:ref,packageVersion,availability:page.availability },
   };
   const file = join(out,page.route === '/' ? 'index.md' : page.route.slice(1,-1)+'.md');
   mkdirSync(dirname(file),{recursive:true}); writeFileSync(file,'---\n'+JSON.stringify(front,null,2)+'\n---\n\n'+projection.body);
@@ -170,7 +170,7 @@ export function generateManual({root = repositoryRoot, qa = process.env.DIFFDEVI
  const redirects = siteRedirects(state, legacyEntries, targets);
  const aliases = manualPages.flatMap(page=>page.aliases.map(from=>({from,to:pageUrl(page.key),status:308})));
  const fragments = fragmentAliases(state,anchorInventory,legacyEntries);
- const report = {ref,version,records,aliases,redirects,fragments,cutover:cutoverPlan(state),faq:{source:'docs/manual/faq.md',present:exists('docs/manual/faq.md'),shellPresent:exists('apps/website/src/pages/faq.astro')},qa};
+ const report = {ref,version:packageVersion,records,aliases,redirects,fragments,cutover:cutoverPlan(state),faq:{source:'docs/manual/faq.md',present:exists('docs/manual/faq.md'),shellPresent:exists('apps/website/src/pages/faq.astro')},qa};
  writeFileSync(join(evidence,'generated-islands.json'),JSON.stringify(generatedReceipts,null,2)+'\n');
  writeFileSync(join(evidence,'manifest.json'),JSON.stringify(report,null,2)+'\n');
  const generated = join(root,'apps/website/src/generated'); mkdirSync(generated,{recursive:true});
@@ -184,7 +184,7 @@ export function generateManual({root = repositoryRoot, qa = process.env.DIFFDEVI
   const fixturePage = {title:'Reading qualification',source:'apps/manual/qa/reading.md'};
   const fixture = projectMarkdown(readFileSync(join(root,fixturePage.source),'utf8'),fixturePage,{root,ref,targets,assets:publicAssets}).body;
   const path = join(out,'__qualification/reading.md'); mkdirSync(dirname(path),{recursive:true});
-  writeFileSync(path,`---\ntitle: Reading qualification\npagefind: false\nhead:\n  - tag: meta\n    attrs: {name: robots, content: 'noindex, nosnippet'}\ndiffdevil:\n  key: qualification\n  source: apps/manual/qa/reading.md\n  sourceUrl: ${sourceUrl('apps/manual/qa/reading.md',ref)}\n  sourceRef: ${ref}\n  appliesTo: ${version}\n  availability: current\n---\n\n${fixture}`);
+  writeFileSync(path,`---\ntitle: Reading qualification\npagefind: false\nhead:\n  - tag: meta\n    attrs: {name: robots, content: 'noindex, nosnippet'}\ndiffdevil:\n  key: qualification\n  source: apps/manual/qa/reading.md\n  sourceUrl: ${sourceUrl('apps/manual/qa/reading.md',ref)}\n  sourceRef: ${ref}\n  packageVersion: ${packageVersion}\n  availability: current\n---\n\n${fixture}`);
  }
  console.log(`manual: ${records.length} selected source pages; ${records.filter(row=>row.current).length} current; ${redirects.length} legacy redirects activated`);
  return report;

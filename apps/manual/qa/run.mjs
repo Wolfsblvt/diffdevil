@@ -18,6 +18,7 @@ import { qualifyReconciliation } from './reconciliation.mjs';
 const root = resolve('.'), out = join(root,'artifacts/manual/qa');
 mkdirSync(out,{recursive:true});
 const ref = execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim();
+const packageVersion = JSON.parse(readFileSync('package.json','utf8')).version;
 const manifest = JSON.parse(readFileSync('artifacts/manual/manifest.json','utf8'));
 assert.equal(manifest.ref,ref); assert.equal(manifest.qa,true);
 const records = JSON.parse(readFileSync('artifacts/public-search/records.json','utf8'));
@@ -66,6 +67,10 @@ try {
    const response = await page.goto(pageUrl(selected.key)); assert.equal(response.status(),200,selected.key);
    await expect(page.locator('h1').first()).toHaveText(selected.title);
    await expect(page.locator('.docs-provenance a').filter({hasText:'View source'})).toHaveAttribute('href',`https://github.com/Wolfsblvt/diffdevil/blob/${ref}/${selected.source}`);
+   await expect(page.locator('.docs-provenance a').filter({hasText:'Source snapshot'})).toHaveAttribute('href',`https://github.com/Wolfsblvt/diffdevil/tree/${ref}`);
+   await expect(page.locator('.docs-provenance a').filter({hasText:'Source snapshot'})).toHaveText(`Source snapshot ${ref.slice(0,7)}`);
+   await expect(page.locator('.docs-provenance')).toContainText(`Root package metadata · v${packageVersion}`);
+   await expect(page.locator('.docs-provenance')).not.toContainText(/Applies to v\d/u);
    await expect(page.locator('.docs-provenance a').filter({hasText:'Edit on GitHub'})).toHaveAttribute('href',`https://github.com/Wolfsblvt/diffdevil/edit/docs/public-manual/${selected.source}`);
    assert.equal(await page.locator('link[rel=canonical]').getAttribute('href'),pageUrl(selected.key));
    const current = manifest.records.find(row=>row.key===selected.key).current;

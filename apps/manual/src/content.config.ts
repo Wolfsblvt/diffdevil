@@ -10,7 +10,7 @@ export const collections = {
     schema: docsSchema({ extend: z.object({
       diffdevil: z.object({
         key: z.string(), source: z.string(), sourceUrl: z.string(), sourceRef: z.string(),
-        appliesTo: z.string(), availability: z.enum(['current','in-development']),
+        packageVersion: z.string(), availability: z.enum(['current','in-development']),
       }),
     }) }),
   }),

@@ -11,7 +11,8 @@ const aliases = meta ? fragments[meta.key as keyof typeof fragments] ?? {} : {};
   {meta && <div class="docs-provenance">
     {entry.data.editUrl && <a href={String(entry.data.editUrl)} rel="noopener">Edit on GitHub</a>}
     <a href={meta.sourceUrl} rel="noopener">View source · {meta.source}</a>
-    <span>Applies to v{meta.appliesTo}</span>
+    <a href={`https://github.com/Wolfsblvt/diffdevil/tree/${meta.sourceRef}`} rel="noopener">Source snapshot {meta.sourceRef.slice(0,7)}</a>
+    <span>Root package metadata · v{meta.packageVersion}</span>
   </div>}
   <Pagination />
   {Object.keys(aliases).length > 0 && <details class="fragment-compatibility"><summary>Earlier section links</summary><ul>{Object.entries(aliases).map(([id,url]) => <li><a id={id} href={String(url)}>{id}</a></li>)}</ul></details>}
