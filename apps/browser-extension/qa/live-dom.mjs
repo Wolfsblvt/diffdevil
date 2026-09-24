@@ -45,7 +45,7 @@ const contentCss = await readFile('apps/browser-extension/src/content/content.cs
 const executablePath = process.env.CHROMIUM_PATH ?? (existsSync('/usr/bin/chromium') ? '/usr/bin/chromium' : undefined);
 const browser = await chromium.launch({ ...(executablePath ? { executablePath } : {}), headless: true, args: ['--no-sandbox', '--disable-gpu'] });
 const results = [];
-async function scene(summary) {
+async function scene(summary, options = {}) {
   const context = await browser.newContext({ viewport: { width: 1280, height: 800 }, colorScheme: 'dark', reducedMotion: 'reduce' });
   const page = await context.newPage();
   page.setDefaultTimeout(4000);
@@ -53,7 +53,7 @@ async function scene(summary) {
   await page.addStyleTag({ content: githubCss + contentCss });
   await page.addScriptTag({ content: domCode });
   const fileViews = Object.fromEntries(report.files.map(file => [file.path, m.decorateView(unwrap(m.humanReport(report, policy, file.path)), settings)]));
-  await page.evaluate(({ packet, settings, fileViews, summary }) => {
+  await page.evaluate(({ packet, settings, fileViews, summary, options }) => {
     const listeners = new Set();
     globalThis.acquireCalls = 0;
     globalThis.chrome = {
@@ -62,14 +62,14 @@ async function scene(summary) {
     };
     globalThis.controller = DiffdevilUnderTest.startContent({
       href: () => `https://github.com/example/cinder/pull/42/${summary === 'changes' ? 'changes' : 'files'}`,
-      acquire: async () => { globalThis.acquireCalls++; return { packet, settings }; },
+      acquire: async () => { globalThis.acquireCalls++; if (options.failure) throw Object.assign(new Error('Synthetic private comparison has no public API route.'), { code: 'PUBLIC_UNAVAILABLE' }); return { packet, settings }; },
       request: async message => {
         if (message.type === 'settings.get') return settings;
         if (message.type === 'analysis.files') return Object.fromEntries(message.paths.filter(path => fileViews[path]).map(path => [path, fileViews[path]]));
         throw new Error(`Unexpected focused fixture request: ${message.type}`);
       },
     });
-  }, { packet, settings, fileViews, summary });
+  }, { packet, settings, fileViews, summary, options });
   return { context, page };
 }
 try {
@@ -91,8 +91,11 @@ try {
   await mkdir('artifacts/browser-extension/qa', { recursive: true });
   await changes.page.screenshot({ path: 'artifacts/browser-extension/qa/live-dom-changes.png', animations: 'disabled' });
   await changes.page.keyboard.press('Escape');
-  assert.equal(await changes.page.locator('[data-ddx="aggregate"] + [data-testid="pull-request-diff-stats"]').count(), 1);
-  assert.equal(await changes.page.locator('[data-testid="pull-request-diff-stats"]').evaluate(node => getComputedStyle(node).display), 'none');
+  // The seat leads the complete native churn group (counts and squares), which is hidden as one node.
+  assert.equal(await changes.page.locator('[data-ddx="aggregate"] + .Diffstat-module__container__fixture').count(), 1);
+  assert.equal(await changes.page.locator('.fixture-header-meta .Diffstat-module__container__fixture').evaluate(node => getComputedStyle(node).display), 'none');
+  assert.equal(await changes.page.locator('.fixture-header-meta .Diffstat-module__squares__fixture [data-ddx], .fixture-header-meta .Diffstat-module__container__fixture [data-ddx]').count(), 0);
+  assert.equal(await changes.page.locator('[data-diff-header-wrapper] [data-ddx="file"] + .Diffstat-module__container__fixture.ddx-native-hidden').count(), 2);
   assert.equal(await changes.page.locator('[data-testid="file-tree"] [data-ddx="aggregate"]').count(), 0);
   assert.equal(await changes.page.locator('[data-ddx="file"]').count(), 2);
   assert.deepEqual(await changes.page.evaluate(() => {
@@ -103,6 +106,18 @@ try {
   results.push({ name: 'signed-in-changes-structure', status: 'passed' });
   await changes.page.evaluate(() => controller.stop());
   await changes.context.close();
+  // Failure: the marker takes the leading edge of the whole native seat and every native count stays at full strength.
+  const failing = await scene('changes', { failure: true });
+  await failing.page.locator('[data-ddx="failure"]').waitFor();
+  assert.equal(await failing.page.locator('[data-ddx="failure"] + .Diffstat-module__container__fixture').count(), 1);
+  assert.equal(await failing.page.locator('.Diffstat-module__container__fixture [data-ddx]').count(), 0);
+  assert.deepEqual(await failing.page.locator('.fixture-header-meta .Diffstat-module__container__fixture').evaluate(node => ({ display: getComputedStyle(node).display, opacity: getComputedStyle(node).opacity, text: node.textContent, hidden: node.classList.contains('ddx-native-hidden'), faint: node.classList.contains('ddx-native-faint') })), { display: 'block', opacity: '1', text: '+160−118', hidden: false, faint: false });
+  assert.equal(await failing.page.locator('[data-ddx="failure"] .ddx-marker').innerText(), '× diffdevil');
+  assert.equal(await failing.page.getByRole('button', { name: 'Retry', exact: true }).count(), 1);
+  assert.equal(await failing.page.locator('[data-ddx="file"], [data-ddx="tree"], .ddx-native-hidden, .ddx-native-faint').count(), 0);
+  results.push({ name: 'failure-marker-leads-whole-native-seat', status: 'passed' });
+  await failing.page.evaluate(() => controller.stop());
+  await failing.context.close();
   const current = await scene('current');
   await current.page.locator('[data-ddx="aggregate"]').waitFor();
   assert.equal(await current.page.locator('[data-ddx="aggregate"] .ddx-value').textContent(), '178');
