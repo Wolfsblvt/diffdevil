@@ -11,10 +11,6 @@ on:
       - 'tools/website-*.mjs'
       - 'package*.json'
       - '.github/workflows/manual.yml'
-  # This continuing source carrier must remain qualifiable while base movement
-  # prevents GitHub from starting pull_request checks. It has no publication effects.
-  push:
-    branches: [docs/public-manual]
   workflow_dispatch:
 
 permissions:
@@ -32,19 +28,13 @@ jobs:
     outputs:
       diagnostic: ${{ steps.diagnostic.outputs.summary }}
     env:
-      DIFFDEVIL_EDIT_REF: docs/public-manual
+      DIFFDEVIL_EDIT_REF: ${{ github.head_ref || github.ref_name }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
           persist-credentials: false
-      - name: Preserve exact candidate history with qualification evidence
-        run: |
-          mkdir -p artifacts/manual/source
-          git bundle create artifacts/manual/source/candidate.bundle HEAD refs/remotes/origin/main
-          git rev-parse HEAD HEAD^{tree} refs/remotes/origin/main > artifacts/manual/source/coordinates.txt
-          sha256sum artifacts/manual/source/candidate.bundle > artifacts/manual/source/SHA256SUMS
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
         with:
           node-version: '22'
