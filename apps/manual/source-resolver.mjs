@@ -1,6 +1,18 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-import { pages, origins } from './manifest.mjs';
+import { execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import { pages } from './manifest.mjs';
 import { migrations, migratedSource, isRetired } from './migration.mjs';
+export function sourceRef(root = fileURLToPath(new URL('../../', import.meta.url))) {
+ const ref = process.env.DIFFDEVIL_SOURCE_REF ?? execFileSync('git', ['rev-parse','HEAD'], { cwd: root, encoding: 'utf8' }).trim();
+ if (!/^[a-f0-9]{40}$/u.test(ref)) throw new Error('DIFFDEVIL_SOURCE_REF must be an exact commit SHA.');
+ return ref;
+}
+export function editRef(root) {
+ const ref = process.env.DIFFDEVIL_EDIT_REF || process.env.GITHUB_HEAD_REF || execFileSync('git',['branch','--show-current'],{cwd:root,encoding:'utf8'}).trim() || 'main';
+ if (!/^[a-zA-Z0-9_./-]+$/u.test(ref) || ref.includes('..')) throw new Error('Invalid edit branch.');
+ return ref;
+}
 export const repositorySources = Object.freeze([
  'docs/language/parser-architecture.md','src/diffdevil/contracts/detail/v1/README.md',
  'README.md','docs/README.md','docs/VISION.md','docs/DIRECTION.md','docs/DECISIONS.md',
@@ -22,7 +34,6 @@ export const sourceAliases = Object.freeze({
  'docs/PRESENTATION.md':'docs/presentation.md',
  'apps/browser-extension/PRIVACY.md':'apps/browser-extension/privacy.md',
 });
-export function sourceResolverUrl(id) { return `${origins.site}/source/?f=${encodeURIComponent(id)}`; }
 export function sourceUrl(source,ref) {
  if (!/^[a-f0-9]{40}$/u.test(ref)) throw new Error('Source provenance needs an exact commit SHA.');
  return `https://github.com/Wolfsblvt/diffdevil/blob/${ref}/${source.split('/').map(encodeURIComponent).join('/')}`;
@@ -47,4 +58,4 @@ export function sourceTargets({ ref, state, exists, legacySources = [] }) {
  }
  return targets;
 }
-export { resolveSource } from '../website/src/lib/source-resolution.mjs';
+export { resolveSource, sourceResolverUrl } from '../website/src/lib/source-resolution.mjs';

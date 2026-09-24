@@ -10,14 +10,15 @@ import remarkGfm from 'remark-gfm';
 import remarkStringify from 'remark-stringify';
 import GithubSlugger from 'github-slugger';
 import { manualPages, pages, pageUrl, validateManifest } from './manifest.mjs';
-import { migrations, validateTransfer, cutoverPlan, legacyRedirects, pageIsCurrent, validateRetiredRoutes } from './migration.mjs';
-import { sourceTargets, sourceResolverUrl, sourceUrl } from './source-resolver.mjs';
+import { migrations, validateTransfer, cutoverPlan, siteRedirects, pageIsCurrent, fragmentAliases, validateProjection } from './migration.mjs';
+import { sourceTargets, sourceResolverUrl, sourceUrl, sourceRef, editRef } from './source-resolver.mjs';
 import { projectIslands } from './generated-content.mjs';
 import { entries as legacyEntries } from '../website/docs-manifest.mjs';
 import { faqRecords, FAQ_SOURCE, FAQ_CANONICAL } from '../website/faq-content.mjs';
 import relatedQuestions from './related-questions.json' with { type: 'json' };
 import publicAssets from './assets.json' with { type: 'json' };
 
+export { sourceRef } from './source-resolver.mjs';
 export const repositoryRoot = fileURLToPath(new URL('../../', import.meta.url));
 const parser = unified().use(remarkParse).use(remarkGfm);
 const printer = unified().use(remarkStringify, { bullet: '-', fences: true }).use(remarkGfm);
@@ -31,38 +32,7 @@ export function anchorsOf(markdown) {
  });
  return result;
 }
-export function sourceRef(root = repositoryRoot) {
- const ref = process.env.DIFFDEVIL_SOURCE_REF ?? execFileSync('git', ['rev-parse','HEAD'], { cwd: root, encoding: 'utf8' }).trim();
- if (!/^[a-f0-9]{40}$/u.test(ref)) throw new Error('DIFFDEVIL_SOURCE_REF must be an exact commit SHA.');
- return ref;
-}
-function editRef(root) {
- const ref = process.env.DIFFDEVIL_EDIT_REF || process.env.GITHUB_HEAD_REF || execFileSync('git',['branch','--show-current'],{cwd:root,encoding:'utf8'}).trim() || 'main';
- if (!/^[a-zA-Z0-9_./-]+$/u.test(ref) || ref.includes('..')) throw new Error('Invalid edit branch.');
- return ref;
-}
-/** Compatibility anchors supplement, never duplicate, the current article headings. */
-export function fragmentAliases(state,anchorInventory,entries = legacyEntries) {
- const fragments = {};
- for (const [source,transfer] of Object.entries(state.transfers ?? {})) {
-  if (transfer.phase === 'current') continue;
-  const landings = new Set([transfer.primary]);
-  for (const entry of entries.filter(entry=>entry.source===source)) {
-   const route = entry.route ?? (entry.slug ? `/docs/${entry.slug}/` : '/docs/');
-   if (state.routes?.[route]) landings.add(state.routes[route].target);
-  }
-  for (const key of landings) {
-   const map = fragments[key] ??= {};
-   for (const [old,destination] of Object.entries(transfer.anchors ?? {})) {
-    const url = pageUrl(destination.page)+'#'+encodeURIComponent(destination.anchor);
-    const unchanged = pageUrl(key)+'#'+encodeURIComponent(old);
-    if ((map[old] && map[old] !== url) || (anchorInventory[key]?.includes(old) && url !== unchanged)) throw new Error(`Ambiguous old fragment: ${old}`);
-    if (url !== unchanged) map[old] = url;
-   }
-  }
- }
- return fragments;
-}
+export { fragmentAliases } from './migration.mjs';
 /** AST rewriting keeps code, titles, reference definitions and nested Markdown intact. */
 export function projectMarkdown(raw, page, {root, ref, targets, assets = {}}) {
  const tree = parser.parse(raw);
@@ -184,14 +154,22 @@ export function generateManual({root = repositoryRoot, qa = process.env.DIFFDEVI
   }
   validateTransfer(row,transfer,state,{sourceExists:exists(row.source),inboundLinks:incoming[row.source] ?? [],targetAnchors:anchorInventory});
  }
- const repositoryRedirects = legacyEntries.filter(entry=>entry.repositoryOnly).map(entry=> {
-  if (!exists(entry.source) || !Object.hasOwn(targets,entry.source)) throw new Error(`Unqualified repository-only destination: ${entry.source}`);
-  return {from:entry.route ?? `/docs/${entry.slug}/`,to:sourceUrl(entry.source,ref),status:308};
- });
- const redirects = [...legacyRedirects(state),...repositoryRedirects];
- validateRetiredRoutes(state,legacyEntries,redirects);
+ // Retained sources are not deleted or redirected through the source resolver.
+ // Capture the same article body the old apex projection supplied, including its
+ // generated related-question heading. The Skill's leading schema is not prose.
+ for (const [route,selection] of Object.entries(state.routes ?? {})) {
+  const capture = selection.projection;
+  if (!capture) continue;
+  const entry = legacyEntries.find(item=>(item.route ?? (item.slug ? `/docs/${item.slug}/` : '/docs/')) === route);
+  if (!entry || !/^[a-f0-9]{40}$/u.test(capture.fromRef ?? '')) throw new Error(`${route}: unqualified retained projection capture`);
+  const old = execFileSync('git',['show',`${capture.fromRef}:${entry.source}`],{cwd:root,encoding:'utf8'});
+  const body = old.startsWith('---\n') ? old.replace(/^---\n[\s\S]*?\n---\n/u,'') : old.replace(/^#\s+.+?\r?\n(?:\r?\n)?/u,'');
+  const anchors = ['_top',...anchorsOf(body),...(entry.faq?.length ? ['related-questions'] : [])];
+  validateProjection(route,selection,{source:entry.source,digest:createHash('sha256').update(old).digest('hex'),anchors,targetAnchors:anchorInventory});
+ }
+ const redirects = siteRedirects(state, legacyEntries, targets);
  const aliases = manualPages.flatMap(page=>page.aliases.map(from=>({from,to:pageUrl(page.key),status:308})));
- const fragments = fragmentAliases(state,anchorInventory);
+ const fragments = fragmentAliases(state,anchorInventory,legacyEntries);
  const report = {ref,version,records,aliases,redirects,fragments,cutover:cutoverPlan(state),faq:{source:'docs/manual/faq.md',present:exists('docs/manual/faq.md'),shellPresent:exists('apps/website/src/pages/faq.astro')},qa};
  writeFileSync(join(evidence,'generated-islands.json'),JSON.stringify(generatedReceipts,null,2)+'\n');
  writeFileSync(join(evidence,'manifest.json'),JSON.stringify(report,null,2)+'\n');

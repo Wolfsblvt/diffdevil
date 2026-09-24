@@ -3,7 +3,6 @@ import { readdir, readFile, mkdir, cp, rm, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import * as pagefind from 'pagefind';
 import { searchKind } from '../website/src/lib/search-kinds.mjs';
 import { origins } from './manifest.mjs';
 import { entries as legacyEntries } from '../website/docs-manifest.mjs';
@@ -21,7 +20,7 @@ async function htmlFiles(directory) {
  return files.sort();
 }
 export function indexable(path,html) {
- return !historicalRoutes.has(path) && !['/faq/','/source/','/privacy/','/impressum/','/terms/','/404/'].includes(path) && !path.startsWith('/__qualification/') && !/name=["']robots["'][^>]*content=["'][^"']*noindex/iu.test(html) && /\bdata-pagefind-body\b/u.test(html);
+ return !path.startsWith('/docs/') && !path.startsWith('/downloads/') && !historicalRoutes.has(path) && !['/faq/','/source/','/privacy/','/impressum/','/terms/','/404/'].includes(path) && !path.startsWith('/__qualification/') && !/name=["']robots["'][^>]*content=["'][^"']*noindex/iu.test(html) && /\bdata-pagefind-body\b/u.test(html);
 }
 export function qualifyFaqRecords(records) {
  const seen = new Set();
@@ -32,10 +31,15 @@ export function qualifyFaqRecords(records) {
  return records;
 }
 export async function buildSearch() {
+ const pagefind = await import('pagefind');
  const manifest = JSON.parse(await readFile(join(root,'artifacts/manual/manifest.json'),'utf8'));
  const {index} = checked(await pagefind.createIndex({rootSelector:'[data-pagefind-body]'}),'Create joined index');
  if (!index) throw new Error('Pagefind returned no index.');
- const records = [];
+ const records = [], seen = new Set();
+ const record = value => {
+  if (seen.has(value.url)) throw new Error(`Duplicate current search destination: ${value.url}`);
+  seen.add(value.url); records.push(value);
+ };
  try {
   for (const [host,directory] of [['site',join(root,'artifacts/website/dist')],['docs',join(root,'artifacts/manual/dist')]]) {
    for (const file of await htmlFiles(directory)) {
@@ -47,7 +51,7 @@ export async function buildSearch() {
     const kind = searchKind(url, { kind: host === 'docs' ? 'DOCS' : undefined });
     const metadata = `<span data-pagefind-meta="kind" data-pagefind-ignore>${kind}</span><span data-pagefind-meta="canonical" data-pagefind-ignore>${escape(url)}</span>`;
     const content = html.replace(/(<[a-z][^>]*\bdata-pagefind-body(?:=["'][^"']*["'])?[^>]*>)/iu,'$1'+metadata);
-    checked(await index.addHTMLFile({url,content}),`Index ${url}`); records.push({url,kind});
+    checked(await index.addHTMLFile({url,content}),`Index ${url}`); record({url,kind});
    }
   }
   const faqFile = join(root,'artifacts/website/dist/faq/index.html');
@@ -56,7 +60,7 @@ export async function buildSearch() {
    const {faqRecords} = await import(pathToFileURL(join(root,'apps/website/faq-content.mjs')).href);
    for (const question of qualifyFaqRecords(faqRecords(await readFile(faqFile,'utf8')))) {
     checked(await index.addHTMLFile({url:question.canonical,content:question.html}),`Index FAQ ${question.id}`);
-    records.push({url:question.canonical,kind:'FAQ',id:question.id});
+    record({url:question.canonical,kind:'FAQ',id:question.id});
    }
   }
   const output = join(root,'artifacts/public-search/pagefind');

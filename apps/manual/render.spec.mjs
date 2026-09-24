@@ -31,7 +31,7 @@ test('Duplicate headings and explicit anchors produce a stable fragment inventor
 });
 test('Search excludes whole FAQ, legal, resolver, scaffold and isolated qualification pages',()=>{
  const body='<main data-pagefind-body>Text</main>';
- for(const path of ['/faq/','/source/','/privacy/','/impressum/','/__qualification/reading/']) assert.equal(indexable(path,body),false);
+ for(const path of ['/faq/','/source/','/privacy/','/impressum/','/docs/','/docs/cli/','/docs/releases/v1-0-0/','/__qualification/reading/']) assert.equal(indexable(path,body),false);
  assert.equal(indexable('/use/cli/','<meta name="robots" content="noindex">'+body),false);
  assert.equal(indexable('/use/cli/',body),true);
  assert.throws(()=>qualifyFaqRecords([{id:'bad',url:'/faq/#other',canonical:'https://diffdevil.dev/faq/#bad'}]),/preserve/u);
@@ -83,4 +83,24 @@ test('Selected fragments refuse a missing anchor rather than publishing a broken
  const reference={from:'source.md',source:'target.md',anchor:'section'};
  assert.doesNotThrow(()=>validateFragments([reference],{'target.md':['section']}));
  assert.throws(()=>validateFragments([reference],{'target.md':['elsewhere']}),/target.md#section/u);
+});
+
+import {readFileSync, existsSync} from 'node:fs';
+import {execFileSync} from 'node:child_process';
+import {createHash} from 'node:crypto';
+import {validateProjection} from './migration.mjs';
+import {entries as legacyEntries} from '../website/docs-manifest.mjs';
+import {manualPages} from './manifest.mjs';
+test('Every retained apex projection captures its actual old sections and maps to existing canonical headings',()=>{
+ const state=JSON.parse(readFileSync(new URL('./authoring-state.json',import.meta.url),'utf8'));
+ const targetAnchors=Object.fromEntries(manualPages.map(page=>[page.key,['_top',...anchorsOf(readFileSync(page.source,'utf8'))]]));
+ for(const [route,selection] of Object.entries(state.routes)){
+  const capture=selection.projection;
+  if(!capture)continue;
+  const entry=legacyEntries.find(entry=>(entry.route??(entry.slug?`/docs/${entry.slug}/`:'/docs/'))===route);
+  assert.ok(entry&&existsSync(entry.source),route);
+  const original=execFileSync('git',['show',`${capture.fromRef}:${entry.source}`],{cwd:repositoryRoot,encoding:'utf8'});
+  const body=original.startsWith('---\n')?original.replace(/^---\n[\s\S]*?\n---\n/u,''):original.replace(/^#\s+.+?\r?\n(?:\r?\n)?/u,'');
+  validateProjection(route,selection,{source:entry.source,digest:createHash('sha256').update(original).digest('hex'),anchors:['_top',...anchorsOf(body),...(entry.faq?.length?['related-questions']:[])],targetAnchors});
+ }
 });

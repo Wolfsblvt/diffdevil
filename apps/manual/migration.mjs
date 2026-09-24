@@ -29,7 +29,7 @@ export const retainedFamilies = Object.freeze([
  { sources: ['skills/diffdevil/**'], disposition: 'retain-canonical-install-artifact', targets: ['coding-agent'] },
  { sources: ['docs/setup/skill.md','docs/setup/cli.md','docs/setup/actions.md','docs/setup/app.md','docs/setup/everything.md'], disposition: 'retain-rendered-raw-payloads', targets: ['coding-agent','label-pull-requests','analyze-local-changes','managed-service','surfaces'] },
  { sources: ['docs/integration/example-catalogue.md','docs/examples/catalogue/**'], disposition: 'retain-shared-catalogue', targets: ['try-public-pull-request','playground'], externalRoute: '/examples/' },
- { sources: ['README.md'], disposition: 'compress-at-final-reconciliation', targets: ['what-is-diffdevil','label-pull-requests','analyze-local-changes'] },
+ { sources: ['README.md'], disposition: 'retain-crafted-quick-manual', targets: ['what-is-diffdevil','label-pull-requests','analyze-local-changes'] },
  { sources: ['docs/README.md'], disposition: 'retain-technical-map-update-links', targets: ['technical-project-docs'] },
  { sources: ['docs/VISION.md','docs/DIRECTION.md','docs/DECISIONS.md','docs/ARCHITECTURE.md','docs/DEVELOPMENT.md','docs/PROJECT-MAP.md','docs/qualification.md','docs/publication-boundary.md'], disposition: 'retain-repository-owned', targets: ['technical-project-docs'] },
  { sources: ['docs/reference/**'], disposition: 'retain-dated-evidence', targets: ['technical-project-docs'] },
@@ -92,4 +92,68 @@ export function validateRetiredRoutes(state, entries, redirects) {
   const route = entry.route ?? (entry.slug ? `/docs/${entry.slug}/` : '/docs/');
   if (!emitted.has(route)) throw new Error(`${entry.source}: missing legacy route transfer: ${route}`);
  }
+}
+
+/** Compatibility anchors supplement, never duplicate, the current article headings. */
+export function fragmentAliases(state,anchorInventory,entries = []) {
+ const fragments = {};
+ const append = (key, anchors) => {
+  const map = fragments[key] ??= {};
+  for (const [old,destination] of Object.entries(anchors ?? {})) {
+   const url = pageUrl(destination.page)+'#'+encodeURIComponent(destination.anchor);
+   const unchanged = pageUrl(key)+'#'+encodeURIComponent(old);
+   if ((map[old] && map[old] !== url) || (anchorInventory[key]?.includes(old) && url !== unchanged)) throw new Error(`Ambiguous old fragment: ${old}`);
+   if (url !== unchanged) map[old] = url;
+  }
+ };
+ for (const [source,transfer] of Object.entries(state.transfers ?? {})) {
+  if (transfer.phase === 'current') continue;
+  const landings = new Set([transfer.primary]);
+  for (const entry of entries.filter(entry=>entry.source===source)) {
+   const route = entry.route ?? (entry.slug ? `/docs/${entry.slug}/` : '/docs/');
+   if (state.routes?.[route]) landings.add(state.routes[route].target);
+  }
+  for (const key of landings) append(key, transfer.anchors);
+ }
+ for (const selection of Object.values(state.routes ?? {})) {
+  if (selection.projection) append(selection.target, selection.projection.anchors);
+ }
+ return fragments;
+}
+
+/** A retained specialist/raw source keeps its GitHub identity. Only its old public
+ * projection moves. Captured source bytes and every old section have one destination.
+ */
+export function validateProjection(route, selection, observed) {
+ const projection = selection.projection;
+ if (!projection) return;
+ if (observed.source !== projection.source || observed.digest !== projection.fromSourceSha256) throw new Error(`${route}: retained source capture does not match Git`);
+ const same = (a,b) => JSON.stringify([...new Set(a)].sort()) === JSON.stringify([...new Set(b)].sort());
+ if (!same(observed.anchors,projection.oldAnchors)) throw new Error(`${route}: retained projection fragment inventory does not match its source`);
+ if (!same(Object.keys(projection.anchors),projection.oldAnchors)) throw new Error(`${route}: incomplete retained projection mapping`);
+ for (const [old,target] of Object.entries(projection.anchors)) {
+  if (!observed.targetAnchors[target.page]?.includes(target.anchor)) throw new Error(`${route}#${old}: invalid successor fragment`);
+ }
+}
+
+/** Complete apex cutover: former reader pages move to the manual and retained
+ * technical projections move to their exact allow-listed repository bytes. */
+export function siteRedirects(state, entries, targets) {
+ const rules = [...legacyRedirects(state)];
+ for (const entry of entries.filter(entry => entry.repositoryOnly)) {
+  const target = targets[entry.source];
+  if (!target) throw new Error(`Unqualified repository-only destination: ${entry.source}`);
+  rules.push({from: entry.route ?? `/docs/${entry.slug}/`, to: target.url, status: 308});
+ }
+ const selected = new Set();
+ for (const rule of rules) {
+  if (selected.has(rule.from)) throw new Error(`Duplicate legacy route: ${rule.from}`);
+  selected.add(rule.from);
+ }
+ for (const entry of entries) {
+  const route = entry.route ?? (entry.slug ? `/docs/${entry.slug}/` : '/docs/');
+  if (!selected.has(route)) throw new Error(`Legacy projection has no disposition: ${route}`);
+ }
+ validateRetiredRoutes(state, entries, rules);
+ return rules;
 }

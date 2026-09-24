@@ -14,6 +14,7 @@ import { qualifyFirstSuccess } from './wave-1.mjs';
 import { qualifySurfaces } from './wave-2.mjs';
 import { qualifyPolicyReference } from './wave-3.mjs';
 import { qualifyManagedHelp } from './wave-4.mjs';
+import { qualifyReconciliation } from './reconciliation.mjs';
 const root = resolve('.'), out = join(root,'artifacts/manual/qa');
 mkdirSync(out,{recursive:true});
 const ref = execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim();
@@ -186,6 +187,7 @@ try {
  await qualifySurfaces({ page, origins, check, screenshot });
  await qualifyPolicyReference({ page, origins, check, screenshot });
  await qualifyManagedHelp({ page, origins, check, screenshot });
+ await qualifyReconciliation({ page, origins, check, screenshot, handlers, asset, manifest, records, ref });
  await check('Shared shell has no page-script errors or unexpected external requests',async()=>{
   assert.deepEqual(result.pageErrors,[]); assert.deepEqual(result.unexpectedRequests,[]);
  });

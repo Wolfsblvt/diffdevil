@@ -18,12 +18,11 @@ const aliases = meta ? fragments[meta.key as keyof typeof fragments] ?? {} : {};
 </footer>
 <script type="application/json" data-fragment-aliases set:html={JSON.stringify(aliases).replaceAll('<','\\u003c')}></script>
 <script>
+  import { fragmentDestination } from '../../fragment-destination.mjs';
   const map = JSON.parse(document.querySelector('[data-fragment-aliases]')?.textContent ?? '{}');
   const follow = () => {
-    let id; try { id = decodeURIComponent(location.hash.slice(1)); } catch { return; }
-    if (!Object.hasOwn(map,id)) return;
-    const target = new URL(map[id]);
-    if (target.href !== location.href) location.replace(target.href);
+    const target = fragmentDestination(location.href, map);
+    if (target) location.replace(target);
   };
   follow(); window.addEventListener('hashchange',follow);
 </script>

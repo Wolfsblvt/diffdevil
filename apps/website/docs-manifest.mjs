@@ -1,13 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-/**
- * The manual's reader-facing selection. Every entry names one maintained repository
- * Markdown source and the site slug it renders at. The site publishes this list, not
- * `docs/**`: internal records (Vision, Direction, Decisions, qualification, dated
- * references, publication procedure) stay in the repository and are linked, not
- * rendered. Sources listed with `optional: true` are rendered when present.
- *
- * `tested: true` marks pages whose command/policy/workflow specimens are executed by
- * `src/diffdevil/tests/examples.test.mjs`; the docs footer shows "Example tested ✓" there.
+/** Historical apex manual routes and their selected repository sources.
+ * This finite inventory preserves old URLs and source IDs during the final cutover.
+ * It is not an active article selection, sidebar, or second public manual.
+ * apps/manual/manifest.mjs and authoring-state.json select manual successors;
+ * repositoryOnly entries keep their distinct technical job on GitHub.
  */
 import { FAQ_ROUTE, FAQ_SOURCE } from './faq-content.mjs';
 
@@ -22,7 +18,7 @@ export const groups = [
     { source: 'docs/guides/auto-label-pull-requests.md', faq: ["beyond-size-labels", "automation-overlap", "trusted-policy"], slug: 'get-started/auto-label-pull-requests', tested: true },
     { source: 'docs/guides/local-automation.md', faq: ["non-javascript-projects", "no-language-required"], slug: 'get-started/local-automation', tested: true },
     { source: 'docs/automation.md', slug: 'get-started/automation' },
-    { source: 'docs/examples/README.md', slug: 'get-started/examples', title: 'Example map' },
+    { source: 'docs/examples/README.md', slug: 'get-started/examples', title: 'Example map', repositoryOnly: true },
   ] },
   { label: 'Recipes', entries: [
     { source: 'docs/guides/policy-recipes.md', slug: 'recipes/policy-recipes', tested: true },
@@ -33,7 +29,7 @@ export const groups = [
   ] },
   { label: 'Actions', entries: [
     { source: 'docs/integration/github-actions.md', faq: ["automation-overlap", "trusted-policy"], slug: 'actions/github-actions', tested: true },
-    { source: 'docs/integration/action-distribution.md', slug: 'actions/action-distribution' },
+    { source: 'docs/integration/action-distribution.md', slug: 'actions/action-distribution', repositoryOnly: true },
     { source: 'docs/integration/github-api.md', faq: ["code-data"], slug: 'actions/github-api' },
   ] },
   { label: 'Policies and detail', entries: [
@@ -65,18 +61,17 @@ export const groups = [
   ] },
   { label: 'Playground', entries: [
     { source: 'docs/integration/playground.md', faq: ["playground-or-extension", "code-data"], slug: 'playground', title: 'Playground' },
-    { source: 'apps/playground/README.md', slug: 'playground/application', title: 'Playground application and local route' },
+    { source: 'apps/playground/README.md', slug: 'playground/application', title: 'Playground application and local route', repositoryOnly: true },
   ] },
   { label: 'GitHub App', entries: [
     { source: 'docs/integration/github-app.md', faq: ["why-managed", "leaving-managed-service"], slug: 'github-app/architecture', title: 'App architecture' },
     { source: 'docs/PRIVACY-AND-DATA.md', faq: ["code-data", "app-history"], slug: 'github-app/privacy-and-data', title: 'Privacy and data' },
     { source: 'apps/github-app/README.md', faq: ["leaving-managed-service"], slug: 'github-app/self-hosting', title: 'Self-hosting the runtime' },
   ] },
-  // The browser extension's manual pages are authored with the extension application.
-  // They render as soon as that source is in the repository; until then the group is empty.
+  // Historical extension projections now redirect; the component sources remain on GitHub.
   { label: 'Browser extension', entries: [
     { source: 'apps/browser-extension/README.md', faq: ["playground-or-extension", "extension-without-repo-setup"], slug: 'browser-extension', title: 'diffdevil for GitHub', optional: true },
-    { source: 'apps/browser-extension/privacy.md', faq: ["code-data"], slug: 'browser-extension/privacy', title: 'Extension privacy', optional: true },
+    { source: 'apps/browser-extension/privacy.md', faq: ["code-data"], slug: 'browser-extension/privacy', title: 'Extension privacy', optional: true, repositoryOnly: true },
     { source: 'docs/integration/browser-extension.md', faq: ["different-results"], slug: 'browser-extension/integration', title: 'Browser integration', optional: true },
   ] },
   { label: 'Help', entries: [
@@ -89,25 +84,12 @@ export const groups = [
   ] },
   { label: 'Releases', entries: [
     { source: 'docs/releases/README.md', slug: 'releases', title: 'Releases' },
-    { source: 'docs/releases/v1.0.0.md', slug: 'releases/v1-0-0', title: 'v1.0.0', historical: true },
+    { source: 'docs/releases/v1.0.0.md', slug: 'releases/v1-0-0', title: 'v1.0.0', historical: true, repositoryOnly: true },
   ] },
   { label: 'Project', entries: [
     { source: 'SECURITY.md', slug: 'security', title: 'Security' },
-    { source: 'LICENSES/README.md', slug: 'licences', title: 'Licences' },
+    { source: 'LICENSES/README.md', slug: 'licences', title: 'Licences', repositoryOnly: true },
   ] },
 ];
-
-/** Assets the playground carries as fixtures: a docs link to one gets a "Try it" companion. */
-export const tryIt = {
-  'docs/examples/diffs/review.diff': 'replacement-once',
-  'docs/examples/diffs/few-vs-many.diff': 'few-vs-many',
-  'docs/examples/policies/full.yml': 'lockfile-excluded',
-  'docs/examples/policies/review-signals.yml': 'custom-metric-comment',
-  'docs/examples/policies/review-comment.yml': 'custom-metric-comment',
-  'docs/examples/reports/exact.json': 'lockfile-excluded',
-  'docs/examples/reports/bounded.json': 'bounded-band-proven',
-  'docs/examples/reports/incomplete.json': 'incomplete-unknown',
-  'docs/examples/reports/unmeasurable.json': 'binary-unmeasurable',
-};
 
 export const entries = groups.flatMap(group => group.entries.filter(entry => entry.source));
