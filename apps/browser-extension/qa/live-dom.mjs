@@ -35,6 +35,7 @@ const domCode = (await build({
   format: 'iife',
   target: 'chrome120',
   globalName: 'DiffdevilUnderTest',
+  loader: { '.css': 'text' },
   alias: {
     '@wolfsblvt/diffdevil/browser/text': resolve('dist/lib/browser/text.js'),
     '@wolfsblvt/diffdevil/browser': resolve('dist/browser/index.js'),
@@ -76,7 +77,8 @@ try {
   await changes.page.locator('[data-ddx="file"]').nth(1).waitFor();
   assert.equal(await changes.page.locator('[data-ddx="aggregate"]').count(), 1);
   assert.equal(await changes.page.locator('[data-testid="progressive-diffs-list"] [data-ddx="aggregate"]').count(), 0);
-  assert.equal(await changes.page.locator('[data-testid="pull-request-diff-stats"] + [data-ddx="aggregate"]').count(), 1);
+  assert.equal(await changes.page.locator('[data-ddx="aggregate"] + [data-testid="pull-request-diff-stats"]').count(), 1);
+  assert.equal(await changes.page.locator('[data-testid="pull-request-diff-stats"]').evaluate(node => getComputedStyle(node).display), 'none');
   assert.equal(await changes.page.locator('[data-testid="file-tree"] [data-ddx="aggregate"]').count(), 0);
   assert.equal(await changes.page.locator('[data-ddx="file"]').count(), 2);
   assert.deepEqual(await changes.page.evaluate(() => {
@@ -90,7 +92,7 @@ try {
   const current = await scene('current');
   await current.page.locator('[data-ddx="aggregate"]').waitFor();
   assert.equal(await current.page.locator('[data-ddx="aggregate"] .ddx-value').textContent(), '178');
-  assert.equal(await current.page.locator('.fixture-current-summary + [data-ddx="aggregate"]').count(), 1);
+  assert.equal(await current.page.locator('[data-ddx="aggregate"] + .fixture-current-summary').count(), 1);
   assert.equal(await current.page.locator('.ddx-status-fallback').count(), 0);
   results.push({ name: 'current-tokenized-diffstat', status: 'passed' });
   await current.page.evaluate(() => controller.stop());

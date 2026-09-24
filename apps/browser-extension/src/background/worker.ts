@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-import { analyzeBrowserInput, comparisonKey, compileBrowserPolicy, humanReport, readComparison, requiredTemplates, BROWSER_ADAPTER, HUMAN_VIEW_VERSION, SEMANTICS, type BrowserPolicy, type Report, type Diagnostic, type HumanReportView, type BrowserComparison } from '@wolfsblvt/diffdevil/browser';
+import { analyzeBrowserInput, comparisonKey, compileBrowserPolicy, formatReport, humanReport, readComparison, requiredTemplates, BROWSER_ADAPTER, HUMAN_VIEW_VERSION, SEMANTICS, type BrowserPolicy, type Report, type Diagnostic, type HumanReportView, type BrowserComparison } from '@wolfsblvt/diffdevil/browser';
 import { Preferences } from './preferences.js';
 import { AnalysisCache } from './cache.js';
 import { PublicSource } from './public-source.js';
@@ -105,6 +105,21 @@ async function handle(message: Message, sender: chrome.runtime.Sender): Promise<
         result[path] = view;
       }
       return result;
+    }
+    case 'report.text': {
+      // "Copy facts" writes the exact text the CLI prints for the same scope.
+      const context = contexts.get(message.key); if (!context) throw new ExtensionError('CONTEXT_EXPIRED', 'The analysis context was evicted or the worker restarted. Refresh the report.');
+      if (!scope.options && (context.packet.comparison.repository.toLowerCase() !== scope.repository || context.packet.comparison.pullRequest !== scope.pullRequest)) throw new ExtensionError('SENDER_SCOPE', 'This report belongs to a different pull request.');
+      let view = context.packet.view;
+      if (message.path !== undefined) {
+        if (typeof message.path !== 'string' || message.path.length > 4096) throw new ExtensionError('FILE_LIMIT', 'Request one file path.');
+        const projection = humanReport(context.report, context.policy, message.path, context.packet.view.errors);
+        if (!projection.ok) throw new ExtensionError('FILE_VIEW', projection.diagnostics.map(item => item.message).join('\n'));
+        view = projection.value;
+      }
+      const rendered = formatReport(view.report, 'human', { color: false });
+      if (!rendered.ok) throw new ExtensionError('REPORT_TEXT', rendered.diagnostics.map(item => item.message).join('\n'));
+      return rendered.value.stdout;
     }
     case 'diagnostics.get': return diagnostics();
     case 'options.open': await chrome.runtime.openOptionsPage(); return null;

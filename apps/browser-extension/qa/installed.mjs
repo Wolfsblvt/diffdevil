@@ -44,7 +44,7 @@ if (receipt.policyEvidence.length) {
       assert.ok(!manifest.content_security_policy.extension_pages.includes('unsafe-eval'));
     });
     await check('Native storage separates local policy from synchronized preferences', async () => {
-      await call({ type: 'settings.save', patch: { 'display.rawChurn': false, 'policy.advancedYaml': 'version: 1\n', 'policy.repositoryOverrides': '{"example/cinder":{"mode":"personal-only"}}' } });
+      await call({ type: 'settings.save', patch: { 'display.nativeChurn': 'faint', 'policy.advancedYaml': 'version: 1\n', 'policy.repositoryOverrides': '{"example/cinder":{"mode":"personal-only"}}' } });
       const data = await page.evaluate(async () => ({ sync: await chrome.storage.sync.get(null), local: await chrome.storage.local.get(null) }));
       assert.ok(!JSON.stringify(data.sync).includes('example/cinder')); assert.ok(!JSON.stringify(data.sync).includes('policy.advancedYaml'));
       assert.ok(JSON.stringify(data.local).includes('example/cinder'));
@@ -64,15 +64,15 @@ if (receipt.policyEvidence.length) {
     });
     await check('User settings and numeric cache survive actual browser/worker restart', async () => {
       await context.close(); context = await launch(); const restarted = await context.newPage(); restarted.on('pageerror', error => receipt.errors.push(error.message)); await restarted.goto(`${base}/options.html`); await restarted.locator('.setting').first().waitFor();
-      const settings = await restarted.evaluate(() => chrome.runtime.sendMessage({ type: 'settings.get' })); assert.equal(settings.value['display.rawChurn'], false);
+      const settings = await restarted.evaluate(() => chrome.runtime.sendMessage({ type: 'settings.get' })); assert.equal(settings.value['display.nativeChurn'], 'faint');
       const cache = await restarted.evaluate(comparison => chrome.runtime.sendMessage({ type: 'cache.lookup', comparison }), comparison); assert.equal(cache.value.reportCached, true);
       const files = await restarted.evaluate(key => chrome.runtime.sendMessage({ type: 'analysis.files', key, paths: ['src/cache.ts'] }), packet.key); assert.equal(files.ok, false); assert.equal(files.code, 'CONTEXT_EXPIRED');
       const again = await restarted.evaluate(comparison => chrome.runtime.sendMessage({ type: 'analysis.run', input: { comparison, policy: { status: 'absent', at: Date.now() } } }), comparison); assert.equal(again.ok, true); assert.equal(again.value.cached, true); assert.equal(again.value.view.changed.value, 178);
       const refused = await restarted.evaluate(() => chrome.runtime.sendMessage({ type: 'data.action', action: 'data.resetAll' })); assert.equal(refused.code, 'CONFIRMATION_REQUIRED');
       const cleared = await restarted.evaluate(() => chrome.runtime.sendMessage({ type: 'data.action', action: 'data.clearAnalysisCache' })); assert.equal(cleared.ok, true); assert.equal(cleared.value.cache.reportEntries, 0);
-      const retained = await restarted.evaluate(() => chrome.runtime.sendMessage({ type: 'settings.get' })); assert.equal(retained.value['display.rawChurn'], false);
+      const retained = await restarted.evaluate(() => chrome.runtime.sendMessage({ type: 'settings.get' })); assert.equal(retained.value['display.nativeChurn'], 'faint');
       const reset = await restarted.evaluate(() => chrome.runtime.sendMessage({ type: 'data.action', action: 'data.resetAll', confirmed: true })); assert.equal(reset.ok, true); assert.equal(reset.value.cache.entries, 0);
-      const defaults = await restarted.evaluate(() => chrome.runtime.sendMessage({ type: 'settings.get' })); assert.equal(defaults.value['display.rawChurn'], true);
+      const defaults = await restarted.evaluate(() => chrome.runtime.sendMessage({ type: 'settings.get' })); assert.equal(defaults.value['display.nativeChurn'], 'hidden');
     });
     await check('No uncaught extension page error was observed', async () => assert.deepEqual(receipt.errors, []));
     receipt.status = 'passed';

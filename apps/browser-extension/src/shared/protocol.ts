@@ -16,6 +16,7 @@ export type Message =
   | { type: 'cache.lookup'; comparison: BrowserComparison }
   | { type: 'analysis.run'; input: AnalysisInput }
   | { type: 'analysis.files'; key: string; paths: string[] }
+  | { type: 'report.text'; key: string; path?: string }
   | { type: 'diagnostics.get' } | { type: 'data.action'; action: string; confirmed?: boolean }
   | { type: 'options.open' };
 export async function request<T>(input: Message): Promise<T> {

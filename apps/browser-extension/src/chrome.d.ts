@@ -18,3 +18,6 @@ declare namespace chrome {
   }
   namespace action { const onClicked: { addListener(listener: () => void): void } }
 }
+
+/** Stylesheets imported as text are adopted by the report popover shadow root. */
+declare module '*.css' { const text: string; export default text; }
