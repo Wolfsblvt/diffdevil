@@ -77,6 +77,20 @@ try {
   await changes.page.locator('[data-ddx="file"]').nth(1).waitFor();
   assert.equal(await changes.page.locator('[data-ddx="aggregate"]').count(), 1);
   assert.equal(await changes.page.locator('[data-testid="progressive-diffs-list"] [data-ddx="aggregate"]').count(), 0);
+  // File-tree counters: bound by the diff anchor hash, one seat per known file, native hidden in place;
+  // the directory row, the decoys and an unknown file receive nothing.
+  await changes.page.locator('[data-ddx="tree"]').nth(1).waitFor();
+  assert.equal(await changes.page.locator('[data-ddx="tree"]').count(), 2);
+  assert.deepEqual(await changes.page.locator('[role="tree"] [data-ddx="tree"] .ddx-value').allTextContents(), ['32', '146']);
+  assert.equal(await changes.page.locator('[data-ddx="tree"] .ddx-chip, [data-ddx="tree"] .ddx-rail, [data-ddx="tree"] .ddx-word').count(), 0);
+  assert.equal(await changes.page.locator('[data-ddx="tree"] + .PRIVATE_TreeView-item-trailing-visual.ddx-native-hidden').count(), 2);
+  assert.equal(await changes.page.locator('[data-tree-entry-type="directory"] > div > [data-ddx], .fixture-tree-summary [data-ddx]').count(), 0);
+  assert.equal(await changes.page.locator('[data-testid="file-tree"] [data-ddx="aggregate"]').count(), 0);
+  await changes.page.locator('[role="tree"] [data-ddx="tree"] .ddx-trigger').first().click();
+  assert.equal(await changes.page.locator('.ddx-popover .ddx-title').innerText(), 'cache.ts');
+  await mkdir('artifacts/browser-extension/qa', { recursive: true });
+  await changes.page.screenshot({ path: 'artifacts/browser-extension/qa/live-dom-changes.png', animations: 'disabled' });
+  await changes.page.keyboard.press('Escape');
   assert.equal(await changes.page.locator('[data-ddx="aggregate"] + [data-testid="pull-request-diff-stats"]').count(), 1);
   assert.equal(await changes.page.locator('[data-testid="pull-request-diff-stats"]').evaluate(node => getComputedStyle(node).display), 'none');
   assert.equal(await changes.page.locator('[data-testid="file-tree"] [data-ddx="aggregate"]').count(), 0);

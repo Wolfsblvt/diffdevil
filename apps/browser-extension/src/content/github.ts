@@ -114,6 +114,50 @@ export function fileNative(header: HTMLElement): NativeStat | undefined {
   const token = [...header.querySelectorAll<HTMLElement>(LIVE_DIFFSTAT)].find(element => !own(element));
   return token ? tokenGroup(token) : undefined;
 }
+const TREE = '[data-testid*="file-tree" i], [data-testid*="fileTree"], file-tree, [role="tree"]';
+const TREE_ROW = '[role="treeitem"], [data-tree-entry-type], li';
+export interface TreeCounter { readonly row: HTMLElement; readonly native: NativeStat; readonly path?: string; readonly hashes: readonly string[] }
+/** GitHub's diff anchors are `diff-` + SHA-256 of the path; a tree row's id or link names it. */
+const HASH = /diff-([a-f0-9]{64})/gu;
+function rowPath(row: HTMLElement): string | undefined {
+  const explicit = row.getAttribute('data-file-path') ?? row.getAttribute('data-path') ?? row.querySelector('[data-file-path], [data-path]')?.getAttribute('data-file-path') ?? row.querySelector('[data-path]')?.getAttribute('data-path');
+  if (explicit) return explicit;
+  const filterable = row.querySelector('[data-filterable-item-text]')?.textContent?.trim();
+  if (filterable) return filterable;
+  const payload = row.getAttribute('data-hydro-click-payload');
+  if (payload) { try { const path = (JSON.parse(payload) as { payload?: { data?: { path?: unknown } } }).payload?.data?.path; if (typeof path === 'string') return path; } catch { /* Not a path source. */ } }
+  return undefined;
+}
+/** Bounded reconstruction: the row's own label under its ancestor directory labels. Accepted only when the packet knows that path. */
+function ancestorPath(row: HTMLElement, known: (path: string) => boolean): string | undefined {
+  const label = (item: HTMLElement): string | undefined => item.querySelector<HTMLElement>('[class*="item-label"], [class*="content-text"], [class*="TreeView-item-content"] span, a span, span')?.textContent?.trim() || undefined;
+  const parts: string[] = []; const own = label(row); if (!own) return undefined; parts.unshift(own);
+  for (let ancestor = row.parentElement?.closest<HTMLElement>('[role="treeitem"]'); ancestor; ancestor = ancestor.parentElement?.closest<HTMLElement>('[role="treeitem"]')) { const name = label(ancestor); if (!name) return undefined; parts.unshift(name); if (parts.length > 64) return undefined; }
+  const candidate = parts.join('/'); return known(candidate) ? candidate : undefined;
+}
+/** `diff-<sha256(path)>` → path for the analysis's own files. Empty where subtle crypto is unavailable; the other bindings still apply. */
+export async function pathAnchors(paths: readonly string[]): Promise<Map<string, string>> {
+  const result = new Map<string, string>(); const subtle = globalThis.crypto?.subtle; if (!subtle) return result;
+  for (const path of paths.slice(0, 3000)) {
+    try { const digest = await subtle.digest('SHA-256', new TextEncoder().encode(path)); result.set(Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join(''), path); }
+    catch { /* A path that cannot be hashed keeps its other bindings. */ }
+  }
+  return result;
+}
+/** Per-file counters in GitHub's file tree, when it shows them; aggregate placement never lands here. */
+export function treeCounters(document: Document, known: (path: string) => boolean): TreeCounter[] {
+  const result: TreeCounter[] = []; const seen = new Set<HTMLElement>();
+  for (const tree of document.querySelectorAll<HTMLElement>(TREE)) for (const token of tree.querySelectorAll<HTMLElement>(`${LIVE_DIFFSTAT}, .diffstat`)) {
+    if (own(token) || seen.has(token)) continue;
+    const row = token.closest<HTMLElement>(TREE_ROW); if (!row || row.matches('[data-tree-entry-type="directory"]')) continue;
+    const native = token.matches('.diffstat') ? { anchor: token, nodes: [token] } : tokenGroup(token); native.nodes.forEach(node => seen.add(node)); seen.add(token);
+    if (result.some(item => item.native.anchor === native.anchor)) continue;
+    const hashes = [...row.outerHTML.matchAll(HASH)].map(match => match[1]!);
+    const path = rowPath(row) ?? ancestorPath(row, known);
+    result.push({ row, native, ...(path === undefined ? {} : { path }), hashes: [...new Set(hashes)] });
+  }
+  return result;
+}
 export function blobText(document: Document): string | undefined {
   for (const value of providerObjects(document)) {
     if (value.isTruncated === true || value.truncated === true || value.isBinary === true) continue;

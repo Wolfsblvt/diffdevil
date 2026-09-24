@@ -5,7 +5,7 @@ import { request as defaultRequest, type Packet } from '../shared/protocol.js';
 import { SETTINGS_KEY } from '../shared/settings-key.js';
 import { node, button } from '../shared/dom.js';
 import { acquire as defaultAcquire } from './acquire.js';
-import { route, aggregateNative, toolbarNative, fileNative, FILE_HEADERS, PROVIDER_CHANGE, filePath, pageComparison, sameComparison, fullFilesView, type NativeStat } from './github.js';
+import { route, aggregateNative, toolbarNative, fileNative, treeCounters, pathAnchors, FILE_HEADERS, PROVIDER_CHANGE, filePath, pageComparison, sameComparison, fullFilesView, type NativeStat } from './github.js';
 import { projection, failureMarker, type Projection } from './render.js';
 import { errorPanel, type ReportActions } from './report.js';
 import { labelHandoff, pickerAvailable } from './labels.js';
@@ -26,6 +26,16 @@ export function startContent(dependencies: ContentDependencies = {}): { refresh:
   let generation = 0; let activeRoute = ''; let identityInFlight = ''; let failedIdentity = ''; let acquiring = false; let fileBusy = false; let renderQueued = false;
   let status: HTMLElement | undefined; let fileError = false; let failure: Failure | undefined; let observedRoot: Element | undefined; let observer: MutationObserver | undefined;
   let stopLabelObservation: (() => void) | undefined;
+  // GitHub anchors a file as `diff-` + SHA-256(path). Hashing the packet's own
+  // paths binds a tree counter to its file without trusting hashed class names.
+  let hashes = new Map<string, string>(); let hashing: string | undefined;
+  const knownPath = (path: string): boolean => Boolean(packet?.files.some(file => file.path === path || file.oldPath === path));
+  async function hashPaths(): Promise<void> {
+    if (!packet || hashing === packet.key) return; hashing = packet.key; const key = packet.key;
+    const anchors = await pathAnchors(packet.files.map(file => file.path));
+    if (stopped || packet?.key !== key) return;
+    hashes = anchors; if (anchors.size) schedule();
+  }
   const own = (node: Node): boolean => node instanceof Element && Boolean(node.closest('[data-diffdevil], .ddx-root, .ddx-popover-host, .ddx-status'));
   const current = (): { repository: string; pullRequest: number; path: string } | undefined => route(href());
   const actions: ReportActions = {
@@ -102,11 +112,26 @@ export function startContent(dependencies: ContentDependencies = {}): { refresh:
     else if (!fileError) showStatus('diffdevil could not find GitHub’s pull-request summary on this page. Changed is not shown.', () => { if (packet && !fileError) schedule(); else void refresh(true); });
     const toolbar = toolbarNative(document, aggregate?.anchor);
     if (toolbar && !mounted.has(toolbar.anchor)) seat(toolbar, projection(packet.view, 'toolbar', context), true);
-    if (fullFilesView(href())) for (const header of document.querySelectorAll<HTMLElement>(FILE_HEADERS)) {
-      const native = fileNative(header); if (!native || mounted.has(native.anchor)) continue;
-      const path = filePath(header); if (!path) continue; const view = fileViews.get(path);
-      if (view) { seat(native, projection(view, 'file', context), view.focus?.included !== false); if (view.focus?.included === false) { for (const element of native.nodes) { natives.add(element); element.classList.add('ddx-native-faint'); } } }
-      else if (!failed.has(path) && packet.files.some(file => file.path === path || file.oldPath === path)) waiting.add(path);
+    const fileSeat = (native: NativeStat, path: string, tree: boolean): void => {
+      const view = fileViews.get(path);
+      if (view) {
+        const item = projection(view, 'file', context); if (tree) item.root.dataset.ddx = 'tree';
+        seat(native, item, view.focus?.included !== false);
+        if (view.focus?.included === false) for (const element of native.nodes) { natives.add(element); element.classList.add('ddx-native-faint'); }
+      } else if (!failed.has(path) && knownPath(path)) waiting.add(path);
+    };
+    if (fullFilesView(href())) {
+      for (const header of document.querySelectorAll<HTMLElement>(FILE_HEADERS)) {
+        const native = fileNative(header); if (!native || mounted.has(native.anchor)) continue;
+        const path = filePath(header); if (path) fileSeat(native, path, false);
+      }
+      // The file tree's per-file counters receive the same F treatment (grammar §8).
+      if (hashing !== packet.key) void hashPaths();
+      for (const counter of treeCounters(document, knownPath)) {
+        if (mounted.has(counter.native.anchor)) continue;
+        const path = counter.path ?? counter.hashes.map(hash => hashes.get(hash)).find(value => value !== undefined);
+        if (path) fileSeat(counter.native, path, true);
+      }
     }
     if (waiting.size && !fileBusy) void renderFiles();
     labelIntent();
