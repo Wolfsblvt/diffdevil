@@ -39,11 +39,8 @@ const modes = [
   ['personal-only', 'deliberately ignore the repository policy for your own view'],
 ] as const;
 const settings = [
-  ['display.rawChurn', 'Basic', 'Show the raw additions and deletions line under Changed'],
-  ['display.dimNativeDiffstat', 'Basic', 'De-emphasise the native GitHub diffstat (on by default)'],
-  ['display.hideNativeDiffstat', 'Advanced', 'Hide the native diffstat completely; never the default'],
-  ['display.brandIcon', 'Basic', 'Monochrome glyph, full-colour symbol, or no icon; "Changed" stays visible text'],
-  ['display.density', 'Advanced', 'Compact or comfortable projection'],
+  ['display.brandIcon', 'Basic', 'The glyph, the full-colour symbol, or no icon; "Changed" stays visible text'],
+  ['display.nativeChurn', 'Basic', 'GitHub’s own additions, deletions and ratio bar once Changed is known: hidden (default) or kept faint after Changed'],
   ['policy.mode', 'Basic', 'composed, repository or personal-only'],
   ['policy.bands', 'Basic', 'Guided band editor with optional existing-label mappings'],
   ['policy.advancedYaml', 'Advanced', 'The full diffdevil policy language, validated, with import and export'],
@@ -91,12 +88,12 @@ const routes = [
 
   <section class="section" data-section="changed">
     <div class="wrap">
-      <SectionHead id="changed" title="Aggregate and per-file Changed" body="A replaced line is one changed position, not two units of churn. The extension shows Changed for the whole pull request and for every file GitHub renders, with added-only, deleted-only and modified kept apart, and leaves the raw counters visible as their own fact." />
+      <SectionHead id="changed" title="Aggregate and per-file Changed" body="A replaced line is one changed position, not two units of churn. The extension shows Changed for the whole pull request and for every file GitHub renders, with added-only, deleted-only and modified kept apart, and keeps raw churn as its own fact in the report." />
       <Scene report={false} />
       <div class="ext-two">
         <div class="panel">
-          <p class="label">The native GitHub numbers stay</p>
-          <p class="small ext-muted">Additions, deletions and the native ratio bar remain on the page, de-emphasised so Changed reads first. Hiding them is an explicit advanced setting, never the default. One number does not silently replace the other.</p>
+          <p class="label">GitHub’s numbers give way, not disappear</p>
+          <p class="small ext-muted">Changed takes the seat GitHub already uses for its diffstat, in GitHub’s typography and colours. While the comparison is being read and after any failure, GitHub’s own additions, deletions and ratio bar stay at full colour. Once Changed is known they are hidden by default; a setting keeps them after Changed, faint. Raw churn always remains in the report.</p>
         </div>
         <div class="panel">
           <p class="label">A size, not a verdict</p>
@@ -153,7 +150,7 @@ const routes = [
       </div>
       <ul class="ext-columns">
         <li><strong>Basic and Advanced, one configuration</strong><span>Advanced values keep applying while Basic is shown. The Advanced tab counts the settings that differ from their default, and switching views never resets anything.</span></li>
-        <li><strong>Stable identifiers and deep links</strong><span>Every setting has a visible, copyable identifier such as <code class="code-inline">#display.rawChurn</code>. Following that link opens its category, reveals it even when it is Advanced, and highlights it.</span></li>
+        <li><strong>Stable identifiers and deep links</strong><span>Every setting has a visible, copyable identifier such as <code class="code-inline">#display.nativeChurn</code>. Following that link opens its category, reveals it even when it is Advanced, and highlights it.</span></li>
         <li><strong>Your data, under your control</strong><span>Clear the report cache, the policy cache or your overrides separately, reset everything after a confirmation, and copy a support snapshot that contains no repository names, paths, policy text or source.</span></li>
       </ul>
       <div class="ext-table-wrap">

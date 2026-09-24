@@ -40,7 +40,7 @@ const lines = report.totals.lines, raw = report.totals.raw;
     </div>
     <p class="route-body route-body-s">{two.body}</p>
     <div class="route-projection machine machine-inner" data-route-projection>
-      <Projection changed={display(lines.changed)} added={display(lines.added)} deleted={display(lines.deleted)} modified={display(lines.modified)} rawAdded={display(raw.added)} rawDeleted={display(raw.deleted)} bands={bands} band={band} standing="" />
+      <Projection changed={display(lines.changed)} added={display(lines.added)} deleted={display(lines.deleted)} modified={display(lines.modified)} bands={bands} band={band} standing="" />
     </div>
     <div class="route-actions">
       <ActionLink class="btn btn-primary" href={CHROME_WEB_STORE_URL} data-cta="add-to-chrome">{two.cta}</ActionLink>
