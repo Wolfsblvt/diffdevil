@@ -2,148 +2,216 @@
 
 ## Meaning
 
-This is the durable editorial home for explaining diffdevil: the reader tasks,
-teaching order, strongest examples, source ownership, and future website/help
-shape. It is not another API specification. Repository-owned manuals and tested
-examples remain canonical whether readers arrive through GitHub or a later site.
+This is the maintained editorial and source-ownership contract for the complete
+diffdevil manual. Repository Markdown and executable examples are canonical;
+GitHub and the explicit Starlight projection are reading surfaces for that source.
+It explains the reader jobs, teaching order, source/route migration, generated
+boundaries, availability and public joins. It is neither another API specification
+nor a second page ledger: the executable manifests own exact identities.
 
-## Begin with an outcome
+## Three front doors with different jobs
 
-The front door introduces a portable diff-policy engine, then gives the reader
-three direct routes: label PRs with one workflow, query local changes, or author a
-policy. PR size is the fastest visible success, not the product definition.
-Explain the three-line replacement before introducing the entire type system.
+The root [README](../README.md) is a crafted quick manual. It gives enough purpose,
+trust, installation and working examples to reach first success without reading
+an entire reference. It is not the complete manual or a directory of links.
 
-| Reader task | First page | Observable success | Deeper source |
-| --- | --- | --- | --- |
-| Automatically label PR size | `manual/start/label-pull-requests.md` | One size label, no comment, inspectable summary | `integration/github-actions.md` |
-| Get a number or condition into a script | `manual/start/use-results-in-scripts.md` | Exact scalar, path list, meaningful exit status | `integration/cli.md` |
-| Add a repository-specific signal | `guides/policy-recipes.md` | Source/test scoped rule, desired plan, managed label | `language/policies-and-bands.md` |
-| Keep one informative comment | `guides/policy-recipes.md` | One owned upsert comment without repeated noise | `integration/templates.md` |
-| Integrate the engine programmatically | `integration/typescript-api.md` | Typed report and policy from the installed package | Public exports and declarations |
-| Explain an unavailable count | Quickstart troubleshooting, then `language/types-and-measurements.md` | Correct status/bounds, no invented zero | Report schema and executable cases |
+[What is diffdevil](manual/README.md), at `docs.diffdevil.dev/`, starts the manual:
+one replacement counted as Changed and raw churn, one engine across operating
+surfaces, and a reasoned first-success choice. `/start/what-is-diffdevil/` is its
+alias, not another homepage. The repository [documentation map](README.md) serves
+contributors, integrators and operators, not a second public navigation tree.
 
-These are real tasks rather than a gallery of every flag. Keep one strongest
-complete example per task before offering variations. A copyable example states
-its filename, location, prerequisites, required edits, expected result, write
-behavior, and failure/unknown behavior. Label excerpts as excerpts.
+The product homepage at `diffdevil.dev/` explains why the product matters and its
+adoption doors: the browser extension, open CLI/Actions and optional managed App.
+Examples and Playground are separate exploration routes, not an App conversion
+funnel. Surface product pages explain adoption and trust; Start/Use chapters own
+operation. The open package retains the complete semantic engine.
 
-## Teach the clearer form; preserve every working route
+## Begin with a useful result
 
-Use ordinary detail expressions for simple arithmetic and matches. Prefer a file
-shortcut when it removes collection, lambda, quantifier, projection, or path
-quoting boilerplate. Both use one compiler. Do not remove aliases to make the
-manual look smaller, and do not force a first-time label user to learn detail.
+Teach the small replacement distinction before the type system. PR size labeling
+is an easy visible result, not the product definition. Start pages carry one
+complete outcome, prerequisites, expected observation and first useful repair.
+Surface pages explain operation; categories explain the choice between their
+children rather than displaying only links. Concepts distinguish tempting wrong
+interpretations, references explain exact contracts, and Help routes symptoms back
+to the reader's original task.
 
-Distinguish four things wherever they affect a decision: measured facts,
-repository policy, desired effects, and observed provider results. Raw churn is
-not replacement-aware changed lines. No measurement establishes quality, risk,
-importance, or merge authority. Use the canonical [branding reference](branding.md)
-for naming and operational vocabulary, not a mascot voice in examples.
+The selected reading order is **START**, **USE DIFFDEVIL**, **WRITE POLICY**,
+**UNDERSTAND**, **REFERENCE** and **HELP**. Exact pages, independent public routes,
+category links, default disclosure state and aliases live in
+[`apps/manual/manifest.mjs`](../apps/manual/manifest.mjs), not an inferred mapping
+from filenames. Linked categories and their disclosure controls remain separately
+focusable. Current ancestry opens; other groups retain their declared defaults.
+
+Policy teaching follows one small continuing story while every chapter supplies a
+complete independently runnable file. Prefer ordinary expressions for arithmetic
+and useful file shortcuts for collection/selection boilerplate. Preserve working
+aliases and capabilities rather than reducing the language to simplify a page.
+
+Keep facts, policy decisions, desired effects, attempted requests and observed
+provider state separate. Changed is not raw churn, unknown is not zero or false,
+and a count does not establish quality, risk, importance or merge authority.
+Operational prose is plain; [branding](branding.md) owns names, not a mascot voice
+for command examples.
 
 ## Own examples as executable assets
 
-`docs/examples/diffs/review.diff` is the small transparent teaching specimen. Its source,
-test, documentation, and lockfile blocks deliberately demonstrate replacement
-accounting and explicit exclusion. The two smaller policies teach a custom signal
-and a comment without requiring the larger complete policy specimen.
+The complete `docs/examples/diffs/review.diff` is the **10 Changed / 16 raw churn**
+teaching patch, with source, test, documentation and lockfile blocks. The separate
+**178 Changed** report/policy specimen supplies the shared presenters. Neither may
+borrow the other's expected output.
 
-`src/diffdevil/tests/examples.test.mjs` consumes the actual patch, policy files, workflow YAML,
-and command examples. It exercises the production CLI and shared Action runner
-against fake HTTP. These tests prove executable behavior, not the prose around
-it, GitHub event delivery, or real permission grants. `test:actions` separately
-executes the shipped paths outside the checkout. Native shell scripts have their
-own platform evidence; parsing PowerShell text on Linux is not running it.
+Every copyable example names its complete asset, consumer, prerequisites, selected
+version, source and policy, expected semantic result, and relevant failed,
+unresolved or held outcome. Put the complete file before variants. Excerpts link
+the canonical full file. Do not hide permissions, write consequences, uncertainty
+or recovery in a collapsed block.
 
-A maintained example change carries its test and expected output in the same
-change. Prefer behavioral assertions and parsed configuration to frozen paragraphs
-or test-count quotas. Reference excerpts may repeat a short example for reading,
-but link its complete asset and repair both when behavior changes. Do not make a
-new runtime copy of a workflow just for the website.
+[`docs/examples/catalogue/`](examples/catalogue/README.md) is the single real-PR
+catalogue consumed by Examples, Playground and manual links. Both `example` and
+`variant` select a frozen source edition and policy. The combined asset key is not
+a substitute URL contract. Live refresh creates a different observation; it does
+not silently replace a lesson. Controlled engine fixtures never become supposedly
+real gallery entries. Provenance and rights travel with each source edition.
 
-## Website, playground, and optional hosted operation
+The website, manual, CLI/Action summaries, Skill and Playground consume shared
+presenters or canonical structured artifacts. They never maintain another semantic
+display model. `src/diffdevil/tests/examples.test.mjs`, manual wave tests and the
+installed-package/Action consumers qualify actual source assets. Fake HTTP proves
+its exercised boundary, not live permissions. Parsing a PowerShell script on Linux
+does not qualify its Windows execution. Tests preserve behavior and complete
+examples, not fixed narrative wording or a quota of assertions.
 
-The public website presents an open-source CLI, library, and workflow Actions
-product first. Show the replacement distinction, one-file workflow setup, a
-composable CLI query, and the plan/apply boundary before any commercial pitch.
+## Keep one canonical source per responsibility
 
-The three adoption doors are **Use the CLI / Actions**, **Try the playground**,
-and **Optional managed GitHub App**. They need not have identical prominence:
-the tool is the product, the playground teaches it, and hosting removes operating
-work. App installation is not the presumed outcome of every visitor journey.
+`docs/manual/` owns the 41 manual chapters and the separately authored canonical
+FAQ. The FAQ renders only at `diffdevil.dev/faq/`, in the product shell without a
+manual sidebar. Stable question IDs survive title edits, and one question is one
+search record. The manual links those questions instead of rewriting answers.
 
-The [playground experience](manual/use/playground.md) has its own page and a
-compact homepage entry. Curated examples, settings controls, terminal/agent output,
-GitHub-effect previews, explanation, and exports derive from the same engine.
-Keep this anonymous read-only experience distinct from the authenticated App
-dashboard and its opted-in history.
+The complete `skills/diffdevil/` folder remains the installed Skill, with its own
+version, references, notices and update contract. `/skill/SKILL.md` is a reading
+projection, not the whole installation. The five `docs/setup/*.md` payloads remain
+canonical task instructions; deterministic raw-route rendering refuses unresolved
+bindings. Website handoffs point to those instructions, not a second installer.
 
-Explain the optional App's added value concretely: maintained execution, account
-or organization defaults, effective configuration, repository administration,
-native checks, and opt-in history/statistics. The comparison must say what a
-self-operated workflow would need to assemble, not imply that the CLI or Actions
-lack the full measurement or policy language.
+[`apps/manual/migration.mjs`](../apps/manual/migration.mjs) owns source-family
+consequences and [`authoring-state.json`](../apps/manual/authoring-state.json)
+records exact historical bytes, successor anchors and selected route transfers.
+All selected old reader guides and language chapters have transferred. The release
+README retains a distinct maintainer-map job; component, operator, security,
+privacy, licensing, catalogue and dated evidence sources keep their specialist
+homes. No forwarding Markdown stubs remain.
 
-Use Astro static output as the website foundation and Starlight for the structured
-manual, with interactive components where the playground/dashboard need them.
-Keep product branding independent and consistent across the home, playground,
-and help. This selects a publishing family, not a claim of a built site.
+The apex no longer renders a competing manual. Its old
+[`docs-manifest.mjs`](../apps/website/docs-manifest.mjs) is a finite compatibility
+inventory only. Manual successors receive emitted 308s; remaining technical and
+historical projections lead to exact GitHub source. Retained raw/specialist sources
+keep their own source-resolver identity even when their former public article
+moves. Each affected old section has an explicit semantic destination. A server
+cannot inspect a fragment: browser handoff preserves the query, and native
+compatibility links remain available without JavaScript.
 
-Help navigation can group **Get started**, **Recipes**, **CLI**, **Actions**,
-**Policies and detail**, **Library API**, **Playground**, **Managed App**, and
-**Troubleshooting**. Select reader-facing repository Markdown and the same tested
-example assets. Contribution links edit those sources. Do not publish all of
-`docs/` through a broad glob, copy it into a separate wiki, or make a second
-manually maintained website policy engine.
+## Generate inventories, not explanations
 
-Self-hosting belongs in findable App/operator documentation and the licence
-explanation. It is intentional, not hidden; it is not a fourth primary sales door.
-Document only deployment adapters that are actually supported, including their
-provider, credential, cost, and maintenance requirements.
+The 13 paired generated islands derive from Action metadata, public exports and
+resolved declarations, schemas, presets, detail catalogues, App execution phases
+and source version identities. Authored framing, workflows, concepts and recovery
+remain outside their boundaries. The generator refuses drift, missing or duplicate
+markers and malformed pairs. Exact inventories do not replace a useful reference.
+CLI reference stays authored and is checked against executable help.
 
-The App, website application, playground, and service code remain in this
-repository under AGPL-3.0-only. Original documentation prose, runnable examples,
-and branding retain the separate rights in the licence map. Do not describe an
-open-source licence as a grant to impersonate the official service.
+The renderer selects only manifest sources, never `docs/**` wholesale. Source links
+use the exact build commit; Edit links target the named contribution branch.
+Technical links pass through the finite `/source/?f=<stable-source-id>` resolver.
+Unknown IDs, arbitrary paths, external destinations and ambiguous selections are
+refused rather than interpreted as a URL template.
 
-Domains, live hosting, billing, and publication remain separately observed
-outcomes. A site description must distinguish selected experience from features
-currently available to a visitor; a canary cannot silently redefine either.
+## Join the public reading experience
 
-## Release-sensitive copy
+Product and manual share the Works shell, header, footer and theme behavior.
+`www.diffdevil.dev/*` is a matching-route 308 to the apex; the App host stays
+separate. One Pagefind build joins **SITE**, **DOCS** and question-level **FAQ** and
+is mirrored into the two static outputs. Legacy, technical, historical, legal,
+resolver and qualification pages do not become default current search results.
+Legal routes retain their separate noindex/nosnippet posture.
 
-Keep the prerelease availability note until the referenced package and Action ref
-exist. Then update it in one intentional release change. A `uses:` coordinate
-is not a released Action merely because YAML parses. A CI badge must refer to an
-actual run; package badges require a real published package. Local qualification
-belongs in Qualification, not an eternal launch checklist at the top of the user
-README.
+Theme initializes before paint. Owned site/manual HTML links carry only the theme
+preference and bounce side, preserving unrelated query and fragment data. Direct
+visits use origin-local storage. No cross-host authentication, account state,
+cookie or synchronization service is introduced.
 
+Keep comfortable reading width, all five alert meanings, visible focus, keyboard
+operation, reduced motion, forced colors, zoom and narrow-screen reflow. Wide code
+and tables may scroll internally; the page must not. The real Starlight English
+i18n record names the manual navigation for assistive technology; it is a used
+label, not an empty declaration added to silence a warning.
 
-## Public-manual source foundation
+## Availability and design boundaries
 
-The purpose-built manual is maintained under `docs/manual/` and rendered by
-[`apps/manual/`](../apps/manual/README.md) at `docs.diffdevil.dev`. Its explicit
-manifest selects source identities, routes, aliases, task-led navigation and
-capability standing. The product FAQ remains the single `docs/manual/faq.md`
-source at `diffdevil.dev/faq/`, in the product shell without a manual sidebar.
+Each of the two extension and three App chapters retains one top-only
+**In development** NOTE while the complete selected public capability is not
+usable. The FAQ has its existing grouped note. Read the complete page and governing
+source/provider evidence before changing a marker. Do not remove accepted
+capabilities, fabricate Store availability or call a deployed backend a completed
+administrator journey to reduce the marker count.
 
-The foundation supplies chapter scaffolds, generated mechanical reference inserts,
-executed presenter specimens, Source/Edit links, finite technical-source access,
-shared shell and theme behavior, and one joined SITE/DOCS/FAQ search index.
-Scaffolds are not authored chapters or current search results. Availability is a
-separate product fact, expressed by one top-only In development NOTE where needed.
+[`apps/manual/capabilities.json`](../apps/manual/capabilities.json) records the
+remaining exact source/availability dependencies. Published CLI/API/Action use,
+current source, corrected open candidates, contained provider observations,
+selected future capability, historical release accounts and genuinely undefined
+commercial or adapter details are different standing. A configured destination
+or source version is not publication. The earlier deployed measurement Playground
+is not the complete richer public website.
 
-Wave 2 transfers the complete auto-label, local-automation and Playground visitor
-families to their START/USE successors. Their incoming links, source-ID and fragment
-mappings, public redirects and search selection move together. Other legacy sources
-remain current until every destination of their selected split is authored.
-`apps/manual/migration.mjs` owns those exact source-family dispositions. No Markdown
-forwarding stubs are used. The root README's later compression remains a separate
-final reconciliation step.
+Final dashboard wording, controls, layout, experienced routes and first journey
+remain owner co-design. Final extension in-place presentation and Store imagery
+consume accepted functional source plus its separate co-design result. Support and
+Sponsor remain separate source/design work. Fixture scenes and Store-kit captures
+are labeled source/design evidence, never live-use proof or final visual authority.
+Self-hosting stays findable through its supported Workers/Queue/D1 guide without
+becoming the main adoption route.
 
-The authoring sequence is Start and Understand; open surfaces and shared workflows;
-Policy and Reference; Managed App and Help; then final cross-surface reconciliation.
-All continue the same draft manual carrier. The FAQ answers are already authored
-and are not duplicated by those chapter contributions. Source readiness, joined
-reader qualification and publication remain different claims.
+## Qualification and publication
+
+The complete continuing candidate includes README, maps, homepage, product and
+install/download links, all source-family transfers, redirects/fragments, search,
+theme, Source/Edit and executable examples. Source generation, root verification,
+package/Action consumers, both static builds and affected browser journeys each
+supply their own evidence on its exact final head. The fresh independent docs
+review follows authoring; it is not simulated by the author's checks.
+
+Exact evidence, limitations and current candidate custody live in the contribution
+Return. The source contract does not claim a check ran merely because it names one.
+Publication, remote preview, DNS, website deployment, Store/App release, OAuth and
+history activation remain separate effects. [Component rights](../LICENSES/README.md)
+apply independently to reusable software, applications, prose, examples and visuals.
+
+## Package front-door consolidation
+
+The root README is also the npm package's actual front door. The unused
+`docs/package/README.md` template is retired: its install/query/Skill/effect and
+compatibility explanation is owned by the root quick manual and the corresponding
+canonical manual/Skill sources. No packer consumed that template and it had no
+selected public route or stable resolver ID. Git retains its authored history;
+there is no forwarding Markdown replacement and no second package manual.
+
+## Setup and download build inputs
+
+`apps/website/setup-render.mjs` binds the five canonical `docs/setup/` payloads.
+`PUBLIC_ORIGIN` uses the configured public site origin. `APP_INSTALL_URL` and
+`APP_DASHBOARD_URL` use `PUBLIC_APP_INSTALL_URL` and `PUBLIC_DASHBOARD_URL`. Missing
+App destinations produce an explicit unavailable response at `/setup/app.md`;
+unknown tokens and invalid URLs fail instead of leaking placeholders. GitHub
+Actions expressions remain unchanged. `/skill/SKILL.md` remains a byte-identical
+reading projection, not a complete installation.
+
+`/downloads/skill/`, `/downloads/standalone/` and `/downloads/bundled/` consume the
+existing `tools/build-release.mjs` manifest keys. A later publication operation
+may supply `DIFFDEVIL_PUBLISHED_RELEASE_MANIFEST` as the local path of that exact
+manifest after publication and asset readback. It must not bind a merely built
+unpublished candidate. No binding means a visible unavailable state, not a guessed
+archive URL. Versions, sizes, digests and destinations come from the manifest;
+the site performs no publication or runtime discovery. These utility pages stay
+out of joined current search.

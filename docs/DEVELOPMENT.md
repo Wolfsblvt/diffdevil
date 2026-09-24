@@ -233,7 +233,7 @@ launcher for version and scalar query. It inspects the installed CMD and
 PowerShell launcher files separately. The Linux POSIX path remains its own result.
 
 The read-only repository CI runs these same commands on Linux Node 22/24 and
-Windows Node 24. A source-authored matrix is not a passed hosted run. The native
+Windows Node 22/24. A source-authored matrix is not a passed hosted run. The native
 Windows result is recorded in [Qualification](qualification.md); hosted Windows
 and Linux checks still require exact-head observation after publication.
 
@@ -284,3 +284,20 @@ body digests are in `artifacts/manual/generated-islands.json`. The manual's `tes
 discovers its `*.test.mjs` suite, including independent policy chapters, CLI invocations,
 schema/reader distinctions and migration guards. Its separate `qa` command additionally
 exercises the full policy/reference family through the built browser surface.
+
+## Final public-surface reconciliation
+
+`npm run website:build` emits the product and manual hosts, their exact source
+provenance, finite redirects and one joined search index. The old apex Markdown
+collection is not an article source. `npm run qa:website` exercises the existing
+product, Examples, Playground, editor, export and shell journeys;
+`npm --prefix apps/manual run qa` adds the manual, FAQ joins, resolver, fragment,
+theme, setup/download and responsive journeys. The standalone
+`node apps/website/qa/faq.mjs` preserves the FAQ's history, focus and native no-JS
+contract. These checks run on locally built files, not deployed hosts.
+
+The website's [build inputs](../apps/website/README.md#setup-and-download-build-inputs)
+own public URL binding and the optional publication-read-back manifest. Unconfigured
+App setup and unpublished archives remain unavailable; a local release build must
+not be supplied as proof of publication. The root README is npm's front door; there
+is no separate package README template to render or maintain.

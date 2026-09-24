@@ -4,7 +4,7 @@
 
 This document owns the selected experience and operating architecture of diffdevil's optional managed GitHub App. diffdevil remains an open-source CLI, TypeScript library, and workflow Actions tool. The App operates that same product for repositories that prefer installation and a dashboard over maintaining workflows, credentials, runners, and upgrades.
 
-The complete selected App includes repository-aware configuration, labels, owned comments, native GitHub check summaries, account/organization administration, and opt-in quantitative history. A narrow installed canary proves part of that result; it does not remove the remaining functionality. This document describes selected product and architecture, not an implemented or deployed App. [Direction](../DIRECTION.md) owns current availability.
+The complete selected App includes repository-aware configuration, labels, owned comments, native GitHub check summaries, account/organization administration, and opt-in quantitative history. A narrow installed canary proves part of that result; it does not remove the remaining functionality. This document describes the complete selected product and its operating architecture. The runtime and admission/settings backend exist in source, and a contained deployment and canary have been observed; that is not a complete public managed-service journey. [Release standing](../manual/help/releases.md) separates source, deployed components and publicly usable surfaces. Final dashboard wording, controls, layout and the first administrator journey remain co-design rather than an interface specified by this architecture.
 
 ## Product and adoption contract
 
@@ -212,7 +212,7 @@ Source, emulation, preview, production, registration, permission grants, install
 
 ## Current standing
 
-The repository contains the local public-PR playground and shared engine. The portable Worker engine, managed App runtime, dashboard, native App checks, quantitative history, and commercial service described here still require implementation and qualification. This design does not create cloud resources, install an App, grant permissions, spend money, collect data, or publish a service.
+The portable engine, Cloudflare App adapter, admission/settings service, native checks, fenced recovery and numeric-history lifecycle are implemented in source. A contained backend deployment and canary are observed; subsequent repository admission does not by itself prove an ordinary configured PR execution. Public ingress, authenticated administration, wider installed use, history and offboarding require their own observed outcomes. The complete dashboard experience and commercial terms remain unfinished, not invented by this document. Reading or building this source creates no cloud resources, installation, permissions, collection or publication. The [operator source](../../apps/github-app/README.md) and [release guide](../manual/help/releases.md) own the deeper implementation and distribution boundaries.
 
 ## Provider references
 

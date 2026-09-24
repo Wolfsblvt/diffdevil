@@ -46,11 +46,12 @@ diff analysis and automation for GitHub and the CLI.*
 
 Current source now contains the complete local-first Chrome extension under
 `apps/browser-extension/` and the reusable browser entry under
-`src/diffdevil/browser/`. Its exact-head browser and repository verification is green,
-including an installed Manifest V3 worker and native Chrome storage. Live authenticated
-GitHub journeys, Windows interactive accessibility, native writable-label readback,
-managed-App report delivery, Store submission and publication remain separate release
-acceptance and provider effects.
+`src/diffdevil/browser/`. The original source was qualified with an installed Manifest V3 worker and native
+Chrome storage. A later functional correction is an open candidate, not current
+main: its signed-in GitHub witness and current-main integration remain distinct from
+anonymous/fixture checks. Final in-place presentation is still co-design. Windows
+interactive accessibility, native writable-label readback, managed-App delivery and
+Store submission/publication are not established by the original source checks.
 
 Current source contains the first read-only measurement playground under
 `apps/playground/`, backed by the shared engine and versioned response contract.
@@ -59,12 +60,16 @@ That exact application is live at
 on Cloudflare Workers. It establishes the shared-engine browser measurement route,
 not the complete configurable playground or commercial service.
 
-The managed GitHub App runtime is also live on Cloudflare Workers and installed only
-on `Wolfsblvt/wolf-leitsatz`. Its contained canary exercised the native check,
-managed-label, and persisted operational-result path, then restored the repository to
-its pre-canary state. This establishes the managed transport and one installed-repository
-lifecycle, not the dashboard, broader repository admission, complete history,
-offboarding/export, settled product limits, or commercial service.
+The managed GitHub App runtime and admission/settings backend have been deployed
+to Cloudflare Workers. The contained canary exercised a native check, managed label
+and operational result, then restored its fixture. A later bounded repository
+admission enabled execution with history still off; admission is not proof that its
+ordinary configured PR policy ran. The last recorded ingress check found no public
+Worker route, custom domain or enabled workers.dev endpoint. Backend deployment is
+therefore not a claim of a reachable public App journey. Dashboard authorization
+source remains an open candidate, and its session-continuity and consent-identity
+choices, visible dashboard experience, wider recovery/history/offboarding use and
+commercial service remain separate accepted product work.
 
 The selected implementation direction is now explicit:
 
@@ -83,7 +88,8 @@ The selected implementation direction is now explicit:
 - Keep the [playground](manual/use/playground.md) public, unauthenticated, read-only,
   and independent of App history. Carry curated examples, configuration editing,
   terminal/agent/GitHub-preview/explanation views, and portable exports through one
-  shared engine. Provide its own page and a compact homepage entry.
+  shared engine. Keep its own page and the accepted header, hero and measurement-section routes,
+  without restoring a separate homepage route card.
 - Implement the [data boundary](PRIVACY-AND-DATA.md): seven-day recovery records;
   opt-in aggregate and pathless per-file numeric history; thirty-day free history;
   paid history without automatic age expiry while its entitlement/service remains
@@ -99,12 +105,14 @@ The selected implementation direction is now explicit:
 
 The public website source now exists under `apps/website/`: the accepted homepage,
 the complete configurable playground running the shared engine in the browser,
-the examples catalogue with frozen fixtures and captured real-PR snapshots, the
-manual rendered from the repository's own Markdown, the public App page, and the
-legal/privacy routes. It is built and qualified locally only. It is not deployed,
-remotely previewed, routed or exposed; publication is a separate decision after
-the remaining accepted sources (the Agent Skill, the setup instructions and the
-researched curated catalogue) are admitted through their own Work. The playground
+the shared catalogue of seven real pull requests and sixteen variants, the
+complete canonical Agent Skill and five setup payloads, the public App page, the
+standalone FAQ and legal/privacy routes. The manual has its own explicit source
+selection and static host, joined to the product site through routes, search and
+theme. Source and earlier local qualification do not establish a deployed website.
+Publication follows qualification of the complete joined candidate and separately
+accepted extension, dashboard and Support/Sponsor consequences; it is not waiting
+for a second authorship of the already-admitted Skill, setup or catalogue. The playground
 API gained `/api/report` and `/api/head` for browser-side replay and freshness;
 the live Worker still serves the earlier contract until it is redeployed.
 
