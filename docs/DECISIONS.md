@@ -658,3 +658,15 @@ qualified source only until its publication boundary is separately satisfied.
 **Current consequence.** A development-only dependency update can pass Verify on its own. A change to the shipped closure, compiler output or project version still fails until `npm run build:actions` is run and the generated diff is inspected. The separate release-carrier manifests used for published Skill and standalone archives are unchanged by this decision.
 
 **Sources.** Juno's finding in [emergency-meeting #453](https://github.com/Wolfsblvt/emergency-meeting/issues/453#issuecomment-5770682443); Wolf's decision in [#453](https://github.com/Wolfsblvt/emergency-meeting/issues/453#issuecomment-5782985671); [Action distribution](integration/action-distribution.md).
+
+## D043: Give application surfaces their own top-level category
+
+**Decision.** `apps/` is the repository category for application and hosted-service product surfaces, including shared application code. Keep app-specific runtime configuration with the application it configures.
+
+**Why.** These surfaces have a different product and licence boundary from the reusable engine and Actions. Naming `apps/` makes that boundary visible in the repository layout and gives application-owned files, including the playground's Worker configuration, a natural home beside their code.
+
+**Rejected.** Leaving application configuration at the repository root solely because the tool discovers it there by default; placing application code beside reusable package or Action implementation without a category boundary.
+
+**Current consequence.** The playground Worker config lives at `apps/playground/wrangler.jsonc`; local Worker and dry-run commands select it explicitly. Its Worker name and deployed identity remain unchanged. The category reflects the application surfaces and their explicit licence map in [`LICENSES/README.md`](../LICENSES/README.md); it does not create another package or deployment boundary.
+
+**Sources.** [Component and licence map](../LICENSES/README.md).
