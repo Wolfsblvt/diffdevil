@@ -51,7 +51,7 @@ test('the website consumes the shared real-PR catalogue, with its complete decla
   assert.match(endpoint, /catalogue\(\)\.variants/u);
 });
 
-test('the docs manifest names existing sources, unique slugs, and no internal record', () => {
+test('the finite legacy inventory names owned sources and no private record', () => {
   const slugs = new Set();
   const state=JSON.parse(read('apps/manual/authoring-state.json'));
   validateRetiredRoutes(state,entries,legacyRedirects(state));
@@ -137,7 +137,7 @@ test('the skill version reader parses Agent Skills front matter (metadata.versio
 
 test('repository blob links carry the path separator once', () => {
   const site = read('apps/website/src/data/site.ts');
-  assert.match(site, /GITHUB_BLOB = `\$\{GITHUB\}\/blob\/main\/`/u);
+  assert.match(site, /GITHUB_BLOB = `\$\{GITHUB\}\/blob\/\$\{provenance.ref\}\/`/u);
   assert.match(site, /export function blobUrl\(/u);
   for (const page of ['apps/website/src/pages/examples.astro', 'apps/website/src/pages/app.astro']) {
     assert.doesNotMatch(read(page), /\$\{GITHUB_BLOB\}/u, `${page} must build blob links through blobUrl()`);

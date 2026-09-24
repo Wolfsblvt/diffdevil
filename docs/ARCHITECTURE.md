@@ -429,7 +429,7 @@ and exact consumer paths are in [Action distribution](integration/action-distrib
 ## User documentation and examples
 
 `docs/guides/` owns task-oriented user journeys; `docs/documentation.md` owns the
-teaching order and future website/help source boundary. Executable examples under
+teaching order and the canonical public-manual/website source boundary. Executable examples under
 `docs/examples/` feed the same compiler and host, and ordinary tests read the actual
 workflow and CLI specimens. These assets are shipped with the npm package. They
 are not a second runtime or a separately maintained website implementation.

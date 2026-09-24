@@ -31,6 +31,7 @@ const migration = `# 1. Turn off the Action writer. A read-only step may stay.
   <section class="section section-first" data-section="app">
     <div class="wrap">
       <AppPanel as="h1" secondaryHref={docPaths.app} selfHostHref="#self-host" />
+      <aside class="notice-proposed" role="note"><strong>In development</strong> The complete managed-service experience described here is being prepared for public use. Backend source and contained deployment evidence do not establish a public dashboard or ordinary installation journey.</aside>
     </div>
   </section>
 
@@ -58,7 +59,7 @@ const migration = `# 1. Turn off the Action writer. A read-only step may stay.
           </ul>
         </div>
       </div>
-      <SectionLinks links={[['App architecture', docPaths.app], ['Configuration layering', `${docPaths.presets}#configuration-layering`]]} />
+      <SectionLinks links={[['App architecture', docPaths.app], ['Configuration layering', `${docPaths.configure}#know-which-host-supplies-each-layer`]]} />
     </div>
   </section>
 
@@ -68,7 +69,7 @@ const migration = `# 1. Turn off the Action writer. A read-only step may stay.
       <div class="history-grid">
         {history.map(([title, body]) => <div class="panel"><p class="label">{title}</p><p class="small history-body">{body}</p></div>)}
       </div>
-      <p class="notice-proposed history-standing"><strong>The history dashboard is in design.</strong> What it may show is settled by the data contract above; how it looks is not, so nothing is pictured here.</p>
+      <p class="history-standing">Final dashboard wording, controls and the first journey remain in co-design. The selected history model also includes paid retention without automatic age expiry; published prices, quotas, billing controls and service commitments are not yet defined.</p>
       <SectionLinks links={[['Privacy and data', docPaths.privacyAndData]]} />
     </div>
   </section>
@@ -83,7 +84,7 @@ const migration = `# 1. Turn off the Action writer. A read-only step may stay.
         </table>
       </div>
       <p class="caption perms-foot">No Issues, Actions, Administration or broader repository write permission. Dashboard sign-in authenticates a person separately and never becomes the background credential.</p>
-      <SectionLinks links={[['Permissions and current access', `${docPaths.app}#permissions-and-current-access`]]} />
+      <SectionLinks links={[['Permissions and current access', `${docPaths.privacyAndData}#authorization-and-writes-in-the-app`]]} />
     </div>
   </section>
 
@@ -99,7 +100,7 @@ const migration = `# 1. Turn off the Action writer. A read-only step may stay.
             <li>the runtime source under <code class="code-inline">apps/github-app/</code>, its migration, and its maintenance path</li>
             <li>no diffdevil branding that implies the official service</li>
           </ul>
-          <SectionLinks class="panel-links" links={[['Self-hosting the runtime', docPaths.app.replace('architecture', 'self-hosting')], ['Runtime source', blobUrl('apps/github-app/README.md')], ['Licence boundaries', paths.licences]]} />
+          <SectionLinks class="panel-links" links={[['Self-hosting the runtime', docPaths.selfHost], ['Runtime source', blobUrl('apps/github-app/README.md')], ['Licence boundaries', paths.licences]]} />
         </div>
         <div class="panel">
           <p class="label">Data</p>
@@ -116,7 +117,7 @@ const migration = `# 1. Turn off the Action writer. A read-only step may stay.
         <SectionHead id="migrate" title="Already running the Action?" body="Two writers must not own the same labels. Disable the Action writer before enabling overlapping App effects. The App never adopts another actor's comments; a read-only analyze step can stay beside it." />
         <CodeBlock code={migration} lang="yaml" file="migration outline" copy={false} />
       </div>
-      <SectionLinks links={[['Comment ownership and migration', `${docPaths.app}#comment-ownership-and-migration`], ['Actions manual', docPaths.actions]]} />
+      <SectionLinks links={[['Comment ownership and migration', `${docPaths.service}#move-between-actions-and-the-app`], ['Actions manual', docPaths.actions]]} />
     </div>
   </section>
 

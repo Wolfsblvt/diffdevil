@@ -1,12 +1,13 @@
 ---
 // SPDX-License-Identifier: AGPL-3.0-only
 // /extension/: the trust and detail surface for diffdevil for GitHub. It shows the
-// extension's real projection and report as fixture-backed scenes and its real settings
+// selected projection and report as design specimens and its source-owned settings
 // application as rendered UI, then states exactly what the extension reads, stores and
 // never does. Those statements follow the extension's own privacy notice, manifest
 // (`storage`; content script on github.com; host access to api.github.com; Incognito not
 // allowed) and listing copy; when that source changes, this page follows it, not the other
-// way round. Every "Add to Chrome" goes straight to the Chrome Web Store.
+// way round. Store actions have no href until an actual destination is configured;
+// fixture scenes and Store-kit captures are not live-use proof or final visual authority.
 import { Image } from 'astro:assets';
 import Base from '../layouts/Base.astro';
 import ActionLink from '../components/ActionLink.astro';
@@ -18,9 +19,9 @@ import settingsBands from '../assets/extension/settings-policy-bands-light.png';
 import settingsDisplay from '../assets/extension/settings-display-dark.png';
 import { copy } from '../data/copy';
 import { APP_INSTALL_URL, CHROME_WEB_STORE_URL, GITHUB, docPaths, paths } from '../data/site';
-import { extensionDocsPresent } from '../lib/sources';
+
 const c = copy.extension;
-const docs = extensionDocsPresent();
+
 const standings = [
   ['=', 'exact', 'exact', 'Every included edit block was observed. The band is selected.'],
   ['≈', 'bounded', 'bounded', 'A proven interval. If it lies inside one band, that band is selected and the standing says bounded.'],
@@ -75,12 +76,13 @@ const routes = [
         <div class="ext-hero-text">
           <p class="eyebrow eyebrow-caps"><a class="eyebrow-link" id="extension" href="#extension">Browser extension</a><span>· {c.name}</span></p>
           <h1 class="ext-h1">Changed, directly in GitHub</h1>
+          <aside class="notice-proposed" role="note"><strong>In development</strong> The complete extension journey is not publicly released. Signed-in functional qualification and final in-place presentation remain separate; the scenes and captures below are source/design specimens, not proof of live use or final Store imagery.</aside>
           <p class="lede">See replacement-aware Changed, per-file decomposition, personal or repository size bands, and inspectable reports on pull requests. No workflow, App installation, or write access required.</p>
           <div class="ext-cta">
             <ActionLink class="btn btn-l btn-primary" href={CHROME_WEB_STORE_URL} data-cta="add-to-chrome">{c.add}</ActionLink>
             <a class="ext-cta-link" href="#data">What it reads and stores →</a>
           </div>
-          <p class="ext-assurance">No account, token or telemetry. It reads pull-request pages on github.com, analyzes them in your browser, and stores numbers, not patches.</p>
+          <p class="ext-assurance">No account, token or telemetry. It reads pull-request pages on github.com, analyzes them in your browser, and caches measured reports and policy, not raw patches.</p>
         </div>
         <Scene files={false} report={false} caption={false} />
       </div>
@@ -104,7 +106,7 @@ const routes = [
       <ul class="ext-standings">
         {standings.map(([glyph, word, status, text]) => <li><span class="chip-ev" data-status={status}>{glyph} {word}</span><span>{text}</span></li>)}
       </ul>
-      <SectionLinks links={[['How changed lines work', 'typesAndMeasurements'], ['Evidence semantics', 'typesAndMeasurements']]} />
+      <SectionLinks links={[['How changed lines work', 'typesAndMeasurements'], ['Evidence semantics', 'evidence']]} />
     </div>
   </section>
 
@@ -132,12 +134,12 @@ const routes = [
 
   <section class="section" data-section="report">
     <div class="wrap">
-      <SectionHead id="report" title="The full report, anchored in place" body="The Changed projection is the trigger for a persistent report that opens right where you are. It is a real popover, not a tooltip and not a modal: no backdrop, no scroll lock, no dashboard detour for ordinary inspection." />
+      <SectionHead id="report" title="The full report, anchored in place" body="The Changed projection is the trigger for a persistent report that opens right where you are. The selected experience keeps inspection on the pull request rather than sending ordinary reading to a dashboard. The source scene illustrates that intent; final placement and interaction remain in co-design." />
       <Scene />
       <ul class="ext-columns">
         <li><strong>Aggregate and file-focused</strong><span>The aggregate trigger opens the whole-comparison report. A file trigger opens that file with the same terms and the same evidence semantics.</span></li>
         <li><strong>Policy and evidence, explained</strong><span>Revisions, measurement standing, files, metrics, scopes, bands, rules and the origin of the policy in effect. Missing source never becomes a reassuring exact zero.</span></li>
-        <li><strong>Keyboard and focus</strong><span>Click or press Enter to open; click again, click outside or press Escape to close, and focus returns to the trigger. One report is open at a time, and it stays inside the viewport.</span></li>
+        <li><strong>Keyboard and focus</strong><span>The report must be keyboard-operable, preserve useful focus and fit the viewport. Final triggers, dismissal sequence and layout come from the accepted in-place design, not this fixture.</span></li>
       </ul>
     </div>
   </section>
@@ -146,7 +148,7 @@ const routes = [
     <div class="wrap">
       <SectionHead id="settings" title="Make it yours" body="Settings are a full diffdevil application in the same design as this site: one searchable configuration with a Basic and an Advanced view, light, automatic and dark themes, import and export, diagnostics and cache controls." />
       <div class="ext-shots">
-        <figure class="ext-shot"><Image src={settingsDisplay} alt="Extension settings in the dark theme: search for 'diffdevil icon' shows the display.brandIcon setting with its three choices, the Basic and Advanced tabs, and a notice that one advanced setting is active." widths={[640, 1280]} sizes="(max-width: 900px) 100vw, 590px" /><figcaption>Search finds a setting by name, identifier or keyword. Rendered settings UI from the store kit.</figcaption></figure>
+        <figure class="ext-shot"><Image src={settingsDisplay} alt="Extension settings in the dark theme: search for 'diffdevil icon' shows the display.brandIcon setting with its three choices, the Basic and Advanced tabs, and a notice that one advanced setting is active." widths={[640, 1280]} sizes="(max-width: 900px) 100vw, 590px" /><figcaption>Search finds a setting by name, identifier or keyword. Rendered settings UI from the source Store kit; not a published Store listing.</figcaption></figure>
         <figure class="ext-shot"><Image src={settingsBands} alt="Extension settings in the light theme: the policy.bands editor with five size bands, their upper limits, label mappings and colours." widths={[640, 1280]} sizes="(max-width: 900px) 100vw, 590px" /><figcaption>The guided band editor. Upper limits are exclusive; the last band is unbounded.</figcaption></figure>
       </div>
       <ul class="ext-columns">
@@ -170,7 +172,7 @@ const routes = [
         {facts.map(([term, text]) => <div><dt>{term}</dt><dd>{text}</dd></div>)}
       </dl>
       <ul class="section-links">
-        <li><ActionLink class="link" href={docs ? `${docPaths.extension}privacy/` : undefined} external={false}>Extension privacy notice</ActionLink></li>
+        <li><ActionLink class="link" href={docPaths.extensionPrivacy} external={false}>Extension privacy notice</ActionLink></li>
         <li><a class="link" href={`${GITHUB}/issues`} rel="noopener">Report an issue</a></li>
         <li><a class="link" href={paths.privacy}>Privacy of this website</a></li>
       </ul>

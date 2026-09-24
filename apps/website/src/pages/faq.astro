@@ -3,11 +3,13 @@
 import Base from '../layouts/Base.astro';
 import { Content, frontmatter } from '../generated/faq.md';
 import '../styles/faq.css';
-import { FAQ_CANONICAL } from '../../faq-content.mjs';
+import { GITHUB_BLOB, GITHUB_EDIT } from '../data/site';
+import { FAQ_CANONICAL, FAQ_SOURCE } from '../../faq-content.mjs';
 ---
 <Base title={frontmatter.title} description={frontmatter.description} surface="FAQ" current="faq" siteSearch={false}>
   <div class="wrap faq-page" data-faq-page data-faq-canonical={FAQ_CANONICAL}>
     <div class="faq-content"><Content /></div>
+    <footer class="faq-source"><a href={GITHUB_BLOB + FAQ_SOURCE}>Source</a> · <a href={GITHUB_EDIT + FAQ_SOURCE}>Edit this page</a></footer>
     <p class="visually-hidden" role="status" aria-live="polite" data-faq-status></p>
   </div>
 </Base>

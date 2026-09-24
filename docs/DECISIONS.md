@@ -690,6 +690,17 @@ redirect file. Hosting and publication remain separate effects.
 publication glob; duplicated FAQ answers; arbitrary-path source resolution; partial
 retirement of split sources; and local copies of the shared navigation/alert package.
 
+**Final reconciliation consequence.** The root README is the quick manual, the
+manual root owns public learning, and the repository map owns technical discovery.
+The apex's old Starlight collection is retired rather than retained as a competing
+manual. Its explicit legacy inventory supplies redirects and captured semantic
+fragments; retained specialist sources keep their exact source IDs. FAQ source
+links and all product/manual links use one route/provenance contract, and the
+joined current search excludes legacy and historical projections. The canonical
+Skill installer consumes the complete folder through its maintained setup payload,
+not a single-file website instruction. Source, build, publication and owner-use
+standing remain distinct; this consequence grants none of the latter effects.
+
 **Sources.** [Documentation design](documentation.md), [manual implementation
 contract](../apps/manual/README.md), its explicit source/route and migration
 manifests, and the accepted shared package at
