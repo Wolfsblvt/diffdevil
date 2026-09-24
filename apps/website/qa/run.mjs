@@ -419,7 +419,7 @@ check('manual uses the global search before navigation', (await page.locator('[d
 const manualGroups=await page.locator('[data-slw-group]').evaluateAll(nodes=>nodes.map(node=>node.getAttribute('data-slw-group')));
 check('manual sidebar has the accepted six groups and a named navigation landmark', await page.locator('nav[aria-label="Manual navigation"]').count()===1 && ['START','USE DIFFDEVIL','WRITE POLICY','UNDERSTAND','REFERENCE','HELP'].every(label=>manualGroups.includes(label)),manualGroups.join(' | '));
 await shot('docs');
-await go(pageUrl('recipes'));
+await go(pageUrl('changed-lines-and-raw-churn'));
 const examples=await page.locator('.sl-markdown-content a[href*="/playground/?example="]').evaluateAll(links=>links.map(link=>link.href));
 check('manual example links name exact catalogue entries and variants',examples.length>0&&examples.every(href=>{const url=new URL(href);return url.searchParams.has('example')&&url.searchParams.has('variant');}),examples.join(' '));
 
@@ -433,7 +433,10 @@ for (const path of ['/', '/playground/', '/examples/', '/extension/', '/app/', p
   check(`${path} at 1720: same lockup coordinate and cluster edge as the homepage`, shell.brand.left === wideShell.brand.left && shell.cluster.right === wideShell.cluster.right && shell.brand.left > 200, JSON.stringify(shell));
 }
 await go(pageUrl('cli'));
-check('manual at 1720 keeps a visible navigation rail without page overflow', await page.locator('nav[aria-label="Manual navigation"]').isVisible() && await overflowOf()<=0);
+await shot('docs-wide');
+const wideRailVisible = await page.locator('[data-slw-group="START"]').isVisible();
+const wideOverflow = await overflowOf();
+check('manual at 1720 keeps a visible navigation rail without page overflow', wideRailVisible && wideOverflow<=0, `rail visible: ${wideRailVisible}; overflow: ${wideOverflow}`);
 
 // ── no page-level horizontal overflow: every route, every qualified width ──
 // 640 × 2 device pixels is the layout a 1280 window has at 200 % zoom.

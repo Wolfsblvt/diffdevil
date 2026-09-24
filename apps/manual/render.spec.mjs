@@ -91,14 +91,19 @@ import {createHash} from 'node:crypto';
 import {validateProjection} from './migration.mjs';
 import {entries as legacyEntries} from '../website/docs-manifest.mjs';
 import {manualPages} from './manifest.mjs';
+import relatedQuestions from './related-questions.json' with {type:'json'};
 test('Every retained apex projection captures its actual old sections and maps to existing canonical headings',()=>{
  const state=JSON.parse(readFileSync(new URL('./authoring-state.json',import.meta.url),'utf8'));
- const targetAnchors=Object.fromEntries(manualPages.map(page=>[page.key,['_top',...anchorsOf(readFileSync(page.source,'utf8'))]]));
+ const targetAnchors=Object.fromEntries(manualPages.map(page=>{
+  const source=readFileSync(join(repositoryRoot,page.source),'utf8');
+  const generatedQuestions=relatedQuestions[page.key]?.length?'\n## Related questions\n':'';
+  return [page.key,['_top',...anchorsOf(source+generatedQuestions)]];
+ }));
  for(const [route,selection] of Object.entries(state.routes)){
   const capture=selection.projection;
   if(!capture)continue;
   const entry=legacyEntries.find(entry=>(entry.route??(entry.slug?`/docs/${entry.slug}/`:'/docs/'))===route);
-  assert.ok(entry&&existsSync(entry.source),route);
+  assert.ok(entry&&existsSync(join(repositoryRoot,entry.source)),route);
   const original=execFileSync('git',['show',`${capture.fromRef}:${entry.source}`],{cwd:repositoryRoot,encoding:'utf8'});
   const body=original.startsWith('---\n')?original.replace(/^---\n[\s\S]*?\n---\n/u,''):original.replace(/^#\s+.+?\r?\n(?:\r?\n)?/u,'');
   validateProjection(route,selection,{source:entry.source,digest:createHash('sha256').update(original).digest('hex'),anchors:['_top',...anchorsOf(body),...(entry.faq?.length?['related-questions']:[])],targetAnchors});

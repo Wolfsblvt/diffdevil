@@ -17,7 +17,7 @@ the [complete manual](manual/README.md); its canonical standalone
 | How do I restore, build, run or verify it? | [Development](DEVELOPMENT.md) |
 | Why were consequential choices made? | [Decisions](DECISIONS.md) |
 | Which behavior is exercised, and which is still unobserved? | [Qualification](qualification.md) |
-| How are releases prepared and published? | [Publication boundary](publication-boundary.md) and [release-source map](releases/README.md) |
+| How are releases prepared and published? | [Publication boundary](publication-boundary.md) and [release guidance](manual/help/releases.md) |
 | What owns the manual's prose, routes, examples and migration? | [Documentation design](documentation.md) and [manual application](../apps/manual/README.md) |
 | What owns wording and presentation? | [Branding](branding.md), [shared presenters](presentation.md) and [design source](../design/README.md) |
 | What owns the FAQ's stable identifiers and behavior? | [FAQ authoring contract](faq-authoring.md) |
@@ -75,7 +75,7 @@ replacing those sources or inventing service terms.
 ## Historical evidence
 
 [The reference map](reference/README.md) retains dated research, rationale and
-qualification. [Dated release accounts](releases/README.md) describe their release,
-not everything currently present on `main`. They remain available through exact
+qualification. The [v1.0.0 release account](releases/v1.0.0.md) describes that release,
+not everything currently present on `main`. Dated accounts remain available through exact
 repository links and the finite source resolver, but do not enter current manual
 navigation or default search as competing instructions.
