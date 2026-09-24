@@ -665,8 +665,8 @@ qualified source only until its publication boundary is separately satisfied.
 
 **Why.** These surfaces have a different product and licence boundary from the reusable engine and Actions. Naming `apps/` makes that boundary visible in the repository layout and gives application-owned files, including the playground's Worker configuration, a natural home beside their code.
 
-**Rejected.** Leaving application configuration at the repository root solely because the tool discovers it there by default; placing application code beside reusable package or Action implementation without a category boundary.
+**Rejected.** Splitting `apps/` into the starter categories `products/` (extension, website) and `services/` (App, playground). That would cut one licence boundary in two and force `apps/shared/`, which the website and the App both use, onto one side of it, for little benefit. Standard root folder names are suggestions, and this boundary is a good reason to differ. Also rejected: leaving application configuration at the repository root solely because the tool discovers it there by default, and placing application code beside reusable package or Action implementation without a category boundary.
 
 **Current consequence.** The playground Worker config lives at `apps/playground/wrangler.jsonc`; local Worker and dry-run commands select it explicitly. Its Worker name and deployed identity remain unchanged. The category reflects the application surfaces and their explicit licence map in [`LICENSES/README.md`](../LICENSES/README.md); it does not create another package or deployment boundary.
 
-**Sources.** [Component and licence map](../LICENSES/README.md).
+**Sources.** Wolf's question about root-level sprawl in [emergency-meeting #453](https://github.com/Wolfsblvt/emergency-meeting/issues/453#issuecomment-5822920184); Juno's [root check](https://github.com/Wolfsblvt/emergency-meeting/issues/453#issuecomment-5822992831); Wolf's decision in [#453](https://github.com/Wolfsblvt/emergency-meeting/issues/453#issuecomment-5823081536); [Component and licence map](../LICENSES/README.md).
