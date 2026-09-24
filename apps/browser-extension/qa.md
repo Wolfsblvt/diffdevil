@@ -52,7 +52,7 @@ Use an allowed Chrome profile with a disposable fixture repository. Cover both p
 
 Check real cookies, redirects, public API rate limits and inaccessible-base policy errors. Verify no raw patch persists in IndexedDB/local/sync storage; inspect actual report/path and policy cache contents, size eviction and browser quota failure. Restart the browser and worker, then repeat cached analysis and clear/reset. Check two tabs with different comparisons and policies; obsolete results must not cross scopes.
 
-At 80%, 100%, 125%, 150% and 200% browser zoom, exercise aggregate/file popovers near all viewport edges. Use keyboard only, Escape/outside/toggle dismissal, focus restoration, light/dark/automatic themes, forced colours and a screen reader. Confirm that native focus indicators remain legible when raw stats are dimmed.
+At 80%, 100%, 125%, 150% and 200% browser zoom, exercise aggregate/file popovers near all viewport edges. Use keyboard only, Escape/outside/toggle dismissal, focus restoration, light/dark/automatic themes, forced colours and a screen reader. Confirm that native focus indicators remain legible with GitHub’s raw counters hidden (default) and faint, that the failure marker restores them at full colour, and that the report becomes a bottom sheet below 544 px.
 
 For a writable repository, click only the handoff first and inspect the network: no label mutation should be sent. Make the actual selection yourself in GitHub, confirm the exact existing label, and confirm unrelated labels are untouched. Repeat without write permission and on a tab without a native picker. Never count a fixture DOM insertion as that provider acceptance.
 
