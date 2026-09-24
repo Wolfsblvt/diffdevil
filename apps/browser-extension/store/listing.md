@@ -4,7 +4,7 @@
 
 This file keeps the public Chrome Web Store text and provider-field values versioned with the repository. The Store dashboard receives these exact fields; it must not become an independent copy source. Publication still requires the accepted release gate and provider readback.
 
-The current visual asset set shows the superseded interface. Regenerate and review it from the accepted #522 design before any Store submission.
+The visual asset set renders the Extension Grammar v1 implementation against authored fixtures. Review it against the accepted in-place experience before any Store submission; regenerate it deliberately whenever the rendered interface changes.
 
 ## v1.0.0
 

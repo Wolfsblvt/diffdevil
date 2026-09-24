@@ -10,7 +10,7 @@ Record the accepted commit and base, Node/TypeScript/browser versions, package-l
 
 Store copy and upload bytes come from `apps/browser-extension/store/`. Run `npm run extension:store` to validate the committed asset manifest and copy the exact source-backed kit into `artifacts/browser-extension/store/`. Do not edit descriptions only in the Chrome Web Store dashboard and do not upload an image that has no committed counterpart.
 
-The committed visual set shows the superseded interface. Regenerate and review it from the accepted #522 design before any Store submission.
+The committed visual set renders the Extension Grammar v1 implementation against authored fixtures. Review it against the accepted in-place experience before any Store submission; regenerate it deliberately whenever the rendered interface changes.
 
 ## Browser release gate
 
