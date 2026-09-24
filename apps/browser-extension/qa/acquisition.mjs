@@ -13,7 +13,8 @@ const receipt = { kind: 'diffdevil.acquisition-qa/1', browser: browser.version()
 async function run(options = {}) {
   const page = await browser.newPage();
   try {
-    await page.setContent(options.changes ? githubChangesHtml(options.stale ? { ...comparison, base: 'd'.repeat(40) } : comparison) : githubHtml({ data: options.empty ? { ...comparison, changedFiles: 0, additions: 0, deletions: 0 } : comparison }));
+    const embeddedData = { ...comparison, ...(options.embeddedSummaries ? { embeddedSummaries: options.embeddedSummaries } : {}), ...(options.embeddedContents ? { embeddedContents: options.embeddedContents } : {}) };
+    await page.setContent(options.changes ? githubChangesHtml(options.stale ? { ...embeddedData, base: 'd'.repeat(40) } : embeddedData) : githubHtml({ data: options.empty ? { ...comparison, changedFiles: 0, additions: 0, deletions: 0 } : comparison }));
     await page.evaluate(({ options, comparison, diff, afterHtml, lateHtml }) => {
       window.transport = []; window.analysisInputs = []; window.fetches = [];
       const source = options.empty ? { ...comparison, changedFiles: 0, additions: 0, deletions: 0 } : comparison;
@@ -30,6 +31,8 @@ async function run(options = {}) {
         if (init.signal.aborted) throw init.signal.reason;
         let body = ''; let status = 200; let type = 'text/html'; let url = `https://github.com${path}`;
         if (path.endsWith('.diff')) {
+          // From a page context the diff route is a cross-origin redirect without CORS: the fetch itself fails.
+          if (options.corsFail) throw new TypeError('Failed to fetch');
           body = options.empty ? '' : diff; type = 'text/plain';
           if (options.htmlDiff) { body = '<html>Sign in</html>'; type = 'text/html'; url = 'https://github.com/login'; }
           if (options.oversize) body = 'x'.repeat(8 * 1024 * 1024 + 1);
@@ -47,7 +50,9 @@ async function run(options = {}) {
     return await page.evaluate(async changes => {
       let result; let error;
       try { result = await ExtensionQA.acquire(ExtensionQA.route(`https://github.com/example/cinder/pull/42/${changes ? 'changes' : 'files'}`), document, window.controller.signal); } catch (exception) { error = { code: exception.code, message: exception.message }; }
-      return { ok: Boolean(result), error, inputs: window.analysisInputs, requests: window.fetches, messages: window.transport };
+      const requestsBeforeVerify = window.fetches.length; let verified;
+      if (result?.verify) { try { verified = await result.verify(); } catch (exception) { verified = { error: exception.code }; } }
+      return { ok: Boolean(result), error, inputs: window.analysisInputs, requests: window.fetches, requestsBeforeVerify, verified, messages: window.transport };
     }, Boolean(options.changes));
   } finally { await page.close(); }
 }
@@ -61,7 +66,10 @@ try {
   await check('Stale embedded /changes base cannot select policy or submit analysis', async () => { const result = await run({ changes: true, stale: true }); assert.equal(result.error.code, 'COMPARISON_MOVED'); assert.equal(result.inputs.length, 0); assert.ok(!result.requests.some(request => request.path.includes('/blob/'))); });
   await check('Moved React /changes comparison cannot submit analysis', async () => { const result = await run({ changes: true, moved: true }); assert.equal(result.error.code, 'COMPARISON_MOVED'); assert.equal(result.inputs.length, 0); });
   await check('React /changes moving after policy lookup cannot submit analysis', async () => { const result = await run({ changes: true, lateMoved: true }); assert.equal(result.error.code, 'COMPARISON_MOVED'); assert.equal(result.inputs.length, 0); assert.ok(result.requests.some(request => request.path.includes('/blob/'))); });
-  await check('Cache hit still rechecks the comparison but does not reacquire raw source', async () => { const result = await run({ cached: true, cachedPolicy: true }); assert.equal(result.ok, true); assert.equal(result.requests.length, 1); assert.equal(result.inputs[0].acquisition, undefined); });
+  await check('Cache hit reattaches before any request, then confirms the same comparison with one fresh read', async () => { const result = await run({ cached: true, cachedPolicy: true }); assert.equal(result.ok, true); assert.equal(result.requestsBeforeVerify, 0); assert.equal(result.requests.length, 1); assert.equal(result.inputs[0].acquisition, undefined); assert.deepEqual(result.verified, { moved: false }); });
+  await check('Cache hit on a moved React /changes head reports the confirmed comparison instead of a stale result', async () => { const result = await run({ changes: true, cached: true, cachedPolicy: true, moved: true }); assert.equal(result.ok, true); assert.equal(result.requestsBeforeVerify, 0); assert.equal(result.verified.moved, true); assert.equal(result.verified.observed.head, 'c'.repeat(40)); });
+  await check('Signed-in private /changes acquires from the page’s own summaries and embedded contents when the diff route cannot be fetched', async () => { const result = await run({ changes: true, corsFail: true }); assert.equal(result.ok, true); const acquisition = result.inputs[0].acquisition; assert.equal(acquisition.format, 'github-files'); assert.equal(acquisition.files.length, 2); assert.deepEqual(acquisition.files.map(file => file.filename), ['src/cache.ts', 'src/renderer.ts']); assert.equal(acquisition.files[0].status, 'modified'); assert.equal(acquisition.files[0].additions, 30); assert.ok(acquisition.files.every(file => file.patch === undefined)); assert.equal(acquisition.complete, true); assert.ok(result.messages.includes('source.public')); assert.ok(!result.requests.some(request => request.path.endsWith('/pull/42'))); });
+  await check('Embedded diff lines become a patch the engine can verify against the summary counters', async () => { const contents = [{ pathDigest: null, path: 'src/cache.ts', diffLines: [{ type: 'HUNK', text: '@@ -1,3 +1,4 @@' }, { type: 'DELETION', text: 'old' }, { type: 'ADDITION', text: 'new' }, { type: 'CONTEXT', text: 'keep' }, { type: 'ADDITION', text: 'extra' }, { type: 'CONTEXT', text: 'tail' }] }]; const result = await run({ changes: true, corsFail: true, embeddedSummaries: [['src/cache.ts', 2, 1, 'MODIFIED'], ['src/renderer.ts', 130, 96, 'RENAMED', 'src/old.ts']], embeddedContents: contents }); assert.equal(result.ok, true); const files = result.inputs[0].acquisition.files; assert.equal(files[0].patch, '@@ -1,3 +1,4 @@\n-old\n+new\n keep\n+extra\n tail\n'); assert.equal(files[1].patch, undefined); assert.equal(files[1].status, 'renamed'); assert.equal(files[1].previous_filename, 'src/old.ts'); });
   await check('A missing policy is absent only after independent exact-base access proof', async () => { const result = await run({ missingPolicy: true }); assert.equal(result.inputs[0].policy.status, 'absent'); assert.ok(result.requests.some(request => request.path.endsWith(`/commit/${comparison.base}`))); });
   await check('A private/inaccessible-base 404 is unavailable, not an absent policy', async () => { const result = await run({ missingPolicy: true, inaccessibleBase: true }); assert.equal(result.inputs[0].policy.status, 'unavailable'); });
   await check('Truncated blob payload is never accepted as a complete policy', async () => { const result = await run({ truncatedPolicy: true }); assert.equal(result.inputs[0].policy.status, 'unavailable'); });

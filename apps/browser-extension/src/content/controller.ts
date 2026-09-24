@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-import type { HumanReportView } from '@wolfsblvt/diffdevil/browser';
+import type { BrowserComparison, HumanReportView } from '@wolfsblvt/diffdevil/browser';
 import { DEFAULTS, type Settings } from '../shared/catalogue.js';
 import { request as defaultRequest, type Packet } from '../shared/protocol.js';
 import { SETTINGS_KEY } from '../shared/settings-key.js';
@@ -166,6 +166,26 @@ export function startContent(dependencies: ContentDependencies = {}): { refresh:
     });
     observer.observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-current-head-oid', 'data-base-ref-oid', 'value'] });
   }
+  /** A cached reattachment was confirmed against a fresh read; when the head moved, keep the old result visible and read the confirmed comparison. */
+  async function verified(revision: number, signal: AbortSignal, verify: NonNullable<Awaited<ReturnType<typeof acquire>>['verify']>, scope: { repository: string; pullRequest: number; path: string }): Promise<void> {
+    let outcome: Awaited<ReturnType<typeof verify>>;
+    try { outcome = await verify(); } catch { return; }
+    if (revision !== generation || signal.aborted || !outcome.moved) return;
+    popover.close(false); for (const item of mounted.values()) item.stale(outcome.observed?.head ?? '');
+    if (!outcome.observed) { void refresh(true); return; }
+    acquiring = true;
+    try {
+      const result = await acquire(scope, document, signal, { confirmed: outcome.observed });
+      if (revision !== generation || signal.aborted || !current()) return;
+      clear(); fileViews.clear(); waiting.clear(); failed.clear();
+      packet = result.packet; settings = result.settings;
+    } catch (error) {
+      if (revision !== generation || signal.aborted) return;
+      clear(); fileViews.clear(); waiting.clear(); failed.clear(); packet = undefined;
+      failure = { code: (error as { code?: string }).code ?? 'ACQUISITION_FAILED', message: error instanceof Error ? error.message : 'Source is unavailable.' };
+      console.error('[diffdevil] acquisition failed', failure);
+    } finally { if (revision === generation) { acquiring = false; schedule(); } }
+  }
   async function refresh(force: boolean): Promise<void> {
     if (stopped) return;
     const scope = current();
@@ -187,6 +207,7 @@ export function startContent(dependencies: ContentDependencies = {}): { refresh:
       if (revision !== generation || signal.aborted || !current()) return;
       clear(); fileViews.clear(); waiting.clear(); failed.clear();
       packet = result.packet; settings = result.settings; failedIdentity = '';
+      if (result.verify) void verified(revision, signal, result.verify, scope);
     } catch (error) {
       if (revision !== generation || signal.aborted) return;
       clear(); fileViews.clear(); waiting.clear(); failed.clear();
