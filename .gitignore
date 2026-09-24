@@ -12,7 +12,8 @@ coverage/
 # Repository-local artifacts and editor noise
 # Leitsatz: product-owned generated output
 /artifacts/
-# Generated website docs collection (tools/website-docs.mjs) and Astro type output
+# Retired generated apex collection: remove stale local output on the next projection.
+# Current FAQ/source provenance and Astro type output are also generated.
 apps/website/src/content/docs/
 apps/website/src/content/sidebar.json
 apps/website/src/generated/faq.md
@@ -45,3 +46,5 @@ apps/website/src/generated/source-targets.json
 
 # The source-only manual toolchain retains its resolved lock with qualification evidence.
 apps/manual/package-lock.json
+
+apps/website/src/generated/source-provenance.json

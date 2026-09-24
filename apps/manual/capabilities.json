@@ -3,7 +3,7 @@
     "state": "source-admitted",
     "source": "apps/browser-extension/README.md",
     "admittedAt": "b1bd2f7212874039a413216cf73edc5192962a83",
-    "remaining": "Store coordinate and public release qualification are separate."
+    "remaining": "Initial extension source is admitted; corrected functional PR #45 at 59f67c32db06db4a7bf8e3002866d600732f6789 is a separate open candidate. Signed-in aggregate/per-file/report witness, current-main integration, final in-place co-design and Store publication are not established."
   },
   "store-coordinate": {
     "state": "unobserved",
@@ -13,7 +13,7 @@
   "dashboard-controls": {
     "state": "active-owner-co-design",
     "source": "docs/integration/github-app.md",
-    "remaining": "Final wording, labels, composition, user routes, controls, interaction sequence and complete first journey remain Wolf + Nyxara co-design. Backend functionality does not select them."
+    "remaining": "Final wording, labels, composition, user routes, controls, interaction sequence and complete first journey remain Wolf + Nyxara co-design. Backend functionality does not select them. The corrected non-visual authorization/session PR #54 at 2a696ad0e5fd97db3b3f324a42881feaf92c55c2 remains an open candidate, not the deployed dashboard; session lifetime and retained consent-actor identity remain owner choices."
   },
   "official-app-coordinate": {
     "state": "configured-not-public",
@@ -23,7 +23,7 @@
   "live-service-qualification": {
     "state": "contained-backend-canary",
     "source": "docs/DIRECTION.md",
-    "remaining": "A deployed one-repository backend result exists; general admission, complete authenticated administration, history, export, deletion, restore and public release still need qualification."
+    "remaining": "The admission/settings backend was deployed and a contained canary was observed. One separate repository admission has execution on and history off; an ordinary configured PR result is still unobserved. Public HTTP ingress, authenticated administration, wider recovery/history/export/deletion/restore and public release remain separate."
   },
   "operator-runbook": {
     "state": "source-available-partial-qualification",

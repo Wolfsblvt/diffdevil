@@ -1890,13 +1890,235 @@
       "target": "schemas-and-compatibility"
     },
     "/docs/github-app/architecture/": {
-      "target": "managed-app"
+      "target": "managed-app",
+      "projection": {
+        "source": "docs/integration/github-app.md",
+        "fromRef": "9e415435321382ab6eb7966ec6d7f4d7dc5598dd",
+        "fromSourceSha256": "f82a6e04a6c1112eba04d4ade16ffef15bfa8c9873b6a39dca7b1b9e60422b4c",
+        "oldAnchors": [
+          "_top",
+          "meaning",
+          "product-and-adoption-contract",
+          "configuration-and-dashboard",
+          "native-github-checks-are-selected-functionality",
+          "service-and-repository-boundaries",
+          "first-operating-adapter-and-portability",
+          "shared-engine-worker-prerequisite",
+          "delivery-flow",
+          "webhook-admission-and-authentication",
+          "permissions-and-current-access",
+          "delivery-identity-and-per-pr-serialization",
+          "trusted-policy-and-freshness",
+          "comment-ownership-and-migration",
+          "data-history-and-commercial-boundaries",
+          "resource-cost-and-failure-boundaries",
+          "qualification-and-completion",
+          "current-standing",
+          "provider-references",
+          "related-questions"
+        ],
+        "anchors": {
+          "_top": {
+            "page": "managed-app",
+            "anchor": "_top"
+          },
+          "meaning": {
+            "page": "managed-app",
+            "anchor": "_top"
+          },
+          "product-and-adoption-contract": {
+            "page": "managed-app",
+            "anchor": "_top"
+          },
+          "configuration-and-dashboard": {
+            "page": "managed-app",
+            "anchor": "your-policy-remains-yours"
+          },
+          "native-github-checks-are-selected-functionality": {
+            "page": "managed-app",
+            "anchor": "what-happens-on-a-pull-request"
+          },
+          "service-and-repository-boundaries": {
+            "page": "managed-app",
+            "anchor": "coexist-with-your-other-tools"
+          },
+          "first-operating-adapter-and-portability": {
+            "page": "self-host-app",
+            "anchor": "_top"
+          },
+          "shared-engine-worker-prerequisite": {
+            "page": "self-host-app",
+            "anchor": "start-from-a-complete-source-checkout"
+          },
+          "delivery-flow": {
+            "page": "managed-app",
+            "anchor": "what-happens-on-a-pull-request"
+          },
+          "webhook-admission-and-authentication": {
+            "page": "self-host-app",
+            "anchor": "register-the-intended-github-app"
+          },
+          "permissions-and-current-access": {
+            "page": "security-and-data",
+            "anchor": "authorization-and-writes-in-the-app"
+          },
+          "delivery-identity-and-per-pr-serialization": {
+            "page": "self-host-app",
+            "anchor": "observe-and-repair-by-stage"
+          },
+          "trusted-policy-and-freshness": {
+            "page": "managed-service",
+            "anchor": "inspect-the-effective-policy"
+          },
+          "comment-ownership-and-migration": {
+            "page": "managed-service",
+            "anchor": "move-between-actions-and-the-app"
+          },
+          "data-history-and-commercial-boundaries": {
+            "page": "managed-app",
+            "anchor": "history-without-a-repository-archive"
+          },
+          "resource-cost-and-failure-boundaries": {
+            "page": "self-host-app",
+            "anchor": "give-each-provider-resource-its-real-job"
+          },
+          "qualification-and-completion": {
+            "page": "managed-app",
+            "anchor": "availability-and-release-boundaries"
+          },
+          "current-standing": {
+            "page": "managed-app",
+            "anchor": "availability-and-release-boundaries"
+          },
+          "provider-references": {
+            "page": "technical-project-docs",
+            "anchor": "operate-an-application"
+          },
+          "related-questions": {
+            "page": "managed-app",
+            "anchor": "related-questions"
+          }
+        }
+      }
     },
     "/docs/setup/app/": {
-      "target": "managed-service"
+      "target": "managed-service",
+      "projection": {
+        "source": "docs/setup/app.md",
+        "fromRef": "9e415435321382ab6eb7966ec6d7f4d7dc5598dd",
+        "fromSourceSha256": "f68b20c83bc6ddf1642a3fa5dc8cb0578f4f7f857d3091279071fca5a20c7f8b",
+        "oldAnchors": [
+          "_top",
+          "meaning",
+          "identify-the-service-and-target",
+          "explain-the-selected-behavior",
+          "complete-the-actual-installation",
+          "configure-preview-and-enable",
+          "reconcile-existing-writers",
+          "verify-one-useful-managed-result",
+          "self-hosting",
+          "return-the-result",
+          "deeper-reference"
+        ],
+        "anchors": {
+          "_top": {
+            "page": "managed-service",
+            "anchor": "_top"
+          },
+          "meaning": {
+            "page": "managed-service",
+            "anchor": "_top"
+          },
+          "identify-the-service-and-target": {
+            "page": "managed-service",
+            "anchor": "establish-the-account-and-repository"
+          },
+          "explain-the-selected-behavior": {
+            "page": "managed-service",
+            "anchor": "inspect-the-effective-policy"
+          },
+          "complete-the-actual-installation": {
+            "page": "managed-service",
+            "anchor": "separate-installation-enablement-and-history"
+          },
+          "configure-preview-and-enable": {
+            "page": "managed-service",
+            "anchor": "preview-then-enable-the-intended-behavior"
+          },
+          "reconcile-existing-writers": {
+            "page": "managed-service",
+            "anchor": "move-between-actions-and-the-app"
+          },
+          "verify-one-useful-managed-result": {
+            "page": "managed-service",
+            "anchor": "verify-a-real-pull-request-result"
+          },
+          "self-hosting": {
+            "page": "self-host-app",
+            "anchor": "_top"
+          },
+          "return-the-result": {
+            "page": "managed-service",
+            "anchor": "verify-a-real-pull-request-result"
+          },
+          "deeper-reference": {
+            "page": "managed-app",
+            "anchor": "_top"
+          }
+        }
+      }
     },
     "/docs/github-app/self-hosting/": {
-      "target": "self-host-app"
+      "target": "self-host-app",
+      "projection": {
+        "source": "apps/github-app/README.md",
+        "fromRef": "9e415435321382ab6eb7966ec6d7f4d7dc5598dd",
+        "fromSourceSha256": "69c10e2d54cdbea0c81a67953764db72dbf15331d1ea60f84b0587e56466e20f",
+        "oldAnchors": [
+          "_top",
+          "meaning",
+          "boundary",
+          "local-route",
+          "migrations-recovery-and-data-handling",
+          "operator-posture",
+          "registration-and-credential-helper",
+          "related-questions"
+        ],
+        "anchors": {
+          "_top": {
+            "page": "self-host-app",
+            "anchor": "_top"
+          },
+          "meaning": {
+            "page": "self-host-app",
+            "anchor": "_top"
+          },
+          "boundary": {
+            "page": "self-host-app",
+            "anchor": "_top"
+          },
+          "local-route": {
+            "page": "self-host-app",
+            "anchor": "start-from-a-complete-source-checkout"
+          },
+          "migrations-recovery-and-data-handling": {
+            "page": "self-host-app",
+            "anchor": "initialize-and-migrate-the-database"
+          },
+          "operator-posture": {
+            "page": "self-host-app",
+            "anchor": "qualify-before-enabling-repositories"
+          },
+          "registration-and-credential-helper": {
+            "page": "self-host-app",
+            "anchor": "register-the-intended-github-app"
+          },
+          "related-questions": {
+            "page": "self-host-app",
+            "anchor": "related-questions"
+          }
+        }
+      }
     },
     "/docs/policies-and-detail/syntax/": {
       "target": "detail-language"
@@ -1914,13 +2136,667 @@
       "target": "detail-language"
     },
     "/docs/github-app/privacy-and-data/": {
-      "target": "security-and-data"
+      "target": "security-and-data",
+      "projection": {
+        "source": "docs/PRIVACY-AND-DATA.md",
+        "fromRef": "9e415435321382ab6eb7966ec6d7f4d7dc5598dd",
+        "fromSourceSha256": "736d3478e88c0b8a55a77f582800eb7c6549e7076b1acf9853b20978daf4dbb8",
+        "oldAnchors": [
+          "_top",
+          "meaning",
+          "three-distinct-lifetimes",
+          "operational-records-without-history-opt-in",
+          "persistent-history-is-an-explicit-installation-choice",
+          "retained-measurement-projection",
+          "data-excluded-from-analysis-history",
+          "configuration-is-not-collected-repository-history",
+          "contextual-detail-stays-on-github",
+          "statistics-describe-measurements-not-people",
+          "retention-deletion-and-recovery",
+          "offboarding-transitions",
+          "public-playground",
+          "implementation-evidence",
+          "related-questions"
+        ],
+        "anchors": {
+          "_top": {
+            "page": "security-and-data",
+            "anchor": "_top"
+          },
+          "meaning": {
+            "page": "security-and-data",
+            "anchor": "_top"
+          },
+          "three-distinct-lifetimes": {
+            "page": "security-and-data",
+            "anchor": "recovery-data-is-not-history-consent"
+          },
+          "operational-records-without-history-opt-in": {
+            "page": "security-and-data",
+            "anchor": "recovery-data-is-not-history-consent"
+          },
+          "persistent-history-is-an-explicit-installation-choice": {
+            "page": "security-and-data",
+            "anchor": "opt-in-quantitative-history"
+          },
+          "retained-measurement-projection": {
+            "page": "security-and-data",
+            "anchor": "opt-in-quantitative-history"
+          },
+          "data-excluded-from-analysis-history": {
+            "page": "security-and-data",
+            "anchor": "opt-in-quantitative-history"
+          },
+          "configuration-is-not-collected-repository-history": {
+            "page": "managed-service",
+            "anchor": "inspect-the-effective-policy"
+          },
+          "contextual-detail-stays-on-github": {
+            "page": "security-and-data",
+            "anchor": "opt-in-quantitative-history"
+          },
+          "statistics-describe-measurements-not-people": {
+            "page": "security-and-data",
+            "anchor": "opt-in-quantitative-history"
+          },
+          "retention-deletion-and-recovery": {
+            "page": "security-and-data",
+            "anchor": "retention-deletion-and-offboarding"
+          },
+          "offboarding-transitions": {
+            "page": "security-and-data",
+            "anchor": "retention-deletion-and-offboarding"
+          },
+          "public-playground": {
+            "page": "security-and-data",
+            "anchor": "public-playground"
+          },
+          "implementation-evidence": {
+            "page": "technical-project-docs",
+            "anchor": "understand-evidence-and-releases"
+          },
+          "related-questions": {
+            "page": "security-and-data",
+            "anchor": "related-questions"
+          }
+        }
+      }
     },
     "/docs/security/": {
-      "target": "security-and-data"
+      "target": "security-and-data",
+      "projection": {
+        "source": "SECURITY.md",
+        "fromRef": "9e415435321382ab6eb7966ec6d7f4d7dc5598dd",
+        "fromSourceSha256": "60bb3a32c833d3efc656e2369e78f3db6c5ce90f12e6cf9c3b8ae7e3826b4700",
+        "oldAnchors": [
+          "_top",
+          "meaning",
+          "report-privately"
+        ],
+        "anchors": {
+          "_top": {
+            "page": "security-and-data",
+            "anchor": "_top"
+          },
+          "meaning": {
+            "page": "security-and-data",
+            "anchor": "_top"
+          },
+          "report-privately": {
+            "page": "security-and-data",
+            "anchor": "report-a-vulnerability"
+          }
+        }
+      }
     },
     "/docs/releases/": {
       "target": "releases"
+    },
+    "/docs/": {
+      "target": "what-is-diffdevil",
+      "projection": {
+        "source": "docs/README.md",
+        "fromRef": "9e415435321382ab6eb7966ec6d7f4d7dc5598dd",
+        "fromSourceSha256": "927b03124b84064fd57ff1450c300d486f99462a1ce722ff011dbdfdb8c5a531",
+        "oldAnchors": [
+          "_top",
+          "meaning",
+          "start-with-a-task",
+          "product-and-repository",
+          "use-diffdevil",
+          "detail-language",
+          "examples",
+          "dated-evidence",
+          "related-questions"
+        ],
+        "anchors": {
+          "_top": {
+            "page": "what-is-diffdevil",
+            "anchor": "_top"
+          },
+          "meaning": {
+            "page": "what-is-diffdevil",
+            "anchor": "_top"
+          },
+          "start-with-a-task": {
+            "page": "what-is-diffdevil",
+            "anchor": "get-a-first-result"
+          },
+          "product-and-repository": {
+            "page": "technical-project-docs",
+            "anchor": "develop-or-contribute"
+          },
+          "use-diffdevil": {
+            "page": "surfaces",
+            "anchor": "_top"
+          },
+          "detail-language": {
+            "page": "detail-language",
+            "anchor": "_top"
+          },
+          "examples": {
+            "page": "try-public-pull-request",
+            "anchor": "_top"
+          },
+          "dated-evidence": {
+            "page": "technical-project-docs",
+            "anchor": "understand-evidence-and-releases"
+          },
+          "related-questions": {
+            "page": "what-is-diffdevil",
+            "anchor": "related-questions"
+          }
+        }
+      }
+    },
+    "/docs/setup/actions/": {
+      "target": "label-pull-requests",
+      "projection": {
+        "source": "docs/setup/actions.md",
+        "fromRef": "9e415435321382ab6eb7966ec6d7f4d7dc5598dd",
+        "fromSourceSha256": "db9b307fbdcb6f24cd80aa70ba8fae298a38d8ee9308083e70d284d6fa7bcc0c",
+        "oldAnchors": [
+          "_top",
+          "meaning",
+          "establish-the-target-and-existing-behavior",
+          "add-or-adapt-the-applying-workflow",
+          "select-existing-policy-explicitly",
+          "add-read-only-analysis-where-that-is-the-intended-responsibility",
+          "activate-and-verify",
+          "return-the-result",
+          "deeper-reference"
+        ],
+        "anchors": {
+          "_top": {
+            "page": "label-pull-requests",
+            "anchor": "_top"
+          },
+          "meaning": {
+            "page": "label-pull-requests",
+            "anchor": "_top"
+          },
+          "establish-the-target-and-existing-behavior": {
+            "page": "label-pull-requests",
+            "anchor": "add-the-complete-workflow"
+          },
+          "add-or-adapt-the-applying-workflow": {
+            "page": "label-pull-requests",
+            "anchor": "add-the-complete-workflow"
+          },
+          "select-existing-policy-explicitly": {
+            "page": "label-pull-requests",
+            "anchor": "customize-only-when-you-have-a-different-question"
+          },
+          "add-read-only-analysis-where-that-is-the-intended-responsibility": {
+            "page": "github-actions",
+            "anchor": "_top"
+          },
+          "activate-and-verify": {
+            "page": "label-pull-requests",
+            "anchor": "make-it-active-and-inspect-one-result"
+          },
+          "return-the-result": {
+            "page": "label-pull-requests",
+            "anchor": "make-it-active-and-inspect-one-result"
+          },
+          "deeper-reference": {
+            "page": "github-actions-reference",
+            "anchor": "_top"
+          }
+        }
+      }
+    },
+    "/docs/setup/cli/": {
+      "target": "analyze-local-changes",
+      "projection": {
+        "source": "docs/setup/cli.md",
+        "fromRef": "9e415435321382ab6eb7966ec6d7f4d7dc5598dd",
+        "fromSourceSha256": "458ff328453a0e6e5c800f6518d8157fa2b0f5156365c2338a8f47156515dad6",
+        "oldAnchors": [
+          "_top",
+          "meaning",
+          "read-the-existing-setup",
+          "obtain-a-usable-cli",
+          "restricted-or-temporary-harnesses",
+          "preserve-the-projects-policy",
+          "verify-a-useful-local-result",
+          "connect-other-capabilities-only-when-selected",
+          "return-the-result",
+          "deeper-reference"
+        ],
+        "anchors": {
+          "_top": {
+            "page": "analyze-local-changes",
+            "anchor": "_top"
+          },
+          "meaning": {
+            "page": "analyze-local-changes",
+            "anchor": "_top"
+          },
+          "read-the-existing-setup": {
+            "page": "analyze-local-changes",
+            "anchor": "install-the-executable"
+          },
+          "obtain-a-usable-cli": {
+            "page": "analyze-local-changes",
+            "anchor": "install-the-executable"
+          },
+          "restricted-or-temporary-harnesses": {
+            "page": "coding-agent",
+            "anchor": "offline-and-restricted-harnesses"
+          },
+          "preserve-the-projects-policy": {
+            "page": "configure-policy",
+            "anchor": "_top"
+          },
+          "verify-a-useful-local-result": {
+            "page": "analyze-local-changes",
+            "anchor": "run-the-small-patch"
+          },
+          "connect-other-capabilities-only-when-selected": {
+            "page": "surfaces",
+            "anchor": "_top"
+          },
+          "return-the-result": {
+            "page": "analyze-local-changes",
+            "anchor": "verify-what-the-report-describes"
+          },
+          "deeper-reference": {
+            "page": "cli-reference",
+            "anchor": "_top"
+          }
+        }
+      }
+    },
+    "/docs/setup/everything/": {
+      "target": "surfaces",
+      "projection": {
+        "source": "docs/setup/everything.md",
+        "fromRef": "9e415435321382ab6eb7966ec6d7f4d7dc5598dd",
+        "fromSourceSha256": "14f3ac7b08aa5f640d532dee7b4383369bacf3f5c663400a536fda94f0ed974f",
+        "oldAnchors": [
+          "_top",
+          "meaning",
+          "understand-the-user-and-project",
+          "choose-the-github-route-from-the-actual-context",
+          "make-the-cli-available",
+          "keep-one-deliberate-repository-policy",
+          "install-the-persistent-skill-at-user-scope",
+          "complete-the-chosen-github-setup",
+          "verify-and-return-the-joined-result"
+        ],
+        "anchors": {
+          "_top": {
+            "page": "surfaces",
+            "anchor": "_top"
+          },
+          "meaning": {
+            "page": "surfaces",
+            "anchor": "_top"
+          },
+          "understand-the-user-and-project": {
+            "page": "surfaces",
+            "anchor": "choose-the-job-you-want-to-own"
+          },
+          "choose-the-github-route-from-the-actual-context": {
+            "page": "surfaces",
+            "anchor": "combine-readers-freely-choose-writers-deliberately"
+          },
+          "make-the-cli-available": {
+            "page": "analyze-local-changes",
+            "anchor": "install-the-executable"
+          },
+          "keep-one-deliberate-repository-policy": {
+            "page": "configure-policy",
+            "anchor": "_top"
+          },
+          "install-the-persistent-skill-at-user-scope": {
+            "page": "coding-agent",
+            "anchor": "install-the-complete-skill-not-a-pasted-introduction"
+          },
+          "complete-the-chosen-github-setup": {
+            "page": "surfaces",
+            "anchor": "combine-readers-freely-choose-writers-deliberately"
+          },
+          "verify-and-return-the-joined-result": {
+            "page": "surfaces",
+            "anchor": "combine-readers-freely-choose-writers-deliberately"
+          }
+        }
+      }
+    },
+    "/docs/browser-extension/": {
+      "target": "browser-extension",
+      "projection": {
+        "source": "apps/browser-extension/README.md",
+        "fromRef": "9e415435321382ab6eb7966ec6d7f4d7dc5598dd",
+        "fromSourceSha256": "5e6e6507e9f928635cb9aece39d2d2d89fc7d3fec6fc65b6d460df1d56c3ee94",
+        "oldAnchors": [
+          "_top",
+          "build-and-load",
+          "what-appears-on-a-pull-request",
+          "your-settings",
+          "policy-and-labels",
+          "local-and-app-standing",
+          "data-and-permissions",
+          "verification-and-distribution",
+          "related-questions"
+        ],
+        "anchors": {
+          "_top": {
+            "page": "browser-extension",
+            "anchor": "_top"
+          },
+          "build-and-load": {
+            "page": "browser-extension",
+            "anchor": "install-and-update"
+          },
+          "what-appears-on-a-pull-request": {
+            "page": "browser-extension",
+            "anchor": "read-the-pull-request-view"
+          },
+          "your-settings": {
+            "page": "browser-extension",
+            "anchor": "find-and-change-a-setting"
+          },
+          "policy-and-labels": {
+            "page": "browser-extension",
+            "anchor": "choose-which-policy-you-are-seeing"
+          },
+          "local-and-app-standing": {
+            "page": "browser-extension",
+            "anchor": "interpret-a-virtual-band-correctly"
+          },
+          "data-and-permissions": {
+            "page": "browser-extension",
+            "anchor": "permissions-and-limitations"
+          },
+          "verification-and-distribution": {
+            "page": "browser-extension",
+            "anchor": "install-and-update"
+          },
+          "related-questions": {
+            "page": "browser-extension",
+            "anchor": "related-questions"
+          }
+        }
+      }
+    },
+    "/docs/browser-extension/integration/": {
+      "target": "browser-extension",
+      "projection": {
+        "source": "docs/integration/browser-extension.md",
+        "fromRef": "9e415435321382ab6eb7966ec6d7f4d7dc5598dd",
+        "fromSourceSha256": "8f4921936dc9941dd72324e210fd8c4357e602aa9d219bfb607572a52518d998",
+        "oldAnchors": [
+          "_top",
+          "meaning",
+          "public-entry-point",
+          "policy-and-projection",
+          "build-licence-and-verification",
+          "related-questions"
+        ],
+        "anchors": {
+          "_top": {
+            "page": "browser-extension",
+            "anchor": "_top"
+          },
+          "meaning": {
+            "page": "browser-extension",
+            "anchor": "_top"
+          },
+          "public-entry-point": {
+            "page": "browser-extension",
+            "anchor": "install-and-update"
+          },
+          "policy-and-projection": {
+            "page": "browser-extension",
+            "anchor": "choose-which-policy-you-are-seeing"
+          },
+          "build-licence-and-verification": {
+            "page": "browser-extension",
+            "anchor": "permissions-and-limitations"
+          },
+          "related-questions": {
+            "page": "browser-extension",
+            "anchor": "related-questions"
+          }
+        }
+      }
+    },
+    "/docs/agents/agent-integration/": {
+      "target": "coding-agent"
+    },
+    "/docs/agents/skill/": {
+      "target": "coding-agent",
+      "projection": {
+        "source": "skills/diffdevil/SKILL.md",
+        "fromRef": "9e415435321382ab6eb7966ec6d7f4d7dc5598dd",
+        "fromSourceSha256": "1b66467dd21a50559abd3ec8fcc22c17c7249fb4a4f662e7662738e74df1b924",
+        "oldAnchors": [
+          "_top",
+          "diffdevil",
+          "check-the-skill-version",
+          "put-measured-changes-to-work",
+          "select-the-comparison",
+          "read-and-use-results",
+          "work-with-policy-and-effects",
+          "go-deeper-at-the-relevant-operation"
+        ],
+        "anchors": {
+          "_top": {
+            "page": "coding-agent",
+            "anchor": "_top"
+          },
+          "diffdevil": {
+            "page": "coding-agent",
+            "anchor": "_top"
+          },
+          "check-the-skill-version": {
+            "page": "coding-agent",
+            "anchor": "update-without-breaking-a-working-installation"
+          },
+          "put-measured-changes-to-work": {
+            "page": "coding-agent",
+            "anchor": "use-it-in-ordinary-work"
+          },
+          "select-the-comparison": {
+            "page": "analyze-local-changes",
+            "anchor": "verify-what-the-report-describes"
+          },
+          "read-and-use-results": {
+            "page": "coding-agent",
+            "anchor": "choose-output-and-effect-authority"
+          },
+          "work-with-policy-and-effects": {
+            "page": "coding-agent",
+            "anchor": "choose-output-and-effect-authority"
+          },
+          "go-deeper-at-the-relevant-operation": {
+            "page": "coding-agent",
+            "anchor": "use-it-in-ordinary-work"
+          }
+        }
+      }
+    },
+    "/docs/agents/setup/": {
+      "target": "coding-agent"
+    },
+    "/docs/setup/skill/": {
+      "target": "coding-agent",
+      "projection": {
+        "source": "docs/setup/skill.md",
+        "fromRef": "9e415435321382ab6eb7966ec6d7f4d7dc5598dd",
+        "fromSourceSha256": "03f323bf2c93e589f12842a957fdeec811425ae8e2cb333abb52fc9a6f0be171",
+        "oldAnchors": [
+          "_top",
+          "related-questions"
+        ],
+        "anchors": {
+          "_top": {
+            "page": "coding-agent",
+            "anchor": "_top"
+          },
+          "related-questions": {
+            "page": "coding-agent",
+            "anchor": "related-questions"
+          }
+        }
+      }
+    },
+    "/docs/actions/github-api/": {
+      "target": "source-identity-trust-and-mutation",
+      "projection": {
+        "source": "docs/integration/github-api.md",
+        "fromRef": "9e415435321382ab6eb7966ec6d7f4d7dc5598dd",
+        "fromSourceSha256": "eb5fc40ccdf890a78158ecc3ed0db7232c85ee9e31fee16579e0b18dab14ab61",
+        "oldAnchors": [
+          "_top",
+          "meaning",
+          "read-pull-request-evidence",
+          "select-trusted-policy-separately",
+          "apply-explicitly-and-inspect-the-complete-result",
+          "labels-and-definitions",
+          "owned-comments",
+          "qualification-boundary",
+          "related-questions"
+        ],
+        "anchors": {
+          "_top": {
+            "page": "source-identity-trust-and-mutation",
+            "anchor": "_top"
+          },
+          "meaning": {
+            "page": "source-identity-trust-and-mutation",
+            "anchor": "_top"
+          },
+          "read-pull-request-evidence": {
+            "page": "source-identity-trust-and-mutation",
+            "anchor": "identify-the-comparison-not-just-the-repository"
+          },
+          "select-trusted-policy-separately": {
+            "page": "source-identity-trust-and-mutation",
+            "anchor": "treat-proposed-changes-as-data-not-trusted-policy"
+          },
+          "apply-explicitly-and-inspect-the-complete-result": {
+            "page": "reports-plans-and-apply",
+            "anchor": "_top"
+          },
+          "labels-and-definitions": {
+            "page": "labels-comments-definitions",
+            "anchor": "_top"
+          },
+          "owned-comments": {
+            "page": "labels-comments-definitions",
+            "anchor": "_top"
+          },
+          "qualification-boundary": {
+            "page": "technical-project-docs",
+            "anchor": "understand-evidence-and-releases"
+          },
+          "related-questions": {
+            "page": "source-identity-trust-and-mutation",
+            "anchor": "related-questions"
+          }
+        }
+      }
+    },
+    "/docs/cli/presentation/": {
+      "target": "cli-reference",
+      "projection": {
+        "source": "docs/presentation.md",
+        "fromRef": "9e415435321382ab6eb7966ec6d7f4d7dc5598dd",
+        "fromSourceSha256": "5e96a60bbf00e94141f328ba41ad42985160582e599e21d241cd44da2a8e245a",
+        "oldAnchors": [
+          "_top",
+          "meaning",
+          "one-semantic-result-several-reading-surfaces",
+          "human-report-summary",
+          "human-full-aggregate-detail",
+          "evidence-vocabulary",
+          "human-effect-plan-summary",
+          "terminal-colour",
+          "agent-report-projection",
+          "agent-plan-projection",
+          "presentation-versioning",
+          "consumer-contract",
+          "settled-interface-decisions"
+        ],
+        "anchors": {
+          "_top": {
+            "page": "cli-reference",
+            "anchor": "_top"
+          },
+          "meaning": {
+            "page": "cli-reference",
+            "anchor": "_top"
+          },
+          "one-semantic-result-several-reading-surfaces": {
+            "page": "interfaces",
+            "anchor": "_top"
+          },
+          "human-report-summary": {
+            "page": "cli-reference",
+            "anchor": "output-formats-and-stream-guarantees"
+          },
+          "human-full-aggregate-detail": {
+            "page": "cli-reference",
+            "anchor": "output-formats-and-stream-guarantees"
+          },
+          "evidence-vocabulary": {
+            "page": "evidence-and-uncertainty",
+            "anchor": "_top"
+          },
+          "human-effect-plan-summary": {
+            "page": "reports-plans-and-apply",
+            "anchor": "_top"
+          },
+          "terminal-colour": {
+            "page": "cli-reference",
+            "anchor": "common-options-and-compatibility"
+          },
+          "agent-report-projection": {
+            "page": "cli-reference",
+            "anchor": "output-formats-and-stream-guarantees"
+          },
+          "agent-plan-projection": {
+            "page": "cli-reference",
+            "anchor": "output-formats-and-stream-guarantees"
+          },
+          "presentation-versioning": {
+            "page": "schemas-and-compatibility",
+            "anchor": "_top"
+          },
+          "consumer-contract": {
+            "page": "interfaces",
+            "anchor": "_top"
+          },
+          "settled-interface-decisions": {
+            "page": "technical-project-docs",
+            "anchor": "integrate-or-embed"
+          }
+        }
+      }
     }
   }
 }

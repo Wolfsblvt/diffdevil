@@ -77,8 +77,7 @@ planning panel into every article.
 
 The sequence is Start + Understand, open surfaces + workflows, Policy + Reference,
 then Managed App + Help, followed by final reconciliation and fresh review. All
-waves continue the same draft branch. README compression belongs to final
-reconciliation, not Foundation.
+waves continue the same draft branch. The root README is the quick manual; chapter depth remains in `docs/manual/`.
 
 ## Routes, provenance and migration
 
@@ -233,80 +232,49 @@ Automated DOM and browser evidence does not establish an actual screen-reader us
 journey, live hosting, DNS, public App/Store availability or deployment acceptance.
 None of those effects is performed by this foundation.
 
-## Wave 2 return boundary
+## Source-family and final cross-surface cutover
 
-The ten open-surface/shared-workflow chapters are authored as one operating family.
-The three Managed App pages and all later-wave scaffolds are unchanged. The complete
-Skill tree, raw setup sources, real-PR catalogue and presenters remain their original
-canonical sources. The raw `/setup/skill.md` route now serves its already-maintained
-setup file rather than inventing a second installer.
+All 41 chapter sources and the separate canonical FAQ are authored. Eighteen old
+reader guides/language sources are retired, without Markdown forwarding stubs;
+`docs/releases/README.md` retains its separate release-map job. The exact family
+and anchor dispositions remain in `migration.mjs` and `authoring-state.json`.
 
-The inherited Windows consumer defect selected more than one native executable with
-`Get-Command`. Its same-carrier correction selects the first result, while the full
-installed-package test still covers Windows PowerShell 5.1 and PowerShell 7, paths
-with spaces, literal UTF-8/NUL path handling, and exits 0/1/2/3. No test is skipped or
-weakened. The temporary source-bundle workflow transport is removed.
+The apex does not render old Starlight articles or another documentation homepage.
+Its former selection manifest is now only the finite compatibility inventory:
+manual successors receive 308s, while repository-only projections lead to exact
+GitHub source. Retained specialist/raw sources have `projection` capture records
+on their old routes, preserving their section destinations without redirecting
+canonical technical source IDs away from their own GitHub files. Browser semantic
+fragment handoff retains unrelated query parameters; no-JavaScript readers retain
+native links to each mapped destination.
 
-`wave-2.test.mjs` executes the complete report lifecycle and the actual two-step
-Action against fixture HTTP, including reacquisition and stale-source refusal. It
-checks complete example bytes, separate label/comment effects, finite migration,
-sidebar identity and unpinned npm installation snippets. Package qualification
-compiles and executes `docs/examples/library/inspect-change.mts` outside the checkout
-against the packed installation, including exact, bounded, incomplete and invalid
-inputs. The library and canonical shell consumers remain packaged with the reusable tool.
+The repository README supplies complete first-success CLI and Action paths; the
+repository documentation map routes technical readers. Product adoption pages,
+header/footer, FAQ, Examples, Playground, installation prompts and download links
+use the explicit manual routes. No stale path replacement guesses a self-hosting
+route or a nested extension privacy page. FAQ Source/Edit actions identify its
+canonical Markdown and the exact build commit/contribution branch.
 
-`qa/wave-2.mjs` checks all ten built articles at desktop and narrow widths, their
-open complete examples, admitted settings image, shared-workflow links, raw Skill
-setup, retired source/fragment destinations and selected search records. The common
-suite also exercises emitted 308 handlers, themes, five alerts, FAQ and no-JavaScript
-reading. Source selection also follows fragment and Back/Forward navigation; a
-refused location removes any previously displayed destination. The read-only CI
-result check exposes the first browser failure to status-only clients without
-skipping tests or granting repository-write permission. Provider installation/publication and an actual screen-reader journey are
-not claimed by these tests.
+The website's Skill handoff uses `/setup/skill.md`; the complete Skill tree and
+five raw setup payloads keep their existing owners. Search has one current result
+per selected URL: 41 manual chapters, five product pages and 20 FAQ questions.
+Retired `/docs/` articles and historical/technical projections are excluded even
+when an old HTML file is encountered. Legal and source-resolver routes remain
+outside current search. The English Starlight i18n collection supplies the actual
+manual-navigation accessible label, rather than an empty warning-suppression file.
 
-At this authoring boundary, extension source is admitted but Store publication is
-not established. Extension PR #45 at `fbb127c1c30c98ab0d28670fa447b2476a1d31ef` is an
-open launch-target candidate, not adopted source. Full configurable Playground
-source and a deployed measurement-only service remain different availability
-claims. The enhanced CLI presenter must exist in the selected released executable;
-plain npm installation is not pinned to an old package to disguise that release
-boundary. The Skill's version, release manifest and archive availability remain
-independent. None of these facts authorizes publication or widens the App wave.
+`reconciliation.test.mjs` qualifies the final finite routes, retained-source
+captures, resolver behavior, query/fragment handoff, source identities and
+source-family preservation. `qa/reconciliation.mjs` adds the joined product/manual
+journeys to the existing four wave suites. All screenshots are qualification
+material, not a published service, Store image or approved final extension design.
 
-This accepted Wave 2 boundary remains historical contribution context. The exact
-head and hosted results live in the PR discussion; this document does not contain
-its own commit hash. Wave 3 extends the same draft carrier, not a second manual. Final README compression, remaining
-retirements, whole-manual review and live host adoption remain later work.
+The two extension and three App chapter markers are retained. `capabilities.json`
+keeps published packages separate from source candidates and actual provider
+observations. Dashboard and extension experience co-design, Sponsor, public host
+publication, Store submission, App OAuth and history stay outside this source cut.
 
-
-## Wave 3 return boundary
-
-All six policy chapters and seven reference chapters are authored. The controlled
-story files are `docs/examples/policies/story/{preset,configure,paths,rules,labels,comments}.yml`.
-Every chapter starts from its complete file without loading earlier chapters. The
-checked progression preserves 10 Changed / 16 churn, the 6 / 8 selected comparison,
-source 3 plus tests 2, configurable attention bands/rules, desired label definitions,
-and an explicitly optional owned comment. Real-PR depth uses the shared immutable
-catalogue and exact example/variant identities, never synthetic gallery cards.
-
-Ten additional source families are retired without Markdown forwarding stubs. The
-complete prior source bytes are identified by historical commit and SHA-256. Old
-source IDs, fragments, redirects, inbound links and search ownership move together;
-existing Wave 2 transfers remain intact. The substantial detail reference has stable
-section anchors. Parser architecture remains repository-only. Five old detailed-language
-sources remain current because diagnostics also belongs to the uncompleted Wave 4
-troubleshooting page. The seven Wave 4 chapters and landed FAQ are preserved byte-for-byte.
-Earlier authored chapters receive only necessary link repair when their source moved.
-
-`qa/wave-3.mjs` adds the thirteen-page, two-theme/two-width reading journey and exact
-API/source-depth checks to the existing two-host browser qualification. Neither its
-source nor a static build claims that the browser journey passed. Current candidate
-evidence, environment limitations and hosted conclusions belong in the exact-head
-Return; old-head green is not inherited.
-
-Mainline reconciliation preserves the Action-distribution D041 and separate manual
-source-identity decision as D042, plus the later development note and Node typings
-update. Source reconciliation alone does not prove a fresh dependency installation
-or hosted Windows/Node compatibility. No merge, publication, live preview, package
-release, App/Store installation or provider write belongs to this contribution.
+The source-writing history remains on one draft carrier. Exact-head evidence and
+any qualification limits belong in its Return, not a frozen claim in this README.
+The programme's independent final review follows the complete reconciliation
+candidate; local author checks do not become that fresh review.

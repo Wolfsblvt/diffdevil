@@ -35,3 +35,7 @@ The extension never applies a label automatically. Its native handoff opens and 
 The extension requests storage, a content script on github.com to follow pull-request navigation, and host access to api.github.com for public read-only fallback. It does not request cookies, browsing history, tabs enumeration, all-site access, unlimited storage or clipboard permissions. The ordinary user-initiated clipboard capability can be declined by the browser.
 
 Support is available through Issues in the Wolfsblvt/diffdevil repository. Do not attach private source, credentials or unredacted configuration to a public issue. Before Store publication, the maintainer must verify this notice and the Store declarations against the exact packaged release. This notice is not a privacy certification or a guarantee of Store approval.
+
+## Related questions
+
+The [security and data FAQ](https://diffdevil.dev/faq/#code-data) explains how the extension differs from the CLI, Actions, public Playground and managed App.

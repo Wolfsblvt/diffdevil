@@ -1,4 +1,4 @@
-name: Public manual foundation
+name: Public manual
 
 on:
   pull_request:
@@ -53,9 +53,12 @@ jobs:
       - run: npm --prefix apps/manual run toolchain
       - run: npm run website:build
       - run: npm --prefix apps/manual test
+      - run: npm --prefix apps/manual run test:projection
       - run: npm --prefix apps/manual run check
       - run: npx --no-install playwright install --with-deps chromium
       - run: npm --prefix apps/manual run qa
+      - name: Qualify the complete affected website journeys
+        run: npm run qa:website
       - name: Preserve the admitted FAQ journey
         run: node apps/website/qa/faq.mjs
       - name: Summarize browser qualification

@@ -21,7 +21,7 @@ main:
   required pre-integration evidence: Verify on the exact candidate head
   required approval/review: none
   resolved conversations: no
-  automatic CI: Verify on main push and pull request (Linux Node 22/24, Windows Node 24)
+  automatic CI: Verify on main push and pull request (Linux and Windows, Node 22/24)
   automatic retained branch effects: none
   other pre-update evidence: none
 ```
@@ -79,12 +79,11 @@ not real credentials or live repository mutation.
 
 Edit `src/diffdevil/`, not the generated `actions/runtime/` implementation or `action.yml`
 files. The new public manual is generated from `docs/manual/` through the explicit
-`apps/manual/manifest.mjs`. Existing guide projections remain selected in
-`apps/website/docs-manifest.mjs` until their complete source-family cutover. Edit
-maintained Markdown, never either ignored generated collection. See
-`apps/manual/README.md` for source, route, migration and qualification commands.
-The Agent Skill and setup instructions are repository-owned product content served
-by the site, not website copy. Commit reviewed Action distribution output because
+`apps/manual/manifest.mjs`. The apex no longer projects a competing manual. Its
+finite legacy inventory is `apps/website/docs-manifest.mjs`; selected transfers and
+captured fragments stay in the manual manifest and authoring state. The Agent Skill
+and setup instructions are repository-owned product content served by the site,
+not website copy. Commit reviewed Action distribution output because
 consumers do not install dependencies. Root `dist/`, `node_modules/`, and `artifacts/`
 are generated or local; do not force-add them. Never commit credentials, private raw
 conversations, personal instructions, or local transfer archives.
