@@ -38,6 +38,11 @@ try {
   receipt.checks.push('direct aggregate Changed');
   await page.locator('[data-ddx="file"] .ddx-value').first().waitFor({ timeout: 20_000 });
   receipt.checks.push('direct per-file Changed');
+  // The anonymous classic page shows a file tree without counters; record what
+  // this page exposed so a signed-in readback can be compared against it.
+  await page.waitForTimeout(1500);
+  receipt.fileTree = await page.evaluate(() => ({ trees: document.querySelectorAll('[role="tree"], file-tree, [data-testid*="file-tree" i]').length, counters: document.querySelectorAll('[role="tree"] [data-testid~="diffstat"], [role="tree"] .diffstat, file-tree [data-testid~="diffstat"]').length, seats: document.querySelectorAll('[data-ddx="tree"]').length, headerSeats: document.querySelectorAll('[data-ddx="file"]').length }));
+  if (receipt.fileTree.counters > 0) { await page.locator('[data-ddx="tree"] .ddx-value').first().waitFor({ timeout: 20_000 }); receipt.checks.push('file-tree per-file Changed'); }
   await page.locator('[data-ddx="aggregate"] .ddx-trigger').click();
   await page.getByRole('heading', { name: 'diffdevil analysis' }).waitFor();
   receipt.checks.push('aggregate report opens');

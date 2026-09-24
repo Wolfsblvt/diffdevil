@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Authored fixtures, not captures of GitHub/private source. Counts use the real engine.
+import { createHash } from 'node:crypto';
 export const comparison = { host: 'github.com', repository: 'example/cinder', pullRequest: 42, base: 'a'.repeat(40), head: 'b'.repeat(40), changedFiles: 2, additions: 160, deletions: 118 };
 export function filePatch(path, modified, added, deleted) {
   return `diff --git a/${path} b/${path}\n--- a/${path}\n+++ b/${path}\n@@ -1,${modified + deleted + 2} +1,${modified + added + 2} @@\n`
@@ -13,8 +14,15 @@ export const fileHeader = (path, modern = false) => `<section class="fixture-fil
 export function githubChangesHtml(data = comparison) {
   const header = (path, attribute) => `<div class="PullRequestDiffsList-module__diffEntry__fixture"><div data-diff-header-wrapper><div class="DiffFileHeader-module__diff-file-header__fixture"><div class="DiffFileHeader-module__file-path-section__fixture">${attribute ? `<button data-file-path="${path}">Path</button>` : ''}<h3 class="DiffFileHeader-module__file-name__fixture">${path}</h3></div><span data-testid="addition diffstat">+30</span></div></div></div>`;
   const embedded = { payload: { pullRequestsChangesRoute: { comparison: { fullDiff: { baseOid: data.base, headOid: data.head, changedFiles: data.changedFiles } } } } };
-  const treeStats = Array.from({ length: 20 }, (_, index) => `<span data-testid="${index % 2 ? 'deletion' : 'addition'} diffstat">${index + 1}</span>`).join('');
-  return `<!doctype html><html><body><main><h1>Pull request #42</h1><aside data-testid="file-tree">${treeStats}</aside><div class="fixture-toolbar"><div data-testid="pull-request-diff-stats"><span data-testid="addition diffstat">+160</span><span data-testid="deletion diffstat">−118</span></div></div><div data-testid="progressive-diffs-list">${header('src/cache.ts', true)}${header('src/renderer.ts', false)}</div><script type="application/json" data-target="react-app.embeddedData">${JSON.stringify(embedded)}</script></main></body></html>`;
+  // Modelled on GitHub's current React file tree: rows are treeitems whose only
+  // path binding is the `#diff-<sha256(path)>` anchor; labels are file names only,
+  // nested under directory rows. Decoy counters without a row or on the directory
+  // row must never receive a seat.
+  const anchor = path => `diff-${createHash('sha256').update(path).digest('hex')}`;
+  const leaf = (path, added, deleted) => `<li role="treeitem" aria-level="2" id="file-tree-item-${anchor(path)}" class="PRIVATE_TreeView-item"><div class="PRIVATE_TreeView-item-container"><a href="#${anchor(path)}"><span class="PRIVATE_TreeView-item-content-text"><span>${path.split('/').pop()}</span></span></a><span class="PRIVATE_TreeView-item-trailing-visual"><span data-testid="addition diffstat">+${added}</span><span data-testid="deletion diffstat">−${deleted}</span></span></div></li>`;
+  const decoys = Array.from({ length: 20 }, (_, index) => `<span data-testid="${index % 2 ? 'deletion' : 'addition'} diffstat">${index + 1}</span>`).join('');
+  const tree = `<nav aria-label="File tree" data-testid="file-tree"><div class="fixture-tree-summary">${decoys}</div><ul role="tree"><li role="treeitem" aria-level="1" data-tree-entry-type="directory" aria-expanded="true"><div class="PRIVATE_TreeView-item-container"><span class="PRIVATE_TreeView-item-content-text"><span>src</span></span><span data-testid="neutral diffstat">2 files</span></div><ul role="group">${leaf('src/cache.ts', 30, 22)}${leaf('src/renderer.ts', 130, 96)}${leaf('src/missing.ts', 1, 1)}</ul></li></ul></nav>`;
+  return `<!doctype html><html><body><main><h1>Pull request #42</h1>${tree}<div class="fixture-toolbar"><div data-testid="pull-request-diff-stats"><span data-testid="addition diffstat">+160</span><span data-testid="deletion diffstat">−118</span></div></div><div data-testid="progressive-diffs-list">${header('src/cache.ts', true)}${header('src/renderer.ts', false)}</div><script type="application/json" data-target="react-app.embeddedData">${JSON.stringify(embedded)}</script></main></body></html>`;
 }
 function summaryHtml(mode, data) {
   if (mode === 'missing') return '<div class="fixture-summary-slot"></div>';
