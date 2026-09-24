@@ -11,9 +11,9 @@
       "height": 800,
       "depth": 8,
       "colorType": 2,
-      "sha256": "4c9f184f10c3e06f00f510aa11216edb6a12b4a6cc02416b780189ccd5e71bec",
+      "sha256": "9c9c053367bd80d5897abc88966386913c0cd1018543f7c6b96801fe29f8f44f",
       "generatedFrom": "artifacts/browser-extension/qa/github-dark.png",
-      "caption": "Aggregate and lazy per-file Changed, raw churn, dynamic policy bands and local provenance.",
+      "caption": "Changed in GitHub’s own diffstat seats: the pull request with its decomposition, size chip, band rail and local provenance; each file with its own Changed.",
       "standing": "Actual production UI in an explicitly authored fixture; not a live or installed-extension capture."
     },
     {
@@ -22,9 +22,9 @@
       "height": 800,
       "depth": 8,
       "colorType": 2,
-      "sha256": "3fbab34170388228262012f1ed706e1a86852828a65f683f1c42a71d9b4b49fb",
+      "sha256": "a556332e04c6b5d20bff273bd64772f2f997808d582095d05d8a32142d00d22e",
       "generatedFrom": "artifacts/browser-extension/qa/report-light.png",
-      "caption": "The persistent anchored report keeps source identity, evidence, decomposition and policy details inspectable.",
+      "caption": "The anchored report: one dominant value with its evidence, the decomposition, raw churn, files, the policy in effect and the effect plan.",
       "standing": "Actual production UI in an explicitly authored fixture; not a live or installed-extension capture."
     },
     {
@@ -33,9 +33,9 @@
       "height": 800,
       "depth": 8,
       "colorType": 2,
-      "sha256": "167f2fcb0546dd6c8d0de78e81c910d47e64187d42301a7e3211dd466949e6e6",
+      "sha256": "1c6cfc61b8c678d0968aaa9650b3c4f059e6cc2e3a5052731ea8f6f9ded8c101",
       "generatedFrom": "artifacts/browser-extension/qa/settings-icon-dark.png",
-      "caption": "Literal stable-setting anchors and the monochrome, full-colour or no-icon choices.",
+      "caption": "Literal stable-setting anchors and the glyph, full-colour or no-icon choices.",
       "standing": "Actual production UI in an explicitly authored fixture; not a live or installed-extension capture."
     },
     {
@@ -44,7 +44,7 @@
       "height": 800,
       "depth": 8,
       "colorType": 2,
-      "sha256": "fbed955f04623b8b3d339a75676e61a6c3796eab1e0d721b99cd4a6d0f983d01",
+      "sha256": "078704e44070c0bccd09bccec9d553f6d52c1b5fb9c3c6a02e6286c18a5d7f86",
       "generatedFrom": "artifacts/browser-extension/qa/settings-bands-light.png",
       "caption": "Editable personal thresholds, colour metadata and optional existing-label mappings in the authored light theme.",
       "standing": "Actual production UI in an explicitly authored fixture; not a live or installed-extension capture."
@@ -55,7 +55,7 @@
       "height": 800,
       "depth": 8,
       "colorType": 2,
-      "sha256": "f8ee2eb2c49d1c084b4a11aff054b860eca2039fadd77c2a3da06e4898a5bd5b",
+      "sha256": "7ebc126af9a86536816212bc772f0ce71b597d954df887f9779ba992e57d405b",
       "generatedFrom": "artifacts/browser-extension/qa/evidence-unknown.png",
       "caption": "Incomplete evidence remains visibly unknown. No unsupported exact total or selected band is manufactured.",
       "standing": "Actual production UI in an explicitly authored fixture; not a live or installed-extension capture."
@@ -77,9 +77,9 @@
       "height": 560,
       "depth": 8,
       "colorType": 2,
-      "sha256": "98e524b6b19acb893d9cff57be87f72b81b1277825fe3bf301fb393e25c5f646",
+      "sha256": "0e7135cfec81756aaa63cd19b1b4cc39b41c80b3fd88437441686fdaace778cf",
       "editableSource": "promo/marquee-1400x560.svg",
-      "editableSourceSha256": "23f555cd57da09d84ea9fc1747dde05bd9a1353d86ad78e00b63ce3a0ede3368",
+      "editableSourceSha256": "6c04e50fe58bf7b0b41a8e839fdbd174722a9a13b0648f68776b2441bf659de5",
       "standing": "Authored promotional composition using accepted identity bytes and exact synthetic fixture measurements."
     },
     {

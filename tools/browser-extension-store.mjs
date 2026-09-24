@@ -11,9 +11,9 @@ const out = resolve('artifacts/browser-extension/store');
 const generate = process.argv.includes('--generate');
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
 const screenshots = [
-  ['01-changed-on-github.png', 'github-dark.png', 'Aggregate and lazy per-file Changed, raw churn, dynamic policy bands and local provenance.'],
-  ['02-inspect-the-report.png', 'report-light.png', 'The persistent anchored report keeps source identity, evidence, decomposition and policy details inspectable.'],
-  ['03-your-icon-preference.png', 'settings-icon-dark.png', 'Literal stable-setting anchors and the monochrome, full-colour or no-icon choices.'],
+  ['01-changed-on-github.png', 'github-dark.png', 'Changed in GitHub’s own diffstat seats: the pull request with its decomposition, size chip, band rail and local provenance; each file with its own Changed.'],
+  ['02-inspect-the-report.png', 'report-light.png', 'The anchored report: one dominant value with its evidence, the decomposition, raw churn, files, the policy in effect and the effect plan.'],
+  ['03-your-icon-preference.png', 'settings-icon-dark.png', 'Literal stable-setting anchors and the glyph, full-colour or no-icon choices.'],
   ['04-your-policy-bands.png', 'settings-bands-light.png', 'Editable personal thresholds, colour metadata and optional existing-label mappings in the authored light theme.'],
   ['05-honest-uncertainty.png', 'evidence-unknown.png', 'Incomplete evidence remains visibly unknown. No unsupported exact total or selected band is manufactured.'],
 ];
