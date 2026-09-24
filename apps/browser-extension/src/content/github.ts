@@ -62,7 +62,9 @@ export function pageComparison(document: Document, current: Route): BrowserCompa
 export function sameComparison(a: BrowserComparison, b: BrowserComparison): boolean { return a.repository.toLowerCase() === b.repository.toLowerCase() && a.pullRequest === b.pullRequest && a.base === b.base && a.head === b.head; }
 export const FILE_HEADERS = '.file-header, [data-testid="file-header"], [data-test-selector="file-header"], [data-testid="diff-file-header"], [data-diff-header-wrapper]';
 export const LIVE_DIFFSTAT = '[data-testid~="diffstat"]';
-export const PROVIDER_CHANGE = `${FILE_HEADERS}, .gh-header-meta, .diffstat, ${LIVE_DIFFSTAT}, [data-testid="pull-request-header"]`;
+const NOT_A_SUMMARY = `${FILE_HEADERS}, [data-testid="progressive-diffs-list"], [data-testid*="file-tree"], [data-testid*="fileTree"], file-tree, [role="tree"], aside, nav`;
+const TOOLBAR_SUMMARY = '.pr-toolbar .diffstat, .diffbar-item.diffstat, .toc-diff-stats, .diffbar .diffstat';
+export const PROVIDER_CHANGE = `${FILE_HEADERS}, .gh-header-meta, .tabnav-extra, .diffstat, ${LIVE_DIFFSTAT}, ${TOOLBAR_SUMMARY}, [data-testid="pull-request-header"]`;
 export function filePath(header: Element): string | undefined {
   if (header.matches('[data-diff-header-wrapper]')) {
     const section = header.querySelector('[class*="DiffFileHeader-module__file-path-section__"]') ?? header;
@@ -73,19 +75,44 @@ export function filePath(header: Element): string | undefined {
   return header.getAttribute('data-path') ?? header.getAttribute('data-file-path') ?? ancestor?.getAttribute('data-path') ?? ancestor?.getAttribute('data-file-path')
     ?? header.querySelector('[data-tagsearch-path]')?.getAttribute('data-tagsearch-path') ?? header.querySelector('a[title]')?.getAttribute('title') ?? undefined;
 }
-export function aggregateHost(document: Document): HTMLElement | undefined {
-  const established = '[data-testid="pull-request-diff-stats"], [data-testid="pr-diff-stats"], #diffstat, .gh-header-meta .diffstat, #partial-discussion-header .diffstat, .pr-toolbar .diffstat';
-  for (const element of document.querySelectorAll<HTMLElement>(established)) if (!element.closest(FILE_HEADERS)) return element;
+/**
+ * GitHub's own diffstat, as the thing a seat replaces. `anchor` is where the seat
+ * is inserted (before it); `nodes` are hidden or demoted, never removed, so a
+ * failure can restore them in place.
+ */
+export interface NativeStat { readonly anchor: HTMLElement; readonly nodes: readonly HTMLElement[] }
+const own = (element: Element): boolean => Boolean(element.closest('[data-diffdevil]'));
+/** Sibling `addition diffstat` / `deletion diffstat` tokens form one seat; their parent is the anchor when it holds nothing else. */
+function tokenGroup(first: HTMLElement): NativeStat {
+  const parent = first.parentElement;
+  const tokens = parent ? [...parent.children].filter((child): child is HTMLElement => child instanceof HTMLElement && !own(child) && (child.matches(LIVE_DIFFSTAT) || child.matches('.diffstat'))) : [first];
+  const onlyTokens = parent && [...parent.childNodes].every(node => node instanceof Element ? tokens.includes(node as HTMLElement) || own(node) : !node.textContent?.trim());
+  return onlyTokens && !parent.matches(`${FILE_HEADERS}, .file-info, .tabnav, main, body`) ? { anchor: parent, nodes: [parent] } : { anchor: first, nodes: tokens };
+}
+export function aggregateNative(document: Document): NativeStat | undefined {
+  const established = '[data-testid="pull-request-diff-stats"], [data-testid="pr-diff-stats"], #diffstat, .tabnav-extra .diffstat, .gh-header-meta .diffstat, #partial-discussion-header .diffstat';
+  for (const element of document.querySelectorAll<HTMLElement>(established)) if (!own(element) && !element.closest(NOT_A_SUMMARY)) return { anchor: element, nodes: [element] };
   // GitHub's current React summary exposes sibling tokens such as
-  // `addition diffstat` and `neutral diffstat`, rather than one legacy
-  // `.diffstat` container. Mount beside their shared immediate group.
+  // `addition diffstat` and `neutral diffstat` rather than one container.
   for (const element of document.querySelectorAll<HTMLElement>(LIVE_DIFFSTAT)) {
-    if (element.closest(`${FILE_HEADERS}, [data-testid="progressive-diffs-list"], [data-testid*="file-tree"], [data-testid*="fileTree"], [role="tree"], aside, nav`)) continue;
-    const parent = element.parentElement;
-    if (parent && !parent.closest(FILE_HEADERS)) return parent;
-    return element;
+    if (own(element) || element.closest(NOT_A_SUMMARY)) continue;
+    return tokenGroup(element);
   }
-  return document.querySelector<HTMLElement>('#partial-discussion-header .gh-header-meta, .gh-header-meta, [data-testid="pull-request-header"], [data-testid="progressive-diffs-list"]') ?? undefined;
+  return undefined;
+}
+/** The Files-changed toolbar sentence, only where GitHub renders one apart from the header seat. */
+export function toolbarNative(document: Document, aggregate: HTMLElement | undefined): NativeStat | undefined {
+  for (const element of document.querySelectorAll<HTMLElement>(TOOLBAR_SUMMARY)) {
+    if (own(element) || element === aggregate || element.closest(FILE_HEADERS) || aggregate && (element.contains(aggregate) || aggregate.contains(element))) continue;
+    return { anchor: element, nodes: [element] };
+  }
+  return undefined;
+}
+export function fileNative(header: HTMLElement): NativeStat | undefined {
+  const classic = [...header.querySelectorAll<HTMLElement>('.diffstat')].find(element => !own(element));
+  if (classic) return { anchor: classic, nodes: [classic] };
+  const token = [...header.querySelectorAll<HTMLElement>(LIVE_DIFFSTAT)].find(element => !own(element));
+  return token ? tokenGroup(token) : undefined;
 }
 export function blobText(document: Document): string | undefined {
   for (const value of providerObjects(document)) {

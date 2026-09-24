@@ -48,7 +48,8 @@
       "resources": [
         "assets/diffdevil-brand.svg",
         "assets/diffdevil-symbol-micro-dark.svg",
-        "assets/diffdevil-symbol-micro-light.svg"
+        "assets/diffdevil-symbol-micro-light.svg",
+        "assets/*.woff2"
       ],
       "matches": [
         "https://github.com/*"
