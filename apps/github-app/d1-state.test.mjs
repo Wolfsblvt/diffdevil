@@ -109,7 +109,7 @@ test('history queries use retained published rows while reusable lens configurat
     const identity = { repositoryId: 17, pullRequest: 42, comparisonId: 'comparison-a', policyId: 'policy' };
     assert.equal((await store.recordHistory(identity, selected)).status, 'published');
     assert.equal((await store.recordHistory(identity, selected)).status, 'disabled', 'duplicate analysis does not become another history row');
-    await store.saveHistoryLens(17, { version: 1, id: 'custom', name: 'Custom metric', query: { version: 1, repositoryId: 17,
+    await store.saveHistoryLens(17, { version: 1, id: 'custom', name: 'Custom metric', identity: { reportVersion: 'diffdevil-report-v1', metricVersion: 'diffdevil-metrics-v1', policyId: 'policy' }, query: { version: 1, repositoryId: 17,
       from: '2026-09-01T00:00:00.000Z', to: '2026-10-01T00:00:00.000Z', family: 'distribution',
       metric: { kind: 'configured', ref: 'custom' } } });
     const plan = await database.prepare("EXPLAIN QUERY PLAN SELECT id FROM history_records WHERE repository_id=17 AND state='published' AND observed_at>='2026-09-01' AND observed_at<'2026-10-01'").all();

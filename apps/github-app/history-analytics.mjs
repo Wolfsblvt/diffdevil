@@ -36,11 +36,15 @@ function window(request) {
   return { repositoryId, from, to, policyId: request.policyId === undefined ? undefined : ref(request.policyId), evidence,
     metric: metric(request.metric), family: request.family ?? 'overview' };
 }
+function policySensitive(selected) {
+  return selected.family === 'occurrence' || (['distribution', 'trajectories'].includes(selected.family)
+    && (selected.metric.kind !== 'total' || selected.metric.scope !== 'all-observed'));
+}
 /** Canonical saved query meaning; labels stay in protected configuration only. */
 export function normalizeHistoryLens(repositoryId, lens) {
   positive(repositoryId);
   if (!lens || typeof lens !== 'object' || Array.isArray(lens) || lens.version !== 1
-    || Object.keys(lens).some(key => !['version', 'id', 'name', 'description', 'query', 'focus'].includes(key))) throw invalid('E_HISTORY_LENS');
+    || Object.keys(lens).some(key => !['version', 'id', 'name', 'description', 'query', 'identity', 'focus'].includes(key))) throw invalid('E_HISTORY_LENS');
   const id = ref(lens.id);
   const label = (value, limit) => {
     if (value === undefined) return undefined;
@@ -49,8 +53,14 @@ export function normalizeHistoryLens(repositoryId, lens) {
   };
   if (!lens.query || Object.keys(lens.query).some(key => !['version', 'repositoryId', 'from', 'to', 'policyId', 'evidence', 'family', 'metric'].includes(key))) throw invalid('E_HISTORY_LENS');
   const selected = window(lens.query);
-  if (selected.repositoryId !== repositoryId || !FAMILIES.has(selected.family)
+  if (selected.repositoryId !== repositoryId || !FAMILIES.has(selected.family) || selected.family === 'operations'
     || (['distribution', 'trajectories'].includes(selected.family) && lens.query.metric === undefined)) throw invalid('E_HISTORY_LENS');
+  if (!lens.identity || typeof lens.identity !== 'object' || Array.isArray(lens.identity)
+    || Object.keys(lens.identity).some(key => !['reportVersion', 'metricVersion', 'policyId'].includes(key))) throw invalid('E_HISTORY_LENS');
+  const identity = { reportVersion: ref(lens.identity.reportVersion), metricVersion: ref(lens.identity.metricVersion),
+    ...(lens.identity.policyId === undefined ? {} : { policyId: ref(lens.identity.policyId) }) };
+  if (policySensitive(selected) && !identity.policyId) throw invalid('E_HISTORY_LENS');
+  if (selected.policyId && identity.policyId && selected.policyId !== identity.policyId) throw invalid('E_HISTORY_LENS');
   const query = { version: 1, repositoryId, from: selected.from, to: selected.to, family: selected.family,
     evidence: selected.evidence, ...(lens.query.metric === undefined ? {} : { metric: selected.metric }),
     ...(selected.policyId ? { policyId: selected.policyId } : {}) };
@@ -61,7 +71,7 @@ export function normalizeHistoryLens(repositoryId, lens) {
     focus = { kind: lens.focus.kind, ref: ref(lens.focus.ref) };
   }
   return { version: 1, id, ...(lens.name !== undefined ? { name: label(lens.name, 120) } : {}),
-    ...(lens.description !== undefined ? { description: label(lens.description, 500) } : {}), query, ...(focus ? { focus } : {}) };
+    ...(lens.description !== undefined ? { description: label(lens.description, 500) } : {}), query, identity, ...(focus ? { focus } : {}) };
 }
 function bound(value) {
   if (!value || typeof value !== 'object') return { status: 'unknown', lower: null, upper: null };
@@ -221,8 +231,7 @@ export function createHistoryAnalyticsService({ store, authorize }) {
     const records = selected.evidence === 'all' ? all : all.filter(record => record.projection.evidence === selected.evidence);
     return { selected, records, representatives: representative(records), excluded: all.length - records.length };
   }
-  async function query(request, actor) {
-    const { selected, records, representatives, excluded } = await load(request, actor);
+  async function render({ selected, records, representatives, excluded }) {
     if (!FAMILIES.has(selected.family)) throw invalid('E_HISTORY_FAMILY');
     const common = { kind: 'diffdevil.history-query', version: HISTORY_QUERY_VERSION, family: selected.family,
       repositoryId: selected.repositoryId, policyId: selected.policyId ?? null, overview: overview(records, representatives, selected, excluded) };
@@ -233,6 +242,7 @@ export function createHistoryAnalyticsService({ store, authorize }) {
     if (selected.family === 'occurrence') return { ...common, result: occurrence(representatives) };
     return { ...common, result: operations(await store.historyOperations(selected.repositoryId, selected.from, selected.to), selected) };
   }
+  async function query(request, actor) { return render(await load(request, actor)); }
   async function compare(left, right, actor) {
     const requested = [...new Set([window(left).repositoryId, window(right).repositoryId])];
     async function available(request) {
@@ -343,6 +353,11 @@ export function createHistoryAnalyticsService({ store, authorize }) {
     const selectedLens = (await store.historyLenses(repositoryId)).find(value => value.id === ref(request.lensId));
     if (!selectedLens) throw invalid('E_HISTORY_LENS_UNKNOWN');
     const loaded = await load(selectedLens.query, actor);
+    const matches = record => record.reportVersion === selectedLens.identity.reportVersion
+      && record.metricVersion === selectedLens.identity.metricVersion
+      && (!policySensitive(loaded.selected) || record.policyId === selectedLens.identity.policyId);
+    const compatible = loaded.representatives.filter(matches);
+    const compatibleRecords = loaded.records.filter(matches);
     const present = record => {
       const results = resultSet(record);
       const selected = selectedLens.query.metric;
@@ -355,11 +370,13 @@ export function createHistoryAnalyticsService({ store, authorize }) {
       if (selectedLens.focus) return record.effects.some(value => value.kind === selectedLens.focus.ref);
       return true;
     };
-    const seen = loaded.representatives.filter(present);
-    const answer = await query(selectedLens.query, actor);
+    const seen = compatible.filter(present);
+    const answer = await render({ ...loaded, records: compatibleRecords, representatives: compatible });
     if (selectedLens.focus) answer.result = answer.result.filter(value => value.kind === selectedLens.focus.kind && value.ref === selectedLens.focus.ref);
     return { kind: 'diffdevil.history-lens', version: 1, lens: selectedLens,
-      historicalCoverage: { representativeCount: loaded.representatives.length, evaluated: seen.length, missing: loaded.representatives.length - seen.length },
+      historicalCoverage: { representativeCount: loaded.representatives.length, compatible: compatible.length,
+        incompatible: loaded.representatives.length - compatible.length, evaluated: seen.length, missing: compatible.length - seen.length,
+        standing: seen.length === 0 ? 'unavailable' : seen.length === loaded.representatives.length ? 'complete' : 'partial' },
       coverage: coverage(loaded.records, loaded.selected, loaded.excluded), result: answer };
   }
   async function exportNumeric(repositoryId, actor) {

@@ -95,8 +95,9 @@
       "desiredEffectsOnly": { "const": true }, "providerMutationsReplayed": { "const": false }, "results": { "type": "array" } } },
     "lens": { "type": "object", "required": ["kind", "version", "lens", "historicalCoverage", "coverage", "result"], "properties": {
       "kind": { "const": "diffdevil.history-lens" }, "version": { "const": 1 }, "lens": { "type": "object" },
-      "historicalCoverage": { "type": "object", "required": ["representativeCount", "evaluated", "missing"], "properties": {
-        "representativeCount": { "type": "integer" }, "evaluated": { "type": "integer" }, "missing": { "type": "integer" } } },
+      "historicalCoverage": { "type": "object", "required": ["representativeCount", "compatible", "incompatible", "evaluated", "missing", "standing"], "properties": {
+        "representativeCount": { "type": "integer" }, "compatible": { "type": "integer" }, "incompatible": { "type": "integer" },
+        "evaluated": { "type": "integer" }, "missing": { "type": "integer" }, "standing": { "enum": ["complete", "partial", "unavailable"] } } },
       "coverage": { "$ref": "#/$defs/coverage" }, "result": { "$ref": "#/$defs/query" } } },
     "export": { "type": "object", "required": ["kind", "version", "exportedAt", "repositoryId", "records", "fileRows", "effectRows", "tombstones"], "properties": {
       "kind": { "const": "diffdevil.github-app-history-export" }, "version": { "const": 2 }, "exportedAt": { "type": "string" },
