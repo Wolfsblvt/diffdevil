@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-import { analyzeBrowserInput, comparisonKey, compileBrowserPolicy, humanReport, readComparison, requiredTemplates, BROWSER_ADAPTER, HUMAN_VIEW_VERSION, SEMANTICS, type BrowserPolicy, type Report, type Diagnostic, type HumanReportView, type BrowserComparison } from '@wolfsblvt/diffdevil/browser';
+import { analyzeBrowserInput, comparisonKey, compileBrowserPolicy, formatReport, humanReport, readComparison, requiredTemplates, BROWSER_ADAPTER, HUMAN_VIEW_VERSION, SEMANTICS, type BrowserPolicy, type Report, type Diagnostic, type HumanReportView, type BrowserComparison } from '@wolfsblvt/diffdevil/browser';
 import { Preferences } from './preferences.js';
 import { AnalysisCache } from './cache.js';
 import { PublicSource } from './public-source.js';
 import { authorize } from './authorization.js';
+import { operationDiagnostic } from './diagnostic.js';
 import { bytes, decorateView, selectedPolicy } from '../shared/settings.js';
 import { advancedChanges, type Settings } from '../shared/catalogue.js';
 import { ExtensionError } from '../shared/errors.js';
@@ -17,9 +18,11 @@ const inFlight = new Map<string, Promise<Packet>>();
 const reportKey = (comparison: BrowserComparison): string => `report:${comparisonKey(comparison)}:${__ENGINE_VERSION__}:${SEMANTICS.replacementLines}`;
 const policyKey = (comparison: BrowserComparison): string => `policy:${comparison.host}/${comparison.repository.toLowerCase()}@${comparison.base}/.diffdevil.yml`;
 const errorDiagnostic = (code: string, message: string): Diagnostic => ({ code, message, severity: 'error', phase: 'config' });
-async function recordError(error: unknown): Promise<void> {
+async function recordError(error: unknown, phase = 'background', sender?: chrome.runtime.Sender): Promise<void> {
+  const diagnostic = operationDiagnostic(error, phase, sender);
+  console.error('diffdevil extension operation failed', diagnostic);
   const state = await chrome.storage.local.get('diagnosticCodes'); const previous = Array.isArray(state.diagnosticCodes) ? state.diagnosticCodes : [];
-  await chrome.storage.local.set({ diagnosticCodes: [...previous.slice(-19), { code: error instanceof ExtensionError ? error.code : 'EXTENSION_OPERATION', at: Date.now() }] });
+  await chrome.storage.local.set({ diagnosticCodes: [...previous.slice(-19), diagnostic] });
 }
 async function optionalCache<T>(operation: () => Promise<T>): Promise<T | undefined> {
   try { return await operation(); } catch { await recordError(new ExtensionError('CACHE_UNAVAILABLE', 'Rebuildable cache unavailable.')); return undefined; }
@@ -103,6 +106,21 @@ async function handle(message: Message, sender: chrome.runtime.Sender): Promise<
       }
       return result;
     }
+    case 'report.text': {
+      // "Copy facts" writes the exact text the CLI prints for the same scope.
+      const context = contexts.get(message.key); if (!context) throw new ExtensionError('CONTEXT_EXPIRED', 'The analysis context was evicted or the worker restarted. Refresh the report.');
+      if (!scope.options && (context.packet.comparison.repository.toLowerCase() !== scope.repository || context.packet.comparison.pullRequest !== scope.pullRequest)) throw new ExtensionError('SENDER_SCOPE', 'This report belongs to a different pull request.');
+      let view = context.packet.view;
+      if (message.path !== undefined) {
+        if (typeof message.path !== 'string' || message.path.length > 4096) throw new ExtensionError('FILE_LIMIT', 'Request one file path.');
+        const projection = humanReport(context.report, context.policy, message.path, context.packet.view.errors);
+        if (!projection.ok) throw new ExtensionError('FILE_VIEW', projection.diagnostics.map(item => item.message).join('\n'));
+        view = projection.value;
+      }
+      const rendered = formatReport(view.report, 'human', { color: false });
+      if (!rendered.ok) throw new ExtensionError('REPORT_TEXT', rendered.diagnostics.map(item => item.message).join('\n'));
+      return rendered.value.stdout;
+    }
     case 'diagnostics.get': return diagnostics();
     case 'options.open': await chrome.runtime.openOptionsPage(); return null;
     case 'data.action': {
@@ -131,7 +149,7 @@ chrome.runtime.onMessage.addListener((input, sender, reply) => {
       if (bytes(input) > 24 * 1024 * 1024) throw new ExtensionError('MESSAGE_LIMIT', 'The request exceeds 24 MiB.');
       reply({ ok: true, value: await handle(input as Message, sender) });
     } catch (error) {
-      await recordError(error).catch(() => undefined);
+      await recordError(error, (input as Message).type, sender).catch(() => undefined);
       reply({ ok: false, code: error instanceof ExtensionError ? error.code : 'EXTENSION_OPERATION', message: error instanceof Error ? error.message : 'The extension operation failed.' });
     }
   })(); return true;

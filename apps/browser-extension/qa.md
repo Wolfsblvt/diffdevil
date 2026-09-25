@@ -15,6 +15,7 @@ node --test src/diffdevil/tests/browser.test.mjs
 npm run extension:test
 npm run extension:qa
 npm run extension:qa:installed -- --require
+npm run extension:qa:public
 npm run extension:store
 npm run check:actions
 ```
@@ -33,6 +34,8 @@ A separate browser acquisition suite exercises the production signed-in adapter 
 
 The installed runner is fully authored. On an unrestricted browser it verifies actual MV3 startup/CSP, real synchronized/local storage separation, engine execution, IndexedDB normalization, browser/worker restart, cache reuse and explicit clear/reset behavior. It uses a synthetic report submitted through the real worker and does not impersonate live provider evidence.
 
+The public installed runner uses a disposable anonymous Chromium profile and the built unpacked extension against a current public PR. It checks direct aggregate and per-file Changed, records what file tree and tree counters the page exposed and requires tree seats only when counters exist, opens the aggregate report, follows GitHub's Files link, and exercises a same-document route change that separates frame and tab URL. The receipt records whether GitHub's own click was a soft or full navigation. On failure it keeps a screenshot, page and worker console, and a Playwright trace under `artifacts/browser-extension/qa/public-installed/`. It does not establish signed-in layout or private-repository behavior.
+
 ## This source session
 
 The source was reconstructed and verified against main commit `86dcf193a3186467d5b5f24a4246767adaf0a069`, tree `0658aa5f8b0e97f1774d05abb2bfc4b9f22bf733`, then replayed onto current `main` after presenter PR #25 landed. The final extension does not duplicate or modify that presenter implementation, and earlier bounded PR #26 does not contain this full application.
@@ -49,7 +52,7 @@ Use an allowed Chrome profile with a disposable fixture repository. Cover both p
 
 Check real cookies, redirects, public API rate limits and inaccessible-base policy errors. Verify no raw patch persists in IndexedDB/local/sync storage; inspect actual report/path and policy cache contents, size eviction and browser quota failure. Restart the browser and worker, then repeat cached analysis and clear/reset. Check two tabs with different comparisons and policies; obsolete results must not cross scopes.
 
-At 80%, 100%, 125%, 150% and 200% browser zoom, exercise aggregate/file popovers near all viewport edges. Use keyboard only, Escape/outside/toggle dismissal, focus restoration, light/dark/automatic themes, forced colours and a screen reader. Confirm that native focus indicators remain legible when raw stats are dimmed.
+At 80%, 100%, 125%, 150% and 200% browser zoom, exercise aggregate/file popovers near all viewport edges. Use keyboard only, Escape/outside/toggle dismissal, focus restoration, light/dark/automatic themes, forced colours and a screen reader. Confirm that native focus indicators remain legible with GitHub’s raw counters hidden (default) and faint, that the failure marker restores them at full colour, and that the report becomes a bottom sheet below 544 px.
 
 For a writable repository, click only the handoff first and inspect the network: no label mutation should be sent. Make the actual selection yourself in GitHub, confirm the exact existing label, and confirm unrelated labels are untouched. Repeat without write permission and on a tab without a native picker. Never count a fixture DOM insertion as that provider acceptance.
 

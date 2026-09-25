@@ -40,6 +40,8 @@ jobs:
         run: node node_modules/playwright-core/cli.js install --with-deps chromium
       - name: Rendered controller and source-acquisition fixtures
         run: npm run extension:qa
+      - name: Current GitHub summary and missing-anchor resilience
+        run: node apps/browser-extension/qa/live-dom.mjs
       - name: Actual installed MV3 worker and native storage
         run: node apps/browser-extension/qa/installed.mjs --require
       - name: Produce Store review assets, without publication

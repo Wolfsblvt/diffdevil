@@ -12,12 +12,13 @@ await rm(out, { recursive: true, force: true }); await mkdir(join(out, 'assets')
 const common = { bundle: true, platform: 'browser', target: 'chrome120', legalComments: 'eof', metafile: true, define: { __ENGINE_VERSION__: JSON.stringify(packageJson.version) },
   alias: { '@wolfsblvt/diffdevil/browser/text': resolve('dist/lib/browser/text.js'), '@wolfsblvt/diffdevil/browser': resolve('dist/browser/index.js') } };
 const modules = await build({ ...common, entryPoints: { background: join(root, 'src/background/worker.ts'), options: join(root, 'src/options/main.ts') }, outdir: out, format: 'esm', splitting: true, chunkNames: 'chunks/[name]-[hash]' });
-const content = await build({ ...common, entryPoints: [join(root, 'src/content/main.ts')], outfile: join(out, 'content.js'), format: 'iife' });
+// The popover stylesheet is imported as text and adopted by its shadow root.
+const content = await build({ ...common, entryPoints: [join(root, 'src/content/main.ts')], outfile: join(out, 'content.js'), format: 'iife', loader: { '.css': 'text' } });
 await build({ ...common, entryPoints: [join(root, 'src/options/theme.ts')], outfile: join(out, 'theme.js'), format: 'iife' });
 await build({ entryPoints: [join(root, 'src/options/options.css')], outfile: join(out, 'options.css'), bundle: true, target: 'chrome120', loader: { '.svg': 'file' }, assetNames: 'assets/[name]-[hash]' });
 await copyFile(join(root, 'src/content/content.css'), join(out, 'content.css'));
 await copyFile(join(root, 'options.html'), join(out, 'options.html'));
-const manifest = JSON.parse(await readFile(join(root, 'manifest.json'), 'utf8')); manifest.version = packageJson.version;
+const manifest = JSON.parse(await readFile(join(root, 'manifest.json'), 'utf8')); manifest.version = packageJson.version; manifest.version_name = packageJson.version;
 await writeFile(join(out, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
 const identity = resolve('packages/design/assets/identity'); const identities = [];
 const acceptedBrand = await readFile(join(root, 'assets/diffdevil-brand.svg'));
@@ -36,11 +37,19 @@ for (const size of [16, 32, 48, 128]) {
   const frame = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"><rect x="${pad}" y="${pad}" width="${extent}" height="${extent}" rx="${Math.max(2, Math.round(extent * .15))}" fill="#0c0f17"/>${nested}</svg>`;
   await writeFile(join(out, 'assets', `icon-${size}.png`), new Resvg(frame).render().asPng());
 }
-let fonts = '';
-if (!fontFree) for (const [family, cssName, weights] of [['ibm-plex-sans', 'IBM Plex Sans', [400, 600]], ['ibm-plex-mono', 'IBM Plex Mono', [400]]]) {
-  for (const weight of weights) { const file = `${family}-latin-${weight}-normal.woff2`; await copyFile(`node_modules/@fontsource/${family}/files/${file}`, join(out, 'assets', file)); fonts += `@font-face{font-family:"${cssName}";font-style:normal;font-weight:${weight};font-display:swap;src:url("assets/${file}") format("woff2")}\n`; }
+// The settings page and the in-page report share one font set. Content CSS is
+// injected into github.com, so its font URLs are absolute extension URLs;
+// Chrome substitutes __MSG_@@extension_id__ inside content-script stylesheets.
+let fonts = ''; let contentFonts = '';
+if (!fontFree) for (const [family, cssName, weights] of [['ibm-plex-sans', 'IBM Plex Sans', [400, 600, 700]], ['ibm-plex-mono', 'IBM Plex Mono', [400, 500]]]) {
+  for (const weight of weights) {
+    const file = `${family}-latin-${weight}-normal.woff2`; await copyFile(`node_modules/@fontsource/${family}/files/${file}`, join(out, 'assets', file));
+    const face = url => `@font-face{font-family:"${cssName}";font-style:normal;font-weight:${weight};font-display:swap;src:url("${url}") format("woff2")}\n`;
+    fonts += face(`assets/${file}`); contentFonts += face(`chrome-extension://__MSG_@@extension_id__/assets/${file}`);
+  }
 }
 await writeFile(join(out, 'options.css'), fonts + await readFile(join(out, 'options.css'), 'utf8'));
+await writeFile(join(out, 'content.css'), contentFonts + await readFile(join(out, 'content.css'), 'utf8'));
 const escape = value => value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
 function prose(title, text) {
   const paragraphs = text.trim().split(/\n\s*\n/u).map(block => { const header = /^(#{1,3}) (.+)$/u.exec(block.trim()); return header ? `<h${header[1].length}>${escape(header[2])}</h${header[1].length}>` : `<p>${escape(block.replaceAll('\n', ' '))}</p>`; }).join('\n');

@@ -1,0 +1,95 @@
+{
+  "kind": "diffdevil.store-assets/2",
+  "published": false,
+  "reservedIdentity": true,
+  "fontsEmbedded": false,
+  "imageRequirements": "https://developer.chrome.com/docs/webstore/images",
+  "entries": [
+    {
+      "path": "screenshots/01-changed-on-github.png",
+      "width": 1280,
+      "height": 800,
+      "depth": 8,
+      "colorType": 2,
+      "sha256": "9c9c053367bd80d5897abc88966386913c0cd1018543f7c6b96801fe29f8f44f",
+      "generatedFrom": "artifacts/browser-extension/qa/github-dark.png",
+      "caption": "Changed in GitHub’s own diffstat seats: the pull request with its decomposition, size chip, band rail and local provenance; each file with its own Changed.",
+      "standing": "Actual production UI in an explicitly authored fixture; not a live or installed-extension capture."
+    },
+    {
+      "path": "screenshots/02-inspect-the-report.png",
+      "width": 1280,
+      "height": 800,
+      "depth": 8,
+      "colorType": 2,
+      "sha256": "a556332e04c6b5d20bff273bd64772f2f997808d582095d05d8a32142d00d22e",
+      "generatedFrom": "artifacts/browser-extension/qa/report-light.png",
+      "caption": "The anchored report: one dominant value with its evidence, the decomposition, raw churn, files, the policy in effect and the effect plan.",
+      "standing": "Actual production UI in an explicitly authored fixture; not a live or installed-extension capture."
+    },
+    {
+      "path": "screenshots/03-your-icon-preference.png",
+      "width": 1280,
+      "height": 800,
+      "depth": 8,
+      "colorType": 2,
+      "sha256": "1c6cfc61b8c678d0968aaa9650b3c4f059e6cc2e3a5052731ea8f6f9ded8c101",
+      "generatedFrom": "artifacts/browser-extension/qa/settings-icon-dark.png",
+      "caption": "Literal stable-setting anchors and the glyph, full-colour or no-icon choices.",
+      "standing": "Actual production UI in an explicitly authored fixture; not a live or installed-extension capture."
+    },
+    {
+      "path": "screenshots/04-your-policy-bands.png",
+      "width": 1280,
+      "height": 800,
+      "depth": 8,
+      "colorType": 2,
+      "sha256": "078704e44070c0bccd09bccec9d553f6d52c1b5fb9c3c6a02e6286c18a5d7f86",
+      "generatedFrom": "artifacts/browser-extension/qa/settings-bands-light.png",
+      "caption": "Editable personal thresholds, colour metadata and optional existing-label mappings in the authored light theme.",
+      "standing": "Actual production UI in an explicitly authored fixture; not a live or installed-extension capture."
+    },
+    {
+      "path": "screenshots/05-honest-uncertainty.png",
+      "width": 1280,
+      "height": 800,
+      "depth": 8,
+      "colorType": 2,
+      "sha256": "7ebc126af9a86536816212bc772f0ce71b597d954df887f9779ba992e57d405b",
+      "generatedFrom": "artifacts/browser-extension/qa/evidence-unknown.png",
+      "caption": "Incomplete evidence remains visibly unknown. No unsupported exact total or selected band is manufactured.",
+      "standing": "Actual production UI in an explicitly authored fixture; not a live or installed-extension capture."
+    },
+    {
+      "path": "promo/small-promo-440x280.png",
+      "width": 440,
+      "height": 280,
+      "depth": 8,
+      "colorType": 2,
+      "sha256": "8502063c3c7cd0c895864d106d9d7fe0b30e0565bad7a768055c55a7df7930bd",
+      "editableSource": "promo/small-promo-440x280.svg",
+      "editableSourceSha256": "164930fee885329bb008d4a0dbdf4320fb9bb111de68e71445551429aa2200a0",
+      "standing": "Authored promotional composition using accepted identity bytes and exact synthetic fixture measurements."
+    },
+    {
+      "path": "promo/marquee-1400x560.png",
+      "width": 1400,
+      "height": 560,
+      "depth": 8,
+      "colorType": 2,
+      "sha256": "0e7135cfec81756aaa63cd19b1b4cc39b41c80b3fd88437441686fdaace778cf",
+      "editableSource": "promo/marquee-1400x560.svg",
+      "editableSourceSha256": "6c04e50fe58bf7b0b41a8e839fdbd174722a9a13b0648f68776b2441bf659de5",
+      "standing": "Authored promotional composition using accepted identity bytes and exact synthetic fixture measurements."
+    },
+    {
+      "path": "store-icon-128.png",
+      "width": 128,
+      "height": 128,
+      "depth": 8,
+      "colorType": 6,
+      "sha256": "be8066b848641a2da4758d6fdef622de5bc85e08a1af318baeb836eed1d73aa0",
+      "standing": "Accepted master symbol on a 96×96 consumer field with 16px transparent outer padding; no new product glyph geometry."
+    }
+  ]
+}

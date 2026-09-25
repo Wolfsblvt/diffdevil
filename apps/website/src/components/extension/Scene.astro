@@ -2,8 +2,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // One fixture-backed GitHub pull-request scene in semantic HTML and CSS: no screenshot, no
 // iframe, no live fetch, no script. It follows GitHub's own visual language (and the site
-// theme, light or dark) and keeps the website's magenta out of it. GitHub's native raw
-// diffstat stays in place, visibly de-emphasised, beside the diffdevil projection.
+// theme, light or dark) and keeps the website's magenta out of GitHub's rows. The seats
+// take the diffstat slots GitHub already uses (Extension Grammar v1): once Changed is
+// known, GitHub's own raw counters are hidden by default, so the scene shows no native
+// diffstat beside a seat. The report is a GitHub shell around a diffdevil machine block.
 //
 // Every figure is the engine's result for docs/examples/reports/exact.json under
 // docs/examples/policies/full.yml (lib/specimens.ts → extensionSpecimen): the same
@@ -19,8 +21,8 @@ const { report, bands, band, files } = extensionSpecimen();
 const lines = report.totals.lines, raw = report.totals.raw, counts = report.totals.files;
 const status = report.measurement.status;
 const label = (id: string | undefined) => bands.find(item => item.id === id)?.label;
-const nativeCells = (added: number, deleted: number) => { const total = Math.max(added + deleted, 1); const green = Math.round((added / total) * 5); return Array.from({ length: 5 }, (_, index) => (index < green ? 'add' : 'del')); };
-const exactValue = (m: { status: string; value?: number }) => (m.status === 'exact' ? m.value ?? 0 : 0);
+const selected = bands.find(item => item.id === band);
+const excludedCount = files.filter(item => !item.file.included).length;
 ---
 <figure class="gh-scene" data-extension-scene>
   <div class="gh-top"><span class="gh-mark"><Icon name="github" size={18} /></span><span class="gh-repo">owner / <strong>repo</strong></span></div>
@@ -28,25 +30,20 @@ const exactValue = (m: { status: string; value?: number }) => (m.status === 'exa
     <p class="gh-title">Clamp values against a configured minimum <span class="gh-number">#123</span></p>
     <p class="gh-meta"><span class="gh-state">Open</span><span>wants to merge 3 commits into <code>main</code> from <code>clamp-minimum</code></span></p>
     <div class="gh-stat-row">
-      <span class="gh-native" aria-label={`GitHub diffstat: ${display(raw.added)} additions, ${display(raw.deleted)} deletions`}>
-        <span class="gh-native-add">+{display(raw.added)}</span> <span class="gh-native-del">−{display(raw.deleted)}</span>
-        <span class="gh-native-bar" aria-hidden="true">{nativeCells(exactValue(raw.added), exactValue(raw.deleted)).map(kind => <span class={`gh-native-cell is-${kind}`}></span>)}</span>
-      </span>
       <span class:list={['gh-anchor', { 'is-open': showReport }]} data-scene-anchor>
-        <Projection changed={display(lines.changed)} added={display(lines.added)} deleted={display(lines.deleted)} modified={display(lines.modified)} rawAdded={display(raw.added)} rawDeleted={display(raw.deleted)} bands={bands} band={band} />
+        <Projection changed={display(lines.changed)} added={display(lines.added)} deleted={display(lines.deleted)} modified={display(lines.modified)} bands={bands} band={band} />
       </span>
     </div>
     <ul class="gh-tabs" aria-hidden="true"><li>Conversation</li><li>Commits <span>3</span></li><li>Checks <span>2</span></li><li class="is-current">Files changed <span>{display(counts.total!)}</span></li></ul>
 
     {showFiles && (
       <ul class="gh-files">
-        {[...files].sort((x, y) => Number(y.file.included) - Number(x.file.included)).map(({ file, band: fileBand, reason }) => (
+        {[...files].sort((x, y) => Number(y.file.included) - Number(x.file.included)).map(({ file, reason }) => (
           <li class:list={['gh-file', { 'is-excluded': !file.included }]}>
             <span class="gh-path">{file.path}</span>
-            <span class="gh-native gh-native-file"><span class="gh-native-add">+{display(file.raw.added)}</span> <span class="gh-native-del">−{display(file.raw.deleted)}</span></span>
             {file.included
-              ? <Projection compact changed={display(file.lines.changed)} added={display(file.lines.added)} deleted={display(file.lines.deleted)} modified={display(file.lines.modified)} rawAdded={display(file.raw.added)} rawDeleted={display(file.raw.deleted)} bands={bands} band={fileBand} label={fileBand?.toUpperCase()} />
-              : <span class="gh-excluded">excluded by <code>{reason ?? 'path policy'}</code> · measured, not classified</span>}
+              ? <Projection compact changed={display(file.lines.changed)} added={display(file.lines.added)} deleted={display(file.lines.deleted)} modified={display(file.lines.modified)} bands={bands} band={undefined} />
+              : <span class="gh-excluded"><span class="gh-excluded-word">— excluded</span><span class="gh-native gh-native-file" aria-label={`GitHub diffstat: ${display(file.raw.added)} additions, ${display(file.raw.deleted)} deletions`}><span class="gh-native-add">+{display(file.raw.added)}</span> <span class="gh-native-del">−{display(file.raw.deleted)}</span></span><span class="gh-excluded-why">by <code>{reason ?? 'path policy'}</code></span></span>}
           </li>
         ))}
       </ul>
@@ -54,18 +51,18 @@ const exactValue = (m: { status: string; value?: number }) => (m.status === 'exa
 
     {showReport && (
       <div class="gh-popover" role="group" aria-label="diffdevil analysis report, shown open">
-        <p class="gh-pop-head"><strong>diffdevil analysis</strong><span class="gh-pop-close" aria-hidden="true">×</span></p>
-        <p class="gh-pop-sub">owner/repo #123 · {evidenceGlyph[status]} {status}</p>
-        <p class="gh-pop-total"><span>Changed</span> <strong>{display(lines.changed)}</strong> <span>lines</span></p>
-        <p class="gh-pop-parts">+{display(lines.added)} added only · −{display(lines.deleted)} deleted only · ~{display(lines.modified)} modified</p>
-        <dl class="gh-pop-list">
-          <dt>Raw</dt><dd>+{display(raw.added)} −{display(raw.deleted)} · churn {display(raw.churn)}</dd>
-          <dt>Measurement</dt><dd>{evidenceGlyph[status]} {status} · {report.semantics.replacementLines}</dd>
-          <dt>File set</dt><dd>{report.fileSet.complete ? 'complete' : 'incomplete'} · {display(counts.included!)} included, {display(counts.excluded!)} excluded</dd>
-          <dt>Band</dt><dd>{band} → {label(band)} · one of {bands.length}</dd>
-          <dt>Policy</dt><dd><code>.diffdevil.yml</code> at the base revision · composed with personal defaults</dd>
-          <dt>Excluded</dt><dd>{files.filter(item => !item.file.included).map(item => `${item.file.path} by ${item.reason ?? 'path policy'}`).join(', ') || 'none'}</dd>
-        </dl>
+        <p class="gh-pop-head"><strong><Icon name="brand" size={16} class="gh-pop-glyph" /> diffdevil analysis</strong><span class="gh-pop-close" aria-hidden="true">×</span></p>
+        <p class="gh-pop-meta">owner/repo #123 · 9cd6d05 → 8b314e1 · three-dot · local</p>
+        <div class="gh-machine">
+          <div class="gh-hero"><span class="gh-hero-line"><strong>{display(lines.changed)}</strong><span>changed</span></span><span class="gh-chips"><span class="gh-chip-ev">{evidenceGlyph[status]} {status}</span><span class="gh-chip-measure">lines.changed</span></span></div>
+          <div class="gh-decomp"><span class="gh-eyebrow">decomposition</span><span class="gh-row"><span class="gh-sign-add">+</span><b>{display(lines.added)}</b></span><span class="gh-row"><span class="gh-sign-del">−</span><b>{display(lines.deleted)}</b></span><span class="gh-row"><span class="gh-sign-mod">~</span><b>{display(lines.modified)}</b></span></div>
+        </div>
+        <p class="gh-eyebrow">raw</p>
+        <p class="gh-raw"><span>+ additions <b>{display(raw.added)}</b></span><span>− deletions <b>{display(raw.deleted)}</b></span><span>churn <b>{display(raw.churn)}</b></span></p>
+        <p class="gh-strip">{display(counts.total!)} files · {display(counts.included!)} included{excludedCount ? ` · ${excludedCount} excluded` : ''}</p>
+        <dl class="gh-grid"><dt class="gh-eyebrow gh-span">policy <span>· composed · personal &lt; repository@9cd6d05</span></dt><dt>band</dt><dd>size → {band?.toUpperCase()} <span class="gh-quiet">one of {bands.length} · {label(band)}</span></dd><dt>metrics</dt><dd>review {display(lines.changed)} · churn {display(raw.churn)}</dd></dl>
+        <dl class="gh-grid"><dt class="gh-eyebrow gh-span">→ effect plan <span>· desired · nothing applied</span></dt><dt>select</dt><dd><span class="gh-label">{selected?.label ?? band}</span><span class="gh-secondary">Find in labels ↗</span></dd><dt>⟲ readback</dt><dd>not observed</dd></dl>
+        <p class="gh-footer"><span>Details ↗</span><span>Copy facts</span><span class="gh-footer-end">Settings</span></p>
       </div>
     )}
   </div>
@@ -73,10 +70,10 @@ const exactValue = (m: { status: string; value?: number }) => (m.status === 'exa
 </figure>
 <style>
   .gh-scene {
-    --gh-bg: #0d1117; --gh-raised: #161b22; --gh-border: #30363d; --gh-border-strong: #484f58; --gh-fg: #e6edf3; --gh-muted: #8b949e; --gh-add: #3fb950; --gh-del: #f85149; --gh-open: #238636; --gh-accent: #f78166;
+    --gh-bg: #0d1117; --gh-raised: #161b22; --gh-border: #30363d; --gh-border-strong: #484f58; --gh-fg: #e6edf3; --gh-muted: #8b949e; --gh-add: #3fb950; --gh-del: #f85149; --gh-open: #238636; --gh-accent: #f78166; --gh-link: #4493f8;
     margin: 0; border: 1px solid var(--hair); border-radius: var(--r-card); overflow: hidden; background: var(--gh-bg); color: var(--gh-fg); font-family: -apple-system, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif; font-size: 13px; line-height: 1.5; min-width: 0;
   }
-  :global([data-theme="light"]) .gh-scene { --gh-bg: #ffffff; --gh-raised: #f6f8fa; --gh-border: #d0d7de; --gh-border-strong: #afb8c1; --gh-fg: #1f2328; --gh-muted: #59636e; --gh-add: #1a7f37; --gh-del: #d1242f; --gh-open: #1f883d; --gh-accent: #fd8c73; }
+  :global([data-theme="light"]) .gh-scene { --gh-bg: #ffffff; --gh-raised: #f6f8fa; --gh-border: #d0d7de; --gh-border-strong: #afb8c1; --gh-fg: #1f2328; --gh-muted: #59636e; --gh-add: #1a7f37; --gh-del: #d1242f; --gh-open: #1f883d; --gh-accent: #fd8c73; --gh-link: #0969da; }
   .gh-top { display: flex; align-items: center; gap: 12px; padding: 12px 20px; background: var(--gh-raised); border-bottom: 1px solid var(--gh-border); }
   .gh-mark { display: inline-flex; color: var(--gh-fg); }
   .gh-repo { color: var(--gh-muted); } .gh-repo strong { color: var(--gh-fg); }
@@ -86,36 +83,47 @@ const exactValue = (m: { status: string; value?: number }) => (m.status === 'exa
   .gh-meta { margin: 0; display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; color: var(--gh-muted); font-size: 13px; }
   .gh-meta code, .gh-scene code { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace; font-size: 12px; padding: 1px 5px; border-radius: 6px; background: var(--gh-raised); }
   .gh-state { padding: 3px 11px; border-radius: 999px; background: var(--gh-open); color: #ffffff; font-weight: 600; font-size: 12.5px; }
-  .gh-stat-row { display: flex; align-items: flex-start; flex-wrap: wrap; gap: 8px 14px; }
-  /* GitHub's own raw diffstat stays present and is visibly de-emphasised */
-  .gh-native { display: inline-flex; align-items: center; gap: 5px; padding-top: 1px; font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; opacity: .45; }
-  .gh-native-add { color: var(--gh-add); } .gh-native-del { color: var(--gh-del); }
-  .gh-native-bar { display: inline-flex; gap: 1px; margin-left: 3px; }
-  .gh-native-cell { width: 8px; height: 8px; } .gh-native-cell.is-add { background: var(--gh-add); } .gh-native-cell.is-del { background: var(--gh-del); }
-  .gh-anchor { display: inline-flex; padding: 2px 6px; margin: -2px -6px; border-radius: 6px; }
-  .gh-anchor.is-open { outline: 1px solid var(--gh-border-strong); background: var(--gh-raised); }
+  .gh-stat-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 14px; }
+  .gh-anchor { display: inline-flex; padding: 2px 8px; margin: -2px -8px; border-radius: 6px; border: 1px solid transparent; }
+  .gh-anchor.is-open { border-color: var(--gh-border-strong); background: var(--gh-raised); }
   .gh-tabs { list-style: none; margin: 2px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 22px; border-bottom: 1px solid var(--gh-border); color: var(--gh-fg); }
   .gh-tabs li { padding: 6px 0 8px; border-bottom: 2px solid transparent; }
   .gh-tabs li.is-current { font-weight: 600; border-bottom-color: var(--gh-accent); }
   .gh-tabs span { margin-left: 4px; padding: 0 6px; border-radius: 999px; background: var(--gh-raised); color: var(--gh-muted); font-size: 12px; }
   .gh-files { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
-  .gh-file { display: flex; align-items: flex-start; flex-wrap: wrap; gap: 6px 14px; padding: 9px 14px; border: 1px solid var(--gh-border); border-radius: 6px; background: var(--gh-raised); }
-  .gh-path { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; min-width: 150px; overflow-wrap: anywhere; }
-  .gh-native-file { min-width: 84px; }
+  .gh-file { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 14px; padding: 9px 14px; border: 1px solid var(--gh-border); border-radius: 6px; background: var(--gh-raised); }
+  .gh-path { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; min-width: 150px; overflow-wrap: anywhere; flex: 1; }
   .gh-file.is-excluded .gh-path { color: var(--gh-muted); }
-  .gh-excluded { font-size: 12px; color: var(--gh-muted); }
+  /* the excluded file keeps GitHub's raw counters faint so the reader still knows its size */
+  .gh-excluded { display: inline-flex; align-items: center; gap: 10px; font-size: 12px; color: var(--gh-muted); }
+  .gh-excluded-word { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11.5px; }
+  .gh-native { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; opacity: .7; filter: saturate(.3); }
+  .gh-native-add { color: var(--gh-add); } .gh-native-del { color: var(--gh-del); }
   /* the anchored report, shown open: a non-modal popover under its trigger, no backdrop */
-  .gh-popover { position: absolute; top: 118px; left: 148px; width: 350px; padding: 14px 16px; border: 1px solid var(--gh-border-strong); border-radius: 10px; background: var(--gh-bg); box-shadow: 0 12px 32px rgb(0 0 0 / 40%); z-index: 1; }
+  .gh-popover { position: absolute; top: 118px; left: 148px; width: 420px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; border: 1px solid var(--gh-border-strong); border-radius: 12px; background: var(--gh-bg); box-shadow: 0 12px 32px rgb(0 0 0 / 40%); z-index: 1; font-size: 12px; }
   :global([data-theme="light"]) .gh-popover { box-shadow: 0 12px 32px rgb(31 35 40 / 18%); }
-  .gh-popover p { margin: 0; }
-  .gh-pop-head { display: flex; justify-content: space-between; font-size: 14px; } .gh-pop-close { color: var(--gh-muted); }
-  .gh-pop-sub { font-size: 12px; color: var(--gh-muted); }
-  .gh-pop-total { margin-top: 10px !important; display: flex; align-items: baseline; gap: 8px; } .gh-pop-total strong { font-size: 24px; line-height: 1; }
-  .gh-pop-parts { font-size: 12px; }
-  .gh-pop-list { margin: 10px 0 0; display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 4px 10px; font-size: 12px; }
-  .gh-pop-list dt { color: var(--gh-muted); } .gh-pop-list dd { margin: 0; overflow-wrap: anywhere; }
-  .gh-scene:has(.gh-popover) .gh-files { padding-left: 0; }
+  .gh-popover p, .gh-popover dl { margin: 0; }
+  .gh-pop-head { display: flex; justify-content: space-between; font-size: 14px; } .gh-pop-head strong { display: inline-flex; align-items: center; gap: 8px; } .gh-pop-close { color: var(--gh-muted); font-size: 18px; line-height: 1; }
+  .gh-pop-meta { margin-top: -6px !important; font-family: var(--font-mono); font-size: 11px; color: var(--gh-muted); }
+  /* the machine block is the tool speaking: midnight in both themes, the single magenta pixel column allowed inside GitHub */
+  .gh-machine { display: grid; grid-template-columns: 2fr 1fr; background: var(--bg-machine, #0c0f17); color: #f0f2f5; border-radius: 8px; border-left: 3px solid var(--accent, #f061ba); overflow: hidden; }
+  .gh-hero { padding: 14px 16px 12px; display: flex; flex-direction: column; gap: 6px; }
+  .gh-hero-line { display: flex; align-items: baseline; gap: 10px; } .gh-hero-line strong { font-family: var(--font-ui); font-size: 48px; line-height: 1; font-weight: 700; letter-spacing: -.035em; font-variant-numeric: tabular-nums; } .gh-hero-line span { font-size: 13px; color: #b4b7be; }
+  .gh-chips { display: flex; gap: 6px; flex-wrap: wrap; font-family: var(--font-mono); font-size: 11px; }
+  .gh-chip-ev { border: 1px solid #f0f2f5; border-radius: 4px; padding: 1px 7px; } .gh-chip-measure { border: 1px solid #484d58; border-radius: 4px; padding: 1px 7px; color: #b4b7be; }
+  .gh-decomp { padding: 12px 14px; border-left: 1px solid #2c303a; display: flex; flex-direction: column; gap: 3px; font-family: var(--font-mono); font-size: 11.5px; }
+  .gh-decomp .gh-eyebrow { color: #828690; margin-bottom: 2px; }
+  .gh-row { display: flex; justify-content: space-between; font-variant-numeric: tabular-nums; } .gh-row b { font-family: var(--font-ui); font-weight: 600; }
+  .gh-sign-add { color: var(--diff-add, #8fd6aa); } .gh-sign-del { color: var(--diff-del, #ff9fb0); } .gh-sign-mod { color: #b4b7be; }
+  .gh-eyebrow { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--gh-muted); } .gh-eyebrow span { letter-spacing: 0; text-transform: none; font-size: 11px; }
+  .gh-raw { margin-top: -6px !important; display: flex; flex-wrap: wrap; gap: 6px 18px; font-family: var(--font-mono); font-size: 11.5px; color: var(--gh-muted); } .gh-raw b { color: var(--gh-fg); font-family: var(--font-ui); font-weight: 600; }
+  .gh-strip { border-top: 1px solid var(--gh-border); padding-top: 8px; font-family: var(--font-mono); font-size: 11px; color: var(--gh-muted); }
+  .gh-grid { display: grid; grid-template-columns: 68px minmax(0, 1fr); gap: 4px 12px; border-top: 1px solid var(--gh-border); padding-top: 10px; font-family: var(--font-mono); font-size: 11.5px; color: var(--gh-muted); }
+  .gh-span { grid-column: 1 / -1; } .gh-grid dd { margin: 0; color: var(--gh-fg); display: flex; flex-wrap: wrap; gap: 8px; align-items: center; } .gh-quiet { color: var(--gh-muted); }
+  .gh-label { display: inline-flex; padding: 0 8px; border-radius: 2em; background: #c5def5; color: #1f2328; font-family: -apple-system, "Segoe UI", sans-serif; font-size: 12px; font-weight: 500; line-height: 18px; }
+  .gh-secondary { border: 1px solid var(--gh-border); border-radius: 6px; padding: 1px 10px; background: var(--gh-raised); color: var(--gh-fg); font-family: -apple-system, "Segoe UI", sans-serif; font-size: 12px; font-weight: 500; }
+  .gh-footer { display: flex; gap: 14px; border-top: 1px solid var(--gh-border); padding-top: 10px; color: var(--gh-link); } .gh-footer-end { margin-left: auto; }
   .gh-caption { padding: 8px 20px; border-top: 1px solid var(--gh-border); background: var(--gh-raised); color: var(--gh-muted); font-size: 11.5px; }
-  @media (min-width: 901px) { .gh-scene:has(.gh-popover) .gh-body { min-height: 500px; } .gh-scene:has(.gh-popover) .gh-files, .gh-scene:has(.gh-popover) .gh-tabs { margin-left: 380px; } .gh-scene:has(.gh-popover) .gh-popover { left: 20px; top: 150px; } }
+  @media (min-width: 901px) { .gh-scene:has(.gh-popover) .gh-body { min-height: 560px; } .gh-scene:has(.gh-popover) .gh-files, .gh-scene:has(.gh-popover) .gh-tabs { margin-left: 450px; } .gh-scene:has(.gh-popover) .gh-popover { left: 20px; top: 150px; } }
   @media (max-width: 900px) { .gh-popover { position: static; width: auto; } .gh-title { font-size: 18px; } }
 </style>

@@ -7,7 +7,7 @@ export interface Packet { key: string; comparison: BrowserComparison; view: Huma
 export interface Lookup { settings: Settings; selected: PolicyLayers; reportCached: boolean; policy?: PolicySource }
 export interface PublicPull { comparison: BrowserComparison; files?: readonly unknown[] }
 export interface CacheInfo { entries: number; bytes: number; reportEntries: number; reportBytes: number; policyEntries: number; policyBytes: number; maximumBytes: number }
-export interface Diagnostics { version: string; engine: string; schema: string; measurement: string; presenter: string; cache: CacheInfo; localBytes: number; syncBytes: number; errors: readonly { code: string; at: number }[]; last?: { repository: string; pullRequest: number; base: string; head: string; at: number } }
+export interface Diagnostics { version: string; engine: string; schema: string; measurement: string; presenter: string; cache: CacheInfo; localBytes: number; syncBytes: number; errors: readonly { code: string; phase?: string; at: number; frameId?: number | null; documentId?: string | null; senderUrl?: string; tabUrl?: string; routeAgreement?: 'same' | 'different' | 'unavailable'; tabId?: number | null }[]; last?: { repository: string; pullRequest: number; base: string; head: string; at: number } }
 export type Message =
   | { type: 'settings.get' } | { type: 'settings.save'; patch: unknown; replace?: boolean }
   | { type: 'policy.templates'; layers: PolicyLayers }
@@ -16,10 +16,15 @@ export type Message =
   | { type: 'cache.lookup'; comparison: BrowserComparison }
   | { type: 'analysis.run'; input: AnalysisInput }
   | { type: 'analysis.files'; key: string; paths: string[] }
+  | { type: 'report.text'; key: string; path?: string }
   | { type: 'diagnostics.get' } | { type: 'data.action'; action: string; confirmed?: boolean }
   | { type: 'options.open' };
 export async function request<T>(input: Message): Promise<T> {
   const response = await chrome.runtime.sendMessage(input) as { ok: true; value: T } | { ok: false; code: string; message: string } | undefined;
   if (!response) throw new Error('The extension worker did not respond. Reload the extension and this page.');
-  if (!response.ok) throw Object.assign(new Error(response.message), { code: response.code }); return response.value;
+  if (!response.ok) {
+    console.error('diffdevil content request failed', { code: response.code, phase: input.type });
+    throw Object.assign(new Error(response.message), { code: response.code });
+  }
+  return response.value;
 }
