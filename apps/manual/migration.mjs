@@ -127,7 +127,7 @@ export function fragmentAliases(state,anchorInventory,entries = []) {
 export function validateProjection(route, selection, observed) {
  const projection = selection.projection;
  if (!projection) return;
- if (observed.source !== projection.source || observed.digest !== projection.fromSourceSha256) throw new Error(`${route}: retained source capture does not match Git`);
+ if (observed.source !== projection.source || observed.digest !== projection.fromSourceSha256) throw new Error(`${route}: retained source capture does not match its recorded digest`);
  const same = (a,b) => JSON.stringify([...new Set(a)].sort()) === JSON.stringify([...new Set(b)].sort());
  if (!same(observed.anchors,projection.oldAnchors)) throw new Error(`${route}: retained projection fragment inventory does not match its source`);
  if (!same(Object.keys(projection.anchors),projection.oldAnchors)) throw new Error(`${route}: incomplete retained projection mapping`);

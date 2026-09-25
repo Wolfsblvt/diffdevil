@@ -90,9 +90,13 @@ What is diffdevil, with `/start/what-is-diffdevil/` as a 308 alias.
 Existing guides stay current until all of a split's successors are authored. To
 transfer a family, record its exact historical `fromRef`, SHA-256 and complete
 `oldAnchors` (GitHub heading IDs plus `_top`) in `authoring-state.json`, select a
-primary successor and map every old fragment to `{page, anchor}`. The renderer
-reads the historical Git bytes to check that inventory and the new rendered
-anchors to check the destinations. A retired source must actually be removed;
+primary successor and map every old fragment to `{page, anchor}`. Byte-exact
+pre-cutover sources live under `captures/v1/` as `.md.txt` files, keyed by their
+original repository paths. The recorded Git commit remains provenance, but a
+normal build reads the committed captures because the original manual branch was
+squash-merged and retired. The renderer checks each capture's SHA-256 and old
+fragment inventory against the recorded state, then checks each destination
+against the new rendered anchors. A retired source must actually be removed;
 forwarding Markdown stubs refuse. Bounded operator residue or a release maintainer
 map needs its separate explicit job. Incoming links must be updated in the same cut.
 

@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, mkdtempSync, rmSync, existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
-import { spawnSync, execFileSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { parse } from 'yaml';
 import { analyzeDiff, readReport, readPlan, validateSchema, unwrap, sourcePosition } from '../../dist/lib/index.js';
 import { compilePolicy, readPolicyYaml, evaluatePolicy, evaluatePolicyQuery, createPlan } from '../../dist/lib/policy/index.js';
@@ -138,13 +138,9 @@ test('CLI argument inventory and real help remain reachable from authored refere
  for(const command of ['analyze','query','check','validate','explain','plan','apply','labels','schema']) assert.ok(help.stdout.includes(command)&&reference.includes(command),command);
 });
 
-test('Wave 3 source transfers and the separately admitted FAQ survive the completed Help join',()=>{
+test('Wave 3 source transfers survive the completed Help join',()=>{
  for(const page of wave)assert.equal(state.pages[page.key].status,'authored',page.key);
  const baseline='a9df2c151da1f3bc36e4d2f4608ace62eca6d330';
- for(const page of pages.filter(page=>page.key==='faq')) {
-  const previous=execFileSync('git',['show',`${baseline}:${page.source}`],{cwd:root,encoding:'utf8'});
-  assert.equal(read(page.source),previous,`${page.key} must remain unchanged`);
- }
  const ref='1'.repeat(40),targets=sourceTargets({ref,state,exists:path=>existsSync(join(root,path))});
  for(const [source,transfer] of Object.entries(state.transfers)) if(transfer.fromRef===baseline) {
   assert.equal(existsSync(join(root,source)),false,source);

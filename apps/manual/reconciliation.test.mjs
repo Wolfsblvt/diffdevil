@@ -14,6 +14,7 @@ import {createStaticHandler} from './static-handler.mjs';
 import {indexable, qualifyFaqRecords} from './search-index.mjs';
 import {entries} from '../website/docs-manifest.mjs';
 import {faqRecords} from '../website/faq-content.mjs';
+import {readHistoricalSource} from './historical-source.mjs';
 
 const root=fileURLToPath(new URL('../../',import.meta.url));
 const read=path=>readFileSync(join(root,path),'utf8');
@@ -68,7 +69,7 @@ test('Old fragment handoff preserves repeated query values and refuses malformed
 test('Retained raw and technical sources keep exact GitHub identities while their old projections move',()=>{
  for(const [route,selection] of Object.entries(state.routes)){
   const capture=selection.projection;if(!capture)continue;
-  const bytes=execFileSync('git',['show',`${capture.fromRef}:${capture.source}`],{cwd:root});
+  const bytes=readHistoricalSource(root,capture.source,capture);
   assert.equal(createHash('sha256').update(bytes).digest('hex'),capture.fromSourceSha256,route);
   assert.equal(resolveSource('/source/?f='+encodeURIComponent(capture.source),targets),`https://github.com/Wolfsblvt/diffdevil/blob/${ref}/${capture.source}`);
   assert.deepEqual(Object.keys(capture.anchors).sort(),[...new Set(capture.oldAnchors)].sort());
