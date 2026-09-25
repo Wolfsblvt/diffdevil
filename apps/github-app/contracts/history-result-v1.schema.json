@@ -1,0 +1,106 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://diffdevil.app/contracts/history-result-v1.schema.json",
+  "title": "diffdevil managed App history result v1",
+  "oneOf": [
+    { "$ref": "#/$defs/query" },
+    { "$ref": "#/$defs/comparison" },
+    { "$ref": "#/$defs/baseline" },
+    { "$ref": "#/$defs/policyLab" },
+    { "$ref": "#/$defs/lens" },
+    { "$ref": "#/$defs/export" }
+  ],
+  "$defs": {
+    "reference": { "type": "string", "pattern": "^[A-Za-z0-9._-]{1,80}$" },
+    "nullableNumber": { "type": ["number", "null"] },
+    "interval": { "type": "object", "required": ["lower", "upper"], "properties": {
+      "lower": { "$ref": "#/$defs/nullableNumber" }, "upper": { "$ref": "#/$defs/nullableNumber" } } },
+    "population": { "type": "object", "required": ["total", "exact", "finiteBounded", "unknownUnbounded"], "properties": {
+      "total": { "type": "integer", "minimum": 0 }, "exact": { "type": "integer", "minimum": 0 },
+      "finiteBounded": { "type": "integer", "minimum": 0 }, "unknownUnbounded": { "type": "integer", "minimum": 0 } } },
+    "coverage": { "type": "object", "required": ["timeBasis", "requested", "standing", "completeWindow", "firstObservedAt", "lastObservedAt", "retainedAnalyses", "knownRecordGaps"],
+      "properties": { "timeBasis": { "const": "analysis-observed-at" }, "requested": { "type": "object", "required": ["from", "to"], "properties": {
+        "from": { "type": "string" }, "to": { "type": "string" } } }, "standing": { "const": "observed-samples-only" }, "completeWindow": { "const": false },
+        "firstObservedAt": { "type": ["string", "null"] }, "lastObservedAt": { "type": ["string", "null"] },
+        "retainedAnalyses": { "type": "integer", "minimum": 0 }, "knownRecordGaps": { "type": "integer", "minimum": 0 } } },
+    "overview": { "type": "object", "required": ["uniquePullRequests", "analyzedRevisions", "retainedAnalyses", "representativeCount", "representative", "finalOrMergedSize", "coverage"],
+      "properties": { "uniquePullRequests": { "type": "integer", "minimum": 0 }, "analyzedRevisions": { "type": "integer", "minimum": 0 },
+        "retainedAnalyses": { "type": "integer", "minimum": 0 }, "representativeCount": { "type": "integer", "minimum": 0 },
+        "representative": { "const": "latest-observed-in-window" }, "finalOrMergedSize": { "const": false },
+        "coverage": { "$ref": "#/$defs/coverage" } } },
+    "distribution": { "type": "object", "required": ["metric", "population", "quantileMethod", "quantiles", "histogram", "exactOnlyPartial"],
+      "properties": { "metric": { "type": "object" }, "population": { "$ref": "#/$defs/population" }, "quantileMethod": { "const": "nearest-rank-v1" },
+        "quantiles": { "type": "array", "items": { "type": "object", "required": ["p", "lower", "upper"], "properties": {
+          "p": { "enum": [0.5, 0.75, 0.9, 0.95] }, "lower": { "$ref": "#/$defs/nullableNumber" }, "upper": { "$ref": "#/$defs/nullableNumber" } } } },
+        "histogram": { "type": "array", "items": { "type": "object", "required": ["minimum", "maximum", "certain", "possible"], "properties": {
+          "minimum": { "type": "number" }, "maximum": { "$ref": "#/$defs/nullableNumber" },
+          "certain": { "type": "integer", "minimum": 0 }, "possible": { "type": "integer", "minimum": 0 } } } },
+        "exactOnlyPartial": { "type": "array", "items": { "type": "number" } } } },
+    "query": { "type": "object", "required": ["kind", "version", "family", "repositoryId", "overview"], "properties": {
+      "kind": { "const": "diffdevil.history-query" }, "version": { "const": 1 },
+      "family": { "enum": ["overview", "distribution", "concentration", "trajectories", "occurrence", "operations"] },
+      "repositoryId": { "type": "integer", "minimum": 1 }, "policyId": { "type": ["string", "null"] },
+      "overview": { "$ref": "#/$defs/overview" }, "result": {} },
+      "allOf": [
+        { "if": { "properties": { "family": { "const": "distribution" } } }, "then": { "required": ["result"], "properties": { "result": { "$ref": "#/$defs/distribution" } } } },
+        {
+          "if": { "properties": { "family": { "const": "concentration" } } },
+          "then": { "required": ["result"], "properties": { "result": {
+            "type": "array", "items": { "type": "object", "required": ["pullRequest", "comparisonId", "standing", "largest", "topThree"],
+              "properties": { "pullRequest": { "type": "integer" }, "comparisonId": { "type": "string" }, "standing": { "type": "string" },
+                "largest": { "oneOf": [{ "$ref": "#/$defs/interval" }, { "type": "null" }] },
+                "topThree": { "oneOf": [{ "$ref": "#/$defs/interval" }, { "type": "null" }] } } }
+          } } }
+        },
+        {
+          "if": { "properties": { "family": { "const": "trajectories" } } },
+          "then": { "required": ["result"], "properties": { "result": {
+            "type": "array", "items": { "type": "object", "required": ["pullRequest", "revisions"],
+              "properties": { "pullRequest": { "type": "integer" }, "revisions": { "type": "array", "items": { "type": "object", "required": ["comparisonId", "observedAt", "policyId", "value"],
+                "properties": { "comparisonId": { "type": "string" }, "observedAt": { "type": "string" }, "policyId": { "type": "string" }, "value": { "$ref": "#/$defs/interval" } } } } } }
+          } } }
+        },
+        {
+          "if": { "properties": { "family": { "const": "occurrence" } } },
+          "then": { "required": ["result"], "properties": { "result": {
+            "type": "array", "items": { "type": "object", "required": ["kind", "ref", "standing", "count"],
+              "properties": { "kind": { "type": "string" }, "ref": { "type": ["string", "null"] }, "standing": { "type": ["string", "null"] }, "count": { "type": "integer", "minimum": 0 } } }
+          } } }
+        },
+        { "if": { "properties": { "family": { "const": "operations" } } }, "then": { "required": ["result"], "properties": { "result": { "type": "object", "required": ["deliveries", "duplicateReceipts", "executionAttempts", "attemptStates", "deliveryStates", "repairs", "queueLatencyMs", "analysisLatencyMs"], "properties": {
+          "deliveries": { "type": "integer" }, "duplicateReceipts": { "type": "integer" }, "executionAttempts": { "type": "integer" },
+          "attemptStates": { "type": "array" }, "deliveryStates": { "type": "array" }, "repairs": { "type": "object" },
+          "queueLatencyMs": { "type": "object" }, "analysisLatencyMs": { "type": "object" } } } } } }
+      ] },
+    "comparison": { "type": "object", "required": ["kind", "version", "comparable", "authorizationCoverage", "left", "right", "coverageComparable"], "properties": {
+      "kind": { "const": "diffdevil.history-comparison" }, "version": { "const": 1 }, "comparable": { "type": "boolean" },
+      "authorizationCoverage": { "type": "object", "required": ["requested", "authorized", "represented"], "properties": {
+        "requested": { "type": "integer" }, "authorized": { "type": "integer" }, "represented": { "type": "integer" } } },
+      "left": { "oneOf": [{ "type": "object", "required": ["overview", "distribution"], "properties": { "overview": { "$ref": "#/$defs/overview" }, "distribution": { "$ref": "#/$defs/distribution" } } }, { "type": "null" }] },
+      "right": { "oneOf": [{ "type": "object", "required": ["overview", "distribution"], "properties": { "overview": { "$ref": "#/$defs/overview" }, "distribution": { "$ref": "#/$defs/distribution" } } }, { "type": "null" }] },
+      "coverageComparable": { "type": "boolean" } } },
+    "baseline": { "type": "object", "required": ["kind", "version", "metric", "n", "presentation", "ordinalBelow", "ordinalEqual", "ordinalAbove", "rankInterval", "percentileInterval", "median", "policyEras", "coverage"], "properties": {
+      "kind": { "const": "diffdevil.repository-baseline" }, "version": { "const": 1 }, "metric": { "type": "object" },
+      "n": { "type": "integer", "minimum": 0 }, "presentation": { "enum": ["ordinal", "rank-interval"] },
+      "ordinalBelow": { "type": "integer" }, "ordinalEqual": { "type": "integer" }, "ordinalAbove": { "type": "integer" },
+      "rankInterval": { "oneOf": [{ "type": "object", "required": ["minimum", "maximum"], "properties": { "minimum": { "type": "integer" }, "maximum": { "type": "integer" } } }, { "type": "null" }] },
+      "percentileInterval": { "oneOf": [{ "type": "object", "required": ["minimum", "maximum"], "properties": {
+        "minimum": { "type": "number", "minimum": 0, "maximum": 1 }, "maximum": { "type": "number", "minimum": 0, "maximum": 1 } } }, { "type": "null" }] },
+      "median": { "type": "object" }, "policyEras": { "type": "array", "items": { "type": "string" } }, "coverage": { "$ref": "#/$defs/coverage" } } },
+    "policyLab": { "type": "object", "required": ["kind", "version", "resultKind", "population", "changed", "unchanged", "incompatible", "unsupported", "insufficientEvidence", "compatibleEvaluated", "evidence", "coverage", "desiredEffectsOnly", "providerMutationsReplayed", "results"], "properties": {
+      "kind": { "const": "diffdevil.policy-lab" }, "version": { "const": 1 }, "resultKind": { "enum": ["rule", "band"] }, "population": { "type": "integer" },
+      "changed": { "type": "integer" }, "unchanged": { "type": "integer" }, "incompatible": { "type": "integer" },
+      "unsupported": { "type": "integer" }, "insufficientEvidence": { "type": "integer" }, "compatibleEvaluated": { "type": "integer" },
+      "evidence": { "$ref": "#/$defs/population" }, "coverage": { "$ref": "#/$defs/coverage" },
+      "desiredEffectsOnly": { "const": true }, "providerMutationsReplayed": { "const": false }, "results": { "type": "array" } } },
+    "lens": { "type": "object", "required": ["kind", "version", "lens", "historicalCoverage", "coverage", "result"], "properties": {
+      "kind": { "const": "diffdevil.history-lens" }, "version": { "const": 1 }, "lens": { "type": "object" },
+      "historicalCoverage": { "type": "object", "required": ["representativeCount", "evaluated", "missing"], "properties": {
+        "representativeCount": { "type": "integer" }, "evaluated": { "type": "integer" }, "missing": { "type": "integer" } } },
+      "coverage": { "$ref": "#/$defs/coverage" }, "result": { "$ref": "#/$defs/query" } } },
+    "export": { "type": "object", "required": ["kind", "version", "exportedAt", "repositoryId", "records", "fileRows", "effectRows", "tombstones"], "properties": {
+      "kind": { "const": "diffdevil.github-app-history-export" }, "version": { "const": 2 }, "exportedAt": { "type": "string" },
+      "repositoryId": { "type": ["integer", "null"] }, "records": { "type": "array" }, "fileRows": { "type": "array" },
+      "effectRows": { "type": "array" }, "tombstones": { "type": "array" } } }
+  }
+}

@@ -59,6 +59,8 @@ Retain these result categories:
 
 Store canonical measurement values with their evidence and bounds. Do not turn unavailable values into zero, collapse a proven interval to a midpoint, or describe a partial file set as a complete PR.
 
+The source-only history query contract derives charts and Policy Lab decisions from retained rows. Shared saved lenses are protected configuration: an allowlisted query can name a metric, scope, band or rule reference and may carry a user-visible name or description there. They retain no numeric snapshot or personal identity and travel only in configuration export. History deletion or expiry removes the source records and leaves a lens with missing historical coverage; repository offboarding removes the protected lens configuration. The seven-day operational ledger separately records execution attempts and duplicate delivery receipts without promoting them to long-term product history.
+
 Per-file records have at most an ordinal local to one analysis. It is not derived from a path, not a cross-revision identity, and not a way to track an individual file over time. Duplicate numeric rows remain distinct observations so a distribution still counts all observed files.
 
 Persist per-file measurements in bounded rows or chunks rather than one unbounded report blob. Atomic publication, or a visible incomplete standing, must prevent a partially stored analysis from appearing complete. This is a concrete persisted-data boundary, not a generic event platform.
@@ -144,6 +146,8 @@ One failed API call, temporary outage, billing retry, suspension, or unverified 
 Before hosted availability, implement and qualify the real database/backup deletion boundary and disclose any bounded backup expiration. A restore must preserve opt-outs, deletions, and expiration rather than resurrecting them. Do not claim immediate erasure of every provider backup without evidence.
 
 Export retained numeric data in a documented, versioned machine format without joining in prohibited context. A useful export preserves evidence, versions, identifiers, and coverage. It is separate from an operator database export, which may contain protected configuration and account state.
+
+The versioned query and export code selects only currently retained, published records at read time. An exported file already delivered to an authorized administrator is outside server-side deletion reach; the service does not preserve a second pending export or cached chart projection. Analysis rows alone cannot prove that an entire requested period was collected, so a query reports observed-sample coverage and known record gaps rather than inventing complete opt-in coverage.
 
 ## Public playground
 

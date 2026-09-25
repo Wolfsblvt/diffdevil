@@ -211,13 +211,28 @@ test('installation creation retains its selected numeric repository identities i
 });
 
 test('history projection is versioned, quantitative, pathless, and keeps provider request/readback standing', () => {
-  const projection = historyProjection({ measurement: { status: 'exact' }, fileSet: { complete: false, total: { status: 'exact', value: 2 } }, totals: { raw: { added: { status: 'exact', value: 3 }, deleted: { status: 'exact', value: 2 }, churn: { status: 'exact', value: 5 } }, lines: { added: { status: 'exact', value: 1 }, deleted: { status: 'exact', value: 0 }, modified: { status: 'exact', value: 2 }, changed: { status: 'exact', value: 3 } } }, metrics: { review: { status: 'exact', value: 3 } }, files: [{ path: 'private/file.ts', lines: { changed: { status: 'exact', value: 3 } } }] }, [{ kind: 'label.add', subject: 'private label', outcome: 'changed', request: 'acknowledged', readback: 'verified' }]);
-  assert.equal(projection.schemaVersion, 3);
+  const report = { source: { base: 'abc', head: 'def', comparisonId: 'comparison-1', repository: 'secret/repo' },
+    author: { login: 'secret-person' }, title: 'secret PR prose', patch: 'secret patch',
+    measurement: { status: 'exact' }, fileSet: { complete: false, total: { status: 'exact', value: 2 } },
+    totals: { raw: { added: { status: 'exact', value: 3 }, deleted: { status: 'exact', value: 2 }, churn: { status: 'exact', value: 5 } },
+      lines: { added: { status: 'exact', value: 1 }, deleted: { status: 'exact', value: 0 }, modified: { status: 'exact', value: 2 }, changed: { status: 'exact', value: 3 } } },
+    metrics: { review: { status: 'exact', value: 3.5 }, 'secret/path': { status: 'exact', value: 9 } },
+    scopes: { production: { fileSet: { complete: false, total: { status: 'bounded', minimum: 1, maximum: 2 } }, totals: { lines: { changed: { status: 'exact', value: 3 } }, fileIds: ['private/file.ts'] } } },
+    bands: { size: { status: 'resolved', id: 'small', name: 'secret-label' } },
+    rules: { size: { disposition: 'matched', band: { id: 'small' }, template: 'secret-template' } },
+    files: [{ path: 'private/file.ts', oldPath: 'private/old.ts', included: true, lines: { changed: { status: 'exact', value: 3 } } }] };
+  const projection = historyProjection(report, [{ kind: 'label.add', subject: 'private label', outcome: 'changed', request: 'acknowledged', readback: 'verified', error: 'secret error' }]);
+  assert.equal(projection.schemaVersion, 4);
   assert.equal(JSON.stringify(projection).includes('private/file.ts'), false);
   assert.equal(JSON.stringify(projection).includes('private label'), false);
+  for (const forbidden of ['secret-person', 'secret PR prose', 'secret patch', 'private/old.ts', 'secret/path', 'secret-label', 'secret-template', 'secret error', 'secret/repo'])
+    assert.equal(JSON.stringify(projection).includes(forbidden), false, forbidden);
   assert.equal(projection.files[0].ordinal, 0);
   assert.equal(projection.publication.state, 'complete');
-  assert.deepEqual(projection.configuredResults, [{ metric: 'review', result: { status: 'exact', value: 3 } }]);
+  assert.deepEqual(projection.configuredResults, [{ metric: 'review', result: { status: 'exact', value: 3.5 } }]);
+  assert.equal(projection.files[0].inclusion, 'included');
+  assert.equal(projection.scopes[0].ref, 'production');
+  assert.equal(projection.rules[0].disposition, 'matched');
   assert.deepEqual(projection.effects[0], { kind: 'label.add', rule: undefined, band: undefined, desired: undefined, outcome: 'changed', request: 'acknowledged', readback: 'verified' });
 });
 

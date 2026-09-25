@@ -9,10 +9,11 @@ import { D1AppStore } from './storage.mjs';
 import { D1AuthorizationStore } from './authorization-storage.mjs';
 import { createAuthorizationService, protectedHeaders } from './authorization.mjs';
 import { createAdmissionService } from './admission.mjs';
+import { createHistoryAnalyticsService } from './history-analytics.mjs';
 
 const migrationNames = [
   '0001_initial.sql', '0002_consent-provenance.sql', '0003_preserve-active-consent.sql',
-  '0004_admission-settings.sql', '0005_offboarding-consent-tombstones.sql', '0006_user-authorization.sql', '0007_consent-actors.sql'
+  '0004_admission-settings.sql', '0005_offboarding-consent-tombstones.sql', '0006_user-authorization.sql', '0007_consent-actors.sql', '0008_history_analytics.sql'
 ];
 const ORIGIN = 'https://dashboard.example.test';
 const CALLBACK = `${ORIGIN}/oauth/callback`;
@@ -66,8 +67,11 @@ async function fixture() {
     }
   };
   const admission = createAdmissionService({ store: appStore, authorize: async request => request.actor?.role === 'repository-admin' });
-  const service = createAuthorizationService({ store, admission, provider, protector, returnContexts: [CONTEXT, 'account-home'], allowedOrigins: [ORIGIN], allowedCallbackUrls: [CALLBACK], sessionLifetimeMs: TEST_SESSION_MS, now: () => clock.value });
-  return { runtime, database, appStore, store, service, clock, providerState, protector };
+  const historyQueries = [];
+  const history = createHistoryAnalyticsService({ store: { historyWindow: async repositoryId => { historyQueries.push(repositoryId); return []; },
+    historySettings: async () => ({ enabled: true }) }, authorize: async ({ actor }) => actor?.userId === 123 });
+  const service = createAuthorizationService({ store, admission, history, provider, protector, returnContexts: [CONTEXT, 'account-home'], allowedOrigins: [ORIGIN], allowedCallbackUrls: [CALLBACK], sessionLifetimeMs: TEST_SESSION_MS, now: () => clock.value });
+  return { runtime, database, appStore, store, service, clock, providerState, protector, historyQueries };
 }
 
 async function signIn(service) {
@@ -79,6 +83,21 @@ async function signIn(service) {
   assert.ok(session);
   return { state: begun.state, browserBinding: oauthBinding(begun), artifact, session, result };
 }
+
+test('history reads bind the exact current repository grant and comparisons omit denied repositories', async () => {
+  const source = await fixture();
+  try {
+    const { session } = await signIn(source.service);
+    const query = repositoryId => ({ version: 1, repositoryId, from: '2026-09-01T00:00:00.000Z', to: '2026-10-01T00:00:00.000Z', family: 'distribution',
+      metric: { kind: 'total', name: 'changed', scope: 'policy-included' } });
+    const compared = await source.service.compareHistory({ session, left: query(17), right: query(18) });
+    assert.deepEqual(compared.body.authorizationCoverage, { requested: 2, authorized: 1, represented: 0 });
+    assert.equal(compared.body.right, null);
+    assert.deepEqual(source.historyQueries, [17]);
+    assert.equal(compared.headers['Cache-Control'], 'private, no-store');
+    await assert.rejects(source.service.readHistory({ session, query: query(18) }), { code: 'E_ADMISSION_UNAUTHORIZED' });
+  } finally { await source.runtime.dispose(); }
+});
 
 test('state is bound to the initiating browser, while return context, expiry and replay remain enforced', async () => {
   const source = await fixture();
@@ -202,7 +221,7 @@ test('consent decisions retain the session administrator only in protected repos
     assert.equal(disabled.body.history.actorId, 123);
 
     const configuration = await appStore.exportState();
-    assert.equal(configuration.version, 6);
+    assert.equal(configuration.version, 7);
     assert.equal(configuration.configurations[0].history_consent_actor_id, 123);
     assert.equal(configuration.configurations[0].execution_consent_actor_id, null);
     const restored = await fixture();
