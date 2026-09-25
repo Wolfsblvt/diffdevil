@@ -11,7 +11,7 @@ export interface Diagnostics { version: string; engine: string; schema: string; 
 export type Message =
   | { type: 'settings.get' } | { type: 'settings.save'; patch: unknown; replace?: boolean }
   | { type: 'policy.templates'; layers: PolicyLayers }
-  | { type: 'source.public'; repository: string; pullRequest: number; files?: boolean }
+  | { type: 'source.public'; repository: string; pullRequest: number; files?: boolean; optionalFallback?: true }
   | { type: 'source.policy'; repository: string; base: string; path: string }
   | { type: 'cache.lookup'; comparison: BrowserComparison }
   | { type: 'analysis.run'; input: AnalysisInput }
@@ -19,11 +19,14 @@ export type Message =
   | { type: 'report.text'; key: string; path?: string }
   | { type: 'diagnostics.get' } | { type: 'data.action'; action: string; confirmed?: boolean }
   | { type: 'options.open' };
+export function isCaughtOptionalPublicAbsence(input: Message, code: string): boolean {
+  return input.type === 'source.public' && input.optionalFallback === true && code === 'PUBLIC_UNAVAILABLE';
+}
 export async function request<T>(input: Message): Promise<T> {
   const response = await chrome.runtime.sendMessage(input) as { ok: true; value: T } | { ok: false; code: string; message: string } | undefined;
   if (!response) throw new Error('The extension worker did not respond. Reload the extension and this page.');
   if (!response.ok) {
-    console.error('diffdevil content request failed', { code: response.code, phase: input.type });
+    if (!isCaughtOptionalPublicAbsence(input, response.code)) console.error('diffdevil content request failed', { code: response.code, phase: input.type });
     throw Object.assign(new Error(response.message), { code: response.code });
   }
   return response.value;

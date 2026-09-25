@@ -73,6 +73,13 @@ test('current tab route authorizes direct loads and GitHub soft navigation witho
   assert.ok(!JSON.stringify(event).includes('fixture'));
 });
 test('a PR page cannot become an arbitrary repository source proxy', () => { assert.throws(() => m.authorize(sender, { type: 'source.public', repository: 'private/other', pullRequest: 42 }, 'owned')); assert.throws(() => m.authorize(sender, { type: 'source.public', repository: 'fixture/example', pullRequest: 43 }, 'owned')); assert.equal(m.authorize(sender, { type: 'cache.lookup', comparison }, 'owned').pullRequest, 42); });
+test('only the caught optional private public-source absence is excluded from operation diagnostics', () => {
+  const optional = { type: 'source.public', repository: 'fixture/example', pullRequest: 42, optionalFallback: true };
+  assert.equal(m.isCaughtOptionalPublicAbsence(optional, 'PUBLIC_UNAVAILABLE'), true);
+  assert.equal(m.isCaughtOptionalPublicAbsence(optional, 'GITHUB_RATE_LIMIT'), false);
+  assert.equal(m.isCaughtOptionalPublicAbsence({ ...optional, optionalFallback: undefined }, 'PUBLIC_UNAVAILABLE'), false);
+  assert.equal(m.isCaughtOptionalPublicAbsence({ type: 'source.policy', repository: 'fixture/example', base: comparison.base, path: '.diffdevil.yml' }, 'PUBLIC_UNAVAILABLE'), false);
+});
 test('policy paths are data with no absolute, parent or backslash escape', () => { for (const path of ['../secret', '/etc/passwd', 'a/../b', 'a\\b', 'a//b', '.']) assert.throws(() => m.safePath(path)); assert.equal(m.safePath('.github/a b.md'), '.github/a%20b.md'); });
 test('rendered paths are normalized of the bidi isolation marks GitHub wraps them in', () => { assert.equal(m.cleanPath('‎apps/github-app/README.md‎'), 'apps/github-app/README.md'); assert.equal(m.cleanPath(' ⁦src/a.ts⁩ '), 'src/a.ts'); assert.equal(m.cleanPath('‎'), undefined); assert.equal(m.cleanPath(undefined), undefined); });
 test('file-tree counters bind to their file through GitHub’s diff anchor, the SHA-256 of the path', async () => { const anchors = await m.pathAnchors(['apps/github-app/README.md', 'src/cache.ts']); assert.equal(anchors.get('6fc13d762cf5e910fa06edbf29d002aa0096e40733743834db6b82cf4596a63e'), 'apps/github-app/README.md'); assert.equal(anchors.size, 2); });

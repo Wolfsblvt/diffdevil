@@ -160,7 +160,7 @@ export async function acquire(current: Route, document: Document, signal: AbortS
           // The anonymous API can complete a public comparison; a private one
           // keeps the signed-in evidence it already has.
           try {
-            const result = await request<PublicPull>({ type: 'source.public', repository: current.repository, pullRequest: current.pullRequest, files: true });
+            const result = await request<PublicPull>({ type: 'source.public', repository: current.repository, pullRequest: current.pullRequest, files: true, ...(acquisition ? { optionalFallback: true } : {}) });
             if (!sameComparison(comparison, result.comparison)) throw new ExtensionError('COMPARISON_MOVED', 'The pull request changed during acquisition. Refresh the comparison.');
             publicResult = result; comparison = result.comparison;
             acquisition = { comparison, format: 'github-files', files: result.files ?? [], complete: result.files?.length === comparison.changedFiles };

@@ -8,7 +8,7 @@ import { operationDiagnostic } from './diagnostic.js';
 import { bytes, decorateView, selectedPolicy } from '../shared/settings.js';
 import { advancedChanges, type Settings } from '../shared/catalogue.js';
 import { ExtensionError } from '../shared/errors.js';
-import type { AnalysisInput, Diagnostics, Message, Packet, PolicySource } from '../shared/protocol.js';
+import { isCaughtOptionalPublicAbsence, type AnalysisInput, type Diagnostics, type Message, type Packet, type PolicySource } from '../shared/protocol.js';
 declare const __ENGINE_VERSION__: string;
 const preferences = new Preferences(chrome.storage); const cache = new AnalysisCache(indexedDB); const provider = new PublicSource();
 interface Cached { report: Report; at: number }
@@ -149,8 +149,9 @@ chrome.runtime.onMessage.addListener((input, sender, reply) => {
       if (bytes(input) > 24 * 1024 * 1024) throw new ExtensionError('MESSAGE_LIMIT', 'The request exceeds 24 MiB.');
       reply({ ok: true, value: await handle(input as Message, sender) });
     } catch (error) {
-      await recordError(error, (input as Message).type, sender).catch(() => undefined);
-      reply({ ok: false, code: error instanceof ExtensionError ? error.code : 'EXTENSION_OPERATION', message: error instanceof Error ? error.message : 'The extension operation failed.' });
+      const code = error instanceof ExtensionError ? error.code : 'EXTENSION_OPERATION';
+      if (!isCaughtOptionalPublicAbsence(input as Message, code)) await recordError(error, (input as Message).type, sender).catch(() => undefined);
+      reply({ ok: false, code, message: error instanceof Error ? error.message : 'The extension operation failed.' });
     }
   })(); return true;
 });

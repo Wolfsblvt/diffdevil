@@ -11,6 +11,7 @@ export async function productionModules() {
     `export * from './apps/browser-extension/src/shared/catalogue.ts';`,
     `export * from './apps/browser-extension/src/shared/settings.ts';`,
     `export * from './apps/browser-extension/src/shared/errors.ts';`,
+    `export * from './apps/browser-extension/src/shared/protocol.ts';`,
     `export * from './apps/browser-extension/src/background/preferences.ts';`,
     `export * from './apps/browser-extension/src/background/cache.ts';`,
     `export * from './apps/browser-extension/src/background/authorization.ts';`,
