@@ -19,14 +19,14 @@ await copyFile(join(root, 'src/content/content.css'), join(out, 'content.css'));
 await copyFile(join(root, 'options.html'), join(out, 'options.html'));
 const manifest = JSON.parse(await readFile(join(root, 'manifest.json'), 'utf8')); manifest.version = packageJson.version;
 await writeFile(join(out, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
-const identity = resolve('design/assets/identity'); const identities = [];
+const identity = resolve('packages/design/assets/identity'); const identities = [];
 const acceptedBrand = await readFile(join(root, 'assets/diffdevil-brand.svg'));
 const acceptedBrandHash = createHash('sha256').update(acceptedBrand).digest('hex');
 if (acceptedBrandHash !== 'd33cf3b1a7a8ec52706da3311ac82e0500ec6c2eee8e35baeaaa2d5ef2b9b34e') throw new Error('The vendored diffdevil/brand glyph disagrees with its accepted canonical source.');
 await writeFile(join(out, 'assets/diffdevil-brand.svg'), acceptedBrand);
 identities.push({ path: 'Wolfsblvt/wolfsblvt-icons@8596b6bc2ba7c4b950963b7ec26cee1a26974439:src/icons/products/diffdevil/brand.svg', sha256: acceptedBrandHash, license: 'MIT' });
 for (const file of ['diffdevil-symbol-micro-dark.svg', 'diffdevil-symbol-micro-light.svg', 'diffdevil-wordmark-dark.svg', 'diffdevil-wordmark-light.svg']) {
-  const bytes = await readFile(join(identity, file)); await copyFile(join(identity, file), join(out, 'assets', file)); identities.push({ path: `design/assets/identity/${file}`, sha256: createHash('sha256').update(bytes).digest('hex') });
+  const bytes = await readFile(join(identity, file)); await copyFile(join(identity, file), join(out, 'assets', file)); identities.push({ path: `packages/design/assets/identity/${file}`, sha256: createHash('sha256').update(bytes).digest('hex') });
 }
 for (const size of [16, 32, 48, 128]) {
   const source = (await readFile(join(identity, `diffdevil-symbol-${size <= 32 ? 'micro' : 'master'}-dark.svg`), 'utf8')).replace(/^<\?xml[^>]*>/u, '');

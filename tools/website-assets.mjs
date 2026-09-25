@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 /**
  * Generate the website's derived icon/raster assets from the canonical identity SVGs
- * in design/assets/identity. The SVGs are the committed source; every output here is
+ * in packages/design/assets/identity. The SVGs are the committed source; every output here is
  * deterministic generated material, written to ignored paths and copied into the
  * built site by the website build. Nothing is hand-cropped and no raster is committed.
  *
@@ -22,7 +22,7 @@ import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { inflateSync } from 'node:zlib';
 import { Resvg } from '@resvg/resvg-js';
 
-const ID = 'design/assets/identity/';
+const ID = 'packages/design/assets/identity/';
 const OUT = 'apps/website/public/';
 const GROUND = '#0c0f17';
 const GROUND_RGB = [0x0c, 0x0f, 0x17];

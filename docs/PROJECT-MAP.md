@@ -18,7 +18,7 @@ and disposable outputs without introducing independently versioned products.
 | `apps/shared/` | Small presenters both AGPL applications use (currently the App check-summary composer). |
 | `actions/` | Three sub-action entry points and their shared, committed runtime. |
 | `apps/manual/` | Explicit-source public manual renderer, source/route/migration manifests, isolated application toolchain and commands, shared-package consumption, generated reference inserts and qualification. Chapter prose stays in `docs/manual/`; the standalone FAQ stays with the product site. |
-| `design/` | Canonical reusable visual reference: E3/W1/T2 with Foundation A grammars, tokens, explicit errata, and reserved production identity SVGs; not executable website source. |
+| `packages/design/` | Canonical reusable visual reference: E3/W1/T2 with Foundation A grammars, tokens, explicit errata, and reserved production identity SVGs; not executable website source. |
 | `docs/` | Maintained manuals, runnable examples and dated technical research. |
 | `tools/` | Builds, generation and repository/consumer qualification, including the canonical FAQ and manual projections, derived website assets and curated-snapshot capture/audit. |
 | `.github/` | Provider-owned workflow convention, not a second implementation. |

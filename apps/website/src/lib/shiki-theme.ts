@@ -2,7 +2,7 @@
 /**
  * The diffdevil syntax palette as a Shiki theme: five restrained classes on the
  * midnight machine ground, identical in both site themes because code always sits on
- * `--bg-machine`. Values mirror `--syn-*` in design/tokens.css.
+ * `--bg-machine`. Values mirror `--syn-*` in packages/design/tokens.css.
  */
 import type { ThemeRegistrationRaw } from 'shiki';
 
