@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
+import { normalizeHistoryLens } from './history-analytics.mjs';
 
 const DAY = 86_400_000;
 const leaseExpiry = (now, durationMs) => new Date(Date.parse(now) + durationMs).toISOString();
@@ -30,6 +31,7 @@ export class D1AppStore {
     envelope.repositoryId ?? null, envelope.pullRequest ?? null, until, attemptId, now, now).run();
     const row = await this.statement('SELECT state, attempt_id, fence FROM deliveries WHERE delivery_id=?', envelope.deliveryId).first();
     if (row?.attempt_id === attemptId && Number.isSafeInteger(row.fence)) return { kind: 'claimed', attemptId, fence: row.fence };
+    await this.statement('UPDATE deliveries SET duplicate_count=duplicate_count+1 WHERE delivery_id=?', envelope.deliveryId).run();
     return ['complete', 'rejected', 'terminal', 'repair'].includes(row?.state) ? { kind: 'duplicate' } : { kind: 'active' };
   }
 
@@ -40,9 +42,10 @@ export class D1AppStore {
       ON CONFLICT(repository_id, pull_request) DO UPDATE SET lease_until=excluded.lease_until, delivery_id=excluded.delivery_id, attempt_id=excluded.attempt_id, fence=execution_leases.fence + 1
       WHERE execution_leases.lease_until <= ?`, envelope.repositoryId, envelope.pullRequest, until, envelope.deliveryId, delivery.attemptId, delivery.fence, now).run();
     const row = await this.statement('SELECT attempt_id, fence FROM execution_leases WHERE repository_id=? AND pull_request=?', envelope.repositoryId, envelope.pullRequest).first();
-    return row?.attempt_id === delivery.attemptId && Number.isSafeInteger(row.fence)
-      ? { kind: 'claimed', ...delivery, executionFence: row.fence, leaseUntil: until }
-      : { kind: 'active' };
+    if (row?.attempt_id !== delivery.attemptId || !Number.isSafeInteger(row.fence)) return { kind: 'active' };
+    await this.statement(`INSERT INTO execution_attempts (attempt_id, delivery_id, repository_id, pull_request, started_at, state)
+      VALUES (?, ?, ?, ?, ?, 'active')`, delivery.attemptId, envelope.deliveryId, envelope.repositoryId, envelope.pullRequest, now).run();
+    return { kind: 'claimed', ...delivery, executionFence: row.fence, leaseUntil: until };
   }
 
   async renewLease(envelope, lease) {
@@ -67,6 +70,7 @@ export class D1AppStore {
     if ((completed.meta?.changes ?? 0) !== 1) throw Object.assign(new Error('Delivery ownership was lost before completion.'), { code: 'E_LEASE_LOST' });
     await this.database.batch([
       this.statement('DELETE FROM execution_leases WHERE repository_id=? AND pull_request=? AND delivery_id=? AND attempt_id=? AND fence=?', envelope.repositoryId, envelope.pullRequest, envelope.deliveryId, lease.attemptId, lease.executionFence),
+      this.statement("UPDATE execution_attempts SET completed_at=?, state=?, code=? WHERE attempt_id=? AND state='active'", now, state, result.code ?? result.status ?? state, lease.attemptId),
       this.statement('INSERT INTO operational_results (delivery_id, policy_id, comparison_id, status, effect_count, recorded_at) VALUES (?, ?, ?, ?, ?, ?)', envelope.deliveryId, result.policyId ?? result.repair?.identity?.policyId ?? null, result.comparisonId ?? result.repair?.identity?.comparisonId ?? null, result.status ?? state, result.effectCount ?? 0, now),
       ...(state === 'repair' ? [this.statement(`INSERT INTO repairs (repair_id, repair_kind, repository_id, pull_request, base_sha, head_sha, policy_id, comparison_id, projection_json, state, code, created_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'open', ?, ?) ON CONFLICT(repair_id) DO UPDATE SET repair_kind=excluded.repair_kind, repository_id=excluded.repository_id, pull_request=excluded.pull_request, base_sha=excluded.base_sha, head_sha=excluded.head_sha, policy_id=excluded.policy_id, comparison_id=excluded.comparison_id, projection_json=excluded.projection_json, state='open', code=excluded.code, created_at=excluded.created_at`, `delivery:${envelope.deliveryId}`, result.repair?.kind ?? 'execution', envelope.repositoryId, result.repair?.identity?.pullRequest ?? envelope.pullRequest ?? null, result.repair?.identity?.base ?? null, result.repair?.identity?.head ?? null, result.repair?.identity?.policyId ?? null, result.repair?.identity?.comparisonId ?? null, JSON.stringify(result.repair?.projection ?? {}), result.code ?? 'E_APP_EXECUTION', now)] : [])
@@ -81,6 +85,7 @@ export class D1AppStore {
       WHERE delivery_id=? AND attempt_id=? AND fence=? AND state='active' AND lease_until > ?`, now, code, envelope.deliveryId, lease.attemptId, lease.fence, now).run();
     if ((result.meta?.changes ?? 0) !== 1) throw Object.assign(new Error('Delivery ownership was lost before retry.'), { code: 'E_LEASE_LOST' });
     await this.statement('DELETE FROM execution_leases WHERE repository_id=? AND pull_request=? AND delivery_id=? AND attempt_id=? AND fence=?', envelope.repositoryId, envelope.pullRequest, envelope.deliveryId, lease.attemptId, lease.executionFence).run();
+    await this.statement("UPDATE execution_attempts SET completed_at=?, state='retryable', code=? WHERE attempt_id=? AND state='active'", now, code, lease.attemptId).run();
   }
 
   async finishLifecycle(envelope, delivery, state = 'complete') {
@@ -166,10 +171,13 @@ export class D1AppStore {
           AND NOT EXISTS (SELECT 1 FROM deletion_tombstones WHERE scope IN (?, ?) AND reapply_until > ?)
         ON CONFLICT(repository_id, comparison_id, policy_id, schema_version, engine_version, report_version, metric_version) DO NOTHING RETURNING id`,
       identity.repositoryId, identity.pullRequest, identity.comparisonId, identity.policyId, projection.schemaVersion, projection.engineVersion, projection.reportVersion, projection.metricVersion,
-       projection.source?.base ?? null, projection.source?.head ?? null, now, expires, JSON.stringify({ evidence: projection.evidence, totals: projection.totals }), JSON.stringify(projection.fileSet), JSON.stringify(projection.configuredResults), JSON.stringify(projection.gaps), identity.repositoryId, `history:${identity.repositoryId}`, `repository:${identity.repositoryId}`, now).first();
+       projection.source?.base ?? null, projection.source?.head ?? null, now, expires,
+       JSON.stringify({ evidence: projection.evidence, totals: projection.totals }), JSON.stringify(projection.fileSet),
+       JSON.stringify({ metrics: projection.configuredResults, scopes: projection.scopes, bands: projection.bands, rules: projection.rules }),
+       JSON.stringify(projection.gaps), identity.repositoryId, `history:${identity.repositoryId}`, `repository:${identity.repositoryId}`, now).first();
       if (!record?.id) return { status: 'disabled' };
       const statements = [
-        ...projection.files.map(file => this.statement('INSERT INTO history_file_rows (history_id, ordinal, values_json) VALUES (?, ?, ?)', record.id, file.ordinal, JSON.stringify({ raw: file.raw, lines: file.lines }))),
+        ...projection.files.map(file => this.statement('INSERT INTO history_file_rows (history_id, ordinal, values_json) VALUES (?, ?, ?)', record.id, file.ordinal, JSON.stringify({ raw: file.raw, lines: file.lines, inclusion: file.inclusion, evidence: file.evidence, changeType: file.changeType, material: file.material }))),
         ...projection.effects.map((effect, ordinal) => this.statement('INSERT INTO history_effect_rows (history_id, ordinal, effect_json) VALUES (?, ?, ?)', record.id, ordinal, JSON.stringify(effect)))
       ];
       for (const batch of batches(statements)) await this.database.batch(batch);
@@ -308,6 +316,59 @@ export class D1AppStore {
     for (const batch of batches(statements)) await this.database.batch(batch);
   }
 
+  /** Read only currently retained, published projections from one repository. */
+  async historyWindow(repositoryId, from, to, policyId) {
+    const now = this.now();
+    if (!(await this.historySettings(repositoryId)).enabled) return [];
+    const blocked = await this.statement('SELECT 1 AS blocked FROM deletion_tombstones WHERE scope IN (?, ?) AND reapply_until > ?', `history:${repositoryId}`, `repository:${repositoryId}`, now).first();
+    if (blocked?.blocked) return [];
+    const records = await this.statement(`SELECT id, repository_id, pull_request, comparison_id, policy_id, schema_version, engine_version, report_version, metric_version,
+      base_sha, head_sha, observed_at, expires_at, projection_json, coverage_json, results_json, gaps_json
+      FROM history_records WHERE repository_id=? AND state='published' AND observed_at>=? AND observed_at<?
+      AND (expires_at IS NULL OR expires_at>?) AND (? IS NULL OR policy_id=?) ORDER BY observed_at DESC, id DESC`,
+    repositoryId, from, to, now, policyId ?? null, policyId ?? null).all();
+    const rows = records.results ?? [], files = new Map(), effects = new Map();
+    for (const chunk of batches(rows.map(row => row.id))) {
+      const placeholders = chunk.map(() => '?').join(',');
+      const [fileRows, effectRows] = await Promise.all([
+        this.statement(`SELECT history_id, ordinal, values_json FROM history_file_rows WHERE history_id IN (${placeholders}) ORDER BY history_id, ordinal`, ...chunk).all(),
+        this.statement(`SELECT history_id, ordinal, effect_json FROM history_effect_rows WHERE history_id IN (${placeholders}) ORDER BY history_id, ordinal`, ...chunk).all()
+      ]);
+      for (const row of fileRows.results ?? []) { if (!files.has(row.history_id)) files.set(row.history_id, []); files.get(row.history_id).push(JSON.parse(row.values_json)); }
+      for (const row of effectRows.results ?? []) { if (!effects.has(row.history_id)) effects.set(row.history_id, []); effects.get(row.history_id).push(JSON.parse(row.effect_json)); }
+    }
+    if (!(await this.historySettings(repositoryId)).enabled) return [];
+    return rows.map(row => ({ repositoryId: row.repository_id, pullRequest: row.pull_request, comparisonId: row.comparison_id, policyId: row.policy_id,
+      schemaVersion: row.schema_version, engineVersion: row.engine_version, reportVersion: row.report_version, metricVersion: row.metric_version,
+      base: row.base_sha, head: row.head_sha, observedAt: row.observed_at, expiresAt: row.expires_at,
+      projection: JSON.parse(row.projection_json), fileSet: JSON.parse(row.coverage_json), results: JSON.parse(row.results_json),
+      gaps: JSON.parse(row.gaps_json), files: files.get(row.id) ?? [], effects: effects.get(row.id) ?? [] }));
+  }
+
+  async historyOperations(repositoryId, from, to) {
+    const attempts = await this.statement(`SELECT a.started_at, a.completed_at, a.state, a.code, d.received_at FROM execution_attempts a
+      JOIN deliveries d ON d.delivery_id=a.delivery_id
+      WHERE a.repository_id=? AND a.started_at>=? AND a.started_at<? ORDER BY a.started_at`, repositoryId, from, to).all();
+    const deliveries = await this.statement(`SELECT d.received_at, d.completed_at, d.state, d.code, d.duplicate_count, o.status, o.effect_count
+      FROM deliveries d LEFT JOIN operational_results o ON o.delivery_id=d.delivery_id
+      WHERE d.repository_id=? AND d.received_at>=? AND d.received_at<? ORDER BY d.received_at`, repositoryId, from, to).all();
+    const repairs = await this.statement(`SELECT state, code, created_at, completed_at FROM repairs
+      WHERE repository_id=? AND created_at>=? AND created_at<? ORDER BY created_at`, repositoryId, from, to).all();
+    return { attempts: attempts.results ?? [], deliveries: deliveries.results ?? [], repairs: repairs.results ?? [] };
+  }
+
+  async saveHistoryLens(repositoryId, lens) {
+    const value = normalizeHistoryLens(repositoryId, lens);
+    await this.statement(`INSERT INTO history_lenses (repository_id, lens_id, lens_json, created_at)
+      VALUES (?, ?, ?, ?) ON CONFLICT(repository_id, lens_id) DO UPDATE SET lens_json=excluded.lens_json`,
+    repositoryId, value.id, JSON.stringify(value), this.now()).run();
+  }
+  async historyLenses(repositoryId) {
+    const result = await this.statement('SELECT lens_json, created_at FROM history_lenses WHERE repository_id=? ORDER BY lens_id', repositoryId).all();
+    return (result.results ?? []).map(row => ({ ...JSON.parse(row.lens_json), createdAt: row.created_at }));
+  }
+  async removeHistoryLens(repositoryId, lensId) { await this.statement('DELETE FROM history_lenses WHERE repository_id=? AND lens_id=?', repositoryId, lensId).run(); }
+
   async maintain() {
     const now = this.now(), recoveryCutoff = new Date(Date.parse(now) - 7 * DAY).toISOString(), graceCutoff = new Date(Date.parse(now) - 30 * DAY).toISOString();
     const expired = await this.statement('SELECT id FROM history_records WHERE expires_at IS NOT NULL AND expires_at <= ?', now).all();
@@ -318,9 +379,11 @@ export class D1AppStore {
     for (const row of offboarding.results ?? []) {
       await this.removeHistoryRecords(row.repository_id);
       await this.database.batch([
+        this.statement('DELETE FROM history_lenses WHERE repository_id=?', row.repository_id),
         this.statement('DELETE FROM app_checks WHERE repository_id=?', row.repository_id),
         this.statement('DELETE FROM repairs WHERE repository_id=?', row.repository_id),
         this.statement('DELETE FROM operational_results WHERE delivery_id IN (SELECT delivery_id FROM deliveries WHERE repository_id=?)', row.repository_id),
+        this.statement('DELETE FROM execution_attempts WHERE repository_id=?', row.repository_id),
         this.statement('DELETE FROM deliveries WHERE repository_id=?', row.repository_id),
         this.statement('DELETE FROM execution_leases WHERE repository_id=?', row.repository_id),
         this.statement('INSERT INTO deletion_tombstones (scope, deleted_at, reapply_until, execution_consent_reason, history_consent_reason) VALUES (?, ?, ?, ?, ?) ON CONFLICT(scope) DO UPDATE SET deleted_at=excluded.deleted_at, reapply_until=excluded.reapply_until, execution_consent_reason=excluded.execution_consent_reason, history_consent_reason=excluded.history_consent_reason', `repository:${row.repository_id}`, now, tombstoneUntil, row.execution_consent_reason ?? 're-consent-required', row.history_consent_reason ?? 're-consent-required'),
@@ -328,6 +391,7 @@ export class D1AppStore {
       ]);
     }
     await this.database.batch([
+      this.statement('DELETE FROM execution_attempts WHERE delivery_id IN (SELECT delivery_id FROM deliveries WHERE received_at < ? AND state IN (\'complete\', \'rejected\', \'terminal\', \'repair\'))', recoveryCutoff),
       this.statement("DELETE FROM deliveries WHERE received_at < ? AND state IN ('complete', 'rejected', 'terminal', 'repair')", recoveryCutoff),
       this.statement('DELETE FROM operational_results WHERE recorded_at < ?', recoveryCutoff),
       this.statement('DELETE FROM deletion_tombstones WHERE reapply_until <= ?', now)
@@ -348,12 +412,19 @@ export class D1AppStore {
   async exportState() {
     const configurations = await this.statement('SELECT repository_id, installation_id, history_enabled, retention_days, policy_id, execution_consent_origin, execution_consent_reason, execution_consent_actor_id, history_consent_origin, history_consent_reason, history_consent_actor_id, configuration_origin, configuration_json, configuration_policy_id, writer_standing, writer_origin, settings_revision FROM repositories').all();
     const tombstones = await this.statement('SELECT scope, deleted_at, reapply_until, execution_consent_reason, history_consent_reason FROM deletion_tombstones').all();
-    return { kind: 'diffdevil.github-app-export', version: 6, exportedAt: this.now(), configurations: configurations.results ?? [], tombstones: tombstones.results ?? [] };
+    const lenses = await this.statement('SELECT repository_id, lens_id, lens_json, created_at FROM history_lenses').all();
+    return { kind: 'diffdevil.github-app-export', version: 7, exportedAt: this.now(), configurations: configurations.results ?? [], tombstones: tombstones.results ?? [], lenses: lenses.results ?? [] };
   }
 
   /** Quantitative history travels separately from protected configuration and remains blocked by deletion tombstones. */
-  async exportHistory() {
-    const records = await this.statement("SELECT id, repository_id, pull_request, comparison_id, policy_id, schema_version, engine_version, report_version, metric_version, base_sha, head_sha, observed_at, expires_at, projection_json, coverage_json, results_json, gaps_json, state FROM history_records WHERE state='published'").all();
+  async exportHistory(repositoryId) {
+    const now = this.now();
+    if (repositoryId !== undefined && (!Number.isSafeInteger(repositoryId) || repositoryId < 1)) throw new TypeError('History export repository ID is invalid.');
+    const records = await this.statement(`SELECT id, repository_id, pull_request, comparison_id, policy_id, schema_version, engine_version, report_version, metric_version,
+      base_sha, head_sha, observed_at, expires_at, projection_json, coverage_json, results_json, gaps_json, state
+      FROM history_records h WHERE state='published' AND (expires_at IS NULL OR expires_at>?) AND (? IS NULL OR repository_id=?)
+      AND NOT EXISTS (SELECT 1 FROM deletion_tombstones WHERE scope IN ('history:' || h.repository_id, 'repository:' || h.repository_id) AND reapply_until>?)`,
+    now, repositoryId ?? null, repositoryId ?? null, now).all();
     const ids = (records.results ?? []).map(record => record.id);
     const fileRows = [], effectRows = [];
     for (const id of ids) {
@@ -364,22 +435,28 @@ export class D1AppStore {
       fileRows.push(...(files.results ?? [])); effectRows.push(...(effects.results ?? []));
     }
     const tombstones = await this.statement('SELECT scope, deleted_at, reapply_until FROM deletion_tombstones').all();
-    return { kind: 'diffdevil.github-app-history-export', version: 1, exportedAt: this.now(), records: records.results ?? [], fileRows, effectRows, tombstones: tombstones.results ?? [] };
+    return { kind: 'diffdevil.github-app-history-export', version: 2, exportedAt: now, repositoryId: repositoryId ?? null,
+      records: records.results ?? [], fileRows, effectRows, tombstones: (tombstones.results ?? []).filter(row => repositoryId === undefined || row.scope.endsWith(`:${repositoryId}`)) };
   }
 
   async importHistory(value) {
-    if (!value || value.kind !== 'diffdevil.github-app-history-export' || value.version !== 1 || !Array.isArray(value.records) || !Array.isArray(value.fileRows) || !Array.isArray(value.effectRows) || !Array.isArray(value.tombstones)) throw new TypeError('Unsupported App history export.');
+    if (!value || value.kind !== 'diffdevil.github-app-history-export' || ![1, 2].includes(value.version) || !Array.isArray(value.records) || !Array.isArray(value.fileRows) || !Array.isArray(value.effectRows) || !Array.isArray(value.tombstones)) throw new TypeError('Unsupported App history export.');
     const now = this.now(), liveTombstones = new Set();
+    const existingTombstones = await this.statement('SELECT scope FROM deletion_tombstones WHERE reapply_until>?', now).all();
+    for (const row of existingTombstones.results ?? []) liveTombstones.add(row.scope);
     for (const tombstone of value.tombstones) {
       if (typeof tombstone?.scope !== 'string' || typeof tombstone?.deleted_at !== 'string' || typeof tombstone?.reapply_until !== 'string' || !Number.isFinite(Date.parse(tombstone.deleted_at)) || !Number.isFinite(Date.parse(tombstone.reapply_until))) throw new TypeError('Invalid history deletion tombstone.');
       if (Date.parse(tombstone.reapply_until) > Date.parse(now)) liveTombstones.add(tombstone.scope);
     }
-    const tombstoneStatements = value.tombstones.map(tombstone => this.statement('INSERT INTO deletion_tombstones (scope, deleted_at, reapply_until) VALUES (?, ?, ?) ON CONFLICT(scope) DO UPDATE SET deleted_at=excluded.deleted_at, reapply_until=excluded.reapply_until', tombstone.scope, tombstone.deleted_at, tombstone.reapply_until));
+    const tombstoneStatements = value.tombstones.map(tombstone => this.statement('INSERT INTO deletion_tombstones (scope, deleted_at, reapply_until) VALUES (?, ?, ?) ON CONFLICT(scope) DO UPDATE SET deleted_at=excluded.deleted_at, reapply_until=excluded.reapply_until WHERE excluded.reapply_until > deletion_tombstones.reapply_until', tombstone.scope, tombstone.deleted_at, tombstone.reapply_until));
     if (tombstoneStatements.length > 0) await this.database.batch(tombstoneStatements);
+    const deletedRepositories = new Set([...liveTombstones].flatMap(scope => /^(history|repository):[1-9][0-9]*$/u.test(scope) ? [Number(scope.split(':')[1])] : []));
+    for (const repositoryId of deletedRepositories) await this.removeHistoryRecords(repositoryId);
     const recordIds = new Map();
     for (const record of value.records) {
       if (!Number.isSafeInteger(record?.repository_id) || record.repository_id < 1 || !Number.isSafeInteger(record.pull_request) || record.pull_request < 1 || typeof record.comparison_id !== 'string' || typeof record.policy_id !== 'string' || !Number.isSafeInteger(record.schema_version) || typeof record.engine_version !== 'string' || typeof record.report_version !== 'string' || typeof record.metric_version !== 'string' || typeof record.observed_at !== 'string' || !Number.isFinite(Date.parse(record.observed_at)) || record.state !== 'published') throw new TypeError('Invalid numeric history export.');
-      if (liveTombstones.has(`history:${record.repository_id}`) || liveTombstones.has(`repository:${record.repository_id}`)) continue;
+      if (liveTombstones.has(`history:${record.repository_id}`) || liveTombstones.has(`repository:${record.repository_id}`)
+        || (record.expires_at !== null && record.expires_at !== undefined && record.expires_at <= now)) continue;
       const inserted = await this.statement(`INSERT INTO history_records (repository_id, pull_request, comparison_id, policy_id, schema_version, engine_version, report_version, metric_version, base_sha, head_sha, observed_at, expires_at, projection_json, coverage_json, results_json, gaps_json, state)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'published') ON CONFLICT(repository_id, comparison_id, policy_id, schema_version, engine_version, report_version, metric_version) DO NOTHING RETURNING id`, record.repository_id, record.pull_request, record.comparison_id, record.policy_id, record.schema_version, record.engine_version, record.report_version, record.metric_version, record.base_sha ?? null, record.head_sha ?? null, record.observed_at, record.expires_at ?? null, record.projection_json, record.coverage_json, record.results_json, record.gaps_json).first();
       if (inserted?.id) recordIds.set(record.id, inserted.id);
@@ -388,7 +465,8 @@ export class D1AppStore {
     for (const row of value.effectRows) if (recordIds.has(row?.history_id) && Number.isSafeInteger(row.ordinal) && typeof row.effect_json === 'string') await this.statement('INSERT INTO history_effect_rows (history_id, ordinal, effect_json) VALUES (?, ?, ?)', recordIds.get(row.history_id), row.ordinal, row.effect_json).run();
   }
   async importState(value) {
-    if (!value || value.kind !== 'diffdevil.github-app-export' || ![3, 4, 5, 6].includes(value.version) || !Array.isArray(value.configurations) || !Array.isArray(value.tombstones)) throw new TypeError('Unsupported App state export.');
+    if (!value || value.kind !== 'diffdevil.github-app-export' || ![3, 4, 5, 6, 7].includes(value.version) || !Array.isArray(value.configurations) || !Array.isArray(value.tombstones)
+      || (value.version === 7 && !Array.isArray(value.lenses))) throw new TypeError('Unsupported App state export.');
     const repositoryIds = new Set(), scopes = new Set();
     for (const configuration of value.configurations) {
       if (!Number.isSafeInteger(configuration?.repository_id) || configuration.repository_id < 1 || repositoryIds.has(configuration.repository_id) || !Number.isSafeInteger(configuration?.installation_id) || configuration.installation_id < 1 || ![0, 1].includes(configuration.history_enabled) || (configuration.retention_days !== null && configuration.retention_days !== undefined && boundedDays(configuration.retention_days) === null) || (configuration.policy_id !== null && configuration.policy_id !== undefined && typeof configuration.policy_id !== 'string') || !['execution_consent_origin', 'history_consent_origin', 'configuration_origin', 'writer_origin'].every(key => configuration[key] === null || configuration[key] === undefined || typeof configuration[key] === 'string') || !['execution_consent_actor_id', 'history_consent_actor_id'].every(key => configuration[key] === null || configuration[key] === undefined || (Number.isSafeInteger(configuration[key]) && configuration[key] > 0)) || !validConsentReason(configuration.execution_consent_reason) || !validConsentReason(configuration.history_consent_reason) || (configuration.configuration_policy_id !== null && configuration.configuration_policy_id !== undefined && typeof configuration.configuration_policy_id !== 'string') || (configuration.writer_standing !== undefined && !['unverified', 'administrator-declared', 'detected'].includes(configuration.writer_standing)) || (configuration.settings_revision !== undefined && (!Number.isSafeInteger(configuration.settings_revision) || configuration.settings_revision < 0))) throw new TypeError('Invalid repository configuration export.');
@@ -407,8 +485,17 @@ export class D1AppStore {
         return this.statement(`INSERT INTO repositories (repository_id, installation_id, history_enabled, retention_days, policy_id, execution_consent_origin, execution_consent_reason, execution_consent_actor_id, history_consent_origin, history_consent_reason, history_consent_actor_id, configuration_origin, configuration_json, configuration_policy_id, writer_standing, writer_origin, settings_revision, state, access_state, updated_at)
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending-enable', 'unknown', ?) ON CONFLICT(repository_id) DO UPDATE SET installation_id=excluded.installation_id, history_enabled=excluded.history_enabled, retention_days=excluded.retention_days, policy_id=excluded.policy_id, execution_consent_origin=excluded.execution_consent_origin, execution_consent_reason=excluded.execution_consent_reason, execution_consent_actor_id=excluded.execution_consent_actor_id, history_consent_origin=excluded.history_consent_origin, history_consent_reason=excluded.history_consent_reason, history_consent_actor_id=excluded.history_consent_actor_id, configuration_origin=excluded.configuration_origin, configuration_json=excluded.configuration_json, configuration_policy_id=excluded.configuration_policy_id, writer_standing=excluded.writer_standing, writer_origin=excluded.writer_origin, settings_revision=excluded.settings_revision, state='pending-enable', access_state='unknown', updated_at=excluded.updated_at`, configuration.repository_id, configuration.installation_id, configuration.history_enabled, configuration.retention_days ?? null, configuration.policy_id ?? null, configuration.execution_consent_origin ?? null, executionReason, configuration.execution_consent_actor_id ?? null, configuration.history_consent_origin ?? null, historyReason, configuration.history_consent_actor_id ?? null, configuration.configuration_origin ?? null, configuration.configuration_json ?? null, configuration.configuration_policy_id ?? null, configuration.writer_standing ?? 'unverified', configuration.writer_origin ?? null, configuration.settings_revision ?? 0, this.now());
       }),
-      ...value.tombstones.map(tombstone => this.statement('INSERT INTO deletion_tombstones (scope, deleted_at, reapply_until, execution_consent_reason, history_consent_reason) VALUES (?, ?, ?, ?, ?) ON CONFLICT(scope) DO UPDATE SET deleted_at=excluded.deleted_at, reapply_until=excluded.reapply_until, execution_consent_reason=excluded.execution_consent_reason, history_consent_reason=excluded.history_consent_reason', tombstone.scope, tombstone.deleted_at, tombstone.reapply_until, tombstone.execution_consent_reason ?? null, tombstone.history_consent_reason ?? null)),
-      ...value.tombstones.filter(tombstone => /^repository:[1-9][0-9]*$/u.test(tombstone.scope)).map(tombstone => this.statement("UPDATE repositories SET history_enabled=0, state='offboarding', access_state='removed', execution_consent_reason=?, history_consent_reason=?, updated_at=? WHERE repository_id=?", tombstone.execution_consent_reason ?? 're-consent-required', tombstone.history_consent_reason ?? 're-consent-required', this.now(), Number(tombstone.scope.slice('repository:'.length))))
+      ...value.tombstones.map(tombstone => this.statement('INSERT INTO deletion_tombstones (scope, deleted_at, reapply_until, execution_consent_reason, history_consent_reason) VALUES (?, ?, ?, ?, ?) ON CONFLICT(scope) DO UPDATE SET deleted_at=excluded.deleted_at, reapply_until=excluded.reapply_until, execution_consent_reason=excluded.execution_consent_reason, history_consent_reason=excluded.history_consent_reason WHERE excluded.reapply_until > deletion_tombstones.reapply_until', tombstone.scope, tombstone.deleted_at, tombstone.reapply_until, tombstone.execution_consent_reason ?? null, tombstone.history_consent_reason ?? null)),
+      ...value.tombstones.filter(tombstone => /^repository:[1-9][0-9]*$/u.test(tombstone.scope)).map(tombstone => this.statement("UPDATE repositories SET history_enabled=0, state='offboarding', access_state='removed', execution_consent_reason=?, history_consent_reason=?, updated_at=? WHERE repository_id=?", tombstone.execution_consent_reason ?? 're-consent-required', tombstone.history_consent_reason ?? 're-consent-required', this.now(), Number(tombstone.scope.slice('repository:'.length)))),
+      ...(value.lenses ?? []).filter(lens => !scopes.has(`repository:${lens.repository_id}`)).map(lens => {
+        let parsed;
+        try { parsed = normalizeHistoryLens(lens.repository_id, JSON.parse(lens.lens_json)); }
+        catch { throw new TypeError('Invalid saved history lens export.'); }
+        if (!repositoryIds.has(lens.repository_id) || lens.lens_id !== parsed.id
+          || typeof lens.created_at !== 'string' || !Number.isFinite(Date.parse(lens.created_at))) throw new TypeError('Invalid saved history lens export.');
+        return this.statement('INSERT INTO history_lenses (repository_id, lens_id, lens_json, created_at) VALUES (?, ?, ?, ?) ON CONFLICT(repository_id, lens_id) DO NOTHING',
+          lens.repository_id, parsed.id, JSON.stringify(parsed), lens.created_at);
+      })
     ]);
   }
 }
