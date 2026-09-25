@@ -79,8 +79,10 @@ export function sameComparison(a: BrowserComparison, b: BrowserComparison): bool
 export interface EmbeddedFiles { readonly files: readonly Record<string, unknown>[]; readonly patched: number; readonly complete: boolean }
 const STATUSES: Record<string, string> = { added: 'added', add: 'added', deleted: 'removed', removed: 'removed', delete: 'removed', modified: 'modified', modify: 'modified', changed: 'modified', renamed: 'renamed', rename: 'renamed', copied: 'copied', copy: 'copied', 'type-changed': 'changed', type_changed: 'changed', typechange: 'changed' };
 const text = (value: unknown): string | undefined => typeof value === 'string' && value ? value : undefined;
-function contentPatch(entry: Record<string, unknown> | undefined): string | undefined {
-  if (!entry) return undefined;
+/** GitHub itself declines to supply lines for these; the file stays honestly bounded. */
+export const unmeasurableEntry = (entry: Record<string, unknown>): boolean => entry.isBinary === true || entry.isSubmodule === true || entry.isTooBig === true || typeof entry.truncatedReason === 'string' && entry.truncatedReason !== '';
+export function contentPatch(entry: Record<string, unknown> | undefined): string | undefined {
+  if (!entry || unmeasurableEntry(entry)) return undefined;
   const raw = text(entry.patch) ?? text(entry.rawPatch) ?? text(entry.diff); if (raw) return raw;
   const lines = Array.isArray(entry.diffLines) ? entry.diffLines : Array.isArray(entry.hunks) ? entry.hunks.flatMap(hunk => Array.isArray(record(hunk)?.lines) ? record(hunk)!.lines as unknown[] : []) : undefined;
   if (!lines?.length) return undefined;
@@ -116,9 +118,25 @@ export function embeddedFiles(document: Document): EmbeddedFiles | undefined {
     const oldPath = cleanPath(text(summary.oldPath) ?? text(summary.previousPath) ?? text(summary.previous_filename));
     const entry = [summary.pathDigest, summary.digest, path].map(key => typeof key === 'string' ? byKey.get(key) : undefined).find(value => value !== undefined);
     const patch = summary.isBinary === true ? undefined : contentPatch(entry); if (patch !== undefined) patched++;
-    files.push({ filename: path, status, additions, deletions, ...(oldPath === undefined ? {} : { previous_filename: oldPath }), ...(patch === undefined ? {} : { patch }) });
+    files.push({ filename: path, status, additions, deletions, ...(typeof summary.pathDigest === 'string' ? { pathDigest: summary.pathDigest } : {}), ...(oldPath === undefined ? {} : { previous_filename: oldPath }), ...(patch === undefined ? {} : { patch }) });
   }
   return files.length ? { files, patched, complete } : undefined;
+}
+/** Files still without patch text that GitHub might supply through its page_data route. */
+export const unpatchedPaths = (files: readonly Record<string, unknown>[]): string[] => files.filter(file => file.patch === undefined).map(file => String(file.filename));
+/** Merge `page_data/diff_entries` entries (the same shape as embedded contents) into the file list, by digest or path. */
+export function withEntries(files: readonly Record<string, unknown>[], entries: readonly unknown[]): { files: Record<string, unknown>[]; loaded: number; declined: number } {
+  const byKey = new Map<string, Record<string, unknown>>();
+  for (const item of entries) { const entry = record(item); if (!entry) continue; for (const key of [entry.pathDigest, entry.path]) if (typeof key === 'string') byKey.set(key, entry); }
+  let loaded = 0; let declined = 0;
+  const merged = files.map(file => {
+    if (file.patch !== undefined) return file;
+    const entry = byKey.get(String(file.filename)) ?? (typeof file.pathDigest === 'string' ? byKey.get(file.pathDigest) : undefined); if (!entry) return file;
+    if (unmeasurableEntry(entry)) { declined++; return file; }
+    const patch = contentPatch(entry); if (patch === undefined) return file;
+    loaded++; return { ...file, patch };
+  });
+  return { files: merged, loaded, declined };
 }
 export const FILE_HEADERS = '.file-header, [data-testid="file-header"], [data-test-selector="file-header"], [data-testid="diff-file-header"], [data-diff-header-wrapper]';
 export const LIVE_DIFFSTAT = '[data-testid~="diffstat"]';
