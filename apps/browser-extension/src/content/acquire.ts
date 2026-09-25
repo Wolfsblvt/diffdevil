@@ -47,14 +47,14 @@ async function unifiedDiff(current: Route, comparison: BrowserComparison, signal
  * did not embed. The signed-in reader's cookies go with it, so it covers private
  * pull requests without a token or any new permission. Batched like the page
  * itself; empty `isTooBig` entries from a multi-path request are retried alone
- * because that flag can describe the batch budget. A single-path refusal,
- * binary, submodule or truncated entry stays bounded. Any route error fails
- * the whole load; the caller keeps its evidence.
+ * because that flag can describe the batch response budget. A failed retry
+ * leaves only that file bounded; a failed batch request leaves the caller's
+ * existing evidence intact.
  */
 const ENTRY_BATCH = 8; const ENTRY_CONCURRENCY = 3; const ENTRY_HEADERS = { 'GitHub-Verified-Fetch': 'true', Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' };
-async function loadDiffEntries(current: Route, comparison: BrowserComparison, paths: readonly string[], signal: AbortSignal): Promise<unknown[]> {
+async function loadDiffEntries(current: Route, comparison: BrowserComparison, paths: readonly string[], signal: AbortSignal): Promise<{ entries: unknown[]; retryFailures: number; retryFailureCodes: string[] }> {
   const batches: string[][] = []; for (let index = 0; index < paths.length; index += ENTRY_BATCH) batches.push(paths.slice(index, index + ENTRY_BATCH));
-  const entries: unknown[] = []; let next = 0;
+  const entries: unknown[] = []; const retryFailureCodes = new Set<string>(); let retryFailures = 0; let next = 0;
   const fetchEntries = async (requested: readonly string[]): Promise<unknown[]> => {
     const url = `${current.path}/page_data/diff_entries?paths=${requested.map(encodeURIComponent).join(',')}&w=0&range=${comparison.head}`;
     const response = await fetch(url, { credentials: 'same-origin', cache: 'no-store', signal: AbortSignal.any([signal, AbortSignal.timeout(20_000)]), headers: ENTRY_HEADERS });
@@ -76,11 +76,18 @@ async function loadDiffEntries(current: Route, comparison: BrowserComparison, pa
       });
       const retriedPaths = new Set(overflows.map(entry => String(entry.path)));
       entries.push(...value.filter(item => !overflows.includes(item as Record<string, unknown>)));
-      for (const path of retriedPaths) entries.push(...await fetchEntries([path]));
+      for (const path of retriedPaths) {
+        try { entries.push(...await fetchEntries([path])); }
+        catch (error) {
+          if (signal.aborted) throw error;
+          retryFailures++;
+          retryFailureCodes.add(error instanceof ExtensionError ? error.code : 'DIFF_ENTRIES');
+        }
+      }
     }
   };
   await Promise.all(Array.from({ length: Math.min(ENTRY_CONCURRENCY, batches.length) }, worker));
-  return entries;
+  return { entries, retryFailures, retryFailureCodes: [...retryFailureCodes] };
 }
 export interface Acquired {
   readonly packet: Packet; readonly settings: Lookup['settings'];
@@ -134,14 +141,19 @@ export async function acquire(current: Route, document: Document, signal: AbortS
         // without embedded content stays bounded; that is honest, not a failure.
         let embedded = changes && !options.confirmed ? embeddedFiles(document) : undefined;
         if (embedded) {
-          // Files GitHub did not embed are loaded through the page's own route and
-          // measured exactly; only what GitHub itself declines stays bounded.
-          const pending = unpatchedPaths(embedded.files); let loaded = 0; let declined = 0; let routeError: string | undefined;
+          // Files GitHub did not embed are loaded through the page's own route;
+          // supplied patches are measured exactly and failed paths stay bounded.
+          const pending = unpatchedPaths(embedded.files); let loaded = 0; let declined = 0; let routeError: string | undefined; let retryFailures = 0; let retryFailureCodes: string[] = [];
           if (pending.length) {
-            try { const merged = withEntries(embedded.files, await loadDiffEntries(current, comparison, pending, signal)); embedded = { ...embedded, files: merged.files, patched: embedded.patched + merged.loaded }; loaded = merged.loaded; declined = merged.declined; }
+            try {
+              const result = await loadDiffEntries(current, comparison, pending, signal);
+              const merged = withEntries(embedded.files, result.entries);
+              embedded = { ...embedded, files: merged.files, patched: embedded.patched + merged.loaded };
+              loaded = merged.loaded; declined = merged.declined; retryFailures = result.retryFailures; retryFailureCodes = result.retryFailureCodes;
+            }
             catch (routeFailure) { if (signal.aborted) throw routeFailure; routeError = (routeFailure as { code?: string }).code ?? 'DIFF_ENTRIES'; }
           }
-          console.info('[diffdevil] signed-in acquisition', { files: embedded.files.length, embedded: embedded.patched - loaded, loaded, declined, bounded: embedded.files.length - embedded.patched, ...(routeError ? { routeError } : {}) });
+          console.info('[diffdevil] signed-in acquisition', { files: embedded.files.length, embedded: embedded.patched - loaded, loaded, declined, bounded: embedded.files.length - embedded.patched, ...(retryFailures ? { retryFailures, retryFailureCodes } : {}), ...(routeError ? { routeError } : {}) });
           acquisition = { comparison, format: 'github-files', files: embedded.files, complete: embedded.complete && embedded.files.length === (comparison.changedFiles ?? embedded.files.length) };
         }
         if (!embedded || embedded.patched < embedded.files.length) {
