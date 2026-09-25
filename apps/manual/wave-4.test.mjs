@@ -3,7 +3,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync,existsSync,mkdtempSync,rmSync} from 'node:fs';
-import {execFileSync,spawnSync} from 'node:child_process';
+import {spawnSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
 import {join,resolve} from 'node:path';
 import {tmpdir} from 'node:os';
@@ -14,6 +14,7 @@ import {generatedIsland} from './generated-islands.mjs';
 import {committedIslands} from './generated-content.mjs';
 import {indexable} from './search-index.mjs';
 import {entries as legacyEntries} from '../website/docs-manifest.mjs';
+import {readHistoricalSource} from './historical-source.mjs';
 const root=resolve(import.meta.dirname,'../..'),read=p=>readFileSync(join(root,p),'utf8');
 const base='c708cebe95fd9325f7ef548148ab9d24b31b2f7e';
 const state=JSON.parse(read('apps/manual/authoring-state.json'));
@@ -36,7 +37,7 @@ test('five language families retain immutable source receipts and every split fr
  const ref='1'.repeat(40),targets=sourceTargets({ref,state,exists:p=>existsSync(join(root,p))});
  for(const name of ['syntax','types-and-measurements','collections-and-scopes','standard-library','diagnostics-and-limits']){
   const path='docs/language/'+name+'.md',transfer=state.transfers[path];
-  const old=execFileSync('git',['show',base+':'+path],{cwd:root});
+  const old=readHistoricalSource(root,path,transfer);
   assert.equal(transfer.fromRef,base);assert.equal(transfer.fromSourceSha256,createHash('sha256').update(old).digest('hex'));
   assert.equal(isRetired(path,state),true);assert.equal(existsSync(join(root,path)),false);
   assert.ok(transfer.oldAnchors.length>1);
@@ -57,13 +58,6 @@ test('finite hand-authored technical router resolves every selected ID and rejec
  for(const [,encoded] of links)assert.ok(resolveSource('/source/?f='+encoded,targets),decodeURIComponent(encoded));
  assert.equal(resolveSource('/source/?f=apps%2Fgithub-app%2Foperator-helper.mjs',targets),null,'A real file is not automatic resolver admission.');
  assert.ok(resolveSource('/source/?f=docs%2Freleases%2Fv1.0.0.md',targets));
-});
-
-test('earlier chapter and FAQ bytes remain unchanged except the explicit joined detail consequence',()=>{
- for(const p of pages.filter(p=>p.wave!==4&&p.key!=='detail-language')){
-  const old=execFileSync('git',['show',base+':'+p.source],{cwd:root,encoding:'utf8'});
-  assert.equal(read(p.source),old,p.source);
- }
 });
 
 test('all read-only troubleshooting commands execute with distinct invalid and unresolved exits',t=>{

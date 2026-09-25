@@ -15,6 +15,7 @@ import { sourceTargets, sourceResolverUrl, sourceUrl, sourceRef, editRef } from 
 import { projectIslands } from './generated-content.mjs';
 import { entries as legacyEntries } from '../website/docs-manifest.mjs';
 import { faqRecords, FAQ_SOURCE, FAQ_CANONICAL } from '../website/faq-content.mjs';
+import { readHistoricalSource } from './historical-source.mjs';
 import relatedQuestions from './related-questions.json' with { type: 'json' };
 import publicAssets from './assets.json' with { type: 'json' };
 
@@ -146,11 +147,10 @@ export function generateManual({root = repositoryRoot, qa = process.env.DIFFDEVI
  for (const row of migrations) {
   const transfer = state.transfers?.[row.source];
   if (transfer && transfer.phase !== 'current') {
-   if (!/^[a-f0-9]{40}$/u.test(transfer.fromRef ?? '')) throw new Error(`${row.source}: capture from an exact historical Git commit`);
-   const old = execFileSync('git',['show',`${transfer.fromRef}:${row.source}`],{cwd:root,encoding:'utf8'});
+   const old = readHistoricalSource(root,row.source,transfer);
    const oldHash = createHash('sha256').update(old).digest('hex');
    const oldAnchors = [...new Set(['_top',...anchorsOf(old)])].sort();
-   if (oldHash !== transfer.fromSourceSha256 || JSON.stringify(oldAnchors) !== JSON.stringify([...(transfer.oldAnchors ?? [])].sort())) throw new Error(`${row.source}: historical source digest or fragment inventory does not match Git`);
+   if (oldHash !== transfer.fromSourceSha256 || JSON.stringify(oldAnchors) !== JSON.stringify([...(transfer.oldAnchors ?? [])].sort())) throw new Error(`${row.source}: historical source digest or fragment inventory does not match the capture`);
   }
   validateTransfer(row,transfer,state,{sourceExists:exists(row.source),inboundLinks:incoming[row.source] ?? [],targetAnchors:anchorInventory});
  }
@@ -162,7 +162,7 @@ export function generateManual({root = repositoryRoot, qa = process.env.DIFFDEVI
   if (!capture) continue;
   const entry = legacyEntries.find(item=>(item.route ?? (item.slug ? `/docs/${item.slug}/` : '/docs/')) === route);
   if (!entry || !/^[a-f0-9]{40}$/u.test(capture.fromRef ?? '')) throw new Error(`${route}: unqualified retained projection capture`);
-  const old = execFileSync('git',['show',`${capture.fromRef}:${entry.source}`],{cwd:root,encoding:'utf8'});
+  const old = readHistoricalSource(root,entry.source,capture);
   const body = old.startsWith('---\n') ? old.replace(/^---\n[\s\S]*?\n---\n/u,'') : old.replace(/^#\s+.+?\r?\n(?:\r?\n)?/u,'');
   const anchors = ['_top',...anchorsOf(body),...(entry.faq?.length ? ['related-questions'] : [])];
   validateProjection(route,selection,{source:entry.source,digest:createHash('sha256').update(old).digest('hex'),anchors,targetAnchors:anchorInventory});

@@ -97,8 +97,11 @@ canonical task instructions; deterministic raw-route rendering refuses unresolve
 bindings. Website handoffs point to those instructions, not a second installer.
 
 [`apps/manual/migration.mjs`](../apps/manual/migration.mjs) owns source-family
-consequences and [`authoring-state.json`](../apps/manual/authoring-state.json)
-records exact historical bytes, successor anchors and selected route transfers.
+consequences. [`authoring-state.json`](../apps/manual/authoring-state.json)
+records historical source commits and digests, successor anchors and selected
+route transfers; byte-exact source captures under
+[`apps/manual/captures/v1/`](../apps/manual/captures/v1/) keep those checks
+available after the manual PR branch was squash-merged and retired.
 All selected old reader guides and language chapters have transferred. The release
 README retains a distinct maintainer-map job; component, operator, security,
 privacy, licensing, catalogue and dated evidence sources keep their specialist

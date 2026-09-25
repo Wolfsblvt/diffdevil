@@ -5,6 +5,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { projectMarkdown, anchorsOf, fragmentAliases, validateAvailability, validateFragments } from './render.mjs';
+import { readHistoricalSource } from './historical-source.mjs';
 import { indexable, qualifyFaqRecords } from './search-index.mjs';
 const ref='1'.repeat(40), page={title:'Specimen',source:'docs/manual/specimen.md'};
 function fixture(fn){const root=mkdtempSync(join(tmpdir(),'manual-projection-'));try{
@@ -86,7 +87,6 @@ test('Selected fragments refuse a missing anchor rather than publishing a broken
 });
 
 import {readFileSync, existsSync} from 'node:fs';
-import {execFileSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
 import {validateProjection} from './migration.mjs';
 import {entries as legacyEntries} from '../website/docs-manifest.mjs';
@@ -104,7 +104,7 @@ test('Every retained apex projection captures its actual old sections and maps t
   if(!capture)continue;
   const entry=legacyEntries.find(entry=>(entry.route??(entry.slug?`/docs/${entry.slug}/`:'/docs/'))===route);
   assert.ok(entry&&existsSync(join(repositoryRoot,entry.source)),route);
-  const original=execFileSync('git',['show',`${capture.fromRef}:${entry.source}`],{cwd:repositoryRoot,encoding:'utf8'});
+  const original=readHistoricalSource(repositoryRoot,entry.source,capture);
   const body=original.startsWith('---\n')?original.replace(/^---\n[\s\S]*?\n---\n/u,''):original.replace(/^#\s+.+?\r?\n(?:\r?\n)?/u,'');
   validateProjection(route,selection,{source:entry.source,digest:createHash('sha256').update(original).digest('hex'),anchors:['_top',...anchorsOf(body),...(entry.faq?.length?['related-questions']:[])],targetAnchors});
  }
