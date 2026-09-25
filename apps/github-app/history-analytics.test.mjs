@@ -9,6 +9,7 @@ const exact = value => ({ status: 'exact', value });
 const bounded = (minimum, maximum) => ({ status: 'bounded', minimum, maximum });
 const admin = { userId: 'admin', authorizedRepositoryIds: [17] };
 const guest = { userId: 'guest', authorizedRepositoryIds: [] };
+const lensIdentity = { reportVersion: 'report-v1', metricVersion: 'metrics-v1', policyId: 'policy-a' };
 const request = (family, overrides = {}) => ({ version: 1, repositoryId: 17, from: '2026-09-01T00:00:00.000Z', to: '2026-10-01T00:00:00.000Z',
   family, metric: { kind: 'total', name: 'changed', scope: 'policy-included' }, ...overrides });
 function record(pullRequest, comparisonId, observedAt, value, policyId = 'policy-a', rule = 'unmatched') {
@@ -112,17 +113,23 @@ test('shared saved query lenses and numeric export stay behind repository author
   const { service, permissions } = fixture();
   await assert.rejects(service.query(request('overview'), guest), { code: 'E_HISTORY_UNAUTHORIZED' });
   await assert.rejects(service.query(request('overview', { repositoryId: 18 }), admin), { code: 'E_HISTORY_UNAUTHORIZED' });
-  await service.saveLens(17, { version: 1, id: 'large', name: 'Configured change', query: request('distribution', { metric: { kind: 'configured', ref: 'custom' } }) }, admin);
+  await service.saveLens(17, { version: 1, id: 'large', name: 'Configured change', query: request('distribution', { metric: { kind: 'configured', ref: 'custom' } }), identity: lensIdentity }, admin);
   assert.equal((await service.lenses(17, admin))[0].query.metric.ref, 'custom');
   const chart = await service.lens({ repositoryId: 17, lensId: 'large' }, admin);
-  assert.deepEqual(chart.historicalCoverage, { representativeCount: 3, evaluated: 3, missing: 0 });
+  assert.deepEqual(chart.historicalCoverage, { representativeCount: 3, compatible: 3, incompatible: 0, evaluated: 3, missing: 0, standing: 'complete' });
   assert.equal(chart.result.family, 'distribution');
   await service.saveLens(17, { version: 1, id: 'rule-occurrence', query: request('occurrence', { metric: undefined }),
-    focus: { kind: 'rule', ref: 'rule' } }, admin);
+    identity: lensIdentity, focus: { kind: 'rule', ref: 'rule' } }, admin);
   const occurrences = await service.lens({ repositoryId: 17, lensId: 'rule-occurrence' }, admin);
   assert.equal(occurrences.result.result.every(value => value.kind === 'rule' && value.ref === 'rule'), true);
-  await assert.rejects(service.saveLens(17, { version: 1, id: 'bad/path', query: request('distribution') }, admin), { code: 'E_HISTORY_REFERENCE' });
-  await assert.rejects(service.saveLens(17, { version: 1, id: 'code', query: request('distribution'), expression: 'process.exit()' }, admin), { code: 'E_HISTORY_LENS' });
+  await assert.rejects(service.saveLens(17, { version: 1, id: 'bad/path', query: request('distribution'), identity: lensIdentity }, admin), { code: 'E_HISTORY_REFERENCE' });
+  await assert.rejects(service.saveLens(17, { version: 1, id: 'code', query: request('distribution'), identity: lensIdentity, expression: 'process.exit()' }, admin), { code: 'E_HISTORY_LENS' });
+  const { service: changedService, rows } = fixture();
+  await changedService.saveLens(17, { version: 1, id: 'versioned', query: request('distribution', { metric: { kind: 'configured', ref: 'custom' } }), identity: lensIdentity }, admin);
+  rows[2].metricVersion = 'metrics-v2';
+  const versioned = await changedService.lens({ repositoryId: 17, lensId: 'versioned' }, admin);
+  assert.deepEqual(versioned.historicalCoverage, { representativeCount: 3, compatible: 2, incompatible: 1, evaluated: 2, missing: 0, standing: 'partial' });
+  assert.equal(versioned.result.result.population.total, 2);
   assert.equal((await service.exportNumeric(17, admin)).version, 2);
   assert.ok(permissions.some(value => value.kind === 'export' && value.repositoryId === 17));
 });
@@ -142,7 +149,7 @@ test('versioned result schema accepts executable specimens for every query famil
   const baseline = await service.baseline(request('distribution', { current: exact(20), currentIdentity: { reportVersion: 'report-v1', metricVersion: 'metrics-v1', policyId: 'policy-a' } }), admin);
   const proposal = { version: 1, metric: { kind: 'total', name: 'changed', scope: 'policy-included' },
     operator: 'gte', threshold: 10, ruleRef: 'rule', reportVersion: 'report-v1', metricVersion: 'metrics-v1', policyId: 'policy-a' };
-  await service.saveLens(17, { version: 1, id: 'large', query: request('distribution', { metric: { kind: 'configured', ref: 'custom' } }) }, admin);
+  await service.saveLens(17, { version: 1, id: 'large', query: request('distribution', { metric: { kind: 'configured', ref: 'custom' } }), identity: lensIdentity }, admin);
   assert.equal(lensValid((await service.lenses(17, admin))[0]), true, JSON.stringify(lensValid.errors));
   for (const result of [baseline, await service.compare(request('distribution'), request('distribution'), admin),
     await service.policyLab(request('distribution'), proposal, admin),

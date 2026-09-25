@@ -4,7 +4,7 @@
   "title": "diffdevil managed App saved history lens v1",
   "type": "object",
   "additionalProperties": false,
-  "required": ["version", "id", "query"],
+  "required": ["version", "id", "query", "identity"],
   "properties": {
     "version": { "const": 1 },
     "id": { "type": "string", "pattern": "^[A-Za-z0-9._-]{1,80}$" },
@@ -12,6 +12,11 @@
     "description": { "type": "string", "maxLength": 500 },
     "createdAt": { "type": "string" },
     "query": { "$ref": "https://diffdevil.app/contracts/history-query-v1.schema.json" },
+    "identity": { "type": "object", "additionalProperties": false, "required": ["reportVersion", "metricVersion"], "properties": {
+      "reportVersion": { "type": "string", "pattern": "^[A-Za-z0-9._-]{1,80}$" },
+      "metricVersion": { "type": "string", "pattern": "^[A-Za-z0-9._-]{1,80}$" },
+      "policyId": { "type": "string", "pattern": "^[A-Za-z0-9._-]{1,80}$" }
+    } },
     "focus": { "type": "object", "additionalProperties": false, "required": ["kind", "ref"], "properties": {
       "kind": { "enum": ["band", "rule", "effect", "effect-readback", "effect-rule", "effect-band"] },
       "ref": { "type": "string", "pattern": "^[A-Za-z0-9._-]{1,80}$" }
