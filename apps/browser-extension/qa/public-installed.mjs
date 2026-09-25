@@ -15,7 +15,7 @@ const receipt = { kind: 'diffdevil.public-installed-qa/1', target, checks: [], e
 let context;
 try {
   context = await chromium.launchPersistentContext(profile, {
-    channel: 'chromium', headless: true, viewport: { width: 1280, height: 800 },
+    channel: 'chromium', headless: true, viewport: { width: 1228, height: 778 },
     ignoreDefaultArgs: ['--disable-extensions'],
     args: [`--disable-extensions-except=${extension}`, `--load-extension=${extension}`],
   });
@@ -45,7 +45,32 @@ try {
   if (receipt.fileTree.counters > 0) { await page.locator('[data-ddx="tree"] .ddx-value').first().waitFor({ timeout: 20_000 }); receipt.checks.push('file-tree per-file Changed'); }
   await page.locator('[data-ddx="aggregate"] .ddx-trigger').click();
   await page.getByRole('heading', { name: 'diffdevil analysis' }).waitFor();
+  const inspectReportMachine = async (kind, screenshot) => {
+    const machine = page.locator('.ddx-popover .ddx-machine');
+    const geometry = await machine.evaluate(element => {
+      const bounds = element.getBoundingClientRect();
+      const descendants = ['.ddx-hero-value', '.ddx-chip-evidence', '.ddx-decomposition'].map(selector => {
+        const node = element.querySelector(selector);
+        const rect = node?.getBoundingClientRect();
+        return { selector, present: Boolean(node), top: rect?.top, bottom: rect?.bottom, left: rect?.left, right: rect?.right };
+      });
+      return { height: bounds.height, contentHeight: element.scrollHeight, top: bounds.top, bottom: bounds.bottom, viewport: { width: innerWidth, height: innerHeight }, descendants };
+    });
+    assert.ok(geometry.height + 1 >= geometry.contentHeight, `${kind} machine block is clipped: ${JSON.stringify(geometry)}`);
+    assert.ok(geometry.top >= 0 && geometry.bottom <= geometry.viewport.height, `${kind} machine block is outside the viewport: ${JSON.stringify(geometry)}`);
+    for (const item of geometry.descendants) {
+      assert.ok(item.present && item.top >= geometry.top && item.bottom <= geometry.bottom && item.left >= 0 && item.right <= geometry.viewport.width, `${kind} ${item.selector} is not fully visible: ${JSON.stringify({ geometry, item })}`);
+    }
+    await page.screenshot({ path: join(output, screenshot), animations: 'disabled' });
+    receipt[`${kind}ReportGeometry`] = geometry;
+  };
+  await inspectReportMachine('aggregate', 'aggregate-report-1228x778.png');
   receipt.checks.push('aggregate report opens');
+  await page.keyboard.press('Escape');
+  await page.locator('[data-ddx="file"] .ddx-trigger').first().click();
+  await page.getByRole('heading').filter({ hasText: /\.[\w-]+$/u }).first().waitFor();
+  await inspectReportMachine('file', 'file-report-1228x778.png');
+  receipt.checks.push('file report value and decomposition remain visible');
   await page.keyboard.press('Escape');
   await page.goto(target, { waitUntil: 'domcontentloaded' });
   await page.evaluate(() => { window.__diffdevilDocumentMarker = 'before-files-click'; });

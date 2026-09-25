@@ -16,7 +16,7 @@
 .ddx-close{flex:none;border:0;background:transparent;color:var(--ddx-mu);cursor:pointer;border-radius:4px;padding:0 4px;font:18px/1 var(--ddx-host)}
 .ddx-close:hover{color:var(--ddx-fg)}
 .ddx-brand{display:inline-flex;flex:none;width:16px;height:16px}.ddx-brand img{width:16px;height:16px}.ddx-brand-mono{background:currentColor;mask-repeat:no-repeat;mask-size:contain;mask-position:center;-webkit-mask-repeat:no-repeat;-webkit-mask-size:contain;-webkit-mask-position:center}
-.ddx-machine{display:grid;grid-template-columns:2fr 1fr;background:var(--ddx-machine);color:var(--ddx-m-fg);border-radius:8px;overflow:hidden;font-family:var(--ddx-sans)}
+.ddx-machine{display:grid;grid-template-columns:2fr 1fr;flex:none;background:var(--ddx-machine);color:var(--ddx-m-fg);border-radius:8px;overflow:hidden;font-family:var(--ddx-sans)}
 .ddx-machine.ddx-focus{border-left:3px solid var(--ddx-accent)}
 .ddx-hero{padding:14px 16px 12px;display:flex;flex-direction:column;gap:6px;min-width:0}
 .ddx-hero-line{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
