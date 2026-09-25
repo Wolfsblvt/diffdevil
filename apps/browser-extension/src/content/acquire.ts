@@ -46,21 +46,37 @@ async function unifiedDiff(current: Route, comparison: BrowserComparison, signal
  * The same-origin route GitHub's own /changes page uses for the diff content it
  * did not embed. The signed-in reader's cookies go with it, so it covers private
  * pull requests without a token or any new permission. Batched like the page
- * itself; entries GitHub declines (too big, binary, submodule, truncated) stay
- * bounded. Any refusal fails the whole load; the caller keeps its evidence.
+ * itself; empty `isTooBig` entries from a multi-path request are retried alone
+ * because that flag can describe the batch budget. A single-path refusal,
+ * binary, submodule or truncated entry stays bounded. Any route error fails
+ * the whole load; the caller keeps its evidence.
  */
 const ENTRY_BATCH = 8; const ENTRY_CONCURRENCY = 3; const ENTRY_HEADERS = { 'GitHub-Verified-Fetch': 'true', Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' };
 async function loadDiffEntries(current: Route, comparison: BrowserComparison, paths: readonly string[], signal: AbortSignal): Promise<unknown[]> {
   const batches: string[][] = []; for (let index = 0; index < paths.length; index += ENTRY_BATCH) batches.push(paths.slice(index, index + ENTRY_BATCH));
   const entries: unknown[] = []; let next = 0;
+  const fetchEntries = async (requested: readonly string[]): Promise<unknown[]> => {
+    const url = `${current.path}/page_data/diff_entries?paths=${requested.map(encodeURIComponent).join(',')}&w=0&range=${comparison.head}`;
+    const response = await fetch(url, { credentials: 'same-origin', cache: 'no-store', signal: AbortSignal.any([signal, AbortSignal.timeout(20_000)]), headers: ENTRY_HEADERS });
+    if (new URL(response.url).origin !== 'https://github.com' || !response.ok || !/application\/json/iu.test(response.headers.get('Content-Type') ?? '')) throw new ExtensionError('DIFF_ENTRIES', `GitHub’s diff entries route answered HTTP ${response.status}.`);
+    const value: unknown = JSON.parse(await boundedText(response, LIMIT));
+    if (!Array.isArray(value)) throw new ExtensionError('DIFF_ENTRIES', 'GitHub’s diff entries route did not return a list.');
+    return value;
+  };
   const worker = async (): Promise<void> => {
     for (let batch = batches[next++]; batch; batch = batches[next++]) {
-      const url = `${current.path}/page_data/diff_entries?paths=${batch.map(encodeURIComponent).join(',')}&w=0&range=${comparison.head}`;
-      const response = await fetch(url, { credentials: 'same-origin', cache: 'no-store', signal: AbortSignal.any([signal, AbortSignal.timeout(20_000)]), headers: ENTRY_HEADERS });
-      if (new URL(response.url).origin !== 'https://github.com' || !response.ok || !/application\/json/iu.test(response.headers.get('Content-Type') ?? '')) throw new ExtensionError('DIFF_ENTRIES', `GitHub’s diff entries route answered HTTP ${response.status}.`);
-      const value: unknown = JSON.parse(await boundedText(response, LIMIT));
-      if (!Array.isArray(value)) throw new ExtensionError('DIFF_ENTRIES', 'GitHub’s diff entries route did not return a list.');
-      entries.push(...value);
+      const value = await fetchEntries(batch);
+      if (batch.length === 1) { entries.push(...value); continue; }
+      const requested = new Set(batch);
+      const overflows = value.filter((item): item is Record<string, unknown> => {
+        if (!item || typeof item !== 'object') return false;
+        const entry = item as Record<string, unknown>;
+        return entry.isTooBig === true && (!Array.isArray(entry.diffLines) || entry.diffLines.length === 0)
+          && typeof entry.path === 'string' && requested.has(entry.path);
+      });
+      const retriedPaths = new Set(overflows.map(entry => String(entry.path)));
+      entries.push(...value.filter(item => !overflows.includes(item as Record<string, unknown>)));
+      for (const path of retriedPaths) entries.push(...await fetchEntries([path]));
     }
   };
   await Promise.all(Array.from({ length: Math.min(ENTRY_CONCURRENCY, batches.length) }, worker));
