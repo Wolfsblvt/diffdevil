@@ -162,7 +162,8 @@ export interface NativeStat { readonly anchor: HTMLElement; readonly nodes: read
 const own = (element: Element): boolean => Boolean(element.closest('[data-diffdevil]'));
 const SEAT_STOP = `${FILE_HEADERS}, .file-info, .tabnav, .tabnav-extra, .pr-toolbar, .diffbar, [role="tree"], [role="treeitem"], li, main, body`;
 /** Only counts, signs, squares and their accessible words: nothing a reader would miss if the node were demoted. */
-const churnOnly = (element: HTMLElement): boolean => element.textContent!.replace(/[\s\d,+−–-]|additions?|deletions?|changes?|changed|lines?|files?|and|&|:/giu, '') === '' && !element.querySelector('a, button, input, h1, h2, h3, h4');
+/** GitHub includes `Lines changed` in some labels; match it before its `changes?` prefix. */
+const churnOnly = (element: HTMLElement): boolean => element.textContent!.replace(/[\s\d,+−–-]|additions?|deletions?|changed|changes?|lines?|files?|and|&|:/giu, '') === '' && !element.querySelector('a, button, input, h1, h2, h3, h4');
 /**
  * The complete native churn seat around one diffstat token: GitHub's current
  * pages put the `+911 −53` counts before an inner group of squares, and the seat

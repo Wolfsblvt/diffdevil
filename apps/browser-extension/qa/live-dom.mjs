@@ -72,8 +72,18 @@ async function scene(summary, options = {}) {
   }, { packet, settings, fileViews, summary, options });
   return { context, page };
 }
+async function addAccessibleChurnLabels(page) {
+  await page.locator('.Diffstat-module__container__fixture').evaluateAll(nodes => nodes.forEach((node, index) => {
+    const label = document.createElement('span');
+    label.hidden = true;
+    label.textContent = index === 0 ? 'Lines changed: 160 additions & 118 deletions' : 'Lines changed: 30 additions & 22 deletions';
+    node.prepend(label);
+  }));
+  await page.evaluate(() => controller.refresh());
+}
 try {
   const changes = await scene('changes');
+  await addAccessibleChurnLabels(changes.page);
   await changes.page.locator('[data-ddx="file"]').nth(1).waitFor();
   assert.equal(await changes.page.locator('[data-ddx="aggregate"]').count(), 1);
   assert.equal(await changes.page.locator('[data-testid="progressive-diffs-list"] [data-ddx="aggregate"]').count(), 0);
@@ -108,10 +118,11 @@ try {
   await changes.context.close();
   // Failure: the marker takes the leading edge of the whole native seat and every native count stays at full strength.
   const failing = await scene('changes', { failure: true });
+  await addAccessibleChurnLabels(failing.page);
   await failing.page.locator('[data-ddx="failure"]').waitFor();
   assert.equal(await failing.page.locator('[data-ddx="failure"] + .Diffstat-module__container__fixture').count(), 1);
   assert.equal(await failing.page.locator('.Diffstat-module__container__fixture [data-ddx]').count(), 0);
-  assert.deepEqual(await failing.page.locator('.fixture-header-meta .Diffstat-module__container__fixture').evaluate(node => ({ display: getComputedStyle(node).display, opacity: getComputedStyle(node).opacity, text: node.textContent, hidden: node.classList.contains('ddx-native-hidden'), faint: node.classList.contains('ddx-native-faint') })), { display: 'block', opacity: '1', text: '+160−118', hidden: false, faint: false });
+  assert.deepEqual(await failing.page.locator('.fixture-header-meta .Diffstat-module__container__fixture').evaluate(node => ({ display: getComputedStyle(node).display, opacity: getComputedStyle(node).opacity, text: node.innerText, hidden: node.classList.contains('ddx-native-hidden'), faint: node.classList.contains('ddx-native-faint') })), { display: 'block', opacity: '1', text: '+160−118', hidden: false, faint: false });
   assert.equal(await failing.page.locator('[data-ddx="failure"] .ddx-marker').innerText(), '× diffdevil');
   assert.equal(await failing.page.getByRole('button', { name: 'Retry', exact: true }).count(), 1);
   assert.equal(await failing.page.locator('[data-ddx="file"], [data-ddx="tree"], .ddx-native-hidden, .ddx-native-faint').count(), 0);
