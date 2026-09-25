@@ -44,12 +44,13 @@ its primary action, and keeps the open package visibly first-class. The playgrou
 the trial surface, not a fourth route. The public category descriptor is *Composable
 diff analysis and automation for GitHub and the CLI.*
 
-Current source now contains the complete local-first Chrome extension under
+Current source contains the local-first Chrome extension under
 `apps/browser-extension/` and the reusable browser entry under
 `src/diffdevil/browser/`. The original source was qualified with an installed Manifest V3 worker and native
 Chrome storage. A later functional correction is an open candidate, not current
-main: its signed-in GitHub witness and current-main integration remain distinct from
-anonymous/fixture checks. Final in-place presentation is still co-design. Windows
+main: its signed-in private-PR coverage and current-main integration remain distinct from
+anonymous/fixture checks. The in-place [Extension Grammar v1](../design/extension-grammar-v1.dc.html)
+is ratified; the repaired installed experience still needs qualification. Windows
 interactive accessibility, native writable-label readback, managed-App delivery and
 Store submission/publication are not established by the original source checks.
 
@@ -64,12 +65,15 @@ The managed GitHub App runtime and admission/settings backend have been deployed
 to Cloudflare Workers. The contained canary exercised a native check, managed label
 and operational result, then restored its fixture. A later bounded repository
 admission enabled execution with history still off; admission is not proof that its
-ordinary configured PR policy ran. The last recorded ingress check found no public
-Worker route, custom domain or enabled workers.dev endpoint. Backend deployment is
-therefore not a claim of a reachable public App journey. Dashboard authorization
-source remains an open candidate, and its session-continuity and consent-identity
-choices, visible dashboard experience, wider recovery/history/offboarding use and
-commercial service remain separate accepted product work.
+ordinary configured PR policy ran. The canonical public ingress is now
+`app.diffdevil.dev`: GitHub's signed webhook reached the Worker and Queue, and a
+pending-enable repository delivery was rejected with `E_ACCESS_DISABLED` and zero
+effects. The first enabled repository policy result remains unobserved. The
+route-neutral dashboard authorization/session source is qualified on `main`, but
+its D1 migrations, live OAuth/cookie route, updated Worker deployment, visible
+dashboard experience and first administrator journey remain unobserved or held
+for co-design. Wider recovery, history, offboarding and commercial service remain
+separate accepted product work.
 
 The selected implementation direction is now explicit:
 
