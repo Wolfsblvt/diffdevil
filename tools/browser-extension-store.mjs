@@ -23,7 +23,7 @@ for (const [name, source, caption] of screenshots) {
   if (info.width !== 1280 || info.height !== 800 || info.depth !== 8 || info.colorType !== 2) throw new Error(`${source} must be a 1280×800, 24-bit RGB screenshot.`);
   await copyFile(join(qa, source), join(out, name)); entries.push({ name, ...info, sha256: sha256(bytes), source: `../qa/${source}`, caption, standing: 'Actual production UI in an explicitly authored fixture; not a live or installed-extension capture.' });
 }
-const wordmark = await readFile('design/assets/identity/diffdevil-wordmark-dark.svg');
+const wordmark = await readFile('packages/design/assets/identity/diffdevil-wordmark-dark.svg');
 const mark = `data:image/svg+xml;base64,${wordmark.toString('base64')}`;
 const screenshot = `data:image/png;base64,${(await readFile(join(qa, 'github-dark.png'))).toString('base64')}`;
 const header = (width, height) => `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><rect width="100%" height="100%" fill="#151922"/><g font-family="DejaVu Sans,Arial,sans-serif">`;

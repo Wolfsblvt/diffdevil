@@ -8,14 +8,14 @@ It governs public and repository-facing language across the root README, GitHub 
 
 This is deliberately not a compact handoff, launch blurb, or list of slogans. It preserves the full brand system so future copy can be derived consistently without gradually turning diffdevil into either a sterile enterprise utility or a novelty demon living in somebody’s CI pipeline.
 
-The document defines the **textual brand**. The selected visual identity and its reusable design authority live in [`../design/`](../design/): this document records the product-facing boundary those sources must preserve, rather than duplicating their construction rules.
+The document defines the **textual brand**. The selected visual identity and its reusable design authority live in [`../packages/design/`](../packages/design/): this document records the product-facing boundary those sources must preserve, rather than duplicating their construction rules.
 
 ## Standing
 
 - **Canonical product name:** `diffdevil`
 - **Canonical repository path for this document:** `docs/branding.md`
 - **Textual brand status:** settled
-- **Visual brand status:** settled as E3/W1/T2 with Foundation A; [`../design/`](../design/) is the reusable visual source
+- **Visual brand status:** settled as E3/W1/T2 with Foundation A; [`../packages/design/`](../packages/design/) is the reusable visual source
 - **Primary product category:** composable diff analysis and automation
 - **Primary surfaces:** CLI, TypeScript library, GitHub Action, CI pipelines, scripts, and coding-agent workflows
 
@@ -1469,7 +1469,7 @@ Do not structure the README as a directory of every command before the reader un
 
 The visual identity is settled as **E3/W1/T2 with Foundation A**: the E3 heavy-face split devil-head symbol with its negative-space gutter and literal tilde; the lowercase W1 technical wordmark; and the T2 tail only on standalone wordmarks. Foundation A is smoky dark, system-adaptive with an authored light mode, and uses IBM Plex Sans and IBM Plex Mono. Magenta is reserved for brand and interaction, never evidence or status.
 
-[`../design/identity-grammar-v1.html`](../design/identity-grammar-v1.html), [`../design/surface-grammar-v1.html`](../design/surface-grammar-v1.html), [`../design/tokens.css`](../design/tokens.css), and [`../design/assets/identity/`](../design/assets/identity/) are the canonical reusable visual sources. They preserve the selected construction, themes, interaction grammar, and production SVGs; their HTML sheets are design references, not executable website source. [`../design/ERRATA.md`](../design/ERRATA.md) records an admitted-token cascade correction without changing the returned reference bytes.
+[`../packages/design/identity-grammar-v1.html`](../packages/design/identity-grammar-v1.html), [`../packages/design/surface-grammar-v1.html`](../packages/design/surface-grammar-v1.html), [`../packages/design/tokens.css`](../packages/design/tokens.css), and [`../packages/design/assets/identity/`](../packages/design/assets/identity/) are the canonical reusable visual sources. They preserve the selected construction, themes, interaction grammar, and production SVGs; their HTML sheets are design references, not executable website source. [`../packages/design/ERRATA.md`](../packages/design/ERRATA.md) records an admitted-token cascade correction without changing the returned reference bytes.
 
 The GitHub App uses the same diffdevil mark, not a subfeature identity. Favicons, social images, and App-upload rasters are reproducible derivatives of the canonical SVG family and remain untracked build artifacts unless one named consumer must fetch that exact raster from maintained source. The written wordmark remains lowercase `diffdevil`. The product must still read as serious developer infrastructure: restrained, geometric and precise rather than childish, aggressive, horror-oriented, religiously confrontational, or a novelty package. The icon must remain legible at Action, package, favicon, and terminal-adjacent sizes without mascot lore.
 

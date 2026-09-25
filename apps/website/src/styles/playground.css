@@ -159,7 +159,7 @@
 /* the owned comment, as a comment: avatar, author, bot standing, rendered body, marker */
 .pg-comment { border: 1px solid #2c303a; border-radius: var(--r-block); padding: 12px 14px; font-size: 13px; line-height: 1.6; background: #151922; }
 .pg-comment-head { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; }
-.pg-comment .pg-avatar { width: 18px; height: 18px; background-image: url("../../../../design/assets/identity/diffdevil-symbol-micro-dark.svg"); }
+.pg-comment .pg-avatar { width: 18px; height: 18px; background-image: url("../../../../packages/design/assets/identity/diffdevil-symbol-micro-dark.svg"); }
 .pg-comment-meta { color: #828690; font-size: 12px; }
 .pg-comment-text p { margin: 0; }
 .pg-comment-text .is-heading { font-weight: 700; }

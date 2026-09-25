@@ -19,7 +19,7 @@ the [complete manual](manual/README.md); its canonical standalone
 | Which behavior is exercised, and which is still unobserved? | [Qualification](qualification.md) |
 | How are releases prepared and published? | [Publication boundary](publication-boundary.md) and [release guidance](manual/help/releases.md) |
 | What owns the manual's prose, routes, examples and migration? | [Documentation design](documentation.md) and [manual application](../apps/manual/README.md) |
-| What owns wording and presentation? | [Branding](branding.md), [shared presenters](presentation.md) and [design source](../design/README.md) |
+| What owns wording and presentation? | [Branding](branding.md), [shared presenters](presentation.md) and [design source](../packages/design/README.md) |
 | What owns the FAQ's stable identifiers and behavior? | [FAQ authoring contract](faq-authoring.md) |
 
 The [implementation horizon](implementation-horizon.md) preserves selected product

@@ -1,11 +1,11 @@
 /* SPDX-License-Identifier: AGPL-3.0-only */
-/* The canonical token file is design/tokens.css. It is imported unchanged; the two
+/* The canonical token file is packages/design/tokens.css. It is imported unchanged; the two
    declarations below are the documented runtime corrections, kept inspectable here
    rather than edited into the received design bytes. */
-@import "../../../../design/tokens.css";
+@import "../../../../packages/design/tokens.css";
 
 /* Correction 1 — explicit light `--accent-text`.
-   design/tokens.css declares light `--accent-text` and later re-declares the dark
+   packages/design/tokens.css declares light `--accent-text` and later re-declares the dark
    value on `:root, [data-theme="dark"]`. `:root` also matches `<html data-theme="light">`
    with equal specificity, so the later dark value wins. Restate the light value after
    the import so the explicit light theme keeps magenta-as-text at #aa167d. */

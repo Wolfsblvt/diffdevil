@@ -4,7 +4,7 @@ on:
     paths:
       - 'apps/website/**'
       - 'docs/**'
-      - 'design/**'
+      - 'packages/design/**'
       - 'tools/website-*.mjs'
       - 'package*.json'
       - '.github/workflows/faq.yml'
@@ -13,7 +13,7 @@ on:
     paths:
       - 'apps/website/**'
       - 'docs/**'
-      - 'design/**'
+      - 'packages/design/**'
       - 'tools/website-*.mjs'
       - 'package*.json'
       - '.github/workflows/faq.yml'

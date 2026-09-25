@@ -49,7 +49,7 @@ Current source contains the local-first Chrome extension under
 `src/diffdevil/browser/`. The original source was qualified with an installed Manifest V3 worker and native
 Chrome storage. A later functional correction is an open candidate, not current
 main: its signed-in private-PR coverage and current-main integration remain distinct from
-anonymous/fixture checks. The in-place [Extension Grammar v1](../design/extension-grammar-v1.dc.html)
+anonymous/fixture checks. The in-place [Extension Grammar v1](../packages/design/extension-grammar-v1.dc.html)
 is ratified; the repaired installed experience still needs qualification. Windows
 interactive accessibility, native writable-label readback, managed-App delivery and
 Store submission/publication are not established by the original source checks.
