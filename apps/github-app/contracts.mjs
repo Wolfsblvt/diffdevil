@@ -73,23 +73,33 @@ export function readQueueEnvelope(value) {
 
 export function historyProjection(report, effects) {
   const read = measurement => measurement && typeof measurement === 'object' ? {
-    status: measurement.status, ...(Number.isSafeInteger(measurement.value) ? { value: measurement.value } : {}),
-    ...(Number.isSafeInteger(measurement.minimum) ? { minimum: measurement.minimum } : {}), ...(Number.isSafeInteger(measurement.maximum) ? { maximum: measurement.maximum } : {})
+    status: measurement.status, ...(Number.isFinite(measurement.value) ? { value: measurement.value } : {}),
+    ...(Number.isFinite(measurement.minimum) ? { minimum: measurement.minimum } : {}), ...(Number.isFinite(measurement.maximum) ? { maximum: measurement.maximum } : {})
   } : { status: 'unknown' };
   const reference = value => typeof value === 'string' && /^[A-Za-z0-9._-]{1,80}$/u.test(value) ? value : undefined;
+  const numericMap = values => Object.entries(values ?? {}).flatMap(([key, value]) => reference(key) === undefined ? [] : [{ ref: key, result: read(value) }]);
+  const scopeResults = Object.entries(report.scopes ?? {}).flatMap(([key, scope]) => reference(key) === undefined ? [] : [{ ref: key,
+    fileSet: { complete: scope.fileSet?.complete === true, total: read(scope.fileSet?.total) },
+    totals: { raw: { churn: read(scope.totals?.raw?.churn) }, lines: { changed: read(scope.totals?.lines?.changed) }, files: { included: read(scope.totals?.files?.included) } } }]);
+  const bandResults = Object.entries(report.bands ?? {}).flatMap(([key, band]) => reference(key) === undefined ? [] : [{ ref: key, status: band?.status === 'resolved' ? 'resolved' : 'unknown', id: reference(band?.id) }]);
+  const ruleResults = Object.entries(report.rules ?? {}).flatMap(([key, rule]) => reference(key) === undefined ? [] : [{ ref: key,
+    disposition: ['matched', 'unmatched', 'held', 'fallback'].includes(rule?.disposition) ? rule.disposition : 'held',
+    decision: rule?.decision?.status === 'exact' ? rule.decision.value === true : undefined,
+    band: reference(rule?.band?.id) }]);
   return {
-    schemaVersion: 3,
+    schemaVersion: 4,
     engineVersion: 'diffdevil-engine-v1',
     reportVersion: 'diffdevil-report-v1',
     metricVersion: 'diffdevil-metrics-v1',
-    source: { base: typeof report.source?.base === 'string' ? report.source.base : undefined, head: typeof report.source?.head === 'string' ? report.source.head : undefined, comparison: typeof report.source?.comparisonId === 'string' ? report.source.comparisonId : undefined },
+    source: { base: reference(report.source?.base), head: reference(report.source?.head), comparison: reference(report.source?.comparisonId) },
     evidence: report.measurement?.status ?? 'unknown',
     fileSet: { complete: report.fileSet?.complete === true, total: read(report.fileSet?.total), observed: read(report.totals?.files?.observed), included: read(report.totals?.files?.included), excluded: read(report.totals?.files?.excluded), omitted: read(report.totals?.files?.omitted), binary: read(report.totals?.files?.binary), unmeasurable: read(report.totals?.files?.unmeasurable) },
     totals: { raw: { added: read(report.totals?.raw?.added), deleted: read(report.totals?.raw?.deleted), churn: read(report.totals?.raw?.churn) },
       lines: { added: read(report.totals?.lines?.added), deleted: read(report.totals?.lines?.deleted), modified: read(report.totals?.lines?.modified), changed: read(report.totals?.lines?.changed) } },
-    configuredResults: Object.entries(report.metrics ?? {}).flatMap(([metric, result]) => reference(metric) === undefined ? [] : [{ metric, result: read(result) }]),
+    configuredResults: numericMap(report.metrics).map(value => ({ metric: value.ref, result: value.result })),
+    scopes: scopeResults, bands: bandResults, rules: ruleResults,
     gaps: [report.fileSet?.complete === true ? null : 'file-set-incomplete', report.measurement?.status === 'exact' ? null : 'measurement-not-exact'].filter(Boolean),
-    files: Array.isArray(report.files) ? report.files.map((file, ordinal) => ({ ordinal, changeType: reference(file?.changeType) ?? 'unknown', material: file?.material === true ? 'material' : file?.material === false ? 'non-material' : 'unknown', applicability: reference(file?.applicability) ?? 'unknown', inclusion: reference(file?.inclusion) ?? 'unknown', evidence: reference(file?.measurement?.status) ?? 'unknown', raw: { added: read(file?.raw?.added), deleted: read(file?.raw?.deleted), churn: read(file?.raw?.churn) }, lines: { added: read(file?.lines?.added), deleted: read(file?.lines?.deleted), modified: read(file?.lines?.modified), changed: read(file?.lines?.changed) } })) : [],
+    files: Array.isArray(report.files) ? report.files.map((file, ordinal) => ({ ordinal, changeType: reference(file?.changeType) ?? 'unknown', material: file?.kind === 'text' ? 'text' : file?.kind === 'binary' ? 'binary' : 'other', applicability: reference(file?.applicability) ?? 'unknown', inclusion: file?.included === true ? 'included' : file?.included === false ? 'excluded' : 'unknown', evidence: reference(file?.measurement?.status) ?? 'unknown', raw: { added: read(file?.raw?.added), deleted: read(file?.raw?.deleted), churn: read(file?.raw?.churn) }, lines: { added: read(file?.lines?.added), deleted: read(file?.lines?.deleted), modified: read(file?.lines?.modified), changed: read(file?.lines?.changed) } })) : [],
     effects: effects.map(effect => ({ kind: reference(effect.kind) ?? 'unknown', rule: reference(effect.rule), band: reference(effect.band), desired: reference(effect.desired), outcome: reference(effect.outcome) ?? 'unknown', request: reference(effect.request) ?? 'unknown', readback: reference(effect.readback) ?? 'unknown' })),
     publication: { state: 'complete' }
   };
