@@ -131,6 +131,18 @@ try {
   await capture(github, 'github-dark');
   const aggregate = github.locator('[data-ddx="aggregate"] .ddx-trigger');
   await check('Report popover is one persistent, non-modal anchored surface', async () => { await aggregate.click(); const panel = github.locator('.ddx-popover'); await panel.waitFor(); const headingId = await panel.locator('h2').getAttribute('id'); assert.ok(headingId); assert.equal(await panel.getAttribute('role'), 'dialog'); assert.equal(await panel.getAttribute('aria-labelledby'), headingId); assert.equal(await panel.getAttribute('aria-label'), null); assert.equal(await panel.getAttribute('aria-modal'), null); const text = (await panel.innerText()).toLowerCase(); assert.ok(text.includes('178') && text.includes('changed') && text.includes('= exact') && text.includes('raw') && text.includes('effect plan') && text.includes('copy facts'), text); assert.equal(await github.locator('.ddx-popover-host').evaluate(host => Boolean(host.shadowRoot)), true); assert.equal(await panel.locator('.ddx-close').evaluate(close => close.getRootNode().activeElement === close), true); assert.equal(await github.evaluate(() => document.body.style.overflow), ''); assert.equal(await github.locator('.ddx-popover').count(), 1); });
+  await check('Constrained report keeps its full comparison subtitle visible', async () => {
+    await github.setViewportSize({ width: 1228, height: 500 });
+    const geometry = await github.locator('.ddx-popover').evaluate(panel => {
+      const meta = panel.querySelector('.ddx-meta');
+      const machine = panel.querySelector('.ddx-machine');
+      return { text: meta?.textContent, metaBottom: meta?.getBoundingClientRect().bottom, machineTop: machine?.getBoundingClientRect().top, visibleHeight: meta?.clientHeight, contentHeight: meta?.scrollHeight };
+    });
+    assert.ok(geometry.text?.endsWith('three-dot · local'), JSON.stringify(geometry));
+    assert.ok(geometry.visibleHeight + 1 >= geometry.contentHeight && geometry.metaBottom <= geometry.machineTop, JSON.stringify(geometry));
+    await capture(github, 'report-constrained');
+    await github.setViewportSize({ width: 1280, height: 800 });
+  });
   await check('Escape dismisses and returns focus to the exact trigger', async () => { await github.keyboard.press('Escape'); assert.equal(await github.locator('.ddx-popover').count(), 0); assert.equal(await aggregate.evaluate(node => document.activeElement === node), true); });
   await check('Same-trigger toggle and outside click both dismiss without a backdrop', async () => { await aggregate.click(); await aggregate.click(); assert.equal(await github.locator('.ddx-popover').count(), 0); await aggregate.click(); await github.locator('.fixture-top>strong').click(); assert.equal(await github.locator('.ddx-popover').count(), 0); });
   await check('Space opens the same detailed report from the native button', async () => { await aggregate.focus(); await github.keyboard.press('Space'); await github.locator('.ddx-popover').waitFor(); assert.equal(await aggregate.getAttribute('aria-expanded'), 'true'); });

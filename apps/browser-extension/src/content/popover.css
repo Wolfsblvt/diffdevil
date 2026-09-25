@@ -8,7 +8,7 @@
 .ddx-handle{display:none}
 .ddx-sheet{inset:auto 0 0 0;width:auto!important;border-radius:12px 12px 0 0;border-bottom:0;padding-top:8px;transform:translateY(8px)}
 .ddx-sheet .ddx-handle{display:block;width:36px;height:4px;margin:0 auto 4px;border-radius:2px;background:var(--ddx-bd)}
-.ddx-head{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;min-height:26px}
+.ddx-head{display:flex;flex:none;justify-content:space-between;align-items:flex-start;gap:8px;min-height:26px}
 .ddx-titles{display:flex;flex-direction:column;gap:2px;min-width:0}
 .ddx-title{display:inline-flex;align-items:center;gap:8px;margin:0;font-size:14px;font-weight:600;line-height:1.3}
 .ddx-title-mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:13px}
