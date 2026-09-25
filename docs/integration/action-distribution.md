@@ -5,7 +5,7 @@
 This manual owns the install-free artifact consumed by all four diffdevil Actions:
 its paths, native-ESM packaging choice, dependency and generated-source boundaries,
 rebuild contract, consumer qualification and limitations. The Action behavior and
-input/output contract remain in [GitHub Actions](github-actions.md).
+input/output contract remain in [GitHub Actions](../manual/use/github-actions.md).
 
 ## What a consumer receives
 

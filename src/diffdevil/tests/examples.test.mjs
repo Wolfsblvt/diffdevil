@@ -22,6 +22,14 @@ const policy = async name => unwrap(compilePolicy(unwrap(readPolicyYaml(await re
 // shell-neutral argument subset; it neither invokes a shell nor evaluates text.
 function commandArgs(line) {
   const tokens = [...line.matchAll(/'([^']*)'|"([^"]*)"|(\S+)/gu)].map(match => match[1] ?? match[2] ?? match[3]);
+  if (tokens[0] === 'npm') {
+    assert.deepEqual(tokens.slice(0, 4), ['npm', 'exec', '--', 'diffdevil']);
+    return tokens.slice(4).map(value => value.startsWith('node_modules/@wolfsblvt/diffdevil/') ? join(root, value.slice('node_modules/@wolfsblvt/diffdevil/'.length)) : value);
+  }
+  if (tokens[0] === 'npx') {
+    assert.deepEqual(tokens.slice(0, 2), ['npx', 'diffdevil']);
+    return tokens.slice(2);
+  }
   assert.deepEqual(tokens.slice(0, 2), ['node', 'dist/lib/cli/main.js']);
   return tokens.slice(2);
 }
@@ -49,17 +57,17 @@ test('teaching patch preserves transparent replacement, churn, file and exclusio
 
 test('copyable local recipe commands execute the CLI, not an approximation of their syntax', async t => {
   const dir = await workspace(t);
-  const commands = (await read('docs/guides/local-automation.md')).split('\n')
-    .filter(line => line.startsWith('node dist/lib/cli/main.js ') && /--(?:diff-file|report)\b/u.test(line));
+  const commands = (await read('docs/manual/use/cli.md')).split('\n')
+    .filter(line => line.startsWith('npm exec -- diffdevil ') && /--(?:diff-file|report)\b/u.test(line));
   assert.ok(commands.length > 0, 'The guide must expose executable specimens.');
   for (const line of commands) {
     const args = commandArgs(line);
     const result = spawnSync(process.execPath, [cli, ...args], { cwd: dir, encoding: 'utf8' });
     assert.ifError(result.error);
-    assert.equal(result.status, args[0] === 'check' ? 1 : 0, `${line}\n${result.stderr}`);
+    assert.equal(result.status, 0, `${line}\n${result.stderr}`);
     assert.equal(result.stderr, '');
     if (args.includes('--output')) assert.equal(result.stdout, '');
-    else if (args.includes('value')) assert.equal(result.stdout, args.includes('totals.raw.churn') ? '16\n' : args.includes('totals.lines.changed') ? '10\n' : '12\n');
+    else if (args.includes('value')) assert.equal(result.stdout, args.includes('totals.raw.churn') ? '16\n' : args.includes('totals.lines.changed') || args.includes('changed') ? '10\n' : '12\n');
     else if (args.includes('lines')) assert.equal(result.stdout, 'package-lock.json\nsrc/payments.ts\n');
     else if (args.includes('json')) assert.doesNotThrow(() => JSON.parse(result.stdout));
   }
@@ -67,13 +75,13 @@ test('copyable local recipe commands execute the CLI, not an approximation of th
 
 test('copyable named policy query and local desired-plan commands are valid', async t => {
   const dir = await workspace(t);
-  const commands = (await read('docs/guides/policy-recipes.md')).split('\n').filter(line => line.startsWith('node dist/lib/cli/main.js '));
+  const commands = (await read('docs/manual/policy/recipes.md')).split('\n').filter(line => line.startsWith('npx diffdevil '));
   assert.ok(commands.length > 0);
   for (const line of commands) {
     const args = commandArgs(line);
     const result = spawnSync(process.execPath, [cli, ...args], { cwd: dir, encoding: 'utf8' });
     assert.ifError(result.error); assert.equal(result.status, 0, `${line}\n${result.stderr}`);
-    if (args[0] === 'query') assert.equal(result.stdout, '3\n');
+    if (args[0] === 'query') assert.equal(result.stdout, '2\n');
     if (args[0] === 'plan') assert.equal(JSON.parse(result.stdout).stage, 'desired');
   }
 });
@@ -110,7 +118,7 @@ async function actionFixture(t, name) {
 
 test('the exact quickstart workflow is self-contained and reconciles only its size group', async t => {
   const f = await actionFixture(t, 'size');
-  const snippet = /```yaml\n([\s\S]+?)\n```/u.exec(await read('docs/guides/auto-label-pull-requests.md'))[1];
+  const snippet = /```yaml\n([\s\S]+?)\n```/u.exec(await read('docs/manual/start/label-pull-requests.md'))[1];
   assert.deepEqual(parse(snippet), f.workflow, 'Copied executable YAML must match its tested asset.');
   assert.deepEqual(f.workflow.permissions, { 'pull-requests': 'write' });
   assert.ok(f.workflow.on.pull_request_target.types.includes('edited'));
@@ -172,12 +180,15 @@ test('repository CI calls the real verification surfaces without publishing or p
   assert.deepEqual(workflow.permissions, { contents: 'read' });
   assert.equal(workflow.on.pull_request_target, undefined);
   assert.ok(Object.hasOwn(workflow.on, 'pull_request'));
-  assert.deepEqual(workflow.on.push.branches, ['main']);
+  // The continuing manual draft has the same read-only checks even when base
+  // movement prevents GitHub from creating a synthetic PR merge for its event.
+  assert.deepEqual(workflow.on.push.branches, ['main', 'docs/public-manual']);
   const job = workflow.jobs.verify;
   const commands = job.steps.filter(step => step.run).map(step => step.run);
   for (const command of ['npm run verify', 'npm run test:conformance', 'npm run test:package', 'npm run test:actions']) assert.ok(commands.includes(command));
   assert.equal(commands.some(command => /npm publish|git push|--token/u.test(command)), false);
   for (const step of job.steps.filter(step => step.uses)) assert.match(step.uses, /^actions\/(?:checkout|setup-node)@[a-f0-9]{40}$/u);
+  assert.equal(job.steps[0].with['ref'], '${{ github.event.pull_request.head.sha || github.sha }}');
   assert.equal(job.steps[0].with['persist-credentials'], false);
   assert.equal(job.steps[1].with['package-manager-cache'], false);
   assert.ok(job.strategy.matrix.include.some(row => row.os === 'windows-latest' && row.node === '24'));

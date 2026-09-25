@@ -22,7 +22,7 @@ const version = skillVersion(skill);
 // The front matter and opening of the real skill file, when the repository carries one.
 const skillExcerpt = skill?.text.split('\n').slice(0, 14).join('\n');
 const withOrigin = (text: string): string => text.replaceAll('{origin}', ORIGIN);
-const intents = copy.setupIntents;
+const intents = copy.setupIntents.map(intent => ({...intent, docPath: paths.setup(intent.id)}));
 const first = intents.find(intent => intent.id === 'actions')!;
 ---
 <section class="section" data-section="agents">
@@ -54,7 +54,7 @@ const first = intents.find(intent => intent.id === 'actions')!;
         <div class="agent-details" id="agents-skill-details" hidden>
           {skillExcerpt && (
             <figure class="machine machine-inner">
-              <figcaption class="machine-head"><span>SKILL.md{version ? ` · v${version}` : ''}</span><a href={paths.skill}>View raw</a></figcaption>
+              <figcaption class="machine-head"><span>Excerpt · SKILL.md{version ? ` · v${version}` : ''}</span><a href={paths.skill}>View raw</a></figcaption>
               <pre class="code-body"><code>{skillExcerpt}</code></pre>
             </figure>
           )}
@@ -67,6 +67,7 @@ const first = intents.find(intent => intent.id === 'actions')!;
             <dt>authority</dt><dd>{c.skill.authority}</dd>
           </dl>
           <SectionLinks links={c.skill.links} class="agent-links" />
+          <SectionLinks links={[['Skill archive', paths.download('skill')], ['Node runtime', paths.download('standalone')], ['Skill + runtime', paths.download('bundled')]]} class="agent-links" />
         </div>
         <button class="disclosure" type="button" aria-expanded="false" aria-controls="agents-skill-details" data-disclosure data-label-closed={c.skill.disclosure} data-label-open={c.skill.disclosureOpen}>
           <span class="label-text"><span class="label-main" data-disclosure-label>{c.skill.disclosure}</span><span class="label-sub">{c.skill.disclosureSub}</span></span>
@@ -108,7 +109,7 @@ const first = intents.find(intent => intent.id === 'actions')!;
             <div><p class="label steps-head">{c.setup.stepsHead}</p><ol class="steps" data-intent-steps>{first.steps.map(step => <li>{step}</li>)}</ol></div>
             <div class="authority">
               <div class="notice-proposed"><strong>{c.setup.authorityHead}</strong><div data-intent-authority>{first.authority}</div></div>
-              <p class="authority-foot">{c.setup.foot} <a class="link" href={docPaths.agents} data-intent-doc>{c.setup.footLink}</a></p>
+              <p class="authority-foot">{c.setup.foot} <a class="link" href={first.docPath} data-intent-doc>{c.setup.footLink}</a></p>
             </div>
           </div>
         </div>

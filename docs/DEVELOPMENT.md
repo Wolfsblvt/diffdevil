@@ -23,8 +23,8 @@ Starlight, React, Shiki, CodeMirror, the self-hosted IBM Plex packages, resvg fo
 derived assets and Playwright for local browser qualification. `package.json`
 and the lockfile are the version record; this list names the toolchain, not its
 releases. diffdevil compiles with TypeScript 7; the `typescript-6` alias serves
-only the website type check (`tools/website-typecheck.mjs`) until `astro check`
-supports the native TypeScript 7 compiler. The website closure is the
+the website type check (`tools/website-typecheck.mjs`) and the manual's compiler-API-based declaration inventory. The root TypeScript 7 package supplies
+the build CLI, not the compiler API these consumers call. The website closure is the
 largest part of the development install; none of it enters the npm package or
 the committed Action runtime.
 Wrangler contributes a 106-entry development-tooling closure, including optional
@@ -52,7 +52,8 @@ npm ci --offline --cache artifacts/dependencies/npm-cache --ignore-scripts --no-
 The public repository does not include a development cache or root dependencies.
 A local cache and its provenance are working data, not a second package manifest.
 Use `npm ci` to establish the lock instead of assuming copied dependencies are
-current. All fifteen locked packages are sufficient; no bundler is downloaded.
+current. The core runtime dependency closure needs no additional bundler.
+The public manual has a separate source-package preparation described below.
 
 `npm run build` emits JavaScript, declarations, source maps, generated preset data
 and standalone Ajv validators under ignored `dist/lib`. It removes only that
@@ -60,16 +61,17 @@ wholly generated output first, so deleted source cannot survive in a package.
 The ordinary npm build uses normal package dependencies; it is not bundled.
 
 `build:offline` and `verify:offline` remain compatibility aliases to the same build
-and verification commands. There is no separate compiler installation under
-`artifacts/toolchain`. Restore the exact lock offline first; the build and tests
-perform no registry installation themselves. One dependency closure is sufficient.
+and verification commands. Restore the exact root lock and prepare the manual
+consumer first. `npm --prefix apps/manual run verify:offline` additionally sets
+`DIFFDEVIL_DOCS_OFFLINE=1`, refusing source-package downloads during verification.
+There is no separate reusable compiler installation under `artifacts/toolchain`.
 
 ## Verification commands and boundaries
 
 | Command | What it proves |
 | --- | --- |
 | `npm run check:prep` | Parses machine assets and checks unique, nonempty declared case IDs. It does not execute cases or judge prose. |
-| `npm run verify` | Preparation, ordinary build, all registered core and `apps/**/*.test.mjs` application cases, exact Action regeneration parity, and no-write bundle checks for the playground and managed-App Workers. |
+| `npm run verify` | Preparation, ordinary build, all registered core and application cases, exact Action regeneration parity, no-write playground/App Worker checks, both public static builds and extension checks. |
 | `npm test` | Ordinary tests against the existing build; build first after source edits. |
 | `npm run test:conformance` | Actual production test events for every supplied conformance case, with separate failed/not-executed/harness totals. |
 | `npm run demo:shortcuts` | Four CLI pairs, a custom formula/named query, and pure Action-shorthand/full-policy parity. Not an Action host test. |
@@ -83,11 +85,14 @@ perform no registry installation themselves. One dependency closure is sufficien
 | `npm run playground:worker` | Builds the reusable engine and starts the same public route through local Wrangler/workerd. It disables Wrangler telemetry and does not contact Cloudflare. |
 | `npm run check:workers` | Bundles `apps/playground/wrangler.jsonc` and its static asset binding with telemetry disabled and `wrangler deploy --dry-run`. It creates no Worker, version, preview, deployment, route or domain. |
 | `npm run check:github-app` | Bundles the managed-App Worker, Queue and placeholder D1 binding with Wrangler dry-run, then compiles the absent-policy default through that configuration in local `workerd`. It creates no App, Queue, D1 database, Worker, deployment, route or credentialed GitHub effect. |
-| `npm run check:website` | Generates the derived website icons/rasters from the identity SVGs and the manual collection from the docs manifest, then builds the public website into `artifacts/website/dist`. Part of `verify`. It deploys, previews remotely or exposes nothing. |
+| `npm run check:website` | Generates selected sources and assets, builds both static hosts into `artifacts/website/dist` and `artifacts/manual/dist`, and mirrors one joined search index. Part of `verify`. No deployment or remote preview. |
 | `npm run website:assets` | Renders the ignored favicon, touch icon, web-manifest and GitHub App logos, Open Graph image and manifest from `design/assets/identity/`, measuring each framed mark against its declared occupancy. `--report` prints the measurements. |
-| `npm run website:build` / `website:dev` / `website:preview` / `website:check` | Full engine + website build, the Astro dev server, a local preview of the built output, and the Astro type check. See [the website README](../apps/website/README.md). |
+| `npm run website:build` / `website:dev` / `website:preview` / `website:check` | Full engine + two-host production build, the website Astro dev server, a local preview of the website output, and the website Astro type check. See [the website README](../apps/website/README.md). |
 | `npm run test:website` | Data-level website tests (also discovered by `npm test`): fixtures evaluate to the outcomes they teach, snapshots are valid engine reports, the docs manifest names real sources, browser shims match Node. |
 | `npm run qa:website` | Headless Chromium qualification of the built website against the real playground application server on the fake GitHub fixture. Needs Playwright's Chromium (`npx playwright install chromium`). Local behaviour only, not a deployment claim. |
+| `npm --prefix apps/manual test` | Manifest, source identity, migration, resolver, theme and static-handler contracts without the manual dependency installation. |
+| `npm --prefix apps/manual run check` | Builds the engine and checks the actual manual Astro components using its selected supported toolchain. |
+| `npm --prefix apps/manual run qa` | Rebuilds an isolated noindex reading fixture and qualifies the actual two-host outputs in Chromium, including real loopback 308 chains. Starts after an ordinary production build. |
 | `npm run extension:dev` | Rebuilds the extension into the stable local dogfood path `artifacts/browser-extension/unpacked`. Chrome still requires **Reload** on the extension card and a reload of already-open pull-request tabs; SHA-named witness copies are evidence, not the installed development path. |
 
 The fresh CI `npm ci` cache holds the locked project tarballs but lacks registry
@@ -137,6 +142,20 @@ nothing and rejects a supplied binary that is not Node 24. Without another
 runtime, the evidence explicitly records which runtime was exercised. To verify
 the source and npm package under another Node version, run those commands with
 that version selected in the normal shell/toolchain environment too.
+
+START/UNDERSTAND executable examples are included in ordinary test discovery and in
+`npm --prefix apps/manual test` after the engine build. They exercise complete
+canonical examples, strict exits and evidence, desired plans, extension projection,
+catalogue URLs and saved-report CLI exports. The installed package smoke additionally
+runs the complete Bash consumer on Linux and both Windows PowerShell and PowerShell
+7 consumers on Windows, including true/false/error/unresolved exits and arbitrary
+UTF-8/NUL-delimited paths. These shell checks use the newly installed npm artifact;
+local source execution is not substituted for that boundary.
+
+The manual Chromium journey additionally covers actual authored pages at 1280/320px
+and the frozen-example exclusion/export journey. It uses built static assets and
+no live GitHub acquisition or provider write. `PLAYWRIGHT_EXECUTABLE_PATH` may select
+an already installed Chromium executable.
 
 ## Source and distribution ownership
 
@@ -214,10 +233,71 @@ launcher for version and scalar query. It inspects the installed CMD and
 PowerShell launcher files separately. The Linux POSIX path remains its own result.
 
 The read-only repository CI runs these same commands on Linux Node 22/24 and
-Windows Node 24. A source-authored matrix is not a passed hosted run. The native
+Windows Node 22/24. A source-authored matrix is not a passed hosted run. The native
 Windows result is recorded in [Qualification](qualification.md); hosted Windows
 and Linux checks still require exact-head observation after publication.
 
 Publication, release identity, real credentials, live settings and provider
 writes require their own authority. See [licence boundaries](../LICENSES/README.md), [release procedure](publication-boundary.md)
 and exact current [Qualification](qualification.md).
+
+## Public-manual toolchain and qualification
+
+The manual uses an isolated supported peer graph: Node >=22.12, Astro 7.3.3,
+Starlight 0.42.2 and the source-only `@wolfsblvt/starlight-works` package from
+`Wolfsblvt/starlight-works@22d4567006ec7a33d890fab2f3d3515332498a90`.
+`npm --prefix apps/manual run toolchain` fetches that exact source and invokes its
+own build/pack route. The website's existing locked graph is not upgraded for this
+consumer. Prepared source/package and consumer receipts live under
+`artifacts/manual-toolchain`. The generated child lock is retained in qualification
+artifacts; a clean transitive resolution is a new graph, not automatically reusable
+prior evidence.
+
+The website's ordinary build-done hook builds the manual and joins search, so
+`npm run website:build` and root verification still exercise both hosts. Manual-only
+commands are owned by `apps/manual/package.json`, leaving the reusable package and
+Action distribution metadata unchanged. After preparation and engine build,
+`npm --prefix apps/manual run test:projection` exercises AST projection and actual
+generated inventories. The complete command contract lives in the
+[manual application README](../apps/manual/README.md).
+
+Manual browser qualification builds an isolated noindex reading fixture and
+exercises both actual outputs, including the emitted static request handler, in
+Chromium. The normal production build excludes that fixture. The existing FAQ
+browser journey also runs against the combined candidate. Neither command deploys
+a host.
+
+For an already prepared checkout, `DIFFDEVIL_DOCS_OFFLINE=1` or npm's `--offline`
+mode reuses the verified source package and installed consumer graph or npm's
+populated cache without a network fallback. An empty cache cannot install an
+unpublished package offline. The ordinary runner prunes nested dependency and
+generated-output directories before discovering repository tests.
+
+
+## Policy and reference inventories
+
+Run `npm --prefix apps/manual run generate` after a selected canonical inventory
+input changes, then `npm --prefix apps/manual run check:generated` to prove committed
+Markdown parity. The ordinary renderer also refuses drift. Authored prose and complete
+examples stay outside paired generated boundaries. Exact input identities and emitted
+body digests are in `artifacts/manual/generated-islands.json`. The manual's `test`
+discovers its `*.test.mjs` suite, including independent policy chapters, CLI invocations,
+schema/reader distinctions and migration guards. Its separate `qa` command additionally
+exercises the full policy/reference family through the built browser surface.
+
+## Final public-surface reconciliation
+
+`npm run website:build` emits the product and manual hosts, their exact source
+provenance, finite redirects and one joined search index. The old apex Markdown
+collection is not an article source. `npm run qa:website` exercises the existing
+product, Examples, Playground, editor, export and shell journeys;
+`npm --prefix apps/manual run qa` adds the manual, FAQ joins, resolver, fragment,
+theme, setup/download and responsive journeys. The standalone
+`node apps/website/qa/faq.mjs` preserves the FAQ's history, focus and native no-JS
+contract. These checks run on locally built files, not deployed hosts.
+
+The website's [build inputs](../apps/website/README.md#setup-and-download-build-inputs)
+own public URL binding and the optional publication-read-back manifest. Unconfigured
+App setup and unpublished archives remain unavailable; a local release build must
+not be supplied as proof of publication. The root README is npm's front door; there
+is no separate package README template to render or maintain.

@@ -1,0 +1,12 @@
+version: 1
+presets: [size@1]
+defaults:
+  paths:
+    exclude: ['**/package-lock.json']
+scopes:
+  source:
+    includeOnly: ['src/**']
+  tests:
+    includeOnly: ['tests/**']
+  lockfiles:
+    includeOnly: ['**/package-lock.json']

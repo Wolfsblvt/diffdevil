@@ -1,0 +1,32 @@
+/* SPDX-License-Identifier: AGPL-3.0-only */
+/* Reading grammar over the existing Works shell; starlight-works owns navigation/alerts. */
+:root { --sl-text-body:16px; --sl-line-height:1.7; --sl-content-width:48rem; --slw-sidebar-current-bg:var(--bg-raised-2); --slw-sidebar-current-text:var(--fg); --slw-sidebar-focus:var(--accent-text); --slw-alert-radius:.4rem; --slw-alert-padding:.75rem 1rem; }
+.sl-markdown-content { font-size:1rem; line-height:1.7; overflow-wrap:anywhere; }
+.sl-markdown-content > :first-child { margin-block-start:0; }
+.sl-markdown-content h2 { font-size:1.4rem; line-height:1.3; margin-block-start:2.1em; }
+.sl-markdown-content h3 { font-size:1.1rem; line-height:1.4; }
+.sl-markdown-content :is(pre,table) { max-width:100%; overflow-x:auto; }
+.sl-markdown-content pre { overflow-wrap:normal; white-space:pre; }
+.sl-markdown-content table { display:block; width:max-content; max-width:100%; font-size:.875rem; }
+.sl-markdown-content :is(td,th) { min-width:4rem; max-width:28rem; white-space:normal; }
+.sl-markdown-content .slw-alert { font-size:.9375rem; }
+.sl-markdown-content .slw-alert__title { font-size:.875rem; }
+.sl-markdown-content details { border-block:1px solid var(--hair); padding-block:.75rem; }
+.sl-markdown-content summary { cursor:pointer; font-weight:600; }
+:is(.main-pane,.content-panel,.sl-container,.sl-markdown-content) { min-width:0; }
+.docs-provenance a { overflow-wrap:anywhere; }
+.slw-category-link { text-transform:none; letter-spacing:normal; }
+:focus-visible { outline:2px solid var(--accent-text); outline-offset:3px; }
+.fragment-compatibility { margin-block:1rem; font-size:.875rem; }
+@media (max-width:49.99rem) { .sl-markdown-content { font-size:1rem; } }
+@media (prefers-reduced-motion:reduce) { *,*::before,*::after { scroll-behavior:auto!important; transition:none!important; animation:none!important; } }
+@media (forced-colors:active) { .slw-alert { border:1px solid CanvasText; } :focus-visible { outline-color:Highlight; } .slw-category-link[aria-current="page"] { outline:1px solid Highlight; } }
+
+/* The shared footer sits inside the article, not a full-width landing page. */
+.docs-site-footer { container-type:inline-size; }
+.docs-site-footer .site-footer .grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+.docs-site-footer .site-footer .footer-row { white-space:normal; }
+.docs-site-footer .site-footer a { overflow-wrap:anywhere; }
+@container (max-width:32rem) {
+  .docs-site-footer .site-footer .grid { grid-template-columns:minmax(0,1fr); }
+}

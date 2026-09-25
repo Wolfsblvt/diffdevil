@@ -1,0 +1,39 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only
+import Base from '../../layouts/Base.astro';
+import { downloadKinds, publishedRelease } from '../../../download-source.mjs';
+import { docPaths, paths, RELEASES } from '../../data/site';
+export function getStaticPaths() { return downloadKinds.map(asset => ({ params: { asset } })); }
+const descriptions = {
+  skill: ['Agent Skill', 'The complete canonical Skill folder and references. It supplies persistent tool knowledge; establish executable access separately.'],
+  standalone: ['Standalone Node runtime', 'The CLI runtime and its dependency closure for an environment with Node.js 22 or later. No npm restore is needed after extraction.'],
+  bundled: ['Skill with Node runtime', 'The complete Skill and its Node.js runtime together. This is a larger carrier, not a different Skill or a native executable.'],
+} as const;
+const kind = Astro.params.asset as keyof typeof descriptions;
+const [title, description] = descriptions[kind];
+const release = publishedRelease();
+const asset = release?.assets[kind];
+---
+<Base title={title} description={description} siteSearch={false}>
+  <section class="section section-first"><div class="wrap download-reading">
+    <h1>{title}</h1>
+    <p>{description}</p>
+    {asset && release ? <>
+      <p>Product <code>{release.productVersion}</code> · Skill <code>{release.skills.diffdevil.version}</code></p>
+      <p><a class="btn btn-primary" href={asset.url}>Download {asset.name}</a></p>
+      <p>{asset.size.toLocaleString('en-US')} bytes. Verify SHA-256 before extracting:</p>
+      <pre tabindex="0" aria-label="Archive SHA-256"><code>{asset.sha256}</code></pre>
+      <p>Source: <a href={`https://github.com/Wolfsblvt/diffdevil/tree/${release.source.commit}`}>{release.source.commit}</a>.</p>
+    </> : <aside class="notice-proposed" role="note">
+      <strong>Archive not available</strong>
+      <p>No verified published archive is configured in this build. A source version or successful local package build is not a published download.</p>
+      <p>The published npm package and GitHub Actions remain independent. A deliberate development Skill installation uses the complete folder from one exact source commit.</p>
+    </aside>}
+    <p><a href={paths.setup('skill')}>Skill installation instructions</a> · <a href={docPaths.agents}>Coding-agent guide</a> · <a href={docPaths.releases}>Release standing</a> · <a href={RELEASES}>Published releases</a></p>
+  </div></section>
+</Base>
+<style>
+.download-reading { max-width: 52rem; overflow-wrap: anywhere; }
+.download-reading > * + * { margin-top: 1.5rem; }
+pre { max-width: 100%; overflow-x: auto; padding: 1rem; }
+</style>

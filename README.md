@@ -1,61 +1,61 @@
 # diffdevil
 
 [![npm version](https://img.shields.io/npm/v/%40wolfsblvt%2Fdiffdevil?logo=npm&color=CB3837)](https://www.npmjs.com/package/@wolfsblvt/diffdevil)
-![Runtime](https://img.shields.io/badge/tested_runtimes-Node_22_%2B_24-339933?logo=nodedotjs)
-![Language](https://img.shields.io/badge/detail-v1-536B92)
+[![Verify](https://github.com/Wolfsblvt/diffdevil/actions/workflows/verify.yml/badge.svg?branch=main)](https://github.com/Wolfsblvt/diffdevil/actions/workflows/verify.yml)
+![Runtime](https://img.shields.io/badge/Node-22%2B-339933?logo=nodedotjs)
 
 > **The devil is in the diff.**
 
 **Measure changes. Match rules. Act on the result.**
 
-diffdevil is a product in development.
+A CLI, TypeScript library and set of GitHub Actions that turn diffs into useful
+facts and deliberate automation. Count a three-line replacement as **three Changed**,
+keep its **six lines of raw churn**, select the files that matter to your policy,
+and use the result in a script, a check, a size band or an inspectable effect plan.
+The same engine powers every surface. A diffdevil account is not required.
 
-A composable CLI, TypeScript library and GitHub Action for turning Git diffs into
-queryable facts, configured rules, and inspectable label/comment effects. Raw churn counts a
-three-line replacement as six lines. Replacement-aware changed lines count it
-once, while keeping both sets of facts available.
+**[Get started](#get-started)** · [Complete manual](docs/manual/README.md) ·
+[FAQ](docs/manual/faq.md) · [Releases](docs/manual/help/releases.md)
 
-The public **v1.0.0 release** supports local Git, unified diffs,
-saved reports, detail expressions, YAML/JSON policies, GitHub acquisition, and
-explicit label/comment reconciliation. All four Actions ship executable JavaScript
-and their dependencies, with no workflow installation step. Native and hosted
-consumer matrices cover Node 22 and 24; a separate private live canary has exercised
-label-definition creation/readback, managed assignment and no-op, trusted base policy
-against a hostile PR-head copy, stale-plan refusal, one owned-comment update, and
-split policy/effect credentials. A genuine external-fork event and live partial-write
-failure remain unobserved.
+GitHub and npm carry the released **v1.0.0 CLI, library and four Actions**.
+diffdevil is a product in development. The browser extension and complete managed
+service are not publicly released. The richer website, Examples and manual-host
+experience is source-owned, not a claim that its domains are already serving it.
+The [earlier public-PR measurement Playground](https://diffdevil-playground.wolfsblvt.workers.dev)
+is a separate deployed surface, not that complete website experience.
 
-Reusable software is MIT; application and hosted-service software is selected for
-AGPL-3.0-only. Original documentation prose is CC BY 4.0; runnable examples are
-MIT; brand and visual assets remain reserved. The npm package, immutable
-`v1.0.0` release, and maintained `@v1` Action alias are public.
-A plan remains data, not an applied change.
+## Get started
 
-The first public read-only playground is live at
-[`diffdevil-playground.wolfsblvt.workers.dev`](https://diffdevil-playground.wolfsblvt.workers.dev).
-It analyzes public GitHub pull requests through the same engine and applies no
-repository effects. GitHub's unauthenticated read limits remain an honest operating
-boundary, so a temporarily exhausted provider route returns `429` rather than an
-invented result.
+Use **Node.js 22 or later** and npm. Git is needed for Git-backed comparisons, not
+for the packaged teaching patch below. Install the released package in your project:
 
 ```sh
-node dist/lib/cli/main.js query --report docs/examples/reports/exact.json \
-  --expr 'totals.lines.changed' --format value
-# 178
+npm install --save-dev @wolfsblvt/diffdevil
+npm exec -- diffdevil analyze --no-config --diff-file node_modules/@wolfsblvt/diffdevil/docs/examples/diffs/review.diff --format human
 ```
 
-**[Try the playground](https://diffdevil-playground.wolfsblvt.workers.dev)** · **[Label your PRs](docs/guides/auto-label-pull-requests.md)** · [Local scripts](docs/guides/local-automation.md) · [Policy recipes](docs/guides/policy-recipes.md) · [FAQ](docs/manual/faq.md) · [User manual](docs/automation.md) · [CLI reference](docs/integration/cli.md) · [Actions](docs/integration/github-actions.md) · [TypeScript API](docs/integration/typescript-api.md)
+The complete four-file patch produces **10 Changed** and **16 raw churn**. The
+report keeps additions, deletions and modifications distinct; `--no-config` makes
+this first example independent of any policy already in your repository.
 
-## Label your PRs with one file
+Then use it on your own tracked worktree or staged changes:
 
-Save this as `.github/workflows/diffdevil.yml` on your repository's default branch.
-It creates missing size labels and maintains one on each matching PR. No config,
-checkout, package install, personal token, or comment is required.
+```sh
+npm exec -- diffdevil analyze --format human
+npm exec -- diffdevil analyze --staged --format human
+npm exec -- diffdevil analyze --base main --head HEAD --format json
+```
 
-The maintained `@v1` coordinate is public. Security-sensitive workflows can pin
-the immutable `@v1.0.0` release instead. The complete
-[auto-labeling quickstart](docs/guides/auto-label-pull-requests.md) explains setup,
-permissions, label ranges, custom exclusions, and troubleshooting.
+The last command uses the merge-base comparison. Inspect the report's source
+revisions and inclusion rules before interpreting its total. The
+[local-change guide](docs/manual/start/analyze-local-changes.md) explains each
+comparison and the first repair for missing refs, configuration or an empty result.
+
+## Label pull requests with one file
+
+You need permission to add a workflow and allow it to write pull-request labels.
+Save this complete workflow as `.github/workflows/diffdevil.yml` and make it
+available through your repository's normal change process:
 
 ```yaml
 name: Pull-request size
@@ -74,190 +74,60 @@ jobs:
       - uses: Wolfsblvt/diffdevil@v1
 ```
 
-Keep this privileged job separate from PR-head checkout, builds, and tests. The
-Action reads patches as data. Use `/analyze` for a read-only run instead. Existing
-unrelated labels remain untouched; default ensure mode preserves existing label
-colors and descriptions. An unavailable exact count is not silently replaced
-with zero.
+Inspect a run and its PR: one managed `size/*` label should be applied or retained.
+The default creates missing definitions, preserves unrelated labels and existing
+label presentation, and posts **no comment**. An unresolved band can select
+`size/Unknown`; it does not invent zero.
 
-The no-config route needs only Pull requests write. A trusted base or immutable
-pinned policy file also needs Contents read. When those permissions belong to
-different credentials, optional `policy-token` performs only policy/template reads;
-`github-token` still owns pull-request acquisition and every label/comment effect.
-Omitting `policy-token` preserves the ordinary single-credential route.
+This privileged job reads PR data without checking out or executing PR code. Keep
+PR-head builds and tests separate. For read-only reports use
+`Wolfsblvt/diffdevil/actions/analyze@v1`; the other explicit entries are
+`/actions/apply` and `/actions/sync-labels`. All four ship their executable runtime,
+so the workflow needs no npm install. Pin `@v1.0.0` or an exact release commit when
+you need an immutable reference rather than the maintained `@v1` alias.
 
-## Get started
+[Labeling guide and recovery](docs/manual/start/label-pull-requests.md) ·
+[Actions operation](docs/manual/use/github-actions.md) ·
+[Exact inputs and outputs](docs/manual/reference/github-actions.md)
 
-Use Node.js 22 or later and npm. Local comparisons also require Git. Install the
-released CLI and library:
+## Ask the question your script needs
 
-```sh
-npm install --save-dev @wolfsblvt/diffdevil
-npm exec -- diffdevil analyze \
-  --diff-file node_modules/@wolfsblvt/diffdevil/docs/examples/diffs/review.diff \
-  --format human
-```
-
-To develop from a source checkout instead:
+Human and agent reports are reading interfaces. Use structured JSON, strict scalar
+output or a process exit when another program consumes the result:
 
 ```sh
-npm ci --ignore-scripts --no-audit --no-fund
-npm run build
-node dist/lib/cli/main.js analyze --diff-file docs/examples/diffs/review.diff --format human
+npm exec -- diffdevil query --expr 'totals.lines.changed' --format value
+npm exec -- diffdevil check --expr 'totals.lines.changed <= 250'
+npm exec -- diffdevil query --files --metric modified --gt 20 --select path --format nul
 ```
 
-The four-file teaching patch reports **10 changed lines** and **16 raw churn**.
-Follow [local automation](docs/guides/local-automation.md) for exact values, path
-queries, shell conditions, and reusable reports. Offline dependency restoration
-is documented in [Development](docs/DEVELOPMENT.md#restore-and-build).
-The source commands below use the built entry point; the installed package exposes
-the same commands through `diffdevil`.
+`check` exits **0** for true, **1** for false, **2** for invalid input or operation
+failure, and **3** for unresolved evidence. Exact output refuses evidence it cannot
+represent honestly. NUL-separated paths avoid confusing a filename with a line of
+shell output. [Complete Bash and PowerShell consumers](docs/manual/start/use-results-in-scripts.md)
+show the full handling, including exit 3.
 
-Analyze tracked working-tree changes, compare two revisions, or read a patch:
+**Changed is a measurement, not a verdict.** Exact, bounded, unknown, unmeasurable
+and incomplete file membership remain distinct. A bound may prove a threshold
+without supplying an exact number. Neither Changed nor raw churn measures quality,
+risk, importance or whether a PR should merge.
+[Read the counting model](docs/manual/understand/changed-lines-and-churn.md) and
+[evidence model](docs/manual/understand/evidence-and-uncertainty.md).
 
-```sh
-node dist/lib/cli/main.js analyze
-node dist/lib/cli/main.js analyze --base main --head HEAD --format json
-node dist/lib/cli/main.js analyze --diff-file docs/examples/diffs/review.diff --format json
-```
+## Grow into policy, not another tool
 
-`--base main --head HEAD` uses the selected merge-base comparison. Reports retain
-source revisions, inclusion reasons, raw facts, replacement-aware facts, and the
-quality of the evidence. See [sources and output](docs/integration/cli.md).
+Start with the built-in `size@1` preset. When you need more, ordinary YAML or JSON
+policy gives you named scopes, typed parameters, metrics, queries, bands, rules,
+labels and owned comments. The optional **detail** expression language uses the
+same compiler and evaluator as the shortcuts. Expressions are never JavaScript.
 
-## Ask for the answer your script needs
+The [policy guide](docs/manual/policy/README.md) builds one small example from a
+preset to a deliberate rule. [Recipes](docs/manual/policy/recipes.md) provide
+complete checked files, and [the reference](docs/manual/reference/README.md) owns
+exact commands, APIs and language contracts. A plan describes desired effects;
+it is not evidence that a label or comment was applied.
 
-Use ordinary **detail** expressions for scalar formulas and simple conditions.
-Use shortcuts where they remove collection and projection boilerplate. Every
-alias remains available; both routes share one compiler and evaluator.
-
-```sh
-# A scalar, with no heading or diagnostic prose on stdout.
-node dist/lib/cli/main.js query --expr 'totals.raw.added + totals.raw.deleted' --format value
-
-# A valid condition communicates its result through the exit code.
-node dist/lib/cli/main.js check --expr 'totals.lines.changed > 100'
-
-# Collection shortcuts select included files and handle the quantifier/projection.
-node dist/lib/cli/main.js check --files any --metric changed --gt 100
-node dist/lib/cli/main.js query --files --metric modified --gt 20 --select path --format lines
-```
-
-`check` exits **0** for true, **1** for false, **2** for invalid input or an
-operation failure, and **3** for unresolved evidence. Strict scalar and path-list
-output refuses an unresolved result rather than inventing a value. Diagnostics
-go to stderr. Use `--format nul` for NUL-delimited path output, and `--expr-file`
-or `--expr-stdin` for expressions that are awkward to quote.
-
-[Complete formats and exit codes](docs/integration/cli.md) · [detail reference](docs/language.md)
-
-## Write policy once
-
-A discovered `.diffdevil.yml` or an explicit YAML/JSON file can define scopes,
-parameters, metrics, saved queries, bands, rules, and desired effects. Formulas
-use the same detail grammar as the CLI:
-
-```yaml
-version: 1
-presets: []
-metrics:
-  rewritten:
-    formula: totals.lines.deleted + 2 * totals.lines.modified
-queries:
-  rewritten:
-    expression: metrics.rewritten
-rules:
-  broad-rewrite:
-    when: metrics.rewritten >= 500
-    effects:
-      labels:
-        add: [review/broad-rewrite]
-        removeWhenFalse: true
-```
-
-The [complete weighted example](docs/examples/policies/weighted.yml) also defines a
-typed threshold and its label definition. Query it or inspect its desired effects:
-
-```sh
-node dist/lib/cli/main.js query --report docs/examples/reports/exact.json \
-  --config docs/examples/policies/weighted.yml --name weighted --format value
-# 248
-
-node dist/lib/cli/main.js plan --report docs/examples/reports/exact.json \
-  --config docs/examples/policies/weighted.yml --target-repo example/repository \
-  --target-pr 42 --definitions ensure --format json
-```
-
-Policy validation rejects unknown names, type errors, metric cycles, invalid
-bands, and conflicting assignments. YAML errors preserve original source
-positions through quoting, folding, and aliases. Plans keep unresolved rules
-held; they never interpret unknown as false or remove an unrelated label.
-
-[Policy and band manual](docs/language/policies-and-bands.md) · [Templates](docs/integration/templates.md)
-
-## Know what the numbers mean
-
-| Change | Raw additions | Raw deletions | Raw churn | Replacement-aware changed |
-| --- | ---: | ---: | ---: | ---: |
-| Replace three adjacent lines | 3 | 3 | 6 | 3 |
-| Add five lines, delete two in the same edit block | 5 | 2 | 7 | 5 |
-| Delete three here, add three elsewhere | 3 | 3 | 6 | 6 |
-
-The versioned `replacement-lines-v1` algorithm pairs additions and deletions
-inside a contiguous edit block, never across unrelated locations. Added-only,
-deleted-only, and modified facts remain individually queryable.
-
-**Exact, bounded, unknown, and unmeasurable are different evidence states.** A
-bounded count can prove a threshold or band when every possible value agrees.
-It cannot supply a fabricated exact scalar. Binary changes do not become zero
-text lines. Neither line counts nor file counts measure importance, risk,
-complexity, quality, or whether a change should merge.
-
-[Evidence and arithmetic](docs/language/types-and-measurements.md) · [Scopes and collections](docs/language/collections-and-scopes.md)
-
-## Use one of four Actions
-
-The shipped metadata selects **Node 24**. Given this exact trusted checkout at
-`diffdevil/` in a workflow workspace, read-only analysis needs no npm install:
-
-```yaml
-- uses: ./diffdevil/analyze
-  id: changes
-  with:
-    metric: changed
-    files: any
-    threshold: '100'
-    comparison: gt
-```
-
-`steps.changes.outputs.decision` is `true`, `false`, or `unknown`. This local path
-requires the **complete trusted checkout**, not just its `analyze` subdirectory.
-The [public source repository](https://github.com/Wolfsblvt/diffdevil) and
-maintained `@v1` coordinate exist. Pin `@v1.0.0` or its exact release commit
-when an immutable remote Action reference is required.
-
-| Entry | Behavior |
-| --- | --- |
-| Root | No-config size labeling: ensure missing definitions, reconcile only the managed size group, no comments. `mode: analyze` or `plan` selects a read-only route. |
-| `/analyze` | Read-only facts, metrics, decisions and bands—even when a token is supplied. |
-| `/apply` | Acquire fresh facts, revalidate supplied artifacts, then apply selected trusted policy. |
-| `/sync-labels` | Verify definitions by default; explicit `operation: apply` ensures or synchronizes them. |
-
-Choosing root's default is choosing label automation. Write modes require suitable
-workflow permissions; a token alone does not enable writes. Base or explicitly
-pinned policy controls effects, never a PR's changed workspace config. Do not run
-untrusted PR scripts in a privileged job. Partial writes remain an incomplete
-result with a full readback journal, not a success-shaped guess.
-
-[Complete Action inputs and trust](docs/integration/github-actions.md) ·
-[Install-free distribution](docs/integration/action-distribution.md)
-
-## Use the same engine from TypeScript
-
-The package exports its root API and `/core`, `/language`, `/policy`, `/git`, and `/github`
-subpaths with generated declarations. Parsing, binding, type checking,
-interpretation, policy evaluation, and planning have separate responsibilities.
-No user expression is evaluated as JavaScript.
+The TypeScript library exposes the same engine through supported public imports:
 
 ```typescript
 import { readFile } from 'node:fs/promises';
@@ -267,53 +137,51 @@ const report = unwrap(analyzeDiff(await readFile('change.diff', 'utf8')));
 console.log(report.totals.lines.changed);
 ```
 
-[API signatures and examples](docs/integration/typescript-api.md) · [Architecture](docs/ARCHITECTURE.md)
+[Embedding and failure handling](docs/manual/use/typescript-library.md) ·
+[Public API reference](docs/manual/reference/typescript-api.md)
 
-## Read GitHub changes and reconcile declared effects
+## Choose where it works
 
-Read a pull request without checking out or executing its code:
+The open CLI, library and Actions are the product, not restricted entry tiers.
+Other surfaces reuse their meaning and change who operates the work:
 
-```sh
-node dist/lib/cli/main.js query --repo OWNER/REPO --pr 42 \
-  --expr 'totals.lines.changed' --format value
-```
+| Surface | What it adds | Start here |
+| --- | --- | --- |
+| CLI and scripts | Local comparisons, precise queries and explicit effects | [CLI](docs/manual/use/cli.md) |
+| GitHub Actions | Repository-owned automation in reviewed workflows | [Actions](docs/manual/use/github-actions.md) |
+| TypeScript library | The engine inside your own application | [Library](docs/manual/use/typescript-library.md) |
+| Browser extension | Personal aggregate and per-file Changed inside GitHub, without repository writes | [Extension](docs/manual/use/browser-extension.md) |
+| Playground and Examples | Read-only exploration of public PRs and frozen real-PR editions | [Playground](docs/manual/use/playground.md) |
+| Managed App | Optional operated repository automation, administration and opt-in quantitative history | [Managed App](docs/manual/use/managed-app/README.md) |
+| Coding-agent Skill | Persistent tool knowledge; executable access remains separate | [Coding agents](docs/manual/use/coding-agent.md) |
 
-Private repositories require a suitable token in `GH_TOKEN` or `GITHUB_TOKEN`.
-Read-only acquisition performs no label or comment mutation. The TypeScript
-adapter exposes separate explicit application and label-definition operations.
-It preserves unrelated metadata and checks current head/base revisions before
-writes. Its provider behavior has deterministic fake-HTTP regression coverage and a
-separate private live canary at the accepted source candidate. The canary proves
-ordinary managed labels, trusted policy, freshness refusal, owned-comment update,
-and split credentials; it does not claim a genuine external-fork event or live
-partial-write recovery.
+Extension and managed-service guides describe the complete selected experience
+beneath their availability notes. Self-hosting has its own
+[Workers, Queue and D1 operator guide](docs/manual/use/managed-app/self-hosting.md).
+Two hosts must not compete over the same managed labels or comment lifecycle.
+[Shared workflows](docs/manual/use/shared-workflows/README.md) explains coexistence.
 
-[GitHub API and trust boundaries](docs/integration/github-api.md)
+The selected public homes are [diffdevil.dev](https://diffdevil.dev/) and
+[docs.diffdevil.dev](https://docs.diffdevil.dev/). Until their publication is verified,
+the repository manual linked above remains the complete reading route. A configured
+Store, App or download destination is not publication evidence.
 
-## Documentation and development
+## Documentation and contributing
 
-Start with the [task guides](docs/README.md#start-with-a-task), then use the
-[documentation map](docs/README.md) for complete language and integration
-contracts. The [GitHub Action guide](docs/integration/github-actions.md)
-documents the implemented interfaces and keeps local qualification separate from
-hosted-runner and publication evidence.
+[The manual](docs/manual/README.md) owns user operation; the
+[repository documentation map](docs/README.md) owns architecture, development,
+contracts and dated evidence. [Development](docs/DEVELOPMENT.md) carries source
+bootstrap and `npm run verify`, with package, Action and browser qualification kept
+separate. [Release guidance](docs/manual/help/releases.md) distinguishes the package,
+Action aliases, independently versioned Skill and source-only surfaces.
 
-The ordinary source verification command is `npm run verify`. Installed-package,
-conformance, runtime, and live-provider evidence remain separate commands and
-claims: [Development](docs/DEVELOPMENT.md) · [Qualification](docs/qualification.md)
-· [v1.0.0 release notes](docs/releases/v1.0.0.md).
-
-Suspected vulnerabilities can be [reported privately](SECURITY.md) through
-GitHub's enabled repository reporting route.
+Read [Security and data](docs/manual/help/security-and-data.md) before sharing a
+report or choosing credentials. Report suspected vulnerabilities through the
+[private security route](SECURITY.md), not a public issue.
 
 ## License
 
-A Wolfsblvt Works product. Reusable engine, API, CLI and Action software is
-[MIT](LICENSES/MIT.txt); website and hosted application/service software is selected
-for [AGPL-3.0-only](LICENSES/AGPL-3.0-only.txt). Original documentation prose is
-[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/legalcode), runnable
-integration examples are MIT, and brand/visual assets are reserved. The current
-checkout also ships the AGPL playground application source used by the live public
-Worker.
-[The component licence map](LICENSES/README.md) gives exact scope; no single
-licence applies to the entire repository or npm tarball.
+The [component licence map](LICENSE.md) assigns **MIT** to reusable engine, CLI, API,
+Action software and mapped runnable examples, **AGPL-3.0-only** to application/service
+software and **CC BY 4.0** to original documentation prose, while brand and visual
+rights remain reserved as detailed in [LICENSES/README.md](LICENSES/README.md).

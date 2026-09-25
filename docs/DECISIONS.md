@@ -512,7 +512,7 @@ grant credentials, change provider permissions, or establish live behavior until
 the distributed Action is rerun with both real tokens.
 
 **Sources.** The current provider qualification and settled public-v1 direction;
-[Action guide](guides/auto-label-pull-requests.md); two-client Action tests.
+[Action guide](manual/start/label-pull-requests.md); two-client Action tests.
 
 ## D032: Keep the open tool primary and the optional App complete
 
@@ -524,7 +524,7 @@ the distributed Action is rerun with both real tokens.
 
 **Current consequence.** The full App and standalone playground journeys remain selected implementation beyond the current local measurement form. The source remains one repository: reusable software MIT, application/service software AGPL-3.0-only under D014, with D030's separate content/brand rights. Self-hosting is intentional and documented in the operator material, not hidden or made the primary homepage pitch. A source licence does not grant official-service identity.
 
-**Sources.** Owner-directed co-design settlement of 2026-09-17; [Vision](VISION.md); [App architecture](integration/github-app.md); [playground experience](integration/playground.md); [GitHub Checks API](https://docs.github.com/en/rest/checks/runs); [GNU AGPL v3](https://www.gnu.org/licenses/agpl-3.0.en.html).
+**Sources.** Owner-directed co-design settlement of 2026-09-17; [Vision](VISION.md); [App architecture](integration/github-app.md); [playground experience](manual/use/playground.md); [GitHub Checks API](https://docs.github.com/en/rest/checks/runs); [GNU AGPL v3](https://www.gnu.org/licenses/agpl-3.0.en.html).
 
 ## D033: One conventional config, explicit host layers, and partial settings
 
@@ -536,7 +536,7 @@ the distributed Action is rerun with both real tokens.
 
 **Current consequence.** Only supplied values override inherited settings. Partial convenience maps, including individual size thresholds/labels, resolve against lower layers before complete validation and coherent generated-group rewriting. Named executable declarations continue to replace the same-ID declaration as a whole; arrays retain their documented replace/explicit-append semantics. The current compiler still requires complete supplied size maps, so shared resolver/schema/CLI/Action support is an explicit implementation remainder, not a claim that new partial examples run already. The dashboard and `explain` show origins and export ordinary policy.
 
-**Sources.** Owner-directed co-design settlement of 2026-09-17; D001; [presets and shortcuts](integration/presets-and-shortcuts.md#configuration-layering); [current Action interface](integration/github-actions.md).
+**Sources.** Owner-directed co-design settlement of 2026-09-17; D001; [presets and shortcuts](manual/policy/configure.md#know-which-host-supplies-each-layer); [current Action interface](manual/use/github-actions.md).
 
 ## D034: Separate seven-day recovery from opted-in quantitative history
 
@@ -596,7 +596,7 @@ the distributed Action is rerun with both real tokens.
 
 **Current consequence.** `src/diffdevil/policy/yaml.ts` counts bytes with the portable helper instead of `Buffer`; the Action runtime was regenerated. The playground API gained `/api/report` (refusing, not truncating, above a file ceiling) and `/api/head`, with CORS on its read-only JSON. The engine's browser bundle is one lazy chunk on the playground page only.
 
-**Sources.** [Playground experience](integration/playground.md); [App architecture](integration/github-app.md#shared-engine-worker-prerequisite); the design-discovered replay consequence recorded during the public-surface co-design; `apps/website/website.test.mjs` and `apps/website/qa/run.mjs`.
+**Sources.** [Playground experience](manual/use/playground.md); [App architecture](integration/github-app.md#shared-engine-worker-prerequisite); the design-discovered replay consequence recorded during the public-surface co-design; `apps/website/website.test.mjs` and `apps/website/qa/run.mjs`.
 
 ## D039: Keep one stable public shell across product pages and the generated manual
 
@@ -645,7 +645,8 @@ qualified source only until its publication boundary is separately satisfied.
 
 **Current consequence.** [`presentation.md`](presentation.md) is the normative interface. The CLI and public library share the report/plan presenters; the website consumes them rather than maintaining display semantics. `--detail` and `--color` are confined to human report/plan presentation. Agent and machine formats never contain ANSI. Material textual changes receive public interface/release documentation without changing the canonical report schema by fiction. Provider results continue to own applied/readback standing.
 
-**Sources.** Wolf and Nyxara's owner co-design in [emergency-meeting #491](https://github.com/Wolfsblvt/emergency-meeting/issues/491#issuecomment-5737100063); [textual branding](branding.md); [versioning and interchange](language/versioning-and-interchange.md); [human and agent presentation](presentation.md).
+**Sources.** Wolf and Nyxara's owner co-design in [emergency-meeting #491](https://github.com/Wolfsblvt/emergency-meeting/issues/491#issuecomment-5737100063); [textual branding](branding.md); [versioning and interchange](manual/reference/language-and-contracts/schemas-and-compatibility.md); [human and agent presentation](presentation.md).
+
 
 ## D041: Record what the Action ships, not hashes of its inputs
 
@@ -658,6 +659,52 @@ qualified source only until its publication boundary is separately satisfied.
 **Current consequence.** A development-only dependency update can pass Verify on its own. A change to the shipped closure, compiler output or project version still fails until `npm run build:actions` is run and the generated diff is inspected. The separate release-carrier manifests used for published Skill and standalone archives are unchanged by this decision.
 
 **Sources.** Juno's finding in [emergency-meeting #453](https://github.com/Wolfsblvt/emergency-meeting/issues/453#issuecomment-5770682443); Wolf's decision in [#453](https://github.com/Wolfsblvt/emergency-meeting/issues/453#issuecomment-5782985671); [Action distribution](integration/action-distribution.md).
+
+## D042: Separate manual source identity from routes and preserve whole-source cutovers
+
+**Decision.** Maintain reader-facing chapters in `docs/manual/` and render only the
+explicit manifest at `docs.diffdevil.dev`. Keep the FAQ source there but render its
+single product-shell route at `diffdevil.dev/faq/`. Source paths, public routes and
+stable resolver identities remain separate explicit facts. Retain existing sources
+until every successor in a split and its links, fragments, redirects and search
+selection can transfer together. Do not create Markdown forwarding stubs.
+
+**Why.** A task-led manual should be readable on GitHub without exposing all internal
+records or making repository reorganizations change public URLs. Moving one part of
+a split prematurely would create two competing current explanations or lose readers'
+existing links. A finite resolver preserves selected technical source access without
+turning arbitrary query input into a repository path or redirect destination.
+
+**Implementation consequence.** D037's generated-collection model remains; the new
+manual uses its own selected manifest while legacy projections survive until their
+cutover. Source and Edit links identify maintained bytes. One Pagefind index joins
+both static outputs and individual FAQ records, with explicit result kinds. The
+shared Works shell and before-paint theme behavior remain product-owned under D039.
+Linked categories and five alerts come from the accepted `starlight-works` source
+package, using its supported isolated peer graph rather than copying implementation
+or claiming an npm release. The build emits a native static-assets request handler
+for the exact 308 host and route rules, not an unsupported domain rule in a static
+redirect file. Hosting and publication remain separate effects.
+
+**Rejected.** A second website-owned manual; source-derived public slugs; a broad
+publication glob; duplicated FAQ answers; arbitrary-path source resolution; partial
+retirement of split sources; and local copies of the shared navigation/alert package.
+
+**Final reconciliation consequence.** The root README is the quick manual, the
+manual root owns public learning, and the repository map owns technical discovery.
+The apex's old Starlight collection is retired rather than retained as a competing
+manual. Its explicit legacy inventory supplies redirects and captured semantic
+fragments; retained specialist sources keep their exact source IDs. FAQ source
+links and all product/manual links use one route/provenance contract, and the
+joined current search excludes legacy and historical projections. The canonical
+Skill installer consumes the complete folder through its maintained setup payload,
+not a single-file website instruction. Source, build, publication and owner-use
+standing remain distinct; this consequence grants none of the latter effects.
+
+**Sources.** [Documentation design](documentation.md), [manual implementation
+contract](../apps/manual/README.md), its explicit source/route and migration
+manifests, and the accepted shared package at
+`Wolfsblvt/starlight-works@22d4567006ec7a33d890fab2f3d3515332498a90`.
 
 ## D043: Give application surfaces their own top-level category
 

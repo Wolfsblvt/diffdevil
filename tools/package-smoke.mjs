@@ -30,7 +30,7 @@ assert.ok(paths.includes('dist/lib/cli/main.js'));
 assert.ok(paths.includes('dist/lib/index.d.ts'));
 assert.ok(paths.includes('src/diffdevil/contracts/schemas/report-v1.schema.json'));
 for (const path of ['LICENSES/README.md', 'LICENSES/MIT.txt', 'LICENSES/AGPL-3.0-only.txt']) assert.ok(paths.includes(path), `Missing package licence boundary: ${path}`);
-for (const path of ['docs/guides/auto-label-pull-requests.md', 'docs/guides/local-automation.md', 'docs/examples/diffs/review.diff', 'docs/examples/policies/review-signals.yml', 'docs/reference/README.md']) {
+for (const path of ['docs/manual/start/label-pull-requests.md', 'docs/manual/use/cli.md', 'docs/examples/library/inspect-change.mts', 'docs/examples/diffs/review.diff', 'docs/examples/policies/review-signals.yml', 'docs/reference/README.md']) {
   assert.ok(paths.includes(path), `Missing consumer documentation asset: ${path}`);
 }
 for (const path of ['skills/versions.json', 'skills/diffdevil/SKILL.md', 'skills/diffdevil/references/install-and-update.md', 'skills/diffdevil/references/restricted-harnesses.md']) {
@@ -186,11 +186,76 @@ if (process.platform === 'win32') {
   assert.match(cmd, /cli[/\\]main\.js/); assert.match(cmd, /%\*/);
   assert.match(ps1, /cli[/\\]main\.js/); assert.match(ps1, /\$args/);
 }
+// Compile and run the complete published library example outside the checkout.
+await writeFile(join(home, 'inspect-change.mts'), await readFile(join(packageRoot, 'docs/examples/library/inspect-change.mts'), 'utf8'));
+// TypeScript 7 does not automatically include every visible `@types` package when
+// `--typeRoots` is explicit. This published example imports Node built-ins, so
+// qualify it with the Node ambient declarations deliberately.
+run(process.execPath, [compiler, '--strict', '--target', 'ES2022', '--module', 'NodeNext', '--moduleResolution', 'NodeNext', '--typeRoots', resolve(root, 'node_modules/@types'), '--types', 'node', '--outDir', 'manual-out', 'inspect-change.mts'], home);
+const inspect = (...args) => JSON.parse(run(process.execPath, ['manual-out/inspect-change.mjs', ...args], home));
+const inspected = inspect('diff', join(packageRoot, 'docs/examples/diffs/review.diff'));
+assert.deepEqual(inspected.changed, {status: 'exact', value: 10});
+assert.deepEqual(inspected.rawChurn, {status: 'exact', value: 16});
+assert.equal(inspected.decision.decision.value, true);
+assert.equal(inspected.desired.stage, 'desired');
+assert.ok(inspected.desired.operations.some(op => op.kind === 'label.select' && op.selected === 'size/XS'));
+const boundedInspection = inspect('report', join(packageRoot, 'docs/examples/reports/bounded.json'));
+assert.deepEqual(boundedInspection.changed, {status: 'bounded', lower: 60, upper: 70});
+assert.equal(boundedInspection.decision.decision.value, true);
+const incompleteInspection = inspect('report', join(packageRoot, 'docs/examples/reports/incomplete.json'));
+assert.equal(incompleteInspection.decision.decision.status, 'unknown');
+await writeFile(join(home, 'invalid-library-report.json'), '{invalid');
+const refused = spawnSync(process.execPath, ['manual-out/inspect-change.mjs', 'report', 'invalid-library-report.json'], {cwd: home, encoding: 'utf8', windowsHide: true});
+assert.ifError(refused.error); assert.equal(refused.status, 2); assert.equal(refused.stdout, '');
+assert.match(refused.stderr, /E_/u);
+
+// Exercise the complete manual consumers against this installed package, not a
+// copied executable. The CLI writes NUL paths to a file before either shell reads.
+const consumerCases = [];
+const reviewReport = runBin(['analyze', '--diff-file', join(packageRoot, 'docs/examples/diffs/review.diff'), '--no-config', '--preset', 'size@1', '--format', 'json']);
+await writeFile(join(home, 'review-report.json'), reviewReport);
+await writeFile(join(home, 'invalid-report.json'), '{not JSON');
+const pathNames = ['space name.ts', 'line\nbreak.ts', 'Grüße 日本.ts', '2026-09-22T14:00:00Z', 'quote"file.ts'];
+const pathPatch = pathNames.map(path => 'diff --git ' + JSON.stringify('a/' + path) + ' ' + JSON.stringify('b/' + path) + '\n--- /dev/null\n+++ ' + JSON.stringify('b/' + path) + '\n@@ -0,0 +1 @@\n+text\n').join('');
+await writeFile(join(home, 'path-report.mjs'), `import { analyzeDiff, unwrap } from '@wolfsblvt/diffdevil';
+import { writeFileSync } from 'node:fs';
+writeFileSync('path-report.json', JSON.stringify(unwrap(analyzeDiff(${JSON.stringify(pathPatch)}))));
+`);
+// Generate paths through the installed library; no files with platform-specific
+// names need to be created on disk.
+run(process.execPath, ['path-report.mjs'], home);
+const shells = process.platform === 'win32' ? ['powershell', 'pwsh'] : ['bash'];
+const environment = { ...process.env, NO_COLOR: '1' };
+// Windows treats Path and PATH as one variable; a spread followed by PATH can
+// leave two keys and let the child receive the unmodified one. Emit exactly one.
+const pathKeys = Object.keys(environment).filter(key => process.platform === 'win32' ? key.toLowerCase() === 'path' : key === 'PATH');
+const inheritedPath = environment[pathKeys[0]] ?? '';
+for (const key of pathKeys) delete environment[key];
+environment.PATH = join(home, 'node_modules/.bin') + (process.platform === 'win32' ? ';' : ':') + inheritedPath;
+for (const shell of shells) {
+  const script = join(packageRoot, 'docs/examples/scripts/report-consumer.' + (shell === 'bash' ? 'sh' : 'ps1'));
+  for (const [report, limit, expected] of [
+    ['review-report.json', '100', 0], ['review-report.json', '10', 1], ['invalid-report.json', '100', 2],
+    [join(packageRoot, 'docs/examples/reports/bounded.json'), '100', 3], ['path-report.json', '100', 0],
+  ]) {
+    const args = shell === 'bash' ? [script, report, limit] : ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', script, '-Report', report, '-Limit', limit];
+    const result = spawnSync(shell, args, { cwd: home, encoding: 'utf8', env: environment, windowsHide: true });
+    assert.ifError(result.error); assert.equal(result.status, expected, `${shell} consumer ${report}: ${result.stdout}\n${result.stderr}`);
+    if (report === 'review-report.json') assert.match(result.stdout, /Changed: 10/u);
+    if (report === 'path-report.json') {
+      const paths = result.stdout.split(/\r?\n/u).filter(line => line.startsWith('Path: '));
+      assert.equal(paths.length, pathNames.length, `${shell}: arbitrary paths must not split on newlines`);
+      if (shell !== 'bash') assert.deepEqual(paths.map(line => JSON.parse(line.slice(6))).sort(), [...pathNames].sort());
+    }
+    consumerCases.push({ shell, report, limit, exit: result.status });
+  }
+}
 const observation = {
+  manualConsumers: consumerCases,
   node: process.version, platform: process.platform, arch: process.arch, npm: npm(['--version']).trim(), tarball,
   integrity: packed.integrity, shasum: packed.shasum, fileCount: paths.length, installMode,
   bytes: (await stat(tarball)).size,
-  checks: ['tarball file boundary', `${installMode} installation into a path containing spaces outside the checkout`, 'consumer-local Chevrotain resolution', process.platform === 'win32' ? 'installed CLI through npm Windows launcher dispatch' : 'installed POSIX CLI bin', ...(process.platform === 'win32' ? ['installed PowerShell launcher version and scalar query'] : []), 'installed explicit CLI apply through fixture HTTP', 'installed version follows package metadata, including a different release-version specimen', 'installed shortcut, inline detail and BOM expression-file scalar queries', 'installed schema asset', 'root/core/language/policy/git/github ESM exports', 'closed internal export paths', 'shared AST, detail text and shortcut execution', 'band and template API', 'installed YAML/JSON source/compiler/evaluator/query/plan round-trip', 'build-time standalone schemas' , 'installed named query and typed-parameter CLI check', 'installed desired label/definition/comment plan', 'pure Action shorthand compiler', 'installed GitHub acquisition and label/comment/definition reconciliation against mock HTTP', 'strict TypeScript consumer declarations', ...(process.platform === 'win32' ? ['installed CMD and PowerShell launcher contents'] : [])],
+  checks: ['complete manual library example typechecks and executes exact, bounded, incomplete and invalid inputs at the installed package boundary', 'tarball file boundary', `${installMode} installation into a path containing spaces outside the checkout`, 'consumer-local Chevrotain resolution', process.platform === 'win32' ? 'installed CLI through npm Windows launcher dispatch' : 'installed POSIX CLI bin', ...(process.platform === 'win32' ? ['installed PowerShell launcher version and scalar query'] : []), 'installed explicit CLI apply through fixture HTTP', 'installed version follows package metadata, including a different release-version specimen', 'installed shortcut, inline detail and BOM expression-file scalar queries', 'installed schema asset', 'root/core/language/policy/git/github ESM exports', 'closed internal export paths', 'shared AST, detail text and shortcut execution', 'band and template API', 'installed YAML/JSON source/compiler/evaluator/query/plan round-trip', 'build-time standalone schemas' , 'installed named query and typed-parameter CLI check', 'installed desired label/definition/comment plan', 'pure Action shorthand compiler', 'installed GitHub acquisition and label/comment/definition reconciliation against mock HTTP', 'strict TypeScript consumer declarations', ...(process.platform === 'win32' ? ['installed CMD and PowerShell launcher contents'] : [])],
   unobserved: [...(installMode === 'registry' ? ['offline lockless consumer installation in this run'] : []), ...(process.platform === 'win32' ? [] : ['native Windows execution']), ...(process.versions.node.startsWith('24.') ? [] : ['Node 24 execution in this package run']), 'Action distribution (separate test:actions boundary)', 'live GitHub effects']
 };
 await writeFile(join(artifacts, 'qualification.json'), JSON.stringify(observation, null, 2) + '\n');

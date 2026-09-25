@@ -3,11 +3,17 @@ import { join, resolve } from 'node:path';
 import { run } from 'node:test';
 import { tap } from 'node:test/reporters';
 
-// Node may report a file without test() registrations as a passing file wrapper.
-// Per-file summaries, unlike that wrapper, count actual registered tests.
+// Prune nested app toolchains before descent; dependencies are not repository tests.
+const ignored = new Set(['node_modules', '.astro', 'dist', 'artifacts']);
+function discover(root) {
+  return readdirSync(root, { withFileTypes: true }).flatMap(entry => {
+    if (ignored.has(entry.name)) return [];
+    const path = join(root, entry.name);
+    return entry.isDirectory() ? discover(path) : entry.isFile() && entry.name.endsWith('.test.mjs') ? [path] : [];
+  });
+}
 const roots = ['src/diffdevil/tests', 'apps'];
-const files = roots.flatMap(root => readdirSync(root, { recursive: true })
-  .filter(path => path.endsWith('.test.mjs')).map(path => join(root, path))).sort();
+const files = roots.flatMap(discover).sort();
 if (files.length === 0) {
   console.error(`No ordinary test files were discovered under ${roots.join(' or ')}.`);
   process.exit(2);

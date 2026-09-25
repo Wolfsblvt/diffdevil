@@ -1,19 +1,7 @@
 ---
 // SPDX-License-Identifier: AGPL-3.0-only
-// The one site header, identical on every route including the manual. It applies the
-// Wolfsblvt Works header grammar:
-//
-//   [brand + section label] [search]  Docs Playground Examples Install⌄ FAQ │ [GitHub] [Community⌄] [Theme] [one action]
-//
-// Identity → discovery → navigation → one divider → utilities → one trailing action.
-// · The section label sits outside the home link and is plain text.
-// · Install⌄ and Community⌄ are disclosures of ordinary links (button + aria-expanded),
-//   not ARIA menus; one panel is open at a time (lib/client.ts). Install lists site pages
-//   only; install actions live on those pages.
-// · Compact: search shrinks first, then the whole primary navigation collapses into Menu⌄
-//   in the navigation's own place. GitHub, Community and Theme never move into it.
-// · The trailing slot holds exactly one action: the npm copy command until a real
-//   Dashboard destination is configured, then Dashboard (the command stays in Install).
+// The one site header, identical on every route including the manual. Identity,
+// discovery, navigation, utilities and one trailing action retain their accepted order.
 import Icon from './Icon.astro';
 import Search from './Search.astro';
 import ThemeControl from './ThemeControl.astro';
@@ -24,7 +12,8 @@ import { community } from '../data/destinations';
 import { DASHBOARD_URL, GITHUB, paths } from '../data/site';
 interface Props { surface?: string | undefined; current?: string | undefined }
 const { surface, current } = Astro.props;
-const here = Astro.url.pathname;
+const here = Astro.url;
+const isHere = (href: string) => { const target = new URL(href, here); return target.origin === here.origin && target.pathname === here.pathname; };
 const links = [
   { href: paths.docs, label: copy.nav.docs, key: 'docs' },
   { href: paths.playground, label: copy.nav.playground, key: 'playground' },
@@ -35,7 +24,7 @@ const installCurrent = current === 'app' || current === 'extension';
 <header class="site-header" data-site-header>
   <div class="wrap">
     <div class="brand">
-      <a class="brand-link" href="/" aria-label="diffdevil home">
+      <a class="brand-link" href={paths.home} aria-label="diffdevil home">
         <span class="logo logo-lockup" role="img" aria-label="diffdevil"></span>
         <span class="logo logo-micro brand-micro" role="img" aria-label="diffdevil"></span>
       </a>
@@ -46,13 +35,11 @@ const installCurrent = current === 'app' || current === 'extension';
       <nav class="primary-nav" aria-label="Site">
         <ul class="site-nav">
           {links.map(item => (
-            <li><a href={item.href} aria-current={item.href === here ? 'page' : undefined} data-in-section={current === item.key ? '' : undefined}><span class="nav-label" data-label={item.label}>{item.label}</span></a></li>
+            <li><a href={item.href} aria-current={isHere(item.href) ? 'page' : undefined} data-in-section={current === item.key ? '' : undefined}><span class="nav-label" data-label={item.label}>{item.label}</span></a></li>
           ))}
           <li class="disclosure-host">
             <button class="nav-disclosure" type="button" aria-expanded="false" aria-controls="panel-install" data-panel-trigger data-in-section={installCurrent ? '' : undefined}><span class="nav-label" data-label={copy.nav.install}>{copy.nav.install}</span><Icon name="chevron" size={10} class="chevron" /></button>
-            <div class="dest-panel" id="panel-install" data-panel data-align="start" hidden>
-              <InstallEntries kind="install" />
-            </div>
+            <div class="dest-panel" id="panel-install" data-panel data-align="start" hidden><InstallEntries kind="install" /></div>
           </li>
           <li><a href={paths.faq} aria-current={current === 'faq' ? 'page' : undefined}><span class="nav-label" data-label={copy.nav.faq}>{copy.nav.faq}</span></a></li>
         </ul>
@@ -60,11 +47,8 @@ const installCurrent = current === 'app' || current === 'extension';
       <div class="disclosure-host compact-menu">
         <button class="menu-trigger" type="button" aria-expanded="false" aria-controls="panel-menu" data-panel-trigger>{copy.nav.menu}<Icon name="chevron" size={10} class="chevron" /></button>
         <div class="dest-panel" id="panel-menu" data-panel data-align="start" hidden>
-          <ul class="dest-rows">
-            {links.map(item => <li><a class="dest-row dest-row-plain" href={item.href} aria-current={item.href === here ? 'page' : undefined}><span class="dest-label">{item.label}</span></a></li>)}
-          </ul>
-          <p class="dest-heading">{copy.nav.install}</p>
-          <InstallEntries kind="menu" />
+          <ul class="dest-rows">{links.map(item => <li><a class="dest-row dest-row-plain" href={item.href} aria-current={isHere(item.href) ? 'page' : undefined}><span class="dest-label">{item.label}</span></a></li>)}</ul>
+          <p class="dest-heading">{copy.nav.install}</p><InstallEntries kind="menu" />
           <ul class="dest-rows"><li><a class="dest-row dest-row-plain" href={paths.faq} aria-current={current === 'faq' ? 'page' : undefined}><span class="dest-label">{copy.nav.faq}</span></a></li></ul>
         </div>
       </div>
@@ -73,18 +57,14 @@ const installCurrent = current === 'app' || current === 'extension';
         <a class="utility utility-direct" href={GITHUB} rel="noopener" aria-label={copy.nav.source} title={copy.nav.source} data-direct-source><Icon name="github" size={16} /></a>
         <div class="disclosure-host">
           <button class="utility utility-social" type="button" aria-expanded="false" aria-controls="panel-community" aria-label={copy.community.trigger} title={copy.community.tooltip} data-panel-trigger><Icon name="social-links" size={16} /><Icon name="chevron" size={10} class="chevron" /></button>
-          <div class="dest-panel" id="panel-community" data-panel data-align="end" hidden>
-            <p class="dest-heading">{copy.community.heading}</p>
-            <DestinationRows rows={community} kind="community" />
-          </div>
+          <div class="dest-panel" id="panel-community" data-panel data-align="end" hidden><p class="dest-heading">{copy.community.heading}</p><DestinationRows rows={community} kind="community" /></div>
         </div>
         <ThemeControl />
       </div>
       {DASHBOARD_URL
         ? <a class="trailing-action" href={DASHBOARD_URL} data-trailing="dashboard">{copy.nav.dashboard}</a>
         : <button class="trailing-action trailing-copy" type="button" data-copy={copy.nav.command} data-copy-state aria-label={`Copy install command: ${copy.nav.command}`} data-trailing="npm">
-            <span class="copy-swap"><span class="copy-swap-rest">{copy.nav.command}</span><span class="copy-swap-done" aria-hidden="true">{copy.nav.copied}</span></span>
-            <Icon name="copy" size={13} class="copy-glyph" />
+            <span class="copy-swap"><span class="copy-swap-rest">{copy.nav.command}</span><span class="copy-swap-done" aria-hidden="true">{copy.nav.copied}</span></span><Icon name="copy" size={13} class="copy-glyph" />
           </button>}
     </div>
   </div>

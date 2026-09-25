@@ -21,7 +21,7 @@ main:
   required pre-integration evidence: Verify on the exact candidate head
   required approval/review: none
   resolved conversations: no
-  automatic CI: Verify on main push and pull request (Linux Node 22/24, Windows Node 24)
+  automatic CI: Verify on main push and pull request (Linux and Windows, Node 22/24)
   automatic retained branch effects: none
   other pre-update evidence: none
 ```
@@ -52,11 +52,13 @@ node dist/lib/cli/main.js analyze --diff-file docs/examples/diffs/review.diff --
 and checks exact generated Action parity. When source or packaging affects the
 Actions, run `npm run build:actions`, inspect the generated diff, and verify again.
 Run `npm run test:conformance`, `npm run test:package`, and `npm run test:actions`
-for the separately named consumer boundaries. The public website builds with
-`npm run website:build` and is qualified in a browser with `npm run qa:website`;
-`verify` includes its build. No website command deploys, previews remotely, or
-exposes anything. See `docs/DEVELOPMENT.md` for what
-each proves. Do not replace executable proof with fixed prose or test-count gates.
+for the separately named consumer boundaries. `npm run website:build` builds both
+public static hosts and their joined search index; `verify` includes that build.
+`npm run qa:website` qualifies the existing website, while
+`npm --prefix apps/manual run qa` qualifies the two-host manual/FAQ interfaces.
+No website command deploys, previews remotely, or exposes anything. See
+`docs/DEVELOPMENT.md` and `apps/manual/README.md` for what each command proves.
+Do not replace executable proof with fixed prose or test-count gates.
 
 ## Preserve the product
 
@@ -76,13 +78,15 @@ not real credentials or live repository mutation.
 ## Generated and public boundaries
 
 Edit `src/diffdevil/`, not the generated `actions/runtime/` implementation or `action.yml`
-files. The manual on the website is generated from repository Markdown selected in
-`apps/website/docs-manifest.mjs`; edit the Markdown, never the ignored generated
-collection. The Agent Skill and setup instructions are repository-owned product
-content served by the site, not website copy. Commit reviewed Action distribution output because consumers do not install
-dependencies. Root `dist/`, `node_modules/`, and `artifacts/` are generated or local;
-do not force-add them. Never commit credentials, private raw conversations,
-personal instructions, or local transfer archives.
+files. The new public manual is generated from `docs/manual/` through the explicit
+`apps/manual/manifest.mjs`. The apex no longer projects a competing manual. Its
+finite legacy inventory is `apps/website/docs-manifest.mjs`; selected transfers and
+captured fragments stay in the manual manifest and authoring state. The Agent Skill
+and setup instructions are repository-owned product content served by the site,
+not website copy. Commit reviewed Action distribution output because
+consumers do not install dependencies. Root `dist/`, `node_modules/`, and `artifacts/`
+are generated or local; do not force-add them. Never commit credentials, private raw
+conversations, personal instructions, or local transfer archives.
 
 Inspect Git status and the exact staged diff before committing. Preserve unrelated
 work and attributable history. Public tags, releases, package publication, live

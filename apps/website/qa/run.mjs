@@ -18,7 +18,9 @@ import { chromium } from '@playwright/test';
 import { createServer } from 'node:http';
 import { readFile, mkdir, writeFile } from 'node:fs/promises';
 import { once } from 'node:events';
-import { join, extname } from 'node:path';
+import { join, extname, resolve, sep } from 'node:path';
+import {pathToFileURL} from 'node:url';
+import {origins, pageUrl} from '../../manual/manifest.mjs';
 import { GitHubClient } from '../../../dist/lib/index.js';
 import { FakeGitHub } from '../../../src/diffdevil/tests/helpers/github.mjs';
 import { createPlaygroundServer } from '../../playground/server.mjs';
@@ -31,7 +33,7 @@ const OUT = 'artifacts/website/qa';
 // product's default local route.
 const SITE_PORT = Number(process.env.DIFFDEVIL_WEBSITE_QA_SITE_PORT ?? 4399);
 const API_PORT = Number(process.env.DIFFDEVIL_WEBSITE_QA_API_PORT ?? 4173);
-const types = { '.js': 'text/javascript', '.css': 'text/css', '.html': 'text/html', '.svg': 'image/svg+xml', '.woff2': 'font/woff2', '.woff': 'font/woff', '.png': 'image/png', '.webp': 'image/webp', '.ico': 'image/x-icon', '.json': 'application/json', '.md': 'text/markdown', '.webmanifest': 'application/manifest+json', '.txt': 'text/plain' };
+const types = { '.js': 'text/javascript', '.css': 'text/css', '.html': 'text/html', '.svg': 'image/svg+xml', '.woff2': 'font/woff2', '.woff': 'font/woff', '.png': 'image/png', '.webp': 'image/webp', '.ico': 'image/x-icon', '.json': 'application/json', '.md': 'text/markdown', '.webmanifest': 'application/manifest+json', '.txt': 'text/plain', '.wasm':'application/wasm' };
 await mkdir(OUT, { recursive: true });
 
 const site = createServer(async (req, res) => {
@@ -52,21 +54,40 @@ const results = [];
 const failures = [];
 function check(name, condition, detail = '') { results.push({ name, ok: !!condition, detail }); if (!condition) failures.push(`${name}${detail ? ` — ${detail}` : ''}`); }
 
-const browser = await chromium.launch();
+const browser = await chromium.launch({executablePath:process.env.PLAYWRIGHT_EXECUTABLE_PATH});
 const context = await browser.newContext({ viewport: { width: 1280, height: 900 }, colorScheme: 'dark', permissions: ['clipboard-read', 'clipboard-write'] });
 const consoleErrors = [], external = [], pageErrors = [];
 context.on('page', page => {
   page.on('console', m => { if (m.type() === 'error') consoleErrors.push(`${page.url()} ${m.text()}`); });
   page.on('pageerror', e => pageErrors.push(`${page.url()} ${e.message}`));
-  page.on('request', r => { const u = new URL(r.url()); if (!['127.0.0.1', 'localhost'].includes(u.hostname)) external.push(r.url()); });
+  page.on('request', r => { const u = new URL(r.url()); if (!['127.0.0.1', 'localhost', new URL(origins.site).hostname, new URL(origins.docs).hostname].includes(u.hostname)) external.push(r.url()); });
+});
+// Cross-host links use the actual static output and emitted handlers. The local
+// Playground API remains a separate loopback fake; no remote provider is contacted.
+const builtHosts=new Map(await Promise.all([['site','website'],['docs','manual']].map(async([host,name])=>{
+ const directory=resolve(`artifacts/${name}/dist`);
+ return [origins[host],{directory,handler:(await import(pathToFileURL(join(directory,'_worker.js')).href)).default}];
+})));
+await context.route(/^https:\/\/(?:docs\.)?diffdevil\.dev\//u,async route=>{
+ const request=new Request(route.request().url());
+ const host=builtHosts.get(new URL(request.url).origin);
+ const response=await host.handler.fetch(request,{ASSETS:{fetch:async request=>{
+  let pathname;try{pathname=decodeURIComponent(new URL(request.url).pathname);}catch{return new Response('Bad path',{status:400});}
+  if(pathname.endsWith('/'))pathname+='index.html';
+  const file=resolve(host.directory,'.'+pathname);
+  if(!file.startsWith(host.directory+sep))return new Response('Outside site',{status:400});
+  try{return new Response(await readFile(file),{headers:{'Content-Type':types[extname(file)]??'application/octet-stream'}});}
+  catch{return new Response('Not found',{status:404});}
+ }}});
+ await route.fulfill({status:response.status,headers:Object.fromEntries(response.headers),body:Buffer.from(await response.arrayBuffer())});
 });
 const page = await context.newPage();
 try {
-const go = (path, opts = {}) => page.goto(`http://127.0.0.1:${SITE_PORT}${path}`, { waitUntil: 'networkidle', ...opts });
+const go = (path, opts = {}) => page.goto(/^https?:/u.test(path)?path:`http://127.0.0.1:${SITE_PORT}${path}`, { waitUntil: 'networkidle', ...opts });
 const shot = name => page.screenshot({ path: join(OUT, `${name}.png`), fullPage: true });
 
 // ── every page: Impressum in the footer, one h1, theme script before paint ──
-const pages = ['/', '/playground/', '/examples/', '/extension/', '/app/', '/privacy/', '/impressum/', '/docs/', '/docs/cli/', '/docs/get-started/auto-label-pull-requests/', '/docs/security/', '/docs/licences/', '/nothing-here/'];
+const pages = ['/', '/playground/', '/examples/', '/extension/', '/app/', '/privacy/', '/impressum/', '/faq/', pageUrl('what-is-diffdevil'), pageUrl('cli'), pageUrl('label-pull-requests'), pageUrl('security-and-data'), '/source/?f=LICENSES%2FREADME.md', '/nothing-here/'];
 const overflowOf = () => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
 // One header geometry and one page grid: measured on every route and compared with the homepage.
 const shellOf = () => page.evaluate(() => {
@@ -79,7 +100,7 @@ let homeShell;
 for (const path of pages) {
   const response = await go(path);
   const impressum = await page.locator('footer a', { hasText: 'Impressum' }).first();
-  check(`${path} has an Impressum link to the site's own route`, await impressum.count() === 1 && (await impressum.getAttribute('href')) === '/impressum/');
+  check(`${path} has an Impressum link to the site's own route`, await impressum.count() === 1 && new URL(await impressum.getAttribute('href'),page.url()).pathname === '/impressum/');
   check(`${path} has no Company-privacy footer link`, (await page.locator('footer a', { hasText: 'Company privacy' }).count()) === 0);
   check(`${path} has no page-level horizontal overflow at 1280`, (await overflowOf()) <= 0, String(await overflowOf()));
   const shell = await shellOf();
@@ -104,7 +125,7 @@ await shot('home');
 check('header grammar: search, navigation, one divider, utilities, one trailing action', homeShell.order === 'search-trigger primary-nav header-sep utilities trailing-action', homeShell.order);
 const geometry = await page.evaluate(() => { const b = s => { const r = document.querySelector(s).getBoundingClientRect(); return `${Math.round(r.width)}x${Math.round(r.height)}`; }; return { header: b('.site-header'), search: b('.search-trigger'), source: b('[data-direct-source]'), social: b('.utility-social'), theme: b('.theme-control'), action: Math.round(document.querySelector('.trailing-action').getBoundingClientRect().height), sep: b('.header-sep'), navSize: getComputedStyle(document.querySelector('.site-nav > li > a')).fontSize, navGap: getComputedStyle(document.querySelector('.site-nav')).columnGap }; });
 check('header geometry follows the shared standard', JSON.stringify(geometry) === JSON.stringify({ header: '1265x62', search: '190x30', source: '28x28', social: '42x28', theme: '64x28', action: 30, sep: '1x18', navSize: '13px', navGap: '18px' }), JSON.stringify(geometry));
-check('nav has Docs, Playground, Examples and Install; there is no top-level App item', (await page.locator('.site-nav > li').allInnerTexts()).map(t => t.trim()).join('|') === 'Docs|Playground|Examples|Install');
+check('nav has Docs, Playground, Examples and Install; there is no top-level App item', (await page.locator('.site-nav > li').allInnerTexts()).map(t => t.trim()).join('|') === 'Docs|Playground|Examples|Install|FAQ');
 check('hero shows 3 changed = exact from the engine', /3\s*changed/u.test(await page.locator('.specimen-cell').first().innerText()));
 const hero = await page.evaluate(() => {
   const lines = el => Math.round(el.getBoundingClientRect().height / parseFloat(getComputedStyle(el).lineHeight));
@@ -144,7 +165,7 @@ const install = page.locator('[aria-controls="panel-install"]'), communityTrigge
 await install.focus(); await page.keyboard.press('Enter');
 check('Install opens by keyboard and exposes its expanded state', (await install.getAttribute('aria-expanded')) === 'true' && await page.locator('#panel-install').isVisible());
 const installLinks = await page.locator('#panel-install a').evaluateAll(links => links.map(a => `${a.dataset.dest}=${a.getAttribute('href') ?? 'unconfigured'}`));
-check('Install is a menu of site pages only: browser extension, GitHub App, CLI and Actions; no install or store action lives in it', installLinks.join(' ') === 'install:extension=/extension/ install:app=/app/ install:open=/docs/get-started/auto-label-pull-requests/' && !/Add to Chrome|Install on GitHub/u.test(await page.locator('#panel-install').innerText()), installLinks.join(' '));
+check('Install is a menu of site pages only: browser extension, GitHub App, CLI and Actions; no install or store action lives in it', installLinks.join(' ') === `install:extension=/extension/ install:app=/app/ install:open=${pageUrl('label-pull-requests')}` && !/Add to Chrome|Install on GitHub/u.test(await page.locator('#panel-install').innerText()), installLinks.join(' '));
 const rowsShape = await page.evaluate(() => [...document.querySelectorAll('#panel-install .dest-row')].map(row => { const li = row.parentElement.getBoundingClientRect(), a = row.getBoundingClientRect(); return { described: !!row.querySelector('.dest-label') && !!row.querySelector('.dest-note')?.textContent.trim(), whole: Math.round(a.width) === Math.round(li.width) && Math.round(a.height) === Math.round(li.height), gap: getComputedStyle(row).columnGap }; }));
 check('every Install entry has a title and a description, and the whole row is the link', rowsShape.length === 3 && rowsShape.every(r => r.described && r.whole && r.gap === '12px'), JSON.stringify(rowsShape));
 await page.locator('#panel-install .dest-row').first().hover(); await page.waitForTimeout(80);
@@ -207,8 +228,10 @@ check('machine surfaces stay midnight in light theme', machineBg === 'rgb(12, 15
 await shot('home-light');
 await page.reload({ waitUntil: 'networkidle' });
 check('theme survives reload before first paint', (await page.evaluate(() => document.documentElement.getAttribute('data-theme'))) === 'light');
-await go('/docs/cli/');
-check('the manual resolves the same theme by the same rule', (await page.evaluate(() => `${document.documentElement.dataset.themePref}/${document.documentElement.dataset.theme}`)) === 'light/light');
+await go(origins.site + '/?dd-theme=light.dark');
+await page.locator('.primary-nav a').filter({ hasText: /^Docs$/u }).click();
+check('the manual resolves the explicitly handed-off theme by the same rule', (await page.evaluate(() => `${document.documentElement.dataset.themePref}/${document.documentElement.dataset.theme}`)) === 'light/light');
+await go('/');
 await page.evaluate(() => { localStorage.setItem('diffdevil.theme', 'system'); localStorage.removeItem('diffdevil.theme.next'); });
 await go('/');
 check('a legacy Automatic value migrates to Auto, with the opposite of its appearance as the next manual side', await (async () => { const t = await themeState(); return t.pref === 'auto' && t.shown === 'dark' && t.stored === 'auto' && t.next === 'light'; })());
@@ -242,7 +265,7 @@ check('live region announced the copy', (await page.locator('[data-live-region]'
 const skill = page.locator('#agents-skill');
 check('skill card starts closed', await skill.locator('.agent-details').isHidden());
 await skill.locator('.btn-primary').click();
-check('Add the skill copies the instruction with the configured origin', /Install the diffdevil Agent Skill from https?:\/\/[^ ]+\/skill\/SKILL\.md/u.test(await page.evaluate(() => navigator.clipboard.readText())));
+check('Add the skill copies the instruction with the configured origin', /https?:\/\/[^ ]+\/setup\/skill\.md/u.test(await page.evaluate(() => navigator.clipboard.readText())));
 check('Add the skill opened the skill card (proactive expansion)', await skill.locator('.agent-details').isVisible() && (await skill.locator('[data-disclosure]').getAttribute('aria-expanded')) === 'true');
 const setup = page.locator('#agents-setup');
 await setup.locator('[data-intent="cli"]').click();
@@ -253,7 +276,7 @@ check('selecting a setup chip opens the setup card and swaps the prompt', await 
 await setup.locator('[data-intent="cli"]').press('ArrowRight');
 check('arrow keys move the intent selection', (await setup.locator('[data-intent="actions"]').getAttribute('aria-checked')) === 'true');
 check('open cards never widen the page and the prompt wraps', (await overflowOf()) <= 0 && await page.evaluate(() => { const pre = document.querySelector('#agents-setup-details pre'); return pre.scrollWidth <= pre.clientWidth; }));
-check('the copied setup prompt is one sentence', await page.evaluate(() => { const text = document.querySelector('[data-intent-prompt]').textContent.trim(); return text.endsWith('exactly.') && (text.match(/\. /gu) ?? []).length === 0; }));
+check('the copied setup prompt is one sentence', await page.evaluate(() => { const text = document.querySelector('[data-intent-prompt]').textContent.trim(); return /\/setup\/actions\.md/u.test(text) && (text.match(/\. /gu) ?? []).length === 0; }));
 check('both cards may be open at once', await skill.locator('.agent-details').isVisible() && await setup.locator('.agent-details').isVisible());
 await skill.locator('[data-disclosure]').click();
 check('explicit disclosure closes the card', await skill.locator('.agent-details').isHidden());
@@ -265,12 +288,12 @@ const routes = await page.evaluate(() => ({ titles: [...document.querySelectorAl
 check('route cards: 01 run it yourself, 02 browser extension, 03 GitHub App; the Playground card and its PR input are gone', routes.titles.join('|') === 'Run diffdevil yourself|Bring Changed into GitHub|Let it run for you' && routes.prInput === 0, JSON.stringify(routes));
 check('the extension card shows the real compact projection with the diffdevil/brand glyph and carries more height than the App card', routes.glyph === 'brand' && /Changed 178 \(\+45 −18 ~115\) size\/M/u.test(routes.projection) && routes.projection.includes('Raw +160 −133') && routes.heights[0] > routes.heights[1], JSON.stringify(routes));
 const heroCtas = await page.locator('.hero-ctas a').evaluateAll(links => links.map(a => `${a.textContent.trim()}=${a.getAttribute('href') ?? 'unconfigured'}`));
-check('hero: Add to Chrome first and direct, then CLI / Actions, then the Playground; card 02 says Install the extension; no install button carries a link glyph', (await page.locator('.btn svg[data-icon="external"]').count()) === 0 && (await page.locator('.route-2 .btn').innerText()).trim() === 'Install the extension' && heroCtas.join('|') === 'Add to Chrome=unconfigured|Use the CLI / Actions=/docs/get-started/auto-label-pull-requests/|Try a public PR →=/playground/' && (await page.locator('.hero .eyebrow').innerText()).toUpperCase() === 'COMPOSABLE DIFF ANALYSIS AND AUTOMATION FOR GITHUB AND THE CLI', heroCtas.join('|'));
+check('hero: Add to Chrome first and direct, then CLI / Actions, then the Playground; card 02 says Install the extension; no install button carries a link glyph', (await page.locator('.btn svg[data-icon="external"]').count()) === 0 && (await page.locator('.route-2 .btn').innerText()).trim() === 'Install the extension' && heroCtas.join('|') === `Add to Chrome=unconfigured|Use the CLI / Actions=${pageUrl('label-pull-requests')}|Try a public PR →=/playground/` && (await page.locator('.hero .eyebrow').innerText()).toUpperCase() === 'COMPOSABLE DIFF ANALYSIS AND AUTOMATION FOR GITHUB AND THE CLI', heroCtas.join('|'));
 check('no Add to Chrome or install action is ever routed through a product page', await page.evaluate(() => [...document.querySelectorAll('a')].filter(a => /^(Add to Chrome|Install the App|Install on GitHub|Chrome Web Store)/u.test(a.textContent.trim())).every(a => !['/extension/', '/app/'].includes(a.getAttribute('href') ?? ''))));
 const order = await page.evaluate(() => [...document.querySelectorAll('main section[data-section]')].map(s => s.dataset.section).join(' '));
 check('homepage order puts #extension directly after #measure', order === 'measure extension query policy agents evidence app support', order);
 const scene = await page.evaluate(() => { const el = document.querySelector('[data-section="extension"] [data-extension-scene]'); const native = el.querySelector('.gh-native'); return { text: el.innerText.replace(/\s+/gu, ' '), glyphBeforeChanged: el.querySelector('.ddx-main').firstElementChild.dataset.icon === 'brand' && el.querySelector('.ddx-main').children[1].textContent === 'Changed', railCells: el.querySelectorAll('[data-scene-anchor] .ddx-cell').length, selected: [...el.querySelectorAll('[data-scene-anchor] .ddx-cell')].findIndex(c => c.classList.contains('is-selected')), nativeOpacity: getComputedStyle(native).opacity, popover: !!el.querySelector('.gh-popover'), files: el.querySelectorAll('.gh-file').length, images: el.querySelectorAll('img, iframe, canvas').length, magenta: [...el.querySelectorAll('*')].some(n => /240, 97, 186|229, 78, 175/u.test(getComputedStyle(n).color + getComputedStyle(n).backgroundColor + getComputedStyle(n).borderColor)) }; });
-check('the extension scene is one semantic GitHub composition: glyph then Changed 178 (+45 −18 ~115), size/M, a five-cell rail with the third cell selected, dimmed native +160 −133, per-file Changed, and the open exact report', scene.glyphBeforeChanged && /Changed 178 \(\+45 −18 ~115\) size\/M/u.test(scene.text) && scene.railCells === 5 && scene.selected === 2 && Number(scene.nativeOpacity) < 0.6 && scene.text.includes('+160 −133') && scene.files === 3 && /src\/Foo\.cs .*Changed 173/u.test(scene.text) && scene.popover && scene.text.includes('= exact') && scene.images === 0 && !scene.magenta, JSON.stringify({ ...scene, text: undefined }));
+check('the authored extension illustration preserves its fixture composition, not final UI authority: glyph then Changed 178 (+45 −18 ~115), size/M, a five-cell rail with the third cell selected, dimmed native +160 −133, per-file Changed, and the open exact report', scene.glyphBeforeChanged && /Changed 178 \(\+45 −18 ~115\) size\/M/u.test(scene.text) && scene.railCells === 5 && scene.selected === 2 && Number(scene.nativeOpacity) < 0.6 && scene.text.includes('+160 −133') && scene.files === 3 && /src\/Foo\.cs .*Changed 173/u.test(scene.text) && scene.popover && scene.text.includes('= exact') && scene.images === 0 && !scene.magenta, JSON.stringify({ ...scene, text: undefined }));
 await page.goto(`http://127.0.0.1:${SITE_PORT}/playground/?pr=example/repository/42`, { waitUntil: 'networkidle' });
 
 // ── playground: PR mode through the real API server ──
@@ -388,37 +411,38 @@ await page.locator('#pg-url').fill('https://github.com/example/repository/issues
 await page.locator('.pg-input form button[type="submit"]').click();
 check('non-PR URL is refused client-side without a request', (await page.locator('.pg-input [role="alert"]').innerText()).includes('Not a public github.com pull-request URL'));
 
-// ── docs shell ──
-await go('/docs/get-started/auto-label-pull-requests/');
-check('docs page renders the source body with the size workflow', (await page.locator('main').innerText()).includes('pull_request_target'));
-check('docs provenance row names the source and tested standing', (await page.locator('.docs-provenance').innerText()).includes('docs/guides/auto-label-pull-requests.md') && (await page.locator('.docs-provenance').innerText()).includes('Example tested'));
-check('docs use the global search trigger, placed before the navigation', (await page.locator('[data-search-open]').count()) === 1 && (await page.locator('site-search').count()) === 0 && (await shellOf()).order.startsWith('search-trigger primary-nav'));
-const docsShell = await page.evaluate(() => { const b = s => document.querySelector(s).getBoundingClientRect(); const pane = b('.sidebar-pane'), brand = b('.brand-link'), first = b('.sidebar-content summary, .sidebar-content a'); return { paneRight: Math.round(pane.right), paneTop: Math.round(pane.top), headerBottom: Math.round(b('.page > .header').bottom), firstLeft: Math.round(first.left), brandLeft: Math.round(brand.left), paneBg: getComputedStyle(document.querySelector('.sidebar-pane')).backgroundColor, headerBg: getComputedStyle(document.querySelector('.page > .header')).backgroundImage, mainLeft: Math.round(b('.main-pane').left), position: getComputedStyle(document.querySelector('.sidebar-pane')).position, overflow: getComputedStyle(document.querySelector('.sidebar-pane')).overflowY }; });
-check('docs rail starts under the lockup on the page grid, on the lighter ground, and scrolls on its own', docsShell.paneTop === docsShell.headerBottom && Math.abs(docsShell.firstLeft - docsShell.brandLeft) <= 6 && docsShell.paneBg === 'rgb(29, 34, 44)' && docsShell.position === 'fixed' && docsShell.overflow === 'auto' && docsShell.mainLeft >= docsShell.paneRight, JSON.stringify(docsShell));
-check('the rail divider continues through the header', docsShell.headerBg.includes('linear-gradient') && docsShell.headerBg.includes('rgb(29, 34, 44)'), docsShell.headerBg.slice(0, 120));
-check('docs sidebar has the manual groups', (await page.locator('.sidebar-content').textContent()).includes('Policies and detail'));
+// ── canonical manual shell and catalogue joins ──
+await go(pageUrl('label-pull-requests'));
+check('manual first-success route renders the complete size workflow', (await page.locator('main').innerText()).includes('pull_request_target'));
+check('manual provenance names canonical source rather than a retired guide', (await page.locator('.docs-provenance').innerText()).includes('docs/manual/start/label-pull-requests.md'));
+check('manual uses the global search before navigation', (await page.locator('[data-search-open]').count())===1 && (await page.locator('site-search').count())===0 && (await shellOf()).order.startsWith('search-trigger primary-nav'));
+const manualGroups=await page.locator('[data-slw-group]').evaluateAll(nodes=>nodes.map(node=>node.getAttribute('data-slw-group')));
+check('manual sidebar has the accepted six groups and a named navigation landmark', await page.locator('nav[aria-label="Manual navigation"]').count()===1 && ['START','USE DIFFDEVIL','WRITE POLICY','UNDERSTAND','REFERENCE','HELP'].every(label=>manualGroups.includes(label)),manualGroups.join(' | '));
 await shot('docs');
-await go('/docs/recipes/policy-recipes/');
-const tryIt = page.locator('a[href^="/playground/?example="]');
-check('docs example links carry a Try it companion', (await tryIt.count()) > 0 && (await tryIt.first().innerText()).includes('Try it in the playground'), String(await tryIt.count()));
+await go(pageUrl('changed-lines-and-raw-churn'));
+const examples=await page.locator('.sl-markdown-content a[href*="/playground/?example="]').evaluateAll(links=>links.map(link=>link.href));
+check('manual example links name exact catalogue entries and variants',examples.length>0&&examples.every(href=>{const url=new URL(href);return url.searchParams.has('example')&&url.searchParams.has('variant');}),examples.join(' '));
 
 // ── wide layout: the grid stays centred and every route keeps the same edges ──
 await page.setViewportSize({ width: 1720, height: 900 });
 let wideShell;
-for (const path of ['/', '/playground/', '/examples/', '/extension/', '/app/', '/docs/cli/']) {
+for (const path of ['/', '/playground/', '/examples/', '/extension/', '/app/', pageUrl('cli')]) {
   await go(path);
   const shell = await shellOf();
   wideShell ??= shell;
   check(`${path} at 1720: same lockup coordinate and cluster edge as the homepage`, shell.brand.left === wideShell.brand.left && shell.cluster.right === wideShell.cluster.right && shell.brand.left > 200, JSON.stringify(shell));
 }
-await go('/docs/cli/');
-check('docs at 1720: the rail still starts at the lockup and the ground left of it reaches the viewport edge', await page.evaluate(() => { const pane = document.querySelector('.sidebar-pane').getBoundingClientRect(), brand = document.querySelector('.brand-link').getBoundingClientRect(), first = document.querySelector('.sidebar-content summary, .sidebar-content a').getBoundingClientRect(); return Math.round(pane.left) === 0 && Math.abs(first.left - brand.left) <= 6 && pane.right > brand.right; }));
+await go(pageUrl('cli'));
+await shot('docs-wide');
+const wideRailVisible = await page.locator('[data-slw-group="START"]').isVisible();
+const wideOverflow = await overflowOf();
+check('manual at 1720 keeps a visible navigation rail without page overflow', wideRailVisible && wideOverflow<=0, `rail visible: ${wideRailVisible}; overflow: ${wideOverflow}`);
 
 // ── no page-level horizontal overflow: every route, every qualified width ──
 // 640 × 2 device pixels is the layout a 1280 window has at 200 % zoom.
 for (const width of [1440, 1024, 768, 640, 375, 320]) {
   await page.setViewportSize({ width, height: 900 });
-  for (const path of ['/', '/playground/', '/playground/?example=lockfile-scope&variant=all&view=agent', '/playground/?example=lockfile-scope&variant=all&view=github', '/examples/', '/extension/', '/app/', '/privacy/', '/impressum/', '/docs/cli/', '/#agents-setup']) {
+  for (const path of ['/', '/playground/', '/playground/?example=lockfile-scope&variant=all&view=agent', '/playground/?example=lockfile-scope&variant=all&view=github', '/examples/', '/extension/', '/app/', '/privacy/', '/impressum/', pageUrl('cli'), '/#agents-setup']) {
     await go(path);
     if (path.startsWith('/playground/')) await page.waitForSelector('.pg-primary');
     check(`${path} has no page-level horizontal overflow at ${width}`, (await overflowOf()) <= 0, String(await overflowOf()));
@@ -451,13 +475,13 @@ check('/extension/ is a full page: hero, Changed, policy, report, settings, data
 check('/extension/ states its real permissions and boundaries and never requires the App', ['api.github.com', 'Incognito', 'not persisted', 'GitHub Enterprise', 'The extension changes your view. The App runs for the repository.'].every(t => ext.text.includes(t)) && !/coming soon|not open yet/iu.test(ext.text));
 check('every Add to Chrome on the page is a direct store action, never a link to a product page', ext.add.length >= 2 && ext.add.every(href => href === 'unconfigured' || /^https:\/\/chromewebstore\.google\.com\//u.test(href)), ext.add.join(' '));
 const footer = await page.evaluate(() => { const rows = [...document.querySelectorAll('.site-footer nav[aria-label="Learn"] li')].map(li => li.textContent.replace(/\s+/gu, ' ').trim()); const get = [...document.querySelectorAll('.site-footer nav[aria-label="Get"] a')].map(a => `${a.textContent.trim()}=${a.getAttribute('href') ?? 'unconfigured'}`); return { rows, releases: [...document.querySelectorAll('.site-footer a')].find(a => a.textContent === 'Releases').getAttribute('href'), get, appDocs: [...document.querySelectorAll('.site-footer nav[aria-label="Learn"] a')].find(a => a.textContent === 'GitHub App').getAttribute('href') }; });
-check('footer: Releases goes to the manual; Learn carries "Extension · GitHub App" directly above "CLI · Actions · Library API", pointing into the docs', footer.releases === '/docs/releases/' && footer.rows.indexOf('Extension · GitHub App') === footer.rows.indexOf('CLI · Actions · Library API') - 1 && footer.rows.indexOf('Extension · GitHub App') >= 0 && footer.appDocs.startsWith('/docs/github-app/'), JSON.stringify(footer));
+check('footer: Releases goes to the manual; Learn carries "Extension · GitHub App" directly above "CLI · Actions · Library API", pointing into the docs', footer.releases === pageUrl('releases') && footer.rows.indexOf('Extension · GitHub App') === footer.rows.indexOf('CLI · Actions · Library API') - 1 && footer.rows.indexOf('Extension · GitHub App') >= 0 && footer.appDocs === pageUrl('managed-app'), JSON.stringify(footer));
 check('footer Get keeps the package and Action first and adds the extension and App with their direct actions', footer.get[0].startsWith('@wolfsblvt/diffdevil=') && footer.get.some(g => g === 'Browser extension=/extension/') && footer.get.some(g => g.startsWith('Chrome Web Store=')) && footer.get.some(g => g === 'GitHub App=/app/') && footer.get.some(g => g.startsWith('Install on GitHub=')), footer.get.join(' | '));
 await go('/');
 await page.keyboard.press('Control+k');
 await page.locator('[data-search-input]').fill('browser extension');
 await page.waitForSelector('.search-hit');
-check('search finds the extension page', (await page.locator('.search-hit').evaluateAll(hits => hits.map(h => h.getAttribute('href')))).includes('/extension/'));
+check('search finds the extension page', (await page.locator('.search-hit').evaluateAll(hits => hits.map(h => new URL(h.href).pathname))).includes('/extension/'));
 await page.keyboard.press('Escape');
 await page.waitForTimeout(100);
 check('closing search after the keyboard shortcut returns focus to the visible launcher', await page.evaluate(() => document.activeElement?.matches('[data-search-open]')), await page.evaluate(() => document.activeElement?.outerHTML.slice(0, 120)));
@@ -468,20 +492,20 @@ check('examples lead with real pull requests, carry no fixture gallery and no se
 check('example cards: mark and identity on one row, owner greyed, evidence chip right-aligned', await page.evaluate(() => [...document.querySelectorAll('.ex-card')].every(card => { const head = card.querySelector('.ex-head').getBoundingClientRect(), title = card.querySelector('.ex-title').getBoundingClientRect(), icon = card.querySelector('.ex-title svg').getBoundingClientRect(), chip = card.querySelector('.ex-head .chip-ev').getBoundingClientRect(); const owner = getComputedStyle(card.querySelector('.ex-owner')).color, name = getComputedStyle(card.querySelector('.ex-title a')).color; return icon.bottom <= title.bottom + 1 && icon.top >= title.top - 1 && Math.round(head.right - chip.right) <= 1 && owner !== name; })));
 await go('/app/');
 check('app page head is the same panel as the homepage', (await page.locator('.app-panel .benefits li').count()) === 6 && (await page.evaluate(() => getComputedStyle(document.querySelector('.app-panel')).backgroundColor)) === 'rgb(12, 15, 23)' && (await page.locator('.app-panel h1').count()) === 1);
-check('app page has an honest #history chapter before #permissions with no dashboard imagery', await page.evaluate(() => { const ids = [...document.querySelectorAll('main .eyebrow-link')].map(a => a.id); const section = document.querySelector('[data-section="history"]'); return ids.indexOf('history') > 0 && ids.indexOf('history') < ids.indexOf('permissions') && /in design/u.test(section.innerText) && section.querySelectorAll('img, svg, canvas').length === 0; }));
+check('app page has an honest #history chapter before #permissions with no dashboard imagery', await page.evaluate(() => { const ids = [...document.querySelectorAll('main .eyebrow-link')].map(a => a.id); const section = document.querySelector('[data-section="history"]'); return ids.indexOf('history') > 0 && ids.indexOf('history') < ids.indexOf('permissions') && /co-design/u.test(section.innerText) && section.querySelectorAll('img, svg, canvas').length === 0; }));
 check('app page: comparison blocks sit side by side below the lead; internal strategy prose is gone', await page.evaluate(() => { const [a, b] = [...document.querySelectorAll('[data-section="why"] .choice')].map(el => el.getBoundingClientRect()); return Math.round(a.top) === Math.round(b.top) && Math.round(a.width) === Math.round(b.width) && !document.querySelector('main').innerText.includes('primary pitch'); }));
 
 // ── repository links ──
 for (const path of ['/app/']) {
   await go(path);
-  const hrefs = await page.locator('a[href*="/blob/main"]').evaluateAll(links => links.map(a => a.getAttribute('href')));
-  check(`${path} repository links carry the separator once`, hrefs.length > 0 && hrefs.every(h => h.includes('/blob/main/') && !h.includes('/blob/main//') && !/\/blob\/main[^/]/u.test(h)), hrefs.slice(0, 3).join(' '));
+  const hrefs = await page.locator('a[href*="/blob/"]').evaluateAll(links => links.map(a => a.getAttribute('href')));
+  check(`${path} repository links carry the separator once`, hrefs.length > 0 && hrefs.every(h => /\/blob\/[a-f0-9]{40}\//u.test(h) && !/\/blob\/[a-f0-9]{40}\/\//u.test(h)), hrefs.slice(0, 3).join(' '));
 }
 const badge = await page.goto(`http://127.0.0.1:${SITE_PORT}/github-app-logo-512.png`);
 check('generated GitHub App badge is served by the built site', badge.status() === 200 && (badge.headers()['content-type'] ?? '').includes('image/png'));
 
 // ── invariants ──
-check('no external requests left the site origin (fonts self-hosted)', external.length === 0, external.slice(0, 5).join(', '));
+check('requests stayed on the two static hosts and local fake API (fonts self-hosted)', external.length === 0, external.slice(0, 5).join(', '));
 check('no page errors', pageErrors.length === 0, pageErrors.slice(0, 3).join(' | '));
 const unexpectedConsole = consoleErrors.filter(e => !/net::ERR_CONNECTION_REFUSED|Failed to load resource/u.test(e));
 check('no unexpected console errors', unexpectedConsole.length === 0, unexpectedConsole.slice(0, 3).join(' | '));

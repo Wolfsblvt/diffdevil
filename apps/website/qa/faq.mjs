@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 /** Actual built-site FAQ, shared navigation, Pagefind and browser interaction qualification. */
 import assert from 'node:assert/strict';
-import { createServer } from 'node:http';
+import { pathToFileURL } from 'node:url';
 import { readFile, mkdir, writeFile } from 'node:fs/promises';
 import { resolve, extname, sep } from 'node:path';
+import { origins, pageUrl } from '../../manual/manifest.mjs';
 import { chromium, expect } from '@playwright/test';
 import { faqRecords, FAQ_CANONICAL, FAQ_SOURCE } from '../faq-content.mjs';
 
@@ -14,19 +15,26 @@ const authored = faqRecords(await readFile(resolve(FAQ_SOURCE), 'utf8'));
 assert.deepEqual(records.map(({ id, title }) => ({ id, title })), authored.map(({ id, title }) => ({ id, title })));
 const authoredLinkCount = authored.reduce((count, question) => count + [...question.html.matchAll(/\[[^\]]+\]\([^)]+\)/gu)].length, 0);
 const mime = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml', '.wasm': 'application/wasm', '.woff2': 'font/woff2', '.png': 'image/png', '.ico': 'image/x-icon' };
-const server = createServer(async (request, response) => {
-  try {
-    let pathname = decodeURIComponent(new URL(request.url, 'http://127.0.0.1').pathname);
-    if (pathname.endsWith('/')) pathname += 'index.html';
-    const file = resolve(directory, `.${pathname}`);
-    if (!file.startsWith(directory + sep)) throw new Error('Outside site');
-    const content = await readFile(file);
-    response.writeHead(200, { 'Content-Type': mime[extname(file)] ?? 'application/octet-stream' });
-    response.end(content);
-  } catch { response.writeHead(404); response.end('Not found'); }
-});
-await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
-const origin = `http://127.0.0.1:${server.address().port}`;
+const origin = new URL(FAQ_CANONICAL).origin;
+const builtHosts = new Map([
+  [origins.site, { directory, handler: (await import(pathToFileURL(resolve(directory, '_worker.js')).href)).default }],
+  [origins.docs, { directory: resolve('artifacts/manual/dist'), handler: (await import(pathToFileURL(resolve('artifacts/manual/dist/_worker.js')).href)).default }],
+]);
+/** Exercise the emitted host handlers; only their asset binding is local. */
+async function builtResponse(target) {
+  const url = new URL(target);
+  const host = builtHosts.get(url.origin);
+  if (!host) throw new Error(`Unexpected external request: ${url.href}`);
+  return host.handler.fetch(new Request(url), { ASSETS: { fetch: async request => {
+    try {
+      let pathname = decodeURIComponent(new URL(request.url).pathname);
+      if (pathname.endsWith('/')) pathname += 'index.html';
+      const file = resolve(host.directory, `.${pathname}`);
+      if (!file.startsWith(host.directory + sep)) return new Response('Outside site', { status: 400 });
+      return new Response(await readFile(file), { headers: { 'Content-Type': mime[extname(file)] ?? 'application/octet-stream' } });
+    } catch { return new Response('Not found', { status: 404 }); }
+  } } });
+}
 const failures = [], evidence = [];
 let browser, page;
 try {
@@ -36,11 +44,16 @@ try {
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   page = await context.newPage();
   page.on('pageerror', error => failures.push(error.message));
-  await context.route('**/*', route => {
-    if (new URL(route.request().url()).origin === origin) return route.continue();
-    failures.push(`Unexpected external request: ${route.request().url()}`);
-    return route.abort();
-  });
+  const serveStatic = async route => {
+    try {
+      const response = await builtResponse(route.request().url());
+      return route.fulfill({ status: response.status, headers: Object.fromEntries(response.headers), body: Buffer.from(await response.arrayBuffer()) });
+    } catch (error) {
+      failures.push(error.message);
+      return route.abort();
+    }
+  };
+  await context.route('**/*', serveStatic);
   await page.goto(`${origin}/faq/`);
   await page.evaluate(() => document.fonts.ready);
   await expect(page.locator('h1')).toHaveCount(1);
@@ -111,18 +124,30 @@ try {
   // Resolve the real built destinations and fragments selected by the FAQ's Markdown links.
   const links = await page.locator('.faq-answer a').evaluateAll(anchors => anchors.map(anchor => anchor.getAttribute('href')));
   for (const href of links) {
-    if (!href.startsWith('/')) continue;
-    const target = new URL(href, origin);
-    const response = await context.request.get(target.href);
-    assert.equal(response.status(), 200, href);
+    let target = new URL(href, origin);
+    if (!builtHosts.has(target.origin)) continue;
+    let response = await builtResponse(target);
+    for (let redirects = 0; response.status === 308 && redirects < 10; redirects++) {
+      const next = new URL(response.headers.get('Location'), target);
+      if (!next.hash) next.hash = target.hash;
+      target = next;
+      response = await builtResponse(target);
+    }
+    assert.equal(response.status, 200, href);
     if (target.hash) {
       const html = await response.text();
       assert.ok(html.includes(`id="${decodeURIComponent(target.hash.slice(1))}"`), href);
     }
   }
-  await page.goto(`${origin}/docs/actions/github-actions/`);
-  await expect(page.locator('a[href="/faq/#trusted-policy"]').first()).toBeVisible();
-  await page.locator('a[href="/faq/#trusted-policy"]').first().click();
+  const legacyManualUrl = new URL(`${origin}/docs/actions/github-actions/`);
+  const legacyManualResponse = await builtResponse(legacyManualUrl);
+  assert.equal(legacyManualResponse.status, 308);
+  const manualDestination = new URL(legacyManualResponse.headers.get('Location'), legacyManualUrl);
+  assert.equal(manualDestination.href, pageUrl('github-actions'));
+  await page.goto(manualDestination.href);
+  const related = page.locator(`a[href="${FAQ_CANONICAL}#trusted-policy"]`).first();
+  await expect(related).toBeVisible();
+  await related.click();
   await expect(page.locator('#trusted-policy')).toBeVisible();
   evidence.push('Rendered deeper links and fragments resolve; a contextual manual link opens the matching FAQ answer.');
 
@@ -150,6 +175,7 @@ try {
   evidence.push('Responsive layout at 320–1440px, compact FAQ navigation, light/mobile deep link and malformed-fragment recovery.');
 
   const plain = await browser.newContext({ javaScriptEnabled: false, viewport: { width: 1280, height: 900 } });
+  await plain.route('**/*', serveStatic);
   const noScript = await plain.newPage();
   await noScript.goto(`${origin}/faq/`);
   const featured = noScript.locator('[data-faq-id="beyond-size-labels"]');
@@ -172,5 +198,4 @@ try {
   throw error;
 } finally {
   await browser?.close();
-  await new Promise(resolve => server.close(resolve));
 }

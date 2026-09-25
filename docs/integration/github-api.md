@@ -159,7 +159,7 @@ not head revisions. Changed evaluated policy identity starts a separate lifecycl
 Malformed owned state and duplicate lifecycle sequence claims are conflicts, not
 permission to choose or delete a comment arbitrarily. Unrelated comments are
 preserved. Templates cannot inject adapter-owned markers. See
-[Templates](templates.md) for escaping and authoring semantics.
+[Templates](../manual/policy/from-measurements-to-rules/effects-and-templates.md) for escaping and authoring semantics.
 
 ## Qualification boundary
 

@@ -1,0 +1,99 @@
+name: Public manual
+
+on:
+  pull_request:
+    paths:
+      - 'apps/manual/**'
+      - 'apps/website/**'
+      - 'docs/manual/**'
+      - 'tools/manual-*.mjs'
+      - 'tools/public-build.mjs'
+      - 'tools/website-*.mjs'
+      - 'package*.json'
+      - '.github/workflows/manual.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: manual-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  static-reading:
+    name: Two hosts / Chromium
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    outputs:
+      diagnostic: ${{ steps.diagnostic.outputs.summary }}
+    env:
+      DIFFDEVIL_EDIT_REF: ${{ github.head_ref || github.ref_name }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npm --prefix apps/manual run toolchain
+      - run: npm run website:build
+      - run: npm --prefix apps/manual test
+      - run: npm --prefix apps/manual run test:projection
+      - run: npm --prefix apps/manual run check
+      - run: npx --no-install playwright install --with-deps chromium
+      - run: npm --prefix apps/manual run qa
+      - name: Qualify the complete affected website journeys
+        run: npm run qa:website
+      - name: Preserve the admitted FAQ journey
+        run: node apps/website/qa/faq.mjs
+      - name: Summarize browser qualification
+        id: diagnostic
+        if: always()
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFileSync, existsSync, appendFileSync } from 'node:fs';
+          const manualPath = 'artifacts/manual/qa/result.json';
+          const faqPath = 'artifacts/website/faq-qa/result.json';
+          const manual = existsSync(manualPath) ? JSON.parse(readFileSync(manualPath, 'utf8')) : null;
+          const faq = existsSync(faqPath) ? JSON.parse(readFileSync(faqPath, 'utf8')) : null;
+          const clean = value => String(value).replace(/\u001b\[[0-9;]*m/g, '').replace(/\s+/g, ' ');
+          const summary = [
+            !manual ? 'Manual: no browser result' : manual.ok ? 'Manual: passed' : 'Manual: ' + manual.failures.map(failure => clean(failure.name + ': ' + failure.error)).join(' | '),
+            !faq ? 'FAQ: no browser result' : faq.passed ? 'FAQ: passed' : 'FAQ: ' + (faq.failures?.length ? faq.failures.map(clean).join(' | ') : clean(faq.error ?? 'failed')),
+          ].join(' | ');
+          appendFileSync(process.env.GITHUB_OUTPUT, 'summary=' + summary.slice(0, 240) + '\n');
+          NODE
+      - name: Qualification evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: public-manual-${{ github.event.pull_request.head.sha || github.sha }}
+          retention-days: 10
+          if-no-files-found: warn
+          path: |
+            artifacts/manual/
+            artifacts/website/dist/
+            artifacts/website/qa/
+            artifacts/website/faq-qa/
+            artifacts/public-search/records.json
+            artifacts/manual-toolchain/source-receipt.json
+            artifacts/manual-toolchain/consumer-receipt.json
+            apps/manual/package-lock.json
+
+  qualification-result:
+    needs: static-reading
+    if: always()
+    name: ${{ needs.static-reading.outputs.diagnostic || 'Manual qualification did not return a result' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    permissions: {}
+    steps:
+      - name: Preserve the qualification outcome
+        env:
+          RESULT: ${{ needs.static-reading.result }}
+        run: test "$RESULT" = success

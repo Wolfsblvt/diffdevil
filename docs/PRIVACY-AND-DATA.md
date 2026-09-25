@@ -4,7 +4,7 @@
 
 This document owns the selected data contract for diffdevil's optional managed GitHub App and public playground. Managed automation keeps a short recovery ledger; persistent product history is a separate opt-in feature containing quantitative results, not an archive of repository contents or contributors. It defines what may be retained, why, how long, and what historical dashboards may honestly conclude.
 
-This is an engineering and product contract for implementation, not a claim that a hosted service, database, account system, billing integration, retention job, or legal privacy notice is already deployed. Current availability remains in [Direction](DIRECTION.md). The [App architecture](integration/github-app.md) owns execution and authorization; the [playground contract](integration/playground.md) owns the public demonstration.
+This is an engineering and product contract for implementation, not a claim that a hosted service, database, account system, billing integration, retention job, or legal privacy notice is already deployed. Current availability remains in [Direction](DIRECTION.md). The [App architecture](integration/github-app.md) owns execution and authorization; the [playground contract](manual/use/playground.md) owns the public demonstration.
 
 ## Three distinct lifetimes
 

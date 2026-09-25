@@ -152,7 +152,7 @@ Support safe API-only privileged use and ordinary checked-out Git use where appr
 
 Carry the [selected App experience and architecture](integration/github-app.md) through installation, preset choice, account/organization defaults, trusted repository overrides, effective-setting provenance, labels, owned comments, native GitHub check summaries, and its authenticated dashboard.
 
-Native checks and `Checks: write` remain explicit selected functionality. A labels-only canary does not complete or narrow this outcome. Preserve existing Action step-level overrides and the [single conventional repository configuration](integration/presets-and-shortcuts.md#configuration-layering); do not add hidden account-repository discovery or a second hosted policy language.
+Native checks and `Checks: write` remain explicit selected functionality. A labels-only canary does not complete or narrow this outcome. Preserve existing Action step-level overrides and the [single conventional repository configuration](manual/policy/configure.md#know-which-host-supplies-each-layer); do not add hidden account-repository discovery or a second hosted policy language.
 
 Implement opted-in quantitative history with aggregate and pathless per-file measurements, evidence, comparison references, coverage-aware statistics, export, retention, and deletion under [Privacy and data](PRIVACY-AND-DATA.md). The seven-day recovery ledger remains separate from thirty-day free history and the selected paid no-age-expiry history design. Do not retain names, authors, prose, or diffs merely to make a later dashboard convenient.
 
@@ -160,7 +160,7 @@ The first managed adapter targets Workers, Queues, and D1. Keep engine/applicati
 
 ### Public playground and website
 
-Deliver the [independent public playground](integration/playground.md): public PR input without an account, curated reproducible examples, presets and editable settings, terminal/agent/GitHub-preview/explanation views, and portable configuration/CLI/Action exports.
+Deliver the [independent public playground](manual/use/playground.md): public PR input without an account, curated reproducible examples, presets and editable settings, terminal/agent/GitHub-preview/explanation views, and portable configuration/CLI/Action exports.
 
 A measurement form is a useful first result, not the complete configurable experience. All views use the shared engine, preserve incomplete evidence, and apply no effects. Private PR playground access and automatic enrollment in App history are not selected.
 

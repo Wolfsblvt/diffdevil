@@ -5,6 +5,7 @@
  * its runtime are loaded on first open, never on page load.
  */
 import { copy } from '../data/copy';
+import { searchKind } from './search-kinds.mjs';
 
 interface SubResult { readonly title: string; readonly url: string; readonly excerpt: string }
 interface ResultData { readonly url: string; readonly excerpt: string; readonly meta: { readonly title?: string; readonly kind?: string; readonly category?: string; readonly standing?: string; readonly identifier?: string }; readonly sub_results?: readonly SubResult[] }
@@ -25,9 +26,7 @@ function load(): Promise<Pagefind | undefined> {
 
 /** Manual pages and independently indexed FAQ answers retain distinct result kinds. */
 export function kindOf(url: string, metadataKind?: string): 'docs' | 'site' | 'faq' {
-  const target = new URL(url, location.origin);
-  if (metadataKind === 'FAQ' || (target.pathname === '/faq/' && target.hash)) return 'faq';
-  return /^\/docs(\/|$)/u.test(target.pathname) || target.hostname === 'docs.diffdevil.dev' ? 'docs' : 'site';
+  return searchKind(url, { kind: metadataKind }).toLowerCase() as 'docs' | 'site' | 'faq';
 }
 
 function hit(data: ResultData): HTMLLIElement {

@@ -12,7 +12,7 @@ Use the user's existing instructions and installation grant. Explain a material 
 
 ## Obtain a usable CLI
 
-The published package is `@wolfsblvt/diffdevil`, and its executable is `diffdevil`. The concrete examples below use the inspected release `1.0.0`, which requires Node.js 22 or newer. Keep an existing deliberately selected version when it supports the task. Resolve a requested newer release from actual package metadata and use its matching help/docs; do not infer a release from a website specimen.
+The published package is `@wolfsblvt/diffdevil`, and its executable is `diffdevil`. New installations below select the published package without a fixed version. Check its runtime requirements and use matching help/docs; the inspected release requires Node.js 22 or newer. Keep an existing deliberately selected version when it supports the task. Do not infer a release from a website specimen.
 
 First check an existing trusted command:
 
@@ -24,7 +24,7 @@ diffdevil --help
 For an established npm project that keeps development tools in its manifest:
 
 ```sh
-npm install --save-dev --save-exact @wolfsblvt/diffdevil@1.0.0
+npm install --save-dev @wolfsblvt/diffdevil
 npm exec -- diffdevil --version
 ```
 
@@ -34,7 +34,7 @@ For a non-JavaScript project, use an existing compatible CLI or the user's estab
 
 ```sh
 npm prefix --global
-npm install --global @wolfsblvt/diffdevil@1.0.0
+npm install --global @wolfsblvt/diffdevil
 diffdevil --version
 ```
 
@@ -43,8 +43,8 @@ Inspect the actual prefix, ownership and executable path before installation. Wh
 For a one-time or cache-backed execution, no project dependency is required:
 
 ```sh
-npm exec --yes --package=@wolfsblvt/diffdevil@1.0.0 -- diffdevil --version
-npm exec --yes --package=@wolfsblvt/diffdevil@1.0.0 -- diffdevil analyze --format agent
+npm exec --yes --package=@wolfsblvt/diffdevil -- diffdevil --version
+npm exec --yes --package=@wolfsblvt/diffdevil -- diffdevil analyze --format agent
 ```
 
 This route may obtain the package in npm's cache. Name it as an execution route, not a permanent `diffdevil` command. A cached run can satisfy a request to run the tool; it does not by itself satisfy a request for persistent installation.
@@ -122,8 +122,8 @@ State the executable/version and installation location or executor, the policy p
 
 ## Deeper reference
 
-- [CLI commands, sources, formats and exit codes](https://github.com/Wolfsblvt/diffdevil/blob/main/docs/integration/cli.md)
-- [Presets, configuration and shortcuts](https://github.com/Wolfsblvt/diffdevil/blob/main/docs/integration/presets-and-shortcuts.md)
-- [Local automation examples](https://github.com/Wolfsblvt/diffdevil/blob/main/docs/guides/local-automation.md)
+- [CLI commands, sources, formats and exit codes](https://github.com/Wolfsblvt/diffdevil/blob/main/docs/manual/use/cli.md)
+- [Presets, configuration and shortcuts](https://github.com/Wolfsblvt/diffdevil/blob/main/docs/manual/policy/README.md)
+- [Local automation examples](https://github.com/Wolfsblvt/diffdevil/blob/main/docs/manual/start/analyze-local-changes.md)
 - [npm execution](https://docs.npmjs.com/cli/v11/commands/npm-exec/)
 - [npm installation locations](https://docs.npmjs.com/cli/v11/configuring-npm/folders/)

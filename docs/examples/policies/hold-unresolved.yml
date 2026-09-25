@@ -1,0 +1,16 @@
+# Complete concept specimen: do not turn an unresolved condition into false.
+version: 1
+language: diffdevil-expr/1
+presets: []
+labelDefinitions:
+  review/threshold:
+    color: C5DEF5
+    description: At least 65 replacement-aware changed lines
+rules:
+  threshold:
+    when: totals.lines.changed >= 65
+    onUnknown: hold
+    effects:
+      labels:
+        add: [review/threshold]
+        removeWhenFalse: true

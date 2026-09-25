@@ -1,0 +1,37 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only
+import { readFileSync, existsSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { join } from 'node:path';
+import Base from '../layouts/Base.astro';
+import { sourceTargets } from '../../../manual/source-resolver.mjs';
+import { entries } from '../../docs-manifest.mjs';
+// Repository commands run from the repository root. Astro relocates this module
+// during prerendering, so import.meta.url cannot identify maintained source files.
+const root = process.cwd();
+const ref = process.env.DIFFDEVIL_SOURCE_REF ?? execFileSync('git',['rev-parse','HEAD'],{cwd:root,encoding:'utf8'}).trim();
+const state = JSON.parse(readFileSync(join(root,'apps/manual/authoring-state.json'),'utf8'));
+const legacySources = entries.map(entry => {
+  if (!entry.source) throw new Error('A selected legacy entry has no source identity.');
+  return entry.source;
+});
+const targets = sourceTargets({ref,state,exists:(path:string)=>existsSync(join(root,path)),legacySources});
+---
+<Base title="Source" description="Open a selected diffdevil source document." noindex>
+  <section class="wrap source-resolver">
+    <h1>Source</h1>
+    <p role="status" data-source-status>No recognized source was selected.</p>
+    <a data-source-result hidden>Open the selected source on GitHub</a>
+    <noscript><p>This resolver uses JavaScript to read the source identifier. The allow-listed sources remain available below.</p></noscript>
+    <details><summary>Selected sources</summary><ul>{Object.entries(targets).map(([id,target])=><li><a href={target.url}>{id}</a></li>)}</ul></details>
+  </section>
+  <script type="application/json" data-source-targets set:html={JSON.stringify(targets).replaceAll('<','\\u003c')}></script>
+  <script>
+    import { bindSourceSelection } from '../lib/source-resolution.mjs';
+    const targets = JSON.parse(document.querySelector('[data-source-targets]')?.textContent ?? '{}');
+    const link = document.querySelector<HTMLAnchorElement>('[data-source-result]');
+    const status = document.querySelector<HTMLElement>('[data-source-status]');
+    if (link && status) bindSourceSelection({view: window, targets, link, status});
+  </script>
+</Base>
+<style>.source-resolver { padding-block:3rem; overflow-wrap:anywhere; } .source-resolver details { margin-block:2rem; } [hidden] { display:none!important; }</style>

@@ -14,6 +14,7 @@ import { join } from 'node:path';
 import { readReport, unwrap } from '../../dist/lib/index.js';
 import { compilePolicy, evaluatePolicy } from '../../dist/lib/policy/index.js';
 import { entries, groups } from './docs-manifest.mjs';
+import {isRetired, legacyRedirects, validateRetiredRoutes} from '../manual/migration.mjs';
 import { createHash as shimHash } from './src/shims/node-crypto.mjs';
 import { checkSummary } from '../shared/check-summary.mjs';
 
@@ -50,9 +51,20 @@ test('the website consumes the shared real-PR catalogue, with its complete decla
   assert.match(endpoint, /catalogue\(\)\.variants/u);
 });
 
-test('the docs manifest names existing sources, unique slugs, and no internal record', () => {
+test('the finite legacy inventory names owned sources and no private record', () => {
   const slugs = new Set();
+  const state=JSON.parse(read('apps/manual/authoring-state.json'));
+  validateRetiredRoutes(state,entries,legacyRedirects(state));
   for (const entry of entries) {
+    if (isRetired(entry.source,state)) {
+      const transfer=state.transfers[entry.source];
+      if(transfer.phase==='retired') assert.equal(existsSync(entry.source),false,entry.source+' must not retain a duplicate current guide');
+      else {
+        assert.ok(['operator-residue','maintainer-map'].includes(transfer.phase));
+        assert.ok(existsSync(entry.source)&&transfer.residueJob,entry.source+' needs an explicit separate repository job');
+      }
+      continue;
+    }
     if (!entry.optional) assert.ok(existsSync(entry.source), entry.source);
     assert.ok(!slugs.has(entry.slug), `duplicate slug ${entry.slug}`);
     slugs.add(entry.slug);
@@ -125,7 +137,7 @@ test('the skill version reader parses Agent Skills front matter (metadata.versio
 
 test('repository blob links carry the path separator once', () => {
   const site = read('apps/website/src/data/site.ts');
-  assert.match(site, /GITHUB_BLOB = `\$\{GITHUB\}\/blob\/main\/`/u);
+  assert.match(site, /GITHUB_BLOB = `\$\{GITHUB\}\/blob\/\$\{provenance.ref\}\/`/u);
   assert.match(site, /export function blobUrl\(/u);
   for (const page of ['apps/website/src/pages/examples.astro', 'apps/website/src/pages/app.astro']) {
     assert.doesNotMatch(read(page), /\$\{GITHUB_BLOB\}/u, `${page} must build blob links through blobUrl()`);
