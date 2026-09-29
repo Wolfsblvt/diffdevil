@@ -3,11 +3,11 @@
 import assert from 'node:assert/strict';
 import { chromium, expect } from '@playwright/test';
 import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
-import { extname, join, resolve } from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { extname, join } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { origins, pageUrl } from '../manifest.mjs';
 
-const root = resolve('.');
+const root = fileURLToPath(new URL('../../../', import.meta.url));
 const out = join(root, 'artifacts/manual/qa-visuals');
 mkdirSync(out, { recursive: true });
 const result = {
@@ -153,7 +153,14 @@ try {
           await reader.goto(pageUrl(visual.key));
           const figure = reader.locator(`[data-manual-visual="${visual.id}"]`);
           await expect(figure.locator('img:visible')).toHaveCount(1);
-          assert.equal(await figure.locator('img:visible').evaluate(node => node.complete && node.naturalWidth > 0), true, `${visual.id}: no-JS image failed`);
+          const image = figure.locator('img:visible');
+          assert.equal(await image.evaluate(node => node.complete && node.naturalWidth > 0), true, `${visual.id}: no-JS image failed`);
+          const expectedVariant = visual.data && colorScheme === 'light'
+            ? 'evidence-thresholds-narrow-light.svg'
+            : visual.data && colorScheme === 'dark'
+              ? 'evidence-thresholds-narrow-dark.svg'
+              : `${visual.id}-${colorScheme}.svg`;
+          assert.equal(await image.evaluate((node, expected) => node.currentSrc.endsWith(expected), expectedVariant), true, `${visual.id}: no-JS theme variant`);
           await expect(figure.locator('figcaption')).not.toBeEmpty();
           if (visual.data) await expect(reader.locator('.sl-markdown-content table').filter({ hasText: 'Evidence edition' })).toBeVisible();
           assert.equal(await reader.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1), true, `${visual.id}: no-JS overflow`);
