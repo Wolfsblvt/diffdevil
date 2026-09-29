@@ -2,37 +2,23 @@ flowchart TB
     accTitle: Global and scoped file selection have different boundaries
     accDescr: The observed comparison retains every observed file. Global forceInclude, includeOnly, and exclude determine the globally eligible population. Each named scope begins only from that population, applies a hard includeOnly boundary, and may use local forceInclude only against local exclusions. A globally excluded lockfile remains observed but cannot be reintroduced by its scope.
 
-    observed("Observed comparison retains source, tests, docs, and package-lock.json"):::focus
+    observed("Observed comparison retains every observed file"):::focus
+    global("Global selection: forceInclude, then includeOnly, then exclude")
+    eligible("Globally eligible files"):::ok
+    scope("Every named scope starts only from globally eligible files")
+    boundary("Scope includeOnly is a hard boundary; local forceInclude overrides only a local exclusion")
+    selected("Selected scope members"):::ok
+    overlap("Scopes may overlap; they are not partitions")
 
-    subgraph global["Global selection"]
-        globalForce("1. Global forceInclude")
-        globalOnly("2. Global includeOnly")
-        globalExclude("3. Global exclude")
-        eligible("Globally eligible files"):::ok
-    end
+    lockfile("package-lock.json remains observed, but global exclusion removes it from eligibility"):::bad
+    empty("The lockfiles scope cannot reintroduce it: exact empty selection for this complete input"):::bad
 
-    observed --> globalForce
-    globalForce --> globalOnly
-    globalOnly --> globalExclude
-    globalExclude --> eligible
-
-    lockfile("package-lock.json remains observed"):::focus
-    globallyExcluded("Global exclusion removes it from eligibility"):::bad
-    empty("lockfiles scope is exactly empty for this complete input"):::bad
+    observed --> global
+    global --> eligible
+    eligible --> scope
+    scope --> boundary
+    boundary --> selected
+    selected --> overlap
 
     observed --> lockfile
-    lockfile --> globallyExcluded
-    globallyExcluded --> empty
-
-    subgraph scope["Named scope selection"]
-        scopeStart("Every scope starts from globally eligible files")
-        scopeOnly("Scope includeOnly is a hard boundary")
-        scopeLocal("Local forceInclude may override only a local exclusion")
-        scopeResult("Selected scope members"):::ok
-    end
-
-    eligible --> scopeStart
-    scopeStart --> scopeOnly
-    scopeOnly --> scopeLocal
-    scopeLocal --> scopeResult
-    scopeResult --> overlap("Scopes may overlap; they are not partitions")
+    lockfile --> empty
