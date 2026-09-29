@@ -73,3 +73,16 @@
 @media (forced-colors:active) {
   .manual-visual { border-color:CanvasText; }
 }
+
+/* The provider lifecycle is intentionally tall. At the narrowest supported reading
+   width, preserve legible source text and contain the small excess inside one
+   keyboard-reachable visual viewport rather than shrinking the whole diagram. */
+.manual-visual--scroll .manual-visual__theme {
+  overflow-x:auto;
+  overscroll-behavior-inline:contain;
+  scrollbar-gutter:stable;
+}
+.manual-visual--scroll img {
+  width:clamp(20rem,100%,33rem);
+  max-width:none;
+}

@@ -67,11 +67,11 @@ An applying host establishes the target, trusted policy, current source and sele
 
 Once application begins, read the effects result in stages:
 
-<figure class="manual-visual" data-manual-visual="provider-readback">
-  <picture class="manual-visual__theme manual-visual__theme--light">
+<figure class="manual-visual manual-visual--scroll" data-manual-visual="provider-readback">
+  <picture class="manual-visual__theme manual-visual__theme--light" tabindex="0" aria-label="Scrollable provider readback diagram">
     <img src="/assets/manual/visuals/provider-readback-light.svg" alt="The applying host reads managed labels, adds a required label, and reads back before removing an obsolete one. Ambiguous responses lead to observation; a later failure leaves earlier verified work as a partial result rather than rollback.">
   </picture>
-  <picture class="manual-visual__theme manual-visual__theme--dark">
+  <picture class="manual-visual__theme manual-visual__theme--dark" tabindex="0" aria-label="Scrollable provider readback diagram">
     <img src="/assets/manual/visuals/provider-readback-dark.svg" alt="The applying host reads managed labels, adds a required label, and reads back before removing an obsolete one. Ambiguous responses lead to observation; a later failure leaves earlier verified work as a partial result rather than rollback.">
   </picture>
   <figcaption>A request response is evidence about the request. Provider readback is evidence about the state. The second must precede a retry or dependent removal.</figcaption>

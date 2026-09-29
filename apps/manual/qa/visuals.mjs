@@ -116,12 +116,24 @@ try {
         await page.setViewportSize({ width, height: 900 });
         await page.goto(pageUrl(visual.key));
         await selectTheme(page, 'light');
-        const { image } = await visibleImage(page, visual.id);
+        const { figure, image } = await visibleImage(page, visual.id);
+        const viewport = image.locator('xpath=..');
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1), true, `${visual.id}: page overflow at ${width}px`);
-        assert.equal(await image.evaluate(node => node.getBoundingClientRect().width <= node.closest('.sl-markdown-content').getBoundingClientRect().width + 1), true, `${visual.id}: image overflow at ${width}px`);
+        assert.equal(await viewport.evaluate(node => node.getBoundingClientRect().width <= node.closest('.sl-markdown-content').getBoundingClientRect().width + 1), true, `${visual.id}: visual viewport overflow at ${width}px`);
+        assert.equal(await image.evaluate(node => node.getBoundingClientRect().width <= node.parentElement.scrollWidth + 1), true, `${visual.id}: image escapes its visual viewport at ${width}px`);
+        if (visual.id !== 'provider-readback') {
+          assert.equal(await image.evaluate(node => node.getBoundingClientRect().width <= node.parentElement.getBoundingClientRect().width + 1), true, `${visual.id}: image overflow at ${width}px`);
+        }
         if (width === 320) {
           const scale = await image.evaluate(node => node.getBoundingClientRect().width / node.naturalWidth);
           assert.ok(scale >= 0.6, `${visual.id}: narrow rendering shrinks source text below the qualified scale (${scale.toFixed(3)})`);
+          if (visual.id === 'provider-readback') {
+            assert.equal(await viewport.evaluate(node => node.scrollWidth > node.clientWidth), true, 'provider-readback: narrow viewport should expose contained horizontal scrolling');
+            await viewport.focus();
+            assert.equal(await viewport.evaluate(node => node === document.activeElement), true, 'provider-readback: narrow visual viewport is not keyboard reachable');
+            assert.equal(await figure.evaluate(node => node.getBoundingClientRect().width <= node.closest('.sl-markdown-content').getBoundingClientRect().width + 1), true, 'provider-readback: figure escapes the article');
+            await screenshot(page, 'visual-provider-readback-320.png');
+          }
         }
         if (visual.data && width <= 390) assert.match(await image.evaluate(node => node.currentSrc), /evidence-thresholds-narrow-light\.svg$/u);
       }
