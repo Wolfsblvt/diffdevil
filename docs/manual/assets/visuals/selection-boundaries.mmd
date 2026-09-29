@@ -10,8 +10,8 @@ flowchart TB
     selected("Selected scope members"):::ok
     overlap("Scopes may overlap; they are not partitions")
 
-    lockfile("package-lock.json remains observed, but global exclusion removes it from eligibility"):::bad
-    empty("The lockfiles scope cannot reintroduce it: exact empty selection for this complete input"):::bad
+    lockfile("Observed lockfile: package-lock.json"):::bad
+    empty("Global exclusion makes the lockfiles scope exactly empty for this complete input"):::bad
 
     observed --> global
     global --> eligible

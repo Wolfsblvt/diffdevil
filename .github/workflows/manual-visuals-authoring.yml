@@ -6,6 +6,7 @@ on:
     paths:
       - '.github/workflows/manual-visuals-authoring.yml'
       - 'apps/manual/visuals/optimize.mjs'
+      - 'docs/manual/assets/visuals/**'
 
 permissions:
   contents: read
