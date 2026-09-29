@@ -67,6 +67,16 @@ An applying host establishes the target, trusted policy, current source and sele
 
 Once application begins, read the effects result in stages:
 
+<figure class="manual-visual" data-manual-visual="provider-readback">
+  <picture class="manual-visual__theme manual-visual__theme--light">
+    <img src="/assets/manual/visuals/provider-readback-light.svg" alt="The applying host reads managed labels, adds a required label, and reads back before removing an obsolete one. Ambiguous responses lead to observation; a later failure leaves earlier verified work as a partial result rather than rollback.">
+  </picture>
+  <picture class="manual-visual__theme manual-visual__theme--dark">
+    <img src="/assets/manual/visuals/provider-readback-dark.svg" alt="The applying host reads managed labels, adds a required label, and reads back before removing an obsolete one. Ambiguous responses lead to observation; a later failure leaves earlier verified work as a partial result rather than rollback.">
+  </picture>
+  <figcaption>A request response is evidence about the request. Provider readback is evidence about the state. The second must precede a retry or dependent removal.</figcaption>
+</figure>
+
 | What was observed | What you can conclude | First useful action |
 | --- | --- | --- |
 | Desired state already matches, confirmed by readback | A verified successful no-op; no write was needed | Keep the result; do not force a change to manufacture activity |
@@ -74,6 +84,8 @@ Once application begins, read the effects result in stages:
 | Request acknowledged but readback unavailable | A request was accepted, not that the state was verified | Obtain readback before claiming success |
 | Request timed out or its response was ambiguous | The write may already have happened | Observe current state before any retry |
 | Earlier operations verified, later operation failed or source changed | Partial/incomplete application, not rollback | Preserve verified outcomes, inspect current state, and form a fresh safe continuation |
+
+The sequence shows managed-label replacement because its order matters: verify the required addition before removing an obsolete managed member. Separate GitHub requests do not become a transaction merely because they belong to one plan. See the [editable Mermaid source](../assets/visuals/provider-readback.mmd).
 
 An analysis success is not an effect success. Likewise, a returned result object can preserve an incomplete application with its observations; inspect that status rather than treating object presence as all-green.
 

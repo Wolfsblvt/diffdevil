@@ -1,0 +1,35 @@
+sequenceDiagram
+    accTitle: Acknowledgment, provider readback, and partial recovery
+    accDescr: The applying host reads current managed labels, adds a required label when needed, and reads the provider state again before removing an obsolete managed label. An ambiguous response leads to observation rather than blind retry. Earlier verified work remains real when a later operation fails; the result is partial, not rolled back.
+
+    participant Host as Applying host
+    participant GitHub as GitHub provider
+
+    Host->>GitHub: Read current managed labels
+    GitHub-->>Host: Observed current state
+
+    alt Required label is already present
+        Host->>Host: Record a verified no-op
+    else Required label must be added
+        Host->>GitHub: Add required managed label
+        alt Response is clear
+            GitHub-->>Host: Request acknowledged
+        else Timeout or ambiguous response
+            GitHub--xHost: Outcome remains unknown
+        end
+
+        Host->>GitHub: Read labels before retry or removal
+        GitHub-->>Host: Current observed labels
+
+        alt Required addition is observed
+            Host->>GitHub: Remove obsolete managed label
+            alt Removal readback matches
+                GitHub-->>Host: Intended managed state verified
+            else Later operation fails or source moves
+                GitHub-->>Host: Earlier addition remains verified
+                Host->>Host: Return partial or incomplete application
+            end
+        else Required addition is not observed
+            Host->>Host: Stop; do not remove or claim success
+        end
+    end
