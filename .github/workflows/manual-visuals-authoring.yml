@@ -28,8 +28,10 @@ jobs:
         with:
           node-version: '22'
           package-manager-cache: false
-      - name: Restore locked packages
+      - name: Restore locked root packages
         run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Prepare the accepted manual consumer graph
+        run: npm --prefix apps/manual run toolchain
       - name: Install Chromium for the repository renderer
         run: npx --no-install playwright install --with-deps chromium
       - name: Render, optimize, and validate the exact sources
