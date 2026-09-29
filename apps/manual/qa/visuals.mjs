@@ -119,6 +119,10 @@ try {
         const { image } = await visibleImage(page, visual.id);
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1), true, `${visual.id}: page overflow at ${width}px`);
         assert.equal(await image.evaluate(node => node.getBoundingClientRect().width <= node.closest('.sl-markdown-content').getBoundingClientRect().width + 1), true, `${visual.id}: image overflow at ${width}px`);
+        if (width === 320) {
+          const scale = await image.evaluate(node => node.getBoundingClientRect().width / node.naturalWidth);
+          assert.ok(scale >= 0.6, `${visual.id}: narrow rendering shrinks source text below the qualified scale (${scale.toFixed(3)})`);
+        }
         if (visual.data && width <= 390) assert.match(await image.evaluate(node => node.currentSrc), /evidence-thresholds-narrow-light\.svg$/u);
       }
     }

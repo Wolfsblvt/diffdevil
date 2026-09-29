@@ -42,7 +42,7 @@ function optimizeSvg(svg, output) {
   compact = compact
     .replace(/<title(?:\s[^>]*)?>[\s\S]*?<\/title>/gu, '')
     .replace(/<desc(?:\s[^>]*)?>[\s\S]*?<\/desc>/gu, '')
-    .replace(/\s(?:role|aria-label|aria-roledescription|aria-hidden|aria-labelledby|tabindex|data-appearance)="[^"]*"/gu, '');
+    .replace(/\s(?:role|aria-label|aria-roledescription|aria-hidden|aria-labelledby|aria-describedby|tabindex|data-appearance|preserveAspectRatio)="[^"]*"/gu, '');
 
   compact = compact.replace(/^<svg\b([^>]*)>/u, (_match, rawAttributes) => {
     const attributes = /\sxmlns="/u.test(rawAttributes)
