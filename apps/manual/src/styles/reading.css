@@ -83,6 +83,6 @@
   scrollbar-gutter:stable;
 }
 .sl-markdown-content .manual-visual--scroll img {
-  width:clamp(20rem,100%,33rem);
+  width:clamp(318px,100%,528px);
   max-width:none;
 }
