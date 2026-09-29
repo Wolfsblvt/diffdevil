@@ -5,6 +5,7 @@ on:
     branches: [docs/visual-explanations-shot-2]
     paths:
       - '.github/workflows/manual-visuals-authoring.yml'
+      - 'apps/manual/visuals/optimize.mjs'
 
 permissions:
   contents: read

@@ -44,6 +44,15 @@ function optimizeSvg(svg, output) {
     .replace(/<desc(?:\s[^>]*)?>[\s\S]*?<\/desc>/gu, '')
     .replace(/\s(?:role|aria-label|aria-roledescription|aria-hidden|aria-labelledby|aria-describedby|tabindex|data-appearance|preserveAspectRatio)="[^"]*"/gu, '');
 
+  // Mermaid emits a complete marker catalogue and layout-only edge metadata even when
+  // a static export references only one arrowhead. Keep referenced markers and view
+  // semantics, but remove unreachable definitions and acquisition metadata from the
+  // committed image. The editable Mermaid source remains the geometry authority.
+  const referencedIds = new Set([...compact.matchAll(/url\(#([^)]+)\)/gu)].map(match => match[1]));
+  compact = compact
+    .replace(/<marker id="([^"]+)"[\s\S]*?<\/marker>/gu, (marker, id) => referencedIds.has(id) ? marker : '')
+    .replace(/\sdata-(?:edge|et|id|points)="[^"]*"/gu, '');
+
   compact = compact.replace(/^<svg\b([^>]*)>/u, (_match, rawAttributes) => {
     const attributes = /\sxmlns="/u.test(rawAttributes)
       ? rawAttributes
