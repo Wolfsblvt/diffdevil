@@ -42,7 +42,7 @@ jobs:
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - run: npm --prefix apps/manual run toolchain
       - run: npx --no-install playwright install --with-deps chromium
-      - run: npm --prefix apps/manual run check:visuals
+      - run: npm --prefix apps/manual run render:visuals
       - run: npm run website:build
       - run: npm --prefix apps/manual test
       - run: npm --prefix apps/manual run test:projection
