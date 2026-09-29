@@ -147,7 +147,7 @@ try {
     await session.detach();
   }, page);
 
-  await check('No-JavaScript readers retain one theme-appropriate image and the complete textual explanation', async () => {
+  await check('No-JavaScript readers retain the server-selected image and the complete textual explanation', async () => {
     for (const colorScheme of ['dark', 'light']) {
       const plain = await browser.newContext({ javaScriptEnabled: false, viewport: { width: 320, height: 900 }, colorScheme });
       await plain.route('**/*', serve);
@@ -155,16 +155,16 @@ try {
         const reader = await plain.newPage();
         for (const visual of cases) {
           await reader.goto(pageUrl(visual.key));
+          const serverTheme = await reader.locator('html').getAttribute('data-theme');
+          assert.ok(['dark', 'light'].includes(serverTheme), `${visual.id}: no-JS document has no explicit server theme`);
           const figure = reader.locator(`[data-manual-visual="${visual.id}"]`);
           await expect(figure.locator('img:visible')).toHaveCount(1);
           const image = figure.locator('img:visible');
           assert.equal(await image.evaluate(node => node.complete && node.naturalWidth > 0), true, `${visual.id}: no-JS image failed`);
-          const expectedVariant = visual.data && colorScheme === 'light'
-            ? 'evidence-thresholds-narrow-light.svg'
-            : visual.data && colorScheme === 'dark'
-              ? 'evidence-thresholds-narrow-dark.svg'
-              : `${visual.id}-${colorScheme}.svg`;
-          assert.equal(await image.evaluate((node, expected) => node.currentSrc.endsWith(expected), expectedVariant), true, `${visual.id}: no-JS theme variant`);
+          const expectedVariant = visual.data
+            ? `evidence-thresholds-narrow-${serverTheme}.svg`
+            : `${visual.id}-${serverTheme}.svg`;
+          assert.equal(await image.evaluate((node, expected) => node.currentSrc.endsWith(expected), expectedVariant), true, `${visual.id}: no-JS server-theme variant`);
           await expect(figure.locator('figcaption')).not.toBeEmpty();
           if (visual.data) await expect(reader.locator('.sl-markdown-content table').filter({ hasText: 'Evidence edition' })).toBeVisible();
           assert.equal(await reader.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1), true, `${visual.id}: no-JS overflow`);
