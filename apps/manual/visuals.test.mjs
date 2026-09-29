@@ -22,20 +22,52 @@ const renderedNames = [
   'provider-readback-light.svg', 'provider-readback-dark.svg',
 ];
 
-test('The quantitative source preserves the retained editions, thresholds, and immutable provenance', () => {
+test('The quantitative source is derived from the retained catalogue editions and configured thresholds', () => {
   const chart = JSON.parse(read(chartPath));
+  const sources = JSON.parse(read('docs/examples/catalogue/sources.json')).sources;
+  const policies = JSON.parse(read('docs/examples/catalogue/policies.json')).policies;
+  const observations = JSON.parse(read('docs/examples/catalogue/observations.json')).observations;
+  const observation = variant => observations.find(row => row.entry === 'bounded-decisions' && row.variant === variant);
+  const proven = observation('proven');
+  const held = observation('held');
+  const resolved = observation('resolved');
+  assert.ok(proven && held && resolved, 'The three retained bounded-decisions editions must exist.');
+
+  const bounded = chart.data.values.find(row => row.kind === 'bounded');
+  const exact = chart.data.values.find(row => row.kind === 'exact');
+  assert.deepEqual(
+    { sourceId: bounded.sourceId, lower: bounded.lower, upper: bounded.upper },
+    { sourceId: proven.source, lower: proven.metrics.focusChanged.lower, upper: proven.metrics.focusChanged.upper },
+  );
+  assert.deepEqual(
+    { sourceId: exact.sourceId, value: exact.value },
+    { sourceId: resolved.source, value: resolved.metrics.focusChanged.value },
+  );
+  assert.deepEqual(held.metrics.focusChanged, proven.metrics.focusChanged);
+  assert.equal(proven.bands.focus.id, 'below-12000');
+  assert.equal(held.rules.focusBand.disposition, 'held');
+  assert.equal(resolved.bands.focus.id, 'at-least-9500');
+
+  const thresholds = [
+    policies['prettier-bounded-held'].bands.focus.ranges[0].lt,
+    policies['prettier-bounded-proven'].bands.focus.ranges[0].lt,
+  ].sort((left, right) => left - right);
+  assert.deepEqual(chart.usermeta.policyThresholds, thresholds);
+  assert.equal(chart.usermeta.focusPath, policies['prettier-bounded-held'].scopes.focus.includeOnly[0]);
+
+  const boundedSource = sources[bounded.sourceId];
+  const exactSource = sources[exact.sourceId];
+  assert.equal(boundedSource.repository, exactSource.repository);
+  assert.equal(boundedSource.pullRequest, exactSource.pullRequest);
+  assert.equal(boundedSource.mergeBase, exactSource.mergeBase);
+  assert.equal(boundedSource.head, exactSource.head);
+  assert.equal(chart.usermeta.repository, boundedSource.repository);
+  assert.equal(chart.usermeta.pullRequest, boundedSource.pullRequest);
+  assert.equal(chart.usermeta.baseAndMergeBase, boundedSource.mergeBase);
+  assert.equal(chart.usermeta.head, boundedSource.head);
+
   assert.equal(chart.$schema, 'https://vega.github.io/schema/vega-lite/v6.json');
   assert.equal(chart.data.url, undefined);
-  assert.deepEqual(chart.data.values.map(row => ({ sourceId: row.sourceId, kind: row.kind, lower: row.lower, upper: row.upper, value: row.value })), [
-    { sourceId: 'prettier-13183-rest', kind: 'bounded', lower: 8679, upper: 11330, value: undefined },
-    { sourceId: 'prettier-13183', kind: 'exact', lower: undefined, upper: undefined, value: 9603 },
-  ]);
-  assert.deepEqual(chart.usermeta.policyThresholds, [9500, 12000]);
-  assert.equal(chart.usermeta.repository, 'prettier/prettier');
-  assert.equal(chart.usermeta.pullRequest, 13183);
-  assert.equal(chart.usermeta.baseAndMergeBase, 'f25a592f571257cef4847e27820e86945c7fcb68');
-  assert.equal(chart.usermeta.head, 'c7d5925715a31d3c83073e03de1b90673776b691');
-  assert.equal(chart.usermeta.focusPath, 'tests/format/js/ternaries/__snapshots__/jsfmt.spec.js.snap');
   assert.equal(chart.layer.some(layer => layer.data?.url), false);
 });
 

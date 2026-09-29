@@ -1,10 +1,10 @@
-/* SPDX-License-Identifier: AGPL-3.0-only */
-/* Reading grammar over the existing Works shell; starlight-works owns navigation/alerts. */
-:root { --sl-text-body:16px; --sl-line-height:1.7; --sl-content-width:48rem; --slw-sidebar-current-bg:var(--bg-raised-2); --slw-sidebar-current-text:var(--fg); --slw-sidebar-focus:var(--accent-text); --slw-alert-radius:.4rem; --slw-alert-padding:.75rem 1rem; }
-.sl-markdown-content { font-size:1rem; line-height:1.7; overflow-wrap:anywhere; }
-.sl-markdown-content > :first-child { margin-block-start:0; }
-.sl-markdown-content h2 { font-size:1.4rem; line-height:1.3; margin-block-start:2.1em; }
-.sl-markdown-content h3 { font-size:1.1rem; line-height:1.4; }
+.sl-markdown-content { font-size:1rem; line-height:1.68; overflow-wrap:anywhere; }
+.sl-markdown-content :is(h2,h3,h4) { scroll-margin-top:calc(var(--sl-nav-height) + 1rem); text-wrap:balance; }
+.sl-markdown-content h2 { margin-top:2.75rem; padding-top:1rem; border-top:1px solid var(--hair); }
+.sl-markdown-content h3 { margin-top:2rem; }
+.sl-markdown-content p { margin-block:1rem; }
+.sl-markdown-content :is(ul,ol) { padding-inline-start:1.35rem; }
+.sl-markdown-content li + li { margin-top:.4rem; }
 .sl-markdown-content :is(pre,table) { max-width:100%; overflow-x:auto; }
 .sl-markdown-content pre { overflow-wrap:normal; white-space:pre; }
 .sl-markdown-content table { display:block; width:max-content; max-width:100%; font-size:.875rem; }
@@ -49,8 +49,8 @@
 [data-theme="dark"] .manual-visual__theme--dark { display:block; }
 .manual-visual img {
   display:block;
-  width:100%;
-  max-width:46rem;
+  width:auto;
+  max-width:100%;
   height:auto;
   margin-inline:auto;
   forced-color-adjust:none;
