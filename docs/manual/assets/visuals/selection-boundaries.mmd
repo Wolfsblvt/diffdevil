@@ -16,9 +16,10 @@ flowchart TB
     globalOnly --> globalExclude
     globalExclude --> eligible
 
-    lockfile("package-lock.json remains observed"):::bad
+    lockfile("package-lock.json remains observed"):::focus
+    globallyExcluded("Excluded from the globally eligible population"):::bad
     observed --> lockfile
-    lockfile -.->|"global exclusion blocks eligibility"| eligible
+    lockfile -->|"matches the global exclusion"| globallyExcluded
 
     subgraph scope["Named scope selection"]
         scopeStart("Start from globally eligible files")
@@ -32,5 +33,5 @@ flowchart TB
     scopeOnly --> scopeLocal
     scopeLocal --> scopeResult
 
-    lockfile -.->|"cannot cross the global or scope includeOnly boundary"| empty("lockfiles scope is exactly empty for this complete input"):::bad
+    globallyExcluded -.->|"therefore unavailable to every scope"| empty("lockfiles scope is exactly empty for this complete input"):::bad
     scopeResult -.-> overlap("Different scopes may overlap; they are not partitions")
