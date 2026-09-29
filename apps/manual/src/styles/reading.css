@@ -82,7 +82,7 @@
   overscroll-behavior-inline:contain;
   scrollbar-gutter:stable;
 }
-.manual-visual--scroll img {
+.sl-markdown-content .manual-visual--scroll img {
   width:clamp(20rem,100%,33rem);
   max-width:none;
 }
