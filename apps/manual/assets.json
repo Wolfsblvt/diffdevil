@@ -1,4 +1,14 @@
 {
   "apps/browser-extension/assets/diffdevil-brand.svg": "/assets/manual/diffdevil-brand.svg",
-  "apps/website/src/assets/extension/settings-policy-bands-light.png": "/assets/manual/settings-policy-bands-light.png"
+  "apps/website/src/assets/extension/settings-policy-bands-light.png": "/assets/manual/settings-policy-bands-light.png",
+  "docs/manual/assets/visuals/rendered/evidence-thresholds-light.svg": "/assets/manual/visuals/evidence-thresholds-light.svg",
+  "docs/manual/assets/visuals/rendered/evidence-thresholds-dark.svg": "/assets/manual/visuals/evidence-thresholds-dark.svg",
+  "docs/manual/assets/visuals/rendered/evidence-thresholds-narrow-light.svg": "/assets/manual/visuals/evidence-thresholds-narrow-light.svg",
+  "docs/manual/assets/visuals/rendered/evidence-thresholds-narrow-dark.svg": "/assets/manual/visuals/evidence-thresholds-narrow-dark.svg",
+  "docs/manual/assets/visuals/rendered/trust-boundary-light.svg": "/assets/manual/visuals/trust-boundary-light.svg",
+  "docs/manual/assets/visuals/rendered/trust-boundary-dark.svg": "/assets/manual/visuals/trust-boundary-dark.svg",
+  "docs/manual/assets/visuals/rendered/selection-boundaries-light.svg": "/assets/manual/visuals/selection-boundaries-light.svg",
+  "docs/manual/assets/visuals/rendered/selection-boundaries-dark.svg": "/assets/manual/visuals/selection-boundaries-dark.svg",
+  "docs/manual/assets/visuals/rendered/provider-readback-light.svg": "/assets/manual/visuals/provider-readback-light.svg",
+  "docs/manual/assets/visuals/rendered/provider-readback-dark.svg": "/assets/manual/visuals/provider-readback-dark.svg"
 }

@@ -40,6 +40,27 @@ The scalar form refuses with exit 3 and no value on stdout. The canonical query 
 
 A band can resolve for the same reason as the first check: the whole interval fits inside it. Under `size@1`, every value from 60 through 70 belongs to `s`. An interval crossing a boundary cannot select a convenient middle band.
 
+The retained `bounded-decisions` lesson shows the same distinction on one real file from Prettier pull request 13183. Its complete PR-files edition proves a file-scoped Changed interval of `[8,679, 11,330]`. That whole interval is below `12,000`, so the configured band resolves; it crosses `9,500`, so the narrower band holds. A stronger raw-diff edition establishes exact `9,603` and can answer the latter question without pretending the earlier interval had a midpoint.
+
+<figure class="manual-visual" data-manual-visual="evidence-thresholds">
+  <picture class="manual-visual__theme manual-visual__theme--light">
+    <source media="(max-width: 40rem)" srcset="/assets/manual/visuals/evidence-thresholds-narrow-light.svg">
+    <img src="/assets/manual/visuals/evidence-thresholds-light.svg" alt="The PR-files edition establishes Changed from 8,679 through 11,330, crossing 9,500 but staying below 12,000. The raw-diff edition establishes exact 9,603.">
+  </picture>
+  <picture class="manual-visual__theme manual-visual__theme--dark">
+    <source media="(max-width: 40rem)" srcset="/assets/manual/visuals/evidence-thresholds-narrow-dark.svg">
+    <img src="/assets/manual/visuals/evidence-thresholds-dark.svg" alt="The PR-files edition establishes Changed from 8,679 through 11,330, crossing 9,500 but staying below 12,000. The raw-diff edition establishes exact 9,603.">
+  </picture>
+  <figcaption>One bounded observation can settle the 12,000 boundary while leaving 9,500 unresolved. The exact point belongs to a stronger evidence edition, not an estimate inside the interval.</figcaption>
+</figure>
+
+| Evidence edition | Retained source | `metrics.focusChanged` | Consequence against the configured boundaries |
+| --- | --- | ---: | --- |
+| PR files, complete file set | `prettier-13183-rest` | `[8,679, 11,330]` | Crosses `9,500`; wholly below `12,000` |
+| Raw comparison diff | `prettier-13183` | `9,603` exact | At least `9,500`; below `12,000` |
+
+Both editions identify `tests/format/js/ternaries/__snapshots__/jsfmt.spec.js.snap` at the same immutable base and head. The values are **file-scoped**, not the whole PR's Changed total. The thresholds come from the retained example policies; they are not further observations. See the [source identities](../../examples/catalogue/sources.json), [configured policies](../../examples/catalogue/policies.json), and [editable Vega-Lite source](../assets/visuals/evidence-thresholds.vl.json).
+
 ## Counts do not supply missing files
 
 File-set completeness is separate from numeric certainty. The [complete incomplete-report fixture](../../examples/reports/incomplete.json) declares three files but contains one observed record. It does not describe three known paths.

@@ -1,0 +1,498 @@
+{
+  "$schema": "https://vega.github.io/schema/vega-lite/v6.json",
+  "description": "Retained file-scoped Changed evidence from two editions of Prettier pull request 13183, compared with configured 9,500 and 12,000 policy thresholds.",
+  "width": "container",
+  "height": 188,
+  "padding": {
+    "left": 8,
+    "right": 12,
+    "top": 42,
+    "bottom": 8
+  },
+  "data": {
+    "values": [
+      {
+        "sourceId": "prettier-13183-rest",
+        "edition": "PR-files edition · bounded",
+        "narrowEdition": "PR files · bounded",
+        "row": 1,
+        "kind": "bounded",
+        "lower": 8679,
+        "upper": 11330
+      },
+      {
+        "sourceId": "prettier-13183",
+        "edition": "Raw-diff edition · exact",
+        "narrowEdition": "Raw diff · exact",
+        "row": 0,
+        "kind": "exact",
+        "value": 9603
+      }
+    ]
+  },
+  "encoding": {
+    "x": {
+      "type": "quantitative",
+      "scale": {
+        "domain": [
+          8200,
+          12400
+        ],
+        "nice": false,
+        "zero": false
+      },
+      "axis": {
+        "title": "file-scoped replacement-aware Changed lines",
+        "format": ",d",
+        "tickCount": 5,
+        "grid": true
+      }
+    }
+  },
+  "layer": [
+    {
+      "name": "threshold-lines",
+      "data": {
+        "values": [
+          {
+            "threshold": 9500,
+            "standing": "held"
+          },
+          {
+            "threshold": 12000,
+            "standing": "resolved"
+          }
+        ]
+      },
+      "mark": {
+        "type": "rule",
+        "strokeWidth": 1.5
+      },
+      "encoding": {
+        "x": {
+          "field": "threshold",
+          "type": "quantitative"
+        },
+        "color": {
+          "field": "standing",
+          "type": "nominal",
+          "scale": {
+            "domain": [
+              "held",
+              "resolved"
+            ]
+          },
+          "legend": null
+        },
+        "strokeDash": {
+          "field": "standing",
+          "type": "nominal",
+          "scale": {
+            "domain": [
+              "held",
+              "resolved"
+            ],
+            "range": [
+              [
+                2,
+                3
+              ],
+              [
+                7,
+                4
+              ]
+            ]
+          },
+          "legend": null
+        }
+      }
+    },
+    {
+      "name": "held-threshold-label",
+      "data": {
+        "values": [
+          {
+            "threshold": 9500,
+            "label": "9,500 · interval crosses · held",
+            "narrowLabel": "9.5k · crosses · held",
+            "standing": "held"
+          }
+        ]
+      },
+      "mark": {
+        "type": "text",
+        "align": "left",
+        "baseline": "top",
+        "dx": 5,
+        "fontWeight": 600
+      },
+      "encoding": {
+        "x": {
+          "field": "threshold",
+          "type": "quantitative"
+        },
+        "y": {
+          "value": 2
+        },
+        "text": {
+          "field": "label"
+        },
+        "color": {
+          "field": "standing",
+          "type": "nominal",
+          "scale": {
+            "domain": [
+              "held",
+              "resolved"
+            ]
+          },
+          "legend": null
+        }
+      }
+    },
+    {
+      "name": "resolved-threshold-label",
+      "data": {
+        "values": [
+          {
+            "threshold": 12000,
+            "label": "12,000 · interval below · resolved",
+            "narrowLabel": "12k · below · resolved",
+            "standing": "resolved"
+          }
+        ]
+      },
+      "mark": {
+        "type": "text",
+        "align": "right",
+        "baseline": "top",
+        "dx": -5,
+        "fontWeight": 600
+      },
+      "encoding": {
+        "x": {
+          "field": "threshold",
+          "type": "quantitative"
+        },
+        "y": {
+          "value": 20
+        },
+        "text": {
+          "field": "label"
+        },
+        "color": {
+          "field": "standing",
+          "type": "nominal",
+          "scale": {
+            "domain": [
+              "held",
+              "resolved"
+            ]
+          },
+          "legend": null
+        }
+      }
+    },
+    {
+      "name": "edition-labels",
+      "mark": {
+        "type": "text",
+        "align": "left",
+        "baseline": "bottom",
+        "dy": -16,
+        "fontWeight": 600
+      },
+      "encoding": {
+        "x": {
+          "datum": 8240,
+          "type": "quantitative"
+        },
+        "text": {
+          "field": "edition"
+        },
+        "color": {
+          "field": "kind",
+          "type": "nominal",
+          "scale": {
+            "domain": [
+              "bounded",
+              "exact"
+            ]
+          },
+          "legend": null
+        },
+        "y": {
+          "field": "row",
+          "type": "quantitative",
+          "scale": {
+            "domain": [
+              -0.45,
+              1.55
+            ],
+            "nice": false
+          },
+          "axis": null
+        }
+      }
+    },
+    {
+      "name": "bounded-interval",
+      "transform": [
+        {
+          "filter": "datum.kind === 'bounded'"
+        }
+      ],
+      "mark": {
+        "type": "rule",
+        "strokeWidth": 9,
+        "strokeCap": "round"
+      },
+      "encoding": {
+        "x": {
+          "field": "lower",
+          "type": "quantitative"
+        },
+        "x2": {
+          "field": "upper"
+        },
+        "color": {
+          "field": "kind",
+          "type": "nominal",
+          "scale": {
+            "domain": [
+              "bounded",
+              "exact"
+            ]
+          },
+          "legend": null
+        },
+        "y": {
+          "field": "row",
+          "type": "quantitative",
+          "scale": {
+            "domain": [
+              -0.45,
+              1.55
+            ],
+            "nice": false
+          },
+          "axis": null
+        }
+      }
+    },
+    {
+      "name": "bounded-endpoints",
+      "transform": [
+        {
+          "filter": "datum.kind === 'bounded'"
+        },
+        {
+          "fold": [
+            "lower",
+            "upper"
+          ],
+          "as": [
+            "endpoint",
+            "amount"
+          ]
+        }
+      ],
+      "mark": {
+        "type": "tick",
+        "thickness": 2,
+        "size": 22
+      },
+      "encoding": {
+        "x": {
+          "field": "amount",
+          "type": "quantitative"
+        },
+        "color": {
+          "field": "kind",
+          "type": "nominal",
+          "scale": {
+            "domain": [
+              "bounded",
+              "exact"
+            ]
+          },
+          "legend": null
+        },
+        "y": {
+          "field": "row",
+          "type": "quantitative",
+          "scale": {
+            "domain": [
+              -0.45,
+              1.55
+            ],
+            "nice": false
+          },
+          "axis": null
+        }
+      }
+    },
+    {
+      "name": "bounded-endpoint-labels",
+      "transform": [
+        {
+          "filter": "datum.kind === 'bounded'"
+        },
+        {
+          "fold": [
+            "lower",
+            "upper"
+          ],
+          "as": [
+            "endpoint",
+            "amount"
+          ]
+        }
+      ],
+      "mark": {
+        "type": "text",
+        "baseline": "top",
+        "dy": 10,
+        "fontWeight": 600
+      },
+      "encoding": {
+        "x": {
+          "field": "amount",
+          "type": "quantitative"
+        },
+        "text": {
+          "field": "amount",
+          "type": "quantitative",
+          "format": ",d"
+        },
+        "color": {
+          "field": "kind",
+          "type": "nominal",
+          "scale": {
+            "domain": [
+              "bounded",
+              "exact"
+            ]
+          },
+          "legend": null
+        },
+        "y": {
+          "field": "row",
+          "type": "quantitative",
+          "scale": {
+            "domain": [
+              -0.45,
+              1.55
+            ],
+            "nice": false
+          },
+          "axis": null
+        }
+      }
+    },
+    {
+      "name": "exact-point",
+      "transform": [
+        {
+          "filter": "datum.kind === 'exact'"
+        }
+      ],
+      "mark": {
+        "type": "point",
+        "filled": true,
+        "shape": "diamond",
+        "size": 170,
+        "strokeWidth": 2
+      },
+      "encoding": {
+        "x": {
+          "field": "value",
+          "type": "quantitative"
+        },
+        "color": {
+          "field": "kind",
+          "type": "nominal",
+          "scale": {
+            "domain": [
+              "bounded",
+              "exact"
+            ]
+          },
+          "legend": null
+        },
+        "y": {
+          "field": "row",
+          "type": "quantitative",
+          "scale": {
+            "domain": [
+              -0.45,
+              1.55
+            ],
+            "nice": false
+          },
+          "axis": null
+        }
+      }
+    },
+    {
+      "name": "exact-label",
+      "transform": [
+        {
+          "filter": "datum.kind === 'exact'"
+        }
+      ],
+      "mark": {
+        "type": "text",
+        "baseline": "top",
+        "dy": 13,
+        "fontWeight": 700
+      },
+      "encoding": {
+        "x": {
+          "field": "value",
+          "type": "quantitative"
+        },
+        "text": {
+          "field": "value",
+          "type": "quantitative",
+          "format": ",d"
+        },
+        "color": {
+          "field": "kind",
+          "type": "nominal",
+          "scale": {
+            "domain": [
+              "bounded",
+              "exact"
+            ]
+          },
+          "legend": null
+        },
+        "y": {
+          "field": "row",
+          "type": "quantitative",
+          "scale": {
+            "domain": [
+              -0.45,
+              1.55
+            ],
+            "nice": false
+          },
+          "axis": null
+        }
+      }
+    }
+  ],
+  "usermeta": {
+    "standing": "retained immutable observations, not live provider state",
+    "focusPath": "tests/format/js/ternaries/__snapshots__/jsfmt.spec.js.snap",
+    "repository": "prettier/prettier",
+    "pullRequest": 13183,
+    "baseAndMergeBase": "f25a592f571257cef4847e27820e86945c7fcb68",
+    "head": "c7d5925715a31d3c83073e03de1b90673776b691",
+    "policyThresholds": [
+      9500,
+      12000
+    ]
+  }
+}

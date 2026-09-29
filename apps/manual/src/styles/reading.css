@@ -30,3 +30,46 @@
 @container (max-width:32rem) {
   .docs-site-footer .site-footer .grid { grid-template-columns:minmax(0,1fr); }
 }
+
+/* Source-owned light/dark SVG explanations. Text and tables retain the meaning without the image. */
+.manual-visual {
+  margin-block:1.5rem;
+  padding:clamp(.5rem,2vw,1rem);
+  border:1px solid var(--hair);
+  border-radius:var(--r-card);
+  background:var(--bg-raised);
+  overflow:hidden;
+}
+.manual-visual picture { display:block; min-width:0; }
+.manual-visual__theme--light { display:none; }
+.manual-visual__theme--dark { display:block; }
+[data-theme="light"] .manual-visual__theme--light { display:block; }
+[data-theme="light"] .manual-visual__theme--dark { display:none; }
+[data-theme="dark"] .manual-visual__theme--light { display:none; }
+[data-theme="dark"] .manual-visual__theme--dark { display:block; }
+.manual-visual img {
+  display:block;
+  width:100%;
+  max-width:46rem;
+  height:auto;
+  margin-inline:auto;
+  forced-color-adjust:none;
+}
+.manual-visual figcaption {
+  max-width:42rem;
+  margin:.75rem auto 0;
+  color:var(--fg-2);
+  font-size:.875rem;
+  line-height:1.55;
+}
+@media (prefers-color-scheme:light) {
+  :root:not([data-theme]) .manual-visual__theme--light { display:block; }
+  :root:not([data-theme]) .manual-visual__theme--dark { display:none; }
+}
+@media (max-width:40rem) {
+  .manual-visual { margin-inline:calc(-1 * min(.5rem, var(--page-x))); padding:.45rem; border-radius:var(--r-block); }
+  .manual-visual figcaption { padding-inline:.25rem; font-size:.8125rem; }
+}
+@media (forced-colors:active) {
+  .manual-visual { border-color:CanvasText; }
+}
