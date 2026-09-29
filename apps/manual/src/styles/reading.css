@@ -86,3 +86,6 @@
   width:clamp(318px,100%,528px);
   max-width:none;
 }
+@media (max-width:40rem) {
+  .manual-visual--scroll { margin-inline:0; }
+}
