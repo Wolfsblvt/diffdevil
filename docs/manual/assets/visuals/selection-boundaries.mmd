@@ -10,7 +10,7 @@ flowchart TB
     selected("Selected scope members"):::ok
     overlap("Scopes may overlap; they are not partitions")
 
-    lockfile("Observed lockfile: package-lock.json"):::bad
+    lockfile("Observed npm lockfile"):::bad
     empty("Global exclusion makes the lockfiles scope exactly empty for this complete input"):::bad
 
     observed --> global
