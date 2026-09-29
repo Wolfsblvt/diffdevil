@@ -1,0 +1,24 @@
+flowchart TB
+    accTitle: Global and scoped file selection have different boundaries
+    accDescr: The observed comparison retains every observed file. Global forceInclude, includeOnly, and exclude determine the globally eligible population. Each named scope begins only from that population, applies a hard includeOnly boundary, and may use local forceInclude only against local exclusions. A globally excluded lockfile remains observed but cannot be reintroduced by its scope.
+
+    observed("Observed comparison retains every observed file"):::focus
+    global("Global selection: forceInclude, then includeOnly, then exclude")
+    eligible("Globally eligible files"):::ok
+    scope("Every named scope starts only from globally eligible files")
+    boundary("Scope includeOnly is a hard boundary; local forceInclude overrides only a local exclusion")
+    selected("Selected scope members"):::ok
+    overlap("Scopes may overlap; they are not partitions")
+
+    lockfile("Observed npm lockfile"):::bad
+    empty("Global exclusion makes the lockfiles scope exactly empty for this complete input"):::bad
+
+    observed --> global
+    global --> eligible
+    eligible --> scope
+    scope --> boundary
+    boundary --> selected
+    selected --> overlap
+
+    observed --> lockfile
+    lockfile --> empty

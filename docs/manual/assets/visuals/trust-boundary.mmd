@@ -1,0 +1,16 @@
+flowchart TB
+    accTitle: Proposed comparison data and trusted policy remain separate
+    accDescr: A pull request's proposed head supplies comparison data. The privileged applying route takes instructions and referenced templates only from an immutable trusted base, a deliberately pinned revision, or built-in policy. Proposed policy has no route into privileged instruction execution.
+
+    trusted("Trusted policy source: base, pin, or built-in")
+    proposed("Proposed PR head is comparison data")
+    proposedPolicy("Proposed policy and templates are untrusted"):::bad
+    blocked("Rejected as privileged instructions"):::bad
+    analyze("Analyze proposed data under trusted policy"):::focus
+    apply("Apply only source-bound planned effects under host authority"):::ok
+
+    trusted --> analyze
+    proposed --> analyze
+    proposed --> proposedPolicy
+    proposedPolicy --> blocked
+    analyze --> apply
