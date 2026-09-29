@@ -94,7 +94,7 @@ test('The finite asset allow-list and manual homes cover every selected visual v
   };
   for (const [path, expected] of Object.entries(pages)) {
     const source = read(path);
-    assert.equal((source.match(/<figure class="manual-visual"/gu) ?? []).length, 1, path);
+    assert.equal((source.match(/<figure class="manual-visual(?: [^"]+)?"/gu) ?? []).length, 1, path);
     for (const item of expected) assert.ok(source.includes(item), `${path}: ${item}`);
     assert.match(source, /<figcaption>[^<]+<\/figcaption>/u, path);
   }
