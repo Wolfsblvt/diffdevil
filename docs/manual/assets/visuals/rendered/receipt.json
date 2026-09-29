@@ -1,0 +1,129 @@
+{
+  "formatVersion": 1,
+  "renderer": "apps/manual/visuals/render.mjs",
+  "runtimes": {
+    "mermaid": "12.0.0",
+    "vega": "6.4.0",
+    "vega-lite": "6.4.3"
+  },
+  "sources": [
+    {
+      "path": "docs/manual/assets/visuals/evidence-thresholds.vl.json",
+      "sha256": "121f69801122390f11ad62ba50669fbd7271e53785ddddcd96014b945f95ab49"
+    },
+    {
+      "path": "docs/manual/assets/visuals/provider-readback.mmd",
+      "sha256": "9bc0052f23892eca34f4ff9851c725c2cccb7df67540f3897cc70b8c3e7c5023"
+    },
+    {
+      "path": "docs/manual/assets/visuals/selection-boundaries.mmd",
+      "sha256": "67cbd64f949ede88a8efc466d472be9f8c835b94c5e81035c6fb52eaa25144ba"
+    },
+    {
+      "path": "docs/manual/assets/visuals/trust-boundary.mmd",
+      "sha256": "779cd402858daa76e00fcdd5ed1d352191a084244673d74f65096e444a4d54c7"
+    }
+  ],
+  "outputs": [
+    {
+      "path": "docs/manual/assets/visuals/rendered/evidence-thresholds-light.svg",
+      "visual": "evidence-thresholds",
+      "kind": "vega-lite",
+      "appearance": "light",
+      "width": 600,
+      "narrow": false,
+      "source": "docs/manual/assets/visuals/evidence-thresholds.vl.json",
+      "sha256": "421d5a798484d70fd76d677fa600e2b4005608a931fd31782574d982c982b3dd"
+    },
+    {
+      "path": "docs/manual/assets/visuals/rendered/evidence-thresholds-dark.svg",
+      "visual": "evidence-thresholds",
+      "kind": "vega-lite",
+      "appearance": "dark",
+      "width": 600,
+      "narrow": false,
+      "source": "docs/manual/assets/visuals/evidence-thresholds.vl.json",
+      "sha256": "44096b2c6f95b3ad11144f3e81a7901e04a9e0b43756c6e4c27227391e60ef7a"
+    },
+    {
+      "path": "docs/manual/assets/visuals/rendered/evidence-thresholds-narrow-light.svg",
+      "visual": "evidence-thresholds-narrow",
+      "kind": "vega-lite",
+      "appearance": "light",
+      "width": 280,
+      "narrow": true,
+      "source": "docs/manual/assets/visuals/evidence-thresholds.vl.json",
+      "sha256": "ac1be0552320f4b019e76ec86ae3953fccc028fa681838f63c93dcb2f2b86afb"
+    },
+    {
+      "path": "docs/manual/assets/visuals/rendered/evidence-thresholds-narrow-dark.svg",
+      "visual": "evidence-thresholds-narrow",
+      "kind": "vega-lite",
+      "appearance": "dark",
+      "width": 280,
+      "narrow": true,
+      "source": "docs/manual/assets/visuals/evidence-thresholds.vl.json",
+      "sha256": "3e21a217a71e6e4f5ebbef21dc1edc3b8a0047f0f58912213ddb6772626c890a"
+    },
+    {
+      "path": "docs/manual/assets/visuals/rendered/trust-boundary-light.svg",
+      "visual": "trust-boundary",
+      "kind": "mermaid",
+      "appearance": "light",
+      "width": null,
+      "narrow": false,
+      "source": "docs/manual/assets/visuals/trust-boundary.mmd",
+      "sha256": "602cc97101643d36247ed2eee416eedfda7fd0707a8cf5ac874a56f00978af7e"
+    },
+    {
+      "path": "docs/manual/assets/visuals/rendered/trust-boundary-dark.svg",
+      "visual": "trust-boundary",
+      "kind": "mermaid",
+      "appearance": "dark",
+      "width": null,
+      "narrow": false,
+      "source": "docs/manual/assets/visuals/trust-boundary.mmd",
+      "sha256": "98bad24557d25d2b9193352bdcbe1366b1815d53641ebc32b2f262c901e54b55"
+    },
+    {
+      "path": "docs/manual/assets/visuals/rendered/selection-boundaries-light.svg",
+      "visual": "selection-boundaries",
+      "kind": "mermaid",
+      "appearance": "light",
+      "width": null,
+      "narrow": false,
+      "source": "docs/manual/assets/visuals/selection-boundaries.mmd",
+      "sha256": "540b330702fe4cecb7831b2d24892788df9c4b3de091dceee2bdfca8dd7bc01e"
+    },
+    {
+      "path": "docs/manual/assets/visuals/rendered/selection-boundaries-dark.svg",
+      "visual": "selection-boundaries",
+      "kind": "mermaid",
+      "appearance": "dark",
+      "width": null,
+      "narrow": false,
+      "source": "docs/manual/assets/visuals/selection-boundaries.mmd",
+      "sha256": "bb583bb51d83c758a0db9e6fcfc823e6937d9ad668ca8a2d95d5146b11117117"
+    },
+    {
+      "path": "docs/manual/assets/visuals/rendered/provider-readback-light.svg",
+      "visual": "provider-readback",
+      "kind": "mermaid",
+      "appearance": "light",
+      "width": null,
+      "narrow": false,
+      "source": "docs/manual/assets/visuals/provider-readback.mmd",
+      "sha256": "49dceb91f41c7feb2ac7d9f10aed6a39c8db3f1d420328b04c905682bda21910"
+    },
+    {
+      "path": "docs/manual/assets/visuals/rendered/provider-readback-dark.svg",
+      "visual": "provider-readback",
+      "kind": "mermaid",
+      "appearance": "dark",
+      "width": null,
+      "narrow": false,
+      "source": "docs/manual/assets/visuals/provider-readback.mmd",
+      "sha256": "9276ff0e938b03fc17e168e709c32bacff1454b054fddce47cc00d7c96e4451e"
+    }
+  ]
+}
