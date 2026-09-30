@@ -4,12 +4,20 @@ import { Resvg } from '@resvg/resvg-js';
 import { readFile, writeFile, mkdir, rm, copyFile, readdir } from 'node:fs/promises';
 import { resolve, join } from 'node:path';
 import { createHash } from 'node:crypto';
+import { spawnSync } from 'node:child_process';
+import { extensionIdentity } from './browser-extension-version.mjs';
 const root = resolve('apps/browser-extension');
 const out = resolve('artifacts/browser-extension/unpacked');
 const fontFree = process.argv.includes('--without-fonts');
 const packageJson = JSON.parse(await readFile('package.json', 'utf8'));
+const manifest = JSON.parse(await readFile(join(root, 'manifest.json'), 'utf8'));
+const releaseIdentity = extensionIdentity(manifest, packageJson);
+const revision = spawnSync('git', ['rev-parse', '--verify', 'HEAD'], { encoding: 'utf8' });
+const status = spawnSync('git', ['status', '--porcelain'], { encoding: 'utf8' });
+const commit = revision.status === 0 && /^[0-9a-f]{40}$/u.test(revision.stdout.trim()) ? revision.stdout.trim() : null;
+const source = { commit, clean: status.status === 0 ? status.stdout.length === 0 : null, standing: 'unpublished-build' };
 await rm(out, { recursive: true, force: true }); await mkdir(join(out, 'assets'), { recursive: true });
-const common = { bundle: true, platform: 'browser', target: 'chrome120', legalComments: 'eof', metafile: true, define: { __ENGINE_VERSION__: JSON.stringify(packageJson.version) },
+const common = { bundle: true, platform: 'browser', target: 'chrome120', legalComments: 'eof', metafile: true, define: { __ENGINE_VERSION__: JSON.stringify(releaseIdentity.engineVersion) },
   alias: { '@wolfsblvt/diffdevil/browser/text': resolve('dist/lib/browser/text.js'), '@wolfsblvt/diffdevil/browser': resolve('dist/browser/index.js') } };
 const modules = await build({ ...common, entryPoints: { background: join(root, 'src/background/worker.ts'), options: join(root, 'src/options/main.ts') }, outdir: out, format: 'esm', splitting: true, chunkNames: 'chunks/[name]-[hash]' });
 const content = await build({ ...common, entryPoints: [join(root, 'src/content/main.ts')], outfile: join(out, 'content.js'), format: 'iife' });
@@ -17,8 +25,8 @@ await build({ ...common, entryPoints: [join(root, 'src/options/theme.ts')], outf
 await build({ entryPoints: [join(root, 'src/options/options.css')], outfile: join(out, 'options.css'), bundle: true, target: 'chrome120', loader: { '.svg': 'file' }, assetNames: 'assets/[name]-[hash]' });
 await copyFile(join(root, 'src/content/content.css'), join(out, 'content.css'));
 await copyFile(join(root, 'options.html'), join(out, 'options.html'));
-const manifest = JSON.parse(await readFile(join(root, 'manifest.json'), 'utf8')); manifest.version = packageJson.version;
 await writeFile(join(out, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
+await writeFile(join(out, 'build-info.json'), `${JSON.stringify({ family: 'extension', ...releaseIdentity, source }, null, 2)}\n`);
 const identity = resolve('packages/design/assets/identity'); const identities = [];
 const acceptedBrand = await readFile(join(root, 'assets/diffdevil-brand.svg'));
 const acceptedBrandHash = createHash('sha256').update(acceptedBrand).digest('hex');
@@ -55,7 +63,7 @@ if (external.length) throw new Error(`Extension contains external executable imp
 const inventory = [];
 async function walk(directory, relative = '') { for (const file of await readdir(directory, { withFileTypes: true })) { const path = join(directory, file.name); const name = relative + file.name; if (file.isDirectory()) await walk(path, `${name}/`); else { const bytes = await readFile(path); inventory.push({ path: name, bytes: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex') }); } } }
 await walk(out);
-const receipt = { version: packageJson.version, fontFilesIncluded: !fontFree, glyph: 'accepted-diffdevil-brand-centre-seam', identities, files: inventory.sort((a, b) => a.path.localeCompare(b.path)), bytes: inventory.reduce((sum, file) => sum + file.bytes, 0) };
+const receipt = { family: 'extension', ...releaseIdentity, source, fontFilesIncluded: !fontFree, glyph: 'accepted-diffdevil-brand-centre-seam', identities, files: inventory.sort((a, b) => a.path.localeCompare(b.path)), bytes: inventory.reduce((sum, file) => sum + file.bytes, 0) };
 await writeFile('artifacts/browser-extension/build-receipt.json', `${JSON.stringify(receipt, null, 2)}\n`);
 await writeFile('artifacts/browser-extension/bundle-metafile.json', `${JSON.stringify(metadata, null, 2)}\n`);
 console.log(`Built ${inventory.length} files (${(receipt.bytes / 1024 / 1024).toFixed(2)} MiB). Fonts ${fontFree ? 'omitted; system fallbacks' : 'from locked dependencies'}. No publication performed.`);

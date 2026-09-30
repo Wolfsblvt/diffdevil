@@ -39,6 +39,20 @@ manuals plus `src/diffdevil/contracts/schemas/`, `src/diffdevil/contracts/detail
 contracts. A disagreement among code, schema, catalog, examples, and prose is a
 specific defect to reconcile, not permission to choose the easiest behavior.
 
+## Versions and releases
+
+Read `docs/RELEASING.md` for any version, release, update-discovery or distribution
+change. D044 is settled: npm/library, CLI, Actions and standalone runtime share the
+open-tool version; extension, App server/dashboard and canonical Skill each have an
+independent version. Never blanket-bump all surfaces or align major/minor numbers
+for appearance. Keep existing open-tool tags and Action aliases intact.
+
+Identify the actual included engine and source/build separately from the product
+version. Check affected consumers of shared changes, scope update discovery to the
+family and channel, and keep release manifests consistent with attached assets.
+A source version is not proof of publication. Update current reader and installed
+Skill guidance when their routes change; preserve historical captures and releases.
+
 ## Build and verify
 
 ```sh

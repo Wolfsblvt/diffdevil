@@ -177,6 +177,7 @@ changes the available evidence, not the chosen language or complete product.
 **Selected:** Reports that contain `metrics` also contain an exactly matching
 `metricTypes` map whose entries are `integer` or `float`. Built-in raw, line and
 file measurements retain their fixed integer types.
+
 **Why:** The prepared report stored only measurements for custom metrics. An
 integral-looking float would become indistinguishable from an integer after JSON
 serialization, changing typing, overflow and later arithmetic. Inferring from
@@ -270,7 +271,9 @@ Separating boolean typing from root availability repairs the capability without
 weakening rule isolation or unknown handling.
 
 **Desired-effect boundary:** Plans reject contradictory assignments and preserve
-held rules' owned labels. The plan schema's PR minima were corrected
+held rules' owned labels. Bound parameters and resolved template text affect policy
+identity. Local diff plan targets use `--target-repo`/`--target-pr`, separate from
+`--repo`/`--pr` GitHub source selection. The plan schema's PR minima were corrected
 from zero to one to agree with the existing report reader and positive-PR target
 contract. A transported plan is validated data, never proof of current provider
 state, trusted policy or write authority.
