@@ -60,7 +60,7 @@ archives, worktrees, and verification artifacts are not public release assets.
 Publish reviewed Git history and the package files selected by `package.json`, not
 a working-directory ZIP. A clean worktree alone does not prove history privacy.
 
-## Re-resolve the final open-tool candidate
+## Re-resolve the final candidate
 
 Before the first external open-tool effect:
 
@@ -129,13 +129,14 @@ and exact qualification, but it keeps unavailable coordinates conditional:
   back; and
 - no private canary or Company-room link in public package documentation.
 
-Repository-owned [release notes](releases/README.md) carry each family's product
-result, compatibility, trust model, rights, qualification and deliberately
-unfinished surfaces. At publication, currentize the selected note's availability
-and exact immutable identity. Do not rewrite old dated accounts or make one
-family's success imply another channel is available.
+Repository-owned dated release notes carry each family's product result,
+compatibility, trust model, rights, qualification and deliberately unfinished
+surfaces. [Current release guidance](manual/help/releases.md) is the reader entry
+point. At publication, currentize the selected note's availability and exact
+immutable identity. Do not rewrite old dated accounts or make one family's
+success imply another channel is available.
 
-## Completed v1.0.0 publication effects and order
+## Publication effects and order
 
 Perform each newly authorized effect once, reconcile it before any retry, and
 read it back before independent copy claims it exists. The first open-tool release

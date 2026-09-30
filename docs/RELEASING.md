@@ -105,7 +105,7 @@ Label the installed surface: `diffdevil CLI 1.7.4`, `diffdevil for GitHub 1.3.0`
 
 Hosted users normally need service/feature availability, not a version-management chore. Operators and self-hosters need exact App release/build identity. Support requests identify the surface, version/channel, engine/source and relevant comparison evidence rather than merely “diffdevil 1.x”. Do not display unverified Up to date claims.
 
-Keep [one joined release history](releases/README.md) with clearly labeled family entries. A coordinated announcement states which releases contain the feature and each channel's availability. Family-specific fixes do not require suite launches; documentation-only PRs do not invent executable release notes. Dated notes stay dated.
+Keep one joined product release history with clearly labeled family entries. [Current release guidance](manual/help/releases.md) remains the reader entry point. A coordinated announcement states which releases contain the feature and each channel's availability. Family-specific fixes do not require suite launches; documentation-only PRs do not invent executable release notes. Dated notes stay dated.
 
 ## Preparing the next release
 
