@@ -101,18 +101,24 @@ test('each copied setup prompt is one sentence that names its instructions; the 
   }
 });
 
-test('the icon registry maps every semantic name to a glyph that exists in its installed local collection', () => {
+test('the icon adapter preserves semantic names and resolves each glyph through its installed source', async () => {
   const registry = read('apps/website/src/data/icons.ts');
-  const lucide = JSON.parse(read('node_modules/@iconify-json/lucide/icons.json')).icons;
   const brands = JSON.parse(read('node_modules/@iconify-json/simple-icons/icons.json')).icons;
-  const map = [...registry.matchAll(/^\s+'?([a-z-]+)'?: '(ui|brand|product):([^']+)',$/gmu)].map(match => ({ name: match[1], route: match[2], id: match[3] }));
+  const map = [...registry.matchAll(/^\s+'?([a-z-]+)'?: '(ui|brand|product|simple-icons):([^']+)',$/gmu)].map(match => ({ name: match[1], route: match[2], id: match[3] }));
   for (const slot of ['search', 'chevron', 'social-links', 'github', 'discord', 'bluesky', 'chrome', 'theme-light', 'theme-dark', 'brand', 'changed', 'raw-churn', 'bands']) assert.ok(map.some(entry => entry.name === slot), slot);
-  assert.equal(map.find(entry => entry.name === 'social-links').id, 'waypoints', 'the shared header standard names this glyph');
+  const packageApi = await import('@wolfsblvt/icons');
   for (const entry of map) {
-    if (entry.route === 'ui') assert.ok(lucide[entry.id], `lucide:${entry.id}`);
-    else if (entry.route === 'brand') assert.ok(brands[entry.id], `simple-icons:${entry.id}`);
-    else assert.match(registry, new RegExp(`'${entry.id}': stroked\\(`, 'u'), entry.id);
+    if (entry.route === 'ui') {
+      assert.ok(packageApi.resolveUiIcon(entry.id), entry.id);
+    } else if (entry.route === 'brand') {
+      const reference = packageApi.getBrand(entry.id).iconifyName;
+      assert.ok(brands[reference.slice('simple-icons:'.length)], reference);
+    }
+    else if (entry.route === 'simple-icons') assert.ok(brands[entry.id], `simple-icons:${entry.id}`);
+    else assert.ok(packageApi.resolveProductIcon(entry.id), entry.id);
   }
+  assert.equal(map.find(entry => entry.name === 'social-links').id, 'lucide:waypoints', 'the shared header standard names this glyph');
+  assert.match(read('apps/website/src/components/Icon.astro'), /resolveIcon\(name\)/u);
 });
 
 test('install and store actions are configured destinations, never hard-coded in components', () => {
