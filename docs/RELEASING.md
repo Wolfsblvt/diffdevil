@@ -2,130 +2,117 @@
 
 ## Meaning
 
-diffdevil is one product family with one deterministic engine and independently shipped tools. Versions identify the release a person installs or operates, not the state of the entire repository. This document is the maintainer contract for version ownership, compatibility, release identity and publication. [D044](DECISIONS.md#d044-version-the-tools-people-install-not-the-whole-repository) records the decision and rejected alternatives; the reader-facing [Releases](manual/help/releases.md) page explains updates and mismatched version numbers.
+diffdevil is one product family with one deterministic engine and independently shipped tools. Versions identify what a person installs or operates, not the state of the entire repository. [D044](DECISIONS.md#d044-version-the-tools-people-install-not-the-whole-repository) records this decision and its rationale. This document owns the maintainer contract; the reader-facing [Releases](manual/help/releases.md) page explains updates and different version numbers.
 
-This contract does not publish a package, move an Action alias, submit an extension, deploy an application or announce availability. [Publication procedure](publication-boundary.md) retains those separately authorized effects. Existing published versions and historical release accounts remain immutable.
+This contract does not publish a package, move an Action alias, submit an extension, deploy an application or announce availability. [Publication procedure](publication-boundary.md) retains those separately authorized effects. Published versions and historical release accounts remain immutable.
 
-## Release families
+## Version ownership
 
-| Family | One shared version covers | Version authority | Release tag |
+| Family | One shared version covers | Canonical metadata | Exact release tag |
 | --- | --- | --- | --- |
-| Open tool | npm library and its public exports, CLI, root Action, three sub-actions, standalone runtime | Root `package.json` version; lock and generated distributions agree with it | `vX.Y.Z` |
-| Browser extension | diffdevil for GitHub and its distributed browser builds | `apps/browser-extension/manifest.json` version, not the root package version | `extension-vX.Y.Z` |
-| App | Managed App server and dashboard as one service release; the same release offered to self-hosters | App-owned release metadata established before its first named release; never inferred from the root package or a deployment counter | `app-vX.Y.Z` |
-| Agent Skill | Canonical `skills/diffdevil/` instructions and their distribution formats | `metadata.version` in `skills/diffdevil/SKILL.md` | `skill-vX.Y.Z` |
+| Open tool | npm library/core and public exports, CLI, root Action, three sub-actions, standalone runtime | Root `package.json`; lock and generated distributions agree | `vX.Y.Z` |
+| Browser extension | diffdevil for GitHub and its distributed browser builds | `apps/browser-extension/manifest.json` | `extension-vX.Y.Z` |
+| App | Managed App server and dashboard together, including the corresponding self-hosted release | `apps/github-app/release.json` | `app-vX.Y.Z` |
+| Agent Skill | Canonical `skills/diffdevil/` instructions across distribution formats | `metadata.version` in `skills/diffdevil/SKILL.md`; `skills/versions.json` is its source projection | `skill-vX.Y.Z` |
 
-`X.Y.Z` denotes the selected family version, not a shared generation. The existing open-tool `v1.0.0` and maintained Action alias `v1` keep their meanings. Browser builds of the same extension release do not become independent products merely because stores publish them at different times. A material browser-specific behavior or packaging change is still an extension release change.
+`X.Y.Z` is the selected family version, not a shared generation. Existing open-tool `v1.0.0` and the maintained Action alias `v1` keep their meanings. Browser stores can publish the same extension release at different times without becoming separate version families. Material browser-specific behavior or packaging changes are still extension changes.
 
-The website, manual, Playground and internal implementation packages do not acquire additional public SemVer tracks merely by being deployed or residing in their own directories. Record their exact deployed/build source. A Playground build also identifies the engine it contains. A genuinely new independently consumed package needs an explicit release-boundary decision, not an automatic version counter.
+The App metadata currently contains `version: null`: no named App release has been selected. It is not version zero, an npm version, or a declaration that the existing canary is a published service release. Before its first named release, select the App SemVer there and include it with the exact source/deployment identity in operator diagnostics. Server and dashboard share that service version; a deployment ID or database migration counter does not replace it.
 
-The App currently has no established public service-release number. Selecting its first number and adding its app-owned metadata are release preparation, not a reason to label today's deployed canary as a published App release. The server and dashboard are not separately numbered by default.
+The website, manual, Playground and internal implementation packages do not gain public SemVer tracks merely because they are separate directories or deployments. Record their exact deployed/build source; a Playground build also identifies its engine. A genuinely new independently consumed package needs a release-boundary decision, not an automatic counter.
 
-## What causes a version change
+## When a version changes
 
-Each family follows [Semantic Versioning](https://semver.org/) against its own documented public contract. A merged PR does not automatically produce a release or increment every manifest. Collect and classify changes since that family's previous release, then select its next version before cutting its artifacts.
+Apply [Semantic Versioning](https://semver.org/) to each family's own public contract. A merged PR does not automatically produce a release or increment every manifest. Classify all changes included since the family's previous release, then select the next version before cutting artifacts.
 
-| Change | Version consequence |
+| Change | Consequence |
 | --- | --- |
-| Backward-compatible fix to a family's shipped behavior, security or packaging | Patch release of that family |
-| Backward-compatible capability added to that family | Minor release of that family |
-| Incompatible change to that family's public contract | Major release of that family, with migration guidance |
-| Shared engine/dependency change | Assess every consuming family; release those whose shipped contents or supported behavior change |
-| Documentation/site-only change outside a selected artifact | No forced executable release |
-| Action-only public-interface or distribution change | Open-tool family release; explicitly say when CLI behavior is unchanged |
-| Extension-only GitHub layout or settings fix | Extension release only, unless the candidate also adopts changed shared-engine bytes |
-| App-only dashboard or operational fix | App release/deployment only; no npm, Action, Skill or Store publication by association |
+| Backward-compatible fix to shipped behavior, security or packaging | Patch release of the affected family |
+| Backward-compatible capability | Minor release of the affected family |
+| Incompatible public-contract change | Major release of the affected family, with migration guidance |
+| Shared engine/dependency change | Assess every consuming family and release those adopting changed contents or behavior |
+| Documentation/site-only change outside a selected executable artifact | No forced executable release |
+| Action-only interface/distribution fix | Open-tool release; state when CLI behavior is unchanged |
+| Extension-only GitHub layout or settings fix | Extension release only, unless its candidate also adopts shared-engine changes |
+| App-only dashboard/operation fix | App release/deployment only, not npm, Actions or Store publication |
 | Canonical Skill instruction fix | Skill release; an existing compatible runtime need not be released again |
 
-The open tool deliberately accepts bounded coupling: an Action-only fix can advance the npm/CLI/standalone family version even when those consumers have unchanged behavior. These are closely related distributions of one open tool. This exception does not extend to the extension, App or Skill.
+The open tool deliberately accepts bounded coupling: an Action-only fix can advance the npm/CLI/standalone family even when those consumers' behavior is unchanged. These are closely related distributions of one open tool. This exception does not extend to the extension, App or Skill.
 
-Version numbers never catch up for cosmetic consistency, including at major or minor boundaries. A breaking library API change does not automatically require an extension major release when its user contract remains compatible. A policy-language or measurement change can require coordinated upgrades across several families, but their resulting version numbers need not match.
+Never align major or minor numbers for appearance. A breaking library API change need not make the extension a major release when its user contract remains compatible. A shared policy-language change can require coordinated upgrades across several families, but their resulting version numbers need not match.
 
-Family contracts include more than function signatures: supported runtimes, command and Action interfaces, documented settings/configuration, machine outputs, promised semantics, persisted data and upgrade behavior can all matter. Classify an engine dependency change by the actual effect on each consumer. Do not classify every dependency update as either a patch or a breaking change without examining it.
+Public contracts include supported runtimes, CLI and Action interfaces, settings/configuration, machine outputs, promised semantics, persisted data and upgrade behavior. Classify a dependency change by its actual effect on that consumer, not automatically as either patch or major. A shared engine fix is not an excuse to publish unchanged unrelated tools.
 
-## One engine, explicit contents
+## Identify the actual contained engine
 
-A product version and its contained engine version answer different questions. For example, an extension `1.3.0` can contain open-tool engine `1.7.4`; both can be current. These are illustrative versions, not release assignments.
+Tool and engine versions answer different questions. An extension `1.3.0` can contain engine `1.7.4`, matching CLI `1.7.4`; these are illustrative numbers, not release assignments.
 
-Each released distribution or service build must make the following inspectable through its artifact metadata and support/diagnostic route:
+Each released distribution or service build makes its family, version, channel, included engine and exact source/build identity inspectable. A compound download identifies both Skill and runtime versions and the compatibility actually exercised. Keep this in existing manifests, receipts and build/deployment metadata; do not introduce a universal version service, suite counter, whole-source hash locks or a second engine. D041's rejection of Action input-hash churn remains intact.
 
-- its family, version and channel;
-- the included engine's declared open-tool version and exact source/build identity;
-- the exact source revision of the application or wrapper when different;
-- for a compound download, the individual Skill and runtime identities and their verified compatibility.
+A later checkout whose `package.json` still says `1.0.0` is not necessarily the published `1.0.0` package. Development metadata retains its exact revision and unreleased standing rather than presenting that declared version as proof of stable bytes. Dirty or unavailable source identity stays explicit. A stable consumer uses qualified published engine contents or identifies changed engine contents as a new qualified open-tool release. Unrelated commits do not require a new engine version when its selected closure is unchanged and that equivalence is established.
 
-Keep this information in existing manifests, receipts and build/deployment metadata. Do not add a second engine implementation, a universal version service, whole-source hash locks or a new mandatory public suite version. Archive digests remain useful integrity checks; the Action input-hash approach rejected by D041 stays rejected.
+An extension release that also bundles changed core code is not merely an extension-only fix. Repackaging an already qualified unchanged engine with a changed wrapper does not itself require republishing npm, but its compound artifact must identify what it actually contains. An already published archive is never replaced with different bytes under the same identity.
 
-A checkout whose `package.json` still says `1.0.0` can contain newer code than the immutable published `1.0.0` package. Development metadata must therefore label it as an unreleased/source build and retain its exact revision. It must not identify those bytes as the published engine solely by copying the package version. A stable consumer must either use the qualified published engine bytes or qualify and identify the changed engine as a new open-tool release. Unrelated commits do not force an engine release when the selected engine closure is unchanged and that equivalence is established.
-
-Bundling unpublished changed core code into an extension while continuing to report the old stable engine identity is not an extension-only fix. Conversely, adopting an already released unchanged engine does not authorize publishing that engine again.
+The extension builder preserves the source manifest's version, uses the root package version only as the declared engine identity, and emits packaged `build-info.json` plus its build receipt. These record both versions and source/cleanliness with unpublished-build standing. They are build evidence, not Store availability. The existing candidate `version_name` remains source-only until deliberately prepared for an actual release.
 
 ## Shared changes and compatibility
 
-Independent releases must not create independent meanings of Changed, policy evaluation or evidence. For an engine correctness, security, policy or schema change, identify affected npm/Action/standalone, extension, App and Playground consumers in the change or release account. State which builds include it, which are unaffected, and any remaining rollout or mitigation. Do not call the change shipped everywhere because npm succeeded.
+Independent releases must not introduce independent meanings of Changed, policy evaluation or evidence. For an engine correctness, security, policy or schema change, account for affected npm/Action/standalone, extension, App and Playground consumers in the change or release account. State which builds include it, which are unaffected, and any outstanding rollout or mitigation. npm success does not establish that a fix shipped everywhere.
 
-Exercise shared conformance with equivalent inputs, policy and available evidence. Host acquisition and execution differences must remain explicit; matching numbers alone do not establish parity. An unchanged consumer does not need publication merely to satisfy a checklist.
+Exercise shared conformance with equivalent inputs, policy and available evidence. Preserve host acquisition/execution differences explicitly; matching version numbers alone do not prove parity. Avoid a mandatory matrix for unchanged consumers when cheaper relevant evidence establishes their standing.
 
-Report, configuration, expression, metric, agent-projection and protocol/schema identities retain their own compatibility rules. Neither an application major nor an npm version silently changes `version: 1`, `diffdevil-expr/1` or a metric profile. See [Schemas and compatibility](manual/reference/language-and-contracts/schemas-and-compatibility.md).
+Report, configuration, expression, metric, agent-projection and protocol/schema identities retain their own compatibility rules. An application or npm major does not silently change `version: 1`, `diffdevil-expr/1` or a metric profile. See [Schemas and compatibility](manual/reference/language-and-contracts/schemas-and-compatibility.md).
 
-The Skill declares and verifies the runtime capabilities/version range it actually needs. Installing newer instructions must not silently upgrade or repin a user's executable. A bundled runtime is selected explicitly and exercised as an installed consumer. The App documents supported self-hosted upgrade paths and any data migrations; a service rollback does not imply its database can safely be rolled back.
+The Skill makes known required capabilities and concrete runtime prerequisites explicit, then verifies the executable's actual help, schemas and supported commands. No universal Skill-to-CLI compatibility matrix is introduced. A bundled runtime is selected and exercised explicitly. App releases document supported self-hosted upgrades and data migrations; rolling back service code does not establish that its database can safely roll back.
 
-## Channels, tags and update discovery
+## Tags, channels and latest-version discovery
 
-Exact release tags are immutable. Stable tags follow the family table. Prerelease tags use that same prefix and a SemVer prerelease suffix, for example `extension-v1.4.0-rc.1`; they are not stable update candidates. Development builds retain a source revision and development standing rather than inventing a published release.
+Exact release tags are immutable. Stable tags use the family table. Prerelease tags retain that prefix and a SemVer suffix, such as `extension-v1.4.0-rc.1`; they are not stable update candidates. Development builds retain source identity and development standing rather than inventing a published release.
 
-Only the open-tool family owns the existing moving Action major aliases such as `v1`. An App, extension or Skill release must never move them. Exact-SHA Action pins stay exact. See [Action distribution](integration/action-distribution.md).
+Only the open tool owns moving Action major aliases such as `v1`. Extension, App and Skill publication must never move them. Exact-SHA Action pins remain exact. See [Action distribution](integration/action-distribution.md).
 
-A repository-wide GitHub `latest` result is not a family-aware update answer. Reserve the repository's promoted Latest release for the stable open tool when publishing: explicitly select `make_latest` for that open-tool promotion and set it to `false` for other families. Even with that convention, family discovery filters the actual release records rather than depending on a global shortcut.
+Reserve GitHub's promoted Latest release for the stable open tool: promotion is explicit, and other families use `make_latest: false`. That display convention is not a family-aware discovery API. Consumers still filter actual release records.
 
-For stable family discovery, read the repository's [GitHub Releases API collection](https://api.github.com/repos/Wolfsblvt/diffdevil/releases), follow its pagination, exclude drafts and prereleases, require the intended tag prefix and a valid stable version, and compare versions numerically within that family. Read the actual selected release's assets. Do not assume the first API page or most recent publication is the highest version, and do not invent a download URL for an absent asset. See the [GitHub release API](https://docs.github.com/en/rest/releases/releases).
+For stable discovery, read the repository's [GitHub Releases collection](https://api.github.com/repos/Wolfsblvt/diffdevil/releases), follow pagination, exclude drafts and prereleases, require the intended tag prefix and a valid stable version, and compare SemVer numerically within that family. Read the selected release's actual attached manifest/assets. Do not assume the first page or most recent publication has the greatest version, invent missing asset URLs, or silently substitute an older release when a selected release is inconsistent. See the [GitHub release API](https://docs.github.com/en/rest/releases/releases).
 
-A tool is up to date relative to its own family and selected distribution channel. The latest GitHub extension source/archive is not proof that the same version has cleared a browser store. Registry, Store, GitHub release assets and managed-service deployment readback are separate availability facts. No update UI compares an extension version with the npm version or upgrades a stable installation to a prerelease without a channel choice.
+Up to date is relative to the tool and selected channel. A GitHub extension archive does not prove the same version cleared a Store. Registry, Store, release-asset and managed-deployment readbacks are separate facts. No update prompt compares an extension number with npm, or moves a stable installation to a prerelease without a channel choice. Unknown freshness remains unknown, not a failure of the installed tool.
 
 ## Browser version constraints
 
-The source manifest owns the extension version. Builders preserve it and record the engine version separately; they must not overwrite it from root `package.json`. Stable extension releases use three numeric components that satisfy [Chrome's manifest version rules](https://developer.chrome.com/docs/extensions/reference/manifest/version), including the per-component limit of 65535. `version_name` is display text, not an update-ordering mechanism.
+The extension manifest, never root `package.json`, owns the browser update number. Stable extension releases use three numeric components satisfying [Chrome's version rules](https://developer.chrome.com/docs/extensions/reference/manifest/version): no leading zeroes, no all-zero version, and each component at most 65535. `version_name` is display text, not update ordering.
 
-A SemVer prerelease suffix cannot be copied directly into Chrome's numeric `version`. For development previews retain explicit candidate/source standing. Before publishing a prerelease update channel, choose and document a monotonic numeric mapping and separate channel/listing that cannot overtake stable consumers accidentally. Never silently strip a suffix or use build metadata as an update-ordering workaround. The existing unpublished-candidate `version_name` must not survive an actual stable Store submission as if it were still source-only.
+A SemVer prerelease suffix cannot be copied into Chrome's numeric `version`. Development previews retain explicit candidate/source standing. Before publishing a prerelease update channel, document its monotonic numeric mapping and separate channel/listing so it cannot accidentally overtake stable consumers. Do not silently strip a suffix or rely on build metadata for ordering. Stable submission must deliberately remove or replace the unpublished-candidate display text; this document does not submit anything.
 
-## Skill, runtime and compound archives
+## Skill, standalone and bundled carriers
 
-The canonical Skill version is independent of the runtime. Existing archive flavors remain useful:
-
-| Archive | Identity and owning release |
+| Carrier | Release identity |
 | --- | --- |
-| Skill-only | Skill version; published under the Skill family |
-| Standalone runtime | Open-tool version; published under the open-tool family |
-| Bundled Skill/runtime | Explicit pair of Skill and open-tool versions, plus source and integrity metadata; no third suite version |
+| Skill-only | Skill version under `skill-vX.Y.Z` |
+| Standalone runtime | Open-tool version under `vX.Y.Z` |
+| Bundled Skill/runtime | Explicit pair of versions, source and integrity metadata; no third suite version |
 
-The existing `productVersion` field in release-carrier metadata names the open-tool/runtime version. It is not an umbrella version for the extension, App or Skill. `skillVersion` and `skills.diffdevil.version` name the canonical Skill. Keep these meanings consistent in builders, examples and consumers.
+In carrier metadata, `productVersion` means open-tool/runtime, not an umbrella version. `skillVersion` and `skills.diffdevil.version` mean canonical instructions. Skill-only metadata omits unrelated runtime versions; standalone internal metadata omits unrelated Skill versions. A bundle names both.
 
-`npm run build:release` may build several candidate flavors together as a qualification convenience. That does not require publishing every flavor or publishing npm. The selected release's manifest and attached assets must agree exactly: a Skill-only release must not advertise standalone or bundled downloads that were not attached. Family publication may reuse an already published, verified unchanged component; it may not silently rebuild different bytes under that component's old version.
+`tools/build-release.mjs --family skill` produces only the Skill archive and manifest without building the engine. `--family open-tool` selects the standalone runtime; `--include-bundle` adds a qualified pair when intended. The default `all` preserves all-three-carrier qualification and marks its manifest as a candidate. Exact commands, inputs and output paths belong to [Skill distribution](integration/agent-skill-distribution.md), not a second copied recipe here.
 
-A compound archive is identified by its exact component tuple and qualified contents. A release account states where that bundle is published and which engine it includes. Reusing a bundle elsewhere means reusing the identical archive bytes; a changed component, wrapper, executable closure or material installation payload requires a new applicable version/identity, not replacing the previous asset. Do not derive a bundled filename from whatever unrelated release happens to be Latest.
+A selected publication advertises only its actual attached assets. Use a clean intended output or select the manifest's exact asset list; never publish a directory wildcard containing stale files. A Skill-only update need not include a new bundle. A consumer can install those instructions beside a compatible existing runtime. An absent bundle is disclosed, not invented or replaced with older instructions silently.
 
-A Skill-only update remains possible when no new bundle is warranted. The consumer can install that Skill beside an already compatible runtime. If the selected release has no bundled asset, say so and use the explicitly supported separate-install route; do not silently choose an older Skill or claim an absent bundle exists. The maintained [Skill distribution contract](integration/agent-skill-distribution.md) and [install/update procedure](../skills/diffdevil/references/install-and-update.md) own the full routes.
+A changed wrapper or material installation payload is classified in its owning family or explicit component-pair artifact, not hidden by reusing a published archive identity. Reusing an existing archive in another location means identical bytes. Published assets, canonical components and compound wrappers remain distinguishable.
 
-## Present versions without making users decode the repository
+## Public presentation and release communication
 
-Use surface-qualified labels: `diffdevil CLI 1.7.4`, `diffdevil for GitHub 1.3.0`, `diffdevil App 1.2.0`, `diffdevil Skill 1.1.0`. Keep the actual engine version and exact source in About/diagnostic details. Preserve the CLI's existing machine-consumable version interface rather than changing it just to add branding.
+Label the installed surface: `diffdevil CLI 1.7.4`, `diffdevil for GitHub 1.3.0`, `diffdevil App 1.2.0`, `diffdevil Skill 1.1.0`. Put engine/source detail in About or diagnostics. Preserve the CLI's existing machine-consumable version output rather than changing it just for branding.
 
-The extension can say `Extension 1.3.0; analysis engine 1.7.4`. Hosted users normally need service availability and feature information, not an upgrade prompt; operators and self-hosters need the exact App release/build. Never display an unverified Up to date claim. Support requests identify the surface, its version/channel, engine/source and relevant comparison evidence, not merely “diffdevil 1.x”.
+Hosted users normally need service/feature availability, not a version-management chore. Operators and self-hosters need exact App release/build identity. Support requests identify the surface, version/channel, engine/source and relevant comparison evidence rather than merely “diffdevil 1.x”. Do not display unverified Up to date claims.
 
-Maintain one joined product release history with clearly labeled family entries. A coordinated feature announcement names which releases contain it and each channel's availability. A family-specific fix does not need a fictional suite launch, nor does a docs-only PR need an invented executable release note. Dated notes remain dated; current guidance links to them without rewriting historical availability.
+Keep [one joined release history](releases/README.md) with clearly labeled family entries. A coordinated announcement states which releases contain the feature and each channel's availability. Family-specific fixes do not require suite launches; documentation-only PRs do not invent executable release notes. Dated notes stay dated.
 
-## Preparing and publishing a family release
+## Preparing the next release
 
-Resolve the chosen family, its previous immutable release, the intended new version and the candidate source. Account for all changes included since that family's previous release, including shared code and packaging. Update only the owning metadata and genuinely affected derivatives; do not run a blanket repository version bump.
+Resolve the chosen family, previous immutable release, new version and exact candidate. Classify everything newly included, including shared code, packaging and dependencies. Update only the owning metadata and affected derivatives, never a blanket repository bump.
 
-Build and exercise the actual distributed consumer. Check version/source identities, compatibility, dependency closure, notices, archive contents and any migration/update behavior. Keep generated Actions under their existing rebuild-and-compare procedure. Qualification is performed on the exact candidate; an old green run or a matching manifest number is not proof for changed bytes.
+Build and exercise the actual distributed consumer. Check version/source identity, supported runtime, compatibility, dependency closure, notices, archive contents and migration/update behavior. Generated Actions retain their rebuild-and-compare procedure. An old green run or matching metadata is not proof for changed bytes.
 
-Prepare the family-scoped release account and manifest using actual assets and availability. Keep one coherent explanation of the user result, breaking changes, upgrade path and affected surfaces. Do not advertise Store/service availability before provider readback. Publication needs its own authorization; this versioning decision is not that grant.
+Prepare the family-scoped release account and exact asset manifest, then perform only separately authorized effects through [Publication procedure](publication-boundary.md). Read actual registry, tag, alias, Store and deployment identities back. A failed later channel does not erase an earlier successful publication, nor does earlier success prove the later one.
 
-Publish only the selected family effects under [Publication procedure](publication-boundary.md), read them back, and record the actual resulting release/registry/store/deployment identities. Never overwrite an already published exact version. Moving an Action alias, accepting App traffic, applying migrations and submitting to a Store are distinct effects even when several are coordinated.
-
-## Adoption in the current repository
-
-This decision does not retroactively renumber `v1.0.0`, change its bytes, publish custom assets that are not present, or declare the App/extension generally available. Existing source versions can remain as unreleased candidates until the relevant family is actually cut.
-
-Before the next release, use this contract to verify the chosen family's metadata, scoped tag/discovery, manifest-to-asset agreement, engine provenance and public display. The extension build's former root-version overwrite must be removed. Skill install instructions must select a Skill release rather than use a repository-wide `latest/download` URL. App release metadata and operator build identity must be established before its first named release. These are concrete release obligations, not a new product-design fork or permission to ship inconsistent metadata.
+This adoption does not renumber `v1.0.0`, publish absent custom assets, or declare the App or extension generally available. Current source versions remain candidates until cut. The App's first named release still needs its selected non-null version and operator diagnostic/deployment integration; Store release preparation still needs truthful candidate display/channel handling. Those are concrete release obligations under this settled contract, not another product-design fork.

@@ -32,23 +32,25 @@ A source archive without built output or dependency closure is not that complete
 installation. Follow its documented build route only when the necessary runtime
 and dependencies are actually available.
 
-When a release has published the carriers, obtain the stable manifest from:
+When carriers have been published, use the family-scoped lookup in
+[Install and update](install-and-update.md#obtain-one-complete-source-snapshot).
+For the standalone CLI choose the open-tool `vX.Y.Z` family; for a selected
+Skill/runtime bundle verify that exact pair in its published release. Read its
+actual `diffdevil-release-manifest.json` asset, not a repository-wide Latest URL.
 
-```text
-https://github.com/Wolfsblvt/diffdevil/releases/latest/download/diffdevil-release-manifest.json
-```
-
-`assets.standalone` names the install-free Node 22+ CLI ZIP;
-`assets.bundled` names the same runtime together with the complete Skill. Verify
-the selected archive against its manifest SHA-256 before extracting it into a
-clean directory. Both carriers expose `scripts/run.mjs`:
+`assets.standalone` names an install-free Node 22+ CLI ZIP when attached;
+`assets.bundled` names a runtime together with the complete Skill when attached.
+A Skill-only release need not contain either. Verify the selected archive against
+its manifest SHA-256 before extracting it into a clean directory. Do not infer a
+missing asset or silently substitute another Skill/runtime pair. Both runtime
+carriers expose `scripts/run.mjs`:
 
 ```sh
 node /path/to/extracted/scripts/run.mjs --version
 node /path/to/extracted/scripts/run.mjs analyze --cwd /path/to/mounted/repository --format agent
 ```
 
-Their internal manifests bind the source commit, product version, file hashes,
+Their internal manifests bind the source commit, open-tool version, file hashes,
 and dependency closure. The bundled carrier additionally binds Skill SemVer.
 The top-level release manifest records the archive's compressed/uncompressed
 size, member count, largest members, executable/native extensions, and major
