@@ -17,10 +17,10 @@ This document records durable product and repository choices whose rationale wou
 
 ### D002 — One repository and one public npm package
 
-**Status:** Settled
+**Status:** Settled repository/package boundary; cross-family version coupling superseded by D044, 2026-09-30.
 **Selected:** One repository contains the CLI, library, GitHub Actions, specifications, examples, and distribution build. One npm package exposes the CLI and public TypeScript API, with subpath exports where useful.
 
-**Why:** All surfaces consume one semantic engine and should version together. Separate packages would add publication and compatibility burden before independent consumers require it.
+**Why:** All surfaces consume one semantic engine. Separate packages would add publication and compatibility burden before independent consumers require it. D044 narrows the original “should version together” rationale to the open-tool release family; sharing this repository or engine does not couple the extension, App or Skill version.
 
 ### D003 — diffdevil is a portable diff-policy engine
 
@@ -177,7 +177,6 @@ changes the available evidence, not the chosen language or complete product.
 **Selected:** Reports that contain `metrics` also contain an exactly matching
 `metricTypes` map whose entries are `integer` or `float`. Built-in raw, line and
 file measurements retain their fixed integer types.
-
 **Why:** The prepared report stored only measurements for custom metrics. An
 integral-looking float would become indistinguishable from an integer after JSON
 serialization, changing typing, overflow and later arithmetic. Inferring from
@@ -271,9 +270,7 @@ Separating boolean typing from root availability repairs the capability without
 weakening rule isolation or unknown handling.
 
 **Desired-effect boundary:** Plans reject contradictory assignments and preserve
-held rules' owned labels. Bound parameters and resolved template text affect policy
-identity. Local diff plan targets use `--target-repo`/`--target-pr`, separate from
-`--repo`/`--pr` GitHub source selection. The plan schema's PR minima were corrected
+held rules' owned labels. The plan schema's PR minima were corrected
 from zero to one to agree with the existing report reader and positive-PR target
 contract. A transported plan is validated data, never proof of current provider
 state, trusted policy or write authority.
@@ -717,3 +714,21 @@ manifests, and the accepted shared package at
 **Current consequence.** The playground Worker config lives at `apps/playground/wrangler.jsonc`; local Worker and dry-run commands select it explicitly. Its Worker name and deployed identity remain unchanged. The category reflects the application surfaces and their explicit licence map in [`LICENSES/README.md`](../LICENSES/README.md); it does not create another package or deployment boundary.
 
 **Sources.** Wolf's question about root-level sprawl in [emergency-meeting #453](https://github.com/Wolfsblvt/emergency-meeting/issues/453#issuecomment-5822920184); Juno's [root check](https://github.com/Wolfsblvt/emergency-meeting/issues/453#issuecomment-5822992831); Wolf's decision in [#453](https://github.com/Wolfsblvt/emergency-meeting/issues/453#issuecomment-5823081536); [Component and licence map](../LICENSES/README.md).
+
+## D044: Version the tools people install, not the whole repository
+
+**Status:** Settled by Wolf and Nyxara, 2026-09-30. Source adoption and qualification are distinct from publishing any release.
+
+**Decision.** diffdevil remains one product family and one deterministic engine, with four release families. The public npm library/core, CLI, root and three sub-actions, and standalone runtime share the open-tool version. The browser extension, App server/dashboard together, and canonical Agent Skill each own an independent SemVer. The website, manual, Playground and internal packages do not gain public counters simply because they are separate directories or deployments. No family synchronizes major, minor or patch numbers for cosmetic consistency.
+
+**Why.** Users install and operate these tools independently. A browser-layout fix should not force an unchanged npm package, Action, Skill or service release; a service fix should not wait for a Store publication. Version changes should communicate the affected consumer's contract rather than another surface's activity. The closely related CLI/library/Action/standalone family deliberately accepts bounded wrapper-only release churn. Product coherence comes from shared behavior, explicit contents, clear names and joined release communication, not matching integers.
+
+**Rejected.** One mandatory version and publication wave for every tool; periodic major/minor catch-up; a global counter that publishes only changed tools but still creates unrelated version jumps; independent semantic implementations; and another public suite/marketing version. Matching version numbers would not make Store, registry and service rollout atomic or establish shared-engine parity.
+
+**Consequences.** [Release families and versioning](RELEASING.md) is the canonical operational contract. Existing open-tool `vX.Y.Z` tags and Action `vMAJOR` aliases retain their meanings. Other exact release tags are `extension-vX.Y.Z`, `app-vX.Y.Z` and `skill-vX.Y.Z`. Update discovery and availability are family- and channel-specific, never the repository's unfiltered latest release. Every distribution identifies the actual engine and exact source/build it contains; a later checkout retaining an old package version must not masquerade as the published artifact. Compound Skill/runtime archives identify both components and their compatibility. Shared semantic, correctness and security changes are assessed and coordinated across affected consumers without forced unrelated publications. Public report, policy, language and metric contracts remain independently explicit.
+
+**Presentation.** Name the installed surface beside its version; put engine/source detail in diagnostics. A lower extension number does not mean an outdated engine. Keep one joined product release history with labeled family entries and accurate channel availability. Do not invent releases or retroactively renumber the immutable `v1.0.0` artifacts.
+
+**Supersession.** D002's universal version-together rationale is narrowed to the open-tool family. D014 and D029 still select one repository and joined product development; their references to a shared release lifecycle do not impose cross-family version or publication lockstep. The existing source/package/publication distinction in D016 and artifact-integrity boundary in D041 remain intact.
+
+**Source.** Wolf's direct approval of the independent-family recommendation and instruction to author its durable guidance on 2026-09-30. The public contract is recorded here without reproducing the private design conversation. Reopen only for an actual change to an independently consumed boundary or concrete release/compatibility evidence, not unequal version numbers.
