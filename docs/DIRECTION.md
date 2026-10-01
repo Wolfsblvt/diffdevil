@@ -2,220 +2,82 @@
 
 ## Meaning
 
-The complete destination remains a portable diff-policy engine, with useful
-language-free entry points and full detail depth when needed. This document owns
-the current implemented frontier and the active release and application work.
-The Vision is not redefined as whichever first example was easiest to ship.
+The complete destination remains a portable diff-policy engine with useful language-free entry points and full detail depth. This document separates current implemented/released evidence from selected application work. [Vision](VISION.md) owns the destination; [dashboard capabilities](dashboard.md) owns the expanded App experience; [Decisions](DECISIONS.md) preserves rationale. A selected capability is not deployed merely because its documentation is accepted.
 
-## Current product frontier
+## Current open-product frontier
 
-The shared engine serves local Git, unified diffs, saved reports, and GitHub PRs.
-It provides raw and replacement-aware line facts, file facts and scopes, correlated
-bounded evidence, detail parsing/binding/type checking/evaluation, JSON/YAML policy,
-queries, checks, bands, plans, and optional managed labels and owned comments.
-The CLI and typed public exports are installed-package tested.
+The shared engine serves local Git, unified diffs, saved reports and GitHub PRs. It provides raw and replacement-aware line facts, file facts/scopes, correlated bounded evidence, detail parsing/binding/type checking/evaluation, JSON/YAML policy, queries, checks, bands, plans and optional managed labels/owned comments. The CLI and typed public exports are installed-package tested.
 
-The root, analyze, apply, and sync-labels Actions share one host and engine. Their
-committed native-ESM distribution runs without a consumer install. Root no-config
-uses `size@1`, creates missing definitions, reconciles only its managed group, and
-posts no comments. Analyze is read-only. Workspace policy cannot authorize Action
-writes; base and immutable pinned policy are distinct from hostile diff data. An
-optional `policy-token` confines trusted base/pinned policy and relative-template
-reads to a separate credential; PR acquisition and all effects remain on
-`github-token`, while omitting the new input preserves the single-token route.
+The root, analyze, apply and sync-labels Actions share one host and engine. Their committed native-ESM distribution runs without a consumer install. Root no-config uses `size@1`, creates missing definitions, reconciles only its managed group and posts no comments. Analyze is read-only. Privileged writes use trusted base or immutable pinned policy, never PR-head configuration or code.
 
-All aliases remain supported. Simple arithmetic and matching examples use normal
-detail formulas; file selection and quantifier shortcuts retain their useful job.
-[The complete horizon](implementation-horizon.md) remains selected beyond these
-release-candidate paths.
+An optional `policy-token` confines trusted policy and relative-template reads to a separate credential; PR acquisition and effects remain on `github-token`. Omitting it preserves the single-token route. All supported aliases remain. Simple arithmetic and matching examples use ordinary detail formulas; file-selection and quantifier shortcuts keep their useful job. [The implementation horizon](implementation-horizon.md) is not reduced to the first executable examples.
 
-## Active application frontier
+## Released evidence
 
-diffdevil remains an open-source CLI, TypeScript library, and workflow Actions tool.
-The managed App is an optional convenience for adopters, not the product's centre.
-The public playground is a separate free learning and configuration experience.
+The stable open-tool release was read back from exact `v1.0.0` snapshot `0827485`: npm `@wolfsblvt/diffdevil@1.0.0`, immutable `v1.0.0`, its GitHub Release and maintained Action alias `v1`. A fresh Windows Node 24 consumer installed and exercised the registry artifact outside the checkout. Both immutable and maintained Action refs exercised the root and three sub-actions. [Qualification](qualification.md) separates current and historical evidence.
 
-The three ways to operate diffdevil are: run it yourself (CLI, TypeScript API, GitHub
-Actions), bring Changed into GitHub (the browser extension, *diffdevil for GitHub*: a
-personal in-place view with no repository installation, workflow or write access), and
-let it run for you (the GitHub App: repository-level managed operation). The public
-website presents them in that order, makes the extension the easiest adoption route and
-its primary action, and keeps the open package visibly first-class. The playground is
-the trial surface, not a fourth route. The public category descriptor is *Composable
-diff analysis and automation for GitHub and the CLI.*
+The GitHub Marketplace listing is public for that open-tool release. External-fork and live partial-write journeys remain separately qualified claims. Source, npm, Action refs, Marketplace, playground, website and managed App are independent outcomes; one release is not evidence that all application surfaces are available.
 
-Current source contains the local-first Chrome extension under
-`apps/browser-extension/` and the reusable browser entry under
-`src/diffdevil/browser/`. The original source was qualified with an installed Manifest V3 worker and native
-Chrome storage. A later functional correction is an open candidate, not current
-main: its signed-in private-PR coverage and current-main integration remain distinct from
-anonymous/fixture checks. The in-place [Extension Grammar v1](../packages/design/extension-grammar-v1.dc.html)
-is ratified; the repaired installed experience still needs qualification. Windows
-interactive accessibility, native writable-label readback, managed-App delivery and
-Store submission/publication are not established by the original source checks.
+## Current application evidence
 
-Current source contains the first read-only measurement playground under
-`apps/playground/`, backed by the shared engine and versioned response contract.
-That exact application is live at
-[`diffdevil-playground.wolfsblvt.workers.dev`](https://diffdevil-playground.wolfsblvt.workers.dev)
-on Cloudflare Workers. It establishes the shared-engine browser measurement route,
-not the complete configurable playground or commercial service.
+The three ways to operate diffdevil remain the open CLI/library/Actions, the personal browser extension and optional repository-level managed App. The public playground is a separate free learning/configuration surface, not another operating route or required account funnel. Public positioning keeps the open product complete and the extension easy to adopt.
 
-The managed GitHub App runtime and admission/settings backend have been deployed
-to Cloudflare Workers. The contained canary exercised a native check, managed label
-and operational result, then restored its fixture. A later bounded repository
-admission enabled execution with history still off; admission is not proof that its
-ordinary configured PR policy ran. The canonical public ingress is now
-`app.diffdevil.dev`: GitHub's signed webhook reached the Worker and Queue, and a
-pending-enable repository delivery was rejected with `E_ACCESS_DISABLED` and zero
-effects. The first enabled repository policy result remains unobserved. The
-route-neutral dashboard authorization/session source is qualified on `main`, but
-its D1 migrations, live OAuth/cookie route, updated Worker deployment, visible
-dashboard experience and first administrator journey remain unobserved or held
-for co-design. Wider recovery, history, offboarding and commercial service remain
-separate accepted product work.
+Current source includes the Chrome extension under `apps/browser-extension/` and browser entry under `src/diffdevil/browser/`. The original source was qualified with an installed Manifest V3 worker and native Chrome storage. A later functional correction, signed-in private-PR coverage, current-main integration and the repaired installed experience have their own evidence. Original anonymous/fixture checks do not establish Store publication or full private use. The Extension Grammar v1 remains the accepted reference.
 
-The selected implementation direction is now explicit:
+The first read-only shared-engine playground under `apps/playground/` is live on its previously qualified Cloudflare Worker route. It is not evidence for the complete configurable playground or commercial service. The public website source contains the accepted homepage, configurable browser playground, curated specimen catalogue, Agent Skill/setup payloads, App page, FAQ and legal/privacy routes. Manual source is explicitly selected and rendered through its own application host, joined to the site by theme/search. Source and earlier local verification do not establish complete website publication.
 
-- Retain `.diffdevil.yml` as the single conventional repository file. Keep current
-  explicit configuration, trusted policy sources, and Action step-level overrides.
-  Do not introduce automatic `<owner>/.github` policy discovery.
-- Extend shared lowering for partial convenience settings while preserving explicit
-  declaration/array semantics. App account/organization defaults sit below
-  repository overrides; Actions do not inherit dashboard settings. The exact
-  current-versus-selected boundary is in [presets and shortcuts](manual/policy/configure.md#know-which-host-supplies-each-layer).
-- Build the [complete managed App](integration/github-app.md): installation and
-  preset setup, account/organization administration, effective policy and origins,
-  labels, owned comments, native check summaries, and optional history.
-  `Checks: write` belongs to the selected App permission contract. Earlier omission
-  from the first canary is not a removal of that functionality.
-- Keep the [playground](manual/use/playground.md) public, unauthenticated, read-only,
-  and independent of App history. Carry curated examples, configuration editing,
-  terminal/agent/GitHub-preview/explanation views, and portable exports through one
-  shared engine. Keep its own page and the accepted header, hero and measurement-section routes,
-  without restoring a separate homepage route card.
-- Implement the [data boundary](PRIVACY-AND-DATA.md): seven-day recovery records;
-  opt-in aggregate and pathless per-file numeric history; thirty-day free history;
-  paid history without automatic age expiry while its entitlement/service remains
-  active, subject to explicit deletion and disclosed limits. No permanent history
-  is collected before opt-in. Prices and usage quotas are not a commercial offer.
-- Target Cloudflare Workers, Queues, and D1 directly rather than first building a
-  temporary VPS-specific App. Keep application logic and persisted meaning outside
-  provider bindings, retain Node consumers, and qualify useful export/import.
-  Avoid a second complete operating stack or generic provider framework.
-- Keep App, website, playground, and service source in this repository under the
-  AGPL application boundary. Self-hosting is intentional and documented, not the
-  primary homepage pitch. The reusable software remains MIT.
+The managed GitHub App runtime and admission/settings backend have been deployed to Cloudflare Workers. A contained canary exercised a native check, managed label and operational result, then restored its fixture. Later repository admission enabled execution with history still off. The canonical ingress is `app.diffdevil.dev`; a signed webhook reached Worker/Queue and a pending-enable repository was refused with no effects. Admission and ingress evidence are not proof of every ordinary configured PR policy.
 
-The public website source now exists under `apps/website/`: the accepted homepage,
-the complete configurable playground running the shared engine in the browser,
-the shared catalogue of seven real pull requests and sixteen variants, the
-complete canonical Agent Skill and five setup payloads, the public App page, the
-standalone FAQ and legal/privacy routes. The manual has its own explicit source
-selection and static host, joined to the product site through routes, search and
-theme. Source and earlier local qualification do not establish a deployed website.
-Publication follows qualification of the complete joined candidate and separately
-accepted extension, dashboard and Support/Sponsor consequences; it is not waiting
-for a second authorship of the already-admitted Skill, setup or catalogue. The playground
-API gained `/api/report` and `/api/head` for browser-side replay and freshness;
-the live Worker still serves the earlier contract until it is redeployed.
+Route-neutral dashboard authorisation/session source is qualified on main. Its migrations, live OAuth/cookie route, updated Worker delivery, visible dashboard and complete administrator journey remain separately unobserved or held for co-design. Existing history storage/query work uses the older pathless projection and analysis-time representative basis. It must not be advertised as already providing lifecycle-backed merged populations, named file trajectories, imports, selective briefs or public dashboards.
 
-The live playground and managed App Workers consume the same static, bundler-visible
-generated validator boundary as Node and the Actions. The hosted applications reuse
-that portable engine boundary rather than introducing a hosted engine fork.
+## Selected dashboard direction
 
-The live measurement playground qualifies one operating path before the dashboard
-and all richer views exist. It does not satisfy the complete App or playground
-outcome. Carry the
-remaining user journeys through implementation and qualification, rather than
-reclassifying them as optional polish or requiring the product to be designed again.
-The owning workplace carries current assignments and returns; these documents
-carry the selected product contract.
+The expanded product is now [an activity-first App](dashboard.md), not an administrator-first control room. Its signed-in home aggregates authorised repository activity. Repository, PR and file detail views are first-class destinations; settings and operating controls are separate and permission-aware.
 
-## Current release preparation
+PR lifecycle/development and file-level activity receive equal treatment. General file/repository history uses one final recoverable comparison per merged PR. Open-PR development and current overlap are separate populations. No general all-branch/direct-commit throughput system is selected for the starting scope.
 
-The final pass adds task-first guides and tested examples for one-file PR labeling,
-local scripts, source/test signals, and opt-in comments. User documentation has a
-durable editorial/source home in [Documentation design](documentation.md). The
-selected website/documentation tranche renders these sources rather than
-introducing a competing wiki.
+Prominent file and repository clouds default to distinct merged-PR change frequency. Explicit alternate measures include Changed volume, raw churn, growth/shrinkage, concentration and **Turnover**, displayed as a multiple with a brief explanation. The exact Turnover denominator and co-change/brief relevance algorithms remain concrete calculation work, not values invented by documentation.
 
-Public technical references retain the founding choices, alternatives, research,
-and earlier implementation evidence. Private activation instructions and raw
-conversations are excluded from the publication history. Unique original records were admitted once to the Company's private data
-archive; private repository and path coordinates are intentionally not part of
-this public product documentation. The consumed transfer archive is not a product
-asset. The earlier complete development-history carrier is historical, not this
-public source checkout.
+Selected named history retains repository names, relative paths, filenames, numerical file measurements, comparison identities and lifecycle facts after explicit history enablement. Permitted observations include analytically excluded files so current-policy recalculation can change the view without losing its measured foundation. File/source contents and patches remain transient and must not be stored in secondary logs or queues. No people-throughput or performance analytics is selected. [Privacy and data](PRIVACY-AND-DATA.md) replaces the former product-wide pathless-only restriction while distinguishing old implementation evidence.
 
-The CLI version reads installed package metadata instead of a hardcoded development
-string. Package qualification uses npm's Windows launcher dispatch on Windows and
-checks an alternative release-version specimen. Workflow summaries now include
-source revisions, individual raw/replacement facts, file counts, and policy metrics.
-These changes do not alter measurement semantics.
+Ordinary analytics uses the current effective policy. PR detail may show an actually retained original merge-time result as an alternate interpretation. Repository-wide parallel policy-era dashboards and rollback are not starting requirements. Repository `.diffdevil.yml` overrides App defaults; provenance remains visible.
 
-## Repository layout and delivery
+The optional deterministic PR brief selects useful historical/current context and links to full PR detail. It joins the owned size report when enabled, refreshes affected open PRs after own/neighbour/policy changes and reopening, and does not keep editing closed replies. A separate optional final summary may be posted on merge. Historical import never posts retroactive replies or labels. Brief settings are App-only bounded controls, not a new template language or `.diffdevil.yml` surface.
 
-The reusable product core, including its tests/contracts/presets, is under
-`src/diffdevil/`. `apps/playground/` owns the AGPL application adapter, public assets,
-application response contract and focused tests. `actions/` owns distribution;
-`docs/` owns manuals/examples/research; `tools/` owns build and qualification scripts.
-One package and shared semantic engine remain.
-The root Action address is unchanged; sub-actions now use `/actions/analyze`,
-`/actions/apply`, and `/actions/sync-labels`. Old prerelease subdirectory addresses
-are intentionally not retained as duplicate root wrappers.
+The selected [account model](dashboard-access.md) permits any GitHub user to sign in and read connected repositories they currently can access. Individual administration is manual and has the complete useful analytical vocabulary. Team adds delegated administration, linked policies, coordinated refresh, account-wide setup automation and an administrative audit. Personal GitHub accounts can use Team; no per-member billing or GitHub-inaccessible private-repository sharing is selected.
 
-The public checkout itself is the delivery root. The private transfer was
-consumed after durable target readback and is not needed to build or publish the
-tracked tree. Application surfaces stay in the same repository and release
-lifecycle, but their exact directory layout is selected by the implementation
-tranche rather than frozen by this document.
-[The project map](PROJECT-MAP.md) locates current ownership.
+An explicit account default plus per-repository inherit/on/off setting can publish anonymous read-only analytics for eligible public repositories. Private repositories, settings, audit, billing and private sibling context are excluded. Unpublication and privatisation stop public serving.
 
-## Current release standing
+Explicit open-PR scans and resumable historical imports provide all recoverable selected statistics, with recent-first progressive usefulness and live processing priority. Free/paid import limits, revised cost, capacity, prices and subscription account bundles remain a later commercial co-design. This document makes no new commercial offer.
 
-The stable open-tool release is complete from exact `v1.0.0` source snapshot
-`0827485`: npm `@wolfsblvt/diffdevil@1.0.0`, immutable `v1.0.0`, the GitHub
-Release, and maintained Action alias `v1` are read back. A fresh Windows Node 24
-consumer installed and exercised the registry artifact outside every checkout.
-Both immutable `v1.0.0` and maintained `v1` then exercised the root, `analyze`,
-`apply`, and `sync-labels` Action entries through the public refs. Current and
-historical runtime/consumer evidence remains separated in
-[Qualification](qualification.md).
+## Work still required for that direction
 
-The [GitHub Marketplace listing](https://github.com/marketplace/actions/diffdevil)
-is public for `v1.0.0`, owned by `Wolfsblvt`, with **Continuous integration**
-and **Utilities** as its categories. Release-ref Action execution is now observed;
-external-fork and live partial-write journeys remain separate unobserved provider
-claims. Source, npm, Action refs, Marketplace, the live playground, and the
-managed App remain independent observable outcomes.
+The documentation candidate does not implement the expanded model. Remaining outcomes include:
 
-Wolf and Nyxara selected MIT for reusable software and AGPL-3.0-only for
-application/service code. Original documentation prose is CC BY 4.0, runnable
-examples are MIT, and brand/visual assets remain reserved. The
-[licence map](../LICENSES/README.md) distinguishes those surfaces. Wolf authorized the
-public source repository and the v1 publication after this preparation. Public
-source, npm, Action refs, Marketplace listing, security intake, and the website,
-playground, and GitHub App remain separate observable outcomes. Do not imply all
-of them happened because one Git push or release succeeded. Application
-implementation continues independently around the same engine and contracts.
+- joined storage/acquisition/consent for lifecycle and named file measurements, final merged comparisons, excluded observations, administrative audit and current-policy recalculation;
+- qualified imports/open-PR indexing and adaptive provider pacing, without replaying historical effects or resurrecting deleted gaps;
+- deterministic co-change and selective-brief algorithm research followed by implementation;
+- chart/framework research against clouds, relationship exploration, distributions and interactive drill-down, followed by owner-led concrete visual design;
+- full account/delegation/public projection journeys and live authorisation, deletion and publication qualification;
+- linked configuration and automatic repository adoption/open-PR refresh; and
+- separate interactive pricing/allowance co-design using the new workload rather than the old pathless-history cost specimen.
 
-## Preserve the remaining horizon
+Existing backend work can contribute its compatible statistical and query contracts, but its older projection is not the new product ceiling. Exact implementation placement and review remain in the current workplace. Do not declare active worker/provider status merely from an old launch record.
 
-Keep richer explanation/discovery, further measured usability improvements,
-additional qualified platforms, visual identity, the website, playground, and
-GitHub App in their natural product homes. The application surfaces are optional adoption routes but active selected
-implementation, not optional polish. Their implementation still works inside
-out from useful behavior rather than beginning with a hosting control plane. Do
-not add a bundler merely to hide the generated file count; reconsider packaging
-when it has a demonstrated consumer benefit. Do not replace selected source,
-query, policy, effect, or hosted-application capabilities with a size labeler to
-make the release checklist shorter.
+## Preserved architecture and operating boundaries
 
-diffdevil compiles with TypeScript 7, but the website type check still runs Astro's
-checker on an aliased TypeScript 6 (`typescript-6`, `tools/website-typecheck.mjs`):
-tools that embed TypeScript cannot use 7 until its programmatic API stabilizes
-([withastro/roadmap#1321](https://github.com/withastro/roadmap/discussions/1321)).
-When Astro's checker supports the TypeScript 7 API, return
-`website:check` to it and remove the alias, its `@astrojs/check` override and
-Dependabot ignore, and the script.
+Keep `.diffdevil.yml` as the single conventional repository file, with explicit supported alternative/pinned policy sources. Do not add automatic `<owner>/.github` discovery or make Actions inherit dashboard settings. Partial convenience settings and declaration/array semantics use the shared resolver rather than host-specific engines; [configuration](manual/policy/configure.md) owns exact implemented versus selected support.
+
+Cloudflare Workers, Queues and D1 remain the first App adapter. Keep application semantics, persisted identities and export/import meaning outside provider bindings; preserve Node consumers. Self-hosting is intentional, but a generic multi-provider framework or a second complete stack is not selected merely to claim portability. Shared static validators serve Node, Actions and hosted consumers.
+
+The short recovery ledger remains separate from optional history and account state. Paid no-age-expiry intent is not infinite storage. Existing offboarding/deletion protections remain effective until explicitly revised; richer named data does not automatically widen post-access-loss export authority.
+
+Source lives under `src/diffdevil/`, applications under `apps/`, maintained docs under `docs/`, tools under `tools/` and shipped Actions under `actions/`. Generated runtime output is not the authoring source. The manual remains generated from explicit maintained-source selection, not a second hand-maintained documentation copy.
+
+Reusable software is MIT, application/service software AGPL-3.0-only, original prose CC BY 4.0, runnable examples MIT and visual/brand assets reserved according to [the licence map](../LICENSES/README.md). Private co-design transcripts, pricing hypotheses and agent activation material do not belong in this public repository.
+
+## Delivery truth
+
+A documentation PR proves a proposed source description only. It does not enable history, deploy an App, expose private data, publish a dashboard, choose a chart dependency, start a subscription or exercise a user journey. Keep current capability, selected destination, implementation evidence and live operation separate throughout delivery.
+
+The repository compiles with its selected TypeScript toolchain; Astro's checker currently uses its explicitly aliased compatible TypeScript route as recorded in Development/source. A documentation change does not claim to qualify that toolchain or silently replace it.

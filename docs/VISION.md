@@ -2,193 +2,112 @@
 
 ## Meaning
 
-This is the durable product vision for diffdevil: an open-source CLI, TypeScript library, and workflow Actions tool with an optional managed GitHub App. It preserves the complete experience and product boundary independent of the first delivery sequence, current repository maturity, or any single GitHub workflow. The public playground teaches the open product; it is not a hosted-account requirement or another name for the App.
+This is the durable product vision for diffdevil: an open-source CLI, TypeScript library and workflow Actions tool, a personal browser extension, and an optional managed GitHub App. It preserves the complete experience independently of delivery order or any single GitHub workflow. The public playground teaches the open product; it is not an account requirement or another name for the App. [Direction](DIRECTION.md) distinguishes current availability from this selected destination.
 
 ## Centre
 
 > **The devil is in the diff.**
 
-Git and hosting providers expose patches, file lists, and blunt counters. Useful decisions often depend on distinctions those surfaces do not preserve cleanly: additions versus deletions, replacements counted once, which files belong to a scope, whether evidence is complete, which policy matched, and which external effect was actually intended.
+Git and hosting providers expose patches, file lists and blunt counters. Useful decisions depend on distinctions those counters do not preserve cleanly: additions versus deletions, replacements counted once, files belonging to a scope, completeness of evidence, policy meaning and the external effect actually observed.
 
-diffdevil exists to turn those details into trustworthy, portable facts and deliberate automation.
+diffdevil turns those details into trustworthy portable facts and deliberate automation. Its managed memory also helps people understand where and how their codebase changes over time.
 
-The open-source tool is the centre of the product, not a restricted entry tier for a paid service. A developer can use its CLI, library, policy language, and Actions without a diffdevil account or hosted subscription. Managed operation is an optional convenience for repositories that prefer not to own that operational work.
+The open tool is the centre, not a deliberately restricted entry tier. Developers, maintainers, scripts, CI jobs, TypeScript consumers and coding agents can ask precise questions without reimplementing diff parsing, uncertainty, filtering, policy evaluation or metadata reconciliation. No hosted subscription is required to understand one diff or use the complete deterministic engine.
 
-The product should let a developer, maintainer, script, CI job, TypeScript consumer, or coding agent ask a precise question about a change without reimplementing diff parsing, uncertainty handling, filtering, policy evaluation, and GitHub metadata behavior every time.
+## One portable semantic product
 
-## Product promise
+The shared core acquires or consumes a diff, normalises stable facts, distinguishes raw churn from replacement-aware changes, preserves exact/bounded/incomplete/unmeasurable evidence, selects explicit file scopes, calculates named metrics, evaluates queries/checks/bands/rules, emits versioned reports and inspectable plans, and optionally applies only the configured GitHub effects.
 
-diffdevil provides one deterministic core that can:
+Native App checks present those same facts and results. They are not semantic code review, a second measurement engine, a risk score or an automatic instruction to block merging.
 
-1. acquire or consume a diff;
-2. normalize it into stable facts;
-3. distinguish raw churn from replacement-aware changes;
-4. preserve exact, bounded, incomplete, and unmeasurable evidence honestly;
-5. select files through explicit scopes and path policy;
-6. calculate named metrics and evaluate queries, checks, bands, and rules;
-7. emit versioned reports and inspectable effect plans;
-8. optionally apply only the GitHub labels and owned comments selected by policy.
+Meaning survives local CLI use, shell composition, TypeScript embedding, Actions, saved reports, the public playground, extension, managed checks/dashboard and agent workflows. Analysis, policy evaluation, planning and mutation remain distinct. A token does not turn a read into a write. Managed label reconciliation touches only declared members; owned comments identify their own lifecycle; unrelated metadata remains untouched.
 
-The managed GitHub integration also presents native check-run summaries from those same facts and policy results. A check summary is not semantic code review, a new measurement engine, or an automatic instruction to block merges.
+## Useful before learning a language
 
-The same meaning should survive local CLI use, shell composition, library embedding, GitHub Actions, a managed GitHub App, a public read-only PR playground, saved reports, the website/documentation experience, and coding-agent workflows.
+A normal user can analyse a local change, obtain a scalar, test a threshold, list files, apply ordinary PR-size labels or run the read-only Action without learning detail or copying a complete policy file. Common settings lower into the same engine rather than a simplified implementation that later disagrees with advanced use.
 
-## The experience
+Advanced depth includes raw/replacement-aware metrics, named scopes, aggregate and per-file queries, reusable parameters, custom bands/rules, report/plan reuse, label groups and comment lifecycle, alternate sources and direct TypeScript integration. Complexity is available when useful, not an entrance exam.
 
-### Start useful without learning a language
+Machine modes remain clean for pipes, assignment, scripts and agents. Human output remains readable without becoming a machine contract. JSON, JSONL and compact agent projections retain explicit versions and stable semantics.
 
-A normal user should be able to:
+## Know what a number means
 
-- analyze a local change;
-- retrieve one scalar value;
-- check a threshold through exit status;
-- list matching files;
-- apply ordinary pull-request size labels;
-- use the read-only GitHub Action;
+A result identifies its comparison, metric version, scope/exclusions and evidence. A policy result explains the rule and origins. Unknown does not become zero; a bounded value is not presented as an exact midpoint; incomplete collections remain incomplete.
 
-without learning the full detail expression language or copying a complete policy file.
+Visible labels should be concise enough to read. Definitions, applicability and deeper evidence remain reachable rather than forcing every chart legend to become a paragraph. A distinctive name is useful only when its definition is documented and does not imply an unmeasured property.
 
-The advanced language exists because deep configuration is valuable, not because basic use should feel like a compiler course taught during a production outage.
+## Try it publicly and see it in GitHub
 
-### Grow without hitting an artificial ceiling
+The public read-only playground accepts public PRs and reproducible curated specimens. It uses the actual engine, reports and presenters, shows files and raw/replacement-aware facts, permits configuration experiments, explains results and previews intended effects without applying them. It includes usable preset/settings editing, terminal and agent/data views and portable CLI, Action or repository-config exits.
 
-When defaults are no longer enough, the same engine should support:
+The playground is free, unauthenticated and independent of App installation, private access, history and billing. Private-PR playground analysis is not selected. The site leads to the dedicated playground as a trial and learning surface, not a fourth way to operate the product.
 
-- raw and replacement-aware metrics in any meaningful combination;
-- named file scopes;
-- per-file and aggregate queries;
-- reusable parameters;
-- custom bands and rules;
-- report and plan reuse;
-- label groups and comment lifecycle;
-- alternate diff sources;
-- direct TypeScript integration.
+The browser extension, **diffdevil for GitHub**, brings Changed, its decomposition, raw facts, evidence and personal or trusted repository policy into one person's GitHub PR view. It requires no repository installation or write access, uses the same engine locally, does not retain raw patches and does not portray local policy as observed App state.
 
-The basic interface must lower into the same semantics rather than becoming a separate simplified implementation that eventually disagrees with the full language.
+> **The extension changes your view. The App runs for the repository.**
 
-### Know what the number means
+## Use the App without becoming its operator
 
-A result must expose:
+Managed operation removes the need for every adopter to maintain workflows, credentials, runners, upgrades and recovery. The App uses the same engine and portable policy, with native checks, deliberate labels/comments, explainable readback and shared reports.
 
-- what source was compared;
-- which metric version was used;
-- which paths were included or excluded;
-- whether evidence was exact, bounded, incomplete, or unmeasurable;
-- how configured policy reached its result.
+Repository `.diffdevil.yml` remains authoritative over App defaults. Preset, account and repository origins are inspectable. The App does not introduce hidden dashboard inheritance into CLI/Actions or a proprietary replacement for portable policy. Explicit alternative/pinned policy reuse stays supported; automatic account-level `.github` discovery is not selected.
 
-A convenient number is not worth inventing certainty.
+Installation reach, execution and history remain separate choices. A useful current report does not require accepting long-term history. A successful analysis, requested effect and actually observed GitHub result remain different facts.
 
-### Compose it anywhere
+## Give the codebase a useful memory
 
-Machine modes must be clean enough for assignment, pipes, conditional scripts, other CI systems, and agents. Human output should be readable without becoming the machine contract. JSON and other structured outputs should be versioned and stable.
+The App's three jobs are **understand change**, **shape policy** and **run it together**. [The dashboard capability contract](dashboard.md) carries their complete shape.
 
-### Apply effects deliberately
+Its ordinary home is activity-first for readers and collaborators, not settings-first for administrators. Dedicated repository, PR and file views connect overviews to underlying observations. A prominent cloud can reveal frequently changed files; selecting one leads to its history and relationships rather than ending at decoration.
 
-Analysis, policy evaluation, planning, and mutation are distinct.
+PR lifecycle/development and file activity are distinct, equally important subjects. General file/repository history uses one final recoverable comparison per merged PR. Open-PR development, analysed revisions and execution attempts remain separate. Direct-commit/all-branch throughput is not silently included in that population.
 
-A token does not turn reading into writing. An effect plan can be inspected before application. Label reconciliation may remove only declared managed members. Comment lifecycle must identify its own comments. Unrelated metadata remains untouched.
+Named file history supports change frequency, absolute volume, growth/shrinkage, concentration, co-change and **Turnover**, a concise name for change volume relative to file size. Frequency is the default prominent cloud metric. Raw churn remains different from replacement-aware Changed. No hotness, quality, risk or contributor-performance score is inferred.
 
-### Try it before installing it
+History is explicitly enabled and retains the necessary repository names, relative paths, filenames, numerical measurements, comparison identities, observed rename/lifecycle facts and coverage. It does not retain file contents, patches, PR prose or contributor-throughput dimensions. Transient source processing may establish measurements, then discards the contents. [Privacy and data](PRIVACY-AND-DATA.md) owns the exact allowlist and lifetimes.
 
-A public read-only playground should let somebody enter a public pull-request URL and inspect what diffdevil sees: normalized files, raw and replacement-aware measurements, evidence quality, selected metrics, policy results, and the compact projection an automation or coding agent would consume.
+Policy-excluded measurements remain available while ordinary views exclude them. Current effective policy controls the ordinary analytical interpretation. Recalculation changes the view, not observed facts or historical provider actions. An actually recorded original PR result can remain inspectable without building repository-wide policy-era dashboards.
 
-The playground is a real product surface, not a hand-maintained demo. It uses the same engine and public contracts, applies no repository effects, and never turns a public PR into permission to inspect private data.
+Historical import brings all recoverable selected statistics into an established repository, progressively and within disclosed allowances. It does not invent vanished PR states or replay old labels/comments. Current open-PR scanning separately enables today's related-work context.
 
-It has a dedicated page with explanations, curated reproducible examples, selectable presets, editable settings, terminal and agent/data views, a preview of proposed GitHub effects, and an explanation of why each rule matched. It is the no-install trial and learning surface, not an operating route: the website leads to it from the header, the hero and the measurement explanation rather than presenting it as a fourth way to run diffdevil. Users can leave with a CLI invocation, Action example, or repository configuration; installation of the managed App is not the required destination.
+## Bring useful memory back to the PR
 
-Public PR experiments require no account. Private-PR playground analysis is not selected. Learning, configuration experiments, and anonymous public analysis remain independent of App installation, authentication, history, billing, and private repository access.
+An optional selective brief makes historical and neighbouring-work context useful where review already happens. It may identify a frequently changed file, an unusual size within a compatible repository population, another open PR touching the same file, or a historical companion absent from this PR.
 
-### See it where the review already happens
+The brief is deterministic, configurable through bounded settings and intentionally incomplete. It does not need an LLM or a new template language. It joins the existing owned size report, links to full PR detail and updates affected open PRs as relevant facts change. Closed comments are not continuously rewritten; an optional final merge summary is a distinct event.
 
-A browser extension, **diffdevil for GitHub**, should bring the same facts into GitHub pull requests for one person, with nothing to install in the repository: replacement-aware Changed for the pull request and for each file, the added-only, deleted-only and modified decomposition, raw churn kept visible as its own fact, a virtual size band from the reader's own policy or the repository's trusted base-revision `.diffdevil.yml`, and an inspectable report anchored in place.
+Same-file awareness is not conflict detection. Co-change describes an observation, not a demand to edit a companion or a diagnosis of missing tests. The product should supply a useful question and its evidence without pretending to make the maintainer's judgment.
 
-It needs no workflow, App installation, repository ownership or write access, and it is useful on its own. It analyzes locally with the same engine and policy language, keeps raw patches out of persistent storage, performs no provider writes of its own, and never presents a local policy result as observed GitHub or App state. It is the easiest way to adopt diffdevil, not a replacement for the open CLI, library and Actions, and not a companion that requires the App.
+## Share understanding; charge for operated value
 
-> The extension changes your view. The App runs for the repository.
+Anyone may sign in with GitHub. Collaborators can read connected repository data under current GitHub access without buying a reader seat. All protected summaries use the actual authorised population. Team delegation never reveals an otherwise inaccessible private repository.
 
-### Use it without becoming its operator
+Individual keeps the full useful analytical vocabulary, multiple-repository comparisons, named configurations, deliberate imports, experimentation and briefs. Team adds linked settings, coordinated refresh, delegation, automatic account-wide setup and an administrative audit. A solo maintainer with a personal account may buy Team for that automation. Account type and commercial plan are different facts.
 
-The managed GitHub App should provide the useful repository experience without requiring every adopter to assemble and maintain workflows, credentials, runners, upgrades, and hosted configuration themselves. It uses the same engine, policy model, reports, plans, and effect boundaries as the package and Actions.
+Named configurations can be manually reused; linked shared policies can remain connected and update their repositories automatically. Trusted repository overrides remain visible and authoritative. Brief settings belong to the App's shared configuration, not a new repository-file template language.
 
-Repository-owned policy remains authoritative. The App begins with a selected preset and optional account/organization defaults, then overrides only settings explicitly supplied by the repository. Its dashboard shows the effective policy and each setting's origin. The repository file remains portable, not a proprietary hosted-policy format.
+An authorised administrator may explicitly publish anonymous read-only analytics for public repositories using an account default and per-repository override. That public projection excludes administrative settings, audit, billing and private sibling information; publication is not implied by repository visibility.
 
-The conventional repository configuration is `.diffdevil.yml`. CLI and Actions retain explicit configuration and their supported invocation or step-level overrides, without automatic configuration discovery in another account-level repository. Existing deliberate policy reuse is not removed to make hosting attractive.
+Exact prices, allowances and account bundles remain commercial decisions. No per-member billing is selected. Hosted value follows operation, retained memory, capacity, coordination and support rather than withholding the open engine or charging again for the service's own retries.
 
-The App experience includes installation, preset selection, account/organization settings, repository visibility, optional labels and comments, native GitHub check summaries, and an authenticated dashboard. Its reusable analysis remains the same open product. A small installed canary proves an operating route; it does not remove checks, configuration, or the dashboard from the selected experience.
+## Keep the open product complete and self-hosting real
 
-### Remember measurements, not a copy of the repository
+One repository and release family carries the npm package, CLI, typed API, root and three sub-actions, supported diff sources, expression language, presets/convenience authoring, versioned human/machine/agent presentations, optional effects, managed App, browser extension, public playground and maintained website/manual sources.
 
-Optional hosted history should make repository activity understandable across time: how many files PRs touch, how much raw and replacement-aware change they contain, whether changes concentrate in a few files, and which configured results occurred.
+Reusable software remains MIT. App/service software is AGPL-3.0-only. Documentation, runnable examples and reserved brand/visual assets retain the distinct terms in the licence map. Self-hosting is intentional and should be discoverable in operator documentation, not crippled to force a subscription. An unqualified alternate adapter is not advertised as supported merely because the source is open.
 
-Persistent history is opt-in and retains aggregate and pathless per-file numeric measurements with evidence quality and immutable comparison references. It does not archive file names, authors, PR prose, source, patches, or rendered comments. GitHub remains the source for contextual information retrieved on demand under current access. Repository/PR references remain linkable; omission of names is data minimization, not a claim of anonymity.
+The service earns adoption through useful operation and continuity. It does not make the open product worse to make hosting look necessary.
 
-A short operational recovery ledger is separate from optional product history. A repository can use managed automation without accepting long-term statistics. Historical coverage, repeated analyses, expired records, and unknown evidence remain visible rather than becoming misleading counts or invented zeros.
+## Product character and non-goals
 
-### Keep the open product complete
+diffdevil is serious developer infrastructure with a small authored spark. The name carries personality; measurements, errors, logs, schemas, comments and machine output carry calm trust. Visual design may be inviting without turning a production workflow into novelty theatre.
 
-The open package, CLI, API, and Actions remain fully capable product surfaces. Hosted value comes from operation, administration, continuity, scheduling, history, scale, and support rather than withholding the useful engine or policy language. The playground is free; the managed service has a useful free allowance and paid usage/team conveniences. Pricing must not charge again for provider redelivery or the service's own recovery attempts.
+It is not merely a size labeler, a semantic or AI code reviewer, a contributor-surveillance product, a risk/complexity/quality/importance detector, a general CI orchestrator or command executor, a replacement GitHub source/conversation archive, or a repository-governance platform with invented merge authority.
 
-Reusable software remains MIT. Application and service software, including the hosted App and website application code, remains AGPL-3.0-only in the same repository. Self-hosting is intentional, not a loophole to hide or a reason to promise a deployment adapter that does not exist. Operator documentation should make the supported route findable without turning self-hosting into the homepage's primary pitch. Documentation, examples, and brand rights keep their separate licence boundaries.
-
-The service earns adoption by being easier to operate and useful across repositories, not by making the open tool inconvenient.
-
-## Product shape
-
-The selected complete shape is:
-
-- one repository;
-- one public npm package;
-- a CLI executable named `diffdevil`;
-- a public TypeScript API with deliberate subpath exports where useful;
-- a root GitHub Action;
-- `analyze`, `apply`, and `sync-labels` sub-actions;
-- local Git, unified-diff, GitHub pull-request API, and normalized-report inputs;
-- the optional detail expression language;
-- presets and convenience authoring that compile into the same policy model;
-- human, scalar, lines, NUL, JSON, JSONL, environment, Markdown, and compact agent-facing projections where each earns its use;
-- managed labels, owned comments, and label-definition validation/synchronization;
-- an optional managed GitHub App that operates the same engine and repository-owned policy, with native checks, a configuration dashboard, and opt-in quantitative history;
-- an optional browser extension for GitHub pull requests that runs the same engine locally in the reader's browser;
-- a public read-only PR playground backed by the same reports and projections;
-- a website and documentation experience rendered from repository-owned product and manual sources;
-- application, website, and service code in this repository and release lifecycle without changing the reusable package boundary.
-
-## Product character
-
-diffdevil is serious developer infrastructure with a small authored spark.
-
-The name carries the personality. Operational output carries trust. Public copy may be mildly mischievous; metrics, errors, logs, comments, schemas, and machine output remain calm and exact.
-
-## Non-goals
-
-diffdevil is not:
-
-- merely a pull-request size labeler;
-- a semantic code-review system;
-- an AI reviewer;
-- a risk, complexity, quality, or importance detector;
-- a general CI orchestrator;
-- a general command-execution engine;
-- a repository-governance platform;
-- a hidden default label taxonomy for every project;
-- an excuse to execute pull-request code with privileged credentials;
-- a replica of GitHub's source, people, conversations, or repository status;
-- a language whose complexity must be learned before the tool is useful.
+The richer App does not change those non-goals. Private metadata deserves actual access control; no source retention does not mean no sensitive data. A useful feature can be ambitious without requiring an enterprise analytics framework before the first coherent release.
 
 ## Success
 
-diffdevil succeeds when:
+The product succeeds when a replacement is measured honestly while raw facts remain available; incomplete evidence stays useful; scripts and people can ask precise questions; repository policy travels among surfaces; effects remain scoped and explainable; a public visitor can learn before installing; a collaborator can understand a change in its repository context; a maintainer can explore where activity happens; and a team can coordinate operation without repeatedly configuring every repository.
 
-- a three-line replacement can be represented as three modified positions while raw `+3/-3` remains available;
-- unrelated additions and deletions are not falsely paired;
-- incomplete evidence produces an honest and useful result;
-- a shell script or agent can ask a precise question with one stable command;
-- a repository can express its own policy without forking the engine;
-- the zero-config Action is useful without trapping advanced users;
-- the full package, CLI, and Action all consume the same semantics;
-- applied GitHub effects are convenient, scoped, and explainable;
-- a developer can understand a public PR through the playground before installing anything;
-- a repository can move between CLI, Actions, and the managed App without changing measurement or policy meaning;
-- the website teaches the product from the same maintained sources contributors update with the code;
-- hosted convenience adds operational value without making the open product deliberately incomplete;
-- the tool feels distinctive without making a production workflow look unserious.
+A coherent first delivery may sequence this vision. It must not silently redefine the destination as whichever fragment was easiest to build.

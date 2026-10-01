@@ -26,6 +26,22 @@ The [implementation horizon](implementation-horizon.md) preserves selected produ
 breadth. Current direction and source determine what is implemented; accepted future
 capability does not become historical merely because it is not released.
 
+## Shape the managed App
+
+| Question | Maintained source |
+| --- | --- |
+| What should the activity-first dashboard, PR/file details, clouds and brief do? | [Dashboard capabilities](dashboard.md) |
+| Who may read, configure, delegate or publish a view? | [Dashboard accounts and access](dashboard-access.md) |
+| What is retained, what remains transient, and what does import mean? | [Privacy and data](PRIVACY-AND-DATA.md) |
+| How does that product join authentication, execution and recovery? | [Managed App architecture](integration/github-app.md) |
+| Why did named history, merged-PR metrics and Team automation replace the earlier boundary? | [Dashboard decisions D044–D053](DECISIONS.md#d044-make-the-app-activity-first-for-collaborators-as-well-as-administrators) |
+
+These sources describe selected capabilities, not an already deployed dashboard or
+published pricing offer. Final visual design, renderer choice, relationship/brief
+algorithms and revised commercial allowances remain separate work. The public
+manual continues to describe supported operation rather than presenting planned
+features as shipped.
+
 ## Integrate against a real contract
 
 Start with the [interface reference](manual/reference/README.md) for CLI, Actions,
@@ -75,7 +91,13 @@ replacing those sources or inventing service terms.
 ## Historical evidence
 
 [The reference map](reference/README.md) retains dated research, rationale and
-qualification. The [v1.0.0 release account](releases/v1.0.0.md) describes that release,
+qualification. [Decisions through D043](DECISIONS-through-d043.md) and the
+[pre-expansion App runtime contract](integration/github-app-runtime-v1.md) preserve
+complete earlier text; their superseded product assumptions do not compete with
+the current dashboard/access/privacy contracts. Existing decision fragments remain
+reachable from the current Decisions index.
+
+The [v1.0.0 release account](releases/v1.0.0.md) describes that release,
 not everything currently present on `main`. Dated accounts remain available through exact
 repository links and the finite source resolver, but do not enter current manual
 navigation or default search as competing instructions.
