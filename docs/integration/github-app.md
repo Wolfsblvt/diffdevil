@@ -2,98 +2,124 @@
 
 ## Meaning
 
-This document joins the selected managed-App product with its operating architecture. [Dashboard capabilities](../dashboard.md) and [accounts/access](../dashboard-access.md) own the expanded experience. [Direction](../DIRECTION.md) distinguishes source, canary/deployment evidence and public availability. The App remains an optional operating adapter for the same open diff-policy engine, not a second analyser or a required account funnel.
+This joins the developing App's product and operating architecture. [Dashboard capabilities](../dashboard.md), [plans](../app-plans.md), [access](../dashboard-access.md), [management](../app-management.md) and [privacy/data](../PRIVACY-AND-DATA.md) own their respective contracts. [Direction](../DIRECTION.md) distinguishes selected behaviour, existing source and live evidence.
 
-The detailed pre-expansion architecture is preserved byte-for-byte as [runtime v1](github-app-runtime-v1.md). Its narrow ingress, credential, lease, recovery and source-evidence details remain useful implementation references. Its pathless-only history and administrator-first product assumptions are superseded by the current dashboard/privacy/access contracts, not evidence that the new capability is implemented. The retained file is historical architecture evidence, not a competing current product specification.
+The detailed pre-expansion architecture remains byte-for-byte in [runtime v1](github-app-runtime-v1.md). Its ingress, credential, lease, recovery and source-evidence details remain useful. Its pathless-only and administrator-first assumptions are not current product requirements. Its existence does not implement the new capabilities.
 
-## Product and adoption contract
+## One engine and independently useful editions
 
-CLI, library and Actions remain complete without an account; the extension remains a personal GitHub view; the public playground remains unauthenticated public learning. Managed operation adds shared checks, labels/owned comments, authoritative readback, configuration, history, context and coordination.
+CLI, library, Actions, extension and playground remain useful without an App subscription. The App shares their deterministic engine, reports, policy and effect boundaries rather than becoming a second analyser.
 
-The ordinary App is activity-first. A collaborator may sign in and read currently accessible connected repository, PR and file views without administering an installation. Settings and recovery are separate permitted operations. Shared reports distinguish facts, desired actions, requests and observed effects.
+The public Community application supplies basic managed operation/history with operator-controlled resources. Additional commercial capabilities are composed separately. A Community build must work without private components or the official billing service. This is not a public third-party plugin platform or a promise of a stable extension API.
 
-Installation reach, execution consent and history consent are distinct. Neither installation nor a named preset silently enables history. An account may explicitly select automatic setup for newly reachable repositories, including permitted history/import behaviour, without repeatedly approving each otherwise eligible repository.
+The ordinary application is activity-first for authorised readers. Repository/PR details and entitled historical file views connect to complete underlying observations. Settings, processing and subscription controls are separate operations. Entitlement should control actual server capabilities, not merely hide a browser button.
 
-## Permissions and current access
+## Identity, reach, funding and permission
 
-Preserve the existing [runtime authorisation contract](github-app-runtime-v1.md#permissions-and-current-access) and apply the current [access model](../dashboard-access.md). A user session, App installation token, account membership and paid plan are different facts. Protected operations recheck current user/repository and App reach; background work rechecks current consent and configuration before committing data or effects.
+Preserve the relevant [runtime authorisation contract](github-app-runtime-v1.md#permissions-and-current-access) with the current access model. User session, installation token, GitHub repository permission, application role, purchased benefit and independent history consent remain separate facts.
 
-Team delegation operates inside GitHub visibility. It cannot expose private repository analytics to a person without GitHub access or suppress independent native GitHub powers. Aggregates, exports, saved views and chart data use the same authorised population as the visible detail.
+Personal subscriptions can fund named organisation connections. One ordinary funder per organisation prevents stacked allowances; a funding replacement does not transfer data ownership or grant access. Add-ons inherit the parent's tier/cadence.
 
-The existing narrowly authorised offboarding grace remains numeric/pathless without current repository access. Named history does not silently widen that exception or permit GitHub reacquisition after removal. [Privacy](../PRIVACY-AND-DATA.md#offboarding-transitions) owns the exact selected lifecycle.
+A repository's capabilities can come from its funded scope, a frozen preview or an OSS grant. Do not reduce eligibility to a global `user.isPro` field: a Free reader can legitimately view another repository's premium data.
 
-## Events, immutable comparisons and trusted policy
+Business delegation is inside GitHub visibility. Protected aggregates/exports/saved views use the actual authorised population. The numeric/pathless post-access-loss exception remains narrow; subscription history or archive ownership does not authorise private filenames without current repository access.
 
-The v1 runtime's supported ingress events and actions remain [its explicit source contract](github-app-runtime-v1.md); listing a new lifecycle feature here does not make that event handled. Expansion must add the needed PR lifecycle, merge/close/reopen, access/publication and new-repository observations deliberately and qualify ordering, duplication and gaps.
+## Events, comparisons and trusted policy
 
-Final merged-PR history binds one recoverable comparison to immutable references and actual merge/lifecycle evidence. Open-PR trajectories and current file overlap remain separate populations. A last observed open head is not automatically a final merged comparison. Import must qualify supported merge methods and omitted/inaccessible evidence rather than manufacture certainty.
+The v1 supported ingress events/actions remain source evidence, not an implication that all new lifecycle events are handled. Add lifecycle, merge/reopen/close, repository selection/visibility and access transitions deliberately and qualify duplication, ordering and unknowns.
 
-Repository-owned `.diffdevil.yml` is acquired from the trusted operation revision and remains authoritative over App defaults. PR-head policy and code never select privileged writes. Preserve immutable policy identity, current base/head freshness and inert processing boundaries from the runtime contract.
+Final merged history uses one supported immutable comparison with actual merge evidence. Open development and current overlap remain separate. A last observed open head is not silently relabelled final. Supported merge/squash/rebase paths, truncated files and unavailable evidence need acquisition qualification.
 
-## Configuration, precedence and shared operation
+Acquire `.diffdevil.yml` from the trusted operation revision. PR-head policy or code never chooses privileged writes. Preserve policy identity, current base/head freshness and inert processing from the existing runtime.
 
-App presets/account defaults supply settings below explicitly supplied repository overrides. The shared resolver owns merge/lowering semantics; do not add a host-specific engine. Show the selected configuration, effective values and provenance. A bulk update cannot claim to change an overridden value.
+## Admission and configuration
 
-Individual administration provides named configurations, defaults and manual per-repository application. Team adds linked configurations, delegation, account-wide automation and coordinated refresh. Personal accounts can use that capability; a GitHub organisation is not itself a subscription plan.
+Installation reach does not automatically select every repository for operation. Account management owns selected execution, independent history, labelling-only and inactive-over-limit states. Concurrent selections of a final limited slot need one coherent account result, not two successful overallocations.
 
-A linked update can queue selected current-policy history recalculation and eligible open-PR label/brief refresh. Dispatch only work affected by the change. Brief settings are App-only bounded configuration, not a new `.diffdevil.yml` or template engine. Existing portable comment templates and core policy retain their current support.
+App presets/defaults resolve below explicit repository overrides through the same shared resolver. Show configured/effective values and origins; an overridden bulk change is not an observed effective change.
 
-History consent, publication and delegated access have separate authority. Applying a configuration must not silently enable additional protected-data collection or publication. A starting rollback UI is not required; protected administrative audit preserves what actually changed.
+Pro has one personal default and one per connected organisation, with repository-local application/differences only. Business adds linked named policies, delegation, automatic eligible setup and coordinated refresh. Neither hides or removes arbitrary valid repository policy.
 
-## Execution, effects and recovery
+History, publication and delegation are independently authorised even when automatic setup is selected. Once that selection is valid, otherwise eligible newly granted repositories need no repetitive manual approval loop.
 
-Preserve the v1 signed-webhook admission, repository enablement, bounded queue/lease ownership, stale-work refusal, delivery deduplication and recovery ledger. The [retained runtime document](github-app-runtime-v1.md) contains their detailed operation ordering and source-evidence boundaries.
+Brief settings are bounded App configuration, not another portable policy language. Queue only work actually affected by a setting: shortness of a comment does not require years of blob acquisition. Audit is required for Business, not an initial rollback UI.
 
-Analysis, policy result, desired effect, performed request and provider readback remain distinct. Manage only declared labels and owned comments; preserve unrelated metadata. Reconcile uncertain writes before retrying. History repair must not rerun a non-idempotent provider effect that already succeeded.
+## Live execution and recovery
 
-A transport retry, repeated analysis and new PR are different identities. Seven-day recovery does not grant permanent analytical retention. Failure or dead-letter payloads cannot become a richer or longer-lived source archive.
+Preserve signed webhook admission, enabled-repository checks, scoped queue/lease ownership, stale-work refusal, delivery deduplication and uncertain-write reconciliation from [runtime v1](github-app-runtime-v1.md).
 
-## Selective brief and current related work
+Analysis, policy result, intended effect, request and observed readback are distinct. Modify only declared labels and owned comments, preserving unrelated metadata. Do not repeat a non-idempotent successful provider effect merely because history storage failed.
 
-The optional deterministic brief selects a compact useful subset of configured observations and links to PR detail. It shares the owned size report when enabled and uses a current open-PR file/component index for neighbouring work. Same-file counts do not claim line overlap or conflicts.
+Enabled eligible checks, size labels and size replies have priority and no monthly PR-credit cutoff. Provider-compliant account pacing may delay them. An import budget does not disable ordinary live work.
 
-Refresh affected open PRs on own/neighbour/policy changes and reopening. Do not continuously update closed or merged replies. An explicit optional final merge summary is a separate event. Historical import has no authority to apply labels, publish comments or replay old summaries.
+The seven-day recovery ledger is not permanent analytical history. Failed/dead-letter records cannot store source or retain it longer. Retried transport is not a new PR, measurement or chargeable import.
 
-Bounded configuration controls modules, priorities, conditions and compactness. Algorithm research owns useful selection, sample treatment and noise limits; a chart dependency or current label routine does not settle those questions.
+## History and premium enrichment
 
-## Analytical storage and recalculation
+History-enabled Free stores permitted base paths/numerical file facts, including excluded observations, so compatible policy changes can replay without unnecessary GitHub reacquisition. Premium enrichment supplies additional numerical-size acquisition, historical file relationships and eligible views/context. Base row retention does not itself grant those capabilities.
 
-[Privacy and data](../PRIVACY-AND-DATA.md) now selects named file metadata, lifecycle facts, numerical sizes/changes, immutable identity and coverage after explicit history enablement. Included and policy-excluded observations may be retained; ordinary analytics applies current policy. Source/file contents and patches remain transient, including in logs, queues and traces.
+Use explicit allowlisted projections rather than retaining whole reports. Contents/patches remain transient across primary/secondary stores, queues, logs, traces and exports. Record observed rename continuity, lifecycle, coverage and versions without inventing identity from equal path names.
 
-General file/repository analytics uses final merged-PR populations. Current policy recalculation changes derived views, not observed provider effects or underlying measurements. A PR may expose an actually recorded original result as a secondary interpretation. No repository-wide policy-era warehouse is required.
+General file/repository history is final merged-PR activity. Preserve the earlier statistics work's useful interval/sample/quantity semantics without claiming anonymous rows establish named trajectories. Current-policy replay changes a derived interpretation; original observations and provider effects remain immutable.
 
-The older pathless projection and query work supplies only its documented semantics until expanded. It cannot produce cross-revision named trajectories or true lifecycle cohorts by relabelling anonymous rows. Preserve useful interval-aware statistics, sample counts, quantity compatibility and duplicate handling when joining richer data.
+A query must identify its available policy basis while a manual or automatic refresh is pending. Imported PRs have no fictional original App result. No repository-wide parallel policy-era warehouse is selected.
 
-## Import and work priority
+## Progressive work and provider-aware scheduling
 
-Provide distinct open-PR scans and historical imports. Imports are explicit, resumable, progressive and coverage-aware; recent ranges can become useful before the complete selected scope finishes. Live PR work takes priority. Adaptive pacing follows actual GitHub API constraints, not an assumed unlimited batch.
+Separate live processing, recent historical enrichment, and older imports/wide recalculation. Background work can lag or be paused under sustained use; management shows actual coverage and reason. Do not promise an ETA or eventual catchup from a queue's existence.
 
-Deduplicate against live observations, avoid unnecessary reacquisition, and honour current authorisation, retention, opt-outs and deletion tombstones throughout. Unsupported old states remain unavailable. Import/recalculation has no implicit GitHub write authority. New import/storage costs and allowances require separate measurement and pricing work.
+Durable job state holds the selected scope, cursor/progress and work identity. The execution queue carries ready batches, not the only durable copy of a weeks-long import. Continuing work rechecks reach, selection, consent, benefit and deletion boundaries before committing.
 
-## Dashboard authentication and sessions
+Meter unique new historical-import work within its configured allowance. Duplicates and service recovery do not consume another customer unit. Preserve live/import logical identity and do not revive intentionally deleted intervals on upgrade or retry.
 
-The route-neutral authorisation source and its live-delivery qualification remain distinct. Preserve browser-bound OAuth state, server-side token custody, opaque sessions, mutation CSRF/Origin protection and current per-operation authorisation from [runtime v1](github-app-runtime-v1.md). A source test is not proof of live OAuth, cookies or deployed migrations.
+Respect actual GitHub retry/reset instructions from the first useful delivery. The later advanced adapter can observe installation/user resource buckets, retain budget/reset evidence and reserve headroom by staggering lower-priority reads before live writes need the capacity. Separate primary/secondary rate limits and content-generating effects; no plan overrides provider restrictions.
 
-No arbitrary short session cap is introduced by the dashboard expansion. Logout, invalidation and lost authority end the relevant access. Protected responses are private and not share-cacheable. Token material never enters chart payloads, URLs or browser storage by convenience.
+Open-PR scans establish current detail/overlap; historical imports establish prior final observations and recoverable lifecycle. Imports never apply retrospective GitHub effects.
 
-## Public read-only projection
+## Selective brief
 
-Public analytical publication is a separate explicit projection with an account default and per-repository inherit/enabled/disabled. It is anonymous only for eligible public repositories. It excludes settings, audit, billing, delegated permissions and private sibling information. Unpublication/privatisation invalidates public serving and its caches.
+The optional deterministic brief joins the owned size report and links directly to PR detail. Premium context can use current same-file work and retained historical relationships. Ordinary size output remains available if enrichment is absent.
 
-A protected dashboard link does not make a posted PR brief private. All facts in a comment must fit the destination audience. Neither public publication nor Team delegation widens the App's GitHub grant.
+Refresh affected open PRs after own/neighbour/policy changes and reopening, only when meaningful content changes. Closed/merged replies are not continuously updated. Optional final merge summary is a distinct explicit event.
 
-## First operating adapter and portability
+Modules, conditions, priorities and compactness are bounded settings. A renderer or an existing label routine does not define the relevance algorithm. Same-file volume is not overlapping lines or a conflict prediction. Public text must fit its audience independently of any protected link.
 
-Cloudflare Workers, Queues and D1 remain the first operating adapter, with credential and queue/storage mechanics confined to that adapter. The current [v1 topology](github-app-runtime-v1.md#first-operating-adapter-and-portability) remains implementation evidence, not proof of an alternate deployment.
+## Shared commercial integration
 
-Keep the shared engine, application semantics, retention/deletion, identities and useful import/export independent of provider resource names. Self-hosting is intentional. Do not build a generic multi-provider platform or claim a second supported host from interface names alone. Actual data scale, provider limits and the richer workload need measurement before capacity is promised.
+The shared Works commercial service owns customer/payment identity, catalogue, authoritative quotes, invoices, recurring charge scheduling, tax, credits, refunds and payment reconciliation. diffdevil owns GitHub scope, funding links, repository selection and application entitlement. It does not maintain a competing invoice or tax engine.
 
-## Shared-engine Worker prerequisite
+The product needs an authenticated benefit projection with current plan, effective dates, cadence, add-on quantity, price protection and scheduled transitions. It may display a shared quote but cannot invent monetary state from a browser field or checkout redirect.
 
-The portable static-validator/shared-engine prerequisite remains [the v1 contract](github-app-runtime-v1.md#shared-engine-worker-prerequisite). Node, Actions, playground and App must consume compatible shared meaning. No runtime expression JavaScript compilation or hosted-only measurement fork is introduced.
+An upgrade starts a new full period and credits unused actually paid previous components. Existing add-ons reanchor with it. A mid-period additional organisation instead joins the existing renewal. [Management](../app-management.md#change-the-plan-with-one-understandable-bill) contains the exact examples.
+
+Failed/uncertain changes preserve coherent existing paid standing and require reconciliation before retry. A payment end is not a whole-App stop: lower-plan eligible basic operation can continue. Expiring Business links become ordinary repository configuration where eligible.
+
+The one-time preview and OSS grants are separately attributable benefits, not inferred payments. Reinstalling cannot reset preview eligibility; privatisation revokes OSS eligibility without implicitly deleting data.
+
+## Sessions, publication and data exit
+
+Preserve browser-bound OAuth state, server-side token custody, opaque sessions, mutation CSRF/Origin protection and current operation authorisation. Source checks do not prove live OAuth/cookies/migrations. No arbitrary new short session cap is introduced by this expansion.
+
+Protected responses are private and not share-cacheable. Tokens never enter chart payloads, URLs or browser storage by convenience.
+
+Public analytics is an explicit anonymous projection for eligible public repositories with account default and repository override. Exclude settings, audit, billing, delegation and private siblings. Unpublish/privatisation invalidates serving and its applicable cache.
+
+Financial downgrade, temporary processing pause, slot release, repository offboarding, installation removal and confirmed account deletion are distinct. A paused/inactive repository is not an implicit deletion request. Apply the [current retention/exit contract](../PRIVACY-AND-DATA.md#export-deletion-and-ending), including authorised export, selected-state archive, narrow numeric access-loss grace and restore-resistant deletion.
+
+## Provider and operator boundaries
+
+Cloudflare Workers, Queues and D1 remain the first adapter. Confine credentials and platform queue/storage mechanics to it. Retain portable engine/application meaning, identity, data exit and Node consumers. Do not invent a generic provider platform or claim a second supported host from interface names.
+
+The shared static-validator/engine requirement remains [the v1 prerequisite](github-app-runtime-v1.md#shared-engine-worker-prerequisite). No runtime evaluation of policy as JavaScript or hosted measurement fork is introduced.
+
+A private operator view joins aggregate resource use, processing freshness and cash figures through existing commercial/operating sources. Keep actual amounts and estimates distinct, shared costs counted once, and agent access scoped. It does not require payment instruments or another provider-control console.
+
+Optional product-news/feedback consent remains separate from necessary service communication and repository-data enablement.
 
 ## Qualification and held effects
 
-Qualification must cover new lifecycle/final-comparison acquisition, named-file privacy, ignored-data reinterpretation, current authority, delegated settings, imports, current-policy refresh, brief fan-out, open/closed/reopened behaviour, public/private transitions and restore-resistant deletion. Old pathless/auth/canary checks prove their narrower boundaries only.
+Qualify base and premium module composition, live admission/effects, lifecycle/final comparison, named-file privacy, excluded-data replay, funding replacement, actual repository-authorised reads, imports, provider pacing, linked updates, brief lifecycle, preview reuse, OSS/public-private changes and data ending/restore.
 
-This documentation grants no migration, history enablement, deployment, public view publication, billing, spend, App reconfiguration or dependency adoption. Final visual design, renderer selection, algorithms, capacity and the joined user journeys remain separate work toward the selected product.
+Shared quote/payment tests and actual platform integration prove different boundaries. Old pathless, canary and auth checks do not automatically qualify the expanded product.
+
+This document performs no migration, history enablement, payment, deployment, dependency adoption or public-data publication. The complete user/operator journeys, renderer/algorithm choices and exact operating configuration remain implementation work under the selected product contract.

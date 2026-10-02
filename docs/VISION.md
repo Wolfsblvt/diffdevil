@@ -2,7 +2,7 @@
 
 ## Meaning
 
-This is the durable product vision for diffdevil: an open-source CLI, TypeScript library and workflow Actions tool, a personal browser extension, and an optional managed GitHub App. It preserves the complete experience independently of delivery order or any single GitHub workflow. The public playground teaches the open product; it is not an account requirement or another name for the App. [Direction](DIRECTION.md) distinguishes current availability from this selected destination.
+This is the durable product vision for diffdevil: an open-source CLI, TypeScript library and workflow Actions tool, a personal browser extension, and an optional managed GitHub App with a basic Community edition and additional commercial capabilities. It preserves the complete experience independently of delivery order or any single GitHub workflow. The public playground teaches the open product; it is not an account requirement or another name for the App. [Direction](DIRECTION.md) distinguishes current availability from this selected destination.
 
 ## Centre
 
@@ -56,47 +56,59 @@ Installation reach, execution and history remain separate choices. A useful curr
 
 ## Give the codebase a useful memory
 
-The App's three jobs are **understand change**, **shape policy** and **run it together**. [The dashboard capability contract](dashboard.md) carries their complete shape.
+The App's three jobs are **understand change**, **shape policy** and **run it together**. [The dashboard capability contract](dashboard.md) carries their complete shape and [the plan contract](app-plans.md) assigns the hosted capabilities.
 
-Its ordinary home is activity-first for readers and collaborators, not settings-first for administrators. Dedicated repository, PR and file views connect overviews to underlying observations. A prominent cloud can reveal frequently changed files; selecting one leads to its history and relationships rather than ending at decoration.
+Its ordinary home is activity-first for readers and collaborators, not settings-first for administrators. Dedicated repository, PR and premium file views connect overviews to underlying observations. A prominent cloud can reveal frequently changed files; selecting one leads to its history and relationships rather than ending at decoration.
 
 PR lifecycle/development and file activity are distinct, equally important subjects. General file/repository history uses one final recoverable comparison per merged PR. Open-PR development, analysed revisions and execution attempts remain separate. Direct-commit/all-branch throughput is not silently included in that population.
 
-Named file history supports change frequency, absolute volume, growth/shrinkage, concentration, co-change and **Turnover**, a concise name for change volume relative to file size. Frequency is the default prominent cloud metric. Raw churn remains different from replacement-aware Changed. No hotness, quality, risk or contributor-performance score is inferred.
+The premium historical file product supports change frequency, absolute volume, growth/shrinkage, concentration, co-change and **Turnover**, a concise name for change volume relative to file size. Frequency is the default prominent cloud metric. Raw churn remains different from replacement-aware Changed. No hotness, quality, risk or contributor-performance score is inferred.
 
-History is explicitly enabled and retains the necessary repository names, relative paths, filenames, numerical measurements, comparison identities, observed rename/lifecycle facts and coverage. It does not retain file contents, patches, PR prose or contributor-throughput dimensions. Transient source processing may establish measurements, then discards the contents. [Privacy and data](PRIVACY-AND-DATA.md) owns the exact allowlist and lifetimes.
+History is explicitly enabled. Even Free retains the necessary base repository names, relative paths, per-file numerical measurements, comparison identities, lifecycle and coverage needed for useful basic history and policy replay. Premium enrichment and historical file exploration are separate capabilities. No tier retains source contents, patches, PR prose or contributor-throughput dimensions. Transient source processing establishes measurements, then discards contents. [Privacy and data](PRIVACY-AND-DATA.md) owns the allowlist and lifetimes.
 
-Policy-excluded measurements remain available while ordinary views exclude them. Current effective policy controls the ordinary analytical interpretation. Recalculation changes the view, not observed facts or historical provider actions. An actually recorded original PR result can remain inspectable without building repository-wide policy-era dashboards.
+Policy-excluded measurements remain available while ordinary views exclude them. Current effective policy controls the analytical interpretation once refreshed; a pending refresh shows the actual displayed basis. Recalculation changes the view, not observed facts or historical provider actions. An actually recorded original PR result remains inspectable without a repository-wide policy-era warehouse.
 
-Historical import brings all recoverable selected statistics into an established repository, progressively and within disclosed allowances. It does not invent vanished PR states or replay old labels/comments. Current open-PR scanning separately enables today's related-work context.
+Progressive historical import makes established repositories useful within disclosed allowances. It does not invent vanished PR states or replay old labels/comments. Current open-PR scanning separately enables today's related-work context. Live operation takes priority; expensive enrichment and older import can lag honestly.
 
 ## Bring useful memory back to the PR
 
-An optional selective brief makes historical and neighbouring-work context useful where review already happens. It may identify a frequently changed file, an unusual size within a compatible repository population, another open PR touching the same file, or a historical companion absent from this PR.
+An optional selective brief makes historical and neighbouring-work context useful where review already happens. Its premium modules may identify a frequently changed file, another open PR touching the same file, or a historical companion absent from this PR, alongside ordinary size information and compatible repository context.
 
-The brief is deterministic, configurable through bounded settings and intentionally incomplete. It does not need an LLM or a new template language. It joins the existing owned size report, links to full PR detail and updates affected open PRs as relevant facts change. Closed comments are not continuously rewritten; an optional final merge summary is a distinct event.
+The brief is deterministic, configurable through bounded settings and intentionally selective. It does not need an LLM or a new template language. It joins the existing owned size report, links to full PR detail and updates affected open PRs as relevant facts change. Closed comments are not continuously rewritten; an optional final merge summary is a distinct event.
 
-Same-file awareness is not conflict detection. Co-change describes an observation, not a demand to edit a companion or a diagnosis of missing tests. The product should supply a useful question and its evidence without pretending to make the maintainer's judgment.
+Same-file awareness is not conflict detection. Co-change describes an observation, not a demand to edit a companion or a diagnosis of missing tests. The product supplies a useful question and evidence without pretending to make the maintainer's judgment.
 
-## Share understanding; charge for operated value
+## Share understanding; sell memory and coordination
 
-Anyone may sign in with GitHub. Collaborators can read connected repository data under current GitHub access without buying a reader seat. All protected summaries use the actual authorised population. Team delegation never reveals an otherwise inaccessible private repository.
+Anyone may sign in with GitHub. Collaborators read a connected repository's available capabilities under current GitHub access without buying a reader seat. All protected summaries use the actual authorised population. Business delegation never reveals an otherwise inaccessible private repository.
 
-Individual keeps the full useful analytical vocabulary, multiple-repository comparisons, named configurations, deliberate imports, experimentation and briefs. Team adds linked settings, coordinated refresh, delegation, automatic account-wide setup and an administrative audit. A solo maintainer with a personal account may buy Team for that automation. Account type and commercial plan are different facts.
+Free provides genuinely useful basic operation and PR history. Pro adds the rich historical file experience, repository comparisons, experiments, imports and premium context for one administering person per scope. Business adds linked policies, coordinated refresh, delegated administration, automatic eligible setup and audit. A solo maintainer may choose Business for that automation.
 
-Named configurations can be manually reused; linked shared policies can remain connected and update their repositories automatically. Trusted repository overrides remain visible and authoritative. Brief settings belong to the App's shared configuration, not a new repository-file template language.
+The subscriber is an individual who can fund named organisation connections. Only one ordinary subscription funds each organisation; payment never transfers ownership of its data or grants repository authority. A Pro organisation has the same Pro experience apart from its explicit private-repository allowance.
 
-An authorised administrator may explicitly publish anonymous read-only analytics for public repositories using an account default and per-repository override. That public projection excludes administrative settings, audit, billing and private sibling information; publication is not implied by repository visibility.
+Pro has one default for personal repositories and one per connected organisation, with a local apply action in each repository's settings. Business owns the shared library, bulk/automatic coordination and linked-policy updates. Trusted repository overrides remain authoritative. Brief controls remain App-only, not a new portable policy format.
 
-Exact prices, allowances and account bundles remain commercial decisions. No per-member billing is selected. Hosted value follows operation, retained memory, capacity, coordination and support rather than withholding the open engine or charging again for the service's own retries.
+An authorised administrator may explicitly publish anonymous read-only analytics for public repositories. The projection follows its available capabilities and excludes administration, audit, billing and private sibling information. Publication is not implied by visibility.
 
-## Keep the open product complete and self-hosting real
+[The accepted planned offer](app-plans.md) has no per-member or per-PR charge and no purchasable processing credits. Current configured PR operation remains the priority. Separate monthly import allowances and fair scheduling keep the service operable without silently turning service recovery into a bill.
 
-One repository and release family carries the npm package, CLI, typed API, root and three sub-actions, supported diff sources, expression language, presets/convenience authoring, versioned human/machine/agent presentations, optional effects, managed App, browser extension, public playground and maintained website/manual sources.
+## Keep Community independently useful
 
-Reusable software remains MIT. App/service software is AGPL-3.0-only. Documentation, runnable examples and reserved brand/visual assets retain the distinct terms in the licence map. Self-hosting is intentional and should be discoverable in operator documentation, not crippled to force a subscription. An unqualified alternate adapter is not advertised as supported merely because the source is open.
+The reusable source and public application family remain coherent: one engine behind the package, CLI, typed API, four Actions, supported diff sources, expression language, presets, presenters, effects, extension, public playground and maintained website/manual.
 
-The service earns adoption through useful operation and continuity. It does not make the open product worse to make hosting look necessary.
+Community self-hosting supplies the basic application without the official service's repository, history or import quotas. Its operator controls resources and retention. Separately maintained private application extensions provide rich file history and Business coordination. No subscription or private module is needed to operate Community, and no complete premium implementation is promised as public source.
+
+The existing public source retains its component licences: reusable software MIT, public application code AGPL-3.0-only, and distinct documentation/example/brand terms in the licence map. The selected commercial extension boundary does not change the deterministic engine or imply a new hosted policy language.
+
+Commercial self-hosting can supply premium capabilities under a separate agreement. An unqualified alternate adapter is not advertised as supported merely because Community is open source. Self-hosting should be discoverable and usable, not deliberately inconvenient.
+
+## Manage a service people can leave
+
+Account management should explain selected repositories, funding organisations, history coverage and the actual subscription period. Upgrades credit unused paid value into a new full period; added organisations join the existing renewal. The shared billing service owns monetary and tax mechanics.
+
+Ending a paid term removes premium operation and views, not authorised export and deletion. A frozen recovery archive follows a clear disclosed policy; lost GitHub authority remains a separate privacy boundary. Lower-tier eligible basic operation can continue.
+
+Useful operator visibility and scoped agent support should make usage, service health and cash costs understandable without exposing secrets or building contributor surveillance. Optional product news and feedback remain separate from necessary service messages.
 
 ## Product character and non-goals
 
@@ -104,10 +116,10 @@ diffdevil is serious developer infrastructure with a small authored spark. The n
 
 It is not merely a size labeler, a semantic or AI code reviewer, a contributor-surveillance product, a risk/complexity/quality/importance detector, a general CI orchestrator or command executor, a replacement GitHub source/conversation archive, or a repository-governance platform with invented merge authority.
 
-The richer App does not change those non-goals. Private metadata deserves actual access control; no source retention does not mean no sensitive data. A useful feature can be ambitious without requiring an enterprise analytics framework before the first coherent release.
+Private metadata deserves access control; no source retention does not mean no sensitive data. A useful feature can be ambitious without requiring an enterprise analytics framework before the first coherent release.
 
 ## Success
 
-The product succeeds when a replacement is measured honestly while raw facts remain available; incomplete evidence stays useful; scripts and people can ask precise questions; repository policy travels among surfaces; effects remain scoped and explainable; a public visitor can learn before installing; a collaborator can understand a change in its repository context; a maintainer can explore where activity happens; and a team can coordinate operation without repeatedly configuring every repository.
+The product succeeds when a replacement is measured honestly while raw facts remain available; incomplete evidence stays useful; scripts and people can ask precise questions; repository policy travels among surfaces; effects remain scoped and explainable; a visitor can learn before installing; collaborators understand changes in context; maintainers explore the codebase's activity; and people can pay for richer memory and coordination without reader-seat accounting.
 
 A coherent first delivery may sequence this vision. It must not silently redefine the destination as whichever fragment was easiest to build.

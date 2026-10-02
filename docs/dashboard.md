@@ -2,200 +2,159 @@
 
 ## Meaning
 
-This document owns the selected capability and experience of the authenticated diffdevil App: understanding repository changes, exploring pull requests and files, configuring selective PR context, and operating repositories individually or together. It describes the intended product, not a claim that its dashboard, data collection, imports, billing, or public views are already available. [Direction](DIRECTION.md) owns current availability; [App integration](integration/github-app.md) owns execution; [access and accounts](dashboard-access.md) owns permissions; [privacy and data](PRIVACY-AND-DATA.md) owns retention and processing boundaries.
+This document owns the selected analytical and operating experience of the developing diffdevil App. It is not a claim that the dashboard, imports, premium capabilities, billing or public views are already available. [Direction](DIRECTION.md) owns current evidence; [plans and editions](app-plans.md) owns the accepted commercial boundary; [access](dashboard-access.md), [management](app-management.md), [privacy/data](PRIVACY-AND-DATA.md) and [App integration](integration/github-app.md) own their respective contracts.
 
-The complete experience is selected independently of delivery order. This document does not select final page layouts, chart libraries, colours, exact routes, pricing, quotas, or algorithm thresholds.
+The complete destination is independent of the first delivery order. Final page composition, renderer adoption and numerical algorithm definitions remain separate from this capability contract.
 
 ## Product purpose
 
-The App has three equally necessary jobs:
+The App has three joined jobs: **Understand change**, **Shape policy** and **Run it together**. Its ordinary entrance is activity-first, not an administrator's control room with statistics attached. People who never change a setting are intended users.
 
-- **Understand change:** PR lifecycle, size and development; file and repository activity; historical context and relationships.
-- **Shape policy:** inspect effective configuration, test proposed policies, reinterpret retained measurements, and apply changes deliberately.
-- **Run it together:** shared operation, account defaults, repository administration, recovery, delegated permissions, and coordinated configuration.
-
-The dashboard is activity-first, not an administration console with statistics attached. People who never change a setting are intended users. Settings support the analytical experience rather than defining its entrance.
-
-The open CLI, library and Actions remain complete, independently useful ways to measure and automate diffs. The extension improves one reader's present-tense GitHub view. The App adds repository-wide operation and memory, shared context, and coordination. It does not introduce a second semantic engine or make the open product deliberately inconvenient.
+The open CLI, library, Actions, extension and playground remain independently useful. The App uses the same semantic engine and adds repository-wide memory, historical context and coordinated operation. The Free/Community basic experience is useful on its own; Pro adds the historical file product and Business adds coordination. Do not narrow the open engine to create that distinction.
 
 ## Destinations and ordinary journeys
 
 ### Signed-in home
 
-A person may sign in with GitHub without owning an installation or buying a subscription. The home brings together currently accessible, connected repositories and their relevant activity. Its totals, clouds and comparisons use only that reader's authorised repository population. An inaccessible repository must not remain indirectly visible through a total or summary.
+Anyone can sign in with GitHub and read connected repositories they currently may access, including repositories funded by somebody else. The home combines their authorised activity, repository comparisons and eligible premium views. It is not necessary to own an installation or buy a reader seat.
 
-A collaborator can move directly from a PR brief to the corresponding PR detail. The ordinary entrance must not require understanding installation IDs, configuring an account, or entering an administrator-only control room. Administrators additionally receive relevant operating and setup information.
+Authorise the population before computing totals and relationships. Hiding a private repository name while keeping its numbers in the total is not sufficient. Mixed entitlement and coverage must be explicit; unavailable premium data is not zero.
 
-Listing unconnected private repositories is not a first-delivery requirement. Linking to GitHub's repository or installation selection remains a valid entry route. A sign-in session must not be assumed to provide an inventory outside its actual authorisation.
+Administrators have relevant management navigation, but Pro does not receive a global policy-drift inventory or unsynchronised-repository hints. Those are Business coordination, not ordinary analytical comparisons.
+
+Listing private repositories outside the current installation grant is not a first-delivery requirement. A useful GitHub installation/repository link remains valid; sign-in alone must not be assumed to enumerate everything.
 
 ### Repository detail
 
-A repository opens on activity and useful context: PR populations, changes through time, file activity and relationships, coverage, and relevant current work. Its settings and operation views remain separate destinations available to authorised people.
+Open on PR activity and useful context, with entitled file history, coverage and current related work. PR lifecycle and file activity deserve distinct substantial treatment. Settings and processing are separate destinations, available according to authority.
+
+A premium word cloud is a prominent analytical entrance. It leads into a file or repository and its contributing observations, rather than ending at a decorative label.
 
 ### Pull-request detail
 
-Each PR has a dedicated detail destination containing its immutable comparison identity, current measured facts, evidence, policy interpretation, file contributions, lifecycle observations, historical context and related open work. It is the complete destination behind the intentionally selective brief.
+A direct brief link opens that PR's dedicated view. It includes immutable comparison identity, raw and replacement-aware facts, file contributions, lifecycle, evidence, policy interpretation and eligible context.
 
-Facts, configured decisions, desired effects, performed requests and observed GitHub results stay distinguishable. Current policy is the default interpretation. Where an original merge-time result was actually retained, the view can indicate a changed policy and switch between the current interpretation and that recorded result. Imported history must not invent an App result from before the App observed it.
+Measured facts, configured judgments, desired effects, attempted writes and observed GitHub outcomes remain distinct. Current-policy interpretation is the normal view once recalculated. While a refresh is pending, identify the displayed basis. Where an original merge-time result was actually retained, offer a concise indication and switch to it. Imported PRs do not acquire fictional original App results.
+
+Base PR facts stay useful while premium enrichment is pending. A paid historical file feature must not conceal ordinary current-PR facts such as its file count or measured Changed.
 
 ### File detail
 
-Each file has a dedicated detail destination for change frequency, volume, Turnover, growth or shrinkage, history, related files or components, and contributing merged PRs. A cloud or other overview leads into this object rather than stopping at a decorative label.
+Pro/Business and applicable repository grants supply a dedicated historical file view: change frequency, volume, Turnover, growth/shrinkage, contributing merged PRs and relationships with other files/components.
 
-Retained rename observations and immutable references support continuity where established. Ambiguous identity, deletion, unavailable content and historical gaps remain visible. A current path is not automatically the identity of every earlier file with that spelling.
+Observed renames and immutable references support continuity only where established. Identical path spelling does not prove that two observations are the same historical file. Deletion, binary/empty data, unavailable evidence and identity gaps remain visible.
 
-The eventual page, drawer, ledger or other presentation is a design choice. A commit-detail destination is a later possibility, not a first-delivery commitment to general commit analytics.
+Page, drawer or panel composition is a design choice. A commit-detail destination is a later possibility, not a commitment to a general commit-analytics subsystem.
 
 ## Two distinct analytical subjects
 
-PR lifecycle and file activity receive equal treatment. They share measurements where appropriate but answer different questions and do not silently substitute populations.
-
 ### PR lifecycle and development
 
-Retain observable creation/opening, draft and ready-for-review transitions, closure, reopening and merge facts with their event times and comparison references. Useful views include PR volumes and size distributions, open populations, development of a PR's size or breadth, and elapsed time in states where evidence exists.
+Retain observable creation/opening, draft/ready, closure/reopening and merge facts with provider event time, observation time and import provenance. Support PR volumes, sizes, open populations, size/breadth development and elapsed state duration where the transitions are known.
 
-Elapsed time is not development effort, review labour or an individual's speed. Missing transitions do not become zero-duration stages. Event occurrence time, observation time and import time are different facts.
-
-Unique PRs, analysed revisions and execution attempts are separate counts. Reprocessing or webhook redelivery does not add another PR. Successive snapshots are not summed as code delivered.
+Elapsed time is not development effort, review labour or someone's speed. Missing transitions are not zero-duration stages. Unique PRs, analysed revisions and service attempts are separate counts; evolving snapshots are not summed as code delivered.
 
 ### Merged-PR foundation for file activity
 
-General file and repository historical statistics use one final recoverable comparison per merged PR, assigned to its merge-time population. An importer or live collector must bind that comparison to known immutable references and evidence. A latest open-PR snapshot is not silently substituted for a final merged result.
+General file/repository history uses one final recoverable comparison per merged PR, assigned to its merge-time population. Qualify its immutable reference and evidence across supported merge, squash and rebase paths. The latest observed open head is not silently substituted for the final comparison.
 
-Open-PR development remains available in its own analytical subject. A separate current open-PR index supports overlap awareness. It does not require an archive of every intermediate file edit.
+A separate current open-PR file index supports related-work awareness without retaining every intermediate file edit. Open-PR development has its own population.
 
-This population is explicitly merged-PR activity. It is not all target-branch change: direct pushes and general branch/commit-throughput capture are outside the selected starting scope. A later expansion must state its own population and avoid double-counting imported and live observations.
+These metrics describe merged-PR activity, not all target-branch changes. Direct pushes and general all-branch/commit throughput remain outside the selected starting scope. Live and imported observations share identities so they cannot double-count one PR.
 
 ## File and repository measurements
 
-A shared measured foundation supports several explicit metrics, not a blended hotness score.
-
-| Metric | Meaning and use |
+| Metric | Meaning |
 | --- | --- |
-| Change frequency | Number of distinct merged PRs touching the file in the selected period. Default weight for the prominent file cloud. |
-| Change volume | Replacement-aware Changed lines accumulated across the selected final merged-PR comparisons. Raw additions, deletions and churn remain separate selectable facts. |
-| Turnover | Change volume relative to file size, displayed as a multiple such as `1.8×`. |
-| Growth or shrinkage | Defined net additions/deletions or size movement, kept distinct from repeated replacement activity. |
-| Breadth and concentration | How changes distribute across files or components instead of reducing every change to one total. |
-| Co-change | Observable frequency and strength of files or components appearing together, with contributing PRs and sample context. |
+| Change frequency | Distinct merged PRs touching the file in the selected period; default cloud weight. |
+| Change volume | Replacement-aware Changed over the selected final comparisons; raw additions, deletions and churn remain separate facts. |
+| Turnover | Change volume relative to file size, shown as a multiple such as `1.8×`. |
+| Growth or shrinkage | Defined net addition/deletion or size movement, not repeated replacement activity. |
+| Breadth and concentration | Distribution of change across files or components. |
+| Co-change | Observed files/components appearing together, with sample context and contributing PRs. |
 
-Turnover has a concise visible explanation: **Change volume relative to file size.** It is not the percentage of unique lines rewritten and may exceed one. Its exact baseline, aggregation across a period, treatment of changing file size and repository-level denominator remain calculation-contract work. No arbitrary formula is ratified merely by the display name. New, empty, deleted, binary and unmeasurable files need explicit applicability rather than infinite, invented or misleading values.
+Turnover's brief explanation is **Change volume relative to file size**. It is not the percentage of unique lines rewritten. The precise baseline, period aggregation, changing-size treatment and repository denominator require a calculation contract. New, empty, deleted, binary and unavailable files need explicit applicability rather than infinite or invented values.
 
-Repository comparisons use the same principle of explicit metrics: frequency, volume, relative change and their distributions. Repository clouds and alternative comparison charts are useful for both personal and organisation accounts. An Individual plan does not lose these analytics merely because several repositories are involved.
+Repository comparisons use explicit measures too. A personal Pro account can compare its repositories and use the supported repository clouds; these analytics do not require Business merely because several repositories are involved.
 
-Repositories need not be ranked as better or worse. Metrics describe change, not risk, complexity, importance, quality or productivity.
+No synthetic hotness, risk, quality, complexity, importance or people-productivity score is selected.
 
-## Chart and exploration capabilities
+## Charts and exploration
 
-Word clouds are a prominent analytical entrance, not a novelty fallback. Their default weight is change frequency. Other supported metrics may change the weight without changing the underlying meaning of the selected metric. Exact values and links to the corresponding file or repository remain available.
+Clouds remain prominent and frequency-weighted by default. Other supported metrics can change weight; exact values, disambiguated identities and drill-down remain accessible.
 
-The intended chart family includes time-series activity, lifecycle populations, distributions and baselines, file and repository clouds, concentration/breadth, relative-change comparisons, and focused co-change exploration. A selected file's change neighbourhood is a promising interaction, not a ratified visual composition or a requirement to show the entire repository as a network.
+The intended family includes activity time series, lifecycle populations, distributions/baselines, file and repository clouds, breadth/concentration, relative-change comparisons and focused co-change. A selected file's relationship neighbourhood is useful design material, not a mandate to draw a whole-repository network.
 
-Users can filter, select a metric, change scope or period, compare compatible populations, and drill from an overview into a PR or file and its contributing evidence. These capabilities must not require authoring arbitrary SQL or learning a chart-specification language.
+Users can change scope, period and metric, compare compatible populations, filter/select and drill into a PR or file without writing SQL or learning a chart language. The renderer must support the complete vocabulary, not demote clouds because an ordinary chart package cannot draw them.
 
-The chart library is an implementation selection still to be researched against this complete vocabulary. A previous renderer recommendation is not automatically sufficient for word clouds, linked exploration and relationship views. Prefer maintained rendering and interaction capabilities over hand-building a general chart system.
-
-The application owns measurements, filtering meaning, authorisation, coverage and aggregation. A chart is one projection alongside concise text, accessible values and exports. Unknown data is not zero; bounded values are not plotted as exact midpoints; gaps are not interpolated into false continuity. Compact labels carry the immediate meaning, while details and documentation carry full definitions.
+The application owns authorisation, measurements, aggregation, coverage and evidence. Charts, concise text, accessible values and exports are projections of that meaning. Unknown is not zero, bounded values are not exact midpoints and missing history is not interpolated continuity. Compact captions should not repeat a full metric definition.
 
 ## Selective PR brief
 
 ### Purpose and configuration
 
-The optional brief brings useful repository memory into ordinary PR reading. It is best-effort and deliberately selective, not a complete report and not a claim to contain everything a reviewer should know.
+The optional brief brings useful repository context into normal PR reading. It is deliberately selective, not a complete review or a claim to mention every relevant fact.
 
-An administrator selects eligible information types and their priorities, conditions and compactness through bounded settings such as checkboxes, toggles and sliders. Selection is deterministic. No language model or new template engine is required. Advanced implementation must not turn basic configuration into programming.
+Bounded controls choose eligible modules, priorities, conditions and compactness. Selection is deterministic, with no language model or new template engine. The existing portable comment-template feature remains separate.
 
-Possible observations include:
-
-- the current PR's size and repository baseline;
-- recent activity of a selected changed file;
-- another open PR touching the same file or defined component;
-- a historical companion file that this PR does not change.
-
-A representative concise result might combine the size line with two or three contextual observations and a link to full PR detail. This is an illustration, not a frozen line count or layout.
-
-The relevance algorithm chooses useful observations, limits redundant coverage and suppresses unhelpful lines. A PR touching many files must not produce one observation per file. The ranking, thresholds, minimum samples, broad-change influence and tie-breaking require a bounded algorithm design; no specific scoring formula is selected here.
+The size report remains basic value. Premium modules can add recent file activity, another open PR touching the same file/component, a historical companion absent from this PR and compatible repository context. The algorithm selects useful observations rather than printing a row for every changed file. Ranking, minimum support, broad-change influence and tie-breaking still need their own contract.
 
 ### Historical companions and current neighbours
 
-A statement such as “This file often changes with these tests that this PR does not change” describes an observed relationship. It is not a claim that the tests should be edited, a missing-test diagnosis or merge advice.
+“This file often changes with these tests that this PR does not change” is an observation, not a missing-test diagnosis or instruction to edit tests.
 
-A statement that another open PR has 67 Changed lines in the same file describes that other PR's per-file change volume. It does not mean that 67 identical lines overlap, that a conflict exists, or that GitHub's mergeability analysis has been reproduced.
-
-The first capability is same-file or explicitly defined component awareness. Line-overlap or semantic conflict detection would be a separate expansion.
+“67 Changed in the same file” describes the other PR's measured volume, not 67 overlapping positions or a predicted merge conflict. Same-file/component awareness is the selected capability; line-overlap and semantic conflict detection are separate potential expansions.
 
 ### Comment lifecycle
 
-When the ordinary size report is enabled, the brief joins the same owned comment. It must not create a competing second ongoing report. The underlying portable owned-comment and label features remain unchanged.
+When the size report is enabled, context joins that same owned comment rather than creating a second recurring report. Refresh affected open PRs after own-comparison changes, relevant neighbouring changes, applicable policy/brief changes and reopening. Write only meaningful changes.
 
-Refresh affected open PRs when their own comparisons change, when relevant neighbouring open PRs change, when an applicable policy or brief configuration changes, and after reopening. Update the existing owned comment only when its meaningful content changes.
+Do not keep editing closed or merged replies. An optional final merge summary is a separate explicit event. Imports never post historical comments, labels or final summaries.
 
-Do not keep refreshing comments on closed or merged PRs. A separate optional setting may publish a final summary when a PR merges. That explicit final event is distinct from ongoing refresh after closure.
+Public brief text must fit its actual audience. A protected dashboard link does not make private sibling context safe to post. Unavailable premium context must not break an otherwise valid basic size report.
 
-A historical import has no authority to post comments, update labels or create retroactive final summaries. Publicly posted brief content must be appropriate for the PR's actual audience; a protected dashboard link does not protect text already disclosed in the comment.
+Brief settings are App-only and may travel with its configured policy; they do not create another `.diffdevil.yml` language.
 
-Brief settings are App-only and may be shared with the App's named configuration. They are not a new `.diffdevil.yml` template or configuration surface.
+## Co-change calculation boundary
 
-## Co-change research boundary
+A deterministic relation may use merged file sets, pair counts, conditional frequency and companions' background frequency, with sample counts and contributing evidence. Broad refactors, ubiquitous files, tiny changes, sparse observations, asymmetry, renames, exclusions and components need careful algorithm design.
 
-A deterministic relationship can begin with merged-PR file sets, pair counts and conditional frequency, then account for each companion's background frequency. Useful output explains the relationship with sample counts and contributing PRs rather than publishing a synthetic risk score.
+No less-than-five-lines cutoff or automatic exclusion of very broad changes is selected. Relationship weighting must not erase the foundation or change ordinary frequency/volume counts. Policy-excluded observations remain retained but excluded from the ordinary view.
 
-Broad formatting/refactoring PRs, ubiquitous files, tiny edits, low sample counts, asymmetric relationships, changing policy exclusions and component definitions require research before selecting weighting. Downweighting changes below five lines was an exploratory possibility, not an accepted threshold. Excluding very small or very large observations is likewise not settled.
+Algorithm design and chart selection are distinct: one selects useful facts and relationships; the other renders and explores them.
 
-Retain the measurement evidence independently of a chosen relationship ranking. Co-change weighting must not quietly alter the ordinary frequency or volume counts. Policy-excluded files stay out of ordinary views while their permitted measurements remain available for reinterpretation.
+## Policy and history interpretation
 
-Algorithm research and chart-renderer research are separate contributions: one defines useful relationships and selective facts; the other chooses how to render and explore those facts.
+Trusted `.diffdevil.yml` values retain precedence over App defaults. Show configured and effective values and their origins. Neither manual nor bulk application may claim to change a value still overridden by the repository.
 
-## Configuration and policy changes
+Pro has one reusable personal default and one for each connected organisation. A repository settings page shows its appropriate default, differences and deliberate application action. Repository-specific custom configuration remains valid. No Pro bulk application, named shared-policy library or global drift hints are selected.
 
-Repository-owned trusted `.diffdevil.yml` values remain authoritative over App defaults. Show the chosen App configuration, the resolved effective policy, each setting's origin and which values the repository file overrides. Bulk application must not claim to change values that remain overridden.
+Business adds named linked policies, per-scope defaults, automatic eligible setup, delegated administration and coordinated updates. Link/unlink choices remain explicit. History consent and publication are independent choices even when the account authorises automation for new repositories.
 
-Individual administration supports named reusable configurations, an account default, deliberate application to each repository and inspection of differences. A repository may remain intentionally different.
+Free and Pro can manually request current-policy replay for a repository. History-enabled Free retains the base paths and numerical file observations, including excluded files, needed for supported replay. Retention of these rows does not supply premium historical exploration.
 
-Team adds linked shared configurations. An account can choose configurations that link when adopted; repositories can link or unlink as selected. Updating a linked shared policy propagates to its linked repositories, respecting repository overrides. Settings may also queue current-policy history recalculation and refresh eligible open-PR labels and briefs.
+Recalculation changes a derived interpretation, not immutable observations or original GitHub effects. Only necessary work is queued: changing brief compactness does not reimport source history. Newly source-dependent metrics may need additional acquisition or declare incomplete historical coverage.
 
-Ordinary historical analytics show the current effective policy. Retained measurements remain unchanged; the derived view is recalculated. Do not build repository-wide policy-era dashboards as a prerequisite. Original recorded PR results remain factual historical evidence where available, separate from today's interpretation.
+No repository-wide policy-era warehouse or initial rollback UI is required. Audit retains meaningful administrative changes for its own purpose.
 
-Only work needed by a changed setting should be queued. A brief-length change does not require reacquiring years of source; a new source-dependent metric may require new measurements or an explicitly incomplete historical range.
+## Historical import and processing management
 
-Rollback is not a starting feature. Administrative history must preserve attributable changes, but that does not mandate a generic rollback system. History consent, publication and delegated access are separate administrative choices; applying a named analysis policy must not silently enable additional collection or publication.
+Connecting an established repository should provide progressively useful context rather than require months of prospective collection. Import all recoverable selected statistics within the chosen scope and allowance. Open-PR scans establish current detail/related-work, while historical imports establish earlier final comparisons and lifecycle evidence.
 
-## Individual and Team capability distinction
+Free imports up to 100 recent PRs per selected repository import. Paid import prioritises useful recent coverage, then older history. Monthly account import allowances are bounded but their numeric values remain launch configuration, not invented here. No live PR spends that import allowance.
 
-These are product capability names, not currently published subscription offers. Prices, allowances, fair use, account bundles and paid availability remain separate commercial decisions.
+Jobs are resumable and visibly scoped. Show completed ranges, partial/unavailable observations and actual policy basis. Live work takes priority; enrichment, older import and recalculation may lag or pause under sustained usage. Keep durable job progress independent of execution-message lifetime.
 
-Individual has the full useful analytical vocabulary, repository comparisons, dedicated detail views, named configurations, deliberate imports, policy experimentation and optional PR briefs. Its administering person performs repository setup and updates manually. Collaborators with current access can read the repository's available data without purchasing a separate subscription.
+Respect actual provider limits from the first useful delivery. More sophisticated proactive priority/headroom management can follow observed use; it does not create an exemption from rate limits meanwhile.
 
-Team sells coordinated operation: linked policies, delegated administration, account-wide setup awareness, automatic adoption rules, coordinated history/open-PR refresh, and an administrative audit trail. It does not reserve the useful charts or the meaning of a diff for groups.
+Imports do not reconstruct vanished intermediate revisions or fictional original effects. Qualify supported final comparisons, truncation and unavailable patches. Deduplicate live/import work and honour disabled/deleted ranges. A larger subscription does not silently refill a deliberate deletion.
 
-A single person using a personal GitHub account can choose Team for that automation. A GitHub organisation is not automatically the same as a Team subscription. Account defaults apply within their own managed account; visibility of a collaborator repository does not apply the reader's personal defaults to it.
+## Management, publication and delivery
 
-For Individual, useful repository-local banners can offer applying a default or starting an import. For Team, account-wide awareness and explicitly selected automation can configure newly reachable repositories, link policy, and start the selected history/import behaviour. Automation follows an actual GitHub App grant and never manufactures access.
+[Account management](app-management.md) specifies repository selection, organisation funding, processing views, authoritative upgrade/add-on quotes and term-end downgrade/archive behaviour. [Plans](app-plans.md) specifies Free/Pro/Business and Community, the preview and OSS grant.
 
-No per-member billing is selected. Capacity and workload are commercial dimensions for the later pricing decision, not hidden meters added here. Provider redelivery and the service's own recovery attempts must not become chargeable analyses.
+An administrator can publish anonymous read-only analytical views for eligible public repositories using an account boolean and repository inherit/enabled/disabled override. Public visibility does not itself opt in. Published data follows repository entitlement and excludes settings, billing, audit, delegation and private sibling context. Unpublishing or privatisation stops serving the projection.
 
-## Historical import and open-PR scanning
+A separate internal operator view needs service usage, processing health and cash-economics visibility with scoped agent support. It is not the customer's Business audit and not the ordinary analytical entrance. Optional news/feedback consent remains separate from necessary service messages.
 
-Connecting an established repository should not require waiting months to obtain useful context. Support an explicit historical import of **all recoverable selected statistics** within its chosen scope and allowance.
-
-An open-PR scan establishes today's detail views and related-work index. A historical import establishes earlier PR populations, final merged comparisons, file activity and relationships. These are distinct operations even when offered in one onboarding journey.
-
-Imports are resumable, progressive and visibly bounded. Recent results should become useful before the complete selected import finishes. Show scope, progress, unavailable observations and coverage rather than an unsupported completion-time promise. Live PR operation takes priority over background imports and recalculation.
-
-Use adaptive pacing against actual provider limits. Reuse sufficient retained facts and deduplicate imported/live observations. A calendar period alone does not describe the amount of work: a quiet six-month repository may cost less to import than one busy week elsewhere.
-
-Recoverable final comparisons do not imply recoverable intermediate revisions, every lifecycle transition or an original diffdevil policy result. Squash/rebase handling, immutable comparisons, provider file limits and omitted patches need qualification on real supported acquisition paths. Unknown or partial results remain explicit.
-
-Free use may offer bounded import; paid Individual and Team may offer deeper capacity. No counts, calendar limits, retry intervals or prices are selected here. Import does not override opt-outs, deletions or retention boundaries and does not apply historical GitHub effects.
-
-## Public read-only publication
-
-An authorised account administrator can explicitly publish analytical views of eligible public repositories. The account has a boolean publication default; each repository has inherit, enabled or disabled. The setting belongs prominently in administration, but is not enabled merely because a repository is public.
-
-A published view is anonymous and read-only. It exposes permitted repository statistics, file clouds and analytical detail, not settings, billing, members' administration rights, audit records or private sibling repositories. Unpublication or repository privatisation stops public serving. See [access and accounts](dashboard-access.md) for the complete boundary.
-
-## Remaining design and implementation decisions
-
-The selected product still needs concrete visual design, a chart/library choice, co-change and selective-brief algorithms, a precise Turnover calculation, a qualified final-comparison/import contract, storage and workload measurements, and the later pricing/allowance design. These are owned implementation or co-design outcomes, not reasons to shrink this capability description back to pathless size statistics.
-
-No source code, collection, migrations, live authorisation, background imports, billing, public publication or dashboard deployment is established by this document. Existing narrower source evidence remains evidence for what it actually implements.
+The selected product still requires concrete visual design, renderer adoption, co-change/brief algorithms, the Turnover definition, acquisition/storage qualification, operational tuning and shared commercial integration. Those implementation questions do not reopen settled pricing or shrink the product to the old pathless backend. No live effect or available paid service follows from this document.
