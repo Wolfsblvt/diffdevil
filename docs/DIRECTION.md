@@ -44,11 +44,19 @@ Ordinary analytics uses the current effective policy. PR detail may show an actu
 
 The optional deterministic PR brief selects useful historical/current context and links to full PR detail. It joins the owned size report when enabled, refreshes affected open PRs after own/neighbour/policy changes and reopening, and does not keep editing closed replies. A separate optional final summary may be posted on merge. Historical import never posts retroactive replies or labels. Brief settings are App-only bounded controls, not a new template language or `.diffdevil.yml` surface.
 
-The selected [account model](dashboard-access.md) permits any GitHub user to sign in and read connected repositories they currently can access. Individual administration is manual and has the complete useful analytical vocabulary. Team adds delegated administration, linked policies, coordinated refresh, account-wide setup automation and an administrative audit. Personal GitHub accounts can use Team; no per-member billing or GitHub-inaccessible private-repository sharing is selected.
+The selected [account model](dashboard-access.md) permits any GitHub user to sign in and read connected repositories they currently can access. [Free, Pro and Business](app-plans.md) are now selected. Free supplies basic PR/repository history; Pro adds file-history exploration and premium context; Business adds delegated administration, linked policies, coordinated refresh, automatic setup and audit. A personal subscriber funds explicit organisations, with one included connection and paid additional connections. Authorised readers need no seat. Funding does not widen GitHub visibility.
 
 An explicit account default plus per-repository inherit/on/off setting can publish anonymous read-only analytics for eligible public repositories. Private repositories, settings, audit, billing and private sibling context are excluded. Unpublication and privatisation stop public serving.
 
-Explicit open-PR scans and resumable historical imports provide all recoverable selected statistics, with recent-first progressive usefulness and live processing priority. Free/paid import limits, revised cost, capacity, prices and subscription account bundles remain a later commercial co-design. This document makes no new commercial offer.
+Explicit open-PR scans and resumable historical imports provide all recoverable selected statistics, with recent-first progressive usefulness and live processing priority. The [accepted offer](app-plans.md) specifies €9/€90 Pro, €42/€400 Business and €9/€90 additional organisations, including applicable tax. Numeric monthly import budgets remain launch configuration, not per-PR charges or purchasable credits. These are planned product terms, not an available paid service.
+
+## Selected customer and operating management
+
+[Management](app-management.md) owns explicit repository selection, one-funder organisation connections, per-scope Pro defaults, Business coordination, processing coverage and subscription presentation. Upgrades start a new full period with unused paid value credited; add-ons join the existing renewal. The shared commercial service owns tax/payment arithmetic rather than a second local billing engine.
+
+The one-time premium snapshot is tied to a stable GitHub account and frozen after capture. OSS is a manually approved public-repository grant outside normal limits, not another tier. Public/private transitions reconcile publication and grant eligibility without treating revocation as deletion.
+
+Live eligible checks/labels/size replies stay the priority; enrichment and imports can lag honestly. Customer management and the separate scoped operator/agent view must expose useful standing. Optional product-news consent remains independent of necessary service messages.
 
 ## Work still required for that direction
 
@@ -57,10 +65,12 @@ The documentation candidate does not implement the expanded model. Remaining out
 - joined storage/acquisition/consent for lifecycle and named file measurements, final merged comparisons, excluded observations, administrative audit and current-policy recalculation;
 - qualified imports/open-PR indexing and adaptive provider pacing, without replaying historical effects or resurrecting deleted gaps;
 - deterministic co-change and selective-brief algorithm research followed by implementation;
-- chart/framework research against clouds, relationship exploration, distributions and interactive drill-down, followed by owner-led concrete visual design;
+- qualification and adoption of a renderer covering clouds, relationship exploration, distributions and drill-down, joined to owner-led concrete visual design;
 - full account/delegation/public projection journeys and live authorisation, deletion and publication qualification;
-- linked configuration and automatic repository adoption/open-PR refresh; and
-- separate interactive pricing/allowance co-design using the new workload rather than the old pathless-history cost specimen.
+- linked configuration and automatic repository adoption/open-PR refresh;
+- Community/premium composition without replacing public source files, customer processing and subscription views, preview/OSS grants, and an internal service-usage/cash view;
+- shared billing integration for tax-inclusive quotes, new-period upgrades, same-anchor add-ons, price protection and term-end changes; and
+- realistic operating measurements and monthly import configuration without revisiting settled prices or importing the old pathless specimen as a new workload forecast.
 
 Existing backend work can contribute its compatible statistical and query contracts, but its older projection is not the new product ceiling. Exact implementation placement and review remain in the current workplace. Do not declare active worker/provider status merely from an old launch record.
 
@@ -70,11 +80,11 @@ Keep `.diffdevil.yml` as the single conventional repository file, with explicit 
 
 Cloudflare Workers, Queues and D1 remain the first App adapter. Keep application semantics, persisted identities and export/import meaning outside provider bindings; preserve Node consumers. Self-hosting is intentional, but a generic multi-provider framework or a second complete stack is not selected merely to claim portability. Shared static validators serve Node, Actions and hosted consumers.
 
-The short recovery ledger remains separate from optional history and account state. Paid no-age-expiry intent is not infinite storage. Existing offboarding/deletion protections remain effective until explicitly revised; richer named data does not automatically widen post-access-loss export authority.
+The short recovery ledger remains separate from opted-in history, account state and audit. History-enabled Free also retains base paths/numerical file measurements, including excluded observations, for manual policy replay without premium historical views. [Management](app-management.md) distinguishes premium ending from provider access loss: a shared-policy frozen archive and authorised export/deletion replace the old financial-entitlement thirty-day deletion assumption, while revoked GitHub authority never permits named private-data export. Retention is not infinite physical resources.
 
 Source lives under `src/diffdevil/`, applications under `apps/`, maintained docs under `docs/`, tools under `tools/` and shipped Actions under `actions/`. Generated runtime output is not the authoring source. The manual remains generated from explicit maintained-source selection, not a second hand-maintained documentation copy.
 
-Reusable software is MIT, application/service software AGPL-3.0-only, original prose CC BY 4.0, runnable examples MIT and visual/brand assets reserved according to [the licence map](../LICENSES/README.md). Private co-design transcripts, pricing hypotheses and agent activation material do not belong in this public repository.
+Reusable software remains MIT and the existing public application source remains AGPL-3.0-only under [the component map](../LICENSES/README.md). The selected Community edition supplies basic application capability with operator-controlled limits; separately maintained private application extensions supply rich file history and Business coordination. This is not a blanket promise that all premium source is public. Original prose, examples and reserved brand rights retain their distinct terms. Private co-design, economic deliberation and activation material do not belong in this public repository.
 
 ## Delivery truth
 

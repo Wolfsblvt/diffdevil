@@ -2,95 +2,102 @@
 
 ## Meaning
 
-This document owns the selected account and permission model for the managed diffdevil App. It describes planned product behaviour, not currently deployed authorisation or subscription availability. [Dashboard capabilities](dashboard.md) owns the experience; [App integration](integration/github-app.md) owns runtime authentication; [privacy and data](PRIVACY-AND-DATA.md) owns retained information and offboarding.
+This document owns the selected authorisation and scope model for the developing App. It describes planned behaviour, not deployed authentication or subscription availability. [Plans](app-plans.md) owns commercial capabilities, [management](app-management.md) owns customer operations, [dashboard](dashboard.md) owns analytics and [privacy/data](PRIVACY-AND-DATA.md) owns retained information and ending.
 
-## Separate identity, reach, administration and plan
+## Separate identity, reach, administration and benefit
 
-A GitHub sign-in identifies a person. An App installation defines the repositories the service can reach. The person's current GitHub repository access bounds what they may see. Their diffdevil role defines permitted administration within that scope. A plan defines available operated capabilities and capacity.
+GitHub sign-in identifies a person. An App installation defines reachable repositories. The person's current GitHub repository access bounds what they may see. A diffdevil role defines administration inside that scope. A purchased or granted benefit defines capabilities and capacity. Repository selection and independent history consent govern operation.
 
-None of these facts substitutes for another. Paying for Team does not reveal a private repository. Owning a session does not prove current GitHub access. An installation credential does not confer every installation repository's visibility on every user.
+None substitutes for another. Paying does not reveal a private repository; an installation credential does not give every installation repository's visibility to every signed-in user. Owning a session is not permanent repository authority.
 
-Anyone may sign in. A collaborator does not have to own an installation or purchase a separate subscription to read the data available for a repository they can currently access. Empty or unavailable populations should explain the actual state, not imply the person must become an administrator.
+Anyone may sign in. Collaborators can read the capabilities available for connected repositories they currently may access without buying a reader subscription. A Free account can therefore read a colleague's Pro repository or an approved OSS repository without upgrading its unrelated personal scope.
 
-## Personal and organisation accounts
+## Personal subscriptions and organisation funding
 
-Managed account scope follows an explicitly selected GitHub personal account or organisation. Account defaults govern that account's managed repositories. Personal defaults do not apply to another owner's repository merely because the person collaborates there.
+An individual owns the subscription. Pro and Business each include one organisation connection; additional organisation connections are paid add-ons with the same tier and cadence. A Free account may connect one organisation using its pooled personal/organisation allowances.
 
-Individual and Team are capability plans, not GitHub account types. A personal account may use Team for coordinated automation. A person administering a one-person organisation does not become a group merely because GitHub calls its owner an organisation.
+Only one ordinary subscriber funds an organisation at a time. Its dashboard identifies that funder and plan. The organisation owner may disconnect or replace the relationship, and the subscriber may withdraw it. An incoming subscriber must accept and have an available connection. Two colleagues cannot stack Pro allowances.
 
-The signed-in home may aggregate several accessible account scopes. It must identify the scope of administration and never silently apply one account's defaults to another. Exact subscription bundling across multiple managed accounts remains commercial design, not an inferred permission grant.
+Funding grants no additional GitHub reach or administrative power. Organisational records and settings do not become personal property of whoever pays. Organisation administrators do not gain the funder's card or unrelated invoice access. A business billing identity can remain separate from the GitHub individual used for product sign-in.
+
+Defaults remain scoped: personal defaults apply to owned personal repositories; each organisation has its own defaults. A signed-in home may aggregate several accessible scopes, but cannot apply the reader's configuration to collaborator repositories merely because they are visible.
 
 ## Read access
 
-Protected analytical access requires the currently supported GitHub user/repository and App grant checks. Loss of access affects detail views, charts, searches, exports and aggregates, not only navigation.
+Protected analytical access requires current supported GitHub user/repository and App grant checks. Loss of access affects charts, details, queries, exports and aggregates, not only navigation.
 
-A shared home or organisation summary is calculated from the reader's actual authorised repository set. Hiding a repository's name while retaining its measurements in a total, cloud or relationship is not sufficient. Shared views and saved selections are re-authorised when opened; possession of a link is not perpetual access.
+A home or organisation summary is calculated from the reader's actual authorised repository set. Hiding the repository name but retaining its numbers or relationships is not sufficient. Shared URLs and saved selections re-authorise when opened; possession of a link is not perpetual access.
 
-Team may restrict or delegate within GitHub visibility, but it does not provide an additional route to private repositories unavailable to the person on GitHub. There is no organisation-wide analytics-sharing exception that bypasses that ceiling.
+Premium capability is evaluated at the repository, including its funding, preview or OSS grant. Missing entitlement or enrichment is not measured zero. Free's retained base file rows do not implicitly expose premium file-history APIs.
 
-The existing narrowly defined offboarding export/grace route is a separate lifecycle capability, not normal dashboard access and not authority to reacquire GitHub context after removal.
+Business may delegate or restrict within GitHub visibility; it provides no additional route to private repositories unavailable to the person on GitHub. The existing narrowly defined numeric/pathless post-access-loss grace is a separate recovery capability, not a general named-history access exception.
 
 ## Administration
 
-| Person and scope | Planned diffdevil capability |
+| Person and scope | Planned capability |
 | --- | --- |
-| Current collaborator | Read available repository, PR and file analytics; follow briefs to protected detail. |
-| Individual administering person | Configure that managed account's repositories, named settings, manual imports, execution/history choices and eligible publication. |
-| Other collaborator on Individual | Read-only within diffdevil, even if GitHub independently grants powers outside the App. |
-| Team delegated repository administrator | Perform explicitly granted diffdevil operations for selected currently accessible repositories. |
-| Team account administrator | Manage account defaults, linked configurations, automatic setup, delegation and account-level controls within current authority. |
+| Current collaborator | Read the repository's available analytics and follow brief links. |
+| Free/Pro administering person | Configure the managed scope, select repositories, manually import/recalculate, manage history and eligible publication. |
+| Other collaborator on Free/Pro | Read-only inside diffdevil, even when GitHub independently grants additional powers. |
+| Business delegated repository administrator | Perform expressly delegated operations for selected currently accessible repositories. |
+| Business account administrator | Manage defaults, linked policies, automatic setup, delegation and account-level controls within authority. |
+| Subscriber/billing owner | Manage the purchase and organisation connection benefits through authorised shared billing, without acquiring repository authority merely by paying. |
 
-The implementation should keep permissions understandable rather than introduce a role taxonomy without a useful operation. Viewing, editing configuration, applying effects, managing history/imports, publication, deletion/export, managing members and billing are different consequences. Delegating one must not accidentally grant all of them.
+Keep the role model understandable. Viewing, configuration, provider effects, imports, history export/deletion, publication, delegation and billing are different consequences; granting one must not grant all implicitly.
 
-Native GitHub powers remain native GitHub powers. A diffdevil subscription cannot prevent a sufficiently authorised GitHub user from uninstalling an App in GitHub or changing the repository's trusted configuration file. Document this distinction instead of promising control the App does not own.
+Native GitHub powers remain native powers. A plan cannot prevent a sufficiently authorised GitHub user from uninstalling the App or changing the trusted repository configuration file.
 
-Administration needs current authorisation at operation time. A role captured at login is not authority forever. Background work rechecks the current installation, consent and applicable configuration before a consequential write or history publication.
+Check current authority when an action occurs. A role captured at login is not forever valid. Background work rechecks installation, selection, history consent, entitlement and applicable configuration before committing data or effects.
 
-## Defaults and automatic setup
+## Repository admission and defaults
 
-Individual supports named reusable configurations, a chosen account default, repository differences and deliberate per-repository application. Repository-local setup suggestions can offer applying the default and starting an import.
+The management view distinguishes provider reach, selected execution, labelling-only, history-enabled, paused and inactive-over-allowance states. A public repository outside Free's history allocation can remain labelling-only. Selection must apply the actual pooled/per-organisation allowance, not regenerate capacity for each reader.
 
-Team adds linked shared policies and account-wide automation. Explicit rules can configure a newly reachable repository, link its policy and start the selected history/import behaviour. Once the administrator chose that automation, it should not be reduced to a repeated manual approval loop for every otherwise eligible repository.
+Pro supplies one configured personal default and one per funded organisation. Its local apply/difference action belongs in that repository's settings. It has no global drift hints, shared-policy library or bulk apply. Repository-specific custom policy remains available.
 
-Automatic setup requires actual installation reach. A new repository that the App cannot access is not admitted by a notification or a saved default. Discovery of unconnected private repositories is deferred; a GitHub installation/repository link can provide the initial manual route.
+Business adds linked shared configurations and account-wide automation. Explicit rules may configure newly granted eligible repositories, link policy and start the selected history/import behaviour. Once the administrator chose that behaviour, do not convert every eligible repository into another compulsory confirmation.
 
-Analysis policy, history consent, publication and access delegation remain separate settings. A preset name is not consent to collect or publish data. Team automation may include those choices only when the account administrator explicitly selected the relevant automatic behaviour.
+Automation requires actual App reach. Unconnected private-repository discovery is not a first-delivery requirement. A provider notification or subscription does not create missing repository access.
 
-## Shared policies and repository overrides
+Policy selection, history collection, publication and delegation remain independent choices. A default configuration name is not consent to collect or publish.
 
-Team can link repositories to named shared configuration and propagate updates. Individual can reuse the same kind of named configuration through manual application. Analytics and comparisons are not reserved to Team.
+## Overrides and coordinated changes
 
-Trusted `.diffdevil.yml` settings keep precedence over App defaults. The repository's administration view shows both the selected App configuration and the effective origins/overrides. A delegated App administrator must not be told a bulk change succeeded for a value the repository still overrides.
+Trusted `.diffdevil.yml` values keep precedence over App defaults. The administration view shows the selected App settings and effective origins. An automated rollout cannot claim an effect where the repository overrides the changed value.
 
-PR-brief settings belong to the App's named configuration. They do not add a template engine or a new repository-file policy surface. Existing core configuration and owned-comment functionality remain portable.
+Business updates propagate only to linked applicable repositories. Coordinated history replay and open-PR refresh use their normal data/effect boundaries. Free/Pro manual history recalculation does not confer Business cross-repository coordination.
+
+Brief configuration belongs to the App. It may be shared with its configured policy but introduces no new portable template language. A lower-plan transition preserves current settings as ordinary repository configuration rather than deleting them along with a link.
 
 ## Administrative audit
 
-Team includes an attributable audit of changed settings, policies, permission grants, automatic setup, imports/deletions and observed installation-administration actions. Keep event time, actor when established, scope, intended change and observed outcome distinguishable. Unknown actors stay unknown; a failed or merely requested operation must not appear as a successful completed change.
+Business includes an attributable record of settings, policy, permission, automatic setup, import/deletion and observed installation-administration changes. Keep event time, actor when established, scope, intended change and observed result distinct. Unknown actors stay unknown; requested or failed operations are not completed changes.
 
-An audit of administration is not contributor activity analytics. It is protected account data and must not be exposed through a public statistics view. Its purpose and lifetime are distinct from numerical measurement history and the short operational recovery ledger.
+This is protected administrative data, not contributor activity analytics. Its purpose and lifetime differ from measurement history and seven-day operational recovery. Exact retention and before/after representation need an explicit implementation contract, not an unlimited promise.
 
-A useful audit does not require a rollback UI in the first delivery. Stored historical facts must still support explaining what changed.
+Audit does not require an initial rollback interface or a general historical-policy dashboard.
 
 ## Publishing read-only analytics
 
-Publication is an explicit administrative capability for public GitHub repositories only.
+Publication is explicit and eligible only for public GitHub repositories.
 
 | Setting | Values | Scope |
 | --- | --- | --- |
-| Account publication default | Disabled or enabled | That account's eligible repositories, not every account a person can administer. |
-| Repository publication override | Inherit, enabled or disabled | One repository. |
+| Account publication default | Enabled or disabled | One managed personal/organisation account |
+| Repository override | Inherit, enabled or disabled | One repository |
 
-The default restricted view remains available only to authorised readers. Public GitHub visibility alone does not opt the repository into publication. A private repository is ineligible even when its account default is enabled. An enabled override cannot bypass this eligibility rule.
+Public GitHub visibility alone does not publish analytics. A private repository stays ineligible even if a broader default enables publication.
 
-An intentionally published analytical view requires no GitHub sign-in. It is a public projection, not the authenticated dashboard with controls disabled. Permitted content includes repository/file activity, clouds, supported PR detail and their evidence. It excludes administrative configuration, audit history, billing, delegation/member details and private sibling-repository facts.
+The anonymous view is an analytical projection, not an authenticated dashboard with disabled buttons. Its content follows the repository's available capabilities and evidence. Exclude settings, audit, billing, delegation, member-administration details and private sibling facts.
 
-Publication must stop after an authorised unpublish or confirmed GitHub privatisation. Public cache and export behaviour must follow that revocation boundary. Implementation must qualify propagation and must not promise that previously copied public data can be retracted from outside readers.
+An authorised unpublish or confirmed privatisation stops public serving, including applicable caches. Do not promise recall of external copies. Privatisation also revokes an OSS grant independently of billing and data deletion.
 
-Facts posted into a public PR brief are already public, regardless of whether its detailed dashboard link is protected. Never include private cross-repository context in such a brief merely because the installer can see it.
+Facts posted in a public PR brief are already public. Never include private cross-repository context merely because the installer can see it; a protected detail link does not protect its surrounding comment.
 
-## Deliberately excluded starting scope
+## Leaving and restoring
 
-No access grants to GitHub-inaccessible private repositories; no separate paid seat for every collaborator; no automatic power over native GitHub permissions; no mandatory inventory of unconnected private repositories; no repository-wide historical-policy dashboard; and no rollback system merely because audit records exist.
+Subscription changes, repository deselection, provider access loss and deletion are different transitions. [Management](app-management.md) carries term-end changes and funding continuity; [privacy/data](PRIVACY-AND-DATA.md) carries archive, access-loss grace, deletion and restore protection.
 
-These boundaries keep the useful product coherent without reducing its selected collaboration, analytics or automation capabilities.
+Retained data does not mean a former payer can still read named private metadata after losing GitHub authority. A restored payment does not override deletion or silently resume disabled collection.
+
+No broader private analytics sharing, reader-seat billing, general rollback system or required inventory of every unconnected private repository is implied by these capabilities.
