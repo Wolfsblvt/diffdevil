@@ -2,6 +2,21 @@
 
 A source commit, npm publication, Action ref, application deployment, and extension listing are different releases. Success at one boundary does not publish the others. Choose the artifact for the surface you actually use, then verify its version or exact source identity.
 
+## Why your tools can have different versions
+
+diffdevil is one product family with independently released tools. The library, CLI, Actions and standalone runtime share an open-tool version. The browser extension, App and Agent Skill each have their own version; their numbers do not need to catch up with one another.
+
+| Tool | What its version identifies | Update against |
+| --- | --- | --- |
+| CLI, TypeScript library, Actions and standalone runtime | The open-tool release | That package/release and your selected pin or Action alias |
+| diffdevil for GitHub | The browser extension release | Your browser's extension channel or the selected extension release |
+| diffdevil App | The server and dashboard service release | The operated/deployed App release; self-hosters follow its upgrade instructions |
+| diffdevil Skill | The canonical agent instructions | The published Skill release, independently of npm |
+
+For example, an extension `1.3.0` can contain analysis engine `1.7.4`, matching CLI `1.7.4`. These illustrative numbers describe different things; a lower extension number does not establish that it is outdated. About/support details should distinguish the tool version from the engine and exact source it contains. Do not update one tool merely to match another's number.
+
+Release tags identify their family: `vX.Y.Z` for the open tool, `extension-vX.Y.Z`, `app-vX.Y.Z`, and `skill-vX.Y.Z`. A repository-wide Latest badge is not a latest-version answer for every family. Check the release and distribution channel you actually use; a GitHub extension release does not prove the same version is already available in the Store. Release notes identify which tools contain a shared improvement and any separate rollout.
+
 ## Published open tools and current source
 
 The published open-tool release is `v1.0.0`: npm `@wolfsblvt/diffdevil@1.0.0`, the CLI and TypeScript API, the root and three sub-actions, the `v1.0.0` source ref, maintained Action alias `v1`, GitHub Release, and Marketplace entry. The [dated release account](https://diffdevil.dev/source/?f=docs%2Freleases%2Fv1.0.0.md) and [Qualification](https://diffdevil.dev/source/?f=docs%2Fqualification.md) retain its exact source and consumer/provider evidence.
@@ -39,13 +54,15 @@ Before updating, read the relevant release account and compatibility contract, p
 
 `Wolfsblvt/diffdevil@v1` selects the maintained major alias. A version tag such as `v1.0.0` selects a named release; a full commit SHA is the strongest exact-byte source pin. The release source for `v1.0.0` is `0827485c9d3795ef58a7934cd7a4b8b3fb5cc9c5`.
 
-The same ref choice applies to `/actions/analyze`, `/actions/apply`, and `/actions/sync-labels`. Their committed Node runtime is install-free for consumers; installing the npm package in a workflow does not change the source selected by an Action's `uses:` ref. Likewise, moving a maintained alias can update Action consumers without changing their workflow text.
+The same ref choice applies to `/actions/analyze`, `/actions/apply`, and `/actions/sync-labels`. Their committed Node runtime is install-free for consumers; installing the npm package in a workflow does not change the source selected by an Action's `uses:` ref. Likewise, moving a maintained alias can update Action consumers without changing their workflow text. Extension, App and Skill releases do not move those aliases.
 
 Read [GitHub Actions](../use/github-actions.md) for the task and [Action distribution](https://diffdevil.dev/source/?f=docs%2Fintegration%2Faction-distribution.md) for packaging. Provider permissions, event activation, fork behavior, and a real effect readback still need their own evidence; a Git ref alone does not supply it.
 
 ## Skill and install-free carriers
 
-The canonical Skill has its own SemVer in `SKILL.md` metadata. It does not have to equal the npm package version. Its selected release manifest names the immutable source commit, Skill version, asset names, and SHA-256 digests for the Skill-only, standalone install-free runtime, and bundled Skill/runtime carriers.
+The canonical Skill has its own SemVer in `SKILL.md` metadata. It does not have to equal the npm package version. Select a published `skill-vX.Y.Z` release for Skill updates and an open-tool `vX.Y.Z` release for standalone runtime updates. Read the actual selected release's manifest and attached assets rather than constructing a repository-wide `latest/download` URL.
+
+A Skill-only release need not contain a standalone or bundled runtime. A bundled archive identifies both the Skill and runtime versions and must be used as that explicit combination; newer instructions alone do not silently upgrade your executable. When no matching bundle is published, the supported separate Skill/runtime installation remains available.
 
 Verify the manifest and asset digest, install the complete folder through the actual harness's supported persistent route, then read back discovery and loaded content. A bundled runtime still needs actual execution verification. Downloaded instructions, files in a transient sandbox, and a persistent personal installation are not the same outcome.
 
@@ -70,4 +87,4 @@ Keep the package/API version separate from report, policy, expression, metric, p
 
 Dated release notes stay dated. A note correctly saying that an App or hosted Playground was absent at `v1.0.0` is not a claim that later source/deployments never happened. Conversely, a new source commit does not retroactively change that artifact. Current implementation and deployment standing belongs to [Direction](https://diffdevil.dev/source/?f=docs%2FDIRECTION.md); exact observations belong to [Qualification](https://diffdevil.dev/source/?f=docs%2Fqualification.md).
 
-Historical notes remain available through the repository router rather than competing with current manual pages in ordinary search. For an upgrade mismatch, start with [Troubleshooting](troubleshooting.md) and include the actual surface and version/commit you ran.
+Historical notes remain available through the repository router rather than competing with current manual pages in ordinary search. For an upgrade mismatch, start with [Troubleshooting](troubleshooting.md) and include the actual surface, version/channel, and engine/source you ran.
