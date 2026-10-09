@@ -51,6 +51,7 @@ async function scene(summary, options = {}) {
   page.setDefaultTimeout(4000);
   await page.setContent(summary === 'changes' ? githubChangesHtml() : githubHtml({ dark: true, files: false, summary }));
   await page.addStyleTag({ content: githubCss + contentCss });
+  if (summary === 'changes') await page.addStyleTag({ content: '.d-flex{display:flex!important}' });
   await page.addScriptTag({ content: domCode });
   const fileViews = Object.fromEntries(report.files.map(file => [file.path, m.decorateView(unwrap(m.humanReport(report, policy, file.path)), settings)]));
   await page.evaluate(({ packet, settings, fileViews, summary, options }) => {
@@ -105,7 +106,14 @@ try {
   assert.equal(await changes.page.locator('[data-ddx="aggregate"] + .Diffstat-module__container__fixture').count(), 1);
   assert.equal(await changes.page.locator('.fixture-header-meta .Diffstat-module__container__fixture').evaluate(node => getComputedStyle(node).display), 'none');
   assert.equal(await changes.page.locator('.fixture-header-meta .Diffstat-module__squares__fixture [data-ddx], .fixture-header-meta .Diffstat-module__container__fixture [data-ddx]').count(), 0);
-  assert.equal(await changes.page.locator('[data-diff-header-wrapper] [data-ddx="file"] + .Diffstat-module__container__fixture.ddx-native-hidden').count(), 2);
+  assert.equal(await changes.page.locator('[data-diff-header-wrapper] [data-ddx="file"]').count(), 2);
+  assert.deepEqual(await changes.page.locator('[data-diff-header-wrapper] .ddx-root[data-ddx="file"]').evaluateAll(seats => seats.map(seat => {
+    const header = seat.parentElement;
+    const counts = header?.querySelectorAll('.Diffstat-module__count__fixture') ?? [];
+    const squares = header?.querySelector('.Diffstat-module__squares__fixture');
+    const native = [...counts, ...(squares ? [squares] : [])];
+    return { leads: Boolean(counts.length && seat.nextElementSibling === counts[0]), hidden: native.length === 3 && native.every(node => node.classList.contains('ddx-native-hidden') && getComputedStyle(node).display === 'none') };
+  })), [{ leads: true, hidden: true }, { leads: true, hidden: true }]);
   assert.equal(await changes.page.locator('[data-testid="file-tree"] [data-ddx="aggregate"]').count(), 0);
   assert.equal(await changes.page.locator('[data-ddx="file"]').count(), 2);
   assert.deepEqual(await changes.page.evaluate(() => {
@@ -123,6 +131,10 @@ try {
   assert.equal(await failing.page.locator('[data-ddx="failure"] + .Diffstat-module__container__fixture').count(), 1);
   assert.equal(await failing.page.locator('.Diffstat-module__container__fixture [data-ddx]').count(), 0);
   assert.deepEqual(await failing.page.locator('.fixture-header-meta .Diffstat-module__container__fixture').evaluate(node => ({ display: getComputedStyle(node).display, opacity: getComputedStyle(node).opacity, text: node.innerText, hidden: node.classList.contains('ddx-native-hidden'), faint: node.classList.contains('ddx-native-faint') })), { display: 'block', opacity: '1', text: '+160−118', hidden: false, faint: false });
+  assert.deepEqual(await failing.page.locator('[data-diff-header-wrapper] .Diffstat-module__count__fixture, [data-diff-header-wrapper] .Diffstat-module__squares__fixture').evaluateAll(nodes => nodes.map(node => ({ text: node.textContent, display: getComputedStyle(node).display, hidden: node.classList.contains('ddx-native-hidden') }))), [
+    { text: '+30', display: 'inline', hidden: false }, { text: '−22', display: 'inline', hidden: false }, { text: '', display: 'flex', hidden: false },
+    { text: '+130', display: 'inline', hidden: false }, { text: '−96', display: 'inline', hidden: false }, { text: '', display: 'flex', hidden: false },
+  ]);
   assert.equal(await failing.page.locator('[data-ddx="failure"] .ddx-marker').innerText(), '× diffdevil');
   assert.equal(await failing.page.getByRole('button', { name: 'Retry', exact: true }).count(), 1);
   assert.equal(await failing.page.locator('[data-ddx="file"], [data-ddx="tree"], .ddx-native-hidden, .ddx-native-faint').count(), 0);

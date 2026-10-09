@@ -35,13 +35,14 @@
 .ddx-marker{border:0;background:transparent;padding:0 2px;color:inherit;font:inherit;cursor:pointer;border-radius:4px}.ddx-marker:hover{color:var(--fgColor-default,var(--color-fg-default,#1f2328))}
 .ddx-retry{border:0;background:transparent;padding:0;color:var(--fgColor-accent,var(--color-accent-fg,#0969da));font:inherit;cursor:pointer}.ddx-retry:hover{text-decoration:underline}
 /* GitHub's diffstat nodes are hidden or demoted, never removed */
-.ddx-native-hidden{display:none!important}
+/* Primer can apply .d-flex display:flex!important after content CSS. */
+.ddx-native-hidden.ddx-native-hidden{display:none!important}
 .ddx-native-leaving{opacity:0!important;transition:opacity 100ms cubic-bezier(.2,.7,.2,1)}
 .ddx-native-faint{opacity:.7;filter:saturate(.3);transition:opacity 160ms cubic-bezier(.2,.7,.2,1),filter 160ms cubic-bezier(.2,.7,.2,1),color 160ms cubic-bezier(.2,.7,.2,1)}
 .ddx-native-faint,.ddx-native-faint .color-fg-success,.ddx-native-faint .color-fg-danger,.ddx-native-faint .text-green,.ddx-native-faint .text-red,.ddx-native-faint [data-testid~="diffstat"]{color:var(--fgColor-muted,var(--color-fg-muted,#59636e))!important}
 /* width priority: the rail drops first, then native raw, then provenance; Changed, value, decomposition and chip never drop */
 @media(max-width:1011px){.ddx-root[data-ddx=aggregate] .ddx-rail{display:none}}
-@media(max-width:899px){.ddx-native-faint{display:none!important}}
+@media(max-width:899px){.ddx-native-faint.ddx-native-faint{display:none!important}}
 @media(max-width:799px){.ddx-provenance{display:none}}
 /* the notice: the only fixed surface, used when no seat exists or file evidence failed */
 .ddx-status{position:fixed;z-index:2147483000;inset-block-start:76px;inset-inline-end:16px;display:flex;align-items:center;gap:10px;margin:0;padding:8px 12px;max-width:min(520px,calc(100vw - 32px));background:var(--overlay-bgColor,var(--bgColor-default,var(--color-canvas-default,#fff)));border:1px solid var(--fgColor-default,var(--color-fg-default,#1f2328));border-radius:8px;box-shadow:var(--shadow-floating-large,var(--shadow-floating-medium,0 8px 24px #0003));white-space:normal}

@@ -199,7 +199,27 @@ export function fileNative(header: HTMLElement): NativeStat | undefined {
   const classic = [...header.querySelectorAll<HTMLElement>('.diffstat')].find(element => !own(element));
   if (classic) return { anchor: classic, nodes: [classic] };
   const token = [...header.querySelectorAll<HTMLElement>(LIVE_DIFFSTAT)].find(element => !own(element));
-  return token ? nativeSeat(token) : undefined;
+  if (!token) return undefined;
+  // Current React headers can render counts and colored squares as adjacent
+  // siblings. Claim only the contiguous churn run so they move as one native seat.
+  for (let child: HTMLElement = token; child !== header;) {
+    const container = child.parentElement;
+    if (!container || !header.contains(container)) break;
+    const siblings = [...container.children].filter((element): element is HTMLElement => element instanceof HTMLElement);
+    const index = siblings.indexOf(child);
+    if (index < 0) break;
+    let start = index; let end = index;
+    while (start > 0 && churnOnly(siblings[start - 1]!) && !own(siblings[start - 1]!)) start--;
+    while (end + 1 < siblings.length && churnOnly(siblings[end + 1]!) && !own(siblings[end + 1]!)) end++;
+    if (start !== end) {
+      const nodes = siblings.slice(start, end + 1);
+      const hasCounts = nodes.some(node => /[+−–-]\s*\d/u.test(node.textContent ?? ''));
+      const hasDiffstat = nodes.some(node => node.matches(LIVE_DIFFSTAT) || node.querySelector(LIVE_DIFFSTAT));
+      if (hasCounts && hasDiffstat) return { anchor: nodes[0]!, nodes };
+    }
+    child = container;
+  }
+  return nativeSeat(token);
 }
 const TREE = '[data-testid*="file-tree" i], [data-testid*="fileTree"], file-tree, [role="tree"]';
 const TREE_ROW = '[role="treeitem"], [data-tree-entry-type], li';
