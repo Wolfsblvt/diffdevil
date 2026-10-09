@@ -96,6 +96,7 @@ async function contentPage({ dark = true, modern = false, files = true, mobile =
     globalThis.controller = DiffdevilUnderTest.startContent({ href: () => fixture.href, acquire: async () => {
       fixture.calls++; const packet = fixture.packet; const settings = fixture.settings; const delay = fixture.delay;
       if (delay) await new Promise(resolve => setTimeout(resolve, delay));
+      if (fixture.hold) await new Promise(resolve => { fixture.release = resolve; });
       if (fixture.failures > 0) { fixture.failures--; throw Object.assign(new Error('Signed-in page source unavailable.'), { code: 'SIGNED_IN_UNAVAILABLE' }); }
       return { packet, settings };
     } });
@@ -182,18 +183,20 @@ try {
   const privateNavigation = await contentPage({ files: false, href: 'https://github.com/example/cinder/pull/42', failures: 1, ready: '[data-ddx="failure"] .ddx-retry' });
   await check('A Conversation failure is read again on the Files surface after soft navigation, with GitHub counts at full strength while reading', async () => {
     const page = privateNavigation.page;
-    await page.evaluate(() => { fixture.href = 'https://github.com/example/cinder/pull/42/changes'; fixture.delay = 1200; window.dispatchEvent(new Event('soft-nav:payload')); });
-    await page.locator('[data-ddx="reading"]').waitFor();
+    await page.evaluate(() => { fixture.href = 'https://github.com/example/cinder/pull/42/changes'; fixture.hold = true; window.dispatchEvent(new Event('soft-nav:payload')); });
+    await page.locator('[data-ddx="reading"]').waitFor().catch(async error => { throw new Error(`${error.message}
+${await page.evaluate(() => JSON.stringify({ calls: fixture.calls, href: fixture.href, roots: [...document.querySelectorAll('.ddx-root,.ddx-status')].map(element => element.outerHTML.slice(0, 160)) }))}`); });
     assert.equal(await page.locator('[data-ddx="failure"]').count(), 0);
     const native = await page.locator('.gh-header-meta .diffstat').evaluate(element => ({ display: getComputedStyle(element).display, hidden: element.classList.contains('ddx-native-hidden'), faint: element.classList.contains('ddx-native-faint') }));
     assert.notEqual(native.display, 'none'); assert.equal(native.hidden, false); assert.equal(native.faint, false);
+    await page.evaluate(() => { fixture.hold = false; fixture.release(); });
     await page.locator('[data-ddx="aggregate"] .ddx-value').waitFor();
     assert.equal(await page.locator('[data-ddx="reading"],[data-ddx="failure"],.ddx-status').count(), 0);
     assert.equal(await page.evaluate(() => fixture.calls), 2);
   });
   await check('Retry on the Files surface reads again, and an acquired result survives a route that cannot name its comparison', async () => {
     const page = privateNavigation.page;
-    await page.evaluate(() => { fixture.delay = 0; fixture.failures = 1; fixture.href = 'https://github.com/example/cinder/pull/42'; controller.refresh(); });
+    await page.evaluate(() => { fixture.failures = 1; fixture.href = 'https://github.com/example/cinder/pull/42'; controller.refresh(); });
     await page.locator('[data-ddx="failure"] .ddx-retry').waitFor();
     await page.evaluate(() => { fixture.href = 'https://github.com/example/cinder/pull/42/changes'; window.dispatchEvent(new Event('soft-nav:payload')); });
     await page.locator('[data-ddx="aggregate"] .ddx-value').waitFor();
