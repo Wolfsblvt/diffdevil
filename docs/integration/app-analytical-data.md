@@ -143,7 +143,7 @@ Turnover is **Changed during the period divided by time-weighted average file si
 Actual observations bracketing period boundaries and matching consecutive revision identities
 can establish a finite denominator. Missing endpoints, mismatched revisions or size
 discontinuities widen it. An unrecovered merged contribution may have touched any
-file, so named totals and turnover widen too. Creation, deletion or rename in the
+file, so named totals and turnover widen too. Creation or deletion in the
 period is unavailable with that reason. The collector supplies before/after merge
 sizes and then calls `captureDefaultBranchSizes` to observe the default branch's
 known text files. It checks the branch again before publication and refuses a moved

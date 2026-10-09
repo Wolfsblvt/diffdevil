@@ -90,7 +90,8 @@ test('turnover requires observed endpoint sizes and revision continuity, never s
   assert.equal(gap.lower, 0);
   assert.equal(gap.averageSize.upper, null);
   assert.ok(gap.discontinuities > 0);
-  assert.equal(turnover([{ ...contribution, file: { ...contribution.file, changeType: 'added' } }], { from, to }).reason, 'created-deleted-or-renamed-in-period');
+  assert.equal(turnover([{ ...contribution, file: { ...contribution.file, changeType: 'added' } }], { from, to }).reason, 'created-or-deleted-in-period');
+  assert.equal(turnover([{ ...contribution, file: { ...contribution.file, changeType: 'renamed' } }], { from, to }).status, 'unknown', 'a rename widens unresolved continuity without inventing a creation/deletion refusal');
 });
 
 test('unknown file measurements retain non-negative lower bounds without erasing finite bounded medians', async () => {

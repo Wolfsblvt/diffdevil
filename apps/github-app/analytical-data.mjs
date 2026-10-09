@@ -166,7 +166,7 @@ function fileKey(repositoryId, name) { return JSON.stringify([repositoryId, name
 /** turnover-v1 uses observed sizes. Unobserved time and discontinuities widen its denominator. */
 export function turnover(contributions, query, observations = []) {
   const ordered = contributions.toSorted((a, b) => a.mergedAt.localeCompare(b.mergedAt));
-  if (ordered.some(value => ['added', 'deleted', 'renamed'].includes(value.file.changeType))) return { status: 'unavailable', reason: 'created-deleted-or-renamed-in-period', version: 'turnover-v1' };
+  if (ordered.some(value => ['added', 'deleted'].includes(value.file.changeType))) return { status: 'unavailable', reason: 'created-or-deleted-in-period', version: 'turnover-v1' };
   const start = Date.parse(query.from), end = Date.parse(query.to);
   const first = observations.filter(value => value.observedAt <= query.from).toSorted((a, b) => b.observedAt.localeCompare(a.observedAt))[0];
   const last = observations.filter(value => value.observedAt >= query.to).toSorted((a, b) => a.observedAt.localeCompare(b.observedAt))[0];
