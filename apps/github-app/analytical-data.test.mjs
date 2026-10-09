@@ -5,7 +5,7 @@ import { readFile, readdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { Miniflare } from 'miniflare';
 import { analyzeDiff, analyzeChanges, compilePolicy, unwrap } from '@wolfsblvt/diffdevil';
-import { createAnalyticalDataService, normalizeAnalyticalRecord, median, turnover } from './analytical-data.mjs';
+import { createAnalyticalDataService, normalizeAnalyticalRecord, median, turnover, fileContinuity } from './analytical-data.mjs';
 import { collectAnalyticalPullRequest, observeFileSize, captureDefaultBranchSizes, recoverFinalComparison } from './analytical-collection.mjs';
 import { D1AppStore } from './storage.mjs';
 import { analyticalHttp } from './analytical-http.mjs';
@@ -140,6 +140,65 @@ test('turnover requires observed endpoint sizes and revision continuity, never s
   assert.ok(gap.discontinuities > 0);
   assert.equal(turnover([{ ...contribution, file: { ...contribution.file, changeType: 'added' } }], { from, to }).reason, 'created-or-deleted-in-period');
   assert.equal(turnover([{ ...contribution, file: { ...contribution.file, changeType: 'renamed' } }], { from, to }).status, 'unknown', 'a rename widens unresolved continuity without inventing a creation/deletion refusal');
+});
+
+const revisions = Array.from({ length: 6 }, (_, index) => String(index + 1).repeat(40));
+function transition(number, name, [before, after], mergedAt, { complete = true, oldPath } = {}) {
+  const lines = oldPath ? `diff --git a/${oldPath} b/${name}\nsimilarity index 90%\nrename from ${oldPath}\nrename to ${name}\n--- a/${oldPath}\n+++ b/${name}\n@@ -1 +1 @@\n-old\n+new\n`
+    : `diff --git a/${name} b/${name}\n--- a/${name}\n+++ b/${name}\n@@ -1 +1 @@\n-old\n+new\n`;
+  const report = unwrap(analyzeDiff(lines, { fileSet: complete ? undefined : { complete: false, total: { status: 'unknown', lower: 1, reasons: [{ code: 'FILE_SET_INCOMPLETE' }] } },
+    source: { kind: 'github-api', comparison: 'direct', comparisonId: `final:${before}:${after}`, base: before, head: after } }));
+  return normalizeAnalyticalRecord({ version: 1, repositoryId: 17, pullRequest: number, state: 'merged', openedAt: '2026-08-01T00:00:00.000Z',
+    mergedAt, closedAt: mergedAt, updatedAt: mergedAt, currentHead: after, revisions: [],
+    final: { base: before, head: after, observedAt: mergedAt, report, sizes: [{ path: name, before: 100, after: 100 }], basis: 'final-merged-comparison' } });
+}
+
+test('recorded complete transitions establish per-file continuity; a naming, incomplete or absent link does not', () => {
+  const [r1, r2, r3, r4] = revisions, since = Date.parse('2026-09-01T00:00:00.000Z');
+  const unchanged = fileContinuity([transition(1, 'a.txt', [r1, r2], '2026-09-05T00:00:00.000Z'),
+    transition(2, 'b.txt', [r2, r3], '2026-09-10T00:00:00.000Z', { oldPath: 'c.txt' }),
+    transition(3, 'd.txt', [r3, r4], '2026-09-12T00:00:00.000Z', { complete: false })]);
+  assert.equal(unchanged(r2, r3, since, 'a.txt'), true, 'an unrelated merge keeps the file continuous');
+  assert.equal(unchanged(r1, r3, since, 'a.txt'), false, 'a recorded transition naming the file is a change, even with equal endpoint sizes');
+  assert.equal(unchanged(r1, r3, since, 'e.txt'), true);
+  assert.equal(unchanged(r1, r3, since, 'c.txt'), false, 'a rename source is named by the transition');
+  assert.equal(unchanged(r3, r4, since, 'a.txt'), false, 'an incomplete file set cannot establish that the file was untouched');
+  assert.equal(unchanged(r2, revisions[4], since, 'a.txt'), false, 'without a recorded path between revisions continuity stays unestablished');
+  assert.equal(unchanged(r2, r3, Date.parse('2026-09-11T00:00:00.000Z'), 'a.txt'), false, 'a transition before the earlier observation cannot follow it');
+});
+
+test('turnover stays exact across interleaved unrelated merges and bounded across unobserved gaps', async () => {
+  const [r1, r2, r3, r4] = revisions;
+  const observe = (revision, observedAt) => ({ repositoryId: 17, path: 'a.txt', revision, observedAt, size: 100 });
+  const service = (records, sizes) => createAnalyticalDataService({ store: { analyticalRecords: async () => records, analyticalSizes: async () => sizes },
+    authorize: async () => true, namespace: async () => 9, currentPolicy: async () => null, entitlement: async () => 'pro', now: () => to });
+  const first = transition(1, 'a.txt', [r1, r2], '2026-09-05T00:00:00.000Z'), unrelated = transition(2, 'b.txt', [r2, r3], '2026-09-10T00:00:00.000Z');
+  const second = transition(3, 'a.txt', [r3, r4], '2026-09-20T00:00:00.000Z');
+  const bracketing = [observe(r1, '2026-08-31T00:00:00.000Z'), observe(r4, '2026-10-02T00:00:00.000Z')];
+  const read = async (records, sizes) => (await service(records, sizes).query(query('file', { path: 'a.txt' }), actor)).result.turnover;
+
+  const interleaved = await read([first, unrelated, second], bracketing);
+  assert.equal(interleaved.status, 'exact');
+  assert.equal(interleaved.lower, 0.02);
+  assert.equal(interleaved.upper, 0.02);
+  assert.equal(interleaved.discontinuities, 0);
+  const adjacency = turnover([first, second].map(record => ({ mergedAt: record.mergedAt, base: record.final.base, head: record.final.head,
+    file: record.final.report.files[0], size: record.final.sizes[0] })), { from, to }, bracketing);
+  assert.equal(adjacency.lower, 0, 'whole-branch commit adjacency alone loses the bound');
+
+  // r2 -> r3 by direct pushes or an unrecovered merge: equal endpoint sizes do not show the file stayed that size.
+  const unobserved = await read([first, second], bracketing);
+  assert.equal(unobserved.status, 'bounded');
+  assert.equal(unobserved.lower, 0);
+  assert.equal(unobserved.averageSize.upper, null);
+  assert.equal(unobserved.discontinuities, 1);
+
+  // A window ending after the latest observation keeps its unobserved tail, but the observed span still counts.
+  const open = await read([first, unrelated, second], [bracketing[0], observe(r4, '2026-09-25T00:00:00.000Z')]);
+  assert.equal(open.lower, 0);
+  assert.equal(open.upper, 0.025);
+  assert.equal(open.averageSize.lower, 80);
+  assert.equal(open.discontinuities, 0);
 });
 
 test('unknown file measurements retain non-negative lower bounds without erasing finite bounded medians', async () => {

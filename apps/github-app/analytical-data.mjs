@@ -170,27 +170,73 @@ function buckets(query) {
 }
 function fileKey(repositoryId, name) { return JSON.stringify([repositoryId, name]); }
 
-/** turnover-v1 uses observed sizes. Unobserved time and discontinuities widen its denominator. */
-export function turnover(contributions, query, observations = []) {
+/**
+ * Each recorded complete final comparison is one atomic default-branch transition. A chain of them from one
+ * observed revision to another that never names a path establishes that the path stayed unchanged throughout,
+ * including while unrelated pull requests merged. A net comparison of the two endpoints cannot: a change and
+ * revert inside the gap leaves the same endpoint tree but a different time-weighted size. Direct pushes,
+ * unrecovered or incomplete comparisons, history-off time and expired records leave no link, so continuity
+ * across them stays unestablished.
+ */
+export function fileContinuity(records) {
+  const transitions = new Map();
+  for (const record of records) {
+    const report = record.final?.report;
+    if (!report?.fileSet.complete || !record.mergedAt) continue;
+    const link = { base: record.final.base, at: Date.parse(record.mergedAt),
+      paths: new Set(report.files.flatMap(file => file.oldPath ? [file.path, file.oldPath] : [file.path])) };
+    transitions.set(record.final.head, [...(transitions.get(record.final.head) ?? []), link]);
+  }
+  const chains = new Map();
+  // Walk back from the later revision. A transition before the earlier revision's observation cannot follow it;
+  // one second absorbs provider timestamp precision, and skipping only ever withholds continuity.
+  const chain = (from, to, since) => {
+    const stack = [[to, []]], seen = new Set([to]);
+    while (stack.length) {
+      const [node, links] = stack.pop();
+      for (const link of transitions.get(node) ?? []) {
+        if (link.at < since - 1000) continue;
+        if (link.base === from) return [...links, link];
+        if (!seen.has(link.base)) { seen.add(link.base); stack.push([link.base, [...links, link]]); }
+      }
+    }
+    return null;
+  };
+  return (from, to, since, name) => {
+    if (from === null || to === null) return false;
+    if (from === to) return true;
+    const key = `${from}>${to}>${since}`;
+    if (!chains.has(key)) chains.set(key, chain(from, to, since));
+    return chains.get(key)?.every(link => !link.paths.has(name)) ?? false;
+  };
+}
+
+/** turnover-v1 uses observed sizes. Unobserved time and unestablished file continuity widen its denominator. */
+export function turnover(contributions, query, observations = [], unchanged = (from, to) => from !== null && from === to) {
   const ordered = contributions.toSorted((a, b) => a.mergedAt.localeCompare(b.mergedAt));
   if (ordered.some(value => ['added', 'deleted'].includes(value.file.changeType))) return { status: 'unavailable', reason: 'created-or-deleted-in-period', version: 'turnover-v1' };
   const start = Date.parse(query.from), end = Date.parse(query.to);
   const first = observations.filter(value => value.observedAt <= query.from).toSorted((a, b) => b.observedAt.localeCompare(a.observedAt))[0];
   const last = observations.filter(value => value.observedAt >= query.to).toSorted((a, b) => a.observedAt.localeCompare(b.observedAt))[0];
-  let cursor = start, prior = first?.size ?? null, priorRevision = first?.revision ?? null, areaLower = 0, areaUpper = 0, unknown = false, discontinuities = 0;
+  let cursor = start, prior = first?.size ?? null, priorRevision = first?.revision ?? null, priorAt = first ? Date.parse(first.observedAt) : null;
+  let areaLower = 0, areaUpper = 0, unknown = false, discontinuities = 0;
   for (const contribution of ordered) {
     const at = Date.parse(contribution.mergedAt), before = contribution.size?.before ?? null, after = contribution.size?.after ?? null;
-    const continuous = prior !== null && before !== null && prior === before && priorRevision === contribution.base;
+    const continuous = prior !== null && before !== null && prior === before && unchanged(priorRevision, contribution.base, priorAt);
     // The first before-size is observed at the first merge, not at period start.
     if (!continuous && at > cursor) { unknown = true; discontinuities++; }
     if (continuous) { areaLower += prior * (at - cursor); areaUpper += prior * (at - cursor); }
-    cursor = at; prior = after; priorRevision = contribution.head;
+    cursor = at; prior = after; priorRevision = contribution.head; priorAt = at;
   }
-  // No default-branch observation at period end: direct pushes or unrecovered PRs may have intervened.
+  // Close with the earliest observation after the period, else the latest continuous one inside it. Time after
+  // the latest continuous observation stays unobserved: direct pushes or unrecovered PRs may have intervened.
   if (cursor < end) {
-    if (last && prior !== null && last.size === prior && last.revision === priorRevision) {
-      areaLower += prior * (end - cursor); areaUpper += prior * (end - cursor);
-    } else unknown = true;
+    const within = observations.filter(value => Date.parse(value.observedAt) > cursor && value.observedAt < query.to)
+      .toSorted((a, b) => b.observedAt.localeCompare(a.observedAt));
+    const closing = [last, ...within].find(value => value && prior !== null && value.size === prior && unchanged(priorRevision, value.revision, priorAt));
+    const observed = closing ? Math.min(end, Date.parse(closing.observedAt)) : cursor;
+    if (closing) { areaLower += prior * (observed - cursor); areaUpper += prior * (observed - cursor); }
+    if (observed < end) unknown = true;
   }
   const average = amount(areaLower / (end - start), unknown ? null : areaUpper / (end - start));
   const numerator = interval(sum(ordered.map(value => value.file.lines.changed)));
@@ -200,7 +246,11 @@ export function turnover(contributions, query, observations = []) {
     version: 'turnover-v1', averageSize: average, discontinuities, sizeBasis: 'observed-final-comparisons' };
 }
 
-function fileRows(merged, query, observations) {
+function fileRows(merged, query, observations, records) {
+  const continuity = new Map();
+  for (const repositoryId of new Set(merged.map(record => record.repositoryId))) {
+    continuity.set(repositoryId, fileContinuity(records.filter(record => record.repositoryId === repositoryId)));
+  }
   const grouped = new Map();
   for (const record of merged) for (const file of record.facts.report?.files ?? []) {
     const key = fileKey(record.repositoryId, file.path);
@@ -217,7 +267,8 @@ function fileRows(merged, query, observations) {
       return missing ? amount(total.lower, null) : total;
     };
     const changed = boundTotal(value.contributions.map(value => value.file.lines.changed));
-    const ratio = turnover(value.contributions, query, observations.filter(row => row.repositoryId === value.repositoryId && row.path === value.path));
+    const ratio = turnover(value.contributions, query, observations.filter(row => row.repositoryId === value.repositoryId && row.path === value.path),
+      (from, to, since) => continuity.get(value.repositoryId)(from, to, since, value.path));
     const sizeHistory = observations.filter(row => row.repositoryId === value.repositoryId && row.path === value.path).toSorted((a, b) => a.observedAt.localeCompare(b.observedAt));
     const growth = side => {
       const known = value.contributions.filter(row => row.size?.before !== null && row.size?.after !== null && row.size);
@@ -329,7 +380,7 @@ export function createAnalyticalDataService({ store, authorize, entitlement, nam
         closedUnmerged: all.filter(record => record.state === 'closed' && inside(record.closedAt, bucket)).length })) };
       const premiumMerged = merged.filter(record => premiumIds.includes(record.repositoryId));
       const sizeObservations = premium ? (await Promise.all(premiumIds.map(id => store.analyticalSizes(id, query.from, query.to)))).flat() : [];
-      const files = premium ? fileRows(premiumMerged, query, sizeObservations) : [];
+      const files = premium ? fileRows(premiumMerged, query, sizeObservations, all) : [];
       let result;
       if (query.surface === 'overview') result = { overview, sizeMix: mix, lifecycle, flow, concentration: merged.map(record => ({ repositoryId: record.repositoryId, pullRequest: record.pullRequest, ...concentration(record.facts.report) })), activity: active.map(prRow), files, comparison };
       if (query.surface === 'prs') result = { overview, sizeMix: mix, lifecycle, flow, pullRequests: all.map(prRow).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),

@@ -173,15 +173,24 @@ requiring current history consent and installation/repository access.
 This does not relabel `history_records` or reinterpret pathless rows as named files.
 
 Turnover is **Changed during the period divided by time-weighted average file size**.
-Actual observations bracketing period boundaries and matching consecutive revision identities
-can establish a finite denominator. Missing endpoints, mismatched revisions or size
-discontinuities widen it. An unrecovered merged contribution may have touched any
-file, so named totals and turnover widen too. Creation or deletion in the
-period is unavailable with that reason. The collector supplies before/after merge
-sizes and then calls `captureDefaultBranchSizes` to observe the default branch's
-known text files. It checks the branch again before publication and refuses a moved
-revision. Retained snapshots immediately before/after a selected period can bracket
-its endpoints; matching revision identities establish continuity, not interpolation
+Actual observations bracketing period boundaries and observed file continuity between
+them can establish a finite denominator. Continuity is a fact about the file, not about
+branch adjacency: each retained complete final comparison is one atomic default-branch
+transition, so a chain of them from one observed revision to the next that never names
+the path (including as a rename source) shows the file kept its size while unrelated
+pull requests merged. A net comparison of the two endpoints is not used, because a
+change and revert inside the gap leaves the same endpoint tree with a different
+time-weighted size. Direct pushes, unrecovered or incomplete comparisons, history-off
+time and expired records leave no link, so those gaps widen the denominator and count
+as discontinuities. Missing endpoints and size mismatches widen it too. A period that
+ends after the latest continuous observation keeps that unobserved tail: its observed
+span still bounds the upper ratio, while the lower ratio stays 0. An unrecovered merged
+contribution may have touched any file, so named totals and turnover widen too.
+Creation or deletion in the period is unavailable with that reason. The collector
+supplies before/after merge sizes and then calls `captureDefaultBranchSizes` to observe
+the default branch's known text files. It checks the branch again before publication
+and refuses a moved revision. Retained snapshots before, inside or after a selected
+period can anchor it; continuity comes from observed transitions, never interpolation
 from churn. This candidate does not claim that collection or its observer is deployed.
 
 Co-change uses one compatible population throughout: complete recovered final
