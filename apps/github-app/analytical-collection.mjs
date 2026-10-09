@@ -31,38 +31,45 @@ export async function collectAnalyticalPullRequest({ client, store, repositoryId
   if (before.number !== pullRequest || !sha(before.head?.sha)) throw new TypeError('Pull request identity mismatch.');
   const existing = (await store.analyticalRecords(repositoryId)).find(record => record.pullRequest === pullRequest);
   const observedAt = now(), revisions = existing?.revisions ?? [];
-  let final = existing?.final ?? null, recovery = null;
-  if (before.state === 'open') {
-    const report = unwrap(await analyzeGitHub(client, { provider: 'github', repository: name, pullRequest }));
-    const sameHead = recordedResult?.head === report.source.head;
-    const revision = { base: report.source.base, head: report.source.head, observedAt, report,
-      ...(sameHead ? { originalPolicyId: recordedResult.policyId, originalBand: recordedResult.band,
-        desiredLabel: recordedResult.desiredLabel, observedLabel: recordedResult.observedLabel } : {}) };
-    const index = revisions.findIndex(value => value.base === revision.base && value.head === revision.head);
-    if (index < 0) revisions.push(revision);
-    else revisions[index] = { ...revisions[index], report, observedAt };
-  } else if (before.merged_at && !final) {
-    const commit = await client.json(`/repos/${name}/git/commits/${before.merge_commit_sha}`);
-    let boundary;
-    if (commit.sha === before.merge_commit_sha && commit.parents?.length > 1 && sha(commit.parents[0].sha)) boundary = { base: commit.parents[0].sha, head: commit.sha };
-    else boundary = await resolveFinalComparison?.({ repositoryId, pullRequest, pull: before, commit });
-    if (boundary && sha(boundary.base) && sha(boundary.head) && boundary.head === before.merge_commit_sha) {
-      const comparison = await client.json(`/repos/${name}/compare/${boundary.base}...${boundary.head}`);
-      if (comparison.merge_base_commit?.sha !== boundary.base || !Array.isArray(comparison.files)) throw new TypeError('Final comparison does not establish its direct base.');
-      const diff = await client.request(`/repos/${name}/compare/${boundary.base}...${boundary.head}`, { accept: 'application/vnd.github.diff' });
-      const parsed = unwrap(analyzeDiff(diff.text));
-      const complete = comparison.files.length < 300 && comparison.files.length === parsed.files.length
-        && comparison.files.every(file => parsed.files.some(value => value.path === file.filename));
-      const total = Math.max(comparison.files.length, parsed.files.length);
-      const report = unwrap(analyzeDiff(diff.text, { fileSet: { complete, total: complete ? { status: 'exact', value: total }
-        : { status: 'unknown', lower: total, reasons: [{ code: 'FILE_SET_INCOMPLETE' }] } },
-      source: { kind: 'github-api', comparison: 'direct', comparisonId: `final:${boundary.base}:${boundary.head}`, ...boundary } }));
-      const sizes = [];
-      for (const file of report.files) sizes.push({ path: file.path,
-        before: file.changeType === 'added' ? 0 : file.kind === 'text' ? await observeFileSize(client, name, file.oldPath ?? file.path, boundary.base) : null,
-        after: file.changeType === 'deleted' ? 0 : file.kind === 'text' ? await observeFileSize(client, name, file.path, boundary.head) : null });
-      final = { ...boundary, observedAt, report, sizes, basis: 'final-merged-comparison' };
-    } else recovery = 'final-merge-boundary-unrecovered';
+  let final = existing?.final ?? null, recovery = null, code = null;
+  try {
+    if (before.state === 'open') {
+      const report = unwrap(await analyzeGitHub(client, { provider: 'github', repository: name, pullRequest }));
+      const sameHead = recordedResult?.head === report.source.head;
+      const revision = { base: report.source.base, head: report.source.head, observedAt, report,
+        ...(sameHead ? { originalPolicyId: recordedResult.policyId, originalBand: recordedResult.band,
+          desiredLabel: recordedResult.desiredLabel, observedLabel: recordedResult.observedLabel } : {}) };
+      const index = revisions.findIndex(value => value.base === revision.base && value.head === revision.head);
+      if (index < 0) revisions.push(revision);
+      else revisions[index] = { ...revisions[index], report, observedAt };
+    } else if (before.merged_at && !final) {
+      const commit = await client.json(`/repos/${name}/git/commits/${before.merge_commit_sha}`);
+      let boundary;
+      if (commit.sha === before.merge_commit_sha && commit.parents?.length > 1 && sha(commit.parents[0].sha)) boundary = { base: commit.parents[0].sha, head: commit.sha };
+      else boundary = await resolveFinalComparison?.({ repositoryId, pullRequest, pull: before, commit });
+      if (boundary && sha(boundary.base) && sha(boundary.head) && boundary.head === before.merge_commit_sha) {
+        const comparison = await client.json(`/repos/${name}/compare/${boundary.base}...${boundary.head}`);
+        if (comparison.merge_base_commit?.sha !== boundary.base || !Array.isArray(comparison.files)) throw new TypeError('Final comparison does not establish its direct base.');
+        const diff = await client.request(`/repos/${name}/compare/${boundary.base}...${boundary.head}`, { accept: 'application/vnd.github.diff' });
+        const parsed = unwrap(analyzeDiff(diff.text));
+        const complete = comparison.files.length < 300 && comparison.files.length === parsed.files.length
+          && comparison.files.every(file => parsed.files.some(value => value.path === file.filename));
+        const total = Math.max(comparison.files.length, parsed.files.length);
+        const report = unwrap(analyzeDiff(diff.text, { fileSet: { complete, total: complete ? { status: 'exact', value: total }
+          : { status: 'unknown', lower: total, reasons: [{ code: 'FILE_SET_INCOMPLETE' }] } },
+        source: { kind: 'github-api', comparison: 'direct', comparisonId: `final:${boundary.base}:${boundary.head}`, ...boundary } }));
+        const sizes = [];
+        for (const file of report.files) sizes.push({ path: file.path,
+          before: file.changeType === 'added' ? 0 : file.kind === 'text' ? await observeFileSize(client, name, file.oldPath ?? file.path, boundary.base) : null,
+          after: file.changeType === 'deleted' ? 0 : file.kind === 'text' ? await observeFileSize(client, name, file.path, boundary.head) : null });
+        final = { ...boundary, observedAt, report, sizes, basis: 'final-merged-comparison' };
+      } else recovery = 'final-merge-boundary-unrecovered';
+    }
+  } catch (error) {
+    // An unavailable comparison does not erase the independently observed PR lifecycle.
+    recovery = 'comparison-acquisition-unavailable';
+    const candidate = error?.diagnostic?.code ?? error?.code;
+    code = typeof candidate === 'string' && /^[A-Z0-9_]+$/u.test(candidate) ? candidate : 'E_APP_DATA_COMPARISON';
   }
   const after = await client.json(route);
   if (after.head?.sha !== before.head.sha || after.state !== before.state || after.merge_commit_sha !== before.merge_commit_sha || after.updated_at !== before.updated_at) throw Object.assign(new Error('E_APP_DATA_STALE'), { code: 'E_APP_DATA_STALE' });
@@ -75,7 +82,7 @@ export async function collectAnalyticalPullRequest({ client, store, repositoryId
     state: before.merged_at ? 'merged' : before.state === 'closed' ? 'closed' : before.draft ? 'draft' : 'open',
     openedAt: iso(before.created_at), readyAt: existing?.readyAt ?? null, mergedAt: iso(before.merged_at), closedAt: iso(before.closed_at),
     updatedAt: iso(before.updated_at), observedAt, currentHead: before.head.sha, revisions, final });
-  return { ...await store.recordAnalytical(record), recovery };
+  return { ...await store.recordAnalytical(record), recovery, code };
 }
 
 /** Capture actual current default-branch sizes for known files; refuse a moved branch before publishing. */

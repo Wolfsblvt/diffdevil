@@ -95,7 +95,7 @@ export async function collectDeliveryAnalytics(envelope, { env, store, analytica
 async function collectAfterExecution(envelope, dependencies, recordedResult) {
   try {
     const result = await dependencies.collectAnalytics(envelope, dependencies, recordedResult);
-    if (result.recovery) await dependencies.store.recordAnalyticalRepair(envelope, 'E_APP_DATA_FINAL_UNRECOVERED');
+    if (result.recovery) await dependencies.store.recordAnalyticalRepair(envelope, result.code ?? 'E_APP_DATA_FINAL_UNRECOVERED');
     return result.status;
   } catch (error) {
     // Preserve a separate read-side recovery consequence; successful provider effects are not replayed for enrichment.

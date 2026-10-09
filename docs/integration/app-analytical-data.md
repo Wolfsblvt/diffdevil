@@ -100,6 +100,10 @@ does not replay completed provider effects. Ready-for-review time remains
 unknown unless supplied by a recovered lifecycle observation; current ready state
 does not invent a historical timestamp.
 
+A comparison-acquisition failure retains the independently observed PR lifecycle
+after the provider freshness check. Its missing final measurement remains in the
+merged population as an unbounded observation, with a separate stable recovery code.
+
 A multi-parent merged commit supplies its first-parent-to-merged-commit final
 comparison. A single-parent squash/rebase result requires an explicitly recovered
 `resolveFinalComparison` boundary; it never falls back to the PR's old head diff.

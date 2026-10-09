@@ -207,5 +207,11 @@ test('collector recovers actual merge parents, observes sizes, refuses a fabrica
   singleParent = true;
   assert.equal((await collectAnalyticalPullRequest({ client, store, repositoryId: 17, pullRequest: 1, now: () => at })).recovery, 'final-merge-boundary-unrecovered');
   assert.equal(saved.final, null);
+  singleParent = false;
+  const failedComparison = { ...client, request: async () => { throw { code: 'E_GITHUB_RATE_LIMIT' }; } };
+  const unavailable = await collectAnalyticalPullRequest({ client: failedComparison, store, repositoryId: 17, pullRequest: 1, now: () => at });
+  assert.equal(unavailable.code, 'E_GITHUB_RATE_LIMIT');
+  assert.equal(saved.mergedAt, at, 'comparison failure retains the known merged PR in the population');
+  assert.equal(saved.final, null);
   assert.equal(await observeFileSize({ request: async () => { throw { status: 404 }; } }, 'owner/repo', 'a.txt', base), null, '404 is not proof of absence');
 });
