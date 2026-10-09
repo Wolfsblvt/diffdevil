@@ -57,13 +57,14 @@ async function scene(summary, options = {}) {
   await page.evaluate(({ packet, settings, fileViews, summary, options }) => {
     const listeners = new Set();
     globalThis.acquireCalls = 0;
+    globalThis.failNextAcquisition = false;
     globalThis.chrome = {
       runtime: { id: 'test-extension', getURL: path => `chrome-extension://test-extension/${path}`, sendMessage: async message => message.type === 'settings.get' ? { ok: true, value: settings } : { ok: false, code: 'UNEXPECTED', message: message.type } },
       storage: { onChanged: { addListener: callback => listeners.add(callback), removeListener: callback => listeners.delete(callback) } },
     };
     globalThis.controller = DiffdevilUnderTest.startContent({
       href: () => `https://github.com/example/cinder/pull/42/${summary === 'changes' ? 'changes' : 'files'}`,
-      acquire: async () => { globalThis.acquireCalls++; if (options.failure) throw Object.assign(new Error('Synthetic private comparison has no public API route.'), { code: 'PUBLIC_UNAVAILABLE' }); return { packet, settings }; },
+      acquire: async () => { globalThis.acquireCalls++; if (options.failure || globalThis.failNextAcquisition) { globalThis.failNextAcquisition = false; throw Object.assign(new Error('Synthetic private comparison has no public API route.'), { code: 'PUBLIC_UNAVAILABLE' }); } return { packet, settings }; },
       request: async message => {
         if (message.type === 'settings.get') return settings;
         if (message.type === 'analysis.files') return Object.fromEntries(message.paths.filter(path => fileViews[path]).map(path => [path, fileViews[path]]));
@@ -122,6 +123,13 @@ try {
     return { base: value?.base, head: value?.head, secondPath: DiffdevilUnderTest.filePath(document.querySelectorAll('[data-diff-header-wrapper]')[1]), full: DiffdevilUnderTest.fullFilesView('https://github.com/example/cinder/pull/42/changes') };
   }), { base: comparison.base, head: comparison.head, secondPath: 'src/renderer.ts', full: true });
   results.push({ name: 'signed-in-changes-structure', status: 'passed' });
+  await changes.page.evaluate(async () => { globalThis.failNextAcquisition = true; await controller.refresh(); });
+  await changes.page.locator('[data-ddx="failure"]').waitFor();
+  assert.deepEqual(await changes.page.locator('[data-diff-header-wrapper] .Diffstat-module__count__fixture, [data-diff-header-wrapper] .Diffstat-module__squares__fixture').evaluateAll(nodes => nodes.map(node => ({ text: node.textContent, display: getComputedStyle(node).display, hidden: node.classList.contains('ddx-native-hidden'), faint: node.classList.contains('ddx-native-faint') }))), [
+    { text: '+30', display: 'inline', hidden: false, faint: false }, { text: '−22', display: 'inline', hidden: false, faint: false }, { text: '', display: 'flex', hidden: false, faint: false },
+    { text: '+130', display: 'inline', hidden: false, faint: false }, { text: '−96', display: 'inline', hidden: false, faint: false }, { text: '', display: 'flex', hidden: false, faint: false },
+  ]);
+  results.push({ name: 'failed-refresh-restores-react-file-native-group', status: 'passed' });
   await changes.page.evaluate(() => controller.stop());
   await changes.context.close();
   // Failure: the marker takes the leading edge of the whole native seat and every native count stays at full strength.
