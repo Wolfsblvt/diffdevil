@@ -17,7 +17,8 @@ the [complete manual](manual/README.md); its canonical standalone
 | How do I restore, build, run or verify it? | [Development](DEVELOPMENT.md) |
 | Why were consequential choices made? | [Decisions](DECISIONS.md) |
 | Which behavior is exercised, and which is still unobserved? | [Qualification](qualification.md) |
-| How are releases prepared and published? | [Publication boundary](publication-boundary.md) and [release guidance](manual/help/releases.md) |
+| Which tools share versions, and how do updates work? | [Release families and versioning](RELEASING.md) and [reader release guidance](manual/help/releases.md) |
+| How are authorized releases published and read back? | [Publication boundary](publication-boundary.md) |
 | What owns the manual's prose, routes, examples and migration? | [Documentation design](documentation.md) and [manual application](../apps/manual/README.md) |
 | What owns wording and presentation? | [Branding](branding.md), [shared presenters](presentation.md) and [design source](../packages/design/README.md) |
 | What owns the FAQ's stable identifiers and behavior? | [FAQ authoring contract](faq-authoring.md) |
@@ -25,6 +26,23 @@ the [complete manual](manual/README.md); its canonical standalone
 The [implementation horizon](implementation-horizon.md) preserves selected product
 breadth. Current direction and source determine what is implemented; accepted future
 capability does not become historical merely because it is not released.
+
+## Shape the managed App
+
+| Question | Maintained source |
+| --- | --- |
+| What should the activity-first dashboard, PR/file details, clouds and brief do? | [Dashboard capabilities](dashboard.md) |
+| Who may read, configure, delegate or publish a view? | [Dashboard accounts and access](dashboard-access.md) |
+| What is retained, what remains transient, and what does import mean? | [Privacy and data](PRIVACY-AND-DATA.md) |
+| How does that product join authentication, execution and recovery? | [Managed App architecture](integration/github-app.md) |
+| Why did named history, merged-PR metrics and Business coordination replace the earlier boundary? | [Dashboard decisions D064–D073](DECISIONS.md#d064-make-the-app-activity-first-for-collaborators-as-well-as-administrators) |
+
+These sources describe selected capabilities, not an already deployed dashboard or
+published pricing offer. The six analytical destinations and shell are ratified for implementation. Chart/cloud
+co-design precedes Manage/subscription design; renderer qualification and
+relationship/brief algorithms remain separate work. The public
+manual continues to describe supported operation rather than presenting planned
+features as shipped.
 
 ## Integrate against a real contract
 
@@ -75,7 +93,13 @@ replacing those sources or inventing service terms.
 ## Historical evidence
 
 [The reference map](reference/README.md) retains dated research, rationale and
-qualification. The [v1.0.0 release account](releases/v1.0.0.md) describes that release,
+qualification. [Decisions through D043](DECISIONS-through-d043.md) and the
+[pre-expansion App runtime contract](integration/github-app-runtime-v1.md) preserve
+complete earlier text; their superseded product assumptions do not compete with
+the current dashboard/access/privacy contracts. Existing decision fragments remain
+reachable from the current Decisions index.
+
+The [v1.0.0 release account](releases/v1.0.0.md) describes that release,
 not everything currently present on `main`. Dated accounts remain available through exact
 repository links and the finite source resolver, but do not enter current manual
 navigation or default search as competing instructions.

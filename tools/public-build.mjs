@@ -11,6 +11,7 @@ import { origins } from '../apps/manual/manifest.mjs';
  */
 export function buildManualAndJoin() {
   prepareManual();
+  run(process.execPath, ['apps/manual/visuals/render.mjs', '--validate']);
   run(process.execPath, ['apps/manual/render.mjs']);
   packageBin('astro', 'astro', ['build', '--root', 'apps/manual'], manualRoot, {
     env: { ...process.env, DIFFDEVIL_SURFACE: 'manual', DIFFDEVIL_SITE_ORIGIN: origins.site },

@@ -41,12 +41,14 @@ jobs:
           cache: npm
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - run: npm --prefix apps/manual run toolchain
+      - run: npx --no-install playwright install --with-deps chromium
+      - run: npm --prefix apps/manual run render:visuals
       - run: npm run website:build
       - run: npm --prefix apps/manual test
       - run: npm --prefix apps/manual run test:projection
       - run: npm --prefix apps/manual run check
-      - run: npx --no-install playwright install --with-deps chromium
       - run: npm --prefix apps/manual run qa
+      - run: npm --prefix apps/manual run qa:visuals
       - name: Qualify the complete affected website journeys
         run: npm run qa:website
       - name: Preserve the admitted FAQ journey
@@ -58,12 +60,15 @@ jobs:
           node --input-type=module <<'NODE'
           import { readFileSync, existsSync, appendFileSync } from 'node:fs';
           const manualPath = 'artifacts/manual/qa/result.json';
+          const visualPath = 'artifacts/manual/qa-visuals/result.json';
           const faqPath = 'artifacts/website/faq-qa/result.json';
           const manual = existsSync(manualPath) ? JSON.parse(readFileSync(manualPath, 'utf8')) : null;
+          const visuals = existsSync(visualPath) ? JSON.parse(readFileSync(visualPath, 'utf8')) : null;
           const faq = existsSync(faqPath) ? JSON.parse(readFileSync(faqPath, 'utf8')) : null;
           const clean = value => String(value).replace(/\u001b\[[0-9;]*m/g, '').replace(/\s+/g, ' ');
           const summary = [
             !manual ? 'Manual: no browser result' : manual.ok ? 'Manual: passed' : 'Manual: ' + manual.failures.map(failure => clean(failure.name + ': ' + failure.error)).join(' | '),
+            !visuals ? 'Visuals: no browser result' : visuals.ok ? 'Visuals: passed' : 'Visuals: ' + visuals.failures.map(failure => clean(failure.name + ': ' + failure.error)).join(' | '),
             !faq ? 'FAQ: no browser result' : faq.passed ? 'FAQ: passed' : 'FAQ: ' + (faq.failures?.length ? faq.failures.map(clean).join(' | ') : clean(faq.error ?? 'failed')),
           ].join(' | ');
           appendFileSync(process.env.GITHUB_OUTPUT, 'summary=' + summary.slice(0, 240) + '\n');
@@ -83,6 +88,7 @@ jobs:
             artifacts/public-search/records.json
             artifacts/manual-toolchain/source-receipt.json
             artifacts/manual-toolchain/consumer-receipt.json
+            docs/manual/assets/visuals/rendered/
             apps/manual/package-lock.json
 
   qualification-result:

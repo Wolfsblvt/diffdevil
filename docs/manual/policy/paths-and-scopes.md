@@ -61,6 +61,18 @@ file. The `lockfiles` scope above is consequently empty even though the full rep
 observes a lockfile. This is an exact empty selection for this complete input, not
 an unknown value made into zero.
 
+<figure class="manual-visual" data-manual-visual="selection-boundaries">
+  <picture class="manual-visual__theme manual-visual__theme--light">
+    <img src="/assets/manual/visuals/selection-boundaries-light.svg" alt="Global forceInclude wins; otherwise includeOnly restricts, then exclude removes; otherwise default inclusion applies. Every scope starts with globally eligible files, so a globally excluded lockfile remains observed but cannot enter the lockfiles scope.">
+  </picture>
+  <picture class="manual-visual__theme manual-visual__theme--dark">
+    <img src="/assets/manual/visuals/selection-boundaries-dark.svg" alt="Global forceInclude wins; otherwise includeOnly restricts, then exclude removes; otherwise default inclusion applies. Every scope starts with globally eligible files, so a globally excluded lockfile remains observed but cannot enter the lockfiles scope.">
+  </picture>
+  <figcaption>Scoped `forceInclude` can repair a local exclusion. It cannot cross global eligibility or the scope's own hard `includeOnly` boundary.</figcaption>
+</figure>
+
+The lockfile has not disappeared: it is still an observed record and remains available to an explicit all-files question. It simply never enters the population from which named scopes select. See the [editable Mermaid source](../assets/visuals/selection-boundaries.mmd).
+
 Scopes can overlap. Adding two scoped totals can double-count the same file; named
 scopes are not automatically a partition. Inspect selected identities when combining
 facts. Standard global file counters such as total/excluded are not valid per-scope

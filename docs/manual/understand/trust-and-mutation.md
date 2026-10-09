@@ -16,6 +16,18 @@ A pull request may propose changes to the very workflow or policy that would cla
 
 The applying GitHub routes normally read policy from the PR's trusted base, resolving its immutable commit. A deliberately pinned policy names its full revision. Referenced templates follow that trusted source rather than being quietly loaded from hostile head content. Unsupported policy-file objects and acquisition failures are errors, not invitations to execute the repository or silently use another file.
 
+<figure class="manual-visual" data-manual-visual="trust-boundary">
+  <picture class="manual-visual__theme manual-visual__theme--light">
+    <img src="/assets/manual/visuals/trust-boundary-light.svg" alt="The proposed pull-request head supplies comparison data only. Trusted base, pinned, or built-in policy supplies instructions to the privileged applying route; proposed policy has no route into those instructions.">
+  </picture>
+  <picture class="manual-visual__theme manual-visual__theme--dark">
+    <img src="/assets/manual/visuals/trust-boundary-dark.svg" alt="The proposed pull-request head supplies comparison data only. Trusted base, pinned, or built-in policy supplies instructions to the privileged applying route; proposed policy has no route into those instructions.">
+  </picture>
+  <figcaption>The writer can inspect what the PR proposes without allowing that proposal to choose its privileged instructions.</figcaption>
+</figure>
+
+The separation has four parts: proposed content supplies the comparison; a trusted immutable source supplies policy; referenced templates follow that same policy source; and host authority still governs whether any declared effect may be written. Schema validity, a matching hash or possession of a token cannot replace those boundaries. See the [editable Mermaid source](../assets/visuals/trust-boundary.mmd).
+
 The no-config [label workflow](../start/label-pull-requests.md) uses built-in policy and does not check out code. Keep its privileged context separate from jobs that build or test a PR's proposed code. Read-only local analysis may deliberately inspect workspace policy; that is a different trust choice from applying it to GitHub.
 
 This distinction also explains why two surfaces can disagree. Personal extension policy, a workflow's trusted base policy and service settings need not be identical. Compare origins and revisions before interpreting the difference as a counting defect. The [canonical FAQ answer](../faq.md#different-results) covers the adoption question without duplicating it here.

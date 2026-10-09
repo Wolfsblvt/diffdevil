@@ -135,7 +135,7 @@ release attachments and a successful installation are separate observations.
 | `src/components/` | Shared header/footer/search/theme, configured actions and source-backed product illustrations. |
 | `src/components/home/` | Homepage sections and executable/shared-presenter specimens. |
 | `src/islands/playground/` | Input, policy editing, comparison, result views and portable exports. |
-| `src/data/` | Keyed copy, selected origins/routes, configured destinations and icons. |
+| `src/data/` | Keyed copy, selected origins/routes, configured destinations, and semantic icon names resolved through `@wolfsblvt/icons`. |
 | `src/lib/` | Engine access, catalogue and agent-source consumers, rendering, search and presentation helpers. |
 | `src/styles/` | Accepted tokens, fonts and product/reading grammar, including mappings used by the manual. |
 | `src/shims/` | Browser implementations for the engine's selected Node imports. |
