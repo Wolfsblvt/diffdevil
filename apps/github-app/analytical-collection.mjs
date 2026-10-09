@@ -116,14 +116,19 @@ export async function collectAnalyticalPullRequest({ client, store, repositoryId
   return { ...await store.recordAnalytical(record), recovery, code };
 }
 
-/** Capture actual current default-branch sizes for known files; refuse a moved branch before publishing. */
-export async function captureDefaultBranchSizes({ client, store, repositoryId, now = () => new Date().toISOString() }) {
-  if (!(await store.historySettings(repositoryId, { independentExecution: true })).enabled) return { status: 'disabled' };
+async function defaultBranch(client, repositoryId) {
   const repository = await client.json(`/repositories/${repositoryId}`);
   if (repository.id !== repositoryId || !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/u.test(repository.full_name) || typeof repository.default_branch !== 'string') throw new TypeError('Repository identity mismatch.');
   const route = `/repos/${repository.full_name}/branches/${encodeURIComponent(repository.default_branch)}`;
-  const branch = await client.json(route), revision = branch.commit?.sha;
+  const revision = (await client.json(route)).commit?.sha;
   if (!sha(revision)) throw new TypeError('Default branch revision unavailable.');
+  return { repository, route, revision };
+}
+
+/** Capture actual current default-branch sizes for known files; refuse a moved branch before publishing. */
+export async function captureDefaultBranchSizes({ client, store, repositoryId, now = () => new Date().toISOString() }) {
+  if (!(await store.historySettings(repositoryId, { independentExecution: true })).enabled) return { status: 'disabled' };
+  const { repository, route, revision } = await defaultBranch(client, repositoryId);
   const records = await store.analyticalRecords(repositoryId);
   const paths = [...new Set(records.flatMap(record => [record.final, ...record.revisions].flatMap(revision => revision?.report?.files.filter(file => file.kind === 'text').map(file => file.path) ?? [])))];
   const observations = [];
@@ -132,4 +137,41 @@ export async function captureDefaultBranchSizes({ client, store, repositoryId, n
   if ((await client.json(route)).commit?.sha !== revision) throw Object.assign(new Error('E_APP_DATA_STALE'), { code: 'E_APP_DATA_STALE' });
   for (const observation of observations) await store.recordAnalyticalSize({ ...observation, observedAt });
   return { status: 'observed', revision, observedAt, files: observations.length };
+}
+
+/**
+ * Observe the current default branch for an analytical read. A retained size at the same immutable revision is
+ * reused; other paths are read only when `accepts(path, revision)` says retained transitions can carry their size
+ * there. When it supplies any size, a second branch read brackets the observation time. Newly read sizes are
+ * retained under history consent; a failed write leaves this read's observation intact and is reported as unpersisted.
+ */
+export async function observeCurrentSizes({ client, store, repositoryId, paths, retained = [], accepts, now = () => new Date().toISOString() }) {
+  if (!(await store.historySettings(repositoryId, { independentExecution: true })).enabled) return { standing: 'disabled' };
+  const { repository, route, revision } = await defaultBranch(client, repositoryId);
+  const observedAt = now(), sizes = [], read = [];
+  let reused = 0, skipped = 0;
+  for (const path of new Set(paths)) {
+    if (!accepts(path, revision)) { skipped++; continue; }
+    const known = retained.find(row => row.path === path && row.revision === revision && row.size !== null);
+    if (known) { sizes.push({ path, size: known.size }); reused++; continue; }
+    const size = await observeFileSize(client, repository.full_name, path, revision);
+    sizes.push({ path, size }); read.push({ path, size });
+  }
+  let branchReads = 1;
+  if (sizes.length) {
+    branchReads++;
+    if ((await client.json(route)).commit?.sha !== revision) throw Object.assign(new Error('E_APP_DATA_STALE'), { code: 'E_APP_DATA_STALE' });
+  }
+  let persisted = 0;
+  for (const row of read) {
+    try { if ((await store.recordAnalyticalSize({ repositoryId, ...row, revision, observedAt })).status === 'published') persisted++; }
+    catch { /* Reuse is an optimization; the observation itself was read and bracketed. */ }
+  }
+  return { standing: 'observed', revision, observedAt, sizes, reused, read: read.length, skipped, persisted,
+    providerReads: { repository: 1, branch: branchReads, contents: read.length } };
+}
+
+/** Bind the observer to a server-owned read client; the service supplies paths and continuity, never credentials. */
+export function createCurrentSizeObserver({ store, clientFor, now }) {
+  return async request => observeCurrentSizes({ ...request, store, client: await clientFor(request.repositoryId), ...(now ? { now } : {}) });
 }

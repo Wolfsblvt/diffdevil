@@ -8,7 +8,7 @@ import { D1AppStore } from './storage.mjs';
 import { DEFAULT_SIZE_POLICY, resolveEffectivePolicy, validateRepositoryConfiguration } from './configuration.mjs';
 import { checkSummary } from '../shared/check-summary.mjs';
 import { analyticalHttp } from './analytical-http.mjs';
-import { collectAnalyticalPullRequest, captureDefaultBranchSizes } from './analytical-collection.mjs';
+import { collectAnalyticalPullRequest, captureDefaultBranchSizes, createCurrentSizeObserver } from './analytical-collection.mjs';
 
 const JSON_HEADERS = { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', 'referrer-policy': 'no-referrer' };
 
@@ -80,6 +80,18 @@ async function mintInstallationClient(env, installationId, body, options = {}) {
 /** A repository-scoped credential is minted only after a delivery and execution lease are claimed. */
 export async function createInstallationClient(env, installationId, repositoryId, options = {}) {
   return mintInstallationClient(env, installationId, { repository_ids: [repositoryId], permissions: { contents: 'read', pull_requests: 'write', checks: 'write' } }, options);
+}
+
+/**
+ * The analytical read service's `observeCurrentSizes` adapter: a contents-read credential scoped to the one
+ * repository, minted only when a returned Turnover has an open tail. `installationOf` is server-owned metadata.
+ */
+export function createAnalyticalSizeObserver(env, { store, installationOf, ...options }) {
+  return createCurrentSizeObserver({ store, clientFor: async repositoryId => {
+    const installationId = await installationOf(repositoryId);
+    if (!Number.isSafeInteger(installationId) || installationId < 1) throw appError('E_APP_DATA_INSTALLATION');
+    return mintInstallationClient(env, installationId, { repository_ids: [repositoryId], permissions: { contents: 'read' } }, options);
+  } });
 }
 
 /** History remains a read-only operation even when repository label/check execution is disabled. */

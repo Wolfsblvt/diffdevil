@@ -212,9 +212,17 @@ export function fileContinuity(records) {
 }
 
 /** turnover-v1 uses observed sizes. Unobserved time and unestablished file continuity widen its denominator. */
-export function turnover(contributions, query, observations = [], unchanged = (from, to) => from !== null && from === to) {
+export function turnover(contributions, query, observations = [], unchanged) {
+  return turnoverEvidence(contributions, query, observations, unchanged).ratio;
+}
+
+/**
+ * The ratio, plus the open closing tail when the period ends after its latest continuous size observation:
+ * the revision, time and size from which a later observation would have to be continuous to close it.
+ */
+function turnoverEvidence(contributions, query, observations = [], unchanged = (from, to) => from !== null && from === to) {
   const ordered = contributions.toSorted((a, b) => a.mergedAt.localeCompare(b.mergedAt));
-  if (ordered.some(value => ['added', 'deleted'].includes(value.file.changeType))) return { status: 'unavailable', reason: 'created-or-deleted-in-period', version: 'turnover-v1' };
+  if (ordered.some(value => ['added', 'deleted'].includes(value.file.changeType))) return { ratio: { status: 'unavailable', reason: 'created-or-deleted-in-period', version: 'turnover-v1' }, tail: null };
   const start = Date.parse(query.from), end = Date.parse(query.to);
   const first = observations.filter(value => value.observedAt <= query.from).toSorted((a, b) => b.observedAt.localeCompare(a.observedAt))[0];
   const last = observations.filter(value => value.observedAt >= query.to).toSorted((a, b) => a.observedAt.localeCompare(b.observedAt))[0];
@@ -230,27 +238,27 @@ export function turnover(contributions, query, observations = [], unchanged = (f
   }
   // Close with the earliest observation after the period, else the latest continuous one inside it. Time after
   // the latest continuous observation stays unobserved: direct pushes or unrecovered PRs may have intervened.
+  let observedThrough = end, tail = null;
   if (cursor < end) {
     const within = observations.filter(value => Date.parse(value.observedAt) > cursor && value.observedAt < query.to)
       .toSorted((a, b) => b.observedAt.localeCompare(a.observedAt));
     const closing = [last, ...within].find(value => value && prior !== null && value.size === prior && unchanged(priorRevision, value.revision, priorAt));
     const observed = closing ? Math.min(end, Date.parse(closing.observedAt)) : cursor;
     if (closing) { areaLower += prior * (observed - cursor); areaUpper += prior * (observed - cursor); }
-    if (observed < end) unknown = true;
+    if (observed < end) {
+      unknown = true; observedThrough = observed;
+      if (prior !== null) tail = closing ? { revision: closing.revision, since: Date.parse(closing.observedAt), size: prior } : { revision: priorRevision, since: priorAt, size: prior };
+    }
   }
   const average = amount(areaLower / (end - start), unknown ? null : areaUpper / (end - start));
   const numerator = interval(sum(ordered.map(value => value.file.lines.changed)));
-  if (!unknown && average.upper === 0) return { status: 'unavailable', reason: 'zero-average-size', version: 'turnover-v1' };
-  return { ...amount(average.upper === null ? 0 : numerator.lower / average.upper,
+  if (!unknown && average.upper === 0) return { ratio: { status: 'unavailable', reason: 'zero-average-size', version: 'turnover-v1' }, tail: null };
+  return { ratio: { ...amount(average.upper === null ? 0 : numerator.lower / average.upper,
     average.lower > 0 && numerator.upper !== null ? numerator.upper / average.lower : null),
-    version: 'turnover-v1', averageSize: average, discontinuities, sizeBasis: 'observed-final-comparisons' };
+    version: 'turnover-v1', averageSize: average, discontinuities, observedThrough: new Date(observedThrough).toISOString(), sizeBasis: 'observed-final-comparisons' }, tail };
 }
 
-function fileRows(merged, query, observations, records) {
-  const continuity = new Map();
-  for (const repositoryId of new Set(merged.map(record => record.repositoryId))) {
-    continuity.set(repositoryId, fileContinuity(records.filter(record => record.repositoryId === repositoryId)));
-  }
+function fileRows(merged, query, observations, continuity, tails = new Map()) {
   const grouped = new Map();
   for (const record of merged) for (const file of record.facts.report?.files ?? []) {
     const key = fileKey(record.repositoryId, file.path);
@@ -267,8 +275,11 @@ function fileRows(merged, query, observations, records) {
       return missing ? amount(total.lower, null) : total;
     };
     const changed = boundTotal(value.contributions.map(value => value.file.lines.changed));
-    const ratio = turnover(value.contributions, query, observations.filter(row => row.repositoryId === value.repositoryId && row.path === value.path),
+    const evidence = turnoverEvidence(value.contributions, query, observations.filter(row => row.repositoryId === value.repositoryId && row.path === value.path),
       (from, to, since) => continuity.get(value.repositoryId)(from, to, since, value.path));
+    const ratio = evidence.ratio;
+    // An unrecovered contribution may have touched the file; no later size observation can close that.
+    if (evidence.tail && !missing) tails.set(fileKey(value.repositoryId, value.path), { repositoryId: value.repositoryId, path: value.path, ...evidence.tail });
     const sizeHistory = observations.filter(row => row.repositoryId === value.repositoryId && row.path === value.path).toSorted((a, b) => a.observedAt.localeCompare(b.observedAt));
     const growth = side => {
       const known = value.contributions.filter(row => row.size?.before !== null && row.size?.after !== null && row.size);
@@ -297,8 +308,44 @@ function cochange(records, repositoryId, name) {
     }).sort((a, b) => b.together - a.together || a.path.localeCompare(b.path)) };
 }
 
+const fileSurfaces = new Set(['overview', 'history', 'files', 'file']);
+const stableCode = error => {
+  const code = error?.diagnostic?.code ?? error?.code;
+  return typeof code === 'string' && /^E_[A-Z0-9_]+$/u.test(code) ? code : 'E_APP_DATA_SIZE_OBSERVATION';
+};
+
+/**
+ * Close open Turnover tails at the read encounter. The server-owned observer reads the current default branch;
+ * it is asked only for paths whose retained transitions could carry their tail size to that revision, so a fresh
+ * read never substitutes for continuity. Unavailable or unconfigured observation keeps the tail and says so.
+ */
+async function observeTails({ observe, tails, observations, continuity, repositoryIds, path }) {
+  const fresh = [];
+  const standings = await Promise.all(repositoryIds.map(async repositoryId => {
+    const open = new Map([...tails.values()].filter(tail => tail.repositoryId === repositoryId && (path === undefined || tail.path === path)).map(tail => [tail.path, tail]));
+    if (!open.size) return { repositoryId, standing: 'not-needed', openTails: 0 };
+    if (!observe) return { repositoryId, standing: 'unconfigured', openTails: open.size };
+    try {
+      const accepts = (name, revision) => open.has(name) && continuity.get(repositoryId)(open.get(name).revision, revision, open.get(name).since, name);
+      const observed = await observe({ repositoryId, paths: [...open.keys()],
+        retained: observations.filter(row => row.repositoryId === repositoryId && open.has(row.path)), accepts });
+      if (observed?.standing !== 'observed') return { repositoryId, standing: 'unavailable', openTails: open.size, code: observed?.standing === 'disabled' ? 'E_APP_DATA_HISTORY_DISABLED' : 'E_APP_DATA_SIZE_OBSERVATION' };
+      const revision = reference(observed.revision), observedAt = time(observed.observedAt);
+      for (const row of observed.sizes) {
+        if (!open.has(row.path) || (row.size !== null && (!Number.isSafeInteger(row.size) || row.size < 0))) throw fail('E_APP_DATA_SIZE');
+        fresh.push({ repositoryId, path: row.path, observedAt, revision, size: row.size });
+      }
+      return { repositoryId, standing: 'observed', revision, observedAt, openTails: open.size, closedTails: 0, providerReads: observed.providerReads,
+        paths: { reused: observed.reused, read: observed.read, notContinuous: observed.skipped, persisted: observed.persisted } };
+    } catch (error) {
+      return { repositoryId, standing: 'unavailable', openTails: open.size, code: stableCode(error) };
+    }
+  }));
+  return { fresh, standings };
+}
+
 /** Six route-neutral analytical reads. authorize and entitlement are server-side, never query claims. */
-export function createAnalyticalDataService({ store, authorize, entitlement, namespace, currentPolicy, now = () => new Date().toISOString() }) {
+export function createAnalyticalDataService({ store, authorize, entitlement, namespace, currentPolicy, observeCurrentSizes, now = () => new Date().toISOString() }) {
   if (!store || typeof authorize !== 'function' || typeof entitlement !== 'function' || typeof namespace !== 'function' || typeof currentPolicy !== 'function') throw new TypeError('Analytical read adapters are required.');
   return {
     async query(input, actor) {
@@ -380,7 +427,23 @@ export function createAnalyticalDataService({ store, authorize, entitlement, nam
         closedUnmerged: all.filter(record => record.state === 'closed' && inside(record.closedAt, bucket)).length })) };
       const premiumMerged = merged.filter(record => premiumIds.includes(record.repositoryId));
       const sizeObservations = premium ? (await Promise.all(premiumIds.map(id => store.analyticalSizes(id, query.from, query.to)))).flat() : [];
-      const files = premium ? fileRows(premiumMerged, query, sizeObservations, all) : [];
+      const continuity = new Map(premiumIds.map(id => [id, fileContinuity(all.filter(record => record.repositoryId === id))]));
+      const tails = new Map();
+      let files = premium ? fileRows(premiumMerged, query, sizeObservations, continuity, tails) : [];
+      let sizeObservation = [];
+      if (premium && fileSurfaces.has(query.surface)) {
+        const observed = await observeTails({ observe: observeCurrentSizes, tails, observations: sizeObservations, continuity,
+          repositoryIds: [...new Set(premiumMerged.map(record => record.repositoryId))], path: query.surface === 'file' ? query.path : undefined });
+        sizeObservation = observed.standings;
+        if (observed.fresh.length) {
+          const remaining = new Map();
+          files = fileRows(premiumMerged, query, [...sizeObservations, ...observed.fresh], continuity, remaining);
+          for (const standing of sizeObservation) if (standing.standing === 'observed') {
+            standing.closedTails = standing.openTails - [...remaining.values()].filter(tail => tail.repositoryId === standing.repositoryId
+              && (query.surface !== 'file' || tail.path === query.path)).length;
+          }
+        }
+      }
       let result;
       if (query.surface === 'overview') result = { overview, sizeMix: mix, lifecycle, flow, concentration: merged.map(record => ({ repositoryId: record.repositoryId, pullRequest: record.pullRequest, ...concentration(record.facts.report) })), activity: active.map(prRow), files, comparison };
       if (query.surface === 'prs') result = { overview, sizeMix: mix, lifecycle, flow, pullRequests: all.map(prRow).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
@@ -424,7 +487,8 @@ export function createAnalyticalDataService({ store, authorize, entitlement, nam
         population: 'final-merged-comparisons', window: { from: query.from, to: query.to },
         coverage: { completeWindow: false, standing: 'retained-observations', requestedRepositories: query.repositoryIds.length,
           authorizedRepositories: granted.length, representedRepositories: authorized.length, recoveredMerged: merged.filter(record => record.final?.report).length, merged: merged.length },
-        policies: authorized.map(repositoryId => ({ repositoryId, requestedId: policies.get(repositoryId)?.id ?? null, standing: policies.get(repositoryId)?.compiled ? 'current' : 'unfiltered-base-facts' })), entitlements, fundedNamespaces, result };
+        policies: authorized.map(repositoryId => ({ repositoryId, requestedId: policies.get(repositoryId)?.id ?? null, standing: policies.get(repositoryId)?.compiled ? 'current' : 'unfiltered-base-facts' })),
+        sizeObservation, entitlements, fundedNamespaces, result };
     }
   };
 }

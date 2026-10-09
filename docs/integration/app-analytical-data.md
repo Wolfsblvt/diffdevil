@@ -12,7 +12,7 @@ The older pathless export and query contracts retain their original meaning.
 ## Read it
 
 `apps/github-app/analytical-data.mjs` exports
-`createAnalyticalDataService({ store, authorize, entitlement, namespace, currentPolicy, now })`.
+`createAnalyticalDataService({ store, authorize, entitlement, namespace, currentPolicy, observeCurrentSizes, now })`.
 Its `query(input, actor)` accepts:
 
 ```json
@@ -184,14 +184,43 @@ time-weighted size. Direct pushes, unrecovered or incomplete comparisons, histor
 time and expired records leave no link, so those gaps widen the denominator and count
 as discontinuities. Missing endpoints and size mismatches widen it too. A period that
 ends after the latest continuous observation keeps that unobserved tail: its observed
-span still bounds the upper ratio, while the lower ratio stays 0. An unrecovered merged
+span still bounds the upper ratio, while the lower ratio stays 0. Every Turnover result
+names `observedThrough`, the end of its observed closing span; a consumer may offer the
+as-of window ending there as an explicitly named view, but the service never moves the
+requested period. An unrecovered merged
 contribution may have touched any file, so named totals and turnover widen too.
 Creation or deletion in the period is unavailable with that reason. The collector
 supplies before/after merge sizes and then calls `captureDefaultBranchSizes` to observe
 the default branch's known text files. It checks the branch again before publication
 and refuses a moved revision. Retained snapshots before, inside or after a selected
 period can anchor it; continuity comes from observed transitions, never interpolation
-from churn. This candidate does not claim that collection or its observer is deployed.
+from churn.
+
+A window ending now always outlives the latest capture. The optional server-owned
+`observeCurrentSizes` adapter closes that tail at the read encounter, with no scheduler.
+It runs only for Overview, History, Files and File detail when a returned premium file
+has an open tail (File detail asks only for its own path). It reads the repository and
+its current default-branch revision. It is asked only for paths whose retained complete
+transitions from the tail's revision to that head never name them, so a fresh read never
+substitutes for continuity, and a direct push or uncollected merge keeps the tail open.
+A size retained at the same immutable revision is reused; other accepted paths are read
+transiently as line counts. When any size is supplied, a second branch read brackets
+the observation time and a moved branch refuses it. Only newly read sizes are retained,
+under current history consent; a retained revision is not written again. A read that
+contradicts the carried size cannot close the tail.
+
+Each premium file-surface response carries `sizeObservation`, one entry per represented
+repository: `not-needed`, `unconfigured`, `unavailable` with a stable code, or `observed`
+with its revision, `observedAt`, open and closed tails, path counts (`reused`, `read`,
+`notContinuous`, `persisted`) and `providerReads`. Per repository with an open tail, the
+cost is one repository read, one or two branch reads and one content read per accepted
+path not already observed at that revision. Normally that is none, because the collector
+captures after every merge. `app.mjs` exports `createAnalyticalSizeObserver(env, { store,
+installationOf })`, which mints a credential limited to Contents read for the one
+repository when an observation is needed; that adds one installation-token request.
+An unavailable observation keeps the open tail, `observedThrough` and the existing
+freshness; it never fails the read. This candidate does not claim that collection or
+its observer is deployed or composed into a live App.
 
 Co-change uses one compatible population throughout: complete recovered final
 comparisons from the same repository and declared window. `together`, `own` and `of`

@@ -6,10 +6,10 @@ import { resolve } from 'node:path';
 import { Miniflare } from 'miniflare';
 import { analyzeDiff, analyzeChanges, compilePolicy, unwrap } from '@wolfsblvt/diffdevil';
 import { createAnalyticalDataService, normalizeAnalyticalRecord, median, turnover, fileContinuity } from './analytical-data.mjs';
-import { collectAnalyticalPullRequest, observeFileSize, captureDefaultBranchSizes, recoverFinalComparison } from './analytical-collection.mjs';
+import { collectAnalyticalPullRequest, observeFileSize, captureDefaultBranchSizes, recoverFinalComparison, observeCurrentSizes, createCurrentSizeObserver } from './analytical-collection.mjs';
 import { D1AppStore } from './storage.mjs';
 import { analyticalHttp } from './analytical-http.mjs';
-import { createGitHubAppWorker } from './app.mjs';
+import { createGitHubAppWorker, createAnalyticalSizeObserver } from './app.mjs';
 
 const base = 'a'.repeat(40), head = 'b'.repeat(40), other = 'c'.repeat(40);
 const from = '2026-09-01T00:00:00.000Z', to = '2026-10-01T00:00:00.000Z';
@@ -347,4 +347,149 @@ test('collector recovers actual merge parents, observes sizes, refuses a fabrica
   assert.equal(saved.mergedAt, at, 'comparison failure retains the known merged PR in the population');
   assert.equal(saved.final, null);
   assert.equal(await observeFileSize({ request: async () => { throw { status: 404 }; } }, 'owner/repo', 'a.txt', base), null, '404 is not proof of absence');
+});
+
+// A default App window ends now, after the latest retained observation: r1 -a-> r2 -b-> r3 -a-> r4, captured at r4 on 09-25.
+function currentWindow() {
+  const [r1, r2, r3, r4, r5] = revisions;
+  const records = [transition(1, 'a.txt', [r1, r2], '2026-09-05T00:00:00.000Z'), transition(2, 'b.txt', [r2, r3], '2026-09-10T00:00:00.000Z'),
+    transition(3, 'a.txt', [r3, r4], '2026-09-20T00:00:00.000Z')];
+  const sizes = [{ repositoryId: 17, path: 'a.txt', revision: r1, observedAt: '2026-08-31T00:00:00.000Z', size: 100 },
+    { repositoryId: 17, path: 'a.txt', revision: r4, observedAt: '2026-09-25T00:00:00.000Z', size: 100 }];
+  return { r4, r5, records, sizes };
+}
+function providerDouble({ heads, lines = 100, fail } = {}) {
+  const calls = { repository: 0, branch: 0, contents: 0 };
+  const client = {
+    json: async route => {
+      if (fail) throw fail;
+      if (route.startsWith('/repositories/')) { calls.repository++; return { id: 17, full_name: 'owner/repo', default_branch: 'main' }; }
+      calls.branch++;
+      return { commit: { sha: heads[Math.min(calls.branch, heads.length) - 1] } };
+    },
+    request: async () => { calls.contents++; return { text: 'line\n'.repeat(lines) }; }
+  };
+  return { client, calls };
+}
+
+test('a current window closes its tail with a fresh default-branch observation only where continuity carries it', async () => {
+  const { r4, r5, records, sizes } = currentWindow();
+  const writes = [];
+  const store = { analyticalRecords: async () => records, analyticalSizes: async () => sizes, historySettings: async () => ({ enabled: true }),
+    recordAnalyticalSize: async value => { writes.push(value); return { status: 'published' }; } };
+  const observedAt = '2026-10-01T00:00:03.000Z';
+  const read = async (provider, extraRecords = []) => {
+    const service = createAnalyticalDataService({ store: { ...store, analyticalRecords: async () => [...records, ...extraRecords] },
+      authorize: async () => true, namespace: async () => 9, currentPolicy: async () => null, entitlement: async () => 'pro', now: () => to,
+      ...(provider ? { observeCurrentSizes: createCurrentSizeObserver({ store, clientFor: async () => provider.client, now: () => observedAt }) } : {}) });
+    const response = await service.query(query('file', { path: 'a.txt' }), actor);
+    return { turnover: response.result.turnover, observation: response.sizeObservation[0], observed: response.result.observedSize };
+  };
+
+  const unconfigured = await read();
+  assert.deepEqual([unconfigured.turnover.lower, unconfigured.turnover.upper], [0, 0.025], 'without an observer the tail stays open');
+  assert.equal(unconfigured.turnover.observedThrough, '2026-09-25T00:00:00.000Z');
+  assert.deepEqual(unconfigured.observation, { repositoryId: 17, standing: 'unconfigured', openTails: 1 });
+
+  // Branch still at the captured revision: the retained immutable size is reused; no content is read.
+  const steady = providerDouble({ heads: [r4] });
+  const unchanged = await read(steady);
+  assert.equal(unchanged.turnover.status, 'exact');
+  assert.equal(unchanged.turnover.lower, 0.02);
+  assert.equal(unchanged.turnover.observedThrough, to);
+  assert.deepEqual(steady.calls, { repository: 1, branch: 2, contents: 0 });
+  assert.equal(unchanged.observation.closedTails, 1);
+  assert.deepEqual(unchanged.observation.paths, { reused: 1, read: 0, notContinuous: 0, persisted: 0 });
+  assert.equal(unchanged.observed.observedAt, observedAt, 'the file row shows the fresh observation time');
+  assert.equal(writes.length, 0, 'a re-stamped retained revision is not written again');
+
+  // Branch moved through a retained complete merge that does not name the file: one content read, then retained.
+  const unrelated = transition(4, 'b.txt', [r4, r5], '2026-10-01T00:00:01.000Z');
+  const moved = providerDouble({ heads: [r5] });
+  const carried = await read(moved, [unrelated]);
+  assert.equal(carried.turnover.lower, 0.02);
+  assert.deepEqual(moved.calls, { repository: 1, branch: 2, contents: 1 });
+  assert.deepEqual(writes, [{ repositoryId: 17, path: 'a.txt', size: 100, revision: r5, observedAt }]);
+
+  // A direct push or uncollected merge leaves no link: the fresh revision cannot close the tail and is not read.
+  const pushed = providerDouble({ heads: [r5] });
+  const open = await read(pushed);
+  assert.deepEqual([open.turnover.lower, open.turnover.upper], [0, 0.025]);
+  assert.deepEqual(pushed.calls, { repository: 1, branch: 1, contents: 0 });
+  assert.equal(open.observation.standing, 'observed');
+  assert.equal(open.observation.closedTails, 0);
+  assert.equal(open.observation.paths.notContinuous, 1);
+
+  // A read that contradicts the carried size never closes; a provider failure keeps the tail and its freshness.
+  const contradicted = await read(providerDouble({ heads: [r5], lines: 90 }), [unrelated]);
+  assert.equal(contradicted.turnover.lower, 0);
+  const failed = await read(providerDouble({ heads: [r4], fail: { code: 'E_GITHUB_RATE_LIMIT' } }));
+  assert.deepEqual(failed.observation, { repositoryId: 17, standing: 'unavailable', openTails: 1, code: 'E_GITHUB_RATE_LIMIT' });
+  assert.equal(failed.turnover.observedThrough, '2026-09-25T00:00:00.000Z');
+  assert.equal(failed.turnover.lower, 0);
+});
+
+test('the current-size observer refuses a moved branch, honors consent and accounts for its reads', async () => {
+  const { r4, r5 } = currentWindow();
+  const writes = [];
+  const store = { historySettings: async () => ({ enabled: true }), recordAnalyticalSize: async value => { writes.push(value); return { status: 'published' }; } };
+  const moving = providerDouble({ heads: [r4, r5] });
+  await assert.rejects(observeCurrentSizes({ client: moving.client, store, repositoryId: 17, paths: ['a.txt'], accepts: () => true }), { code: 'E_APP_DATA_STALE' });
+  assert.equal(writes.length, 0);
+  const disabled = providerDouble({ heads: [r4] });
+  assert.deepEqual(await observeCurrentSizes({ client: disabled.client, store: { historySettings: async () => ({ enabled: false }) }, repositoryId: 17, paths: ['a.txt'], accepts: () => true }), { standing: 'disabled' });
+  assert.deepEqual(disabled.calls, { repository: 0, branch: 0, contents: 0 });
+  const steady = providerDouble({ heads: [r4] });
+  const result = await observeCurrentSizes({ client: steady.client, store, repositoryId: 17, paths: ['a.txt', 'b.txt', 'a.txt'], accepts: path => path === 'a.txt', now: () => to });
+  assert.deepEqual({ ...result, sizes: undefined }, { standing: 'observed', revision: r4, observedAt: to, sizes: undefined, reused: 0, read: 1, skipped: 1, persisted: 1,
+    providerReads: { repository: 1, branch: 2, contents: 1 } });
+});
+
+test('joined D1 data serves a closed current window through the Worker route with a contents-read credential', async () => {
+  const { r4, records } = currentWindow();
+  const clock = { value: '2026-09-25T00:00:00.000Z' };
+  const runtime = new Miniflare({ workers: [{ config: { name: 'analytics-current-test', type: 'worker', compatibilityDate: '2026-09-17',
+    env: { APP_DB: { type: 'd1', id: `analytics-${crypto.randomUUID()}` } }, manifest: { mainModule: 'worker.mjs', modulesRoot: resolve('.'),
+      modules: { 'worker.mjs': { type: 'esm', contents: 'export default { fetch() { return new Response("ok"); } };' } } } } }] });
+  try {
+    const store = new D1AppStore(await runtime.getD1Database('APP_DB'), { now: () => clock.value });
+    for (const name of (await readdir('apps/github-app/migrations')).sort()) await store.migrate(await readFile(`apps/github-app/migrations/${name}`, 'utf8'));
+    await store.recordLifecycle({ installationId: 9, action: 'created', addedRepositories: [17], removedRepositories: [] });
+    await store.setRepositoryConsent(17, { enabled: true, retentionDays: 90, origin: 'fixture' });
+    for (const value of records) assert.equal((await store.recordAnalytical(value)).status, 'published');
+    await store.recordAnalyticalSize({ repositoryId: 17, path: 'a.txt', observedAt: '2026-08-31T00:00:00.000Z', revision: revisions[0], size: 100 });
+    // The collector's own post-merge capture, at the last merged revision.
+    const capture = providerDouble({ heads: [r4] });
+    await captureDefaultBranchSizes({ client: capture.client, store, repositoryId: 17, now: () => clock.value });
+
+    clock.value = '2026-10-01T00:00:03.000Z';
+    const requests = [];
+    const fetch = async (url, init = {}) => {
+      const route = new URL(String(url)).pathname;
+      requests.push({ method: init.method ?? 'GET', route, body: init.body });
+      if (route === '/app/installations/9/access_tokens') return new Response(JSON.stringify({ token: 'read-token', expires_at: new Date(Date.now() + 60_000).toISOString() }), { status: 201 });
+      if (route === '/repositories/17') return new Response(JSON.stringify({ id: 17, full_name: 'owner/repo', default_branch: 'main' }));
+      if (route === '/repos/owner/repo/branches/main') return new Response(JSON.stringify({ commit: { sha: r4 } }));
+      return new Response('{}', { status: 404 });
+    };
+    const observer = createAnalyticalSizeObserver({ GITHUB_APP_ID: '123', GITHUB_APP_PRIVATE_KEY: 'not-used-by-fixture' },
+      { store, installationOf: async () => 9, createJwt: async () => 'app-jwt', fetch });
+    const service = createAnalyticalDataService({ store, authorize: async () => true, currentPolicy: async () => null, namespace: async () => 9,
+      entitlement: async () => 'pro', observeCurrentSizes: observer, now: () => clock.value });
+    const worker = createGitHubAppWorker({ authorization: { analyticalQuery: async ({ query }) => ({ body: await service.query(query, actor), headers: {} }) } });
+    const response = await worker.fetch(new Request('https://app.example.test/api/analytics', { method: 'POST',
+      headers: { cookie: '__Host-diffdevil-session=fixture', origin: 'https://app.example.test', 'content-type': 'application/json' },
+      body: JSON.stringify(query('files', { metric: 'turnover', to: '2026-10-01T00:00:00.000Z' })) }), {});
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    const file = body.result.files.find(row => row.path === 'a.txt');
+    assert.equal(file.turnover.status, 'exact');
+    assert.equal(file.turnover.lower, 0.02);
+    assert.equal(body.sizeObservation[0].standing, 'observed');
+    assert.deepEqual([body.sizeObservation[0].openTails, body.sizeObservation[0].closedTails], [2, 2], 'both returned files close from the one branch observation');
+    assert.deepEqual(body.sizeObservation[0].paths, { reused: 2, read: 0, notContinuous: 0, persisted: 0 });
+    assert.deepEqual(requests.map(value => `${value.method} ${value.route}`), ['POST /app/installations/9/access_tokens', 'GET /repositories/17',
+      'GET /repos/owner/repo/branches/main', 'GET /repos/owner/repo/branches/main']);
+    assert.deepEqual(JSON.parse(requests[0].body), { repository_ids: [17], permissions: { contents: 'read' } });
+  } finally { await runtime.dispose(); }
 });
