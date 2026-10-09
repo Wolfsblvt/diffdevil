@@ -10,7 +10,7 @@ import { checkSummary } from '../shared/check-summary.mjs';
 import { analyticalHttp } from './analytical-http.mjs';
 import { collectAnalyticalPullRequest, captureDefaultBranchSizes } from './analytical-collection.mjs';
 
-const JSON_HEADERS = { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' };
+const JSON_HEADERS = { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', 'referrer-policy': 'no-referrer' };
 
 function response(status, body) { return new Response(JSON.stringify(body), { status, headers: JSON_HEADERS }); }
 function deliveryId(request) { return request.headers.get('x-github-delivery') ?? ''; }

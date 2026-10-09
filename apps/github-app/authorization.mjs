@@ -30,7 +30,7 @@ function cookie(name, value, maxAge) {
 }
 
 /** These headers belong on every protected result, including its refusal response. */
-export function protectedHeaders() { return { 'Cache-Control': 'private, no-store', 'Vary': 'Cookie' }; }
+export function protectedHeaders() { return { 'Cache-Control': 'private, no-store', 'Vary': 'Cookie', 'Referrer-Policy': 'no-referrer' }; }
 
 /** Route-neutral GitHub-user authorization; the router chooses paths and visible language later. */
 export function createAuthorizationService({ store, admission, history, analytics, provider, protector, returnContexts, allowedOrigins, allowedCallbackUrls, sessionLifetimeMs, now = () => new Date().toISOString() }) {

@@ -60,13 +60,24 @@ Free viewer receives no premium aggregate assembled across paid namespaces.
 
 `authorization.mjs` exposes `analyticalQuery({ session, query })`, using its existing
 opaque session, current GitHub-user authorization and positive repository read
-access. Administration is not required. `analytical-http.mjs` supplies GET
-`/api/analytics?query=<URL-encoded JSON>`, with the `__Host-diffdevil-session` cookie.
-Every success and refusal is private/no-store. `createGitHubAppWorker({ authorization })`
+access. Administration is not required. `analytical-http.mjs` supplies POST
+`/api/analytics` with an `application/json` query body, the `__Host-diffdevil-session`
+cookie and same-origin `Origin`. Path-free queries may also use GET
+`/api/analytics?query=<URL-encoded JSON>`; file paths are refused in GET queries.
+Every success and refusal is private/no-store with `Referrer-Policy: no-referrer`.
+`createGitHubAppWorker({ authorization })`
 serves that route when its protected adapter is installed. The default Worker refuses
 the route as unavailable: this candidate does not manufacture a live OAuth/provider
 adapter or deploy one. The HTTP route neither trusts a caller-supplied principal nor
 changes GitHub state.
+
+Private paths belong in request bodies, not API URLs. The App does not log request
+URLs, query strings, bodies or file paths. The visible File-detail route remains
+an experience-owned boundary: if it places a path in its URL, browser history can
+retain that name. The privacy/source reconciliation must document that surface or
+select an opaque route identity. The no-referrer header prevents outbound GitHub
+links from forwarding an App path; it does not erase browser history. Deployment
+must exclude full URL/query/body capture from provider request logging too.
 
 ## Collect and retain it
 

@@ -108,6 +108,20 @@ test('default-branch size observation publishes immutable sizes and refuses a mo
   assert.equal(writes.length, 0);
 });
 
+test('path-bearing HTTP reads use same-origin bodies and every response suppresses referrers', async () => {
+  const authorization = { analyticalQuery: async ({ query }) => ({ body: { surface: query.surface }, headers: {} }) };
+  const url = 'https://app.example.test/api/analytics';
+  const headers = { cookie: '__Host-diffdevil-session=fixture', origin: 'https://app.example.test', 'content-type': 'application/json' };
+  const body = JSON.stringify(query('file', { path: 'private/file.txt' }));
+  const allowed = await analyticalHttp(new Request(url, { method: 'POST', headers, body }), authorization);
+  assert.equal(allowed.status, 200);
+  assert.equal(allowed.headers.get('referrer-policy'), 'no-referrer');
+  assert.equal((await analyticalHttp(new Request(`${url}?query=${encodeURIComponent(body)}`, { headers }), authorization)).status, 400);
+  const denied = await analyticalHttp(new Request(url, { method: 'POST', headers: { ...headers, origin: 'https://other.example.test' }, body }), authorization);
+  assert.equal(denied.status, 403);
+  assert.equal(denied.headers.get('referrer-policy'), 'no-referrer');
+});
+
 test('local D1 writes, reads, exports, expiry, consent loss and restore-resistant deletion', async () => {
   const clock = { value: at };
   const runtime = new Miniflare({ workers: [{ config: { name: 'analytics-test', type: 'worker', compatibilityDate: '2026-09-17',
