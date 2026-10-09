@@ -4,7 +4,7 @@
 
 This document owns the selected capability and experience of the authenticated diffdevil App: understanding repository changes, exploring pull requests and files, configuring selective PR context, and operating repositories individually or together. It describes the intended product, not a claim that its dashboard, data collection, imports, billing, or public views are already available. [Direction](DIRECTION.md) owns current availability; [App integration](integration/github-app.md) owns execution; [access and accounts](dashboard-access.md) owns permissions; [privacy and data](PRIVACY-AND-DATA.md) owns retention and processing boundaries.
 
-The complete experience is selected independently of delivery order. This document does not select final page layouts, chart libraries, colours, exact routes, pricing, quotas, or algorithm thresholds.
+The complete experience is selected independently of delivery order. The analytical page structure and semantic presentation below are ratified; exact chart/cloud rendering, Manage/subscription UI and other undesigned surfaces remain open. This contract adopts no renderer dependency or new commercial choice.
 
 ## Product purpose
 
@@ -17,6 +17,31 @@ The App has three equally necessary jobs:
 The dashboard is activity-first, not an administration console with statistics attached. People who never change a setting are intended users. Settings support the analytical experience rather than defining its entrance.
 
 The open CLI, library and Actions remain complete, independently useful ways to measure and automate diffs. The extension improves one reader's present-tense GitHub view. The App adds repository-wide operation and memory, shared context, and coordination. It does not introduce a second semantic engine or make the open product deliberately inconvenient.
+
+## Ratified analytical experience
+
+The analytical design ratified on 2026-10-09 releases six complete destinations for implementation: **Overview**, **Pull requests**, **History**, **Files**, **PR detail** and **File detail**. Repository and namespace selections scope these pages; repository detail remains a first-class analytical destination. The visible location label and trailing product action both read **App**, including on the website header. “Dashboard” describes the analytical capability, not a competing surface name.
+
+The selected shell is dark-only for now, with an even 12-column panel grid, side navigation, the existing fixed Works header and its unchanged width, and a wide frame with side gutters. The period selection persists across pages. Panel metadata wraps rather than being ellipsized; freshness identifies the analysed comparison against the current one. Files are qualified by repository and path. Chart marks lead to contributing PRs, files or filtered lists.
+
+Premium feature panels show their Pro/Business chip. Navigation shows paid namespace chips and the viewer's current plan in the account switcher; Free has no navigation chip and breadcrumbs carry none. A namespace's features follow that namespace's funded plan, including for a Free collaborator. Premium All-repositories aggregates follow the viewer's own plan and include only eligible premium-funded repositories, naming excluded coverage. These entitlement rules never widen repository authorisation.
+
+Free has useful analytical panels and bounded See Pro placeholders rather than giant empty blockers. Its Files entrance can point to accessible funded namespaces and useful History; it does not expose premium file-history rows merely because base measurements are retained. Manage and future pricing links are navigation seams, not permission to invent those screens.
+
+| Destination | Ratified analytical content |
+| --- | --- |
+| Overview | Merged-PR lead and period comparison; lifecycle/size facts; eligible change cloud and current PR activity; size mix, flow and repository context. Free substitutes useful change-volume and time-to-merge panels. |
+| Pull requests | Analytics first: flow, lifecycle, size mix, time to merge and analysed-head development; then a searchable/filterable PR list with explicit state, size, measurement and repository. |
+| History | Bucketed Changed/composition, contributing PR drill-down and period comparison with coverage. Pro adds file growth/shrinkage and concentration; Free keeps merged-PR size activity. |
+| Files | Eligible frequency-first cloud with Changed/raw churn/Turnover alternatives, repository-qualified ranked files and selected-file facts/co-change. |
+| PR detail | Comparison identity/freshness, lifecycle, measured facts, policy, desired and observed effects; eligible same-file context; visible excluded files and separate head-by-head development. |
+| File detail | Changed, raw churn, distinct merged PRs, Turnover and size; contributions per merged PR, size trajectory, co-change and “here versus PR total”. |
+
+Most history analytics use merged PRs in the selected period. Flow also names its opened population and 13-week context; current activity uses active PRs; co-change declares its 90-day window. Unique PRs, revisions and attempts never substitute for one another. History buckets are daily for 7 days, two-day for 30 days, weekly for 90 days and calendar months for one year; missing earlier coverage is not a fictional full year.
+
+The selected measurement grammar makes bar height Changed and colour area its modified/added/deleted composition, with raw churn at its true scale as an outline. Bounded values show a range, not an approximate midpoint; incomplete acquisition shows a lower bound with partial coverage. Unknown size bands remain separate. Desired/proposed labels and actually observed GitHub labels remain distinguishable. This is semantic grammar; exact chart rendering remains provisional.
+
+**Design remainder:** chart and cloud system co-design comes first, then Manage/configuration/account/subscription co-design inside this shell. Modern, authored and usable chart interaction is core product design, not later cosmetic polish. Prototype SVGs or framework defaults must not become accepted aesthetics through implementation. Non-conflicting architecture, routes, data and shell work can continue. Renderer adoption, light theme, phone-width design, public/operator views and the other undesigned states remain separate; this document does not claim an exercised production journey.
 
 ## Destinations and ordinary journeys
 
@@ -44,7 +69,7 @@ Each file has a dedicated detail destination for change frequency, volume, Turno
 
 Retained rename observations and immutable references support continuity where established. Ambiguous identity, deletion, unavailable content and historical gaps remain visible. A current path is not automatically the identity of every earlier file with that spelling.
 
-The eventual page, drawer, ledger or other presentation is a design choice. A commit-detail destination is a later possibility, not a first-delivery commitment to general commit analytics.
+The ratified analytical experience includes a File detail page. A commit-detail destination is a later possibility, not a first-delivery commitment to general commit analytics.
 
 ## Two distinct analytical subjects
 
@@ -79,9 +104,9 @@ A shared measured foundation supports several explicit metrics, not a blended ho
 | Breadth and concentration | How changes distribute across files or components instead of reducing every change to one total. |
 | Co-change | Observable frequency and strength of files or components appearing together, with contributing PRs and sample context. |
 
-Turnover has a concise visible explanation: **Change volume relative to file size.** It is not the percentage of unique lines rewritten and may exceed one. Its exact baseline, aggregation across a period, treatment of changing file size and repository-level denominator remain calculation-contract work. No arbitrary formula is ratified merely by the display name. New, empty, deleted, binary and unmeasurable files need explicit applicability rather than infinite, invented or misleading values.
+**turnover-v1 is adopted:** replacement-aware Changed in the selected period divided by the file's time-weighted average size during that period, displayed as a multiple such as `1.8×`. Its brief explanation remains **Change volume relative to file size**; it is not the percentage of unique lines rewritten and may exceed one. Bounded Changed produces a Turnover range. A file created or deleted during the period shows `n/a` with that reason. Zero-size, binary or unavailable size evidence must state applicability rather than yield infinity or an invented denominator. This file definition does not invent a repository-level denominator.
 
-Repository comparisons use the same principle of explicit metrics: frequency, volume, relative change and their distributions. Repository clouds and alternative comparison charts are useful for both personal and organisation accounts. An Individual plan does not lose these analytics merely because several repositories are involved.
+Repository comparisons use the same principle of explicit metrics: frequency, volume, relative change and their distributions. Repository clouds and alternative comparison charts are useful for both personal and organisation accounts. An Pro plan does not lose these analytics merely because several repositories are involved.
 
 Repositories need not be ranked as better or worse. Metrics describe change, not risk, complexity, importance, quality or productivity.
 
@@ -150,9 +175,9 @@ Algorithm research and chart-renderer research are separate contributions: one d
 
 Repository-owned trusted `.diffdevil.yml` values remain authoritative over App defaults. Show the chosen App configuration, the resolved effective policy, each setting's origin and which values the repository file overrides. Bulk application must not claim to change values that remain overridden.
 
-Individual administration supports named reusable configurations, an account default, deliberate application to each repository and inspection of differences. A repository may remain intentionally different.
+Pro administration supports one personal default and one per connected organisation, deliberate application to each repository and inspection of differences. A repository may remain intentionally different.
 
-Team adds linked shared configurations. An account can choose configurations that link when adopted; repositories can link or unlink as selected. Updating a linked shared policy propagates to its linked repositories, respecting repository overrides. Settings may also queue current-policy history recalculation and refresh eligible open-PR labels and briefs.
+Business adds linked shared configurations. An account can choose configurations that link when adopted; repositories can link or unlink as selected. Updating a linked shared policy propagates to its linked repositories, respecting repository overrides. Settings may also queue current-policy history recalculation and refresh eligible open-PR labels and briefs.
 
 Ordinary historical analytics show the current effective policy. Retained measurements remain unchanged; the derived view is recalculated. Do not build repository-wide policy-era dashboards as a prerequisite. Original recorded PR results remain factual historical evidence where available, separate from today's interpretation.
 
@@ -160,19 +185,19 @@ Only work needed by a changed setting should be queued. A brief-length change do
 
 Rollback is not a starting feature. Administrative history must preserve attributable changes, but that does not mandate a generic rollback system. History consent, publication and delegated access are separate administrative choices; applying a named analysis policy must not silently enable additional collection or publication.
 
-## Individual and Team capability distinction
+## Pro and Business capability distinction
 
-These are product capability names, not currently published subscription offers. Prices, allowances, fair use, account bundles and paid availability remain separate commercial decisions.
+The current hosted names are Free, Pro and Business. Free supplies basic PR/repository history; Pro adds premium file-history exploration and context; Business adds coordination. The complete commercial settlement is carried by the companion plans/management proposal, not selected again here. These are developing capabilities, not a currently available paid service.
 
-Individual has the full useful analytical vocabulary, repository comparisons, dedicated detail views, named configurations, deliberate imports, policy experimentation and optional PR briefs. Its administering person performs repository setup and updates manually. Collaborators with current access can read the repository's available data without purchasing a separate subscription.
+Pro has the full useful analytical vocabulary, repository comparisons, dedicated detail views, per-scope defaults, deliberate imports, policy experimentation and optional PR briefs. Its administering person performs repository setup and updates manually. Collaborators with current access can read the repository's available data without purchasing a separate subscription.
 
-Team sells coordinated operation: linked policies, delegated administration, account-wide setup awareness, automatic adoption rules, coordinated history/open-PR refresh, and an administrative audit trail. It does not reserve the useful charts or the meaning of a diff for groups.
+Business sells coordinated operation: linked policies, delegated administration, account-wide setup awareness, automatic adoption rules, coordinated history/open-PR refresh, and an administrative audit trail. It does not reserve the useful charts or the meaning of a diff for groups.
 
-A single person using a personal GitHub account can choose Team for that automation. A GitHub organisation is not automatically the same as a Team subscription. Account defaults apply within their own managed account; visibility of a collaborator repository does not apply the reader's personal defaults to it.
+A single person using a personal GitHub account can choose Business for that automation. A GitHub organisation is not automatically the same as a Business subscription. Account defaults apply within their own managed account; visibility of a collaborator repository does not apply the reader's personal defaults to it.
 
-For Individual, useful repository-local banners can offer applying a default or starting an import. For Team, account-wide awareness and explicitly selected automation can configure newly reachable repositories, link policy, and start the selected history/import behaviour. Automation follows an actual GitHub App grant and never manufactures access.
+For Pro, useful repository-local banners can offer applying a default or starting an import. For Business, account-wide awareness and explicitly selected automation can configure newly reachable repositories, link policy, and start the selected history/import behaviour. Automation follows an actual GitHub App grant and never manufactures access.
 
-No per-member billing is selected. Capacity and workload are commercial dimensions for the later pricing decision, not hidden meters added here. Provider redelivery and the service's own recovery attempts must not become chargeable analyses.
+No per-member billing is selected. Settled prices and plan allowances belong to the companion plans/management contract; numeric monthly import budgets remain launch configuration, not hidden meters added here. Provider redelivery and the service's own recovery attempts must not become chargeable analyses.
 
 ## Historical import and open-PR scanning
 
@@ -186,7 +211,7 @@ Use adaptive pacing against actual provider limits. Reuse sufficient retained fa
 
 Recoverable final comparisons do not imply recoverable intermediate revisions, every lifecycle transition or an original diffdevil policy result. Squash/rebase handling, immutable comparisons, provider file limits and omitted patches need qualification on real supported acquisition paths. Unknown or partial results remain explicit.
 
-Free use may offer bounded import; paid Individual and Team may offer deeper capacity. No counts, calendar limits, retry intervals or prices are selected here. Import does not override opt-outs, deletions or retention boundaries and does not apply historical GitHub effects.
+Free use may offer bounded import; paid Pro and Business may offer deeper capacity. No counts, calendar limits, retry intervals or prices are selected here. Import does not override opt-outs, deletions or retention boundaries and does not apply historical GitHub effects.
 
 ## Public read-only publication
 
@@ -196,6 +221,6 @@ A published view is anonymous and read-only. It exposes permitted repository sta
 
 ## Remaining design and implementation decisions
 
-The selected product still needs concrete visual design, a chart/library choice, co-change and selective-brief algorithms, a precise Turnover calculation, a qualified final-comparison/import contract, storage and workload measurements, and the later pricing/allowance design. These are owned implementation or co-design outcomes, not reasons to shrink this capability description back to pathless size statistics.
+The analytical pages and file turnover-v1 are ratified. The selected product still needs chart/cloud co-design, then Manage/subscription design, renderer qualification, co-change and selective-brief algorithms, qualified final-comparison/import acquisition, storage/workload measurements and commercial integration. These are owned implementation or co-design outcomes, not reasons to shrink this capability description back to pathless size statistics.
 
 No source code, collection, migrations, live authorisation, background imports, billing, public publication or dashboard deployment is established by this document. Existing narrower source evidence remains evidence for what it actually implements.

@@ -14,7 +14,7 @@ The dashboard decisions below were selected in owner co-design on 2026-10-01. Th
 
 **Why.** A collaborator who never configures an installation still benefits from its accumulated repository context. The optional PR brief needs a complete detail destination, and a file cloud needs somewhere useful to lead. An administrator-first control room would subordinate the product's daily value to setup and recovery.
 
-**Superseded.** The earlier control-room-first hierarchy as the permanent dashboard experience. Operational attention and configuration remain selected, but support the analytical entrance. Final layout, routes-as-experienced and visual compositions remain design work.
+**Superseded.** The earlier control-room-first hierarchy as the permanent dashboard experience. Operational attention and configuration remain selected, but support the analytical entrance. The 2026-10-09 ratification releases Overview, Pull requests, History, Files, PR detail and File detail with the dark even-grid App shell, fixed existing header and side navigation. Both surface and trailing action read App. Useful Free panels, premium panel chips and namespace-versus-viewer entitlement presentation preserve daily value without giant blockers. Exact chart/cloud rendering remains provisional; its co-design comes first, then Manage/subscription design. The synthetic reference is not production source or an authenticated journey.
 
 ## D045: Retain named file measurements and PR lifecycle without storing source
 
@@ -28,6 +28,8 @@ The dashboard decisions below were selected in owner co-design on 2026-10-01. Th
 
 **Rejected.** Retaining source, contributor-performance dimensions or complete reports; treating filenames as anonymous; installation automatically enabling history; or making a filename-free mode a prerequisite to useful first delivery. A future opt-out must disclose missing historical coverage.
 
+**Joined request/navigation consequence, 2026-10-09.** Named paths can occur in authenticated URLs and local browser history. App documents/responses select explicit `same-origin` referrer policy, excluding path/query cross-origin while retaining same-origin consumers. Diagnostics omit full private URLs, query strings and full referrers while retaining bounded operation/status/failure facts. Qualify the actual document and outbound-link route; no live leak or current logging qualification is inferred. [Privacy/data](PRIVACY-AND-DATA.md#named-paths-in-requests-and-navigation) owns the disclosure. This preserves useful queries and drill-down rather than treating a provider default or endpoint-only check as complete protection.
+
 ## D046: Use final merged comparisons for general file activity and explicit metric names
 
 **Decision.** General file/repository history uses one final recoverable comparison per merged PR. Open PR development and revisions remain a separate subject. Change frequency, volume, growth/shrinkage, concentration and Turnover are distinct metrics. Prominent word clouds default to distinct merged-PR change frequency. Turnover is displayed as a multiple, with a short explanation and a separately specified calculation contract.
@@ -36,7 +38,7 @@ The dashboard decisions below were selected in owner co-design on 2026-10-01. Th
 
 **Superseded.** `latest-observed-in-window` as the permanent product-wide baseline once actual lifecycle/final-comparison evidence exists. That remains an honest name for older source data and must not be relabelled as merged history. Direct pushes and general branch-throughput collection are not added to the starting scope.
 
-**Open.** Exact Turnover baseline/aggregation, final-comparison acquisition and renamed-file edge cases require qualification. No percentage-of-unique-lines-rewritten claim or hotness/quality score is selected.
+**Joined calculation decision, 2026-10-09.** **turnover-v1 is adopted:** replacement-aware Changed in the selected period divided by the file's time-weighted average size during that period, displayed as a multiple such as `1.8×`. Its brief explanation remains **Change volume relative to file size**; it is not the percentage of unique lines rewritten and may exceed one. Bounded Changed produces a Turnover range. A file created or deleted during the period shows `n/a` with that reason. Zero-size, binary or unavailable size evidence must state applicability rather than yield infinity or an invented denominator. This file definition does not invent a repository-level denominator. The selected denominator accounts for changing file size over the period rather than silently using its endpoint size. This supersedes only the open file-level denominator above. Final-comparison acquisition, renamed-file continuity and applicability still require qualification; the older analysis-time population remains honestly named. No unique-lines, hotness or quality claim follows.
 
 ## D047: Reinterpret history with current policy instead of multiplying policy-era dashboards
 

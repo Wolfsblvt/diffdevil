@@ -80,15 +80,15 @@ Same-file awareness is not conflict detection. Co-change describes an observatio
 
 ## Share understanding; charge for operated value
 
-Anyone may sign in with GitHub. Collaborators can read connected repository data under current GitHub access without buying a reader seat. All protected summaries use the actual authorised population. Team delegation never reveals an otherwise inaccessible private repository.
+Anyone may sign in with GitHub. Collaborators can read connected repository data under current GitHub access without buying a reader seat. All protected summaries use the actual authorised population. Business delegation never reveals an otherwise inaccessible private repository.
 
-Individual keeps the full useful analytical vocabulary, multiple-repository comparisons, named configurations, deliberate imports, experimentation and briefs. Team adds linked settings, coordinated refresh, delegation, automatic account-wide setup and an administrative audit. A solo maintainer with a personal account may buy Team for that automation. Account type and commercial plan are different facts.
+Free supplies useful basic PR/repository history; Pro adds historical file exploration, multiple-repository comparisons, deliberate imports, experimentation and richer PR context. Business adds linked settings, coordinated refresh, delegation, automatic account-wide setup and an administrative audit. A solo maintainer with a personal account may buy Business for that automation. Account type and commercial plan are different facts.
 
-Named configurations can be manually reused; linked shared policies can remain connected and update their repositories automatically. Trusted repository overrides remain visible and authoritative. Brief settings belong to the App's shared configuration, not a new repository-file template language.
+Pro defaults are scoped to the personal namespace and each connected organisation; Business linked shared policies can remain connected and update their repositories automatically. Trusted repository overrides remain visible and authoritative. Brief settings belong to the App's shared configuration, not a new repository-file template language.
 
 An authorised administrator may explicitly publish anonymous read-only analytics for public repositories using an account default and per-repository override. That public projection excludes administrative settings, audit, billing and private sibling information; publication is not implied by repository visibility.
 
-Exact prices, allowances and account bundles remain commercial decisions. No per-member billing is selected. Hosted value follows operation, retained memory, capacity, coordination and support rather than withholding the open engine or charging again for the service's own retries.
+The selected Free/Pro/Business plans assign hosted features and capacity independently of GitHub account type. No per-member billing is selected. Hosted value follows operation, retained memory, capacity, coordination and support rather than withholding the open engine or charging again for the service's own retries.
 
 ## Keep the open product complete and self-hosting real
 

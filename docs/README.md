@@ -34,11 +34,12 @@ capability does not become historical merely because it is not released.
 | Who may read, configure, delegate or publish a view? | [Dashboard accounts and access](dashboard-access.md) |
 | What is retained, what remains transient, and what does import mean? | [Privacy and data](PRIVACY-AND-DATA.md) |
 | How does that product join authentication, execution and recovery? | [Managed App architecture](integration/github-app.md) |
-| Why did named history, merged-PR metrics and Team automation replace the earlier boundary? | [Dashboard decisions D044–D053](DECISIONS.md#d044-make-the-app-activity-first-for-collaborators-as-well-as-administrators) |
+| Why did named history, merged-PR metrics and Business coordination replace the earlier boundary? | [Dashboard decisions D044–D053](DECISIONS.md#d044-make-the-app-activity-first-for-collaborators-as-well-as-administrators) |
 
 These sources describe selected capabilities, not an already deployed dashboard or
-published pricing offer. Final visual design, renderer choice, relationship/brief
-algorithms and revised commercial allowances remain separate work. The public
+published pricing offer. The six analytical destinations and shell are ratified for implementation. Chart/cloud
+co-design precedes Manage/subscription design; renderer qualification and
+relationship/brief algorithms remain separate work. The public
 manual continues to describe supported operation rather than presenting planned
 features as shipped.
 

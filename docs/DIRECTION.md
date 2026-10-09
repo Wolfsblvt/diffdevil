@@ -30,13 +30,21 @@ The managed GitHub App runtime and admission/settings backend have been deployed
 
 Route-neutral dashboard authorisation/session source is qualified on main. Its migrations, live OAuth/cookie route, updated Worker delivery, visible dashboard and complete administrator journey remain separately unobserved or held for co-design. Existing history storage/query work uses the older pathless projection and analysis-time representative basis. It must not be advertised as already providing lifecycle-backed merged populations, named file trajectories, imports, selective briefs or public dashboards.
 
+## Ratified analytical implementation and design remainder
+
+The 2026-10-09 analytical design is released for implementation: Overview, Pull requests, History, Files, PR detail and File detail, with the selected dark App shell, even grid, side navigation, unchanged fixed Works header, plan/entitlement presentation, factual populations, drill-down and evidence grammar. Both the visible location label and the trailing product action read **App**. [The analytical contract](dashboard.md#ratified-analytical-experience) owns the complete selected behavior.
+
+This release requires real loaders/actions, authorisation, derived repository data, responsive ordinary desktop behavior, keyboard/accessibility, error/empty/partial states and an exercised authenticated journey. A styled synthetic reference is design material, not production completion. It does not change the current-source/live-evidence account above.
+
+Chart/cloud co-design comes first, with non-conflicting data, routes, architecture and shell implementation continuing. Manage/configuration/account/subscription co-design follows inside the ratified shell. Exact chart rendering and cloud aesthetics remain provisional; framework defaults or prototype SVGs are not accepted design. Light-theme, phone-width, public/operator views and other undesigned states remain active destination remainder, not permission to invent those surfaces.
+
 ## Selected dashboard direction
 
 The expanded product is now [an activity-first App](dashboard.md), not an administrator-first control room. Its signed-in home aggregates authorised repository activity. Repository, PR and file detail views are first-class destinations; settings and operating controls are separate and permission-aware.
 
 PR lifecycle/development and file-level activity receive equal treatment. General file/repository history uses one final recoverable comparison per merged PR. Open-PR development and current overlap are separate populations. No general all-branch/direct-commit throughput system is selected for the starting scope.
 
-Prominent file and repository clouds default to distinct merged-PR change frequency. Explicit alternate measures include Changed volume, raw churn, growth/shrinkage, concentration and **Turnover**, displayed as a multiple with a brief explanation. The exact Turnover denominator and co-change/brief relevance algorithms remain concrete calculation work, not values invented by documentation.
+Prominent file and repository clouds default to distinct merged-PR change frequency. Explicit alternate measures include Changed volume, raw churn, growth/shrinkage, concentration and **Turnover**, displayed as a multiple with a brief explanation. File turnover-v1 is adopted as period Changed divided by time-weighted average file size, with bounded ranges and created/deleted-file `n/a`. Co-change/brief relevance algorithms and qualified acquisition remain concrete implementation work.
 
 Selected named history retains repository names, relative paths, filenames, numerical file measurements, comparison identities and lifecycle facts after explicit history enablement. Permitted observations include analytically excluded files so current-policy recalculation can change the view without losing its measured foundation. File/source contents and patches remain transient and must not be stored in secondary logs or queues. No people-throughput or performance analytics is selected. [Privacy and data](PRIVACY-AND-DATA.md) replaces the former product-wide pathless-only restriction while distinguishing old implementation evidence.
 
@@ -44,11 +52,11 @@ Ordinary analytics uses the current effective policy. PR detail may show an actu
 
 The optional deterministic PR brief selects useful historical/current context and links to full PR detail. It joins the owned size report when enabled, refreshes affected open PRs after own/neighbour/policy changes and reopening, and does not keep editing closed replies. A separate optional final summary may be posted on merge. Historical import never posts retroactive replies or labels. Brief settings are App-only bounded controls, not a new template language or `.diffdevil.yml` surface.
 
-The selected [account model](dashboard-access.md) permits any GitHub user to sign in and read connected repositories they currently can access. Individual administration is manual and has the complete useful analytical vocabulary. Team adds delegated administration, linked policies, coordinated refresh, account-wide setup automation and an administrative audit. Personal GitHub accounts can use Team; no per-member billing or GitHub-inaccessible private-repository sharing is selected.
+The selected [account model](dashboard-access.md) permits any GitHub user to sign in and read connected repositories they currently can access. Free supplies basic PR/repository history; Pro administration is manual and adds premium file history and context. Business adds delegated administration, linked policies, coordinated refresh, account-wide setup automation and an administrative audit. Personal GitHub accounts can use Business; no per-member billing or GitHub-inaccessible private-repository sharing is selected.
 
 An explicit account default plus per-repository inherit/on/off setting can publish anonymous read-only analytics for eligible public repositories. Private repositories, settings, audit, billing and private sibling context are excluded. Unpublication and privatisation stop public serving.
 
-Explicit open-PR scans and resumable historical imports provide all recoverable selected statistics, with recent-first progressive usefulness and live processing priority. Free/paid import limits, revised cost, capacity, prices and subscription account bundles remain a later commercial co-design. This document makes no new commercial offer.
+Explicit open-PR scans and resumable historical imports provide all recoverable selected statistics, with recent-first progressive usefulness and live processing priority. Free/Pro/Business commercial terms are settled in the companion plans/management contract. Revised workload measurements and numeric monthly import budgets remain implementation/launch work. This document makes no new commercial choice or available paid-service claim.
 
 ## Work still required for that direction
 
@@ -57,10 +65,10 @@ The documentation candidate does not implement the expanded model. Remaining out
 - joined storage/acquisition/consent for lifecycle and named file measurements, final merged comparisons, excluded observations, administrative audit and current-policy recalculation;
 - qualified imports/open-PR indexing and adaptive provider pacing, without replaying historical effects or resurrecting deleted gaps;
 - deterministic co-change and selective-brief algorithm research followed by implementation;
-- chart/framework research against clouds, relationship exploration, distributions and interactive drill-down, followed by owner-led concrete visual design;
+- chart/cloud system co-design and renderer qualification against the ratified analytical structure, followed by Manage/subscription design;
 - full account/delegation/public projection journeys and live authorisation, deletion and publication qualification;
 - linked configuration and automatic repository adoption/open-PR refresh; and
-- separate interactive pricing/allowance co-design using the new workload rather than the old pathless-history cost specimen.
+- shared commercial integration and revised workload/capacity measurements, preserving settled terms rather than reusing the old pathless-history cost specimen as a new forecast.
 
 Existing backend work can contribute its compatible statistical and query contracts, but its older projection is not the new product ceiling. Exact implementation placement and review remain in the current workplace. Do not declare active worker/provider status merely from an old launch record.
 

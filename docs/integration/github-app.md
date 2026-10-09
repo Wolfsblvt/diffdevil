@@ -18,7 +18,7 @@ Installation reach, execution consent and history consent are distinct. Neither 
 
 Preserve the existing [runtime authorisation contract](github-app-runtime-v1.md#permissions-and-current-access) and apply the current [access model](../dashboard-access.md). A user session, App installation token, account membership and paid plan are different facts. Protected operations recheck current user/repository and App reach; background work rechecks current consent and configuration before committing data or effects.
 
-Team delegation operates inside GitHub visibility. It cannot expose private repository analytics to a person without GitHub access or suppress independent native GitHub powers. Aggregates, exports, saved views and chart data use the same authorised population as the visible detail.
+Business delegation operates inside GitHub visibility. It cannot expose private repository analytics to a person without GitHub access or suppress independent native GitHub powers. Aggregates, exports, saved views and chart data use the same authorised population as the visible detail.
 
 The existing narrowly authorised offboarding grace remains numeric/pathless without current repository access. Named history does not silently widen that exception or permit GitHub reacquisition after removal. [Privacy](../PRIVACY-AND-DATA.md#offboarding-transitions) owns the exact selected lifecycle.
 
@@ -34,7 +34,7 @@ Repository-owned `.diffdevil.yml` is acquired from the trusted operation revisio
 
 App presets/account defaults supply settings below explicitly supplied repository overrides. The shared resolver owns merge/lowering semantics; do not add a host-specific engine. Show the selected configuration, effective values and provenance. A bulk update cannot claim to change an overridden value.
 
-Individual administration provides named configurations, defaults and manual per-repository application. Team adds linked configurations, delegation, account-wide automation and coordinated refresh. Personal accounts can use that capability; a GitHub organisation is not itself a subscription plan.
+Pro administration provides per-scope defaults and manual per-repository application. Business adds linked configurations, delegation, account-wide automation and coordinated refresh. Personal accounts can use that capability; a GitHub organisation is not itself a subscription plan.
 
 A linked update can queue selected current-policy history recalculation and eligible open-PR label/brief refresh. Dispatch only work affected by the change. Brief settings are App-only bounded configuration, not a new `.diffdevil.yml` or template engine. Existing portable comment templates and core policy retain their current support.
 
@@ -68,7 +68,7 @@ The older pathless projection and query work supplies only its documented semant
 
 Provide distinct open-PR scans and historical imports. Imports are explicit, resumable, progressive and coverage-aware; recent ranges can become useful before the complete selected scope finishes. Live PR work takes priority. Adaptive pacing follows actual GitHub API constraints, not an assumed unlimited batch.
 
-Deduplicate against live observations, avoid unnecessary reacquisition, and honour current authorisation, retention, opt-outs and deletion tombstones throughout. Unsupported old states remain unavailable. Import/recalculation has no implicit GitHub write authority. New import/storage costs and allowances require separate measurement and pricing work.
+Deduplicate against live observations, avoid unnecessary reacquisition, and honour current authorisation, retention, opt-outs and deletion tombstones throughout. Unsupported old states remain unavailable. Import/recalculation has no implicit GitHub write authority. New import/storage costs require workload measurement; settled commercial terms are not reopened by that qualification.
 
 ## Dashboard authentication and sessions
 
@@ -76,11 +76,13 @@ The route-neutral authorisation source and its live-delivery qualification remai
 
 No arbitrary short session cap is introduced by the dashboard expansion. Logout, invalidation and lost authority end the relevant access. Protected responses are private and not share-cacheable. Token material never enters chart payloads, URLs or browser storage by convenience.
 
+App documents and responses select an explicit `same-origin` referrer policy, and application diagnostics omit full private request URLs, query strings and full referrers. [Named-path request/navigation privacy](../PRIVACY-AND-DATA.md#named-paths-in-requests-and-navigation) owns disclosure and joined document/outbound-link qualification. A header-only endpoint check does not establish that journey.
+
 ## Public read-only projection
 
 Public analytical publication is a separate explicit projection with an account default and per-repository inherit/enabled/disabled. It is anonymous only for eligible public repositories. It excludes settings, audit, billing, delegated permissions and private sibling information. Unpublication/privatisation invalidates public serving and its caches.
 
-A protected dashboard link does not make a posted PR brief private. All facts in a comment must fit the destination audience. Neither public publication nor Team delegation widens the App's GitHub grant.
+A protected dashboard link does not make a posted PR brief private. All facts in a comment must fit the destination audience. Neither public publication nor Business delegation widens the App's GitHub grant.
 
 ## First operating adapter and portability
 
@@ -96,4 +98,4 @@ The portable static-validator/shared-engine prerequisite remains [the v1 contrac
 
 Qualification must cover new lifecycle/final-comparison acquisition, named-file privacy, ignored-data reinterpretation, current authority, delegated settings, imports, current-policy refresh, brief fan-out, open/closed/reopened behaviour, public/private transitions and restore-resistant deletion. Old pathless/auth/canary checks prove their narrower boundaries only.
 
-This documentation grants no migration, history enablement, deployment, public view publication, billing, spend, App reconfiguration or dependency adoption. Final visual design, renderer selection, algorithms, capacity and the joined user journeys remain separate work toward the selected product.
+This documentation grants no migration, history enablement, deployment, public view publication, billing, spend, App reconfiguration or dependency adoption. The six analytical destinations and shell are ratified for implementation; chart/cloud system co-design precedes Manage/subscription design. Renderer selection, remaining algorithms, capacity and the joined user journeys remain separate work toward the selected product.

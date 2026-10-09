@@ -15,7 +15,7 @@ The dashboard co-design expands the former pathless-only projection: named file 
 | Account, installation, configuration and entitlement | Requested service, authority, effective settings and subscription standing | While needed for the active service and its explicit lifecycle, not the recovery TTL. |
 | Administrative audit | Explain configuration, permission and operating changes | Protected, purpose-specific lifetime; not contributor analytics or an undeclared source archive. |
 
-The earlier engineering baseline is thirty rolling days for free history and no automatic age expiry for paid history while entitlement and service remain active, subject to selected shorter retention, deletion and disclosed capacity. The revised commercial package, allowances and retention offer still require a separate pricing decision. This document publishes no new prices or capacity promises.
+The earlier engineering baseline is thirty rolling days for free history and no automatic age expiry for paid history while entitlement and service remain active, subject to selected shorter retention, deletion and disclosed capacity. The companion plans/management contract carries the later commercial and premium-ending settlement; the earlier baseline is not authority to override it. This document publishes no new prices or capacity promises.
 
 No-age-expiry does not mean infinite storage, unlimited computation, a lifetime hosting promise or currently available paid service. Account configuration must not disappear after seven quiet days, and necessary account state is not permission to collect optional history before enablement.
 
@@ -25,7 +25,7 @@ Installation reach, execution admission and history consent remain distinct. Ins
 
 Named file data is part of the normal selected history capability once history is enabled. A separate filename-free mode may be considered later; it is not a first-delivery prerequisite or an already available privacy switch. A future opt-out cannot promise to reconstruct names that were not retained during its disabled interval.
 
-Team may apply explicitly selected automatic history/import behaviour to newly reachable repositories. That is an account administrator's deliberate automation choice, not consent inferred from a preset name or App installation alone.
+Business may apply explicitly selected automatic history/import behaviour to newly reachable repositories. That is an account administrator's deliberate automation choice, not consent inferred from a preset name or App installation alone.
 
 Workers recheck current eligibility before committing history. Queued or retried work must not resurrect collection after disablement, repopulate a deleted range or bypass an offboarding boundary. History-store failure is separate from GitHub effect success; do not rerun a non-idempotent comment merely to repair a dashboard record.
 
@@ -85,17 +85,25 @@ The service stores settings that administrators deliberately submit: presets, th
 
 Execution and history decisions retain current authenticated actor provenance independently. Browser-submitted actor identity is not authoritative. Unknown legacy actors stay unknown.
 
-The selected Team experience additionally includes a full administrative audit of meaningful settings, policy, permissions, import/delete and observed installation-management actions. Record only data needed to explain the actor, scope, change, time and result. Requested, failed and observed-complete are different outcomes. Exact audit lifetime, protected before/after representation and export need a concrete contract before collection; this document does not invent an unlimited audit-retention promise.
+The selected Business experience additionally includes a full administrative audit of meaningful settings, policy, permissions, import/delete and observed installation-management actions. Record only data needed to explain the actor, scope, change, time and result. Requested, failed and observed-complete are different outcomes. Exact audit lifetime, protected before/after representation and export need a concrete contract before collection; this document does not invent an unlimited audit-retention promise.
 
 This audit supersedes the earlier current-actor-only product ceiling, not its current implementation evidence. Administrator identities serve accountability for administration; they do not authorise PR-author rankings, reviewer throughput or personnel analytics.
 
 ## Current authorised context
 
-Recheck the signed-in person's current GitHub repository access and the installation's grant before serving protected history or reacquiring context. Subscription, account membership, installation ownership or a previously working URL is not permanent repository authority. Team delegation does not widen GitHub visibility.
+Recheck the signed-in person's current GitHub repository access and the installation's grant before serving protected history or reacquiring context. Subscription, account membership, installation ownership or a previously working URL is not permanent repository authority. Business delegation does not widen GitHub visibility.
 
 Protected charts, tooltips, DOM attributes, exports, URLs and aggregate queries follow the same scope as visible tables. An inaccessible repository's numbers must not remain in a summary after its name is hidden. Readable shared URLs are authorisation checked, not public bearer links.
 
 Source or PR context acquired on demand remains transient. Deleted or unavailable revisions may prevent exact reconstruction; keep the recorded facts and the limitation visible. Do not join today's PR head to yesterday's measurement.
+
+### Named paths in requests and navigation
+
+Authenticated analytical queries and file drill-down may carry repository-relative paths in request URLs, query parameters and navigation links. A no-source-retention claim does not make those names anonymous or remove them from local browser history. Disclose that local-history consequence; a copied or bookmarked protected link still re-authorises when opened.
+
+The selected App boundary is an explicit `same-origin` referrer policy on App documents and responses: it preserves same-origin consumers while excluding path/query metadata from outbound cross-origin requests, including GitHub links. Application diagnostics omit full private request URLs, query strings and full referrers, retaining useful bounded operation/status/failure facts. Do not treat a URL as a safe diagnostic payload merely because it contains no source body.
+
+Qualify the real joined document/navigation route and outbound links; endpoint response headers alone do not prove browser navigation behaviour. This is the selected implementation/disclosure boundary, not evidence that a live leak occurred or that App/browser/provider logging is already qualified. The existing GET seam remains provisional; an alternative must preserve useful queries, authenticated links and file drill-down.
 
 ## Statistics describe the codebase, not people
 
@@ -123,7 +131,7 @@ Stopping future collection and deleting retained history are separate controls. 
 
 Exports are authorised, documented and versioned. They preserve supported measurements, identifiers, paths when authorised, versions, evidence and coverage. Analytical export is not a full database dump and does not include credentials, source, account settings or an administrative audit by accident. Configuration and audit exports require their own authority and purpose.
 
-A changed plan or capacity boundary must be visible. Earlier paid no-age-expiry intent does not authorise unbounded bytes or silent deletion. The revised pricing/entitlement design must reconcile retention, payment failure, capacity and export before publication. An ordinary billing retry is not confirmed offboarding.
+A changed plan or capacity boundary must be visible. Earlier paid no-age-expiry intent does not authorise unbounded bytes or silent deletion. The selected plans/management contract reconciles premium ending separately from provider access loss; its actual retention, payment-failure, capacity and export journeys must be qualified before publication. An ordinary billing retry is not confirmed offboarding.
 
 ### Offboarding transitions
 
