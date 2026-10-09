@@ -32,15 +32,18 @@ capability does not become historical merely because it is not released.
 | Question | Maintained source |
 | --- | --- |
 | What should the activity-first dashboard, PR/file details, clouds and brief do? | [Dashboard capabilities](dashboard.md) |
+| What do Community, Free, Pro and Business include? | [App editions and planned plans](app-plans.md) |
+| How do repository selection, organisation funding, processing and plan changes work? | [App management](app-management.md) |
 | Who may read, configure, delegate or publish a view? | [Dashboard accounts and access](dashboard-access.md) |
 | What is retained, what remains transient, and what does import mean? | [Privacy and data](PRIVACY-AND-DATA.md) |
 | How does that product join authentication, execution and recovery? | [Managed App architecture](integration/github-app.md) |
-| Why did named history, merged-PR metrics and Business coordination replace the earlier boundary? | [Dashboard decisions D064–D073](DECISIONS.md#d064-make-the-app-activity-first-for-collaborators-as-well-as-administrators) |
+| Why did named history and merged-PR metrics replace the earlier boundary? | [Analytical decisions D064–D073](DECISIONS.md#d064-make-the-app-activity-first-for-collaborators-as-well-as-administrators) |
 
-These sources describe selected capabilities, not an already deployed dashboard or
-published pricing offer. The six analytical destinations and shell are ratified for implementation. Chart/cloud
-co-design precedes Manage/subscription design; renderer qualification and
-relationship/brief algorithms remain separate work. The public
+These sources describe selected capabilities and an accepted planned offer, not an
+already deployed dashboard or available paid service. [Commercial decisions](DECISIONS.md#d054-separate-community-from-private-premium-application-capabilities)
+record the edition, funding, price and lifecycle choices. The six analytical pages and
+shell are ratified; chart/cloud co-design precedes Manage/subscription design.
+Renderer qualification, remaining algorithms and numeric monthly import budgets remain implementation work. The public
 manual continues to describe supported operation rather than presenting planned
 features as shipped.
 
@@ -93,7 +96,7 @@ replacing those sources or inventing service terms.
 ## Historical evidence
 
 [The reference map](reference/README.md) retains dated research, rationale and
-qualification. [Decisions through D043](DECISIONS-through-d043.md) and the
+qualification. [Decisions through D043](DECISIONS-through-d043.md), [the dashboard decision record through D053](DECISIONS-through-d053.md) and the
 [pre-expansion App runtime contract](integration/github-app-runtime-v1.md) preserve
 complete earlier text; their superseded product assumptions do not compete with
 the current dashboard/access/privacy contracts. Existing decision fragments remain

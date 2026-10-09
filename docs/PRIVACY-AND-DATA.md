@@ -2,100 +2,104 @@
 
 ## Meaning
 
-This document owns the selected data contract for the optional managed GitHub App, dashboard and public playground. It separates operational recovery, account/configuration data, administrative audit and optional analytical history. It is an engineering and product contract, not a legal privacy notice or a claim that collection, retention, deletion, authentication or billing is deployed. [Direction](DIRECTION.md) owns availability; [dashboard capabilities](dashboard.md) and [access](dashboard-access.md) own the selected experience.
+This is the selected engineering/product data contract for the developing managed App, dashboard and public playground. It separates recovery, account/configuration data, administrative audit, optional analytical history and inactive recovery archives. It is not a legal privacy notice or a claim that these collection, deletion, billing or authorisation paths are deployed. [Direction](DIRECTION.md), [plans](app-plans.md), [management](app-management.md) and [access](dashboard-access.md) state the related boundaries.
 
-The dashboard co-design expands the former pathless-only projection: named file history and PR lifecycle facts are selected because they are necessary to understand where a codebase changes. This does not authorise storing source contents, patches or contributor-performance history. Existing pathless source remains a narrower implementation until changed and qualified.
+The older pathless backend is narrower evidence, not the product ceiling. Named base measurements are selected on every history-enabled tier, including Free, so policies can be replayed without unnecessary reacquisition. Premium entitlement governs enriched historical capabilities and their presentation, not whether Free retains the basic file facts needed for supported recalculation.
 
 ## Distinct purposes and lifetimes
 
 | Data class | Purpose | Selected boundary |
 | --- | --- | --- |
-| Operational delivery and attempt ledger | Deduplication, diagnosis, retry and recovery | Seven days; retries do not reset the original event's lifetime. |
-| Optional analytical history | Repository/PR/file measurements, lifecycle, relationships and comparisons | Separate explicit enablement, disclosed retention/capacity, deletion and export. |
-| Account, installation, configuration and entitlement | Requested service, authority, effective settings and subscription standing | While needed for the active service and its explicit lifecycle, not the recovery TTL. |
-| Administrative audit | Explain configuration, permission and operating changes | Protected, purpose-specific lifetime; not contributor analytics or an undeclared source archive. |
+| Delivery/attempt recovery | Deduplication, diagnosis, retry and recovery | Seven days, without retry resetting the original lifetime |
+| Enabled analytical history | Repository/PR measurements and lifecycle; entitled file enrichment and relationships | Explicit enablement, disclosed service/operator retention, deletion and export |
+| Account, installation, funding, configuration and entitlement | Requested service and its authority | Active service and explicit lifecycle, not recovery TTL |
+| Administrative audit | Explain settings, permissions and operating changes | Protected purpose-specific retention, not contributor analytics |
+| Preview/OSS benefit record | Honour one-time preview and repository grant eligibility | Minimum justified identity/state, separate from the analytical dataset |
+| Frozen selected-state archive | Recover an ended premium service without keeping it running | Disclosed shared recovery policy and deadline, current access and earlier deletion |
 
-The earlier engineering baseline is thirty rolling days for free history and no automatic age expiry for paid history while entitlement and service remain active, subject to selected shorter retention, deletion and disclosed capacity. The companion plans/management contract carries the later commercial and premium-ending settlement; the earlier baseline is not authority to override it. This document publishes no new prices or capacity promises.
+The old thirty-day rolling Free-history and financial-entitlement deletion assumptions do not define the new offer. Hosted history and inactive archives must follow the published selected service policy, not an incidental storage TTL. Community's operator chooses its retention and resource limits.
 
-No-age-expiry does not mean infinite storage, unlimited computation, a lifetime hosting promise or currently available paid service. Account configuration must not disappear after seven quiet days, and necessary account state is not permission to collect optional history before enablement.
+No history promise supplies infinite physical storage, perpetual operation or permission to retain deleted data. Necessary account state must not expire after seven quiet days; equally, an account is not consent to collect optional history.
 
-## Execution and history are separate choices
+## Execution, history and enrichment are separate
 
-Installation reach, execution admission and history consent remain distinct. Installing the App does not silently enable persistent history. An authorised administrator enables history for the selected scope, with a clear account of collected data, retention, coverage, export and deletion.
+Installation reach, selected execution and history enablement are distinct. An authorised administrator explicitly enables history with a clear explanation of retained data, coverage, export and deletion. Labelling-only operation does not create permanent history.
 
-Named file data is part of the normal selected history capability once history is enabled. A separate filename-free mode may be considered later; it is not a first-delivery prerequisite or an already available privacy switch. A future opt-out cannot promise to reconstruct names that were not retained during its disabled interval.
+History-enabled Free retains permitted paths and numerical per-file facts, including policy-excluded observations. It does not expose premium cross-time file exploration or collect all premium enrichment by default. Pro/Business or an applicable repository grant enable the richer processing and experience.
 
-Business may apply explicitly selected automatic history/import behaviour to newly reachable repositories. That is an account administrator's deliberate automation choice, not consent inferred from a preset name or App installation alone.
+Business can apply deliberately selected history/import behaviour to newly reachable repositories. A preset name or an App installation alone is not that consent. A future filename-free mode is not a first-delivery requirement or an already available switch.
 
-Workers recheck current eligibility before committing history. Queued or retried work must not resurrect collection after disablement, repopulate a deleted range or bypass an offboarding boundary. History-store failure is separate from GitHub effect success; do not rerun a non-idempotent comment merely to repair a dashboard record.
+Continuing jobs recheck reach, consent, entitlement and deletion boundaries before committing. Queued retries must not resume disabled collection or repopulate a deleted range. A history-storage failure is separate from an already successful GitHub effect; do not blindly recreate a comment to repair an analytical row.
 
-## Operational records without analytical history
+## Short operational recovery
 
-Retain only the facts needed to recover admitted work: delivery/event identity, numeric installation/repository identifiers, PR number, receipt time, attempt/lease state, bounded diagnostic codes, immutable source and trusted-policy identities, compact selected-result/effect counts and readback standing.
+Retain only the facts needed to recover admitted work: delivery/event identity, numeric installation/repository identifiers, PR number, receipt time, attempt/lease state, bounded diagnostic codes, immutable comparison and trusted-policy identities, compact result/effect counts and readback standing.
 
-Do not create a permanent fallback result table or per-file archive for a possible future dashboard. The recovery ledger is not a hidden historical dataset. Failed and dead-letter work obeys the same lifetime and minimisation boundary. Active leases remain valid through bounded execution; cleanup must not create competing writers.
+Do not create a permanent fallback analysis table or per-file archive for repositories that did not enable history. Failed/dead-letter work obeys the same minimisation and original lifetime. Active leases protect the actual bounded execution rather than allowing cleanup to create a second writer.
 
-These identifiers are linkable to GitHub and are not anonymous. Omitting contributor names does not justify an anonymisation claim.
+These identifiers are linkable, not anonymous. Omission of contributor names is data minimisation, not anonymisation.
 
-## Retained analytical projection
+## Explicit retained analytical projection
 
-Build history through an explicit allowlist, not full-report serialisation followed by redaction. A new field in the shared engine report must not automatically become hosted data.
+Use an allowlist, not a full engine report followed by redaction. Adding a field to the engine does not automatically add it to hosted retention.
 
-| Category | Selected retained meaning |
+| Category | Permitted retained meaning |
 | --- | --- |
-| Repository identity | Stable provider repository ID, account relationship and repository name needed for authorised analytical navigation. |
-| PR and comparison identity | PR number, immutable comparison/base/head references, event/observation/import times, metric/report/engine versions and policy references. |
-| PR lifecycle | Observed opening/creation, draft/ready, close/reopen and merge facts, with provenance and gaps. |
-| File identity and structure | Filenames, repository-relative current/previous paths, file identity and observed rename relationships where established; no invented continuity. |
-| File-set coverage | Reported, observed, included, excluded, omitted, binary and unmeasurable counts and completeness. |
-| Numerical measurements | Raw additions/deletions/churn; added-only/deleted-only/modified/Changed; numerical file sizes at known revisions; change-type/material enums; exact, bounded or unavailable evidence. |
-| Configuration interpretation | Permitted numeric rule/scope/metric results, policy identity and provenance sufficient to distinguish current interpretation from an actually recorded original result. |
-| Policy and effect outcome | Desired/requested/observed result categories, bounded counts and readback standing, without retaining arbitrary rendered comments or provider responses. |
-| Coverage | Collection start/stop, retention boundaries, import provenance, known gaps and incomplete acquisition. |
+| Repository | Stable provider ID, account relationship and authorised repository name |
+| PR/comparison | PR number, immutable base/head/comparison references, occurrence/observation/import times and semantic versions |
+| Lifecycle | Observed creation/opening, draft/ready, close/reopen and merge facts with provenance and gaps |
+| Base file observation | Current/previous relative paths where observed, numerical raw/Changed facts, change/material status and evidence |
+| Identity continuity | Actually supported historical file/rename relationships, not inferred continuity from a reused name |
+| Coverage | Reported/observed/included/excluded/omitted/binary/unmeasurable counts, collection intervals and known gaps |
+| Premium enrichment | Numerical sizes at known references, eligible derived relationships and historical file interpretation |
+| Policy interpretation | Permitted numeric rule/scope/metric results and references distinguishing current interpretation from original recorded result |
+| Effect result | Desired/requested/observed categories, bounded counts and readback; not rendered comments or raw responses |
 
-Paths and repository names are protected repository metadata. They are not harmless merely because they are not source contents. Numeric IDs and revision references remain linkable. Do not market the dataset as anonymous.
+Names and paths are protected repository metadata. They and immutable IDs/references remain linkable. Do not market this dataset as anonymous or publicly expose it merely because it contains no source.
 
-### Excluded files are measured, not silently discarded
+### Excluded observations
 
-Capture permitted paths and numerical facts for observed policy-excluded files too. Ordinary analytics excludes them according to the current effective policy. Retaining those measurements permits later policy changes and an optional include-excluded view without necessarily reacquiring the source.
+Retain the permitted measured paths and numerical facts of policy-excluded files. Ordinary analytics filters them under the effective policy. This supports changed exclusions and a possible include-excluded view without fetching facts already known.
 
-A policy exclusion is an analytical filter, not a no-collection control. The administration experience and data description must make that distinction understandable. Source contents remain transient for included and excluded files alike.
+An analytical exclusion is not a no-collection control. Explain that distinction in settings and data information. Source remains transient for included and excluded observations alike.
 
-### Current policy and original results
+### Interpretation and original results
 
-Ordinary analytics interprets retained facts using the current effective policy. Recalculation changes derived results, not the underlying observation or historical provider actions.
+Recalculation derives a current-policy view without rewriting immutable observations or actual historical GitHub actions. Manual Free/Pro and coordinated Business refresh use the same semantics. A queued refresh identifies the basis of currently served results.
 
-At PR detail, an original merge-time result can be shown when actually recorded. Do not infer an old policy body or provider effect from a hash, today's configuration or a newly imported comparison. No repository-wide archive of parallel policy-era dashboards is required.
+At PR detail an original merge-time result may be shown only if recorded. A hash, today's policy or an imported comparison does not reconstruct a missing original policy/result. No repository-wide parallel policy-era warehouse is required.
 
-A new scope may be reconstructible from retained paths and numbers. A source-dependent metric may not be. Unsupported recalculation must report the missing dependency or coverage rather than inventing history.
+A newly source-dependent calculation may lack sufficient facts. Acquire additional authorised evidence where supported or report the limitation; do not imply that every possible future metric can be replayed from base rows.
 
-## Data that must not be retained as analytical history
+## Information excluded from analytical retention
 
-Do not retain source/file contents, patch hunks, full diffs, raw webhook bodies, complete report/plan objects, PR or commit prose, review/comment bodies, contributor identity dimensions, arbitrary label/template/provider-error text, secrets, tokens, session credentials or copies of user configuration masquerading as measurements.
+Do not retain source/file contents, patch hunks, full diffs, raw webhooks, complete report/plan objects, PR/commit prose, review/comment bodies, contributor analytics dimensions, arbitrary labels/templates/provider-error text, credentials or full configuration masquerading as measurements.
 
-File contents may be acquired and processed transiently in memory to measure size or changes, then discarded. The no-content rule applies to queues, dead-letter records, logs, traces, telemetry, caches and exports as well as the database. Logging an exception with a full patch is still storage.
+Contents may be acquired transiently in memory to calculate measurements and then discarded. This rule reaches logs, traces, queues, dead-letter records, telemetry, caches and exports as well as primary storage. A serialized exception containing a patch is still storage.
 
-A filename may itself contain sensitive text; the selected permission to retain paths does not grant permission to publish them or to collect arbitrary nearby prose. Configuration supplied deliberately by an administrator has its own protected purpose.
+A filename itself can contain sensitive text; permission to store paths is not publication permission or authority to capture unrelated prose. Administrator-supplied configuration has a separate protected purpose.
 
-Per-file records and publication must be bounded and atomic, or visibly incomplete. A partially stored analysis must not be presented as complete. Stable file identity and observed renames require their own truthful contract; identical path spelling alone does not prove continuity.
+Persist a complete observation atomically or make partial coverage explicit. Incomplete per-file publication must not appear complete. Identical path spelling alone is not stable historical identity.
 
-## Configuration and administrative audit
+## Configuration, funding and audit
 
-The service stores settings that administrators deliberately submit: presets, thresholds, exclusions, labels, templates supported by the existing core, named App configurations, brief settings, defaults and linked-policy relationships. Configuration may contain paths or authored text. Keep it in protected configuration storage, not analytical logs or automatically copied into every analysis.
+Store the settings deliberately supplied for service operation: presets, thresholds, exclusions, supported labels/templates, App brief controls, defaults and Business links. Keep them in protected configuration state, not copied into every history row or arbitrary logs.
 
-Execution and history decisions retain current authenticated actor provenance independently. Browser-submitted actor identity is not authoritative. Unknown legacy actors stay unknown.
+Execution consent, history consent and configuration authorship preserve independently established actor provenance. A browser-supplied actor string is not authority; unknown old actors remain unknown.
 
-The selected Business experience additionally includes a full administrative audit of meaningful settings, policy, permissions, import/delete and observed installation-management actions. Record only data needed to explain the actor, scope, change, time and result. Requested, failed and observed-complete are different outcomes. Exact audit lifetime, protected before/after representation and export need a concrete contract before collection; this document does not invent an unlimited audit-retention promise.
+Funding records connect a subscriber's benefit to an organisation without making its records personal property. The organisation may see who provides the plan, not unrelated invoices or payment instruments. Minimal preview eligibility keyed to stable GitHub identity is separate from retained sample data; reinstall is not a reset.
 
-This audit supersedes the earlier current-actor-only product ceiling, not its current implementation evidence. Administrator identities serve accountability for administration; they do not authorise PR-author rankings, reviewer throughput or personnel analytics.
+Business provides an administrative audit of meaningful settings, policy, permissions, setup, import/deletion and observed installation-management changes. Actor, scope, event time, intended change and actual outcome remain distinct. Exact retention and protected before/after/export representation require an implementation contract; no unlimited audit promise is inferred.
+
+Administrator identities support operational accountability, not author/reviewer performance rankings.
 
 ## Current authorised context
 
-Recheck the signed-in person's current GitHub repository access and the installation's grant before serving protected history or reacquiring context. Subscription, account membership, installation ownership or a previously working URL is not permanent repository authority. Business delegation does not widen GitHub visibility.
+Check current signed-in GitHub repository access and App reach before protected reads or reacquisition. A subscription, former funding relationship, membership or previously working link is not permanent authority.
 
-Protected charts, tooltips, DOM attributes, exports, URLs and aggregate queries follow the same scope as visible tables. An inaccessible repository's numbers must not remain in a summary after its name is hidden. Readable shared URLs are authorisation checked, not public bearer links.
+The same scope governs tables, charts, tooltips, DOM data, queries, exports and aggregates. Hide neither an inaccessible name nor its numbers selectively. Protected shared URLs remain authenticated/authorised, not public bearer links.
 
-Source or PR context acquired on demand remains transient. Deleted or unavailable revisions may prevent exact reconstruction; keep the recorded facts and the limitation visible. Do not join today's PR head to yesterday's measurement.
+On-demand source or PR context stays transient and belongs to the recorded immutable comparison. Do not join today's head to yesterday's measurement. Unavailable/deleted revisions constrain reconstruction without invalidating what was actually observed.
 
 ### Named paths in requests and navigation
 
@@ -105,66 +109,80 @@ The selected App boundary is an explicit `same-origin` referrer policy on App do
 
 Qualify the real joined document/navigation route and outbound links; endpoint response headers alone do not prove browser navigation behaviour. This is the selected implementation/disclosure boundary, not evidence that a live leak occurred or that App/browser/provider logging is already qualified. The existing GET seam remains provisional; an alternative must preserve useful queries, authenticated links and file drill-down.
 
-## Statistics describe the codebase, not people
+## Populations and statistical honesty
 
-PR lifecycle/development and file activity are distinct populations. General file/repository historical statistics use one final recoverable comparison per merged PR. Open PRs and their revisions remain separate. Current related-work awareness uses a current open-PR file index, not an invented merged observation.
+PR lifecycle/development, current open work and final merged-PR file activity are distinct populations. General file/repository history uses one final recoverable comparison per merged PR. Current related-work uses a current open-PR file index.
 
-Unique PRs, analysed revisions and recovery attempts are different counts. Never sum every evolving PR snapshot as code delivered. Counts state their time basis: merge time, lifecycle occurrence, analysis observation or import time as appropriate.
+Unique PRs, analysed revisions and service attempts are distinct counts. Evolving snapshots do not sum to delivered code. Occurrence, merge, observation and import time retain their respective meanings.
 
-Retain unknown, omitted and bounded populations and sample sizes. Comparisons must preserve metric definition, effective analytical scope, coverage and evidence compatibility. A high Turnover or frequently changed file is not a diagnosis of poor design or developer performance.
+Preserve unknown/bounded evidence, missing populations, sample sizes and compatible scope/metric versions. Co-change weighting does not change the underlying frequency/volume observations. High Turnover is not poor design, and no risk, quality, importance, complexity or contributor productivity conclusion is collected by implication.
 
-Co-change algorithms may weight relationships but must not silently rewrite ordinary file frequency/volume evidence. No contributor rankings, productivity, risk, quality, complexity or importance scores follow from these measurements.
+## Import and progressive processing
 
-## Import and recalculation
+Historical import recovers only available final comparisons and lifecycle facts, without inventing vanished intermediate heads or original App results. Open-PR scanning is a separate current-population operation. Record provenance and distinguish import time from actual occurrence.
 
-Historical import and open-PR scanning are explicit collection capabilities. Import preserves final comparisons and lifecycle facts only where recoverable. Earlier provider events, discarded intermediate heads and original diffdevil results must not be invented. Record that an observation was imported and distinguish provider occurrence from import time.
+Progressive jobs preserve useful completed ranges and durable continuation independent of execution-message lifetime. Live operation takes priority and all requests respect provider limits. Imported/live duplicate observations share logical identity; recovery does not spend another customer allowance.
 
-Imports can proceed progressively, resume and expose useful completed ranges. Live processing has priority; provider rate limits and work/capacity allowances apply. Duplicate live/import observations share a logical identity rather than doubling statistics or billable work.
+Premium enrichment and broad replay can lag or pause under sustained use. The management view shows actual coverage and basis, not an unsupported eventual-completion promise. A monthly historical-import allowance does not debit ordinary new PRs.
 
-Import and recalculation are not historical GitHub-effect replay. They do not post comments, change labels or update closed-PR replies. A separate live open-PR refresh may act through the normal consent and effect contract.
+Imports/recalculation never replay old labels, comments or closed-PR replies. A separately authorised current open-PR refresh follows the normal effect contract. Re-enabling collection or buying a larger plan does not silently refill intentionally deleted/disabled intervals.
 
-An import must not silently refill a disabled interval or a deliberately deleted range. Re-enablement starts honest future coverage. Any separately offered restoration of an intentional gap would require explicit product authority and a truthful recovery contract; it is not inferred from a larger plan allowance.
+## Export, deletion and ending
 
-## Retention, export and deletion
+Stopping collection and deleting retained history are separate. A processing pause does not erase data or change billing. An export is documented, versioned and currently authorised; it contains permitted measurements, names where authorised, versions, references and evidence/coverage.
 
-Stopping future collection and deleting retained history are separate controls. Stopping collection does not extend expiry. Deletion covers primary observations, named file rows, lifecycle facts, co-change/other derived projections, rollups, caches and pending exports. Tombstones prevent queued retries, imports and backup restoration from recreating deleted ranges.
+Analytical export is not a raw database dump. Do not include credentials, source, account configuration or audit by accident. Configuration/audit exports have distinct authority and purpose.
 
-Exports are authorised, documented and versioned. They preserve supported measurements, identifiers, paths when authorised, versions, evidence and coverage. Analytical export is not a full database dump and does not include credentials, source, account settings or an administrative audit by accident. Configuration and audit exports require their own authority and purpose.
+Deletion covers base history, named file rows, lifecycle, enrichment, relationships, rollups, caches and pending exports. Tombstones protect against recreation through queued work, imports and backup restore.
 
-A changed plan or capacity boundary must be visible. Earlier paid no-age-expiry intent does not authorise unbounded bytes or silent deletion. The selected plans/management contract reconciles premium ending separately from provider access loss; its actual retention, payment-failure, capacity and export journeys must be qualified before publication. An ordinary billing retry is not confirmed offboarding.
+<a id="offboarding-transitions"></a>
 
-### Offboarding transitions
+### Financial downgrade or premium ending
 
-The previously selected offboarding contract remains in force until deliberately revised. Confirmed repository deselection, installation removal or entitlement end stops collection and begins the selected thirty-day offboarding grace; confirmed account closure skips grace after offering export before final confirmation.
+Honour the paid period. At the effective lower plan, premium exploration/processing stops and only selected eligible basic operation continues. Authorised export and deletion remain available without another purchase.
 
-During grace, only an independently authenticated service-account or organisation administrator whose role existed before access loss may inspect the permitted retained numerical projection, export, shorten grace or delete. This is the sole post-installation exception. It grants no repository access, installation credential, GitHub reacquisition or cleanup write.
+Preserve selected frozen state through the disclosed shared Works archive/recovery policy and visible deadline. The shared default is four years from service end; exact per-customer archival and any explicitly justified data-heavy exception must be qualified before sale. This is not an active premium dataset, a full shared-database copy or permission to extend the deadline by moving the archive.
 
-The expansion to named history does not automatically expand that old exception to filenames or private repository context. Without current GitHub repository authority, the grace projection remains numeric/pathless. Broader post-loss metadata export is not selected by this dashboard co-design.
+The new archive choice supersedes only the old financial-entitlement thirty-day destruction assumption. It does not override explicit deletion, repository offboarding, provider removal or lost access. Paying again cannot restore data deliberately deleted or widen current GitHub authority.
 
-If no valid administrator remains, data is inaccessible and expires on schedule. Restored access does not silently resume collection. Grace expiry or account closure removes primary history and derived data within seven days. Deletion/expiry tombstones survive the longest supported backup-restore window plus seven days and are reapplied before restored data can be served or processed.
+### Repository deselection or provider access loss
 
-A temporary outage, suspension, failed API call, unverified access response or billing retry is not a destructive transition. Suspend affected protected work and reconcile. Only explicit administrator action, provider lifecycle evidence or a positively establishing authenticated read starts the relevant offboarding transition.
+An explicit repository offboarding/removal or confirmed installation removal stops collection and starts the existing thirty-day offboarding grace. Pausing work, releasing an allowance slot or becoming inactive over a lower-plan limit is not, by itself, this destructive offboarding instruction; the management/archive contract owns those retained states. Confirmed account closure skips grace after export is offered before final confirmation.
 
-Implement and qualify actual database/backup deletion before advertising the service. Disclose any bounded backup expiration; do not claim instantaneous erasure of every provider backup without evidence. Legally or financially required account records require their own purpose/lifetime and are not an excuse to retain analytical history.
+During that grace, the sole post-installation exception is an independently authenticated service-account/organisation administrator whose role pre-existed access loss. They may inspect/export the permitted numerical projection, shorten grace or delete. They may not use an installation credential, reacquire GitHub context, restore access or perform cleanup writes.
 
-## Published read-only analytics
+Without current GitHub repository authority, that exception remains numeric/pathless. Premium payment or a frozen archive does not permit named private metadata export to a revoked former payer. No valid administrator means inaccessible data that expires on schedule.
 
-Publication is explicit, account-scoped and limited to public GitHub repositories. The account default is a boolean; repositories inherit or explicitly enable/disable. Public visibility alone does not publish a dashboard, and a private repository is never eligible through an inherited default.
+Restored access does not silently resume collection. Grace expiry or confirmed closure removes primary/derived data within seven days. Reapply deletion/expiry tombstones before restored data is served or processed; retain them through the longest supported restore window plus seven days.
 
-Published views are anonymous analytical projections, not public administrative sessions. They exclude settings, member permissions, audit, billing and private sibling context. Unpublication or confirmed privatisation stops serving, including the relevant public cached projection. Previously copied public material cannot be recalled from outside readers.
+Temporary outages, API failures, ambiguous access responses, suspension or payment retry do not select destructive offboarding. Suspend the affected operation and reconcile with explicit administrator direction, provider lifecycle evidence or a positively establishing authenticated read.
 
-The same audience rule applies to PR briefs: private context must not be posted into a public PR merely because the installer can see it. An authenticated dashboard link does not protect the words surrounding it.
+### Backup and residual records
+
+Qualify actual deletion/restore behaviour before advertising it. Disclose bounded backup expiry rather than claiming unobserved instantaneous removal everywhere. Legally required commercial records and minimal eligibility records have their own purpose/lifetime, not a blanket exemption for analytical history.
+
+## Publication, previews and Open Source
+
+Public analytics is an explicit account-scoped choice for public GitHub repositories only, using a boolean default and repository inherit/enabled/disabled. A public repository is not automatically published; private repositories are never eligible through inheritance.
+
+Serve only the repository's eligible analytical projection, excluding configuration, audit, billing, delegated rights and private sibling facts. Unpublishing/privatisation stops relevant public serving and cache use. External copies cannot be recalled.
+
+A preview is a frozen permitted sample with current access and deletion controls, not continuing premium collection. Its eligibility record remains distinct from sample retention. An OSS grant is repository-scoped; privatisation revokes it and public publication, but is not itself a deletion request. Ordinary sufficient entitlement can continue.
+
+Public PR briefs obey their actual audience independently of a protected link. Private contextual facts must not escape through the comment.
 
 ## Public playground
 
-The public playground remains independent of App history, authentication, imports and subscriptions. It uses public PRs or curated fixtures, not private installation credentials. It does not enrol visitors in history or retain source, raw IPs or entered PR URLs as product analytics by default.
+The playground remains independent of App accounts, subscriptions, imports and history. It uses public PRs/curated fixtures, not private installation credentials. It does not enrol visitors into history or retain source, entered PR URLs or raw IPs as product analytics by default.
 
-Any short-lived public-result cache is a disclosed service optimisation keyed to an immutable public comparison, not an indefinite repository archive. Keep source/context transient and curated published fixtures distinct from collected visitor data.
+Any short-lived public-result cache is a disclosed optimisation keyed to an immutable public comparison, not an indefinite history archive. Curated published fixtures are distinct from visitor collection.
+
+Optional product news/feedback consent is also separate from necessary billing/security/service communication and from repository-data consent.
 
 ## Qualification before collection
 
-Exercise named paths, old paths, hostile filenames, source/patch material, PR prose, credentials, config templates and provider errors. Prove that permitted metadata stays authorised and prohibited content does not escape into storage, logs, queues, exports or shared caches.
+Exercise hostile/current/previous paths, patches/source, prose, credentials, configuration templates and provider errors across primary storage, logs, queues, exports and caches. Prove permitted metadata stays authorised and prohibited content is not retained.
 
-Qualify duplicate/reordered deliveries, final merged comparisons, imports, policy recalculation, changed scopes, unknown/bounded evidence, concurrent consent changes, deletion/restore, loss of access, public/private transitions, open/closed/reopened brief lifecycle and account separation. Named metadata, audit and public publication introduce real new boundaries; old pathless tests do not qualify them automatically.
+Qualify duplicate/reordered observations, final comparisons, imports, policy replay, excluded paths, partial/bounded results, concurrent consent, funding replacement, preview reuse, OSS privatisation, scheduled downgrade/archive, access-loss grace, deletion/restore and open/closed/reopened brief behaviour.
 
-Source documentation, schemas, a passing projection test and a deployed runtime each prove different things. Preserve those distinctions in availability claims.
+Old pathless tests do not prove the expanded model. Documentation, schema, projection checks, deployed runtime and real user outcomes remain different evidence.
