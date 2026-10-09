@@ -27,12 +27,18 @@ async function policyFile(comparison: BrowserComparison, path: string, signal: A
     return request<PolicySource>({ type: 'source.policy', repository: comparison.repository, base: comparison.base, path });
   }
 }
-/** A fresh read of the same PR route must name the same base, head and file count. */
-async function confirm(current: Route, comparison: BrowserComparison, path: string, signal: AbortSignal): Promise<BrowserComparison> {
+/** A fresh read of a pull-request route binds its base and head to the requested pull request. */
+async function readRoute(current: Route, path: string, signal: AbortSignal): Promise<{ observed: BrowserComparison; document: Document }> {
   const fresh = await html(path, signal); const observed = pageComparison(fresh.document, current);
   if (!fresh.response.ok || new URL(fresh.response.url).pathname !== path || !observed) throw new ExtensionError('COMPARISON_MOVED', 'GitHub did not confirm this pull request’s base, head and file count.');
+  return { observed, document: fresh.document };
+}
+/** The fresh read must name the same base, head and file count. */
+function assertSame(comparison: BrowserComparison, observed: BrowserComparison): void {
   if (!sameComparison(comparison, observed) || comparison.changedFiles !== undefined && observed.changedFiles !== undefined && comparison.changedFiles !== observed.changedFiles) throw Object.assign(new ExtensionError('COMPARISON_MOVED', 'GitHub did not confirm the same base, head and file count.'), { observed });
-  return observed;
+}
+async function confirm(current: Route, comparison: BrowserComparison, path: string, signal: AbortSignal): Promise<BrowserComparison> {
+  const { observed } = await readRoute(current, path, signal); assertSame(comparison, observed); return observed;
 }
 /** The signed-in diff route is a cross-origin redirect without CORS from a page context; it is attempted, never relied on. */
 async function unifiedDiff(current: Route, comparison: BrowserComparison, signal: AbortSignal): Promise<BrowserInput> {
@@ -101,8 +107,11 @@ export async function acquire(current: Route, document: Document, signal: AbortS
   // The embedded /changes payload has no independent PR number. A fresh read
   // of that exact route binds its base and head to the requested PR before
   // either value can select trusted-base policy or cached analysis.
-  const changes = Boolean(document.querySelector('script[data-target="react-app.embeddedData"]'));
-  const confirmationPath = changes ? `${current.path}/changes` : current.path;
+  let changes = Boolean(document.querySelector('script[data-target="react-app.embeddedData"]'));
+  const changesPath = `${current.path}/changes`; const confirmationPath = changes ? changesPath : current.path;
+  // After a soft navigation the tab's document can still be another route's
+  // payload; file evidence comes from the fresh read that bound the comparison.
+  let sourceDocument = document;
   // A cached report exists only for a comparison that was confirmed for this PR
   // before: reattach from it at once and confirm freshness in the background.
   if (comparison && !options.confirmed) {
@@ -121,13 +130,27 @@ export async function acquire(current: Route, document: Document, signal: AbortS
       }
     }
   }
-  if (comparison && changes && !options.confirmed) await confirm(current, comparison, confirmationPath, signal);
+  if (comparison && changes) {
+    const fresh = await readRoute(current, changesPath, signal); assertSame(comparison, fresh.observed);
+    comparison = fresh.observed; sourceDocument = fresh.document;
+  }
   if (!comparison) {
     try { const refreshed = await html(current.path, signal); if (refreshed.response.ok) comparison = pageComparison(refreshed.document, current); }
     catch (error) { if (signal.aborted) throw error; }
   }
   if (!comparison) {
-    publicResult = await request<PublicPull>({ type: 'source.public', repository: current.repository, pullRequest: current.pullRequest, files: true }); comparison = publicResult.comparison;
+    try { publicResult = await request<PublicPull>({ type: 'source.public', repository: current.repository, pullRequest: current.pullRequest, files: true }); comparison = publicResult.comparison; }
+    catch (error) {
+      if (signal.aborted) throw error;
+      // A private pull request has no anonymous route and its Conversation page
+      // carries no comparison, so the signed-in /changes page is its source from
+      // every tab of the pull request. The public failure stays the diagnostic.
+      try { const fresh = await readRoute(current, changesPath, signal); comparison = fresh.observed; sourceDocument = fresh.document; changes = true; }
+      catch (signedIn) {
+        if (signal.aborted) throw signedIn;
+        console.info('[diffdevil] signed-in source unavailable', { code: (signedIn as { code?: string }).code ?? 'SIGNED_IN_UNAVAILABLE' }); throw error;
+      }
+    }
   }
   const lookup = await request<Lookup>({ type: 'cache.lookup', comparison }); if (signal.aborted) throw signal.reason;
   let acquisition: BrowserInput | undefined;
@@ -139,7 +162,7 @@ export async function acquire(current: Route, document: Document, signal: AbortS
         if (signal.aborted) throw error;
         // Signed-in route: the page's own summaries and embedded contents. A file
         // without embedded content stays bounded; that is honest, not a failure.
-        let embedded = changes && !options.confirmed ? embeddedFiles(document) : undefined;
+        let embedded = changes ? embeddedFiles(sourceDocument) : undefined;
         if (embedded) {
           // Files GitHub did not embed are loaded through the page's own route;
           // supplied patches are measured exactly and failed paths stay bounded.
@@ -180,7 +203,7 @@ export async function acquire(current: Route, document: Document, signal: AbortS
     try { const value = await policyFile(comparison, path, signal, Boolean(publicResult)); if (value.status === 'present' && value.text !== undefined) sources[path] = value.text; }
     catch (error) { if (signal.aborted) throw error; } // The compiler reports missing trusted template text.
   }
-  if (!publicResult) await confirm(current, comparison, confirmationPath, signal);
+  if (!publicResult) await confirm(current, comparison, changes ? changesPath : current.path, signal);
   else {
     const after = await request<PublicPull>({ type: 'source.public', repository: current.repository, pullRequest: current.pullRequest });
     if (!sameComparison(comparison, after.comparison) || comparison.changedFiles !== after.comparison.changedFiles) throw new ExtensionError('COMPARISON_MOVED', 'The comparison changed while policy was acquired.');

@@ -30,7 +30,8 @@
 /* toolbar and per-file seats: reduced content, 24 px, the path gives way before the facts */
 .ddx-root[data-ddx=toolbar] .ddx-trigger,.ddx-root[data-ddx=file] .ddx-trigger{height:24px;flex:none}
 .ddx-root[data-ddx=file]{margin-inline:0 8px;line-height:24px}.ddx-root[data-ddx=file] .ddx-value{font-size:13px}
-/* failure marker: leading position, muted, GitHub's counts follow at full colour */
+/* failure and reading markers: leading position, muted, GitHub's counts follow at full colour */
+.ddx-root[data-ddx=reading]{color:var(--fgColor-muted,var(--color-fg-muted,#59636e));white-space:nowrap}
 .ddx-root[data-ddx=failure]{gap:6px;color:var(--fgColor-muted,var(--color-fg-muted,#59636e))}
 .ddx-marker{border:0;background:transparent;padding:0 2px;color:inherit;font:inherit;cursor:pointer;border-radius:4px}.ddx-marker:hover{color:var(--fgColor-default,var(--color-fg-default,#1f2328))}
 .ddx-retry{border:0;background:transparent;padding:0;color:var(--fgColor-accent,var(--color-accent-fg,#0969da));font:inherit;cursor:pointer}.ddx-retry:hover{text-decoration:underline}

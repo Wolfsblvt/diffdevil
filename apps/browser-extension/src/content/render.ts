@@ -127,6 +127,12 @@ export function projection(view: HumanReportView, kind: SeatKind, context: SeatC
   };
   return { root, trigger, stale, cleanup: () => { root.remove(); } };
 }
+/** The reading marker holds the failure marker's place while GitHub's counts stay untouched; it states only that a read is under way. */
+export function readingMarker(): Pick<Projection, 'root' | 'stale' | 'cleanup'> {
+  const root = node('span', 'ddx-root'); root.dataset.ddx = 'reading'; root.setAttribute('data-diffdevil', ''); root.setAttribute('role', 'status');
+  root.append(node('span', 'ddx-reading', '↻ diffdevil · reading'));
+  return { root, stale: () => undefined, cleanup: () => { root.remove(); } };
+}
 /** The failure marker takes the seat's leading position; GitHub's counts stay at full colour after it. */
 export function failureMarker(error: { code: string; message: string }, popover: Popover, actions: ReportActions, retry: () => void): Projection {
   const root = node('span', 'ddx-root'); root.dataset.ddx = 'failure'; root.setAttribute('data-diffdevil', '');

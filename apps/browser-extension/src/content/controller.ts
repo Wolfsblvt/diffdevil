@@ -6,13 +6,17 @@ import { SETTINGS_KEY } from '../shared/settings-key.js';
 import { node, button } from '../shared/dom.js';
 import { acquire as defaultAcquire } from './acquire.js';
 import { route, aggregateNative, toolbarNative, fileNative, treeCounters, pathAnchors, FILE_HEADERS, PROVIDER_CHANGE, filePath, pageComparison, sameComparison, fullFilesView, type NativeStat } from './github.js';
-import { projection, failureMarker, type Projection } from './render.js';
+import { projection, failureMarker, readingMarker, type Projection } from './render.js';
 import { errorPanel, type ReportActions } from './report.js';
 import { labelHandoff, pickerAvailable } from './labels.js';
 import { Popover } from './popover.js';
 /** Dependencies are explicit so lifecycle tests never need to impersonate a browser origin. */
 export interface ContentDependencies { readonly href?: () => string; readonly acquire?: typeof defaultAcquire; readonly request?: typeof defaultRequest }
 interface Failure { code: string; message: string }
+/** Mounted views need only a root and their lifecycle; the reading marker has no trigger. */
+type MountedView = Pick<Projection, 'root' | 'stale' | 'cleanup'>;
+/** A read this short never shows its marker: a cached or public result would otherwise flash it on every page. */
+const READING_DELAY_MS = 800;
 const LABEL_INTENT = 'diffdevil.labelIntent';
 const reduced = (): boolean => matchMedia('(prefers-reduced-motion: reduce)').matches;
 export function startContent(dependencies: ContentDependencies = {}): { refresh: () => Promise<void>; stop: () => void } {
@@ -20,10 +24,10 @@ export function startContent(dependencies: ContentDependencies = {}): { refresh:
   const acquire = dependencies.acquire ?? defaultAcquire;
   const request = dependencies.request ?? defaultRequest;
   const lifecycle = new AbortController(); let stopped = false;
-  const popover = new Popover(); const mounted = new Map<HTMLElement, Projection>(); const natives = new Set<HTMLElement>();
+  const popover = new Popover(); const mounted = new Map<HTMLElement, MountedView>(); const natives = new Set<HTMLElement>();
   const fileViews = new Map<string, HumanReportView>(); const waiting = new Set<string>(); const failed = new Set<string>();
   let settings: Settings = { ...DEFAULTS }; let packet: Packet | undefined; let controller: AbortController | undefined;
-  let generation = 0; let activeRoute = ''; let identityInFlight = ''; let failedIdentity = ''; let acquiring = false; let fileBusy = false; let renderQueued = false;
+  let generation = 0; let acquiringSince = 0; let readingTimer: ReturnType<typeof setTimeout> | undefined; let activeRoute = ''; let identityInFlight = ''; let failedIdentity = ''; let acquiring = false; let fileBusy = false; let renderQueued = false;
   let status: HTMLElement | undefined; let fileError = false; let failure: Failure | undefined; let observedRoot: Element | undefined; let observer: MutationObserver | undefined;
   let stopLabelObservation: (() => void) | undefined;
   // GitHub anchors a file as `diff-` + SHA-256(path). Hashing the packet's own
@@ -88,13 +92,20 @@ export function startContent(dependencies: ContentDependencies = {}): { refresh:
       setTimeout(() => { if (element.classList.contains('ddx-native-leaving')) { element.classList.remove('ddx-native-leaving'); element.classList.add('ddx-native-hidden'); } }, 100);
     }
   }
-  function seat(native: NativeStat, item: Projection, replace: boolean): void {
+  function seat(native: NativeStat, item: MountedView, replace: boolean): void {
     mounted.set(native.anchor, item);
     if (!reduced()) { item.root.classList.add('ddx-entering'); requestAnimationFrame(() => item.root.classList.remove('ddx-entering')); }
     native.anchor.insertAdjacentElement('beforebegin', item.root);
     if (replace) demote(native); else for (const element of native.nodes) { natives.add(element); element.classList.remove('ddx-native-hidden', 'ddx-native-faint', 'ddx-native-leaving'); }
   }
   function schedule(): void { if (stopped || renderQueued) return; renderQueued = true; queueMicrotask(() => { renderQueued = false; render(); }); }
+  /** While a read is under way GitHub's counts stay at full strength and the seat says so, once the read is no longer instant. */
+  function reading(aggregate: NativeStat | undefined): void {
+    if (!aggregate || mounted.has(aggregate.anchor)) return;
+    const wait = READING_DELAY_MS - (Date.now() - acquiringSince);
+    if (wait > 0) { readingTimer ??= setTimeout(() => { readingTimer = undefined; schedule(); }, wait); return; }
+    seat(aggregate, readingMarker(), false);
+  }
   function render(): void {
     if (stopped) return;
     popover.reconcile();
@@ -106,6 +117,7 @@ export function startContent(dependencies: ContentDependencies = {}): { refresh:
       else showStatus(`diffdevil could not read this comparison. ${failure.message} (${failure.code})`, actions.retry);
       return;
     }
+    if (!packet && acquiring) { reading(aggregate); return; }
     if (!packet || acquiring) return;
     const context = { settings, popover, document, actions };
     if (aggregate) { if (!fileError) { status?.remove(); status = undefined; } if (!mounted.has(aggregate.anchor)) seat(aggregate, projection(packet.view, 'aggregate', context), true); else demote(aggregate); }
@@ -191,15 +203,19 @@ export function startContent(dependencies: ContentDependencies = {}): { refresh:
     const scope = current();
     if (!scope) { generation++; controller?.abort(); clear(); packet = undefined; failure = undefined; activeRoute = ''; acquiring = false; observer?.disconnect(); observedRoot = undefined; return; }
     observe(); const key = `${scope.repository.toLowerCase()}#${scope.pullRequest}`; const identity = pageComparison(document, scope); const identityKey = `${key}:${identity?.base ?? '?'}:${identity?.head ?? '?'}`;
-    if (!force && failedIdentity === identityKey) return;
-    if (!force && packet && activeRoute === key && identity && sameComparison(packet.comparison, identity)) { schedule(); return; }
+    // A failure belongs to the surface it was read on: moving from Conversation to Files reads again.
+    const failureKey = `${identityKey}:${fullFilesView(href()) ? 'files' : 'other'}`;
+    if (!force && failedIdentity === failureKey) return;
+    // A tab that cannot name its comparison (private Conversation) neither contradicts nor replaces an acquired result.
+    if (!force && packet && activeRoute === key && (!identity || sameComparison(packet.comparison, identity))) { schedule(); return; }
     if (!force && acquiring && activeRoute === key && (!identity || identityInFlight === identityKey)) return;
     const revision = ++generation; controller?.abort(); const signal = (controller = new AbortController()).signal;
     // The head advanced on the same pull request: keep the previous result visible
     // and labelled with the new short SHA instead of blanking the seat between heads.
     const moved = Boolean(packet && activeRoute === key && identity && !sameComparison(packet.comparison, identity));
-    acquiring = true; activeRoute = key; identityInFlight = identityKey; fileError = false; failure = undefined;
+    acquiring = true; acquiringSince = Date.now(); activeRoute = key; identityInFlight = identityKey; fileError = false; failure = undefined;
     if (moved) { popover.close(false); for (const item of mounted.values()) item.stale(identity!.head); } else clear();
+    schedule();
     try {
       settings = await request<Settings>({ type: 'settings.get' }); if (revision !== generation) return;
       if (!settings['display.enabled']) { packet = undefined; clear(); return; }
@@ -211,7 +227,7 @@ export function startContent(dependencies: ContentDependencies = {}): { refresh:
     } catch (error) {
       if (revision !== generation || signal.aborted) return;
       clear(); fileViews.clear(); waiting.clear(); failed.clear();
-      packet = undefined; failedIdentity = identityKey;
+      packet = undefined; failedIdentity = failureKey;
       failure = { code: (error as { code?: string }).code ?? 'ACQUISITION_FAILED', message: error instanceof Error ? error.message : 'Source is unavailable.' };
       console.error('[diffdevil] acquisition failed', failure);
     } finally { if (revision === generation) { acquiring = false; schedule(); } }
@@ -230,6 +246,6 @@ export function startContent(dependencies: ContentDependencies = {}): { refresh:
   matchMedia('(prefers-color-scheme: dark)').addEventListener('change', refreshTheme, { signal: lifecycle.signal });
   void refresh(false);
   return { refresh: () => refresh(true), stop: (): void => {
-    stopped = true; generation++; controller?.abort(); lifecycle.abort(); observer?.disconnect(); rootWatcher.disconnect(); themeWatcher.disconnect(); chrome.storage.onChanged.removeListener(changed); stopLabelObservation?.(); clear();
+    stopped = true; generation++; clearTimeout(readingTimer); controller?.abort(); lifecycle.abort(); observer?.disconnect(); rootWatcher.disconnect(); themeWatcher.disconnect(); chrome.storage.onChanged.removeListener(changed); stopLabelObservation?.(); clear();
   } };
 }
