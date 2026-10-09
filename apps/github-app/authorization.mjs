@@ -33,7 +33,7 @@ function cookie(name, value, maxAge) {
 export function protectedHeaders() { return { 'Cache-Control': 'private, no-store', 'Vary': 'Cookie' }; }
 
 /** Route-neutral GitHub-user authorization; the router chooses paths and visible language later. */
-export function createAuthorizationService({ store, admission, provider, protector, returnContexts, allowedOrigins, allowedCallbackUrls, sessionLifetimeMs, now = () => new Date().toISOString() }) {
+export function createAuthorizationService({ store, admission, history, provider, protector, returnContexts, allowedOrigins, allowedCallbackUrls, sessionLifetimeMs, now = () => new Date().toISOString() }) {
   if (!store || !admission || !provider || !protector || !returnContexts || !allowedOrigins || !allowedCallbackUrls) throw new TypeError('Authorization adapters and allowlists are required.');
   if (!Number.isSafeInteger(sessionLifetimeMs) || sessionLifetimeMs <= 0 || sessionLifetimeMs % 1000 !== 0
     || !Number.isFinite(new Date(Date.parse(now()) + sessionLifetimeMs).getTime())) throw new TypeError('A selected session lifetime is required.');
@@ -191,6 +191,61 @@ export function createAuthorizationService({ store, admission, provider, protect
       validOrigin(origin, origins, method);
       const actor = await authorizedAdmission(session, repositoryId, 'update');
       return { body: await admissionCall(() => admission.update(repositoryId, { ...settings, origin: 'dashboard', actor })), headers: protectedHeaders() };
+    },
+
+    async readHistory({ session, query }) {
+      if (!history) throw refusal('E_HISTORY_UNAVAILABLE');
+      const actor = { ...await authorizedAdmission(session, query?.repositoryId, 'read'), authorizedRepositoryIds: [query.repositoryId] };
+      return { body: await history.query(query, actor), headers: protectedHeaders() };
+    },
+    async compareHistory({ session, left, right }) {
+      if (!history) throw refusal('E_HISTORY_UNAVAILABLE');
+      const actor = await principal(session);
+      const authorizedRepositoryIds = [];
+      for (const repositoryId of new Set([left?.repositoryId, right?.repositoryId])) {
+        if (!Number.isSafeInteger(repositoryId) || repositoryId < 1) throw refusal('E_ADMISSION_UNAUTHORIZED');
+        try { await authorizedAdmission(session, repositoryId, 'read'); authorizedRepositoryIds.push(repositoryId); }
+        catch (error) { if (error?.code !== 'E_ADMISSION_UNAUTHORIZED') throw error; }
+      }
+      return { body: await history.compare(left, right, { ...actor, authorizedRepositoryIds }), headers: protectedHeaders() };
+    },
+    async historyBaseline({ session, query }) {
+      if (!history) throw refusal('E_HISTORY_UNAVAILABLE');
+      const actor = { ...await authorizedAdmission(session, query?.repositoryId, 'read'), authorizedRepositoryIds: [query.repositoryId] };
+      return { body: await history.baseline(query, actor), headers: protectedHeaders() };
+    },
+    async historyPolicyLab({ session, query, proposal }) {
+      if (!history) throw refusal('E_HISTORY_UNAVAILABLE');
+      const actor = { ...await authorizedAdmission(session, query?.repositoryId, 'read'), authorizedRepositoryIds: [query.repositoryId] };
+      return { body: await history.policyLab(query, proposal, actor), headers: protectedHeaders() };
+    },
+    async exportNumericHistory({ session, repositoryId }) {
+      if (!history) throw refusal('E_HISTORY_UNAVAILABLE');
+      const actor = { ...await authorizedAdmission(session, repositoryId, 'read'), authorizedRepositoryIds: [repositoryId] };
+      return { body: await history.exportNumeric(repositoryId, actor), headers: protectedHeaders() };
+    },
+    async saveHistoryLens({ session, repositoryId, lens, method, origin }) {
+      if (!history) throw refusal('E_HISTORY_UNAVAILABLE');
+      validOrigin(origin, origins, method);
+      const actor = { ...await authorizedAdmission(session, repositoryId, 'update'), authorizedRepositoryIds: [repositoryId] };
+      return { body: await history.saveLens(repositoryId, lens, actor), headers: protectedHeaders() };
+    },
+    async historyLenses({ session, repositoryId }) {
+      if (!history) throw refusal('E_HISTORY_UNAVAILABLE');
+      const actor = { ...await authorizedAdmission(session, repositoryId, 'read'), authorizedRepositoryIds: [repositoryId] };
+      return { body: await history.lenses(repositoryId, actor), headers: protectedHeaders() };
+    },
+    async readHistoryLens({ session, query }) {
+      if (!history) throw refusal('E_HISTORY_UNAVAILABLE');
+      const actor = { ...await authorizedAdmission(session, query?.repositoryId, 'read'), authorizedRepositoryIds: [query.repositoryId] };
+      return { body: await history.lens(query, actor), headers: protectedHeaders() };
+    },
+    async removeHistoryLens({ session, repositoryId, lensId, method, origin }) {
+      if (!history) throw refusal('E_HISTORY_UNAVAILABLE');
+      validOrigin(origin, origins, method);
+      const actor = { ...await authorizedAdmission(session, repositoryId, 'update'), authorizedRepositoryIds: [repositoryId] };
+      await history.removeLens(repositoryId, lensId, actor);
+      return { body: { removed: true }, headers: protectedHeaders() };
     }
   };
 }

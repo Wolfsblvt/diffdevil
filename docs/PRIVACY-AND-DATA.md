@@ -57,6 +57,8 @@ Use an allowlist, not a full engine report followed by redaction. Adding a field
 
 Names and paths are protected repository metadata. They and immutable IDs/references remain linkable. Do not market this dataset as anonymous or publicly expose it merely because it contains no source.
 
+The source-only history query contract derives charts and Policy Lab decisions from retained rows. Shared saved lenses are protected configuration: an allowlisted query can name a metric, scope, band or rule reference and may carry a user-visible name or description there. They retain no numeric snapshot or personal identity and travel only in configuration export. History deletion or expiry removes the source records and leaves a lens with missing historical coverage; repository offboarding removes the protected lens configuration. The seven-day operational ledger separately records execution attempts and duplicate delivery receipts without promoting them to long-term product history.
+
 ### Excluded observations
 
 Retain the permitted measured paths and numerical facts of policy-excluded files. Ordinary analytics filters them under the effective policy. This supports changed exclusions and a possible include-excluded view without fetching facts already known.
@@ -170,6 +172,8 @@ Serve only the repository's eligible analytical projection, excluding configurat
 A preview is a frozen permitted sample with current access and deletion controls, not continuing premium collection. Its eligibility record remains distinct from sample retention. An OSS grant is repository-scoped; privatisation revokes it and public publication, but is not itself a deletion request. Ordinary sufficient entitlement can continue.
 
 Public PR briefs obey their actual audience independently of a protected link. Private contextual facts must not escape through the comment.
+
+The versioned query and export code selects only currently retained, published records at read time. An exported file already delivered to an authorized administrator is outside server-side deletion reach; the service does not preserve a second pending export or cached chart projection. Analysis rows alone cannot prove that an entire requested period was collected, so a query reports observed-sample coverage and known record gaps rather than inventing complete opt-in coverage.
 
 ## Public playground
 

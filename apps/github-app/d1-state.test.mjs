@@ -9,7 +9,7 @@ import { D1AppStore } from './storage.mjs';
 import { createAdmissionService } from './admission.mjs';
 import { DEFAULT_SIZE_POLICY, readConfigurationExport, resolveEffectivePolicy } from './configuration.mjs';
 
-const migrations = ['0001_initial.sql', '0002_consent-provenance.sql', '0003_preserve-active-consent.sql', '0004_admission-settings.sql', '0005_offboarding-consent-tombstones.sql', '0006_user-authorization.sql', '0007_consent-actors.sql'];
+const migrations = ['0001_initial.sql', '0002_consent-provenance.sql', '0003_preserve-active-consent.sql', '0004_admission-settings.sql', '0005_offboarding-consent-tombstones.sql', '0006_user-authorization.sql', '0007_consent-actors.sql', '0008_history_analytics.sql'];
 const projection = {
   schemaVersion: 3, engineVersion: 'engine-v1', reportVersion: 'report-v1', metricVersion: 'metrics-v1', source: { base: 'base', head: 'head' }, evidence: 'exact', fileSet: { complete: true, total: { status: 'exact', value: 1 } }, totals: {}, configuredResults: [], gaps: [], files: [{ ordinal: 0, raw: {}, lines: {} }], effects: [{ kind: 'label.add', outcome: 'changed', request: 'accepted', readback: 'verified' }]
 };
@@ -56,6 +56,10 @@ test('local D1 keeps execution fences, repair claims, expiry, offboarding, and p
     assert.equal(executionB.executionFence, executionA.executionFence + 1);
     await assert.rejects(source.store.finish(envelopeA, executionA, 'complete'), { code: 'E_LEASE_LOST' });
     await source.store.finish(envelopeB, executionB, 'complete', { status: 'verified' });
+    assert.deepEqual(await source.store.claimDelivery(envelopeB), { kind: 'duplicate' });
+    const operations = await source.store.historyOperations(17, '2026-09-17T00:00:00.000Z', '2026-09-19T00:00:00.000Z');
+    assert.equal(operations.attempts.length, 2, 'lease takeover creates a second execution attempt');
+    assert.equal(operations.deliveries.find(row => row.duplicate_count === 1)?.state, 'complete');
 
     const envelopeC = { installationId: 9, repositoryId: 17, pullRequest: 43, deliveryId: 'delivery-c' };
     const deliveryC = await source.store.claimDelivery(envelopeC);
@@ -67,7 +71,7 @@ test('local D1 keeps execution fences, repair claims, expiry, offboarding, and p
 
     await source.store.deleteHistory(17);
     const exported = await source.store.exportState();
-    assert.equal(readConfigurationExport(exported).version, 6, 'the portable configuration reader accepts the current export version');
+    assert.equal(readConfigurationExport(exported).version, 7, 'the portable configuration reader accepts the current export version');
     const restored = await localStore(clock);
     try {
       await restored.store.importState(exported);
@@ -89,6 +93,54 @@ test('local D1 keeps execution fences, repair claims, expiry, offboarding, and p
   } finally {
     await source.runtime.dispose();
   }
+});
+
+test('history queries use retained published rows while reusable lens configuration survives source deletion', async () => {
+  const clock = { value: '2026-09-17T00:00:00.000Z' };
+  const { runtime, database, store } = await localStore(clock);
+  try {
+    await store.recordLifecycle({ installationId: 9, action: 'created', addedRepositories: [17, 18], removedRepositories: [] });
+    await store.setRepositoryExecution(17, { enabled: true, origin: 'fixture' });
+    await store.setRepositoryConsent(17, { enabled: true, retentionDays: 1, policyId: 'policy', origin: 'fixture' });
+    const selected = { ...projection, schemaVersion: 4, totals: { lines: { changed: { status: 'exact', value: 12 } } },
+      configuredResults: [{ metric: 'custom', result: { status: 'exact', value: 12 } }],
+      scopes: [], bands: [], rules: [{ ref: 'rule', disposition: 'matched' }],
+      files: [{ ordinal: 0, inclusion: 'included', lines: { changed: { status: 'exact', value: 12 } }, raw: {} }] };
+    const identity = { repositoryId: 17, pullRequest: 42, comparisonId: 'comparison-a', policyId: 'policy' };
+    assert.equal((await store.recordHistory(identity, selected)).status, 'published');
+    assert.equal((await store.recordHistory(identity, selected)).status, 'disabled', 'duplicate analysis does not become another history row');
+    await store.saveHistoryLens(17, { version: 1, id: 'custom', name: 'Custom metric', identity: { reportVersion: 'diffdevil-report-v1', metricVersion: 'diffdevil-metrics-v1', policyId: 'policy' }, query: { version: 1, repositoryId: 17,
+      from: '2026-09-01T00:00:00.000Z', to: '2026-10-01T00:00:00.000Z', family: 'distribution',
+      metric: { kind: 'configured', ref: 'custom' } } });
+    const plan = await database.prepare("EXPLAIN QUERY PLAN SELECT id FROM history_records WHERE repository_id=17 AND state='published' AND observed_at>='2026-09-01' AND observed_at<'2026-10-01'").all();
+    assert.ok(plan.results.some(row => String(row.detail).includes('history_repository_window')), JSON.stringify(plan.results));
+    const rows = await store.historyWindow(17, '2026-09-01T00:00:00.000Z', '2026-10-01T00:00:00.000Z');
+    assert.equal(rows.length, 1);
+    assert.equal(rows[0].results.metrics[0].result.value, 12);
+    assert.equal((await store.historyWindow(18, '2026-09-01T00:00:00.000Z', '2026-10-01T00:00:00.000Z')).length, 0);
+    assert.equal((await store.exportHistory(17)).records.length, 1);
+    await store.setRepositoryConsent(17, { enabled: false, origin: 'fixture' });
+    assert.equal((await store.historyWindow(17, '2026-09-01T00:00:00.000Z', '2026-10-01T00:00:00.000Z')).length, 0, 'current consent gates retained rows');
+    await store.setRepositoryConsent(17, { enabled: true, retentionDays: 1, policyId: 'policy', origin: 'fixture' });
+    const configurationExport = await store.exportState();
+    assert.equal(JSON.parse(configurationExport.lenses[0].lens_json).name, 'Custom metric');
+    assert.equal(JSON.stringify(await store.exportHistory(17)).includes('Custom metric'), false, 'numeric export excludes lens display copy');
+    await store.deleteHistory(17);
+    assert.equal((await store.historyWindow(17, '2026-09-01T00:00:00.000Z', '2026-10-01T00:00:00.000Z')).length, 0);
+    assert.equal((await store.historyLenses(17)).length, 1, 'a reusable configuration question survives source history deletion');
+    assert.equal((await store.exportHistory(17)).records.length, 0);
+    const restored = await localStore(clock);
+    try {
+      await restored.store.importState(await store.exportState());
+      assert.equal((await restored.store.historyLenses(17))[0].name, 'Custom metric');
+    } finally { await restored.runtime.dispose(); }
+    await store.setRepositoryExecution(18, { enabled: true, origin: 'fixture' });
+    await store.setRepositoryConsent(18, { enabled: true, retentionDays: 1, policyId: 'policy', origin: 'fixture' });
+    assert.equal((await store.recordHistory({ ...identity, repositoryId: 18 }, selected)).status, 'published');
+    clock.value = '2026-09-19T00:00:00.000Z';
+    assert.equal((await store.historyWindow(18, '2026-09-01T00:00:00.000Z', '2026-10-01T00:00:00.000Z')).length, 0, 'expiry is enforced before cleanup');
+    assert.equal((await store.exportHistory(18)).records.length, 0, 'export cannot recover expired source');
+  } finally { await runtime.dispose(); }
 });
 
 test('offboarding preserves every consent standing before and after the grace period', async () => {
@@ -276,7 +328,7 @@ test('local D1 keeps preset-history identities, repair contracts, and portable n
       await restored.store.importHistory(history);
       assert.equal((await restored.database.prepare("SELECT count(*) AS count FROM history_records WHERE state='published'").first()).count, 2);
       await restored.store.importHistory({ ...history, tombstones: [...history.tombstones, { scope: 'repository:17', deleted_at: clock.value, reapply_until: '2026-10-25T00:00:00.000Z' }] });
-      assert.equal((await restored.database.prepare("SELECT count(*) AS count FROM history_records").first()).count, 2, 'a tombstoned restore cannot add back deleted numeric history');
+      assert.equal((await restored.database.prepare("SELECT count(*) AS count FROM history_records").first()).count, 0, 'a tombstone removes rows already restored before it arrived');
     } finally { await restored.runtime.dispose(); }
 
     await source.store.recordLifecycle({ installationId: 9, action: 'suspend', addedRepositories: [], removedRepositories: [] });

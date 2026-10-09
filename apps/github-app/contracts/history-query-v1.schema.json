@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://diffdevil.app/contracts/history-query-v1.schema.json",
+  "title": "diffdevil managed App history query v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "repositoryId", "from", "to", "family"],
+  "properties": {
+    "version": { "const": 1 },
+    "repositoryId": { "type": "integer", "minimum": 1 },
+    "from": { "type": "string" },
+    "to": { "type": "string" },
+    "family": { "enum": ["overview", "distribution", "concentration", "trajectories", "occurrence", "operations"] },
+    "policyId": { "$ref": "#/$defs/reference" },
+    "evidence": { "enum": ["all", "exact", "bounded", "unknown"] },
+    "metric": { "$ref": "#/$defs/metric" }
+  },
+  "$defs": {
+    "reference": { "type": "string", "pattern": "^[A-Za-z0-9._-]{1,80}$" },
+    "metric": {
+      "oneOf": [
+        { "type": "object", "additionalProperties": false, "required": ["kind", "name", "scope"], "properties": {
+          "kind": { "const": "total" }, "name": { "enum": ["files", "changed", "rawChurn", "includedFiles"] },
+          "scope": { "enum": ["all-observed", "policy-included"] } } },
+        { "type": "object", "additionalProperties": false, "required": ["kind", "ref"], "properties": {
+          "kind": { "const": "configured" }, "ref": { "$ref": "#/$defs/reference" } } },
+        { "type": "object", "additionalProperties": false, "required": ["kind", "ref", "name"], "properties": {
+          "kind": { "const": "scope" }, "ref": { "$ref": "#/$defs/reference" }, "name": { "enum": ["files", "changed", "rawChurn"] } } }
+      ]
+    }
+  }
+}
