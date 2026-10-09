@@ -104,7 +104,7 @@ identity, reacquires provider lifecycle facts, analyzes open work through the sh
 GitHub acquisition engine and checks provider identity again before publication.
 It retains no author, title, PR prose, source or patch. The Queue admits closed,
 ready-for-review and converted-to-draft events in its existing minimized envelope.
-Live effect execution precedes collection. Closed or execution-disabled PRs may still
+Live effect execution precedes collection. Closed, failed or execution-disabled PRs may still
 collect under positive history consent; analytical failures retain a separate stable
 `analytical-collection` repair in the existing recovery home. Collection recovery
 does not replay completed provider effects. Ready-for-review time remains

@@ -214,6 +214,7 @@ test('Queue gives effects priority, collects closed/history-only PRs, and preser
   assert.deepEqual(await run(() => ({ status: 'verified' })), ['execute', 'collect', 'E_GITHUB_RATE_LIMIT', 'complete', 'ack']);
   assert.deepEqual(await run(() => { throw { code: 'E_PULL_REQUEST_CLOSED' }; }), ['execute', 'collect', 'E_GITHUB_RATE_LIMIT', 'rejected', 'ack']);
   assert.deepEqual(await run(() => { throw { code: 'E_ACCESS_DISABLED' }; }), ['execute', 'collect', 'E_GITHUB_RATE_LIMIT', 'rejected', 'ack']);
+  assert.deepEqual(await run(() => { throw { code: 'E_EFFECT_INCOMPLETE' }; }), ['execute', 'collect', 'E_GITHUB_RATE_LIMIT', 'repair', 'ack']);
 });
 
 test('collector recovers actual merge parents, observes sizes, refuses a fabricated final from revisions', async () => {

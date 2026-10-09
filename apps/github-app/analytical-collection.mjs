@@ -66,7 +66,7 @@ export async function collectAnalyticalPullRequest({ client, store, repositoryId
     if (before.state === 'open') {
       const report = unwrap(await analyzeGitHub(client, { provider: 'github', repository: name, pullRequest }));
       const sameHead = recordedResult?.head === report.source.head;
-      const revision = { base: report.source.base, head: report.source.head, observedAt, report,
+      const revision = { base: report.source.base, head: report.source.head, observedAt, report, observedLabel: null,
         ...(sameHead ? { originalPolicyId: recordedResult.policyId, originalBand: recordedResult.band,
           desiredLabel: recordedResult.desiredLabel, observedLabel: recordedResult.observedLabel } : {}) };
       const index = revisions.findIndex(value => value.base === revision.base && value.head === revision.head);

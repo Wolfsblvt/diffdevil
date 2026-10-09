@@ -242,7 +242,7 @@ async function consumeMessage(message, dependencies) {
   } catch (error) {
     const disposition = failureDisposition(error), code = errorCode(error);
     if (disposition === 'retry') { await dependencies.store.retry(envelope, execution, code); return message.retry(); }
-    if (code === 'E_PULL_REQUEST_CLOSED' || code === 'E_ACCESS_DISABLED') await collectAfterExecution(envelope, dependencies);
+    await collectAfterExecution(envelope, dependencies);
     await dependencies.store.finish(envelope, execution, disposition === 'rejected' ? 'rejected' : 'repair', { status: disposition, code, ...(disposition === 'repair' ? { repair: repairProjection(error) } : {}) });
     return message.ack();
   }
