@@ -1,0 +1,30 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only
+// One pull-request row in the extension's seat grammar: GitHub state icon, title (when GitHub
+// supplied it now), facts line, then the seat: Changed with its evidence and the size label
+// chip (solid when observed on GitHub, dashed when desired or unverified).
+import Icon from './Icon.astro';
+import Changed from './Changed.astro';
+import LabelChip from './LabelChip.astro';
+import { ago, days } from '../lib/format.mjs';
+import { pullRequestPath } from '../lib/scope.mjs';
+interface Props { pr: any; view: any; showRepository?: boolean; compact?: boolean }
+const { pr, view, showRepository = false, compact = false } = Astro.props;
+const repository = view.viewer.repositories.find((candidate: any) => candidate.repositoryId === pr.repositoryId);
+const fullName = repository?.fullName ?? String(pr.repositoryId);
+const state = pr.state ?? 'unknown';
+const icon = ({ open: 'pull-request', draft: 'pull-request-draft', merged: 'merged', closed: 'pull-request-closed' } as const)[state as 'open' | 'draft' | 'merged' | 'closed'] ?? 'circle-dashed';
+const stateTitle = ({ open: 'ready for review', draft: 'draft', merged: 'merged', closed: 'closed unmerged', unknown: 'state not available from GitHub right now' } as Record<string, string>)[state];
+const life = pr.lifecycle;
+const when = life ? (life.mergedAt ? `merged ${ago(life.mergedAt, view.nowIso)} · ${days(Date.parse(life.mergedAt) - Date.parse(life.openedAt))} d open` : life.closedAt ? `closed ${ago(life.closedAt, view.nowIso)}` : `opened ${ago(life.openedAt, view.nowIso)}`) : `analysed ${ago(pr.observedAt, view.nowIso)}`;
+const files = pr.latest?.files;
+const fileText = files ? (files.included.status !== 'unknown' ? `${files.included.lower} included files` : files.total.status !== 'unknown' ? `${files.total.lower} files` : 'files unknown') : '';
+---
+<a class="a-pr" href={view.href(pullRequestPath(fullName, pr.number))}>
+  <span class:list={['si', `st-${state}`]} title={stateTitle}><Icon name={icon} size={16} /></span>
+  <span class="t">{pr.title ?? <span class="a-untitled">#{pr.number} <span class="a-mini">title not available from GitHub right now</span></span>}</span>
+  <span class="l2">
+    <span class="m">{showRepository && <><b>{fullName.split('/')[1]}</b> · </>}#{pr.number} · {when}{!compact && fileText && <> · {fileText}</>}{pr.heads > 1 && <> · {pr.heads} heads</>}{pr.unrecovered && <> · not measured</>}</span>
+    <span class="seat">{pr.unrecovered ? <span class="a-mini">—</span> : <Changed value={pr.latest.changed} facts={pr.latest} compact={compact} />}{!pr.unrecovered && <LabelChip band={pr.latest.band} labels={pr.latest.labels} />}</span>
+  </span>
+</a>

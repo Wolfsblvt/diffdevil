@@ -717,3 +717,57 @@ manifests, and the accepted shared package at
 **Current consequence.** The playground Worker config lives at `apps/playground/wrangler.jsonc`; local Worker and dry-run commands select it explicitly. Its Worker name and deployed identity remain unchanged. The category reflects the application surfaces and their explicit licence map in [`LICENSES/README.md`](../LICENSES/README.md); it does not create another package or deployment boundary.
 
 **Sources.** Wolf's question about root-level sprawl in [emergency-meeting #453](https://github.com/Wolfsblvt/emergency-meeting/issues/453#issuecomment-5822920184); Juno's [root check](https://github.com/Wolfsblvt/emergency-meeting/issues/453#issuecomment-5822992831); Wolf's decision in [#453](https://github.com/Wolfsblvt/emergency-meeting/issues/453#issuecomment-5823081536); [Component and licence map](../LICENSES/README.md).
+
+## D064–D069: The signed-in App's ratified design decisions and its architecture (2026-10-09)
+
+Numbers D044–D063 are reserved by the open documentation candidates (dashboard capabilities, plans and management); these entries continue after them so the two sequences can be reconciled at integration without renumbering either. The owner decisions below were made by Wolf in the Studio co-design with Tala on 2026-10-09 (recorded in [the handoff](https://github.com/Wolfsblvt/emergency-meeting/issues/476#issuecomment-6072863750)); D069 is the implementation's structural choice.
+
+## D064: The surface is “App”, everywhere
+
+**Decision.** The signed-in surface is called the App: the location label beside the wordmark and the website header's trailing action both read `App`. “Dashboard” is not a product name.
+
+**Why.** Wolf: “Yes, it should be "App", but also on the Dashboard button. Everywhere.” One word for one surface, in the header and in prose.
+
+**Consequence.** `apps/website` renders the trailing action as `App` and marks it current on App pages; the App shell injects that same header. The hostname `app.diffdevil.dev` already carried the name.
+
+## D065: turnover-v1 is the Turnover definition
+
+**Decision.** Turnover is Changed in the period divided by the file's time-weighted average size during the period. A bounded Changed gives a Turnover range; a file created or deleted in the period shows `n/a` with that reason.
+
+**Why.** Wolf: “Yes, the turnover formula is better.” The time-weighted denominator describes a file that grows or shrinks during the period honestly, where a start-size or end-size denominator would reward or punish timing.
+
+**Consequence.** The App's Files, History and file-detail surfaces present Turnover as `turnover-v1` once named file sizes exist; the data candidate observes each file's size before and after each final merged comparison and widens the range at any discontinuity rather than hiding it.
+
+## D066: Premium panels keep their plan chips; Free gets useful panels and a bounded See Pro placeholder, never a blocker
+
+**Decision.** Premium feature panels carry a `Pro` or `Business` chip in their title row. In a Free scope, premium panels are replaced by Free-useful panels, and a small dashed, bounded placeholder names what Pro adds there and leads to the Pro features page. No giant empty blockers.
+
+**Why.** Wolf: “Keep the chips on the feature panels. I want this. […] if you are on a free version, there can a be a small, bounded placeholder, showing here could be Pro features.” Free must be usable on its own; the chip is information, not a wall.
+
+**Consequence.** `apps/app` renders plan chips in panel title rows and See Pro placeholders; until a Pro features and pricing page exists, the placeholder leads to the public App page.
+
+## D067: Displayed entitlement follows the namespace; all-repository premium aggregates follow the viewer's plan
+
+**Decision.** A namespace's features follow that namespace's plan: a viewer's own namespaces follow the viewer's plan, and a shared paid namespace keeps its plan inside its own scope (“File history is available inside northwind-tools, funded by its owner”). In the All-repositories scope, premium aggregates follow the viewer's own plan.
+
+**Why.** A Free viewer must not receive a premium cross-repository analysis assembled from other people's paid namespaces, while a collaborator may still read a colleague's Pro repository without buying anything (the plans contract).
+
+**Consequence.** `entitlementFor` in `apps/app/src/lib/view.mjs` is the one place this rule lives. Plan chips appear on namespaces in the navigation and in panel titles, never on repositories in the page body.
+
+## D068: The App is dark-only for now
+
+**Decision.** The App renders dark; the header's theme control stays in place but is inert on App pages and says why.
+
+**Why.** Wolf: “I live dark mode first, always.” The light theme, narrow screens, the cloud's visual design and the chart finish were explicitly outside the ratified session and remain to be designed.
+
+**Consequence.** The App's root carries `data-theme="dark"` with no before-paint theme script; the shared header component is unchanged. Light theme is design work, not a toggle to flip.
+
+## D069: The App is server-rendered Astro on Cloudflare Workers, sharing the website's header component and the managed App's authorization and D1
+
+**Decision.** `apps/app/` is an Astro project with `output: 'server'` on `@astrojs/cloudflare`, built as its own Worker against the managed App's D1 database. It imports the website's header, tokens, styles and fonts directly and prerenders the header once at build; it composes the route-neutral authorization service from `apps/github-app/` with a GitHub App user-authorization provider; it reads D1 through a read-only store; every view is a URL; charts are replaceable figures bound to the same data as their accessible tables.
+
+**Why.** The handoff requires the website's header unchanged: importing the component beats copying its markup, and prerendering it at build keeps the website's build-time icon registry out of the Worker. Server rendering with URL state needs no client framework, keeps authorization per request, and lets a shared link re-authorise when opened. A separate Worker leaves the deployed webhook runtime untouched; merging the two through the adapter's custom entry remains an ordinary later deployment choice. Provisional chart figures let the chart-and-cloud co-design replace rendering without touching the data model.
+
+**Rejected.** A hand-written Worker that string-templates pages (would duplicate the header and drift); a client-side single-page application over a JSON API (more machinery, weaker re-authorisation of shared links, a framework the website does not use); embedding the dashboard into the webhook Worker's bundle now (changes a deployed runtime's build shape before the experience has been exercised); any chart library adoption (the renderer is a separate co-design).
+
+**Sources.** [Mira's placement](https://github.com/Wolfsblvt/emergency-meeting/issues/476#issuecomment-6087867547) and [the chart-sequencing amendment](https://github.com/Wolfsblvt/emergency-meeting/issues/476#issuecomment-6088008298); [App experience](../apps/app/README.md).

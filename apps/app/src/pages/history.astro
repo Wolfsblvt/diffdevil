@@ -1,0 +1,113 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only
+// History: change volume as the mosaic, bucketed by period, with a selected bucket broken into
+// its pull requests. Pro adds file growth and concentration (not collected yet, and said so);
+// Free shows the size lanes and the period comparison with its coverage row.
+import AppShell from '../layouts/AppShell.astro';
+import PageHead from '../components/PageHead.astro';
+import Panel from '../components/Panel.astro';
+import PrRow from '../components/PrRow.astro';
+import Unavailable from '../components/Unavailable.astro';
+import SeePro from '../components/SeePro.astro';
+import Icon from '../components/Icon.astro';
+import { loadView, navModel } from '../lib/view.mjs';
+import { describeBound, n0 } from '../lib/intervals.mjs';
+import { bucketsFor, changeVolume, BANDS, UNKNOWN_BAND } from '../lib/derive.mjs';
+import * as charts from '../lib/charts.mjs';
+import { sgn, fmtDate, fmtMonth, fmtMonthLong } from '../lib/format.mjs';
+import { pullRequestPath } from '../lib/scope.mjs';
+
+const view = await loadView({ url: Astro.url, viewer: Astro.locals.viewer, session: Astro.locals.session, runtime: Astro.locals.app });
+const { current: cur, previous: prev, lifecycle, entitlement, state } = view;
+const life = lifecycle.standing === 'available';
+const pro = entitlement.premium;
+const multi = view.scope.kind !== 'repository';
+const buckets = bucketsFor(view.period.key, view.nowIso, view.bounds.first);
+const volume = changeVolume({ buckets: buckets.list, pullRequests: view.pullRequests, lifecycle });
+const list = volume.list;
+const lastWithContent = list.map((bucket: any, index: number) => bucket.count ? index : -1).filter((index: number) => index >= 0).pop();
+const selected = state.w !== '' ? Math.max(0, Math.min(list.length - 1, Number(state.w))) : (lastWithContent ?? list.length - 1);
+const bucket = list[selected];
+const labelOf = (item: any) => item.unit === 'month' ? fmtMonth(item.start) : fmtDate(item.start);
+const nameOf = (item: any) => item.unit === 'week' ? `Week of ${fmtDate(item.start)}` : item.unit === 'month' ? fmtMonthLong(item.start) : item.unit === '2 days' ? `${fmtDate(item.start)} – ${fmtDate(new Date(Date.parse(item.start) + 86_400_000).toISOString())}` : fmtDate(item.start);
+const totals = volume.totals;
+const exactTotal = totals.added + totals.deleted + totals.modified;
+const incomplete = totals.recovered < totals.count;
+const members = bucket ? bucket.members.filter((pr: any) => !pr.unrecovered) : [];
+const missing = bucket ? bucket.members.filter((pr: any) => pr.unrecovered) : [];
+const bucketExact = bucket ? bucket.added + bucket.deleted + bucket.modified : 0;
+const perPr = members.map((pr: any) => ({ label: `#${pr.number}`, added: pr.latest.changed.status === 'exact' ? pr.latest.added.lower : 0, deleted: pr.latest.changed.status === 'exact' ? pr.latest.deleted.lower : 0, modified: pr.latest.changed.status === 'exact' ? pr.latest.modified.lower : 0, boundedLow: pr.latest.changed.status === 'exact' ? 0 : (pr.latest.changed.lower ?? 0), boundedHigh: pr.latest.changed.status === 'exact' ? 0 : pr.latest.changed.upper, boundedCount: pr.latest.changed.status === 'exact' ? 0 : 1, rawChurn: pr.latest.raw.lower ?? 0, coverage: 'complete', count: 1, recovered: 1, title: pr.title }));
+const population = volume.basis === 'merged' ? 'merged' : 'analysed';
+// Period comparison rows: selected period against the previous one, with coverage visible.
+const coverageOf = (stats: any) => life ? `${stats.mergedRecovered}/${stats.merged}` : `${stats.analysedCount}/${stats.analysedCount}`;
+const comparable = life ? (cur.merged === 0 || prev.merged === 0 || (cur.mergedRecovered === cur.merged) === (prev.mergedRecovered === prev.merged)) : true;
+const rows = [
+  [life ? 'merged PRs' : 'analysed PRs', life ? cur.merged : cur.analysedCount, life ? prev.merged : prev.analysedCount, true],
+  ['coverage', coverageOf(cur), coverageOf(prev), null],
+  ['Changed', cur.changedTotal.lower, prev.changedTotal.lower, false],
+  ['~ modified', cur.decomposition.modified.lower, prev.decomposition.modified.lower, false],
+  ['+ added-only', cur.decomposition.added.lower, prev.decomposition.added.lower, false],
+  ['− deleted-only', cur.decomposition.deleted.lower, prev.decomposition.deleted.lower, false],
+  ['raw churn', cur.rawTotal.lower, prev.rawTotal.lower, false],
+  ['median Changed', cur.medianChanged.lower ?? 0, prev.medianChanged.lower ?? 0, true],
+  ...(life ? [['median days to merge', Math.round((cur.timeToMerge.lower ?? 0) * 10) / 10, Math.round((prev.timeToMerge.lower ?? 0) * 10) / 10, true]] : [])
+];
+const lanePrs = (life ? cur.analysed.filter((pr: any) => pr.state === 'merged') : cur.analysed);
+---
+<AppShell title="History" nav={navModel(view, 'history')} view={view}>
+  <PageHead view={view} title="History" />
+  <div class="a-grid">
+    <Panel id="vol" span={12} title="Change volume" meta={`by ${buckets.unit} · ${population === 'merged' ? 'one retained analysis per merged PR, by merge time' : 'one retained analysis per analysed PR, by analysis time'} · ${view.period.label}`}>
+      <span class:list={['a-cov', { inc: incomplete }]} slot="tools" title={`${population} PRs whose analysis was retained`}><Icon name={incomplete ? 'circle-dashed' : 'check'} size={13} /> {totals.recovered} of {totals.count} {population} PRs recovered{totals.partial ? ` · ${totals.partial} partial ${buckets.unit === '2 days' ? 'bucket' : buckets.unit}${totals.partial > 1 ? 's' : ''}` : ''} · nothing interpolated</span>
+      <div class="a-sumrow">
+        <div><div class="k">{incomplete ? 'observed Changed' : 'Changed'}</div><div class="v">{incomplete ? `≥ ${n0(exactTotal + totals.boundedLow)}` : totals.boundedLow ? `${n0(exactTotal + totals.boundedLow)}${totals.boundedHigh !== null ? `–${n0(exactTotal + totals.boundedHigh)}` : ' or more'}` : n0(exactTotal)}</div>{incomplete ? <div class="a-mini">{totals.count - totals.recovered} {population} PRs not recovered</div> : totals.boundedLow ? <div class="a-mini">includes bounded results</div> : null}</div>
+        <div><div class="k" style="color:var(--a-mod)">~ modified</div><div class="v">{n0(totals.modified)}</div></div>
+        <div><div class="k" style="color:var(--a-add)">+ added-only</div><div class="v">{n0(totals.added)}</div></div>
+        <div><div class="k" style="color:var(--a-del)">− deleted-only</div><div class="v">{n0(totals.deleted)}</div></div>
+        <div><div class="k">raw churn</div><div class="v muted2">{incomplete ? '≥ ' : ''}{n0(totals.rawChurn)}</div></div>
+        <div class="a-sumnote">raw churn counts each modified line twice: once removed, once added</div>
+      </div>
+      {buckets.note && <p class="a-mini" style="margin:0 0 6px">{buckets.note}</p>}
+      {!life && <p class="a-basis"><Icon name="circle-dashed" size={13} /><span>Merge times are not available ({lifecycle.reason}); buckets use each pull request's latest analysis time instead.</span></p>}
+      <div class="a-pick" data-pick-bucket={view.href('/history', { w: '__W__' })}><Fragment set:html={charts.mosaic(list, { w: 1180, h: 290, selected, every: list.length > 14 ? 2 : 1, fill: 0.7, label: labelOf, title: nameOf })} /></div>
+      <Fragment set:html={charts.mosaicLegend({ partial: totals.partial > 0 })} />
+      <nav class="a-bucketnav" aria-label="Buckets">{list.map((item: any, index: number) => <a href={view.href('/history', { w: String(index) })} aria-current={index === selected ? 'true' : undefined} title={nameOf(item)}>{labelOf(item)}</a>)}</nav>
+    </Panel>
+
+    {!pro && <Panel id="lanes" span={12} title={`${population === 'merged' ? 'Merged' : 'Analysed'} PRs by size`} meta={`one dot per PR · ${view.period.label} · hollow = bounded or not recovered · select a dot for its PR`}>
+      <Fragment set:html={charts.lanes(lanePrs, { w: 1180, h: 250, days: view.period.days, nowIso: view.nowIso, bands: BANDS, unknownBand: UNKNOWN_BAND, href: (pr: any) => view.href(pullRequestPath(view.viewer.repositories.find((repository: any) => repository.repositoryId === pr.repositoryId)?.fullName ?? '', pr.number)) })} />
+    </Panel>}
+
+    <div class="s5 a-col">
+      {bucket && <Panel id="bucket" span={12} class="a-fill" title={nameOf(bucket)} meta={bucket.coverage === 'partial' ? 'partial acquisition' : `selected ${buckets.unit === '2 days' ? '2-day bucket' : buckets.unit}`}>
+        <div class="a-wsum"><div class="a-chg"><span class="n" style="font-size:22px">{bucket.boundedLow ? `${n0(bucketExact + bucket.boundedLow)}${bucket.boundedHigh !== null ? `–${n0(bucketExact + bucket.boundedHigh)}` : ' or more'}` : n0(bucketExact)}</span><span class="u">Changed</span></div>
+          {members.length > 1 && <div class="a-split" style="height:10px;margin:8px 0 6px"><i style={`flex:${bucket.modified};background:var(--a-mod)`}></i><i style={`flex:${bucket.added};background:var(--a-add)`}></i><i style={`flex:${bucket.deleted};background:var(--a-del)`}></i>{bucket.boundedLow > 0 && <i class="unres" style={`flex:${bucket.boundedLow}`}></i>}</div>}
+          <div class="a-mini">~{n0(bucket.modified)} · +{n0(bucket.added)} · −{n0(bucket.deleted)}{bucket.boundedCount ? ` · ${bucket.boundedCount} bounded` : ''} · raw churn {n0(bucket.rawChurn)}</div></div>
+        {members.length > 0 && <><div class="a-k2" style="margin-top:14px">Changed per {population} PR</div><Fragment set:html={charts.mosaic(perPr, { w: 480, h: members.length >= 5 ? 190 : 300, fill: perPr.length === 1 ? 0.34 : 0.62, label: (item: any) => item.label, title: (item: any) => `${item.label}${item.title ? ` ${item.title}` : ''}` })} /></>}
+        {missing.length > 0 && <div class="a-note" style="margin:14px 0 6px"><Icon name="circle-dashed" size={14} /><span><b>{members.length} of {bucket.members.length}</b> {population} PRs recovered this {buckets.unit === '2 days' ? 'bucket' : buckets.unit}. Totals cover these {members.length} only; nothing is interpolated.</span></div>}
+        <div class="a-k2" style="margin-top:14px">{missing.length ? `Recovered · ${members.length}` : `${population === 'merged' ? 'Merged' : 'Analysed'} · ${members.length}`}</div>
+        <div class="a-prs">{members.slice(0, 6).map((pr: any) => <PrRow pr={pr} view={view} showRepository={multi} compact />)}{members.length === 0 && <p class="a-mini">No {population} PRs.</p>}{members.length > 6 && <p class="a-mini" style="margin:8px 0 0">and {members.length - 6} more · <a class="link-quiet" href={view.href('/prs', { f: population === 'merged' ? 'merged' : '' })}>list all</a></p>}</div>
+        {missing.length > 0 && <><div class="a-k2">Not recovered · {missing.length}</div><div class="a-missing">{missing.map((pr: any) => <div><span class="si st-merged"><Icon name="merged" size={16} /></span><span>{pr.title || `#${pr.number}`}</span><span class="a-mini">#{pr.number} · no retained analysis for this pull request</span></div>)}</div></>}
+      </Panel>}
+    </div>
+    <div class="s7 a-col">
+      {pro ? <>
+        <Panel id="growth" span={12} title="File growth and shrinkage" plan="Pro" meta={`files with retained history · ${view.period.label}`}><Unavailable what="File sizes are not collected yet" why="growth and shrinkage need named-file size observations before and after each final merged comparison" /></Panel>
+        <Panel id="conc" span={12} class="a-fill" title="Concentration over time" plan="Pro" meta="share of Changed in the 10 most-changed files · trailing 4 weeks"><Unavailable what="File history is not collected yet" why="concentration needs per-file Changed per merged PR" /></Panel>
+      </> : <>
+        <Panel id="cmp" span={12} class="a-fill" title="Period comparison" meta={`selected ${view.period.label} vs previous ${view.period.label}`}>
+          <table class="a-tbl a-cmp"><thead><tr><th></th><th class="r">selected {view.period.label}</th><th class="r">previous {view.period.label}</th><th class="r">change</th><th style="width:28%"></th></tr></thead><tbody>
+            {rows.map(([key, x, y, always]: any) => { if (always === null) return <tr class="covrow"><td>{key}</td><td class="r num">{x}</td><td class="r num" style="color:var(--fg-3)">{y}</td><td class="r a-mini">{comparable ? 'same coverage' : 'differs'}</td><td></td></tr>; const ok = always || comparable; const fmt = (value: number) => (value % 1 ? value.toFixed(1) : n0(value)); return <tr><td>{key}</td><td class="r num" style="font-weight:600">{!always && incomplete ? '≥ ' : ''}{fmt(x)}</td><td class="r num" style="color:var(--fg-3)">{fmt(y)}</td><td class="r a-mini">{ok ? `${sgn(x - y)}${y ? ` · ${sgn(Math.round(((x - y) / y) * 100), '%')}` : ''}` : <span title={`Observed difference ${sgn(x - y)}; coverage differs, so the change is not comparable`}>incomplete coverage</span>}</td><td><div class:list={['a-pair', { inc: !ok }]}><i style={`width:${(x / Math.max(1, x, y)) * 100}%`}></i><i style={`width:${(y / Math.max(1, x, y)) * 100}%`}></i></div></td></tr>; })}
+          </tbody></table>
+          <p class="a-mini" style="margin:8px 0 0">Line totals cover recovered comparisons; bounded results count at their proven minimum. Upper bar: selected period · lower bar: previous.</p>
+        </Panel>
+        <SeePro text="File growth and shrinkage, and concentration over time" span={12} />
+      </>}
+    </div>
+    {pro && <Panel id="cmp" span={12} title="Period comparison" meta={`selected ${view.period.label} vs previous ${view.period.label}`}>
+      <table class="a-tbl a-cmp"><thead><tr><th></th><th class="r">selected {view.period.label}</th><th class="r">previous {view.period.label}</th><th class="r">change</th></tr></thead><tbody>
+        {rows.map(([key, x, y, always]: any) => always === null ? <tr class="covrow"><td>{key}</td><td class="r num">{x}</td><td class="r num" style="color:var(--fg-3)">{y}</td><td class="r a-mini">{comparable ? 'same coverage' : 'differs'}</td></tr> : <tr><td>{key}</td><td class="r num" style="font-weight:600">{x}</td><td class="r num" style="color:var(--fg-3)">{y}</td><td class="r a-mini">{sgn(x - y)}</td></tr>)}
+      </tbody></table>
+    </Panel>}
+  </div>
+</AppShell>

@@ -1,0 +1,47 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only
+// The threshold. Anyone can sign in with GitHub and read the connected repositories they may
+// currently access; signing in grants no installation, authority or subscription by itself.
+import '../../../website/src/styles/fonts.css';
+import '../../../website/src/styles/tokens.css';
+import '../../../website/src/styles/global.css';
+import '../styles/app.css';
+import Icon from '../components/Icon.astro';
+import { siteHeader } from '../lib/shell.mjs';
+import { SIGN_IN_MESSAGES } from '../lib/routes.mjs';
+const header = await siteHeader(Astro.locals, Astro.locals.app?.config?.origin ?? Astro.url.origin);
+const reason = Astro.url.searchParams.get('reason') ?? '';
+const message = reason === 'E_GITHUB_RATE_LIMIT' ? 'GitHub is rate-limiting reads for this account right now. Try again in a few minutes.'
+  : reason === 'E_PROVIDER_UNAVAILABLE' ? 'GitHub did not answer when the App asked which repositories you can see. Try again.'
+  : (SIGN_IN_MESSAGES as Record<string, string>)[reason];
+const siteOrigin = Astro.locals.app?.config?.siteOrigin ?? 'https://diffdevil.dev';
+---
+<!doctype html>
+<html lang="en" data-theme="dark" data-theme-pref="dark" data-theme-next="light" data-theme-locked>
+  <head>
+    <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Sign in · diffdevil App</title>
+    <meta name="robots" content="noindex, nosnippet" /><meta name="color-scheme" content="dark" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  </head>
+  <body class="app-route">
+    <a class="visually-hidden" href="#main">Skip to content</a>
+    <Fragment set:html={header} />
+    <main id="main" class="a-signin">
+      <section class="a-pn a-signin-card">
+        <div class="a-pn-b">
+          <p class="eyebrow eyebrow-caps">diffdevil App</p>
+          <h1>Sign in with GitHub</h1>
+          <p class="lede">You will see the repositories you can already access on GitHub, for the installations that reach them. Signing in gives the App no new authority over any repository and starts no collection.</p>
+          {message && <p class="a-note" role="alert"><Icon name="circle-dashed" size={14} />{message}</p>}
+          <a class="btn btn-primary btn-l" href="/auth/start" rel="nofollow"><Icon name="github" size={16} />Continue with GitHub</a>
+          <p class="a-mini a-signin-foot">The App stores an opaque session and your sealed GitHub authorization; it never stores a browser secret in plain text. <a class="link-quiet" href={`${siteOrigin}/privacy/`}>Privacy</a> · <a class="link-quiet" href={`${siteOrigin}/app/`}>About the App</a></p>
+        </div>
+      </section>
+    </main>
+    <div class="live" role="status" aria-live="polite" data-live-region></div>
+    <script>
+      import '../client/app';
+    </script>
+  </body>
+</html>

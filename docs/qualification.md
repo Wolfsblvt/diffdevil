@@ -7,6 +7,42 @@ historical runtime results and unobserved external effects. A schema specimen is
 not execution, a green unit suite is not a packaged consumer, and mock HTTP is not
 live GitHub permission evidence.
 
+## October 9 signed-in App source candidate — native Windows Node 26
+
+Candidate `feat/app-analytical-experience` on `main@1e8f5628`, Windows 11, Node 26.7.0, this
+checkout only. Nothing here is a deployed App, a live GitHub sign-in or real repository data.
+
+- `npm run test:app`: nine derivation and URL-state cases, and four journey cases against a
+  Miniflare D1 seeded through the managed App's own write paths (137 analyses produced by the
+  real engine from generated diffs) with GitHub replaced by the fixture's wire double: sign-in
+  start → callback → one-time artifact → session → sign-out, foreign-origin refusal, viewer
+  resolution with yours/shared namespaces and repository standing, read-store consent gating,
+  page-loader populations and entitlement rules, rate-limit standing, and consent withdrawal.
+  All passed.
+- `npm run qa:app` against the built Worker in local workerd (`wrangler dev --local`) with
+  seeded local D1 and a loopback GitHub double: 93 of 93 checks. Covered: unauthenticated
+  redirect, sign-in page, the real OAuth state/cookie/callback/continuation/session route in
+  Chromium, all six destinations in a Pro and a Free entitlement at 1440×900 (one h1 at the
+  requested route, App surface label, current trailing App action, header and App frame
+  alignment, no horizontal overflow, no `NaN`/`undefined`, dark with IBM Plex Sans, private
+  no-store and CSP headers), period and scope persistence through the URL, bucket selection,
+  status/search filters, drill-down to PR detail with three policy lanes, pathless file rows
+  and freshness, file-detail standing, 404 refusal outside the authorised set, keyboard reach
+  (skip link, navigation, Enter, period switch), the inert theme control, sign-out, Free
+  panels without premium chips, the Free Files state, lanes and period comparison, the
+  1024-wide stacked frame, and no console, page or external-request errors. Screenshots and
+  `results.json` are in `artifacts/app/qa/`.
+- `npm run check:app`: the Astro build (header fragment prerendered in Node) and
+  `wrangler deploy --dry-run` of the generated configuration (bindings `APP_DB`, `ASSETS`,
+  three vars) succeeded without creating any resource.
+- `node tools/test.mjs` (the registered suite, including the new App cases and the
+  authorization service after its loopback and read-seam changes) passed; see the Return.
+- Not exercised: a live GitHub App user authorization, a deployed Worker, D1 migrations
+  against the production database, real repository shapes and volume, screen readers, the
+  light theme, phone width, and the website's own `website:check` (its Astro checker crashes
+  on this machine independently of this candidate; the split client scripts were type-checked
+  with the TypeScript 6 compiler directly).
+
 ## September 17 live Cloudflare playground
 
 Accepted public [`main@a2fb057`](https://github.com/Wolfsblvt/diffdevil/commit/a2fb057063bcd02c961877ac1ce186b87f2ef36e)

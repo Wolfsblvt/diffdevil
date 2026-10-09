@@ -1,0 +1,11 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only
+// A bounded unavailable state inside a panel or tile. It names what is missing and why, in
+// plain words, instead of showing a zero or an empty chart. Unknown is not zero.
+interface Props { what: string; why?: string | undefined; compact?: boolean | undefined }
+const { what, why, compact = false } = Astro.props;
+---
+<div class:list={['a-unavail', { compact }]} role="note">
+  <span class="a-unavail-mark" aria-hidden="true"></span>
+  <span><b>{what}</b>{why && <span class="a-mini"> · {why}</span>}</span>
+</div>

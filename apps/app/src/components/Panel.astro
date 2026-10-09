@@ -1,0 +1,21 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only
+// A panel on the even grid: a title row (title, premium plan chip, tools, open action) and a
+// metadata line that wraps and is never ellipsized; an optional footer carries the drill-down.
+import Icon from './Icon.astro';
+import PlanChip from './PlanChip.astro';
+interface Props { id: string; title: string; span?: 3 | 4 | 5 | 6 | 7 | 8 | 12; plan?: string | undefined; meta?: string | undefined; open?: string | undefined; class?: string | undefined }
+const { id, title, span = 4, plan, meta, open, class: extra } = Astro.props;
+---
+<section class:list={['a-pn', `s${span}`, extra]} aria-labelledby={`h-${id}`}>
+  <header class="a-pn-h">
+    <div class="a-pn-t">
+      <h2 id={`h-${id}`}>{open ? <a href={open}>{title}</a> : title}</h2>
+      {plan && <PlanChip plan={plan} />}
+      <span class="r"><slot name="tools" />{open && <a class="a-open" href={open} title="Open" aria-label={`Open ${title}`}><Icon name="open" size={14} /></a>}</span>
+    </div>
+    {(meta || Astro.slots.has('meta')) && <div class="d">{meta}<slot name="meta" /></div>}
+  </header>
+  <div class="a-pn-b"><slot /></div>
+  {Astro.slots.has('foot') && <footer class="a-pn-f"><slot name="foot" /></footer>}
+</section>

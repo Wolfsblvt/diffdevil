@@ -8,7 +8,7 @@
     "build": "node tools/build.mjs",
     "build:offline": "npm run build",
     "test": "node tools/browser-extension-build.mjs --without-fonts && node tools/test.mjs",
-    "verify": "npm run check:prep && npm run build && npm test && npm run test:release && npm run check:actions && npm run check:workers && npm run check:github-app && npm run check:website && npm run extension:check && node tools/browser-extension-build.mjs",
+    "verify": "npm run check:prep && npm run build && npm test && npm run test:release && npm run check:actions && npm run check:workers && npm run check:github-app && npm run check:website && npm run check:app && npm run extension:check && node tools/browser-extension-build.mjs",
     "verify:offline": "npm run verify",
     "test:package": "node tools/package-smoke.mjs",
     "prepack": "npm run build",
@@ -38,7 +38,14 @@
     "extension:test": "node tools/browser-extension-build.mjs --without-fonts && node --test apps/browser-extension/tests/*.test.mjs",
     "extension:qa": "node apps/browser-extension/qa/run.mjs && node apps/browser-extension/qa/acquisition.mjs",
     "extension:qa:installed": "node apps/browser-extension/qa/installed.mjs",
-    "extension:store": "node tools/browser-extension-store.mjs"
+    "extension:store": "node tools/browser-extension-store.mjs",
+    "app:icons": "node tools/app-icons.mjs",
+    "app:build": "npm run build && node tools/website-docs.mjs && npm run app:icons && node tools/app-command.mjs build",
+    "app:dev": "npm run build && node tools/website-docs.mjs && npm run app:icons && node tools/app-command.mjs dev",
+    "app:preview": "node tools/app-command.mjs preview",
+    "check:app": "node tools/website-docs.mjs && npm run app:icons && node tools/app-command.mjs build && node tools/run-wrangler.mjs deploy --dry-run --config artifacts/app/dist/server/wrangler.json --outdir ../../wrangler-dry-run-app",
+    "test:app": "node --test apps/app/tests/*.test.mjs",
+    "qa:app": "node apps/app/qa/run.mjs"
   },
   "keywords": [
     "git",
@@ -106,6 +113,7 @@
   },
   "devDependencies": {
     "@astrojs/check": "0.9.10",
+    "@astrojs/cloudflare": "14.3.4",
     "@astrojs/react": "6.0.6",
     "@astrojs/starlight": "0.42.2",
     "@codemirror/commands": "6.11.1",

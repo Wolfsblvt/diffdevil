@@ -1,0 +1,36 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only
+// File detail: the route and its authorisation exist now; the history behind it does not yet.
+// A Pro scope sees the honest standing for this file; a Free scope sees the See Pro state.
+import AppShell from '../../../../layouts/AppShell.astro';
+import PageHead from '../../../../components/PageHead.astro';
+import Panel from '../../../../components/Panel.astro';
+import Unavailable from '../../../../components/Unavailable.astro';
+import SeePro from '../../../../components/SeePro.astro';
+import { loadView, navModel, repositoryByFullName } from '../../../../lib/view.mjs';
+
+const { owner, repo, path = '' } = Astro.params;
+const fullName = `${owner}/${repo}`;
+const repository = repositoryByFullName(Astro.locals.viewer, fullName);
+const filePath = decodeURIComponent(path);
+const view = await loadView({ url: new URL(Astro.url.pathname + (Astro.url.search || `?s=${repository ? fullName : 'all'}`), Astro.url), viewer: Astro.locals.viewer, session: Astro.locals.session, runtime: Astro.locals.app });
+if (!repository) Astro.response.status = 404;
+const pro = view.entitlement.premium;
+const cut = filePath.lastIndexOf('/');
+---
+<AppShell title={`${filePath || 'file'} · ${repo}`} nav={navModel(view, 'file')} view={view}>
+  {!repository ? <div class="a-focus a-pn"><div class="a-pn-b" style="padding:28px 32px"><h1 style="font-size:22px;margin:0 0 8px">Not in your repositories</h1><p class="lede">{fullName} is not among the repositories your GitHub account currently reaches through an App installation. <a class="link-quiet" href="/">Back to the overview</a>.</p></div></div>
+  : <>
+  <PageHead view={view} title={filePath} crumbs={[{ label: 'Files', href: view.href('/files') }]} scope={false}>
+    <Fragment slot="title"><span class="a-path"><span class="dir">{cut >= 0 ? filePath.slice(0, cut + 1) : ''}</span>{cut >= 0 ? filePath.slice(cut + 1) : filePath}</span></Fragment>
+    <div class="a-scope" slot="scope">{fullName}<span class="a-dot">·</span>{view.period.label}<span class="a-dot">·</span>file history not collected yet</div>
+  </PageHead>
+  <div class="a-grid">
+    {pro ? <>
+      <Panel id="tiles" span={12} title="This file" plan="Pro" meta="merged PRs · Changed · raw churn · size · Turnover (turnover-v1)"><Unavailable what="File history is not collected yet" why="the App retains pathless numeric rows; named-file observations, sizes and turnover-v1 arrive with the analytical data candidate" /></Panel>
+      <Panel id="fh" span={8} title="Changed per merged PR" plan="Pro" meta="file-local · one final comparison per PR"><Unavailable what="Needs named file contributions" compact /></Panel>
+      <Panel id="fr" span={4} title="Often changed with" plan="Pro" meta="last 90 days"><Unavailable what="Needs co-change history" compact /></Panel>
+    </> : <SeePro text="File history: Changed per merged PR, size over time, Turnover and the files it changes with" span={12} />}
+  </div>
+  </>}
+</AppShell>

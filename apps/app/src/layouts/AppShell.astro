@@ -1,0 +1,45 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only
+// The ratified App shell: the unchanged site header in the same frame, the Works wide frame
+// (96rem) with the site gutters, a sticky docs-like side navigation, and the page. Dark only
+// for now, by decision; the light theme is not designed.
+import '../../../website/src/styles/fonts.css';
+import '../../../website/src/styles/tokens.css';
+import '../../../website/src/styles/global.css';
+import '../styles/app.css';
+import Nav from '../components/Nav.astro';
+import { siteHeader } from '../lib/shell.mjs';
+interface Props { title: string; nav?: any; view?: any; description?: string | undefined }
+const { title, nav, view, description = 'The diffdevil App: understand change across your repositories.' } = Astro.props;
+const header = await siteHeader(Astro.locals, Astro.locals.app?.config?.origin ?? Astro.url.origin);
+const viewer = Astro.locals.viewer;
+---
+<!doctype html>
+<html lang="en" data-theme="dark" data-theme-pref="dark" data-theme-next="light" data-theme-locked>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title} · diffdevil App</title>
+    <meta name="description" content={description} />
+    <meta name="robots" content="noindex, nosnippet" />
+    <meta name="theme-color" content="#151922" />
+    <meta name="color-scheme" content="dark" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  </head>
+  <body class="app-route">
+    <a class="visually-hidden" href="#main">Skip to content</a>
+    <Fragment set:html={header} />
+    <div class="a-page">
+      <div class="a-frame">
+        {viewer && nav && <Nav viewer={viewer} nav={nav} view={view} />}
+        <main class="a-main" id="main">
+          <slot />
+        </main>
+      </div>
+    </div>
+    <div class="live" role="status" aria-live="polite" data-live-region></div>
+    <script>
+      import '../client/app';
+    </script>
+  </body>
+</html>

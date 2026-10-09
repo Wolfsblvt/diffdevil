@@ -52,7 +52,10 @@ node dist/lib/cli/main.js analyze --diff-file docs/examples/diffs/review.diff --
 and checks exact generated Action parity. When source or packaging affects the
 Actions, run `npm run build:actions`, inspect the generated diff, and verify again.
 Run `npm run test:conformance`, `npm run test:package`, and `npm run test:actions`
-for the separately named consumer boundaries. `npm run website:build` builds both
+for the separately named consumer boundaries. The signed-in App under `apps/app/`
+has `npm run test:app` (derivations and the local-D1 sign-in/read journey),
+`npm run check:app` (build plus Wrangler dry-run, part of `verify`) and
+`npm run qa:app` (headless Chromium against the built Worker and a GitHub double). `npm run website:build` builds both
 public static hosts and their joined search index; `verify` includes that build.
 `npm run qa:website` qualifies the existing website, while
 `npm --prefix apps/manual run qa` qualifies the two-host manual/FAQ interfaces.
@@ -78,7 +81,7 @@ not real credentials or live repository mutation.
 ## Generated and public boundaries
 
 Edit `src/diffdevil/`, not the generated `actions/runtime/` implementation or `action.yml`
-files. The new public manual is generated from `docs/manual/` through the explicit
+files. `apps/app/src/generated/` is the App's build-time icon projection, not source. The new public manual is generated from `docs/manual/` through the explicit
 `apps/manual/manifest.mjs`. The apex no longer projects a competing manual. Its
 finite legacy inventory is `apps/website/docs-manifest.mjs`; selected transfers and
 captured fragments stay in the manual manifest and authoring state. The Agent Skill

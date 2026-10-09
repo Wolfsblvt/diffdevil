@@ -1,0 +1,29 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only
+// Page head: breadcrumb (no plan chips), title, the scope line (repositories · with history ·
+// period · updated), and the period switch which persists across pages through the URL.
+import { ago } from '../lib/format.mjs';
+import { scopeLine } from '../lib/view.mjs';
+interface Props { view: any; title: string; crumbs?: { label: string; href?: string }[]; period?: boolean; scope?: boolean }
+const { view, title, crumbs = [], period = true, scope = true } = Astro.props;
+const line = scopeLine(view);
+const trail: { label: string; href?: string }[] = [{ label: 'All repositories', href: view.href('/', { s: 'all' }) }];
+if (view.scope.kind === 'namespace') trail.push({ label: view.scope.namespace });
+if (view.scope.kind === 'repository') trail.push({ label: view.scope.namespace, href: view.href('/', { s: `@${view.scope.namespace}` }) }, { label: view.scope.name, href: view.href('/') });
+trail.push(...crumbs);
+---
+<div class="a-head">
+  <div class="ttl">
+    <nav class="crumb" aria-label="Breadcrumb">
+      {trail.map((part, index) => (<>{index > 0 && <span class="a-sep" aria-hidden="true">/</span>}{part.href ? <a href={part.href}>{part.label}</a> : <span>{part.label}</span>}</>))}
+    </nav>
+    <h1><slot name="title">{title}</slot></h1>
+    {scope ? <div class="a-scope">{line.repositories}<span class="a-dot">·</span>{line.withHistory}<span class="a-dot">·</span>{line.period}<span class="a-dot">·</span>{line.latest ? `updated ${ago(line.latest, view.nowIso)}` : 'no analysis retained yet'}</div> : <slot name="scope" />}
+  </div>
+  <div class="tools">
+    <slot name="tools" />
+    {period && <div class="a-seg" role="group" aria-label="Period">
+      {view.periods.map((candidate: any) => <a href={view.href(Astro.url.pathname, { per: candidate.key, w: '', page: '' })} aria-current={view.period.key === candidate.key ? 'true' : undefined}>{candidate.label}</a>)}
+    </div>}
+  </div>
+</div>

@@ -1,0 +1,92 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only
+// Side navigation: sections, then the repository collection (All repositories, filter, Yours,
+// Shared with you) and the pinned account switcher. Plan chips sit on namespaces here and
+// nowhere in the page body; Free shows no chip. Repository status uses one vocabulary.
+import Icon from './Icon.astro';
+import PlanChip from './PlanChip.astro';
+import { link } from '../lib/scope.mjs';
+interface Props { viewer: any; nav: { section: string; active: number | null; premium: boolean }; view?: any }
+const { viewer, nav, view } = Astro.props;
+const state = view?.state ?? { s: 'all', per: '30d' };
+const carried = { s: state.s, per: state.per };
+const keep = ['pr', 'file'].includes(nav.section) ? '/' : nav.section === 'overview' ? '/' : `/${nav.section}`;
+const sections = [
+  { key: 'overview', path: '/', label: 'Overview', icon: 'overview' as const },
+  { key: 'prs', path: '/prs', label: 'Pull requests', icon: 'pull-request' as const },
+  { key: 'history', path: '/history', label: 'History', icon: 'history' as const },
+  { key: 'files', path: '/files', label: 'Files', icon: 'files' as const }
+];
+const current = { pr: 'prs', file: 'files' }[nav.section as 'pr' | 'file'] ?? nav.section;
+const planOf = (namespace: any) => (namespace.yours ? viewer.plan : namespace.plan);
+const statusText: Record<string, { label: string; title: string } | undefined> = {
+  'labels-only': { label: 'Labels only', title: 'Size labels only; history is not collected' },
+  'history-off': { label: 'History off', title: 'Installed; history not enabled' },
+  'not-recorded': { label: 'Not recorded', title: 'GitHub grants this repository, but the App has not recorded it yet' }
+};
+const yours = viewer.namespaces.filter((namespace: any) => namespace.yours);
+const shared = viewer.namespaces.filter((namespace: any) => !namespace.yours);
+const siteOrigin = Astro.locals.app?.config?.siteOrigin ?? 'https://diffdevil.dev';
+---
+<nav class="a-nav" aria-label="App" data-nav>
+  <div class="a-nav-scroll">
+    <div class="a-nav-sec">
+      {sections.map(section => (
+        <a href={link(state, section.path, { f: '', band: '', ev: '', sort: '', q: '', page: '', w: '' })} aria-current={current === section.key ? 'page' : undefined}>
+          <Icon name={section.icon} size={16} /><span>{section.label}</span>
+          <span class="a-end">
+            {section.key === 'prs' && nav.active !== null && <span class="a-st">{nav.active} active</span>}
+            {section.key === 'files' && !nav.premium && <PlanChip plan="Pro" />}
+          </span>
+        </a>
+      ))}
+    </div>
+    <div class="a-nav-label">Repositories</div>
+    <a class="a-allrepos" href={link({ ...carried, s: 'all' }, keep)} aria-current={state.s === 'all' ? 'page' : undefined}>
+      <Icon name="overview" size={15} /><span>All repositories</span><span class="a-end"><span class="a-count">{viewer.repositories.length}</span></span>
+    </a>
+    <label class="a-filter"><Icon name="search" size={13} /><input type="search" placeholder="Filter repositories" aria-label="Filter repositories" data-nav-filter /></label>
+    {[['Yours', yours], ['Shared with you', shared]].map(([group, namespaces]: any) => namespaces.length > 0 && (
+      <>
+        <div class="a-nav-group">{group}</div>
+        {namespaces.map((namespace: any) => (
+          <div class="a-nsp" data-namespace={namespace.login}>
+            <div class="a-acctrow">
+              <a class="a-acct" href={link({ ...carried, s: `@${namespace.login}` }, keep)} aria-current={state.s === `@${namespace.login}` ? 'page' : undefined}>
+                <span class:list={['a-av', { user: namespace.kind === 'user' }]} aria-hidden="true">{namespace.login.slice(0, 2)}</span>
+                <span class="rn">{namespace.login}</span>
+                {namespace.login === viewer.login && <span class="a-you">you</span>}
+                <span class="a-end"><PlanChip plan={planOf(namespace)} /></span>
+              </a>
+              <button class="a-tog" type="button" aria-expanded="true" aria-label={`Collapse ${namespace.login}`} data-nav-toggle={namespace.login}><Icon name="chevron" size={14} class="chev" /></button>
+            </div>
+            <div class="a-repos" data-nav-repos={namespace.login}>
+              {namespace.repositories.map((repository: any) => (
+                <a href={link({ ...carried, s: repository.fullName }, keep)} aria-current={state.s === repository.fullName ? 'page' : undefined} data-nav-repo={repository.fullName.toLowerCase()}>
+                  <Icon name={repository.private ? 'lock' : 'book'} size={13} /><span class="rn">{repository.name}</span>
+                  <span class="a-end">{statusText[repository.status] && <span class="a-st" title={statusText[repository.status]!.title}>{statusText[repository.status]!.label}</span>}</span>
+                </a>
+              ))}
+            </div>
+          </div>
+        ))}
+      </>
+    ))}
+    {viewer.repositories.length === 0 && <p class="a-nav-empty">No repository reaches this account through an App installation yet. <a class="link-quiet" href={`${siteOrigin}/app/`}>How the App is installed</a></p>}
+  </div>
+  <div class="a-nav-foot">
+    <details class="a-me-host">
+      <summary class="a-me" title="Account and plan">
+        <span class="a-av user" aria-hidden="true">{viewer.login.slice(0, 2)}</span>
+        <span class="who"><b>{viewer.login}</b><span>{viewer.plan === 'Free' ? 'Free plan' : `${viewer.plan} plan`}</span></span>
+        <PlanChip plan={viewer.plan} />
+        <Icon name="chevron" size={14} />
+      </summary>
+      <div class="a-me-menu">
+        <p class="a-mini">{viewer.entitlementSource === 'none-connected' ? 'No subscription source is connected yet; every namespace reads as Free.' : 'Plans come from a local fixture.'}</p>
+        <form method="post" action="/auth/logout"><button class="a-linkbtn" type="submit">Sign out</button></form>
+      </div>
+    </details>
+    <div class="a-nav-sec"><span class="a-nav-disabled" title="Manage is not designed yet; it is the next design session."><Icon name="manage" size={16} /><span>Manage</span><span class="a-end"><span class="a-st">soon</span></span></span></div>
+  </div>
+</nav>

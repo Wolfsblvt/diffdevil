@@ -70,10 +70,15 @@ ordinary configured PR policy ran. The canonical public ingress is now
 pending-enable repository delivery was rejected with `E_ACCESS_DISABLED` and zero
 effects. The first enabled repository policy result remains unobserved. The
 route-neutral dashboard authorization/session source is qualified on `main`, but
-its D1 migrations, live OAuth/cookie route, updated Worker deployment, visible
-dashboard experience and first administrator journey remain unobserved or held
-for co-design. Wider recovery, history, offboarding and commercial service remain
-separate accepted product work.
+its D1 migrations, live OAuth/cookie route and updated Worker deployment remain
+unobserved. The analytical App design was ratified on 2026-10-09 and its first
+source candidate exists under `apps/app/`: the six destinations, GitHub sign-in,
+the read model over retained numeric history and transient GitHub lifecycle facts,
+and provisional chart figures, qualified locally against a fixture. Named file
+history, the chart-and-cloud system, Manage/subscription, the public view and the
+operator view remain separate accepted work; no live sign-in, deployment or real
+repository has exercised the App. Wider recovery, history, offboarding and
+commercial service remain separate accepted product work.
 
 The selected implementation direction is now explicit:
 

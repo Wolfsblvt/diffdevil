@@ -1,0 +1,16 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only
+// Replacement-aware Changed with its evidence: exact prints the number and decomposition;
+// bounded prints the proven range with a dashed chip; unknown says so.
+import { describeBound, n0 } from '../lib/intervals.mjs';
+interface Props { value: any; facts?: any; compact?: boolean }
+const { value, facts, compact = false } = Astro.props;
+const exact = value.status === 'exact';
+---
+<span class="a-chg">
+  <span class="n">{describeBound(value)}</span>
+  {exact && facts && !compact && facts.added.status === 'exact' && <span class="d"><span class="p">+{n0(facts.added.lower)}</span><span class="x">−{n0(facts.deleted.lower)}</span><span class="t">~{n0(facts.modified.lower)}</span></span>}
+  {!exact && (value.upper === null && (value.lower ?? 0) === 0
+    ? <span class="a-ev unknown" title="Evidence cannot establish a value">unknown</span>
+    : <span class="a-ev bounded" title="Proven range; exact pairing not established">bounded</span>)}
+</span>

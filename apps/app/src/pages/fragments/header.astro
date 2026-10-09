@@ -1,0 +1,10 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only
+// The website's own header, rendered once at build as a static fragment and injected into
+// every App page unchanged: same component, same width, same trailing action. The location
+// label beside the wordmark reads "App" and the trailing action is current on App pages.
+import Header from '../../../../website/src/components/Header.astro';
+export const prerender = true;
+export const partial = true;
+---
+<Header surface="App" current="app" />

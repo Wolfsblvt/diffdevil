@@ -1,0 +1,13 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only
+// The size label chip with the size-v1 GitHub colours. Solid border: observed on GitHub.
+// Dashed: desired, unverified or derived from Changed because the analysis recorded no band.
+interface Props { band: any; labels?: any }
+const { band, labels } = Astro.props;
+const observed = labels?.standing === 'observed' && band.standing === 'recorded';
+const title = band.standing === 'derived' ? 'Band derived from Changed with the size-v1 thresholds; this analysis recorded no band'
+  : band.standing === 'unknown' ? 'Evidence cannot establish one size band'
+  : labels?.standing === 'observed' ? `Label observed on GitHub · ${labels.detail}`
+  : labels?.standing === 'unverified' ? 'Label write not read back' : labels?.standing === 'refused' ? 'GitHub refused the label write' : 'Policy result; no label effect recorded';
+---
+<span class:list={['a-lbl', { applied: observed, desired: !observed }]} title={title}><i style={`background:${band.color}`} aria-hidden="true"></i>{band.label}{band.standing === 'derived' && <span class="a-derived" aria-label="derived">·</span>}</span>

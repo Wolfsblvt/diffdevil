@@ -1,0 +1,13 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only
+// A compact tile in the hero grid: label, value (with unit and delta), a small visual, a caption.
+interface Props { label: string; value?: string | undefined; unit?: string | undefined; delta?: string | undefined; deltaTitle?: string | undefined; caption?: string | undefined; href?: string | undefined; title?: string | undefined }
+const { label, value, unit, delta, deltaTitle, caption, href, title } = Astro.props;
+const Tag = href ? 'a' : 'div';
+---
+<Tag class="a-tile" href={href} title={title}>
+  <div class="k">{label}</div>
+  {value !== undefined && <div class="v"><span class="n">{value}</span>{unit && <span class="u">{unit}</span>}{delta && <span class="dt" title={deltaTitle}>{delta}</span>}</div>}
+  <div class="viz"><slot /></div>
+  {caption && <div class="cap2">{caption}</div>}
+</Tag>

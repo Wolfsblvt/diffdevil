@@ -1,0 +1,11 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only
+// The App's semantic icon slot, served from the small generated projection of the installed
+// collections (tools/app-icons.mjs). Decorative unless a label is given.
+import { ICONS } from '../generated/icons.mjs';
+interface Props { name: keyof typeof ICONS; size?: number | undefined; class?: string | undefined; label?: string | undefined }
+const { name, size = 16, class: extra, label } = Astro.props;
+const body = ICONS[name];
+if (!body) throw new Error(`App icon "${String(name)}" is not generated.`);
+---
+<svg class:list={['icon', extra]} data-icon={name} width={size} height={size} viewBox="0 0 24 24" aria-hidden={label ? undefined : 'true'} role={label ? 'img' : undefined} aria-label={label} set:html={body} />

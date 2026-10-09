@@ -1,0 +1,98 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only
+// Pull-request detail: a fact card (state and times from GitHub now, analysed heads, base → head,
+// freshness against the current head), the result, the policy-and-effect lanes (measurement,
+// policy result, desired state, observed state, last transition), the files the analysis saw
+// (pathless, and said so) and the development across analysed heads.
+import AppShell from '../../../../layouts/AppShell.astro';
+import PageHead from '../../../../components/PageHead.astro';
+import Panel from '../../../../components/Panel.astro';
+import Unavailable from '../../../../components/Unavailable.astro';
+import SeePro from '../../../../components/SeePro.astro';
+import LabelChip from '../../../../components/LabelChip.astro';
+import Icon from '../../../../components/Icon.astro';
+import { loadView, navModel, repositoryByFullName } from '../../../../lib/view.mjs';
+import { describeBound, n0, bound } from '../../../../lib/intervals.mjs';
+import { groupPullRequests, development, lastTransition, BANDS } from '../../../../lib/derive.mjs';
+import * as charts from '../../../../lib/charts.mjs';
+import { ago, fmtDate, shortSha, pct } from '../../../../lib/format.mjs';
+
+const { owner, repo, number } = Astro.params;
+const fullName = `${owner}/${repo}`;
+const prNumber = Number(number);
+const repository = Number.isSafeInteger(prNumber) && prNumber > 0 ? repositoryByFullName(Astro.locals.viewer, fullName) : undefined;
+const view = await loadView({ url: new URL(Astro.url.pathname + (Astro.url.search || `?s=${repository ? fullName : 'all'}`), Astro.url), viewer: Astro.locals.viewer, session: Astro.locals.session, runtime: Astro.locals.app });
+if (!repository) Astro.response.status = 404;
+const records = repository ? await Astro.locals.app.store.pullRequestAnalyses(repository.repositoryId, prNumber) : [];
+const pr = records.length ? [...groupPullRequests(records).values()][0] : undefined;
+let pull: any, pullStanding = 'unavailable';
+if (repository) {
+  try { pull = await Astro.locals.app.cache.get(`pull:${Astro.locals.viewer.userId}:${repository.repositoryId}:${prNumber}`, () => Astro.locals.session!.reads.pullRequest(fullName, prNumber)); pullStanding = 'available'; }
+  catch (error) { pullStanding = (error as any)?.code === 'E_PROVIDER_NOT_FOUND' ? 'not-found' : 'unavailable'; }
+}
+if (pr && pull) { pr.lifecycle = pull; pr.state = pull.state; pr.title = pull.title; }
+const latest = pr?.latest;
+const heads = pr ? development(pr) : [];
+const transition = pr ? lastTransition(pr) : undefined;
+const fresh = latest && pull ? (latest.head === pull.headSha ? 'current' : 'behind') : 'unknown';
+const state = pull?.state ?? 'unknown';
+const icon = ({ open: 'pull-request', draft: 'pull-request-draft', merged: 'merged', closed: 'pull-request-closed' } as const)[state as 'open' | 'draft' | 'merged' | 'closed'] ?? 'circle-dashed';
+const title = pull?.title ?? `#${prNumber}`;
+const bandIndex = latest ? BANDS.findIndex(band => band.id === latest.band.id) : -1;
+const pro = view.entitlement.premium;
+const rows = latest ? latest.fileRows.map((row: any) => ({ ...row, changed: bound(row.lines?.changed), rawAdded: bound(row.raw?.added), rawDeleted: bound(row.raw?.deleted), added: bound(row.lines?.added), deleted: bound(row.lines?.deleted), modified: bound(row.lines?.modified) })) : [];
+const included = rows.filter((row: any) => row.inclusion === 'included').length, excluded = rows.filter((row: any) => row.inclusion === 'excluded').length, inclusionUnknown = rows.filter((row: any) => !['included', 'excluded'].includes(row.inclusion)).length;
+---
+<AppShell title={`#${prNumber} · ${repo}`} nav={navModel(view, 'pr')} view={view}>
+  {!repository ? <div class="a-focus a-pn"><div class="a-pn-b" style="padding:28px 32px"><h1 style="font-size:22px;margin:0 0 8px">Not in your repositories</h1><p class="lede">{fullName} is not among the repositories your GitHub account currently reaches through an App installation, or the pull-request number is not valid. <a class="link-quiet" href="/">Back to the overview</a>.</p></div></div>
+  : <>
+  <PageHead view={view} title={title} crumbs={[{ label: 'Pull requests', href: view.href('/prs') }, { label: `#${prNumber}` }]} period={false} scope={false}>
+    <Fragment slot="title"><span class:list={['si', `st-${state}`]} title={state}><Icon name={icon} size={22} /></span> {title}</Fragment>
+    <div class="a-scope" slot="scope"><b>#{prNumber}</b>{pull && <><span class="a-dot">·</span>opened {ago(pull.openedAt, view.nowIso)}{pull.mergedAt && <><span class="a-dot">·</span>merged {ago(pull.mergedAt, view.nowIso)}</>}{pull.closedAt && !pull.mergedAt && <><span class="a-dot">·</span>closed {ago(pull.closedAt, view.nowIso)}</>}</>}{pr && <><span class="a-dot">·</span>{pr.heads} analysed {pr.heads === 1 ? 'head' : 'heads'}<span class="a-dot">·</span><span class="mono">{shortSha(latest.base)} → {shortSha(latest.head)}</span></>}{pullStanding !== 'available' && <><span class="a-dot">·</span>GitHub state {pullStanding === 'not-found' ? 'not found for this account' : 'not available right now'}</>}</div>
+    <Fragment slot="tools">
+      {latest && <span class:list={['a-snap', fresh]} title={fresh === 'current' ? `The displayed analysis covers the current GitHub head · analysed ${ago(latest.observedAt, view.nowIso)}` : fresh === 'behind' ? `GitHub's current head is ${shortSha(pull.headSha)}; the latest retained analysis covers ${shortSha(latest.head)}` : 'GitHub’s current head is not available right now'}>analysed head {shortSha(latest.head)} · {fresh}</span>}
+      {pull?.url && <a class="btn btn-quiet" href={pull.url} rel="noopener"><Icon name="external" size={14} /> GitHub</a>}
+    </Fragment>
+  </PageHead>
+  {!pr ? <div class="a-focus a-pn"><div class="a-pn-b" style="padding:28px 32px"><h2 style="font-size:19px;margin:0 0 8px">No retained analysis</h2><p class="lede">The App has no retained analysis for this pull request{repository.standing?.historyEnabled ? '' : ' because history is not enabled for this repository'}. {pull ? `GitHub shows it as ${state === 'closed' ? 'closed unmerged' : state}.` : ''}</p></div></div>
+  : <div class="a-grid">
+    <section class="a-pn s5"><div class="a-pn-b a-result">
+      <div class="label">replacement-aware Changed · what a size policy counts</div>
+      <div class="big"><span class="n">{describeBound(latest.changed)}</span><span class="u">changed</span></div>
+      <div class="pills"><span class:list={['a-ev', { bounded: latest.changed.status === 'bounded', unknown: latest.changed.status === 'unknown' }]}>{latest.changed.status === 'exact' ? '= exact' : latest.changed.status === 'bounded' ? 'bounded' : 'unknown'}</span><span class="a-mini">metric lines.changed · {describeBound(latest.files.included)} included files{latest.files.excluded.lower ? ` · ${describeBound(latest.files.excluded)} excluded` : ''}{latest.files.complete ? '' : ' · file set incomplete'}</span></div>
+      {latest.changed.status === 'exact' && <div class="a-split" style="height:10px;margin:16px 0 6px"><i style={`flex:${latest.modified.lower};background:var(--a-mod)`}></i><i style={`flex:${latest.added.lower};background:var(--a-add)`}></i><i style={`flex:${latest.deleted.lower};background:var(--a-del)`}></i></div>}
+      <div class="a-dec">
+        <div><div class="label">■ decomposition</div><dl><dt style="color:var(--a-mod)">~ modified</dt><dd>{describeBound(latest.modified)}</dd><dt style="color:var(--a-add)">+ added-only</dt><dd>{describeBound(latest.added)}</dd><dt style="color:var(--a-del)">− deleted-only</dt><dd>{describeBound(latest.deleted)}</dd><dt class="tot">= Changed</dt><dd class="tot">{describeBound(latest.changed)}</dd></dl></div>
+        <div><div class="label">■ raw · contrast</div><dl><dt>+ additions</dt><dd>{describeBound(latest.rawAdded)}</dd><dt>− deletions</dt><dd>{describeBound(latest.rawDeleted)}</dd><dt>&nbsp;</dt><dd>&nbsp;</dd><dt class="tot">= raw churn</dt><dd class="tot">{describeBound(latest.raw)}</dd></dl></div>
+      </div>
+    </div></section>
+
+    <section class="a-pn s7" aria-labelledby="h-policy"><header class="a-pn-h"><div class="a-pn-t"><h2 id="h-policy">Policy and effects</h2></div><div class="d"><span class="mono">policy {latest.policyId}</span> · analysed {ago(latest.observedAt, view.nowIso)} · the trusted base policy of that analysis</div></header><div class="a-pn-b">
+      <div class="a-lanes">
+        <div class="lane"><span class="lk">§ Policy result</span><div><div class="lv"><span class="a-val">{describeBound(latest.changed)}</span> Changed <span class="a-arrow"><Icon name="arrow-right" size={12} /></span> band <b class="a-bandid">{latest.band.id}</b>{latest.band.standing === 'derived' && <span class="a-mini">derived from Changed with size-v1 thresholds; this analysis recorded no band</span>}{latest.band.standing === 'unknown' && <span class="a-mini">evidence cannot establish one band</span>}</div><div class="a-mini">metric review = lines.changed · size-v1 bands XS &lt;20 · S &lt;100 · M &lt;500 · L &lt;1000 · XL</div></div><div class="a-railwrap"><div class="a-rail">{BANDS.map((band, index) => <i class={index === bandIndex ? 'on' : ''} style={index === bandIndex ? `background:${band.color}` : ''} title={band.label}></i>)}</div><div class="a-raillab"><span>XS</span><span>S</span><span>M</span><span>L</span><span>XL</span></div></div></div>
+        <div class="lane"><span class="lk">→ Desired state</span><div><div class="lv">label <LabelChip band={latest.band} /> in managed group <b>size</b></div><div class="a-mini">remove other managed size labels · {latest.effects.some((effect: any) => String(effect.kind).startsWith('comment')) ? 'comment effect recorded' : 'no comment configured'}</div></div></div>
+        <div class="lane"><span class="lk">⟲ Observed state</span><div><div class="lv">{latest.labels.standing === 'observed' ? <><LabelChip band={latest.band} labels={latest.labels} /> present on GitHub</> : latest.labels.standing === 'unverified' ? 'label write not read back' : latest.labels.standing === 'refused' ? 'GitHub refused the label write' : 'no label effect recorded for this analysis'}</div><div class="a-mini">{latest.labels.standing === 'observed' && <Icon name="check" size={11} />} {latest.labels.detail} · {latest.labels.adds} add · {latest.labels.removes} remove{latest.effects.length ? ` · ${latest.effects.length} effect${latest.effects.length === 1 ? '' : 's'} recorded` : ''}</div></div></div>
+        {transition && <div class="lane sub"><span class="lk">last transition</span><div><div class="lv"><span class="a-lbl"><i style={`background:${transition.from.color}`}></i>{transition.from.label}</span><Icon name="arrow-right" size={12} /><LabelChip band={transition.to} labels={latest.labels} /><span class="a-mini">at head {transition.head} · {ago(transition.at, view.nowIso)}</span></div></div></div>}
+      </div>
+      <p class="a-mini" style="margin:12px 0 0">{pull?.mergedAt ? 'This is the latest retained analysis; a recorded merge-time result is a separate fact the App does not keep yet.' : 'Merge-time result will be recorded when this PR merges, once lifecycle facts are retained.'}</p>
+    </div></section>
+
+    {pro ? <>
+      <Panel id="ctx1" span={4} title="Also in progress" plan="Pro"><Unavailable what="Needs the open-PR file index" why="other active pull requests on the same files arrive with named file observations" /></Panel>
+      <Panel id="ctx2" span={4} title="Recent activity on these files" plan="Pro" meta="merged PRs · last 90 days"><Unavailable what="File history is not collected yet" /></Panel>
+      <Panel id="ctx3" span={4} title="Often changed with" plan="Pro" meta="last 90 days"><Unavailable what="Co-change needs named file history" /></Panel>
+    </> : <SeePro text="Other active work on these files, recent file activity and co-change history" span={12} />}
+
+    <Panel id="pf" span={8} title="Files" meta={`${rows.length} observed · ${inclusionUnknown === rows.length ? 'policy scope not recorded by this analysis version' : `${included} included · ${excluded} excluded by policy${inclusionUnknown ? ` · ${inclusionUnknown} scope not recorded` : ''}`} · paths are not retained in history`}>
+      {rows.length === 0 ? <p class="a-mini">This analysis retained no per-file rows.</p> : <table class="a-tbl"><thead><tr><th>File</th><th>Policy scope</th><th>Change</th><th class="r">Changed</th><th style="width:90px"></th><th class="r">Raw</th></tr></thead><tbody>
+        {rows.map((row: any) => <tr class={row.inclusion === 'excluded' ? 'excl' : ''}><td><span class="a-path"><span class="dir">file </span>{row.ordinal + 1}</span><span class="a-mini"> · path not retained</span></td><td class="a-mini">{['included', 'excluded'].includes(row.inclusion) ? row.inclusion : 'not recorded'}</td><td class="a-mini">{row.changeType}{row.material === 'binary' ? ' · binary' : ''}</td><td class="r">{row.changed.status === 'unknown' && (row.changed.lower ?? 0) === 0 ? <span class="a-mini">{row.evidence === 'unmeasurable' ? 'not measurable' : 'unknown'}</span> : <span class="a-chg"><span class="n">{describeBound(row.changed)}</span>{row.changed.status === 'exact' && <span class="d"><span class="p">+{n0(row.added.lower)}</span><span class="x">−{n0(row.deleted.lower)}</span><span class="t">~{n0(row.modified.lower)}</span></span>}</span>}</td><td>{row.changed.status === 'exact' && row.changed.lower > 0 && <div class="a-split" style="height:6px"><i style={`flex:${row.modified.lower};background:var(--a-mod)`}></i><i style={`flex:${row.added.lower};background:var(--a-add)`}></i><i style={`flex:${row.deleted.lower};background:var(--a-del)`}></i></div>}</td><td class="r a-mini" style="white-space:nowrap">+{describeBound(row.rawAdded)} −{describeBound(row.rawDeleted)}</td></tr>)}
+      </tbody></table>}
+      <p class="a-mini" style="margin:10px 0 0">Per-file rows keep an ordinal local to this analysis, never a path, name or author (the privacy contract). Named files arrive with the analytical data candidate.</p>
+    </Panel>
+    <Panel id="dev" span={4} title="Development" meta="Changed per analysed head">
+      <Fragment set:html={charts.development(heads.map((head: any) => ({ ...head, text: describeBound(head.changed) })), { w: 380, h: 170 })} />
+      <div class="a-steps">{pull && <div><span>opened</span><span class="a-mini">{fmtDate(pull.openedAt)}</span></div>}{heads.map((head: any, index: number) => <div><span>head {index + 1} analysed</span><span class="a-mini"><b>{describeBound(head.changed)} · {head.band.label}</b> · {fmtDate(head.observedAt)}</span></div>)}{pull?.mergedAt && <div><span>merged</span><span class="a-mini">{fmtDate(pull.mergedAt)}{fresh === 'behind' ? ' · final head not analysed' : ''}</span></div>}</div>
+    </Panel>
+  </div>}
+  </>}
+</AppShell>

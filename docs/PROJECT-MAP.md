@@ -13,6 +13,7 @@ and disposable outputs without introducing independently versioned products.
 | `src/diffdevil/` | Reusable MIT product core: shared engine, CLI, provider/Action hosts, core tests, contracts and presets. |
 | `apps/playground/` | AGPL application adapter: shared local/Worker public-PR route, Worker configuration, browser assets, versioned response contract and application tests. |
 | `apps/github-app/` | AGPL managed-App adapter: verified webhook ingress, Queue execution, D1 recovery/history state, migrations and operator boundary. |
+| `apps/app/` | AGPL signed-in App: Astro server-rendered on Cloudflare Workers; GitHub sign-in over the managed App's authorization service, read-only D1 access, the interval-aware measurement model, the six analytical destinations in the ratified shell, provisional chart figures, tests and browser qualification. |
 | `apps/browser-extension/` | AGPL Chrome Manifest V3 application: GitHub pull-request projection, settings, provider acquisition, bounded local storage, browser qualification and unpublished Store-preparation material. |
 | `apps/website/` | AGPL public website: Astro static product output, the standalone FAQ and finite legacy redirects, the complete playground as one lazy React island running the shared engine in the browser, examples catalogue, browser-extension and App pages, legal/privacy routes. Its build hook joins the public manual and search. No command deploys either host. |
 | `apps/shared/` | Small presenters both AGPL applications use (currently the App check-summary composer). |
@@ -26,7 +27,7 @@ and disposable outputs without introducing independently versioned products.
 | `package.json`, `package-lock.json`, `tsconfig.json` | Reusable product package, root development lock and core compiler boundary. The manual's private application toolchain has its own package metadata and qualification lock. |
 | `README.md`, `AGENTS.md` | Public product front door and repository-local contribution contract. |
 
-`apps/playground/`, `apps/github-app/`, `apps/browser-extension/` and `apps/website/` consume the built reusable engine; none duplicates measurement, policy, or provider semantics. The website's playground bundles that engine through two small shims for its Node-only imports, while the extension consumes the closed browser export and lightweight formatter. Their browser/server/Worker, managed ingress/Queue/D1 and GitHub-DOM adapters are application code, not npm-package contents.
+`apps/playground/`, `apps/github-app/`, `apps/app/`, `apps/browser-extension/` and `apps/website/` consume the built reusable engine; none duplicates measurement, policy, or provider semantics. The website's playground bundles that engine through two small shims for its Node-only imports, while the extension consumes the closed browser export and lightweight formatter. Their browser/server/Worker, managed ingress/Queue/D1 and GitHub-DOM adapters are application code, not npm-package contents.
 
 `dist/`, root `node_modules/` and `artifacts/` are ignored generated/local material,
 not extra products. They are recreated by documented commands and are not part of

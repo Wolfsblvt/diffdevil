@@ -1,0 +1,46 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only
+// Files: where change lands, file by file. A Pro scope shows the honest standing of the file
+// history (not collected yet, with what is retained and what arrives); a Free scope shows the
+// bounded See Pro state. Neither invents a sample, a cloud or a ranking from pathless rows.
+import AppShell from '../layouts/AppShell.astro';
+import PageHead from '../components/PageHead.astro';
+import Panel from '../components/Panel.astro';
+import PlanChip from '../components/PlanChip.astro';
+import Unavailable from '../components/Unavailable.astro';
+import Icon from '../components/Icon.astro';
+import { loadView, navModel } from '../lib/view.mjs';
+import { n0 } from '../lib/intervals.mjs';
+
+const view = await loadView({ url: Astro.url, viewer: Astro.locals.viewer, session: Astro.locals.session, runtime: Astro.locals.app });
+const { current: cur, entitlement } = view;
+const pro = entitlement.premium;
+const retainedRows = cur.analysed.reduce((total: number, pr: any) => total + pr.latest.fileRows.length, 0);
+const siteOrigin = Astro.locals.app.config.siteOrigin;
+const metrics = [['freq', 'merged PRs'], ['changed', 'Changed'], ['raw', 'raw churn'], ['turnover', 'Turnover']];
+---
+<AppShell title="Files" nav={navModel(view, 'files')} view={view}>
+  <PageHead view={view} title="Files" period={pro} />
+  {pro ? <>
+    <div class="a-toolbar">
+      <label class="a-search"><Icon name="search" size={14} /><input type="search" placeholder="Filter repository or path…" aria-label="Filter repository or path" disabled /></label>
+      <div class="a-fgroup"><span class="a-fl">size by</span><div class="a-seg sm" role="group" aria-label="Metric">{metrics.map(([key, label]) => <span aria-current={key === 'freq' ? 'true' : undefined} aria-disabled="true">{label}</span>)}</div></div>
+    </div>
+    <div class="a-grid">
+      <Panel id="fcloud" span={12} title="Where change lands" plan="Pro" meta={`files changed in ${view.period.label} · size = merged PRs · bounded files sized by their proven minimum`}>
+        <Unavailable what="File history is not collected yet for this scope" why="the cloud, ranked files and the selected file card need named file observations" />
+        <p class="a-mini" style="margin:12px 0 0">What the App retains today for this scope and period: {n0(retainedRows)} pathless per-file numeric rows across {cur.analysedCount} analysed pull requests (Changed, raw churn, inclusion and evidence per file, with no path, name or author). These rows support policy replay; they do not name files. Named file history, file sizes, turnover-v1 and co-change arrive with the analytical data candidate, after the privacy contract that admits paths lands.</p>
+      </Panel>
+      <Panel id="ftable" span={8} title="Ranked files" meta={`by merged PRs · ${view.period.label}`}><Unavailable what="No named files to rank yet" compact /></Panel>
+      <section class="a-pn s4 a-filecard"><div class="a-fc-h"><span class="a-fc-id"><span class="a-path">selected file</span></span></div><div class="a-pn-b"><Unavailable what="No file selected" why="a file card follows the ranking once file history exists" compact /></div></section>
+    </div>
+  </> : <div class="a-focus a-pn">
+    <div class="a-pn-b" style="padding:28px 32px">
+      <div style="display:flex;gap:10px;align-items:center"><PlanChip plan="Pro" /><h2 style="margin:0;font-size:19px">File history</h2></div>
+      <p class="lede" style="margin:10px 0 18px">Which files change most often, how much, and with which other files. Repositories with history already keep the base numbers; Pro turns them into file history, clouds, Turnover and co-change.</p>
+      {entitlement.sharedPaid.length > 0 && <p class="a-mini" style="margin:0 0 14px">File history is available inside {entitlement.sharedPaid.map((namespace: string, index: number) => <>{index > 0 && ', '}<a class="link-quiet" href={view.href('/files', { s: `@${namespace}` })}>{namespace}</a></>)}, funded by its owner.</p>}
+      <div style="display:flex;gap:10px"><a class="btn btn-quiet" href={`${siteOrigin}/app/`}>What Pro adds <Icon name="arrow-right" size={14} /></a></div>
+      <p class="a-mini" style="margin:16px 0 0">Plans, the preview sample and the Open Source programme are not purchasable here yet; the public App page explains the planned offer.</p>
+    </div>
+  </div>}
+</AppShell>

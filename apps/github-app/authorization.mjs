@@ -40,11 +40,13 @@ export function createAuthorizationService({ store, admission, provider, protect
   const contexts = new Set(returnContexts);
   const origins = new Set(allowedOrigins);
   const callbacks = new Set(allowedCallbackUrls);
+  // HTTPS everywhere; plain HTTP only on a loopback host, which browsers treat as a secure context, so a local qualification run can exercise the real cookie route.
+  const secureEnough = url => url.protocol === 'https:' || (url.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname));
   if (contexts.size === 0 || origins.size === 0 || callbacks.size === 0 || [...origins].some(origin => {
-    try { const url = new URL(origin); return url.origin !== origin || url.protocol !== 'https:'; } catch { return true; }
+    try { const url = new URL(origin); return url.origin !== origin || !secureEnough(url); } catch { return true; }
   }) || [...callbacks].some(callback => {
-    try { const url = new URL(callback); return url.protocol !== 'https:' || url.toString() !== callback || url.search !== '' || url.hash !== ''; } catch { return true; }
-  })) throw new TypeError('Authorization requires finite return contexts and HTTPS origins/callbacks.');
+    try { const url = new URL(callback); return !secureEnough(url) || url.toString() !== callback || url.search !== '' || url.hash !== ''; } catch { return true; }
+  })) throw new TypeError('Authorization requires finite return contexts and HTTPS (or loopback) origins/callbacks.');
 
   function requireContext(value) {
     if (typeof value !== 'string' || !contexts.has(value) || value.includes('://') || value.startsWith('/')) throw refusal('E_AUTH_RETURN_CONTEXT');
@@ -180,6 +182,24 @@ export function createAuthorizationService({ store, admission, provider, protect
       try { sessionHash = await digest(session); } catch { /* Clearing a malformed cookie still succeeds. */ }
       if (sessionHash) await store.revokeSession(sessionHash);
       return { headers: { ...protectedHeaders(), 'Set-Cookie': cookie(SESSION_COOKIE_NAME, '', 0) } };
+    },
+
+    /**
+     * Provider reads for the signed-in experience. The grant material never leaves this
+     * service: the operation receives bound read functions and the authenticated actor.
+     */
+    async read({ session }, operation) {
+      const actor = await principal(session);
+      const material = await currentAuthorization(actor.userId);
+      const reads = {
+        profile: () => provider.profile({ material, userId: actor.userId }),
+        installations: () => provider.installations({ material, userId: actor.userId }),
+        installationRepositories: installationId => provider.installationRepositories({ material, userId: actor.userId, installationId }),
+        organizationRole: organization => provider.organizationRole({ material, userId: actor.userId, organization }),
+        recentPullRequests: fullName => provider.recentPullRequests({ material, userId: actor.userId, fullName }),
+        pullRequest: (fullName, number) => provider.pullRequest({ material, userId: actor.userId, fullName, number })
+      };
+      return operation(reads, actor);
     },
 
     async readAdmission({ session, repositoryId }) {
