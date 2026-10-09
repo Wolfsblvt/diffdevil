@@ -63,10 +63,10 @@ an unknown value made into zero.
 
 <figure class="manual-visual" data-manual-visual="selection-boundaries">
   <picture class="manual-visual__theme manual-visual__theme--light">
-    <img src="/assets/manual/visuals/selection-boundaries-light.svg" alt="The observed comparison first passes through global forceInclude, includeOnly, and exclude to produce globally eligible files. Every scope starts there, so a globally excluded lockfile remains observed but cannot enter the lockfiles scope.">
+    <img src="/assets/manual/visuals/selection-boundaries-light.svg" alt="Global forceInclude wins; otherwise includeOnly restricts, then exclude removes; otherwise default inclusion applies. Every scope starts with globally eligible files, so a globally excluded lockfile remains observed but cannot enter the lockfiles scope.">
   </picture>
   <picture class="manual-visual__theme manual-visual__theme--dark">
-    <img src="/assets/manual/visuals/selection-boundaries-dark.svg" alt="The observed comparison first passes through global forceInclude, includeOnly, and exclude to produce globally eligible files. Every scope starts there, so a globally excluded lockfile remains observed but cannot enter the lockfiles scope.">
+    <img src="/assets/manual/visuals/selection-boundaries-dark.svg" alt="Global forceInclude wins; otherwise includeOnly restricts, then exclude removes; otherwise default inclusion applies. Every scope starts with globally eligible files, so a globally excluded lockfile remains observed but cannot enter the lockfiles scope.">
   </picture>
   <figcaption>Scoped `forceInclude` can repair a local exclusion. It cannot cross global eligibility or the scope's own hard `includeOnly` boundary.</figcaption>
 </figure>

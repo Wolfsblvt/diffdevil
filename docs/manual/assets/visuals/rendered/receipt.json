@@ -17,7 +17,7 @@
     },
     {
       "path": "docs/manual/assets/visuals/selection-boundaries.mmd",
-      "sha256": "ab76346b743298e9b1ad064629b9f8b33385253a5029af283a626f78c9b13cec"
+      "sha256": "77231a7a133801451d5d47975d1f8c0b57799703fd1055905ea255412c900bcf"
     },
     {
       "path": "docs/manual/assets/visuals/trust-boundary.mmd",
@@ -93,7 +93,7 @@
       "width": null,
       "narrow": false,
       "source": "docs/manual/assets/visuals/selection-boundaries.mmd",
-      "sha256": "40d877b6e3f97697a018144553b2bd44131e36daf26e4bca5fcbb054d8256582"
+      "sha256": "167bfd63a3fb088cfdd5cd2ace4c82f1d51b47ff108c0d70bfba31c0fadf9107"
     },
     {
       "path": "docs/manual/assets/visuals/rendered/selection-boundaries-dark.svg",
@@ -103,7 +103,7 @@
       "width": null,
       "narrow": false,
       "source": "docs/manual/assets/visuals/selection-boundaries.mmd",
-      "sha256": "bed1c980193c3cf1610ba5e9ef84f6a5aa630bbed6852b7d5456a65d4b8fced8"
+      "sha256": "6a5ed8d4fd7a0b4312a7df3687e62606d2695e06e170584bd18e2364143ff2d6"
     },
     {
       "path": "docs/manual/assets/visuals/rendered/provider-readback-light.svg",
