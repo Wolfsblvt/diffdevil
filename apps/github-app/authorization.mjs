@@ -113,15 +113,20 @@ export function createAuthorizationService({ store, admission, history, analytic
       const material = await currentAuthorization(actor.userId);
       if (!Array.isArray(query?.repositoryIds) || query.repositoryIds.some(id => !Number.isSafeInteger(id) || id < 1)) throw refusal('E_APP_DATA_QUERY');
       const authorizedRepositoryIds = [];
+      const repositoryIdentities = [];
       for (const repositoryId of new Set(query.repositoryIds)) {
         const repository = await store.repositoryIdentity(repositoryId);
         if (!repository) continue;
         let access;
         try { access = await provider.checkRepositoryAccess({ material, userId: actor.userId, installationId: repository.installation_id, repositoryId, kind: 'read' }); }
         catch { throw refusal('E_APP_DATA_AUTH_UNAVAILABLE'); }
-        if (access?.installation === 'active' && access?.repository === 'available' && (access?.canRead === true || access?.canAdminister === true)) authorizedRepositoryIds.push(repositoryId);
+        if (access?.installation === 'active' && access?.repository === 'available' && (access?.canRead === true || access?.canAdminister === true)) {
+          authorizedRepositoryIds.push(repositoryId);
+          if (typeof access.fullName === 'string' && /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/u.test(access.fullName)) repositoryIdentities.push({ repositoryId, fullName: access.fullName });
+        }
       }
-      return { body: await analytics.query(query, { ...actor, authorizedRepositoryIds }), headers: protectedHeaders() };
+      const body = await analytics.query(query, { ...actor, authorizedRepositoryIds });
+      return { body: { ...body, repositoryIdentities }, headers: protectedHeaders() };
     },
     async begin(returnContext) {
       requireContext(returnContext);

@@ -66,6 +66,7 @@ test('Free and unauthorized readers cannot obtain premium names or aggregate fil
   assert.equal((await service.query(query('files'), actor)).standing, 'plan-required');
   const overview = await service.query(query('overview'), actor);
   assert.deepEqual(overview.result.files, []);
+  assert.equal(overview.entitlements.aggregatePlan, 'free');
   const detail = await service.query(query('pr', { pullRequest: 1 }), actor);
   assert.equal(detail.result.alsoInProgress, null);
   assert.equal(detail.result.cochange, undefined);

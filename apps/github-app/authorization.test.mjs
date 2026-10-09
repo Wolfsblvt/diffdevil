@@ -100,7 +100,9 @@ test('analytical HTTP uses the real session path for an ordinary reader, with cu
     const request = () => new Request(`${ORIGIN}/api/analytics?query=${encodeURIComponent(JSON.stringify(query))}`, { headers: { cookie: `__Host-diffdevil-session=${session}` } });
     const result = await worker.fetch(request(), {});
     assert.equal(result.status, 200);
-    assert.equal((await result.json()).result.overview.medianChanged.status, 'unavailable');
+    const body = await result.json();
+    assert.equal(body.result.overview.medianChanged.status, 'unavailable');
+    assert.deepEqual(body.repositoryIdentities, [{ repositoryId: 17, fullName: REPOSITORY_NAME }]);
     assert.equal(result.headers.get('cache-control'), 'private, no-store');
     source.providerState.canRead = false;
     const denied = await worker.fetch(request(), {});

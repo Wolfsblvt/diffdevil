@@ -256,7 +256,8 @@ export function createAnalyticalDataService({ store, authorize, entitlement, cur
       const all = (await Promise.all(authorized.map(id => store.analyticalRecords(id)))).flat();
       const aggregatePlan = query.repositoryIds.length > 1 ? await entitlement({ repositoryId: null, actor }) : plans.get(authorized[0]);
       const premium = ['pro', 'business'].includes(aggregatePlan);
-      if (['files', 'file'].includes(query.surface) && !premium) return { version: 1, surface: query.surface, standing: 'plan-required', plan: 'pro' };
+      const entitlements = { aggregatePlan, repositories: authorized.map(repositoryId => ({ repositoryId, plan: plans.get(repositoryId) })) };
+      if (['files', 'file'].includes(query.surface) && !premium) return { version: 1, surface: query.surface, standing: 'plan-required', plan: 'pro', entitlements };
       const merged = all.filter(record => inside(record.mergedAt, query)).map(record => ({ ...record, facts: facts(record.final, policies.get(record.repositoryId)) }));
       const previousQuery = { ...query, from: new Date(2 * Date.parse(query.from) - Date.parse(query.to)).toISOString(), to: query.from };
       const previous = all.filter(record => inside(record.mergedAt, previousQuery)).map(record => facts(record.final, policies.get(record.repositoryId)));
@@ -331,7 +332,7 @@ export function createAnalyticalDataService({ store, authorize, entitlement, cur
         population: 'final-merged-comparisons', window: { from: query.from, to: query.to },
         coverage: { completeWindow: false, standing: 'retained-observations', requestedRepositories: query.repositoryIds.length,
           authorizedRepositories: authorized.length, recoveredMerged: merged.filter(record => record.final?.report).length, merged: merged.length },
-        policies: authorized.map(repositoryId => ({ repositoryId, requestedId: policies.get(repositoryId)?.id ?? null, standing: policies.get(repositoryId)?.compiled ? 'current' : 'unfiltered-base-facts' })), result };
+        policies: authorized.map(repositoryId => ({ repositoryId, requestedId: policies.get(repositoryId)?.id ?? null, standing: policies.get(repositoryId)?.compiled ? 'current' : 'unfiltered-base-facts' })), entitlements, result };
     }
   };
 }

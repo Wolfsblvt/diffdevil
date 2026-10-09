@@ -63,10 +63,17 @@ repository requests the viewer's plan for cross-repository aggregates. Neither t
 request nor the actor's repository ID list is sufficient authority. A shared paid
 namespace keeps its paid feature access for an authorized Free reader, while a
 Free viewer receives no premium aggregate assembled across paid namespaces.
+Responses expose these server-selected namespace and aggregate plans as
+`entitlements`, so the experience need not infer feature access from missing panels.
 
 `authorization.mjs` exposes `analyticalQuery({ session, query })`, using its existing
 opaque session, current GitHub-user authorization and positive repository read
-access. Administration is not required. `analytical-http.mjs` supplies POST
+access. Administration is not required.
+Responses carry `repositoryIdentities` from the current authorized provider read,
+so names and GitHub drill-down links do not depend on retained repository-name data.
+These names are transient response context, not persisted history.
+
+`analytical-http.mjs` supplies POST
 `/api/analytics` with an `application/json` query body, the `__Host-diffdevil-session`
 cookie and same-origin `Origin`. Path-free queries may also use GET
 `/api/analytics?query=<URL-encoded JSON>`; file paths are refused in GET queries.
