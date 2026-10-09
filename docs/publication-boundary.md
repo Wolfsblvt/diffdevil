@@ -2,11 +2,44 @@
 
 ## Meaning
 
-This is the remaining operator path from the accepted public source candidate to a
-real diffdevil release. It keeps source, npm, immutable and maintained Action refs,
-GitHub Release, Marketplace, security intake, hosted applications, and outside-
-consumer behavior as distinct effects. It neither authorizes those effects nor
-calls them complete merely because another surface succeeded.
+This is the operator path from accepted public source to a real diffdevil family
+release. It keeps source, npm, immutable and maintained Action refs, GitHub Release,
+Marketplace, security intake, hosted applications, and outside-consumer behavior
+as distinct effects. It neither authorizes those effects nor calls them complete
+merely because another surface succeeded.
+
+[Release families and versioning](RELEASING.md) owns the current version, tag,
+manifest and update-discovery contract. The completed `v1.0.0` sequence below is
+retained as concrete open-tool evidence, not an instruction to repeat it for
+extension, App or Skill releases.
+
+## Select the family before selecting effects
+
+The open-tool family contains npm/library, CLI, Actions and standalone runtime.
+The extension, App server/dashboard and canonical Skill each have independent
+versions. Select the family's candidate and exact tag from `RELEASING.md`; never
+blanket-bump the repository or move an Action alias for another family's release.
+
+| Selected release | Applicable publication and readback |
+| --- | --- |
+| Open tool | Registry artifact, immutable `vX.Y.Z`, corresponding release/assets and authorized Action major-alias promotion; retain Marketplace and real consumer evidence |
+| Extension | `extension-vX.Y.Z`, qualified extension archive and explicitly authorized Store submission; read back the actual listing/version and installed result separately |
+| App | `app-vX.Y.Z`, App-owned version/build metadata and qualified self-hosted release; explicitly authorized deployment/migrations and operator journey remain separate |
+| Skill | `skill-vX.Y.Z`, complete canonical Skill archive and matching manifest; an optional bundle names both Skill and runtime versions; no npm or Action effect is implied |
+
+Prepare only the selected manifest/assets. The family-scoped carrier builder and
+its commands are documented in [Skill distribution](integration/agent-skill-distribution.md).
+Publish the exact manifest asset set, not a directory wildcard. Preserve published
+asset bytes and tags. Set other families' GitHub releases not to become the
+repository's promoted Latest; promotion of an open-tool release is explicit.
+Consumers still use family-aware discovery rather than trusting that global badge.
+
+For each family, inspect exact-head checks, actual included engine/source,
+applicable dependencies/notices and installed or operated consumer behavior.
+Inspect npm ownership only for an npm effect, Store credentials only for a Store
+effect, and service/migration authority only for those operations. Do not turn
+unrelated providers into prerequisites. A shared correctness/security change still
+accounts for all affected consumers and any outstanding rollout.
 
 ## Start from the accepted source
 
@@ -29,7 +62,7 @@ a working-directory ZIP. A clean worktree alone does not prove history privacy.
 
 ## Re-resolve the final candidate
 
-Before the first external effect:
+Before the first external open-tool effect:
 
 1. read the current owning release room and final candidate commit;
 2. confirm the candidate tree contains the accepted release copy, qualification,
@@ -44,9 +77,10 @@ Before the first external effect:
    ship while the hosted playground and managed App remain explicitly owned active
    product Work.
 
-A documentation-only change still receives its own exact-head hosted package and
-Action consumer checks. Earlier executable evidence remains true for its own tree;
-it is not silently borrowed across a changed candidate.
+The repository's exact-candidate verification remains required before integration,
+even when a change does not trigger an executable publication. Earlier executable
+evidence remains true for its own tree; it is not silently borrowed across a
+changed candidate or substituted for actual publication readback.
 
 ## Qualification already established
 
@@ -95,16 +129,18 @@ and exact qualification, but it keeps unavailable coordinates conditional:
   back; and
 - no private canary or Company-room link in public package documentation.
 
-Repository-owned [release notes](releases/v1.0.0.md) carry the product result,
-compatibility, trust model, rights, qualification, and deliberately unfinished
-hosted surfaces. At publication, replace only the opening availability standing
-and add the real immutable release commit; do not rewrite durable product meaning
-around provider coordinates.
+Repository-owned dated release notes carry each family's product result,
+compatibility, trust model, rights, qualification and deliberately unfinished
+surfaces. [Current release guidance](manual/help/releases.md) is the reader entry
+point. At publication, currentize the selected note's availability and exact
+immutable identity. Do not rewrite old dated accounts or make one family's
+success imply another channel is available.
 
 ## Publication effects and order
 
-Perform each effect once, reconcile it before any retry, and read it back before
-independent copy claims it exists.
+Perform each newly authorized effect once, reconcile it before any retry, and
+read it back before independent copy claims it exists. The first open-tool release
+used this sequence; its exact version is already published and is not republished.
 
 1. **npm:** publish `@wolfsblvt/diffdevil@1.0.0`; read registry metadata, tarball
    integrity, README, licence dispatch, exports, bin, engines, and package contents.
@@ -141,6 +177,8 @@ surface fails.
 ## Outside-consumer proof
 
 After publication, prove the real coordinates outside every source checkout.
+The examples below identify the completed first open-tool release. Subsequent
+releases use their actual selected version, never republish or relabel `1.0.0`.
 
 ### npm package
 
@@ -187,7 +225,9 @@ first response was inconveniently vague.
 
 A failed later surface holds that surface and its dependent public claim, not
 already-read-back earlier effects. Record the exact performed state, repair the
-remaining route, and currentize copy to the truth that exists.
+remaining route, and currentize copy to the truth that exists. The same rule applies
+to extension Store submission and App deployments/migrations: a timeout does not
+prove the original operation had no effect.
 
 ## Hosted applications remain separate
 

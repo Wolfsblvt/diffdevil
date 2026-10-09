@@ -17,7 +17,8 @@ the [complete manual](manual/README.md); its canonical standalone
 | How do I restore, build, run or verify it? | [Development](DEVELOPMENT.md) |
 | Why were consequential choices made? | [Decisions](DECISIONS.md) |
 | Which behavior is exercised, and which is still unobserved? | [Qualification](qualification.md) |
-| How are releases prepared and published? | [Publication boundary](publication-boundary.md) and [release guidance](manual/help/releases.md) |
+| Which tools share versions, and how do updates work? | [Release families and versioning](RELEASING.md) and [reader release guidance](manual/help/releases.md) |
+| How are authorized releases published and read back? | [Publication boundary](publication-boundary.md) |
 | What owns the manual's prose, routes, examples and migration? | [Documentation design](documentation.md) and [manual application](../apps/manual/README.md) |
 | What owns wording and presentation? | [Branding](branding.md), [shared presenters](presentation.md) and [design source](../packages/design/README.md) |
 | What owns the FAQ's stable identifiers and behavior? | [FAQ authoring contract](faq-authoring.md) |
@@ -34,7 +35,7 @@ capability does not become historical merely because it is not released.
 | Who may read, configure, delegate or publish a view? | [Dashboard accounts and access](dashboard-access.md) |
 | What is retained, what remains transient, and what does import mean? | [Privacy and data](PRIVACY-AND-DATA.md) |
 | How does that product join authentication, execution and recovery? | [Managed App architecture](integration/github-app.md) |
-| Why did named history, merged-PR metrics and Business coordination replace the earlier boundary? | [Dashboard decisions D044–D053](DECISIONS.md#d044-make-the-app-activity-first-for-collaborators-as-well-as-administrators) |
+| Why did named history, merged-PR metrics and Business coordination replace the earlier boundary? | [Dashboard decisions D064–D073](DECISIONS.md#d064-make-the-app-activity-first-for-collaborators-as-well-as-administrators) |
 
 These sources describe selected capabilities, not an already deployed dashboard or
 published pricing offer. The six analytical destinations and shell are ratified for implementation. Chart/cloud
