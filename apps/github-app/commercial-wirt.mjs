@@ -264,6 +264,8 @@ export function createWirtClient({ origin, oauthClientId, callbackUrl, signing, 
       }
       if (result.status === 409) return { kind: 'conflict', status: 409 };
       if (result.status >= 500 || result.status === 429) return { kind: 'retry', status: result.status };
+      // A signed report's 401 is a signature or clock-skew refusal, not an established permanent one: retry within the bounded backoff.
+      if (result.status === 401) return { kind: 'retry', status: 401, code: 'E_COMMERCIAL_REPORT_UNAUTHENTICATED' };
       return { kind: 'refused', status: result.status };
     }
   };

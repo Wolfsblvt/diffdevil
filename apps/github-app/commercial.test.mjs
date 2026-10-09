@@ -51,15 +51,31 @@ function notice({ linkId, worksAccount = '77', productAccount = USER, epoch = 1,
     order: { epoch, version }, ended_at: '2027-03-16T09:30:00Z' };
 }
 
-/** A disposable Wirt double that independently verifies signed bytes, PKCE and owner tokens. */
+/**
+ * A disposable Wirt double that independently verifies signed bytes, PKCE, expiring owner tokens and the
+ * report-history rule: a reused report version with different content is divergence.
+ */
 function wirtDouble(clock) {
   const state = { intents: new Map(), links: new Map(), codes: new Map(), tokens: new Map(), refresh: new Map(), reports: [], requests: [],
-    reportAnswer: undefined, establishmentLost: 0, latest: new Map() };
+    reportAnswer: undefined, establishmentLost: 0, latest: new Map(), history: new Map(), down: false };
   const respond = (status, value, headers = {}) => new Response(value === undefined ? null : JSON.stringify(value), { status, headers: { 'content-type': 'application/json', ...headers } });
   const issue = userId => {
     const access = `access-${randomUUID()}`, refresh = `refresh-${randomUUID()}`;
-    state.tokens.set(access, userId); state.refresh.set(refresh, userId);
+    state.tokens.set(access, { userId, expiresAt: Date.parse(clock.value) + 3_600_000 }); state.refresh.set(refresh, userId);
     return { token_type: 'Bearer', expires_in: 3600, access_token: access, refresh_token: refresh };
+  };
+  // Wirt keeps report history across a product rollback; this mirrors its duplicate/out-of-order/divergent answers.
+  const recordReport = (linkId, text) => {
+    const report = JSON.parse(text), history = state.history.get(linkId) ?? new Map();
+    state.history.set(linkId, history);
+    const high = Math.max(0, ...history.keys());
+    if (report.report_version <= high) {
+      const previous = history.get(report.report_version);
+      if (previous !== undefined && previous !== text) return respond(409, { message: 'divergent-report' });
+      return respond(200, { result: report.report_version === high ? 'duplicate' : 'out-of-order' });
+    }
+    history.set(report.report_version, text);
+    return undefined;
   };
   const signedTerminal = (path, account, value) => {
     const body = JSON.stringify(value);
@@ -71,6 +87,7 @@ function wirtDouble(clock) {
     const text = new TextDecoder().decode(body);
     state.requests.push({ method, path, headers, text });
     assert.equal(init.redirect, 'manual', 'Wirt calls never follow redirects');
+    if (state.down) throw new TypeError('connection refused');
     if (path === '/api/oauth/token') {
       const form = new URLSearchParams(text);
       assert.equal(form.get('client_id'), 'diffdevil-public-client');
@@ -83,7 +100,7 @@ function wirtDouble(clock) {
       const userId = state.refresh.get(form.get('refresh_token'));
       if (!userId) return respond(400, { error: 'invalid_grant' });
       state.refresh.delete(form.get('refresh_token'));
-      for (const [token, owner] of state.tokens) if (owner === userId) state.tokens.delete(token); // Native refresh revokes the prior access token.
+      for (const [token, entry] of state.tokens) if (entry.userId === userId) state.tokens.delete(token); // Native refresh revokes the prior access token.
       return respond(200, issue(userId));
     }
     const signature = headers.get('x-wirt-signature');
@@ -95,10 +112,12 @@ function wirtDouble(clock) {
       state.intents.set(id, { ...input, approved: false });
       return respond(201, { intent: id, authorization_url: `${WIRT}/wirt/products/diffdevil/link/${id}` });
     }
-    const owner = state.tokens.get((headers.get('authorization') ?? '').replace(/^Bearer /u, ''));
+    const token = state.tokens.get((headers.get('authorization') ?? '').replace(/^Bearer /u, ''));
+    const owner = token && token.expiresAt > Date.parse(clock.value) ? token.userId : undefined;
     if (path === '/api/wirt/diffdevil/links' && method === 'POST') {
       const intent = state.intents.get(JSON.parse(text).intent);
-      if (!owner || !intent?.approved || intent.owner !== owner) return respond(403, {});
+      if (!owner) return respond(401, {});
+      if (!intent?.approved || intent.owner !== owner) return respond(403, {});
       if (!intent.link) {
         intent.link = randomUUID();
         state.links.set(intent.link, { id: intent.link, owner, productAccount: intent.product_account, ended: false });
@@ -122,6 +141,8 @@ function wirtDouble(clock) {
     }
     state.reports.push(JSON.parse(text));
     if (state.reportAnswer) return state.reportAnswer(path, link);
+    const answered = recordReport(link.id, text);
+    if (answered) return answered;
     return respond(200, { result: 'recorded', applied_result: JSON.parse(text).applied.result });
   }
   function approve(intentId, owner) {
@@ -134,7 +155,7 @@ function wirtDouble(clock) {
   return { state, fetch, approve, signedTerminal };
 }
 
-async function fixture() {
+async function fixture({ Store = D1CommercialStore } = {}) {
   const clock = { value: '2027-03-01T06:00:20.000Z' };
   const now = () => clock.value;
   const runtime = new Miniflare({ workers: [{
@@ -143,27 +164,41 @@ async function fixture() {
   const database = await runtime.getD1Database('APP_DB');
   const appStore = new D1AppStore(database, { now });
   for (const name of migrations) await appStore.migrate(await readFile(resolve('apps/github-app/migrations', name), 'utf8'));
-  const store = new D1CommercialStore(database, { now });
+  const store = new Store(database, { now });
   const wirt = wirtDouble(clock);
   const vault = new Map();
   const protector = { seal: async value => { const handle = `sealed:${randomUUID()}`; vault.set(handle, structuredClone(value)); return handle; }, open: async handle => structuredClone(vault.get(handle)) };
   const administers = new Map([[USER, new Set([ORG])], [OTHER_USER, new Set([ORG])]]);
   const sessions = new Map([[SESSION, USER], [OTHER_SESSION, OTHER_USER]]);
+  // Users whose GitHub authorization the product still retains; the background observation needs it.
+  const retained = new Set([USER, OTHER_USER]);
+  const observe = userId => organisationId => {
+    const present = administers.get(userId)?.has(organisationId);
+    return { userId, authority: present ? 'present' : 'absent', display: present ? 'example-org' : null };
+  };
   const authorization = {
     authenticate: async session => { if (!sessions.has(session)) throw Object.assign(new Error('E_SESSION_UNAVAILABLE'), { code: 'E_SESSION_UNAVAILABLE' }); return { userId: sessions.get(session) }; },
     organisationAuthority: async ({ session, organisationId }) => {
       const userId = sessions.get(session);
       if (!userId) throw Object.assign(new Error('E_SESSION_UNAVAILABLE'), { code: 'E_SESSION_UNAVAILABLE' });
-      const present = administers.get(userId)?.has(organisationId);
-      return { userId, authority: present ? 'present' : 'absent', display: present ? 'example-org' : null };
-    }
+      return observe(userId)(organisationId);
+    },
+    observeOrganisationAuthority: async ({ userId, organisationId }) => retained.has(userId) ? observe(userId)(organisationId) : { userId, authority: 'unknown', display: null }
   };
   const env = { APP_DB: database, WIRT_SIGNING_KEY_CURRENT: KEY, WIRT_SIGNING_KEY_PREVIOUS: PREVIOUS, WIRT_ORIGIN: WIRT, WIRT_OAUTH_CLIENT_ID: 'diffdevil-public-client', WIRT_LINK_CALLBACK_URL: CALLBACK };
   const commercial = commercialFromEnv(env, { store, authorization, protector, allowedOrigins: [APP], linkContinuationUrl: CONTINUATION, fetch: wirt.fetch, now });
   const worker = createGitHubAppWorker({ store: appStore, commercial });
   const call = (path, init = {}) => worker.fetch(new Request(`${APP}${path}`, init), env);
   const browser = (session = SESSION, cookies = '') => ({ cookie: [`__Host-diffdevil-session=${session}`, cookies].filter(Boolean).join('; '), origin: APP });
-  return { runtime, database, appStore, store, wirt, clock, commercial, worker, env, call, browser, administers, vault };
+  return { runtime, database, appStore, store, wirt, clock, commercial, worker, env, call, browser, administers, retained, vault };
+}
+
+const at = source => Date.parse(source.clock.value);
+const rows = async (source, table) => (await source.database.prepare(`SELECT * FROM ${table}`).all()).results ?? [];
+/** Every retained commercial byte, to prove where a private label survives and where it does not. */
+async function commercialBytes(source) {
+  const tables = ['commercial_links', 'commercial_bindings', 'commercial_refusals', 'commercial_reports', 'commercial_link_attempts'];
+  return JSON.stringify(await Promise.all(tables.map(table => rows(source, table))));
 }
 
 async function link(source, { session = SESSION, owner = USER } = {}) {
@@ -232,7 +267,7 @@ test('a customer-approved link is browser-bound, PKCE-protected, resumable and s
 
     wirt.state.establishmentLost = 1; // Wirt commits the link, then the first response is lost.
     const lost = await link(source, { owner: 77 });
-    assert.equal(new URL(lost.callback.headers.get('location')).searchParams.get('works-link'), 'failed');
+    assert.equal(new URL(lost.callback.headers.get('location')).searchParams.get('works-link'), 'pending', 'an unknown outcome is not reported as a failure');
     assert.equal(await store.activeLink(USER), null);
     wirt.state.seed = value => projection({ linkId: value.id, worksAccount: String(value.owner), version: 1 });
     const resumed = await call(COMMERCIAL_ROUTES.link, { method: 'POST', headers: browser() });
@@ -280,7 +315,7 @@ test('signed pushes apply in order, report after durable state and stop at the t
     assert.equal(await source.commercial.entitlement({ repositoryId: null, actor: { userId: USER } }), 'pro');
     assert.equal(wirt.state.reports.length, 1);
     assert.deepEqual(wirt.state.reports[0], { schema: 'wirt.product-report/v1', client: 'diffdevil',
-      stream: { works_account: '77', link: { id: linkId, product_account: { github_user_id: USER } } }, report_version: 1,
+      stream: { works_account: '77', link: { id: linkId, product_account: { github_user_id: USER } } }, report_version: at(source),
       applied: { epoch: 1, version: 4, result: 'applied', reason: null, at: source.clock.value }, bindings: [], refused_bindings: [] });
 
     assert.equal((await push(source, first, { nonce })).status, 409, 'a reused nonce is refused before payload use');
@@ -293,7 +328,7 @@ test('signed pushes apply in order, report after durable state and stop at the t
     assert.equal((await push(source, projection({ linkId, productAccount: OTHER_USER, version: 5 }))).status, 404, 'a stream for another product account is not applied');
 
     assert.deepEqual(await (await push(source, first)).json(), { ok: true, result: 'no-op' });
-    assert.equal(wirt.state.reports.at(-1).report_version, 2, 'an equal redelivery re-reports the same applied order');
+    assert.equal(wirt.state.reports.at(-1).report_version, at(source) + 1, 'an equal redelivery re-reports the same applied order under the next version');
     assert.deepEqual(wirt.state.reports.at(-1).applied, wirt.state.reports[0].applied);
     assert.deepEqual(await (await push(source, projection({ linkId, version: 3, standing: 'ended' }))).json(), { ok: true, result: 'not-applied' });
     assert.deepEqual(wirt.state.reports.at(-1).applied.version, 4, 'a lower order is evidence; the product reports what it actually applied');
@@ -386,8 +421,17 @@ test('reports retry, record conflicts and accept only a signed terminal answer',
     report = await store.latestReport(linkId);
     assert.equal(report.attempts, 2);
 
-    wirt.state.reportAnswer = () => new Response('{}', { status: 409 });
+    // A 401 on a signed report may be clock skew; it stays within the bounded backoff instead of failing permanently.
+    wirt.state.reportAnswer = () => new Response('{}', { status: 401 });
     clock.value = '2027-03-01T06:06:22.000Z';
+    await source.commercial.flushReports();
+    report = await store.latestReport(linkId);
+    assert.equal(report.state, 'pending');
+    assert.equal(report.code, 'E_COMMERCIAL_REPORT_UNAUTHENTICATED');
+    assert.equal(report.last_status, 401);
+
+    wirt.state.reportAnswer = () => new Response('{}', { status: 409 });
+    clock.value = '2027-03-01T06:21:23.000Z';
     await source.commercial.flushReports();
     report = await store.latestReport(linkId);
     assert.equal(report.state, 'failed');
@@ -436,5 +480,237 @@ test('the default Worker serves only the signed receiver from configuration and 
     assert.equal((await worker.fetch(new Request(`${APP}${COMMERCIAL_ROUTES.projection}`, { method: 'POST', headers, body }), env)).status, 404, 'verified, then unknown');
     assert.equal((await worker.fetch(new Request(`${APP}${COMMERCIAL_ROUTES.link}`, { method: 'POST', headers: { origin: APP } }), env)).status, 503, 'browser routes need the installed authorization adapter');
     assert.equal((await worker.fetch(new Request(`${APP}/integrations/wirt/other`), env)).status, 404);
+  } finally { await source.runtime.dispose(); }
+});
+
+/** Runs one injected writer between a handler's read of a link and its transition batch. */
+class InterleavingStore extends D1CommercialStore {
+  async transition(link, change) {
+    const between = this.between;
+    this.between = undefined;
+    if (between) await between(link);
+    return super.transition(link, change);
+  }
+}
+
+async function fundedOrganisation(source, linkId, version = 1) {
+  await push(source, projection({ linkId, version, tier: 'business', slots: ['slot-included', 'slot-1'] }));
+  await source.appStore.recordLifecycle({ installationId: 11, action: 'created', addedRepositories: [21], removedRepositories: [] });
+  await source.appStore.recordInstallationAccount(11, ORG);
+}
+const bindRequest = (source, body, session = SESSION) => source.call(COMMERCIAL_ROUTES.bindings, { method: 'POST',
+  headers: { ...source.browser(session), 'content-type': 'application/json' }, body: JSON.stringify(body) });
+
+test('a lost compare-and-set leaves no binding, refusal or report behind', async () => {
+  const source = await fixture({ Store: InterleavingStore });
+  try {
+    const { store, vault } = source;
+    await link(source, { owner: 77 });
+    const ended = (await store.activeLink(USER)).link_id;
+    await fundedOrganisation(source, ended);
+    const reportsBefore = (await rows(source, 'commercial_reports')).length;
+
+    // A terminal notice wins after the binding handler read its link and before its batch ran.
+    store.between = stale => store.endLink(stale.link_id, { source: 'wirt-notice', endedAt: source.clock.value });
+    const refused = await bindRequest(source, { action: 'bind', slot: 'slot-1', organisationId: ORG });
+    assert.equal(refused.status, 404);
+    assert.equal((await refused.json()).code, 'E_COMMERCIAL_NOT_LINKED');
+    assert.equal(await store.binding(ORG), null, 'no binding is recreated on the ended link');
+    assert.equal((await rows(source, 'commercial_reports')).length, reportsBefore, 'no report is queued by the lost transaction');
+
+    // The organisation's unique funder key is free, so a legitimate new link can fund it.
+    await link(source, { owner: 77 });
+    const current = (await store.activeLink(USER)).link_id;
+    await fundedOrganisation(source, current);
+    const count = async () => (await rows(source, 'commercial_reports')).filter(row => row.link_id === current).length;
+
+    // A grant rotation advances the revision by exactly one; the stale decision must not borrow it.
+    let before = await count();
+    store.between = async stale => {
+      const rotated = `sealed:${randomUUID()}`;
+      vault.set(rotated, vault.get(stale.protected_grant));
+      assert.equal(await store.replaceGrant(stale.link_id, stale.protected_grant, rotated), true);
+    };
+    assert.deepEqual(await (await bindRequest(source, { action: 'bind', slot: 'slot-1', organisationId: ORG })).json(), { ok: true, result: 'bound' });
+    assert.equal(await count(), before + 1, 'only the transaction that won the revision queued a report');
+
+    // A different active transition (a newer projection) wins the same race.
+    before = await count();
+    store.between = () => push(source, projection({ linkId: current, version: 2, tier: 'business', slots: ['slot-included', 'slot-1'] }));
+    assert.deepEqual(await (await bindRequest(source, { action: 'unbind', organisationId: ORG })).json(), { ok: true, result: 'unbound' });
+    assert.equal(await count(), before + 2, 'the projection and the re-decided unbind each queued exactly one report');
+    assert.equal(await store.binding(ORG), null);
+    assert.equal(new Set((await rows(source, 'commercial_reports')).map(row => `${row.link_id}:${row.report_version}`)).size, (await rows(source, 'commercial_reports')).length);
+  } finally { await source.runtime.dispose(); }
+});
+
+const RESTORED_TABLES = ['commercial_links', 'commercial_bindings', 'commercial_refusals', 'commercial_reports', 'commercial_link_attempts'];
+async function snapshot(source) { return Promise.all(RESTORED_TABLES.map(table => rows(source, table))); }
+/** A disposable restore of the commercial tables to an earlier point, as a database restore would leave them. */
+async function restore(source, point) {
+  const statements = [...RESTORED_TABLES].reverse().map(table => source.database.prepare(`DELETE FROM ${table}`));
+  RESTORED_TABLES.forEach((table, index) => {
+    for (const row of point[index]) {
+      const columns = Object.keys(row);
+      statements.push(source.database.prepare(`INSERT INTO ${table} (${columns.join(', ')}) VALUES (${columns.map(() => '?').join(', ')})`).bind(...columns.map(column => row[column])));
+    }
+  });
+  await source.database.batch(statements);
+}
+
+test('a restored store holds Works funding until Wirt reconciles it and reports above Wirt\'s retained versions', async () => {
+  const source = await fixture();
+  try {
+    const { call, browser, wirt, store, clock, commercial } = source;
+    await link(source, { owner: 77 });
+    const unlinked = (await store.activeLink(USER)).link_id;
+    await push(source, projection({ linkId: unlinked, version: 1 }));
+    await link(source, { session: OTHER_SESSION, owner: 88 });
+    const kept = (await store.activeLink(OTHER_USER)).link_id;
+    await push(source, projection({ linkId: kept, worksAccount: '88', productAccount: OTHER_USER, version: 1 }));
+    const point = await snapshot(source);
+
+    // After the restore point: one customer unlinks, the other's subscription changes.
+    clock.value = '2027-03-02T06:00:00.000Z';
+    assert.equal((await call(COMMERCIAL_ROUTES.unlink, { method: 'POST', headers: browser() })).status, 200);
+    const upgraded = projection({ linkId: kept, worksAccount: '88', productAccount: OTHER_USER, version: 2, tier: 'business' });
+    wirt.state.latest.set(kept, upgraded);
+    await push(source, upgraded);
+    const retainedByWirt = Math.max(...wirt.state.history.get(kept).keys());
+
+    clock.value = '2027-03-03T06:00:00.000Z';
+    await restore(source, point);
+    assert.equal(await commercial.entitlement({ repositoryId: null, actor: { userId: USER } }), 'pro', 'the restored rows alone are stale: this is why the restore occasion runs the seam');
+    assert.ok((await store.link(kept)).report_version < retainedByWirt, 'the restored report counter is below what Wirt already holds');
+
+    // The restore occasion: Wirt is briefly unreachable, so both links stay held rather than served.
+    wirt.state.down = true;
+    assert.deepEqual(await commercial.reconcileAfterRestore(), { held: 2, current: 0, ended: 0, unavailable: 2 });
+    assert.equal(await commercial.entitlement({ repositoryId: null, actor: { userId: USER } }), 'unknown', 'a held link grants nothing until Wirt answers');
+    assert.equal(await commercial.entitlement({ repositoryId: null, actor: { userId: OTHER_USER } }), 'unknown');
+    const status = await (await call(COMMERCIAL_ROUTES.status, { headers: browser(OTHER_SESSION) })).json();
+    assert.equal(status.reconciling, true);
+    assert.equal(status.plan, 'unknown');
+
+    // Scheduled maintenance finishes reconciliation once Wirt answers.
+    wirt.state.down = false;
+    clock.value = '2027-03-03T07:00:00.000Z';
+    assert.deepEqual((await commercial.maintain()).restored, { current: 1, ended: 1, unavailable: 0 });
+    assert.equal((await store.link(unlinked)).state, 'ended', 'a link that ended after the restore point stays ended');
+    assert.equal(await commercial.entitlement({ repositoryId: null, actor: { userId: USER } }), 'free');
+    assert.equal(await commercial.entitlement({ repositoryId: null, actor: { userId: OTHER_USER } }), 'business', 'Wirt\'s current projection replaced the restored one');
+    assert.equal((await store.link(kept)).restored_at, null);
+    assert.ok(Math.max(...wirt.state.history.get(kept).keys()) > retainedByWirt, 'the next report exceeds every version Wirt already holds');
+    assert.deepEqual((await rows(source, 'commercial_reports')).filter(row => row.state === 'failed'), [], 'no reused version diverged');
+    assert.deepEqual((await commercial.maintain()).restored, { current: 0, ended: 0, unavailable: 0 }, 'released links are not pulled again');
+  } finally { await source.runtime.dispose(); }
+});
+
+test('authority is an observed, rechecked fact: funding survives its loss, organisation use and labels do not', async () => {
+  const source = await fixture();
+  try {
+    const { call, browser, wirt, store, administers, retained, clock, commercial } = source;
+    await link(source, { owner: 77 });
+    const linkId = (await store.activeLink(USER)).link_id;
+    await fundedOrganisation(source, linkId);
+    assert.deepEqual(await (await bindRequest(source, { action: 'bind', slot: 'slot-1', organisationId: ORG })).json(), { ok: true, result: 'bound' });
+    assert.equal(wirt.state.reports.at(-1).bindings[0].display, 'example-org', 'the pending report disclosed the current label');
+    assert.equal((await rows(source, 'commercial_reports')).some(row => row.body.includes('example-org') || row.disclosure), false, 'sent report evidence keeps no label');
+    const statusOf = async () => (await (await call(COMMERCIAL_ROUTES.status, { headers: browser() })).json());
+
+    // The funder reads their status after losing administration: absence is observed, funding survives.
+    administers.get(USER).delete(ORG);
+    clock.value = '2027-03-01T07:00:00.000Z';
+    let status = await statusOf();
+    assert.equal(status.plan, 'business', 'the subscription itself is unchanged');
+    assert.deepEqual(status.capacity.find(value => value.slot === 'slot-1').binding, { organisationId: ORG, authority: 'absent', authorityCheckedAt: clock.value, display: null });
+    assert.equal(await commercial.entitlement({ repositoryId: 21, actor: { userId: OTHER_USER } }), 'free', 'absent authority withholds organisation use');
+    assert.equal((await store.binding(ORG)).slot, 'slot-1', 'the binding and its funded slot remain');
+    await commercial.flushReports();
+    assert.deepEqual(wirt.state.reports.at(-1).bindings, [{ slot: 'slot-1', github_org_id: ORG, display: null, authority: 'absent', since: '2027-03-01' }], 'Wirt is told to drop the label');
+    assert.equal((await commercialBytes(source)).includes('example-org'), false, 'no label is retained after authority loss');
+
+    // Regained administration observed at the next encounter restores use and the label.
+    administers.get(USER).add(ORG);
+    clock.value = '2027-03-01T08:00:00.000Z';
+    status = await statusOf();
+    assert.equal(status.capacity.find(value => value.slot === 'slot-1').binding.authority, 'present');
+    assert.equal(await commercial.entitlement({ repositoryId: 21, actor: { userId: OTHER_USER } }), 'business');
+    const reportsBefore = wirt.state.reports.length;
+    await statusOf();
+    await commercial.flushReports();
+    assert.equal(wirt.state.reports.length, reportsBefore + 1, 'an unchanged observation only moves its time');
+
+    // Away from the product, daily maintenance re-observes through the funder's retained authorization.
+    administers.get(USER).delete(ORG);
+    clock.value = '2027-03-02T09:00:00.000Z';
+    assert.deepEqual((await commercial.maintain()).authority, { observed: 1, unknown: 0 });
+    assert.equal((await store.binding(ORG)).authority_observed, 'absent');
+    assert.equal(await commercial.entitlement({ repositoryId: 21, actor: { userId: OTHER_USER } }), 'free');
+
+    // Without retained authorization nothing new is observed: the recorded observation and its time stand.
+    administers.get(USER).add(ORG);
+    retained.delete(USER);
+    clock.value = '2027-03-03T10:00:00.000Z';
+    assert.deepEqual((await commercial.maintain()).authority, { observed: 0, unknown: 1 });
+    assert.deepEqual(await store.binding(ORG).then(row => [row.authority_observed, row.authority_checked_at]), ['absent', '2027-03-02T09:00:00.000Z']);
+
+    // A pending report holds the label only until it leaves the outbox; ending removes every label.
+    status = await statusOf();
+    assert.equal(status.capacity.find(value => value.slot === 'slot-1').binding.display, 'example-org');
+    assert.equal((await store.latestReport(linkId)).state, 'pending');
+    assert.equal((await commercialBytes(source)).includes('example-org'), true);
+    assert.equal((await call(COMMERCIAL_ROUTES.unlink, { method: 'POST', headers: browser() })).status, 200);
+    assert.equal((await commercialBytes(source)).includes('example-org'), false, 'ending leaves no label anywhere');
+
+    clock.value = '2027-04-20T00:00:00.000Z';
+    await commercial.maintain();
+    assert.deepEqual((await rows(source, 'commercial_reports')).filter(row => row.link_id === linkId), [], 'an ended link keeps only its link identity after thirty days');
+    assert.equal((await store.link(linkId)).state, 'ended');
+  } finally { await source.runtime.dispose(); }
+});
+
+test('an interrupted link recovers its committed association with a refreshed retained grant', async () => {
+  const source = await fixture();
+  try {
+    const { call, browser, wirt, store, clock, commercial } = source;
+    wirt.state.establishmentLost = 1;
+    assert.equal(new URL((await link(source, { owner: 77 })).callback.headers.get('location')).searchParams.get('works-link'), 'pending');
+    const intents = wirt.state.intents.size;
+    const unfinished = (await rows(source, 'commercial_link_attempts')).find(row => row.protected_grant !== null);
+    assert.equal(unfinished.last_establish, 'outcome-unknown');
+
+    // Two hours later the retained access token has expired, and Wirt is briefly unreachable.
+    clock.value = '2027-03-01T08:00:20.000Z';
+    wirt.state.down = true;
+    const unreachable = await call(COMMERCIAL_ROUTES.link, { method: 'POST', headers: browser() });
+    assert.equal(unreachable.status, 503);
+    assert.equal((await unreachable.json()).code, 'E_COMMERCIAL_LINK_PENDING');
+    assert.equal(wirt.state.intents.size, intents, 'an unknown outcome never starts a second consent');
+    assert.equal((await store.attempt(unfinished.state_hash)).last_establish, 'grant-unavailable');
+
+    wirt.state.down = false;
+    wirt.state.seed = value => projection({ linkId: value.id, worksAccount: String(value.owner) });
+    const refreshes = () => wirt.state.requests.filter(request => request.path === '/api/oauth/token' && new URLSearchParams(request.text).get('grant_type') === 'refresh_token').length;
+    const attempted = refreshes(); // The unreachable attempt never reached Wirt, so its refresh token is still valid.
+    const resumed = await call(COMMERCIAL_ROUTES.link, { method: 'POST', headers: browser() });
+    assert.deepEqual(await resumed.json(), { ok: true, result: 'linked' }, 'the same intent is established with the refreshed grant');
+    assert.equal(refreshes() - attempted, 1);
+    assert.equal(wirt.state.intents.size, intents);
+    assert.equal(wirt.state.links.size, 1, 'Wirt holds exactly one association');
+    const finished = await store.attempt(unfinished.state_hash);
+    assert.equal(finished.last_establish, 'grant-refreshed');
+    assert.notEqual(finished.finished_at, null);
+    assert.equal(finished.protected_grant, null, 'the retained grant moves to the link and leaves the attempt');
+    assert.equal(await commercial.entitlement({ repositoryId: null, actor: { userId: USER } }), 'pro');
+
+    // A refresh grant Wirt refuses cannot recover the attempt; only then does a fresh consent begin.
+    wirt.state.establishmentLost = 1;
+    await link(source, { session: OTHER_SESSION, owner: 88 });
+    wirt.state.refresh.clear();
+    clock.value = '2027-03-01T10:00:20.000Z';
+    const fresh = await call(COMMERCIAL_ROUTES.link, { method: 'POST', headers: browser(OTHER_SESSION) });
+    assert.equal((await fresh.json()).result, 'authorize');
+    assert.equal((await rows(source, 'commercial_link_attempts')).filter(row => row.user_id === OTHER_USER && row.last_establish === 'grant-refused').length, 1);
   } finally { await source.runtime.dispose(); }
 });

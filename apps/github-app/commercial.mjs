@@ -8,6 +8,8 @@ export const COMMERCIAL_LINK_COOKIE = '__Host-diffdevil-works-link';
 const ATTEMPT_MS = 10 * 60_000;
 const ESTABLISHMENT_RETRY_MS = 24 * 60 * 60_000;
 const GRANT_REFRESH_MARGIN_MS = 60_000;
+const AUTHORITY_RECHECK_MS = 24 * 60 * 60_000;
+const AUTHORITY_RECHECK_LIMIT = 200;
 const REPORT_BACKOFF_SECONDS = [60, 300, 900, 3600, 14400];
 const PREMIUM_STANDINGS = new Set(['funded', 'renewal-in-grace']);
 const opaquePattern = /^[A-Za-z0-9_-]{43}$/u;
@@ -44,11 +46,26 @@ export function decideProjection(link, message) {
   return message.lineage.includes(link.works_account) ? { kind: 'apply-and-rekey' } : { kind: 'reject', reason: 'works-account-outside-lineage' };
 }
 
-/** The server-selected plan for one funded namespace. Commercial standing never grants repository access. */
+/**
+ * The server-selected plan for one funded namespace. Commercial standing never grants repository access.
+ * A link held after a store restore is `unknown` until Wirt's current answer reconciles it.
+ */
 export function planForLink(link) {
+  if (link?.state === 'active' && link.restored_at) return 'unknown';
   const projection = plannedProjection(link);
   if (!link || link.state !== 'active' || !projection) return 'free';
   return PREMIUM_STANDINGS.has(projection.commercial?.standing) ? projection.commercial.tier : 'free';
+}
+
+/**
+ * Funding and current GitHub authority are separate facts. An organisation funded through a binding is
+ * usable only while its funder's administration was last observed present; observed absence withholds
+ * use without ending the binding or the subscription.
+ */
+export function planForFunding({ link, binding } = {}) {
+  const plan = planForLink(link);
+  if (!binding || plan === 'free' || binding.authority_observed === 'present') return plan;
+  return binding.authority_observed === 'absent' ? 'free' : 'unknown';
 }
 
 export function createCommercialService({ store, wirt, signing, authorization, protector, allowedOrigins = [], linkContinuationUrl, now = () => new Date().toISOString() }) {
@@ -70,14 +87,24 @@ export function createCommercialService({ store, wirt, signing, authorization, p
     return { schema: 'wirt.product-report/v1', client: WIRT_CLIENT,
       stream: { works_account: stream.worksAccount, link: { id: link.link_id, product_account: { github_user_id: link.product_account } } },
       report_version: version, applied,
-      bindings: bindings.map(binding => ({ slot: binding.slot, github_org_id: binding.organisation_id,
-        // A display label is disclosed only while current authority permits it.
-        display: binding.authority === 'present' ? binding.display : null, authority: binding.authority, since: binding.since })),
+      // The stored body never holds a label; `disclosure` supplies it only while the report is pending.
+      bindings: bindings.map(binding => ({ slot: binding.slot, github_org_id: binding.organisation_id, display: null, authority: binding.authority_observed, since: binding.since })),
       refused_bindings: refusals.map(value => ({ slot: value.slot, github_org_id: value.organisation_id, reason: value.reason })) };
   }
+  /**
+   * The version is clock-derived, so a report after a store restore still exceeds every version Wirt
+   * already holds. A display label is disclosed only while authority was last observed present.
+   */
   function report(link, stream, applied, bindings, refusals) {
-    const version = link.report_version + 1;
-    return { version, body: JSON.stringify(reportBody(link, stream, version, applied, bindings, refusals)) };
+    const version = Math.max(link.report_version + 1, clock());
+    const labels = Object.fromEntries(bindings.filter(binding => binding.authority_observed === 'present' && binding.display).map(binding => [binding.slot, binding.display]));
+    return { version, body: JSON.stringify(reportBody(link, stream, version, applied, bindings, refusals)),
+      disclosure: Object.keys(labels).length > 0 ? JSON.stringify(labels) : null };
+  }
+  function outbound(row) {
+    const body = JSON.parse(row.body), labels = row.disclosure ? JSON.parse(row.disclosure) : {};
+    body.bindings = body.bindings.map(binding => ({ ...binding, display: binding.authority === 'present' ? labels[binding.slot] ?? null : null }));
+    return body;
   }
   const lastApplied = link => ({ epoch: link.applied_epoch, version: link.applied_version, result: link.applied_result, reason: null, at: link.applied_at });
 
@@ -100,7 +127,7 @@ export function createCommercialService({ store, wirt, signing, authorization, p
         // DiffDevil's documented unbinding rule: a slot absent from the applied capacity no longer funds its organisation.
         const removedSlots = bindings.filter(binding => !slots.has(binding.slot)).map(binding => binding.slot);
         const remaining = bindings.filter(binding => slots.has(binding.slot));
-        const partial = remaining.some(binding => binding.authority !== 'present');
+        const partial = remaining.some(binding => binding.authority_observed !== 'present');
         const applied = { epoch: message.order.epoch, version: message.order.version, result: partial ? 'partially-applied' : 'applied',
           reason: partial ? 'organisation authority not present for a bound slot' : null, at: now() };
         change = { applied: { ...applied, projectionJson: JSON.stringify(message.projection) }, worksAccount: message.stream.worksAccount, removedSlots,
@@ -122,7 +149,7 @@ export function createCommercialService({ store, wirt, signing, authorization, p
     const link = await store.link(row.link_id);
     if (!link || link.state !== 'active') return 'skipped';
     let result;
-    try { result = await wirt.report({ linkId: link.link_id, productAccount: link.product_account, body: JSON.parse(row.body) }); }
+    try { result = await wirt.report({ linkId: link.link_id, productAccount: link.product_account, body: outbound(row) }); }
     catch (error) { result = { kind: 'retry', code: error?.code ?? 'E_COMMERCIAL_TRANSPORT' }; }
     const attempts = row.attempts + 1;
     if (['recorded', 'duplicate', 'out-of-order'].includes(result.kind)) {
@@ -170,34 +197,133 @@ export function createCommercialService({ store, wirt, signing, authorization, p
     return next;
   }
 
-  async function seed(link) {
-    // The pull fallback gives a fresh link its current state without waiting for the next push.
-    try {
-      const pulled = await wirt.pull({ linkId: link.link_id, productAccount: link.product_account });
-      if (pulled.kind === 'message' && pulled.message.stream.linkId === link.link_id) await applyMessage(pulled.message);
-      if (pulled.kind === 'ended') await store.endLink(link.link_id, { source: 'wirt-answer', endedAt: pulled.notice.endedAt });
-    } catch { /* Push delivery remains the ordinary route; a failed seed changes nothing. */ }
+  /** Pull Wirt's current answer for one link and apply it under the ordinary consumption rules. */
+  async function pullCurrent(link) {
+    let pulled;
+    try { pulled = await wirt.pull({ linkId: link.link_id, productAccount: link.product_account }); }
+    catch { return 'unavailable'; }
+    if (pulled.kind === 'ended') {
+      await store.endLink(link.link_id, { source: 'wirt-answer', endedAt: pulled.notice.endedAt });
+      return 'ended';
+    }
+    if (pulled.kind !== 'message' || pulled.message.stream.linkId !== link.link_id) return 'unavailable';
+    try { await applyMessage(pulled.message); } catch { return 'unavailable'; }
+    return 'current';
   }
 
-  async function establish(userId, { stateHash, intentId, grant }) {
-    let result;
-    try { result = await wirt.establish({ intent: intentId, accessToken: grant.accessToken, productAccount: userId }); }
-    catch { return 'failed'; }
-    if (result.kind === 'ended') { await store.finishAttempt(stateHash); return 'ended'; }
-    if (result.kind !== 'established') {
-      // 403 means the intent was never committed and can no longer be; 409 means another active link exists.
-      if ([403, 409].includes(result.status)) await store.finishAttempt(stateHash);
-      return result.status === 409 ? 'conflict' : 'failed';
+  /** A held link is released only by an authenticated current answer; anything else keeps it held for the next pass. */
+  async function reconcileRestored() {
+    const outcomes = { current: 0, ended: 0, unavailable: 0 };
+    if (!wirt) return outcomes;
+    for (let after = '', rows; (rows = await store.restoredLinks(after)).length > 0;) {
+      for (const link of rows) {
+        after = link.link_id;
+        const outcome = await pullCurrent(link);
+        if (outcome === 'current') await store.releaseRestoreHold(link.link_id, link.restored_at);
+        outcomes[outcome]++;
+      }
     }
-    if (result.stream.productAccount !== userId) { await store.finishAttempt(stateHash); return 'failed'; }
-    let link;
-    try {
-      link = await store.saveEstablishedLink({ linkId: result.stream.linkId, productAccount: userId, worksAccount: result.stream.worksAccount,
-        intentId, protectedGrant: await protector.seal(grant) });
-    } catch { await store.finishAttempt(stateHash); return 'conflict'; }
-    await store.finishAttempt(stateHash);
-    await seed(link);
-    return 'linked';
+    return outcomes;
+  }
+
+  /**
+   * Record definite authority observations for one link. A change re-reports the bindings so Wirt drops a
+   * label it may no longer show; a confirmation only moves the observation time.
+   */
+  async function recordObservations(linkId, observed) {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const link = await store.link(linkId);
+      if (!link || link.state !== 'active') return;
+      const [bindings, refusals] = await Promise.all([store.bindings(linkId), store.refusals(linkId)]);
+      const recorded = value => bindings.find(binding => binding.slot === value.slot && binding.organisation_id === value.organisationId);
+      const current = observed.filter(value => recorded(value));
+      const changes = current.filter(value => recorded(value).authority_observed !== value.authority
+        || (value.authority === 'present' && recorded(value).display !== value.display));
+      const confirm = () => Promise.all(current.filter(value => !changes.includes(value)).map(value => store.confirmObservation(linkId, value)));
+      if (changes.length === 0) { await confirm(); return; }
+      const next = bindings.map(binding => {
+        const value = changes.find(candidate => candidate.slot === binding.slot && candidate.organisationId === binding.organisation_id);
+        return value ? { ...binding, authority_observed: value.authority, display: value.authority === 'present' ? value.display : null } : binding;
+      });
+      const change = { observations: changes, ...(orderOf(link) ? { report: report(link, { worksAccount: link.works_account }, lastApplied(link), next, refusals) } : {}) };
+      if (await store.transition(link, change)) { await confirm(); return; }
+    }
+  }
+
+  /** Maintenance re-observes stale funder authority through the funder's retained authorization. `unknown` changes nothing. */
+  async function recheckAuthority() {
+    if (!authorization?.observeOrganisationAuthority) return { observed: 0, unknown: 0 };
+    const stale = await store.staleObservations(new Date(clock() - AUTHORITY_RECHECK_MS).toISOString(), AUTHORITY_RECHECK_LIMIT);
+    const byLink = new Map();
+    let unknown = 0;
+    for (const binding of stale) {
+      let result;
+      try { result = await authorization.observeOrganisationAuthority({ userId: binding.product_account, organisationId: binding.organisation_id }); }
+      catch { result = { authority: 'unknown' }; }
+      if (result.authority !== 'present' && result.authority !== 'absent') { unknown++; continue; }
+      const values = byLink.get(binding.link_id) ?? [];
+      values.push({ slot: binding.slot, organisationId: binding.organisation_id, authority: result.authority, display: result.display ?? null });
+      byLink.set(binding.link_id, values);
+    }
+    for (const [linkId, values] of byLink) await recordObservations(linkId, values);
+    return { observed: stale.length - unknown, unknown };
+  }
+
+  /**
+   * Use the attempt's retained owner grant, refreshing it first when its access token has expired. The
+   * refreshed grant is persisted before its first use, because Wirt revokes the grant it replaces.
+   */
+  async function attemptGrant(stateHash, sealed, { force = false } = {}) {
+    const grant = sealed ? await protector.open(sealed) : undefined;
+    if (!grant?.accessToken || !grant?.refreshToken) return { kind: 'unavailable' };
+    if (!force && Date.parse(grant.accessExpiresAt) > clock() + GRANT_REFRESH_MARGIN_MS) return { kind: 'grant', grant, sealed };
+    let next;
+    try { next = await wirt.refresh({ refreshToken: grant.refreshToken }); }
+    catch (error) {
+      // A refused refresh grant cannot recover this attempt; a transport or server failure still may.
+      return { kind: error?.code === 'E_COMMERCIAL_GRANT' && error.status >= 400 && error.status < 500 ? 'refused' : 'unavailable' };
+    }
+    const nextSealed = await protector.seal(next);
+    if (!await store.replaceAttemptGrant(stateHash, sealed, nextSealed)) {
+      const current = await store.attempt(stateHash);
+      if (!current || current.finished_at || !current.protected_grant || current.protected_grant === sealed) return { kind: 'unavailable' };
+      return attemptGrant(stateHash, current.protected_grant);
+    }
+    await store.recordEstablishment(stateHash, 'grant-refreshed');
+    return { kind: 'grant', grant: next, sealed: nextSealed };
+  }
+
+  /**
+   * Establish the accepted intent with its retained owner grant. `pending` keeps the attempt for the same
+   * intent: Wirt may already have committed the association, so a second consent is no substitute.
+   */
+  async function establish(userId, { stateHash, intentId, sealedGrant }) {
+    let held = await attemptGrant(stateHash, sealedGrant);
+    for (let attempt = 0; ; attempt++) {
+      if (held.kind === 'refused') { await store.recordEstablishment(stateHash, 'grant-refused'); await store.finishAttempt(stateHash); return 'failed'; }
+      if (held.kind !== 'grant') { await store.recordEstablishment(stateHash, 'grant-unavailable'); return 'pending'; }
+      let result;
+      try { result = await wirt.establish({ intent: intentId, accessToken: held.grant.accessToken, productAccount: userId }); }
+      catch { await store.recordEstablishment(stateHash, 'outcome-unknown'); return 'pending'; }
+      if (result.kind === 'refused' && result.status === 401 && attempt === 0) { held = await attemptGrant(stateHash, held.sealed, { force: true }); continue; }
+      if (result.kind === 'ended') { await store.finishAttempt(stateHash); return 'ended'; }
+      if (result.kind !== 'established') {
+        await store.recordEstablishment(stateHash, `status-${result.status}`);
+        // 403 means the intent was never committed and can no longer be; 409 means another active link exists.
+        if (result.status === 403 || result.status === 409) { await store.finishAttempt(stateHash); return result.status === 409 ? 'conflict' : 'failed'; }
+        return 'pending';
+      }
+      if (result.stream.productAccount !== userId) { await store.finishAttempt(stateHash); return 'failed'; }
+      let link;
+      try {
+        link = await store.saveEstablishedLink({ linkId: result.stream.linkId, productAccount: userId, worksAccount: result.stream.worksAccount,
+          intentId, protectedGrant: await protector.seal(held.grant) });
+      } catch { await store.finishAttempt(stateHash); return 'conflict'; }
+      await store.finishAttempt(stateHash);
+      // The pull fallback gives a fresh link its current state without waiting for the next push.
+      await pullCurrent(link);
+      return 'linked';
+    }
   }
 
   return {
@@ -234,8 +360,9 @@ export function createCommercialService({ store, wirt, signing, authorization, p
       const unfinished = await store.unfinishedEstablishment(userId);
       if (unfinished) {
         // A lost establishment response is resumed with the same intent and owner grant rather than a second consent.
-        const outcome = await establish(userId, { stateHash: unfinished.state_hash, intentId: unfinished.intent_id, grant: await protector.open(unfinished.protected_grant) });
+        const outcome = await establish(userId, { stateHash: unfinished.state_hash, intentId: unfinished.intent_id, sealedGrant: unfinished.protected_grant });
         if (outcome === 'linked') return { outcome, headers: protectedHeaders() };
+        if (outcome === 'pending') throw refusal('E_COMMERCIAL_LINK_PENDING', 503);
       }
       const verifier = opaqueValue(), state = opaqueValue(), browserBinding = opaqueValue();
       let intent;
@@ -264,8 +391,9 @@ export function createCommercialService({ store, wirt, signing, authorization, p
       let grant;
       try { grant = await wirt.exchangeCode({ code, verifier: (await protector.open(attempt.protectedVerifier)).verifier }); }
       catch { return finish('failed'); }
-      await store.holdExchangedGrant(stateHash, await protector.seal(grant), later(ESTABLISHMENT_RETRY_MS));
-      return finish(await establish(userId, { stateHash, intentId: attempt.intentId, grant }));
+      const sealedGrant = await protector.seal(grant);
+      await store.holdExchangedGrant(stateHash, sealedGrant, later(ESTABLISHMENT_RETRY_MS));
+      return finish(await establish(userId, { stateHash, intentId: attempt.intentId, sealedGrant }));
     },
 
     /** Unlink on the customer's behalf. Wirt durably ends the link before 204, so benefits stop here at once. */
@@ -310,7 +438,7 @@ export function createCommercialService({ store, wirt, signing, authorization, p
           const replaced = bindings.find(value => value.slot === slot && value.organisation_id !== organisationId);
           const current = bindings.find(value => value.slot === slot && value.organisation_id === organisationId);
           const binding = { slot, organisationId, authority: 'present', display: authority.display, since: current?.since ?? now().slice(0, 10) };
-          const next = [...bindings.filter(value => value.slot !== slot), { slot, organisation_id: organisationId, authority: 'present', display: authority.display, since: binding.since }]
+          const next = [...bindings.filter(value => value.slot !== slot), { slot, organisation_id: organisationId, authority_observed: 'present', display: authority.display, since: binding.since }]
             .sort((left, right) => left.slot.localeCompare(right.slot));
           change = { unbindSlot: replaced?.slot, binding, report: report(link, stream, lastApplied(link), next, refusals) };
           outcome = 'bound';
@@ -338,16 +466,31 @@ export function createCommercialService({ store, wirt, signing, authorization, p
       throw refusal('E_COMMERCIAL_CONFLICT', 409);
     },
 
-    /** The signed-in account's own commercial standing, without payment instruments or other accounts. */
+    /**
+     * The signed-in account's own commercial standing, without payment instruments or other accounts.
+     * Reading it re-observes the funder's authority for each bound organisation.
+     */
     async status({ session }) {
       if (!authorization) throw refusal('E_COMMERCIAL_UNAVAILABLE', 503);
       const { userId } = await actor(session);
-      const link = await store.activeLink(userId);
+      let link = await store.activeLink(userId);
       if (!link) return { body: { linked: false }, headers: protectedHeaders() };
+      const observed = [];
+      for (const binding of await store.bindings(link.link_id)) {
+        let result;
+        try { result = await authorization.organisationAuthority({ session, organisationId: binding.organisation_id }); }
+        catch { break; } // Without the viewer's current authorization nothing new is observed.
+        if (result.authority === 'present' || result.authority === 'absent') observed.push({ slot: binding.slot, organisationId: binding.organisation_id, authority: result.authority, display: result.display ?? null });
+      }
+      if (observed.length > 0) {
+        await recordObservations(link.link_id, observed);
+        link = await store.activeLink(userId);
+        if (!link) return { body: { linked: false }, headers: protectedHeaders() };
+      }
       const projection = plannedProjection(link);
       const bindings = await store.bindings(link.link_id);
       const commercial = projection?.commercial;
-      return { headers: protectedHeaders(), body: { linked: true, plan: planForLink(link),
+      return { headers: protectedHeaders(), body: { linked: true, plan: planForLink(link), reconciling: Boolean(link.restored_at),
         commercial: commercial ? { standing: commercial.standing, tier: commercial.tier, cadence: commercial.cadence, period: commercial.period,
           renewalPreference: commercial.renewal_preference, cancellationIntent: commercial.cancellation_intent, grace: commercial.grace,
           ended: commercial.ended, nextRenewal: commercial.next_renewal } : null,
@@ -355,20 +498,42 @@ export function createCommercialService({ store, wirt, signing, authorization, p
         capacity: (projection?.benefits.organisation_capacity ?? []).map(value => {
           const binding = bindings.find(candidate => candidate.slot === value.slot);
           return { slot: value.slot, funding: value.funding, pendingEndOn: value.pending_end_on,
-            binding: binding ? { organisationId: binding.organisation_id, authority: binding.authority, display: binding.authority === 'present' ? binding.display : null } : null };
+            binding: binding ? { organisationId: binding.organisation_id, authority: binding.authority_observed, authorityCheckedAt: binding.authority_checked_at,
+              display: binding.authority_observed === 'present' ? binding.display : null } : null };
         }) } };
     },
 
-    /** Entitlement adapter for analytical reads: 'free' | 'pro' | 'business', or 'unknown' when the namespace is unestablished. */
+    /**
+     * Entitlement adapter for analytical reads: 'free' | 'pro' | 'business', or 'unknown' when the namespace is
+     * unestablished, its link awaits restore reconciliation, or its funder's authority is unobserved.
+     */
     async entitlement({ repositoryId, actor: viewer }) {
       const account = repositoryId === null ? viewer?.userId : await store.repositoryNamespace(repositoryId);
       if (!Number.isSafeInteger(account) || account <= 0) return 'unknown';
-      return planForLink(await store.fundingLink(account));
+      return planForFunding(await store.funding(account));
+    },
+
+    /**
+     * Operator seam for the restore occasion: run once after the App database is restored or imported to an
+     * earlier point, before Works-funded benefits are served again. Every active link is held, then reconciled
+     * against Wirt's current answer; a link Wirt cannot answer for stays held for scheduled maintenance.
+     */
+    async reconcileAfterRestore() {
+      if (!wirt) throw refusal('E_COMMERCIAL_UNAVAILABLE', 503);
+      const held = await store.holdRestoredLinks(now());
+      const outcomes = await reconcileRestored();
+      await flushReports();
+      return { held, ...outcomes };
     },
 
     flushReports,
     applyMessage,
-    async maintain() { await store.maintain(); return flushReports(); }
+    async maintain() {
+      await store.maintain();
+      const restored = await reconcileRestored();
+      const authority = await recheckAuthority();
+      return { restored, authority, reports: await flushReports() };
+    }
   };
 }
 

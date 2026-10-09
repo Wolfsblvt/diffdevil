@@ -402,7 +402,13 @@ test('organisation authority is checked through current user authorization and n
     assert.deepEqual(await service.organisationAuthority({ session, organisationId: 9001 }), { userId: 123, authority: 'unknown', display: null });
     await assert.rejects(service.organisationAuthority({ session, organisationId: 0 }), { code: 'E_ORGANISATION_UNAVAILABLE' });
     await assert.rejects(service.organisationAuthority({ session: 'A'.repeat(43), organisationId: 9001 }), { code: 'E_SESSION_UNAVAILABLE' });
+    // A background observation uses the funder's retained authorization, needs no session and never invents absence.
+    providerState.organisation = organisationId => ({ administer: organisationId === 9001, login: 'example-org' });
+    assert.deepEqual(await service.observeOrganisationAuthority({ userId: 123, organisationId: 9001 }), { userId: 123, authority: 'present', display: 'example-org' });
+    assert.deepEqual(await service.observeOrganisationAuthority({ userId: 123, organisationId: 9002 }), { userId: 123, authority: 'absent', display: null });
+    assert.deepEqual(await service.observeOrganisationAuthority({ userId: 999, organisationId: 9001 }), { userId: 999, authority: 'unknown', display: null }, 'no retained authorization is unknown');
     providerState.userValid = false;
     await assert.rejects(service.organisationAuthority({ session, organisationId: 9001 }), { code: 'E_AUTHORIZATION_UNAVAILABLE' });
+    assert.equal((await service.observeOrganisationAuthority({ userId: 123, organisationId: 9001 })).authority, 'unknown');
   } finally { await source.runtime.dispose(); }
 });

@@ -81,6 +81,15 @@ export function createAuthorizationService({ store, admission, history, provider
     throw refusal('E_AUTHORIZATION_UNAVAILABLE');
   }
 
+  async function checkOrganisation(material, userId, organisationId) {
+    let result;
+    try { result = await provider.checkOrganisationAdministration({ material, userId, organisationId }); }
+    catch { return { authority: 'unknown', display: null }; }
+    const present = result?.administer === true;
+    return { authority: present ? 'present' : 'absent',
+      display: present && typeof result.login === 'string' && /^[A-Za-z0-9-]{1,39}$/u.test(result.login) ? result.login : null };
+  }
+
   async function principal(sessionValue) {
     let hash;
     try { hash = await digest(sessionValue); } catch { throw refusal('E_SESSION_UNAVAILABLE'); }
@@ -192,13 +201,18 @@ export function createAuthorizationService({ store, admission, history, provider
     async organisationAuthority({ session, organisationId }) {
       const actor = await principal(session);
       if (!Number.isSafeInteger(organisationId) || organisationId <= 0) throw refusal('E_ORGANISATION_UNAVAILABLE');
-      const material = await currentAuthorization(actor.userId);
-      let result;
-      try { result = await provider.checkOrganisationAdministration({ material, userId: actor.userId, organisationId }); }
-      catch { return { userId: actor.userId, authority: 'unknown', display: null }; }
-      const present = result?.administer === true;
-      return { userId: actor.userId, authority: present ? 'present' : 'absent',
-        display: present && typeof result.login === 'string' && /^[A-Za-z0-9-]{1,39}$/u.test(result.login) ? result.login : null };
+      return { userId: actor.userId, ...await checkOrganisation(await currentAuthorization(actor.userId), actor.userId, organisationId) };
+    },
+
+    /**
+     * Re-observe a funder's administration without their session, through the authorization they retain
+     * with this product. No retained authorization or provider answer is `unknown`, never `absent`.
+     */
+    async observeOrganisationAuthority({ userId, organisationId }) {
+      if (!Number.isSafeInteger(userId) || userId <= 0 || !Number.isSafeInteger(organisationId) || organisationId <= 0) throw refusal('E_ORGANISATION_UNAVAILABLE');
+      let material;
+      try { material = await currentAuthorization(userId); } catch { return { userId, authority: 'unknown', display: null }; }
+      return { userId, ...await checkOrganisation(material, userId, organisationId) };
     },
 
     async updateAdmission({ session, repositoryId, method, origin, settings }) {

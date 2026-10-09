@@ -2,10 +2,13 @@
 
 const changed = result => (result?.meta?.changes ?? 0) === 1;
 const conflict = () => Object.assign(new Error('E_COMMERCIAL_CONFLICT'), { code: 'E_COMMERCIAL_CONFLICT' });
+const PAGE = 25;
 
 /**
- * D1 adapter for Wirt links. Every link mutation compares and advances `revision`, so applying a
- * projection, binding an organisation and queueing its report commit together or not at all.
+ * D1 adapter for Wirt links. Every link mutation compares and advances `revision`; a transition
+ * also writes its own unique `transition_id`, and every child statement requires that exact token.
+ * A lost compare-and-set therefore leaves no binding, refusal or report behind, even when another
+ * writer happened to advance the revision by the same amount.
  */
 export class D1CommercialStore {
   constructor(database, { now = () => new Date().toISOString() } = {}) {
@@ -38,6 +41,18 @@ export class D1CommercialStore {
   /** Persist the exchanged owner grant before establishment, so a lost establishment response can be retried. */
   async holdExchangedGrant(stateHash, protectedGrant, expiresAt) {
     await this.statement('UPDATE commercial_link_attempts SET protected_grant=?, expires_at=? WHERE state_hash=? AND finished_at IS NULL', protectedGrant, expiresAt, stateHash).run();
+  }
+
+  /** A refreshed grant replaces exactly the grant it was refreshed from, before its first use. */
+  async replaceAttemptGrant(stateHash, previous, next) {
+    return changed(await this.statement('UPDATE commercial_link_attempts SET protected_grant=? WHERE state_hash=? AND finished_at IS NULL AND protected_grant=?', next, stateHash, previous).run());
+  }
+
+  async attempt(stateHash) { return this.statement('SELECT * FROM commercial_link_attempts WHERE state_hash=?', stateHash).first(); }
+
+  /** Typed evidence of the latest establishment try; the attempt stays retryable until finished or expired. */
+  async recordEstablishment(stateHash, outcome) {
+    await this.statement('UPDATE commercial_link_attempts SET last_establish=?, last_establish_at=? WHERE state_hash=?', outcome, this.now(), stateHash).run();
   }
 
   async unfinishedEstablishment(userId) {
@@ -74,66 +89,110 @@ export class D1CommercialStore {
       WHERE link_id=? AND state='active' AND protected_grant=?`, next, this.now(), linkId, previous).run());
   }
 
-  #reportStatements(linkId, revision, report) {
-    if (!report) return [];
-    const guard = 'EXISTS (SELECT 1 FROM commercial_links WHERE link_id=? AND revision=?)';
-    return [
-      this.statement(`UPDATE commercial_reports SET state='superseded', next_attempt_at=NULL WHERE link_id=? AND state='pending' AND ${guard}`, linkId, linkId, revision + 1),
-      this.statement(`INSERT INTO commercial_reports (link_id, report_version, body, state, next_attempt_at, created_at)
-        SELECT ?, ?, ?, 'pending', ?, ? WHERE ${guard}`, linkId, report.version, report.body, this.now(), this.now(), linkId, revision + 1),
-      this.statement(`UPDATE commercial_links SET report_version=? WHERE link_id=? AND revision=?`, report.version, linkId, revision + 1)
-    ];
-  }
-
-  /** Commit one decided transition. A stale revision changes nothing and asks the caller to decide again. */
-  async transition(link, { applied, worksAccount, removedSlots = [], binding, unbindSlot, refusal, report }) {
-    const now = this.now(), next = link.revision + 1;
-    const guard = 'EXISTS (SELECT 1 FROM commercial_links WHERE link_id=? AND revision=?)';
+  /**
+   * Commit one decided transition. A stale revision changes nothing and asks the caller to decide again.
+   * `observations` record a newly observed organisation authority for bindings that still name that organisation.
+   */
+  async transition(link, { applied, worksAccount, removedSlots = [], binding, unbindSlot, refusal, observations = [], report }) {
+    const now = this.now(), token = crypto.randomUUID();
+    const owned = 'EXISTS (SELECT 1 FROM commercial_links WHERE link_id=? AND transition_id=?)';
     const statements = [applied
-      ? this.statement(`UPDATE commercial_links SET revision=?, works_account=?, applied_epoch=?, applied_version=?, applied_result=?, applied_at=?, projection_json=?, updated_at=?
-        WHERE link_id=? AND state='active' AND revision=?`, next, worksAccount ?? link.works_account, applied.epoch, applied.version, applied.result, applied.at, applied.projectionJson, now, link.link_id, link.revision)
-      : this.statement("UPDATE commercial_links SET revision=?, updated_at=? WHERE link_id=? AND state='active' AND revision=?", next, now, link.link_id, link.revision)];
-    for (const slot of removedSlots) statements.push(this.statement(`DELETE FROM commercial_bindings WHERE link_id=? AND slot=? AND ${guard}`, link.link_id, slot, link.link_id, next));
-    if (unbindSlot) statements.push(this.statement(`DELETE FROM commercial_bindings WHERE link_id=? AND slot=? AND ${guard}`, link.link_id, unbindSlot, link.link_id, next));
-    if (binding) statements.push(this.statement(`INSERT INTO commercial_bindings (link_id, slot, organisation_id, authority, display, since, checked_at)
-      SELECT ?, ?, ?, ?, ?, ?, ? WHERE ${guard}
-      ON CONFLICT(link_id, slot) DO UPDATE SET authority=excluded.authority, display=excluded.display, checked_at=excluded.checked_at
-      WHERE commercial_bindings.organisation_id=excluded.organisation_id`,
-    link.link_id, binding.slot, binding.organisationId, binding.authority, binding.display, binding.since, now, link.link_id, next));
-    if (refusal) statements.push(this.statement(`INSERT OR REPLACE INTO commercial_refusals (link_id, slot, organisation_id, reason, refused_at)
-      SELECT ?, ?, ?, ?, ? WHERE ${guard}`, link.link_id, refusal.slot, refusal.organisationId, refusal.reason, now, link.link_id, next));
-    statements.push(...this.#reportStatements(link.link_id, link.revision, report));
+      ? this.statement(`UPDATE commercial_links SET revision=revision + 1, transition_id=?, works_account=?, applied_epoch=?, applied_version=?, applied_result=?, applied_at=?, projection_json=?, updated_at=?
+        WHERE link_id=? AND state='active' AND revision=?`, token, worksAccount ?? link.works_account, applied.epoch, applied.version, applied.result, applied.at, applied.projectionJson, now, link.link_id, link.revision)
+      : this.statement("UPDATE commercial_links SET revision=revision + 1, transition_id=?, updated_at=? WHERE link_id=? AND state='active' AND revision=?", token, now, link.link_id, link.revision)];
+    const child = (sql, ...values) => statements.push(this.statement(`${sql} ${owned}`, ...values, link.link_id, token));
+    for (const slot of removedSlots) child('DELETE FROM commercial_bindings WHERE link_id=? AND slot=? AND', link.link_id, slot);
+    if (unbindSlot) child('DELETE FROM commercial_bindings WHERE link_id=? AND slot=? AND', link.link_id, unbindSlot);
+    if (binding) {
+      statements.push(this.statement(`INSERT INTO commercial_bindings (link_id, slot, organisation_id, authority_observed, authority_checked_at, display, since)
+        SELECT ?, ?, ?, ?, ?, ?, ? WHERE ${owned}
+        ON CONFLICT(link_id, slot) DO UPDATE SET authority_observed=excluded.authority_observed, authority_checked_at=excluded.authority_checked_at, display=excluded.display
+        WHERE commercial_bindings.organisation_id=excluded.organisation_id`,
+      link.link_id, binding.slot, binding.organisationId, binding.authority, now, binding.display, binding.since, link.link_id, token));
+    }
+    for (const value of observations) {
+      child('UPDATE commercial_bindings SET authority_observed=?, authority_checked_at=?, display=? WHERE link_id=? AND slot=? AND organisation_id=? AND',
+        value.authority, now, value.authority === 'present' ? value.display : null, link.link_id, value.slot, value.organisationId);
+    }
+    if (refusal) {
+      statements.push(this.statement(`INSERT OR REPLACE INTO commercial_refusals (link_id, slot, organisation_id, reason, refused_at)
+        SELECT ?, ?, ?, ?, ? WHERE ${owned}`, link.link_id, refusal.slot, refusal.organisationId, refusal.reason, now, link.link_id, token));
+    }
+    if (report) {
+      child("UPDATE commercial_reports SET state='superseded', next_attempt_at=NULL, disclosure=NULL WHERE link_id=? AND state='pending' AND", link.link_id);
+      statements.push(this.statement(`INSERT INTO commercial_reports (link_id, report_version, body, disclosure, state, next_attempt_at, created_at)
+        SELECT ?, ?, ?, ?, 'pending', ?, ? WHERE ${owned}`, link.link_id, report.version, report.body, report.disclosure ?? null, now, now, link.link_id, token));
+      statements.push(this.statement('UPDATE commercial_links SET report_version=? WHERE link_id=? AND transition_id=?', report.version, link.link_id, token));
+    }
     let results;
     try { results = await this.database.batch(statements); }
     catch { return false; }
     return changed(results[0]);
   }
 
-  /** Ending is permanent for a link ID: benefits, bindings, grant and unsent reports stop together. */
+  /** A recheck that confirms the recorded observation only moves its time. */
+  async confirmObservation(linkId, { slot, organisationId, authority }) {
+    await this.statement('UPDATE commercial_bindings SET authority_checked_at=? WHERE link_id=? AND slot=? AND organisation_id=? AND authority_observed=?',
+      this.now(), linkId, slot, organisationId, authority).run();
+  }
+
+  /** Bindings of active links whose authority observation is older than `before`, oldest first. */
+  async staleObservations(before, limit = PAGE) {
+    return (await this.statement(`SELECT b.*, l.product_account FROM commercial_bindings b JOIN commercial_links l ON l.link_id=b.link_id
+      WHERE l.state='active' AND b.authority_checked_at < ? ORDER BY b.authority_checked_at LIMIT ?`, before, limit).all()).results ?? [];
+  }
+
+  /**
+   * Ending is permanent for a link ID: benefits, bindings, grant and unsent reports stop together,
+   * and no retained report keeps a display label.
+   */
   async endLink(linkId, { source, endedAt }) {
     const now = this.now();
     await this.database.batch([
       this.statement(`UPDATE commercial_links SET state='ended', ended_at=COALESCE(ended_at, ?), end_source=COALESCE(end_source, ?), protected_grant=NULL,
-        projection_json=NULL, revision=revision + 1, updated_at=? WHERE link_id=?`, endedAt, source, now, linkId),
+        projection_json=NULL, restored_at=NULL, revision=revision + 1, transition_id=NULL, updated_at=? WHERE link_id=?`, endedAt, source, now, linkId),
       this.statement('DELETE FROM commercial_bindings WHERE link_id=?', linkId),
       this.statement('DELETE FROM commercial_refusals WHERE link_id=?', linkId),
-      this.statement("UPDATE commercial_reports SET state='superseded', next_attempt_at=NULL WHERE link_id=? AND state='pending'", linkId)
+      this.statement(`UPDATE commercial_reports SET state=CASE WHEN state='pending' THEN 'superseded' ELSE state END, next_attempt_at=NULL, disclosure=NULL
+        WHERE link_id=?`, linkId)
     ]);
+  }
+
+  /**
+   * After the store is restored to an earlier point, every active link is held until Wirt's current
+   * answer reconciles it. Restored pending reports describe pre-restore state and are superseded.
+   */
+  async holdRestoredLinks(restoredAt) {
+    const [held] = await this.database.batch([
+      this.statement("UPDATE commercial_links SET restored_at=?, revision=revision + 1, transition_id=NULL, updated_at=? WHERE state='active'", restoredAt, this.now()),
+      this.statement(`UPDATE commercial_reports SET state='superseded', next_attempt_at=NULL, disclosure=NULL WHERE state='pending'
+        AND link_id IN (SELECT link_id FROM commercial_links WHERE state='active' AND restored_at=?)`, restoredAt)
+    ]);
+    return held?.meta?.changes ?? 0;
+  }
+
+  async restoredLinks(after = '', limit = PAGE) {
+    return (await this.statement("SELECT * FROM commercial_links WHERE state='active' AND restored_at IS NOT NULL AND link_id > ? ORDER BY link_id LIMIT ?", after, limit).all()).results ?? [];
+  }
+
+  /** Only the hold this reconciliation observed is released; a newer restore keeps its own hold. */
+  async releaseRestoreHold(linkId, restoredAt) {
+    return changed(await this.statement("UPDATE commercial_links SET restored_at=NULL, updated_at=? WHERE link_id=? AND state='active' AND restored_at=?", this.now(), linkId, restoredAt).run());
   }
 
   async latestReport(linkId) {
     return this.statement('SELECT * FROM commercial_reports WHERE link_id=? ORDER BY report_version DESC LIMIT 1', linkId).first();
   }
 
-  async dueReports(limit = 25) {
+  async dueReports(limit = PAGE) {
     return (await this.statement(`SELECT r.* FROM commercial_reports r JOIN commercial_links l ON l.link_id=r.link_id
       WHERE r.state='pending' AND l.state='active' AND r.next_attempt_at <= ? ORDER BY r.next_attempt_at LIMIT ?`, this.now(), limit).all()).results ?? [];
   }
 
-  /** Refusals stay queued until a report carrying them has been accepted by Wirt. */
+  /** Refusals stay queued until a report carrying them has been accepted by Wirt. A report leaving `pending` drops its labels. */
   async markReport(linkId, version, { state, attempts, nextAttemptAt = null, status = null, code = null }) {
-    const statements = [this.statement(`UPDATE commercial_reports SET state=?, attempts=?, next_attempt_at=?, last_status=?, code=?
-      WHERE link_id=? AND report_version=? AND state='pending'`, state, attempts, nextAttemptAt, status, code, linkId, version)];
+    const statements = [this.statement(`UPDATE commercial_reports SET state=?, attempts=?, next_attempt_at=?, last_status=?, code=?,
+      disclosure=CASE WHEN ?='pending' THEN disclosure ELSE NULL END WHERE link_id=? AND report_version=? AND state='pending'`, state, attempts, nextAttemptAt, status, code, state, linkId, version)];
     if (state === 'sent') statements.push(this.statement(`DELETE FROM commercial_refusals WHERE link_id=?
       AND refused_at <= (SELECT created_at FROM commercial_reports WHERE link_id=? AND report_version=?)`, linkId, linkId, version));
     await this.database.batch(statements);
@@ -146,21 +205,31 @@ export class D1CommercialStore {
     return Number.isSafeInteger(row?.account_id) ? row.account_id : undefined;
   }
 
-  /** The active link funding one account: the account's own link, or a present-authority organisation binding. */
-  async fundingLink(accountId) {
-    return this.statement(`SELECT l.* FROM commercial_links l WHERE l.state='active' AND (l.product_account=?
-      OR EXISTS (SELECT 1 FROM commercial_bindings b WHERE b.link_id=l.link_id AND b.organisation_id=? AND b.authority='present'))
-      ORDER BY CASE WHEN l.product_account=? THEN 0 ELSE 1 END LIMIT 1`, accountId, accountId, accountId).first();
+  /**
+   * The active link funding one account: the account's own link, or an organisation binding with its
+   * observed authority. Funding and authority stay separate facts; the caller decides use.
+   */
+  async funding(accountId) {
+    const own = await this.activeLink(accountId);
+    if (own) return { link: own };
+    const binding = await this.statement(`SELECT b.* FROM commercial_bindings b JOIN commercial_links l ON l.link_id=b.link_id
+      WHERE l.state='active' AND b.organisation_id=?`, accountId).first();
+    return binding ? { link: await this.link(binding.link_id), binding } : {};
   }
 
-  /** Accepted or superseded report bodies are kept thirty days; each link's latest report and failed evidence remain. */
+  /**
+   * Sent, superseded or failed report evidence carries no labels. It is kept thirty days; an active
+   * link keeps its latest report regardless of age, while an ended link keeps only its link identity.
+   */
   async maintain() {
     const now = this.now(), reportCutoff = new Date(Date.parse(now) - 30 * 86_400_000).toISOString();
     await this.database.batch([
       this.statement('DELETE FROM commercial_nonces WHERE expires_at <= ?', now),
       this.statement('DELETE FROM commercial_link_attempts WHERE expires_at <= ?', now),
       this.statement(`DELETE FROM commercial_reports WHERE state IN ('sent', 'superseded') AND created_at < ?
-        AND report_version < (SELECT MAX(r.report_version) FROM commercial_reports r WHERE r.link_id=commercial_reports.link_id)`, reportCutoff)
+        AND report_version < (SELECT MAX(r.report_version) FROM commercial_reports r WHERE r.link_id=commercial_reports.link_id)`, reportCutoff),
+      this.statement(`DELETE FROM commercial_reports WHERE created_at < ?
+        AND link_id IN (SELECT link_id FROM commercial_links WHERE state='ended')`, reportCutoff)
     ]);
   }
 }
