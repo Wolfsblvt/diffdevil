@@ -86,7 +86,7 @@ Modules, conditions, priorities and compactness are bounded settings. A renderer
 
 ## Shared commercial integration
 
-The shared Works commercial service owns customer/payment identity, catalogue, authoritative quotes, invoices, recurring charge scheduling, tax, credits, refunds and payment reconciliation. diffdevil owns GitHub scope, funding links, repository selection and application entitlement. It does not maintain a competing invoice or tax engine.
+The shared Works commercial service owns customer/payment identity, catalogue, authoritative quotes, invoices, recurring charge scheduling, tax, credits, refunds and payment reconciliation. diffdevil owns GitHub scope, funding links, repository selection and application entitlement. It does not maintain a competing invoice or tax engine. The Wirt link, signed benefit projection and entitlement consumer are specified in [the commercial link contract](app-commercial-link.md); commercial standing selects capability and never grants repository access.
 
 The product needs an authenticated benefit projection with current plan, effective dates, cadence, add-on quantity, price protection and scheduled transitions. It may display a shared quote but cannot invent monetary state from a browser field or checkout redirect.
 

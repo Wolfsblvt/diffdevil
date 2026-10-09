@@ -18,6 +18,9 @@ function text(value, name, maximum = 200) {
   return value;
 }
 
+/** The installation's numeric GitHub account is the namespace a commercial subscription may fund. */
+function accountIdentity(value) { return Number.isSafeInteger(value) && value > 0 ? { accountId: value } : {}; }
+
 /** Parse only identifiers needed after webhook admission. Everything else stays transient. */
 export function normalizeWebhookEvent(event, payload, receivedAt = new Date().toISOString(), deliveryId) {
   text(event, 'event', 80);
@@ -29,18 +32,20 @@ export function normalizeWebhookEvent(event, payload, receivedAt = new Date().to
     const addedRepositories = [...new Set(added.map(item => integer(item?.id, 'repository ID')))];
     const removedRepositories = [...new Set(removed.map(item => integer(item?.id, 'repository ID')))];
     return { kind: APP_QUEUE_KIND, version: APP_QUEUE_VERSION, type: 'lifecycle', event, action: text(payload.action ?? 'unknown', 'action', 80),
-      installationId: integer(payload.installation?.id, 'installation ID'), addedRepositories, removedRepositories, deliveryId: delivery, receivedAt };
+      installationId: integer(payload.installation?.id, 'installation ID'), ...accountIdentity(payload.installation?.account?.id), addedRepositories, removedRepositories, deliveryId: delivery, receivedAt };
   }
   const installationId = integer(payload.installation?.id, 'installation ID');
   const repositoryId = integer(payload.repository?.id, 'repository ID');
+  // An installed repository's owner is the installation account.
+  const account = accountIdentity(payload.repository?.owner?.id);
   if (event === 'pull_request' && pullRequestActions.has(payload.action)) {
-    return { kind: APP_QUEUE_KIND, version: APP_QUEUE_VERSION, type: 'pull-request', event, action: payload.action, installationId, repositoryId,
+    return { kind: APP_QUEUE_KIND, version: APP_QUEUE_VERSION, type: 'pull-request', event, action: payload.action, installationId, ...account, repositoryId,
       pullRequest: integer(payload.pull_request?.number, 'pull request number'), deliveryId: delivery, receivedAt };
   }
   if (event === 'check_run' && payload.action === 'rerequested') {
     const pullRequest = payload.check_run?.pull_requests?.[0]?.number;
     if (!Number.isSafeInteger(pullRequest) || pullRequest < 1) return undefined;
-    return { kind: APP_QUEUE_KIND, version: APP_QUEUE_VERSION, type: 'check-rerequest', event, action: payload.action, installationId, repositoryId,
+    return { kind: APP_QUEUE_KIND, version: APP_QUEUE_VERSION, type: 'check-rerequest', event, action: payload.action, installationId, ...account, repositoryId,
       pullRequest, checkRun: integer(payload.check_run?.id, 'check run ID'), deliveryId: delivery, receivedAt };
   }
   return undefined;
@@ -53,11 +58,12 @@ export function readQueueEnvelope(value) {
   const common = { kind: APP_QUEUE_KIND, version: APP_QUEUE_VERSION, type: text(value.type, 'type', 40), event: text(value.event, 'event', 80),
     action: text(value.action, 'action', 80), installationId: integer(value.installationId, 'installation ID'), deliveryId: text(value.deliveryId, 'delivery ID', 200), receivedAt: text(value.receivedAt, 'receivedAt', 40) };
   const permitted = common.type === 'lifecycle'
-    ? new Set(['kind', 'version', 'type', 'event', 'action', 'installationId', 'addedRepositories', 'removedRepositories', 'deliveryId', 'receivedAt'])
+    ? new Set(['kind', 'version', 'type', 'event', 'action', 'installationId', 'accountId', 'addedRepositories', 'removedRepositories', 'deliveryId', 'receivedAt'])
     : common.type === 'check-rerequest'
-      ? new Set(['kind', 'version', 'type', 'event', 'action', 'installationId', 'repositoryId', 'pullRequest', 'checkRun', 'deliveryId', 'receivedAt'])
-      : new Set(['kind', 'version', 'type', 'event', 'action', 'installationId', 'repositoryId', 'pullRequest', 'deliveryId', 'receivedAt']);
+      ? new Set(['kind', 'version', 'type', 'event', 'action', 'installationId', 'accountId', 'repositoryId', 'pullRequest', 'checkRun', 'deliveryId', 'receivedAt'])
+      : new Set(['kind', 'version', 'type', 'event', 'action', 'installationId', 'accountId', 'repositoryId', 'pullRequest', 'deliveryId', 'receivedAt']);
   if (Object.keys(value).some(key => !permitted.has(key))) throw new TypeError('Queue message contains a prohibited field.');
+  if (value.accountId !== undefined) common.accountId = integer(value.accountId, 'account ID');
   if (common.type === 'lifecycle') {
     const readRepositories = (value, name) => {
       const repositories = value === undefined ? [] : value;

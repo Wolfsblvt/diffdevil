@@ -21,7 +21,8 @@ async function digest(value) {
   if (typeof value !== 'string' || !opaquePattern.test(value)) throw refusal('E_AUTH_INVALID_VALUE');
   return [...new Uint8Array(await crypto.subtle.digest('SHA-256', encoder.encode(value)))].map(byte => byte.toString(16).padStart(2, '0')).join('');
 }
-function validOrigin(origin, allowedOrigins, method) {
+/** Protected mutations require a non-GET method from one allow-listed HTTPS origin. */
+export function validOrigin(origin, allowedOrigins, method) {
   if (typeof method !== 'string' || !['POST', 'PUT', 'PATCH', 'DELETE'].includes(method.toUpperCase())) throw refusal('E_AUTH_METHOD');
   if (typeof origin !== 'string' || !allowedOrigins.has(origin)) throw refusal('E_AUTH_ORIGIN');
 }
@@ -185,6 +186,19 @@ export function createAuthorizationService({ store, admission, history, provider
     async readAdmission({ session, repositoryId }) {
       const actor = await authorizedAdmission(session, repositoryId, 'read');
       return { body: await admissionCall(() => admission.read(repositoryId, actor)), headers: protectedHeaders() };
+    },
+
+    /** Current GitHub organisation administration is checked through the viewer's own authorization at every use. */
+    async organisationAuthority({ session, organisationId }) {
+      const actor = await principal(session);
+      if (!Number.isSafeInteger(organisationId) || organisationId <= 0) throw refusal('E_ORGANISATION_UNAVAILABLE');
+      const material = await currentAuthorization(actor.userId);
+      let result;
+      try { result = await provider.checkOrganisationAdministration({ material, userId: actor.userId, organisationId }); }
+      catch { return { userId: actor.userId, authority: 'unknown', display: null }; }
+      const present = result?.administer === true;
+      return { userId: actor.userId, authority: present ? 'present' : 'absent',
+        display: present && typeof result.login === 'string' && /^[A-Za-z0-9-]{1,39}$/u.test(result.login) ? result.login : null };
     },
 
     async updateAdmission({ session, repositoryId, method, origin, settings }) {

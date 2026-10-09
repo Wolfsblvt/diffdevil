@@ -13,6 +13,7 @@ The older pathless backend is narrower evidence, not the product ceiling. Named 
 | Delivery/attempt recovery | Deduplication, diagnosis, retry and recovery | Seven days, without retry resetting the original lifetime |
 | Enabled analytical history | Repository/PR measurements and lifecycle; entitled file enrichment and relationships | Explicit enablement, disclosed service/operator retention, deletion and export |
 | Account, installation, funding, configuration and entitlement | Requested service and its authority | Active service and explicit lifecycle, not recovery TTL |
+| Works link and benefit projection | Apply the customer-authorized commercial standing: pseudonymous Works account ID, latest projection (tier, standing, period, capacity and display-only renewal amount), sealed owner grant, organisation bindings with a display label only while authority is present | While the link is active; ending the link removes the projection, grant and bindings and keeps only the ended link identity. No payment instrument, invoice or other account is received |
 | Administrative audit | Explain settings, permissions and operating changes | Protected purpose-specific retention, not contributor analytics |
 | Preview/OSS benefit record | Honour one-time preview and repository grant eligibility | Minimum justified identity/state, separate from the analytical dataset |
 | Frozen selected-state archive | Recover an ended premium service without keeping it running | Disclosed shared recovery policy and deadline, current access and earlier deletion |

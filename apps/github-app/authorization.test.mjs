@@ -64,6 +64,10 @@ async function fixture() {
       assert.equal(userId, 123); assert.equal(installationId, 9); assert.equal(repositoryId, 17);
       assert.ok(['read', 'update'].includes(kind)); providerState.checks++;
       return { installation: providerState.installation, repository: providerState.repository, canAdminister: providerState.canAdminister, fullName: REPOSITORY_NAME };
+    },
+    checkOrganisationAdministration: async ({ userId, material, organisationId }) => {
+      assert.equal(userId, 123); assert.equal(material.accessToken, TOKEN);
+      return providerState.organisation(organisationId);
     }
   };
   const admission = createAdmissionService({ store: appStore, authorize: async request => request.actor?.role === 'repository-admin' });
@@ -381,5 +385,24 @@ test('a concurrent refresh winner remains usable without reviving revoked grants
     };
     assert.deepEqual(await service.authenticate(session), { userId: 123, returnContext: CONTEXT });
     assert.equal((await store.authorization(123)).revoked_at, null);
+  } finally { await source.runtime.dispose(); }
+});
+
+test('organisation authority is checked through current user authorization and never trusts a provider label', async () => {
+  const source = await fixture();
+  try {
+    const { service, providerState } = source;
+    const { session } = await signIn(service);
+    providerState.organisation = organisationId => ({ administer: organisationId === 9001, login: 'example-org' });
+    assert.deepEqual(await service.organisationAuthority({ session, organisationId: 9001 }), { userId: 123, authority: 'present', display: 'example-org' });
+    assert.deepEqual(await service.organisationAuthority({ session, organisationId: 9002 }), { userId: 123, authority: 'absent', display: null });
+    providerState.organisation = () => ({ administer: true, login: 'not a <login>' });
+    assert.equal((await service.organisationAuthority({ session, organisationId: 9001 })).display, null);
+    providerState.organisation = () => { throw new Error('provider-body-private'); };
+    assert.deepEqual(await service.organisationAuthority({ session, organisationId: 9001 }), { userId: 123, authority: 'unknown', display: null });
+    await assert.rejects(service.organisationAuthority({ session, organisationId: 0 }), { code: 'E_ORGANISATION_UNAVAILABLE' });
+    await assert.rejects(service.organisationAuthority({ session: 'A'.repeat(43), organisationId: 9001 }), { code: 'E_SESSION_UNAVAILABLE' });
+    providerState.userValid = false;
+    await assert.rejects(service.organisationAuthority({ session, organisationId: 9001 }), { code: 'E_AUTHORIZATION_UNAVAILABLE' });
   } finally { await source.runtime.dispose(); }
 });

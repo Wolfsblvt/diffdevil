@@ -203,6 +203,19 @@ test('lifecycle deltas reconcile the current provider-selected repository identi
   assert.deepEqual(run.calls.slice(-4), ['lifecycle', ['reconcile', 9, [17, 19]], 'lifecycle-finish', 'ack']);
 });
 
+test('the installation account is captured as a numeric namespace and survives the queue boundary', async () => {
+  const lifecycle = normalizeWebhookEvent('installation', { action: 'created', installation: { id: 9, account: { id: 501, login: 'not-retained' } }, repositories: [{ id: 17 }] }, new Date().toISOString(), 'installation-2');
+  const pull = normalizeWebhookEvent('pull_request', { ...payload, repository: { id: 17, owner: { id: 501, login: 'not-retained' } } }, new Date().toISOString(), 'delivery-2');
+  assert.equal(lifecycle.accountId, 501);
+  assert.equal(pull.accountId, 501);
+  assert.equal(JSON.stringify([lifecycle, pull]).includes('not-retained'), false);
+  assert.equal(envelope().accountId, undefined, 'an absent owner remains unknown');
+  const run = queueMessage(lifecycle), store = activeStore(run.calls);
+  store.recordInstallationAccount = async (installationId, accountId) => run.calls.push(['account', installationId, accountId]);
+  await createGitHubAppWorker({ store }).queue({ messages: [run.message] }, {});
+  assert.deepEqual(run.calls.slice(-4), ['lifecycle', ['account', 9, 501], 'lifecycle-finish', 'ack']);
+});
+
 test('installation creation retains its selected numeric repository identities in the minimized lifecycle envelope', () => {
   const lifecycle = normalizeWebhookEvent('installation', { action: 'created', installation: { id: 9 }, repositories: [{ id: 17 }, { id: 18, full_name: 'not-retained' }] }, new Date().toISOString(), 'installation-1');
   assert.deepEqual(lifecycle.addedRepositories, [17, 18]);
