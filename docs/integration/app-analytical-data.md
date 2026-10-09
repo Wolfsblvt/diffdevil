@@ -112,8 +112,14 @@ after the provider freshness check. Its missing final measurement remains in the
 merged population as an unbounded observation, with a separate stable recovery code.
 
 A multi-parent merged commit supplies its first-parent-to-merged-commit final
-comparison. A single-parent squash/rebase result requires an explicitly recovered
-`resolveFinalComparison` boundary; it never falls back to the PR's old head diff.
+comparison. A single-parent squash/rebase result uses the
+[GitHub commit introducer contract](https://docs.github.com/en/rest/commits/commits#list-pull-requests-associated-with-a-commit):
+first establish that the merged commit is on the current default branch, then follow
+its first parents while GitHub identifies this merged PR as their introducer. The
+first non-member supplies the before-revision. The original PR commit count bounds
+the contribution, and the default-branch revision is checked again. A trusted caller
+may supply an explicit `resolveFinalComparison` instead. Missing or contradictory
+evidence remains unrecovered; it never falls back to the PR's old head diff.
 The comparison API must confirm the direct base. The numeric report retains
 incomplete coverage when the provider's finite file listing reaches its 300-file
 limit or disagrees with the parsed diff. Content reads are transient and supply line

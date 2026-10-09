@@ -6,6 +6,36 @@ import { normalizeAnalyticalRecord } from './analytical-data.mjs';
 const sha = value => typeof value === 'string' && /^[0-9a-f]{40,64}$/u.test(value);
 const iso = value => value == null ? null : new Date(value).toISOString();
 
+/** Use GitHub's default-branch commit introducer, rather than guessing squash versus rebase from parent count. */
+export async function recoverFinalComparison({ client, repository, pull, commit, defaultBranch }) {
+  if (commit.sha !== pull.merge_commit_sha || !sha(commit.sha) || typeof defaultBranch !== 'string'
+    || !Number.isSafeInteger(pull.commits) || pull.commits < 1) return null;
+  const branchRoute = `/repos/${repository}/branches/${encodeURIComponent(defaultBranch)}`;
+  const defaultHead = (await client.json(branchRoute)).commit?.sha;
+  if (!sha(defaultHead)) return null;
+  const reach = await client.json(`/repos/${repository}/compare/${commit.sha}...${defaultHead}`);
+  if (reach.merge_base_commit?.sha !== commit.sha) return null;
+  let current = commit, introduced = 0;
+  for (;;) {
+    let belongs = false;
+    for (let page = 1;; page++) {
+      const associated = await client.json(`/repos/${repository}/commits/${current.sha}/pulls?per_page=100&page=${page}`);
+      if (!Array.isArray(associated) || associated.some(value => !Number.isSafeInteger(value.number))) throw new TypeError('Commit introducer unavailable.');
+      if (associated.some(value => value.number === pull.number && value.merged_at)) { belongs = true; break; }
+      if (associated.length < 100) break;
+    }
+    if (!belongs) {
+      if (introduced === 0 || (await client.json(branchRoute)).commit?.sha !== defaultHead) return null;
+      return { base: current.sha, head: commit.sha };
+    }
+    // The provider's original PR commit count bounds a squash/rebase contribution, not an arbitrary history limit.
+    if (++introduced > pull.commits || current.parents?.length !== 1 || !sha(current.parents[0].sha)) return null;
+    const parent = current.parents[0].sha;
+    current = await client.json(`/repos/${repository}/git/commits/${parent}`);
+    if (current.sha !== parent) throw new TypeError('Commit ancestry unavailable.');
+  }
+}
+
 /** Read immutable Git blobs transiently; persist a line count, not content or a provider byte-size counter. */
 export async function observeFileSize(client, repository, path, revision) {
   if (!sha(revision)) throw new TypeError('File size requires an immutable revision.');
@@ -46,7 +76,8 @@ export async function collectAnalyticalPullRequest({ client, store, repositoryId
       const commit = await client.json(`/repos/${name}/git/commits/${before.merge_commit_sha}`);
       let boundary;
       if (commit.sha === before.merge_commit_sha && commit.parents?.length > 1 && sha(commit.parents[0].sha)) boundary = { base: commit.parents[0].sha, head: commit.sha };
-      else boundary = await resolveFinalComparison?.({ repositoryId, pullRequest, pull: before, commit });
+      else boundary = resolveFinalComparison ? await resolveFinalComparison({ repositoryId, pullRequest, pull: before, commit })
+        : await recoverFinalComparison({ client, repository: name, pull: before, commit, defaultBranch: repository.default_branch });
       if (boundary && sha(boundary.base) && sha(boundary.head) && boundary.head === before.merge_commit_sha) {
         const comparison = await client.json(`/repos/${name}/compare/${boundary.base}...${boundary.head}`);
         if (comparison.merge_base_commit?.sha !== boundary.base || !Array.isArray(comparison.files)) throw new TypeError('Final comparison does not establish its direct base.');

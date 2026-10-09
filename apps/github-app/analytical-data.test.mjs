@@ -6,7 +6,7 @@ import { resolve } from 'node:path';
 import { Miniflare } from 'miniflare';
 import { analyzeDiff, analyzeChanges, compilePolicy, unwrap } from '@wolfsblvt/diffdevil';
 import { createAnalyticalDataService, normalizeAnalyticalRecord, median, turnover } from './analytical-data.mjs';
-import { collectAnalyticalPullRequest, observeFileSize, captureDefaultBranchSizes } from './analytical-collection.mjs';
+import { collectAnalyticalPullRequest, observeFileSize, captureDefaultBranchSizes, recoverFinalComparison } from './analytical-collection.mjs';
 import { D1AppStore } from './storage.mjs';
 import { analyticalHttp } from './analytical-http.mjs';
 import { createGitHubAppWorker } from './app.mjs';
@@ -110,6 +110,26 @@ test('default-branch size observation publishes immutable sizes and refuses a mo
   changed = true; branchReads = 0; writes.length = 0;
   await assert.rejects(captureDefaultBranchSizes({ client, store, repositoryId: 17, now: () => to }), { code: 'E_APP_DATA_STALE' });
   assert.equal(writes.length, 0);
+});
+
+test('single-parent squash and rebase boundaries follow the current default-branch commit introducer', async () => {
+  const middle = 'd'.repeat(40);
+  let rebased = false, onDefault = true;
+  const commits = () => new Map([[head, { sha: head, parents: [{ sha: rebased ? middle : base }] }],
+    [middle, { sha: middle, parents: [{ sha: base }] }], [base, { sha: base, parents: [] }]]);
+  const client = { json: async route => {
+    if (route.includes('/branches/')) return { commit: { sha: head } };
+    if (route.includes('/compare/')) return { merge_base_commit: { sha: onDefault ? head : other } };
+    if (route.includes('/git/commits/')) return commits().get(route.split('/').at(-1));
+    const revision = route.split('/commits/')[1].split('/')[0];
+    return revision === head || (rebased && revision === middle) ? [{ number: 1, merged_at: at }] : [{ number: 2, merged_at: from }];
+  } };
+  const options = () => ({ client, repository: 'owner/repo', pull: { number: 1, merge_commit_sha: head, commits: 2 }, commit: commits().get(head), defaultBranch: 'main' });
+  assert.deepEqual(await recoverFinalComparison(options()), { base, head });
+  rebased = true;
+  assert.deepEqual(await recoverFinalComparison(options()), { base, head });
+  onDefault = false;
+  assert.equal(await recoverFinalComparison(options()), null, 'a non-default-branch association does not prove the merged boundary');
 });
 
 test('path-bearing HTTP reads use same-origin bodies and every response suppresses referrers', async () => {
