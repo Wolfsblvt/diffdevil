@@ -265,12 +265,15 @@ export function createAnalyticalDataService({ store, authorize, entitlement, cur
       const effective = record => facts(record.state === 'merged' ? record.final : latest(record), policies.get(record.repositoryId));
       const prRow = record => {
         const measured = effective(record), revision = latest(record);
+        const comparison = record.state === 'merged' ? record.final : revision;
         return { repositoryId: record.repositoryId, pullRequest: record.pullRequest, state: record.state, openedAt: record.openedAt,
           readyAt: record.readyAt, mergedAt: record.mergedAt, closedAt: record.closedAt, updatedAt: record.updatedAt,
           changed: sum([changed(measured)]), rawChurn: sum([raw(measured)]), band: measured.band,
           policy: { id: measured.policyId, basis: measured.basis, requestedId: policies.get(record.repositoryId)?.id ?? null },
+          measurement: { basis: record.state === 'merged' ? 'final-merged-comparison' : 'pull-request-revision',
+            standing: measured.report ? 'recovered' : 'unrecovered', base: comparison?.base ?? null, head: comparison?.head ?? null, observedAt: comparison?.observedAt ?? null },
           analyzedHeads: new Set(record.revisions.map(value => value.head)).size,
-          freshness: { analyzedHead: revision?.head ?? null, currentHead: record.currentHead, standing: !revision ? 'unavailable' : revision.head === record.currentHead ? 'current' : 'stale' },
+          freshness: { basis: 'pr-development-head', analyzedHead: revision?.head ?? null, currentHead: record.currentHead, standing: !revision ? 'unavailable' : revision.head === record.currentHead ? 'current' : 'stale' },
           original: revision ? { policyId: revision.originalPolicyId, band: revision.originalBand } : null,
           desiredLabel: revision?.desiredLabel ?? null, observedLabel: revision?.observedLabel ?? null };
       };

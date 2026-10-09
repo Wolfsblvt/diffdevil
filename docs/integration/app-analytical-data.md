@@ -49,6 +49,10 @@ policy replay. `evaluatePolicy` produces current totals and size judgments witho
 replaying provider effects. When a current policy is unavailable, results explicitly
 use unfiltered base facts and do not claim current-policy interpretation. Original
 recorded policy/band, desired label and observed label remain separate PR-detail lanes.
+Each PR response identifies its measurement's actual before/after revisions,
+observation time and final-merged-versus-development basis. Development freshness
+compares the latest analyzed PR head with the observed current PR head; it does not
+rename a final merge comparison into a current development revision.
 
 File history exposes base numerical observations with explicit current-policy
 inclusion. Its scope and co-change scope are `all-observed-file-facts`. A file's

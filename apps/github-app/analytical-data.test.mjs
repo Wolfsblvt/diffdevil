@@ -53,6 +53,9 @@ test('six surfaces use final merged facts, independent revisions, current policy
   }
   const detail = await service.query(query('pr', { pullRequest: 1 }), actor);
   assert.equal(detail.result.freshness.standing, 'unavailable');
+  assert.equal(detail.result.measurement.head, head);
+  assert.equal(detail.result.measurement.basis, 'final-merged-comparison');
+  assert.equal(detail.result.measurement.standing, 'recovered');
   assert.equal(detail.result.files[0].included, false);
   const file = await service.query(query('file', { path: 'a.txt' }), actor);
   assert.equal(file.result.cochange.samples, 1, 'co-change excludes unrecovered rows from every denominator');
