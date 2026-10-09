@@ -12,13 +12,14 @@ The older pathless export and query contracts retain their original meaning.
 ## Read it
 
 `apps/github-app/analytical-data.mjs` exports
-`createAnalyticalDataService({ store, authorize, entitlement, currentPolicy, now })`.
+`createAnalyticalDataService({ store, authorize, entitlement, namespace, currentPolicy, now })`.
 Its `query(input, actor)` accepts:
 
 ```json
 {
   "version": 1,
   "surface": "overview",
+  "scope": { "kind": "all" },
   "repositoryIds": [17],
   "from": "2026-09-01T00:00:00.000Z",
   "to": "2026-10-01T00:00:00.000Z"
@@ -26,7 +27,10 @@ Its `query(input, actor)` accepts:
 ```
 
 Surfaces are `overview`, `prs`, `history`, `files`, `pr`, and `file`. Detail requests
-select exactly one repository and supply `pullRequest` or `path`, respectively.
+select `{ kind: "repository", repositoryId }` and supply `pullRequest` or `path`.
+`repositoryIds` can carry the viewer's complete requested inventory: authorization
+filters it before namespace selection or funded-namespace pointers. An inaccessible
+repository cannot change which plan governs the selected scope.
 The Files metric is `mergedPullRequests` (default), `changed`, `rawChurn`, or
 `turnover`. Repository IDs and paths remain separate, including in multi-repository
 results. Times are canonical UTC ISO timestamps; `to` is exclusive. History uses
@@ -35,7 +39,14 @@ daily, two-day, weekly or calendar-month buckets. Flow declares its separate
 
 Results identify the requested and authorized repository counts, retained coverage,
 merged and recovered merged populations, policy basis, generated time and intervals.
-Coverage is never inferred complete from rows being present. A number has lower and
+Coverage is never inferred complete from rows being present. Lifecycle counts
+describe observed lower bounds, not a complete
+repository inventory; open/draft states are last observed rather than freshly read.
+Overview, every History/flow bucket and both comparison periods carry their own
+retained-population coverage. Median and band distributions describe that retained
+population. `comparison.delta` is null while complete period populations are
+unestablished; consumers must not turn retained-count differences into precise
+repository-wide trend claims. A numerical amount has lower and
 upper endpoints; a null upper endpoint is unbounded. Empty medians are unavailable
 with zero samples. Median envelopes include every bounded or unrecovered PR rather
 than selecting only exact measurements. Even sample medians average the two central
@@ -65,6 +76,11 @@ inclusion. Its scope and co-change scope are `all-observed-file-facts`. A file's
 the distinct current-policy total. An excluded file's physical change must not be
 compared as if it were included in the policy-filtered PR quantity.
 
+`namespace({ repositoryId, actor })` resolves the current GitHub namespace account ID
+from server-owned repository metadata, not from the request. It can bind the existing
+commercial store's `repositoryNamespace(repositoryId)` method. It returns a positive
+account ID, or null when that identity is unestablished; no namespace is invented.
+
 `authorize` must check current repository visibility at every invocation. The service
 checks before storage and again before returning data. `entitlement` returns the
 server-selected `free`, `pro`, or `business` plan for a repository namespace; a null
@@ -72,6 +88,18 @@ repository requests the viewer's plan for cross-repository aggregates. Neither t
 request nor the actor's repository ID list is sufficient authority. A shared paid
 namespace keeps its paid feature access for an authorized Free reader, while a
 Free viewer receives no premium aggregate assembled across paid namespaces.
+Scope is explicit: `{ kind: "all" }`, `{ kind: "namespace", namespaceId }`, or
+`{ kind: "repository", repositoryId }`. Aggregate requests default to All; a single-
+repository PR/file detail defaults to its repository. Namespace features follow the
+namespace's plan even when it contains several repositories. Only All uses the
+viewer plan. Within any premium aggregate, only funded Pro/Business repositories
+contribute; exclusion counts distinguish Free and unknown-plan repositories. Basic
+activity and numeric aggregates still include authorized Free repositories.
+Free Files responses are useful page context, not a `plan-required` refusal: they
+include authorized `fundedNamespaces` and a `historyScope` for the History route.
+The consumer should request its complete inventory when it needs pointers to shared
+funded namespaces outside the selected scope. Unknown entitlement or namespace
+standing stays explicit rather than being renamed Free.
 Responses expose these server-selected namespace and aggregate plans as
 `entitlements`, so the experience need not infer feature access from missing panels.
 

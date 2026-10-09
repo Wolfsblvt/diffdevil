@@ -25,7 +25,7 @@ function record(number = 1, report = unwrap(analyzeDiff(patch, { source: { kind:
 function fixture(records = [record()], plan = 'pro') {
   let accesses = true;
   const store = { analyticalRecords: async id => records.filter(row => row.repositoryId === id), analyticalSizes: async () => [] };
-  const service = createAnalyticalDataService({ store, authorize: async () => accesses,
+  const service = createAnalyticalDataService({ store, authorize: async () => accesses, namespace: async () => 9,
     currentPolicy: async () => ({ id: 'current', compiled: unwrap(compilePolicy({ version: 1, defaults: { paths: { exclude: ['a.txt'] } } })) }),
     entitlement: async () => plan, now: () => to });
   return { service, records, revoke: () => { accesses = false; } };
@@ -41,6 +41,11 @@ test('six surfaces use final merged facts, independent revisions, current policy
   const { service, records } = fixture([record(), record(2, null)]);
   const overview = await service.query(query('overview'), actor);
   assert.equal(overview.result.overview.mergedPullRequests, 2);
+  assert.equal(overview.result.overview.coverage.countMeaning, 'observed-lower-bounds');
+  assert.equal(overview.result.overview.lifecycleBasis, 'last-observed-state');
+  assert.equal(overview.result.comparison.delta, null, 'incomplete periods do not establish a repository-wide delta');
+  assert.equal(overview.result.comparison.previous.coverage.completeWindow, false);
+  assert.ok(overview.result.flow.buckets.every(bucket => bucket.coverage.completeWindow === false));
   assert.equal(overview.result.overview.medianChanged.samples, 2);
   assert.equal(overview.result.overview.changed.upper, null);
   assert.equal(overview.coverage.recoveredMerged, 1);
@@ -59,9 +64,10 @@ test('six surfaces use final merged facts, independent revisions, current policy
   assert.equal(detail.result.measurement.files.observed, 1);
   assert.equal(detail.result.composition.modified.lower, 0, 'PR composition follows current policy');
   const baseService = createAnalyticalDataService({ store: { analyticalRecords: async () => [record()], analyticalSizes: async () => [] },
-    authorize: async () => true, entitlement: async () => 'pro', currentPolicy: async () => null });
+    authorize: async () => true, entitlement: async () => 'pro', namespace: async () => 9, currentPolicy: async () => null });
   const baseHistory = await baseService.query(query('history'), actor);
   assert.equal(baseHistory.result.buckets.find(bucket => bucket.samples === 1).composition.modified.lower, 1, 'mosaic composition comes from engine facts rather than raw-churn subtraction');
+  assert.equal(baseHistory.result.buckets.find(bucket => bucket.samples === 1).coverage.countMeaning, 'observed-lower-bounds');
   assert.equal(detail.result.files[0].included, false);
   const file = await service.query(query('file', { path: 'a.txt' }), actor);
   assert.equal(file.result.cochange.samples, 1, 'co-change excludes unrecovered rows from every denominator');
@@ -72,7 +78,9 @@ test('six surfaces use final merged facts, independent revisions, current policy
 
 test('Free and unauthorized readers cannot obtain premium names or aggregate file history', async () => {
   const { service, revoke } = fixture(undefined, 'free');
-  assert.equal((await service.query(query('files'), actor)).standing, 'plan-required');
+  const freeFiles = await service.query(query('files'), actor);
+  assert.equal(freeFiles.standing, 'free');
+  assert.equal(freeFiles.result.historyScope.surface, 'history');
   const overview = await service.query(query('overview'), actor);
   assert.deepEqual(overview.result.files, []);
   assert.equal(overview.entitlements.aggregatePlan, 'free');
@@ -82,6 +90,40 @@ test('Free and unauthorized readers cannot obtain premium names or aggregate fil
   await assert.rejects(service.query(query('overview'), { authorizedRepositoryIds: [] }), { code: 'E_APP_DATA_UNAUTHORIZED' });
   revoke();
   await assert.rejects(service.query(query('overview'), actor), { code: 'E_APP_DATA_UNAUTHORIZED' });
+});
+
+test('scope selects namespace versus viewer entitlement, filters premium data, and gives Free Files useful context', async () => {
+  const rows = [record(), { ...record(2), repositoryId: 18 }, { ...record(3), repositoryId: 19 }];
+  const reader = { userId: 123, authorizedRepositoryIds: [17, 18, 19] };
+  let viewerPlan = 'free';
+  const service = createAnalyticalDataService({ store: { analyticalRecords: async id => rows.filter(row => row.repositoryId === id), analyticalSizes: async () => [] },
+    authorize: async ({ repositoryId }) => reader.authorizedRepositoryIds.includes(repositoryId),
+    entitlement: async ({ repositoryId }) => repositoryId === null ? viewerPlan : repositoryId === 19 ? 'free' : 'pro',
+    namespace: async ({ repositoryId }) => {
+      assert.notEqual(repositoryId, 20, 'namespace metadata is never read for an inaccessible repository');
+      return repositoryId === 19 ? 123 : 9;
+    }, currentPolicy: async () => null });
+  const request = scope => query('files', { repositoryIds: [17, 18, 19, 20], scope });
+  const namespace = await service.query(request({ kind: 'namespace', namespaceId: 9 }), reader);
+  assert.equal(namespace.entitlements.aggregatePlan, 'pro');
+  assert.deepEqual(namespace.result.files.map(file => file.repositoryId), [17, 18]);
+  assert.equal(namespace.coverage.authorizedRepositories, 3);
+  assert.equal(namespace.coverage.representedRepositories, 2);
+  assert.equal(namespace.entitlements.repositories.some(row => row.repositoryId === 20), false);
+  const withoutDenied = await service.query({ ...request({ kind: 'namespace', namespaceId: 9 }), repositoryIds: [17, 18, 19] }, reader);
+  assert.equal(withoutDenied.entitlements.aggregatePlan, namespace.entitlements.aggregatePlan, 'an inaccessible repository does not change the plan');
+  const allFree = await service.query(request({ kind: 'all' }), reader);
+  assert.equal(allFree.standing, 'free');
+  assert.deepEqual(allFree.fundedNamespaces, [{ namespaceId: 9, repositoryIds: [17, 18], plan: 'pro' }]);
+  assert.equal(allFree.result.historyScope.surface, 'history');
+  const oneRepoAll = await service.query(query('files', { repositoryIds: [17], scope: { kind: 'all' } }), reader);
+  assert.equal(oneRepoAll.standing, 'free', 'All follows the viewer even with only one repository');
+  viewerPlan = 'pro';
+  const allPaid = await service.query(request({ kind: 'all' }), reader);
+  assert.deepEqual(allPaid.result.files.map(file => file.repositoryId), [17, 18]);
+  assert.equal(allPaid.entitlements.premium.excludedFreeRepositories, 1);
+  const basic = await service.query({ ...request({ kind: 'all' }), surface: 'overview' }, reader);
+  assert.equal(basic.result.overview.mergedPullRequests, 3, 'basic aggregates still include authorized Free repositories');
 });
 
 test('turnover requires observed endpoint sizes and revision continuity, never summed growth', () => {
@@ -175,7 +217,7 @@ test('local D1 writes, reads, exports, expiry, consent loss and restore-resistan
     const exported = await store.exportAnalytical(17);
     assert.equal(exported.sizes.length, 1);
     assert.ok(!JSON.stringify(exported).includes('old\n'), 'source is never archived');
-    const storedService = createAnalyticalDataService({ store, authorize: async () => true, currentPolicy: async () => null, entitlement: async () => 'pro' });
+    const storedService = createAnalyticalDataService({ store, authorize: async () => true, currentPolicy: async () => null, namespace: async () => 9, entitlement: async () => 'pro' });
     const http = createGitHubAppWorker({ authorization: { analyticalQuery: async ({ session, query }) => {
       assert.equal(session, 'fixture-session'); return { body: await storedService.query(query, actor), headers: {} };
     } } });

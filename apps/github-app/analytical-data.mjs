@@ -111,10 +111,14 @@ function selectedWindow(query) {
   if (query?.version !== 1 || !surfaces.has(query.surface) || !Array.isArray(query.repositoryIds) || !query.repositoryIds.length
     || query.repositoryIds.some(id => !positive(id))) throw fail('E_APP_DATA_QUERY');
   const from = time(query.from), to = time(query.to);
-  if (from >= to || (['pr', 'file'].includes(query.surface) && query.repositoryIds.length !== 1)
+  const scope = query.scope ?? (['pr', 'file'].includes(query.surface) && query.repositoryIds.length === 1
+    ? { kind: 'repository', repositoryId: query.repositoryIds[0] } : { kind: 'all' });
+  if (!['all', 'namespace', 'repository'].includes(scope?.kind) || (scope.kind === 'namespace' && !positive(scope.namespaceId))
+    || (scope.kind === 'repository' && !positive(scope.repositoryId))) throw fail('E_APP_DATA_QUERY');
+  if (from >= to || (['pr', 'file'].includes(query.surface) && scope.kind !== 'repository')
     || (query.surface === 'pr' && !positive(query.pullRequest)) || (query.surface === 'file' && typeof query.path !== 'string')
     || (query.metric !== undefined && !['mergedPullRequests', 'changed', 'rawChurn', 'turnover'].includes(query.metric))) throw fail('E_APP_DATA_QUERY');
-  return { ...query, repositoryIds: [...new Set(query.repositoryIds)], from, to };
+  return { ...query, scope, repositoryIds: [...new Set(query.repositoryIds)], from, to };
 }
 const inside = (value, query) => value !== null && value >= query.from && value < query.to;
 const latest = record => record.revisions.at(-1) ?? null;
@@ -243,27 +247,53 @@ function cochange(records, repositoryId, name) {
 }
 
 /** Six route-neutral analytical reads. authorize and entitlement are server-side, never query claims. */
-export function createAnalyticalDataService({ store, authorize, entitlement, currentPolicy, now = () => new Date().toISOString() }) {
-  if (!store || typeof authorize !== 'function' || typeof entitlement !== 'function' || typeof currentPolicy !== 'function') throw new TypeError('Analytical read adapters are required.');
+export function createAnalyticalDataService({ store, authorize, entitlement, namespace, currentPolicy, now = () => new Date().toISOString() }) {
+  if (!store || typeof authorize !== 'function' || typeof entitlement !== 'function' || typeof namespace !== 'function' || typeof currentPolicy !== 'function') throw new TypeError('Analytical read adapters are required.');
   return {
     async query(input, actor) {
       const query = selectedWindow(input);
-      const authorized = [], policies = new Map(), plans = new Map();
+      const granted = [], policies = new Map(), plans = new Map(), namespaces = new Map();
       for (const repositoryId of query.repositoryIds) {
         if (!actor?.authorizedRepositoryIds?.includes(repositoryId) || !await authorize({ repositoryId, actor, kind: 'read' })) continue;
-        authorized.push(repositoryId);
-        policies.set(repositoryId, await currentPolicy({ repositoryId, actor }));
+        granted.push(repositoryId);
+        const namespaceId = await namespace({ repositoryId, actor });
+        namespaces.set(repositoryId, positive(namespaceId) ? namespaceId : null);
         plans.set(repositoryId, await entitlement({ repositoryId, actor }));
       }
-      if (!authorized.length) throw fail('E_APP_DATA_UNAUTHORIZED');
-      const all = (await Promise.all(authorized.map(id => store.analyticalRecords(id)))).flat();
-      const aggregatePlan = query.repositoryIds.length > 1 ? await entitlement({ repositoryId: null, actor }) : plans.get(authorized[0]);
+      if (!granted.length) throw fail('E_APP_DATA_UNAUTHORIZED');
+      const authorized = granted.filter(id => query.scope.kind === 'all' || (query.scope.kind === 'repository'
+        ? id === query.scope.repositoryId : namespaces.get(id) === query.scope.namespaceId));
+      const paid = id => ['pro', 'business'].includes(plans.get(id));
+      const namespacePlans = authorized.map(id => plans.get(id));
+      const aggregatePlan = query.scope.kind === 'all' ? await entitlement({ repositoryId: null, actor })
+        : namespacePlans.includes('business') ? 'business' : namespacePlans.includes('pro') ? 'pro'
+          : namespacePlans.some(plan => plan === 'unknown') || !authorized.length ? 'unknown' : 'free';
       const premium = ['pro', 'business'].includes(aggregatePlan);
-      const entitlements = { aggregatePlan, repositories: authorized.map(repositoryId => ({ repositoryId, plan: plans.get(repositoryId) })) };
-      if (['files', 'file'].includes(query.surface) && !premium) return { version: 1, surface: query.surface, standing: 'plan-required', plan: 'pro', entitlements };
+      const premiumIds = premium ? authorized.filter(paid) : [];
+      const fundedNamespaces = [...new Set(granted.filter(paid).map(id => namespaces.get(id)).filter(positive))].map(namespaceId => ({ namespaceId,
+        repositoryIds: granted.filter(id => namespaces.get(id) === namespaceId && paid(id)),
+        plan: granted.some(id => namespaces.get(id) === namespaceId && plans.get(id) === 'business') ? 'business' : 'pro' }));
+      const entitlements = { aggregatePlan, repositories: granted.map(repositoryId => ({ repositoryId, namespaceId: namespaces.get(repositoryId), plan: plans.get(repositoryId) })),
+        premium: { enabled: premium, repositoryIds: premiumIds, excludedFreeRepositories: authorized.filter(id => plans.get(id) === 'free').length,
+          excludedUnknownPlanRepositories: authorized.filter(id => plans.get(id) === 'unknown').length } };
+      const pageStanding = !authorized.length ? 'scope-unavailable' : aggregatePlan === 'unknown' ? 'entitlement-unavailable' : 'free';
+      const freePage = { kind: 'diffdevil.app-analytics', version: 1, surface: query.surface, scope: query.scope, standing: pageStanding,
+        entitlements, fundedNamespaces, result: { standing: pageStanding, files: [],
+          historyScope: { surface: 'history', repositoryIds: authorized, scope: query.scope, from: query.from, to: query.to } } };
+      if (!authorized.length || (['files', 'file'].includes(query.surface) && !premium)) {
+        for (const repositoryId of granted) if (!await authorize({ repositoryId, actor, kind: 'read' })) throw fail('E_APP_DATA_UNAUTHORIZED');
+        return freePage;
+      }
+      const all = (await Promise.all(authorized.map(id => store.analyticalRecords(id)))).flat();
+      for (const repositoryId of authorized) policies.set(repositoryId, await currentPolicy({ repositoryId, actor }));
       const merged = all.filter(record => inside(record.mergedAt, query)).map(record => ({ ...record, facts: facts(record.final, policies.get(record.repositoryId)) }));
       const previousQuery = { ...query, from: new Date(2 * Date.parse(query.from) - Date.parse(query.to)).toISOString(), to: query.from };
       const previous = all.filter(record => inside(record.mergedAt, previousQuery)).map(record => facts(record.final, policies.get(record.repositoryId)));
+      const retainedCoverage = window => ({ from: window.from, to: window.to, completeWindow: false,
+        standing: 'retained-observations', countMeaning: 'observed-lower-bounds', distributionMeaning: 'retained-observed-population' });
+      const comparison = { standing: 'retained-observations', delta: null, reason: 'complete-period-populations-unestablished',
+        current: { ...summarize(merged.map(record => record.facts)), coverage: retainedCoverage(query) },
+        previous: { ...summarize(previous), coverage: retainedCoverage(previousQuery) } };
       const active = all.filter(record => ['open', 'draft'].includes(record.state));
       const effective = record => facts(record.state === 'merged' ? record.final : latest(record), policies.get(record.repositoryId));
       const prRow = record => {
@@ -283,7 +313,8 @@ export function createAnalyticalDataService({ store, authorize, entitlement, cur
           original: revision ? { policyId: revision.originalPolicyId, band: revision.originalBand } : null,
           desiredLabel: revision?.desiredLabel ?? null, observedLabel: revision?.observedLabel ?? null };
       };
-      const overview = { mergedPullRequests: merged.length, opened: all.filter(record => inside(record.openedAt, query)).length,
+      const overview = { coverage: retainedCoverage(query), lifecycleBasis: 'last-observed-state',
+        mergedPullRequests: merged.length, opened: all.filter(record => inside(record.openedAt, query)).length,
         openNow: active.length, ready: active.filter(record => record.state === 'open').length, draft: active.filter(record => record.state === 'draft').length,
         ...summarize(merged.map(record => record.facts)), timeToMergeMs: median(merged.map(record => ({ status: 'exact', value: Date.parse(record.mergedAt) - Date.parse(record.openedAt) }))) };
       const mix = sizeMix(merged);
@@ -294,20 +325,21 @@ export function createAnalyticalDataService({ store, authorize, entitlement, cur
       });
       const flowFrom = new Date(Date.parse(query.to) - 13 * 7 * DAY).toISOString();
       const flow = { from: flowFrom, to: query.to, buckets: buckets({ from: flowFrom, to: query.to }).map(bucket => ({ ...bucket,
-        opened: all.filter(record => inside(record.openedAt, bucket)).length, merged: all.filter(record => inside(record.mergedAt, bucket)).length,
+        coverage: retainedCoverage(bucket), opened: all.filter(record => inside(record.openedAt, bucket)).length, merged: all.filter(record => inside(record.mergedAt, bucket)).length,
         closedUnmerged: all.filter(record => record.state === 'closed' && inside(record.closedAt, bucket)).length })) };
-      const sizeObservations = premium ? (await Promise.all(authorized.map(id => store.analyticalSizes(id, query.from, query.to)))).flat() : [];
-      const files = premium ? fileRows(merged, query, sizeObservations) : [];
+      const premiumMerged = merged.filter(record => premiumIds.includes(record.repositoryId));
+      const sizeObservations = premium ? (await Promise.all(premiumIds.map(id => store.analyticalSizes(id, query.from, query.to)))).flat() : [];
+      const files = premium ? fileRows(premiumMerged, query, sizeObservations) : [];
       let result;
-      if (query.surface === 'overview') result = { overview, sizeMix: mix, lifecycle, flow, concentration: merged.map(record => ({ repositoryId: record.repositoryId, pullRequest: record.pullRequest, ...concentration(record.facts.report) })), activity: active.map(prRow), files, comparison: { current: summarize(merged.map(record => record.facts)), previous: summarize(previous) } };
+      if (query.surface === 'overview') result = { overview, sizeMix: mix, lifecycle, flow, concentration: merged.map(record => ({ repositoryId: record.repositoryId, pullRequest: record.pullRequest, ...concentration(record.facts.report) })), activity: active.map(prRow), files, comparison };
       if (query.surface === 'prs') result = { overview, sizeMix: mix, lifecycle, flow, pullRequests: all.map(prRow).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
         development: merged.map(record => ({ repositoryId: record.repositoryId, pullRequest: record.pullRequest,
           heads: new Set(record.revisions.map(value => value.head)).size, first: sum([changed(facts(record.revisions[0], policies.get(record.repositoryId)))]), final: sum([changed(record.facts)]) })) };
       if (query.surface === 'history') result = { buckets: buckets(query).map(bucket => {
         const contributions = merged.filter(record => inside(record.mergedAt, bucket));
-        return { ...bucket, ...summarize(contributions.map(record => record.facts)), pullRequests: contributions.map(prRow),
-          concentration: premium ? contributions.map(record => ({ repositoryId: record.repositoryId, pullRequest: record.pullRequest, ...concentration(record.facts.report) })) : null };
-      }), comparison: { current: summarize(merged.map(record => record.facts)), previous: summarize(previous) }, files };
+        return { ...bucket, coverage: retainedCoverage(bucket), ...summarize(contributions.map(record => record.facts)), pullRequests: contributions.map(prRow),
+          concentration: premium ? contributions.filter(record => premiumIds.includes(record.repositoryId)).map(record => ({ repositoryId: record.repositoryId, pullRequest: record.pullRequest, ...concentration(record.facts.report) })) : null };
+      }), comparison, files };
       if (query.surface === 'files') result = { files, metric: query.metric ?? 'mergedPullRequests' };
       if (query.surface === 'pr') {
         const record = all.find(record => record.repositoryId === authorized[0] && record.pullRequest === query.pullRequest);
@@ -336,12 +368,12 @@ export function createAnalyticalDataService({ store, authorize, entitlement, cur
         result = { ...result, cochange: { from: coFrom, to: query.to, ...cochange(coRecords, authorized[0], query.path) } };
       }
       // Check current access again after asynchronous storage/policy work, before exposing names or aggregates.
-      for (const repositoryId of authorized) if (!await authorize({ repositoryId, actor, kind: 'read' })) throw fail('E_APP_DATA_UNAUTHORIZED');
-      return { kind: 'diffdevil.app-analytics', version: 1, surface: query.surface, generatedAt: now(),
+      for (const repositoryId of granted) if (!await authorize({ repositoryId, actor, kind: 'read' })) throw fail('E_APP_DATA_UNAUTHORIZED');
+      return { kind: 'diffdevil.app-analytics', version: 1, surface: query.surface, scope: query.scope, generatedAt: now(),
         population: 'final-merged-comparisons', window: { from: query.from, to: query.to },
         coverage: { completeWindow: false, standing: 'retained-observations', requestedRepositories: query.repositoryIds.length,
-          authorizedRepositories: authorized.length, recoveredMerged: merged.filter(record => record.final?.report).length, merged: merged.length },
-        policies: authorized.map(repositoryId => ({ repositoryId, requestedId: policies.get(repositoryId)?.id ?? null, standing: policies.get(repositoryId)?.compiled ? 'current' : 'unfiltered-base-facts' })), entitlements, result };
+          authorizedRepositories: granted.length, representedRepositories: authorized.length, recoveredMerged: merged.filter(record => record.final?.report).length, merged: merged.length },
+        policies: authorized.map(repositoryId => ({ repositoryId, requestedId: policies.get(repositoryId)?.id ?? null, standing: policies.get(repositoryId)?.compiled ? 'current' : 'unfiltered-base-facts' })), entitlements, fundedNamespaces, result };
     }
   };
 }

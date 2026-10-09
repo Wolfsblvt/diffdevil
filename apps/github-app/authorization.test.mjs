@@ -74,7 +74,7 @@ async function fixture() {
     historySettings: async () => ({ enabled: true }) }, authorize: async ({ actor }) => actor?.userId === 123 });
   const analytics = createAnalyticalDataService({ store: appStore, authorize: async () => providerState.userValid
     && providerState.installation === 'active' && providerState.repository === 'available' && (providerState.canRead || providerState.canAdminister),
-  entitlement: async () => 'pro', currentPolicy: async () => null });
+  entitlement: async () => 'pro', namespace: async () => 9, currentPolicy: async () => null });
   const service = createAuthorizationService({ store, admission, history, analytics, provider, protector, returnContexts: [CONTEXT, 'account-home'], allowedOrigins: [ORIGIN], allowedCallbackUrls: [CALLBACK], sessionLifetimeMs: TEST_SESSION_MS, now: () => clock.value });
   return { runtime, database, appStore, store, service, clock, providerState, protector, historyQueries };
 }
