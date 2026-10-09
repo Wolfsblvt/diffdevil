@@ -32,7 +32,7 @@ test('a Skill-only release builds without compiled engine or dependencies and ad
   try {
     await mkdir(join(fixture, 'tools'), { recursive: true });
     await mkdir(join(fixture, 'skills/diffdevil/references'), { recursive: true });
-    for (const name of ['build-release.mjs', 'distribution.mjs']) await cp(join(root, 'tools', name), join(fixture, 'tools', name));
+    for (const name of ['build-release.mjs', 'distribution.mjs', 'deterministic-zip.mjs']) await cp(join(root, 'tools', name), join(fixture, 'tools', name));
     await writeFile(join(fixture, 'package.json'), JSON.stringify({ version: '9.7.4' }));
     await writeFile(join(fixture, 'skills/versions.json'), JSON.stringify({ diffdevil: '1.3.0' }));
     const skill = '---\nname: diffdevil\nmetadata:\n  version: "1.3.0"\n---\n\n# Skill fixture\n';
@@ -73,7 +73,7 @@ test('open-tool and bundled publication manifests advertise only their selected 
     for (const path of ['tools', 'skills/diffdevil', 'dist/lib/cli', 'src/diffdevil/contracts', 'src/diffdevil/presets', 'LICENSES']) {
       await mkdir(join(fixture, path), { recursive: true });
     }
-    for (const name of ['build-release.mjs', 'distribution.mjs']) await cp(join(root, 'tools', name), join(fixture, 'tools', name));
+    for (const name of ['build-release.mjs', 'distribution.mjs', 'deterministic-zip.mjs']) await cp(join(root, 'tools', name), join(fixture, 'tools', name));
     await writeFile(join(fixture, 'package.json'), JSON.stringify({ version: '9.7.4' }));
     await writeFile(join(fixture, 'package-lock.json'), JSON.stringify({ packages: { '': { version: '9.7.4' } } }));
     await writeFile(join(fixture, 'skills/versions.json'), JSON.stringify({ diffdevil: '1.3.0' }));
