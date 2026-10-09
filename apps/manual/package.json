@@ -34,7 +34,7 @@
     "remark-parse": "11.0.0",
     "remark-stringify": "11.0.0",
     "svgo": "4.1.0",
-    "typescript": "6.0.3",
+    "typescript": "7.0.2",
     "unified": "11.0.5",
     "vega": "6.4.0",
     "vega-lite": "6.4.3"
