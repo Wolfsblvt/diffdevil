@@ -33,7 +33,7 @@ function cookie(name, value, maxAge) {
 export function protectedHeaders() { return { 'Cache-Control': 'private, no-store', 'Vary': 'Cookie' }; }
 
 /** Route-neutral GitHub-user authorization; the router chooses paths and visible language later. */
-export function createAuthorizationService({ store, admission, history, provider, protector, returnContexts, allowedOrigins, allowedCallbackUrls, sessionLifetimeMs, now = () => new Date().toISOString() }) {
+export function createAuthorizationService({ store, admission, history, analytics, provider, protector, returnContexts, allowedOrigins, allowedCallbackUrls, sessionLifetimeMs, now = () => new Date().toISOString() }) {
   if (!store || !admission || !provider || !protector || !returnContexts || !allowedOrigins || !allowedCallbackUrls) throw new TypeError('Authorization adapters and allowlists are required.');
   if (!Number.isSafeInteger(sessionLifetimeMs) || sessionLifetimeMs <= 0 || sessionLifetimeMs % 1000 !== 0
     || !Number.isFinite(new Date(Date.parse(now()) + sessionLifetimeMs).getTime())) throw new TypeError('A selected session lifetime is required.');
@@ -107,6 +107,22 @@ export function createAuthorizationService({ store, admission, history, provider
   }
 
   return {
+    async analyticalQuery({ session, query }) {
+      if (!analytics) throw refusal('E_APP_DATA_UNAVAILABLE');
+      const actor = await principal(session);
+      const material = await currentAuthorization(actor.userId);
+      if (!Array.isArray(query?.repositoryIds) || query.repositoryIds.some(id => !Number.isSafeInteger(id) || id < 1)) throw refusal('E_APP_DATA_QUERY');
+      const authorizedRepositoryIds = [];
+      for (const repositoryId of new Set(query.repositoryIds)) {
+        const repository = await store.repositoryIdentity(repositoryId);
+        if (!repository) continue;
+        let access;
+        try { access = await provider.checkRepositoryAccess({ material, userId: actor.userId, installationId: repository.installation_id, repositoryId, kind: 'read' }); }
+        catch { throw refusal('E_APP_DATA_AUTH_UNAVAILABLE'); }
+        if (access?.installation === 'active' && access?.repository === 'available' && (access?.canRead === true || access?.canAdminister === true)) authorizedRepositoryIds.push(repositoryId);
+      }
+      return { body: await analytics.query(query, { ...actor, authorizedRepositoryIds }), headers: protectedHeaders() };
+    },
     async begin(returnContext) {
       requireContext(returnContext);
       const state = opaqueValue();

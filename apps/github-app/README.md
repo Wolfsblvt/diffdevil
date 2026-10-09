@@ -45,6 +45,12 @@ Policy Lab v1 accepts one retained numeric metric and either one threshold compa
 
 ## Operator posture
 
+The separate [analytical App data contract](../../docs/integration/app-analytical-data.md)
+documents the six-surface read service, protected HTTP adapter, lifecycle/final-merged
+collection, observed file sizes and migration `0009_analytical_app.sql`. It is a
+source candidate whose named-history landing depends on acceptance of the revised
+privacy/final-merged contract; the pathless analytics API above keeps its own meaning.
+
 The selected adapter requires separate Worker/Queue/D1 resources, webhook secret, GitHub App ID, and App private key. Registration, installation permissions, deployment, DNS, history collection, paid entitlement, and production data effects are deliberately outside this source contribution. The intended App permissions are Contents read, Pull requests write, and Checks write; do not broaden them for convenience.
 
 The scheduled Worker maintenance path performs recovery pruning, expiry-derived cleanup, offboarding grace processing, and tombstone expiry. Offboarding and history deletion remove stale App check handles and open repair projections with their retained repository/PR/head/policy identities. `maintain`, versioned configuration `exportState`/`importState`, and separate versioned numeric-history `exportHistory`/`importHistory` are the operator-invokable source seams. The Worker retries rate-limited or lost-lease work through its configured Queue retry/DLQ path. Confirmed disabled access, stale re-requests, and closed PRs are rejected; ambiguous provider, check-publication, and history cases become repair state rather than being acknowledged as complete. Live readback, deleted-installation reconciliation, restore behavior, and provider token boundaries still need real provider qualification.

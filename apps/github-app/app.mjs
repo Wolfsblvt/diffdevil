@@ -7,6 +7,8 @@ import { createAppJwt, verifyWebhookSignature } from './crypto.mjs';
 import { D1AppStore } from './storage.mjs';
 import { DEFAULT_SIZE_POLICY, resolveEffectivePolicy, validateRepositoryConfiguration } from './configuration.mjs';
 import { checkSummary } from '../shared/check-summary.mjs';
+import { analyticalHttp } from './analytical-http.mjs';
+import { collectAnalyticalPullRequest, captureDefaultBranchSizes } from './analytical-collection.mjs';
 
 const JSON_HEADERS = { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' };
 
@@ -78,6 +80,28 @@ async function mintInstallationClient(env, installationId, body, options = {}) {
 /** A repository-scoped credential is minted only after a delivery and execution lease are claimed. */
 export async function createInstallationClient(env, installationId, repositoryId, options = {}) {
   return mintInstallationClient(env, installationId, { repository_ids: [repositoryId], permissions: { contents: 'read', pull_requests: 'write', checks: 'write' } }, options);
+}
+
+/** History remains a read-only operation even when repository label/check execution is disabled. */
+export async function collectDeliveryAnalytics(envelope, { env, store, analyticalClientFactory, resolveFinalComparison }, recordedResult) {
+  if (!store.historySettings || !(await store.historySettings(envelope.repositoryId, { independentExecution: true })).enabled) return { status: 'disabled' };
+  const client = analyticalClientFactory ? await analyticalClientFactory(env, envelope.installationId, envelope.repositoryId)
+    : await mintInstallationClient(env, envelope.installationId, { repository_ids: [envelope.repositoryId], permissions: { contents: 'read', pull_requests: 'read' } });
+  const result = await collectAnalyticalPullRequest({ client, store, repositoryId: envelope.repositoryId, pullRequest: envelope.pullRequest, resolveFinalComparison, recordedResult });
+  if (result.status === 'published') await captureDefaultBranchSizes({ client, store, repositoryId: envelope.repositoryId });
+  return result;
+}
+
+async function collectAfterExecution(envelope, dependencies, recordedResult) {
+  try {
+    const result = await dependencies.collectAnalytics(envelope, dependencies, recordedResult);
+    if (result.recovery) await dependencies.store.recordAnalyticalRepair(envelope, 'E_APP_DATA_FINAL_UNRECOVERED');
+    return result.status;
+  } catch (error) {
+    // Preserve a separate read-side recovery consequence; successful provider effects are not replayed for enrichment.
+    await dependencies.store.recordAnalyticalRepair(envelope, stable(errorCode(error), 'E_APP_DATA_COLLECTION'));
+    return 'repair';
+  }
 }
 
 /** Read the provider's entire selected set before reconciling a partial installation delta. */
@@ -191,7 +215,10 @@ export async function executeDelivery(envelope, deliveryId, { env, store, lease,
   try { await atExecutionStage('E_CHECK_PUBLICATION', 'check-publication', () => upsertCheck(client, store, identity, outcome.report, outcome, renewLease)); }
   catch (error) { throw Object.assign(appError('E_CHECK_PUBLICATION'), { diagnostics: error.diagnostics, repairIdentity: identity }); }
   const history = await store.recordHistory(identity, historyProjection(outcome.report, outcome.observations));
-  return { status: 'verified', policyId: outcome.plan.policyId, comparisonId: outcome.report.source.comparisonId, effectCount: outcome.changed, history: history.status };
+  const selection = outcome.plan.operations.find(operation => operation.kind === 'label.select');
+  return { status: 'verified', policyId: outcome.plan.policyId, comparisonId: outcome.report.source.comparisonId, effectCount: outcome.changed, history: history.status,
+    analysis: { head: identity.head, policyId: outcome.plan.policyId, band: outcome.report.bands?.size?.id ?? null,
+      desiredLabel: selection?.selected ?? null, managedLabels: selection?.members ?? [] } };
 }
 
 async function consumeMessage(message, dependencies) {
@@ -209,11 +236,13 @@ async function consumeMessage(message, dependencies) {
   if (execution.kind === 'active') return message.retry();
   try {
     const result = await dependencies.execute(envelope, envelope.deliveryId, { ...dependencies, lease: execution });
+    result.analytics = await collectAfterExecution(envelope, dependencies, result.analysis);
     await dependencies.store.finish(envelope, execution, 'complete', result);
     return message.ack();
   } catch (error) {
     const disposition = failureDisposition(error), code = errorCode(error);
     if (disposition === 'retry') { await dependencies.store.retry(envelope, execution, code); return message.retry(); }
+    if (code === 'E_PULL_REQUEST_CLOSED' || code === 'E_ACCESS_DISABLED') await collectAfterExecution(envelope, dependencies);
     await dependencies.store.finish(envelope, execution, disposition === 'rejected' ? 'rejected' : 'repair', { status: disposition, code, ...(disposition === 'repair' ? { repair: repairProjection(error) } : {}) });
     return message.ack();
   }
@@ -224,6 +253,11 @@ export function createGitHubAppWorker(options = {}) {
   return {
     async fetch(request, env) {
       const url = new URL(request.url);
+      if (url.pathname === '/api/analytics') {
+        if (!options.authorization) return new Response(JSON.stringify({ code: 'E_APP_DATA_UNAVAILABLE' }), { status: 503,
+          headers: { ...JSON_HEADERS, 'cache-control': 'private, no-store', vary: 'Cookie' } });
+        return analyticalHttp(request, options.authorization);
+      }
       if (request.method === 'GET' && url.pathname === '/health/ping') return response(200, { status: 'ok', service: 'diffdevil-github-app' });
       if (request.method === 'GET' && url.pathname === '/health/ready') {
         try { await (options.store ?? new D1AppStore(env.APP_DB)).readiness(); return response(200, { status: 'ready', service: 'diffdevil-github-app' }); }
@@ -245,7 +279,10 @@ export function createGitHubAppWorker(options = {}) {
       catch { return publicFailure(503, 'E_ENQUEUE'); }
     },
     async queue(batch, env) {
-      const dependencies = { env, store: options.store ?? new D1AppStore(env.APP_DB), execute: options.execute ?? executeDelivery, listInstallationRepositories: options.listInstallationRepositories ?? listInstallationRepositories, ...(options.clientFactory === undefined ? {} : { clientFactory: options.clientFactory }) };
+      const dependencies = { env, store: options.store ?? new D1AppStore(env.APP_DB), execute: options.execute ?? executeDelivery,
+        collectAnalytics: options.collectAnalytics ?? collectDeliveryAnalytics, analyticalClientFactory: options.analyticalClientFactory,
+        resolveFinalComparison: options.resolveFinalComparison,
+        listInstallationRepositories: options.listInstallationRepositories ?? listInstallationRepositories, ...(options.clientFactory === undefined ? {} : { clientFactory: options.clientFactory }) };
       for (const message of batch.messages) {
         try { await consumeMessage(message, dependencies); }
         catch { message.retry(); }
