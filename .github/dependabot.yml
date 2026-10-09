@@ -25,3 +25,18 @@ updates:
       - dependency-name: "typescript-6"
         update-types:
           - version-update:semver-major
+
+  - package-ecosystem: npm
+    directory: /apps/manual
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:15"
+      timezone: Europe/Berlin
+    groups:
+      manual-build-dependencies:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch

@@ -1,0 +1,20 @@
+flowchart TB
+    accTitle: Acknowledgment, provider readback, and partial recovery
+    accDescr: The applying host reads current managed labels, records a verified no-op when the desired state already exists, and otherwise requests the required addition. A clear or ambiguous response is followed by provider observation before any retry or removal. Earlier verified work remains real when a later operation fails; the result is partial, not rolled back.
+
+    read("Read current managed labels"):::focus
+    noop("If the required label is already present: record a verified no-op"):::ok
+    request("Otherwise request the required managed-label addition")
+    observe("After a clear or ambiguous response: observe current labels before any retry or removal"):::focus
+    stop("If the addition is not observed: stop; do not remove or claim success"):::bad
+    remove("If the addition is observed: remove the obsolete managed label, then read back")
+    success("If final readback matches: intended managed state verified"):::ok
+    partial("If a later operation fails or source moves: preserve the verified addition and return partial or incomplete"):::bad
+
+    read --> noop
+    read --> request
+    request --> observe
+    observe --> stop
+    observe --> remove
+    remove --> success
+    remove --> partial

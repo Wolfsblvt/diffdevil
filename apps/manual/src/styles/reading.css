@@ -1,10 +1,10 @@
-/* SPDX-License-Identifier: AGPL-3.0-only */
-/* Reading grammar over the existing Works shell; starlight-works owns navigation/alerts. */
-:root { --sl-text-body:16px; --sl-line-height:1.7; --sl-content-width:48rem; --slw-sidebar-current-bg:var(--bg-raised-2); --slw-sidebar-current-text:var(--fg); --slw-sidebar-focus:var(--accent-text); --slw-alert-radius:.4rem; --slw-alert-padding:.75rem 1rem; }
-.sl-markdown-content { font-size:1rem; line-height:1.7; overflow-wrap:anywhere; }
-.sl-markdown-content > :first-child { margin-block-start:0; }
-.sl-markdown-content h2 { font-size:1.4rem; line-height:1.3; margin-block-start:2.1em; }
-.sl-markdown-content h3 { font-size:1.1rem; line-height:1.4; }
+.sl-markdown-content { font-size:1rem; line-height:1.68; overflow-wrap:anywhere; }
+.sl-markdown-content :is(h2,h3,h4) { scroll-margin-top:calc(var(--sl-nav-height) + 1rem); text-wrap:balance; }
+.sl-markdown-content h2 { margin-top:2.75rem; padding-top:1rem; border-top:1px solid var(--hair); }
+.sl-markdown-content h3 { margin-top:2rem; }
+.sl-markdown-content p { margin-block:1rem; }
+.sl-markdown-content :is(ul,ol) { padding-inline-start:1.35rem; }
+.sl-markdown-content li + li { margin-top:.4rem; }
 .sl-markdown-content :is(pre,table) { max-width:100%; overflow-x:auto; }
 .sl-markdown-content pre { overflow-wrap:normal; white-space:pre; }
 .sl-markdown-content table { display:block; width:max-content; max-width:100%; font-size:.875rem; }
@@ -29,4 +29,63 @@
 .docs-site-footer .site-footer a { overflow-wrap:anywhere; }
 @container (max-width:32rem) {
   .docs-site-footer .site-footer .grid { grid-template-columns:minmax(0,1fr); }
+}
+
+/* Source-owned light/dark SVG explanations. Text and tables retain the meaning without the image. */
+.manual-visual {
+  margin-block:1.5rem;
+  padding:clamp(.5rem,2vw,1rem);
+  border:1px solid var(--hair);
+  border-radius:var(--r-card);
+  background:var(--bg-raised);
+  overflow:hidden;
+}
+.manual-visual picture { display:block; min-width:0; }
+.manual-visual__theme--light { display:none; }
+.manual-visual__theme--dark { display:block; }
+[data-theme="light"] .manual-visual__theme--light { display:block; }
+[data-theme="light"] .manual-visual__theme--dark { display:none; }
+[data-theme="dark"] .manual-visual__theme--light { display:none; }
+[data-theme="dark"] .manual-visual__theme--dark { display:block; }
+.manual-visual img {
+  display:block;
+  width:auto;
+  max-width:100%;
+  height:auto;
+  margin-inline:auto;
+  forced-color-adjust:none;
+}
+.manual-visual figcaption {
+  max-width:42rem;
+  margin:.75rem auto 0;
+  color:var(--fg-2);
+  font-size:.875rem;
+  line-height:1.55;
+}
+@media (prefers-color-scheme:light) {
+  :root:not([data-theme]) .manual-visual__theme--light { display:block; }
+  :root:not([data-theme]) .manual-visual__theme--dark { display:none; }
+}
+@media (max-width:40rem) {
+  .manual-visual { margin-inline:calc(-1 * min(.5rem, var(--page-x))); padding:.45rem; border-radius:var(--r-block); }
+  .manual-visual figcaption { padding-inline:.25rem; font-size:.8125rem; }
+}
+@media (forced-colors:active) {
+  .manual-visual { border-color:CanvasText; }
+}
+
+/* The provider lifecycle is intentionally tall. At the narrowest supported reading
+   width, preserve legible source text and contain the small excess inside one
+   keyboard-reachable visual viewport rather than shrinking the whole diagram. */
+.manual-visual--scroll .manual-visual__theme {
+  overflow-x:auto;
+  overscroll-behavior-inline:contain;
+  scrollbar-gutter:stable;
+}
+.sl-markdown-content .manual-visual--scroll img {
+  width:clamp(318px,100%,528px);
+  max-width:none;
+}
+@media (max-width:40rem) {
+  .manual-visual--scroll { margin-inline:0; }
 }
