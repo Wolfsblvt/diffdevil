@@ -46,7 +46,10 @@ test('representative distribution keeps bounded and unknown PRs in nearest-rank 
   assert.equal(result.overview.analyzedRevisions, 4);
   assert.equal(result.overview.representative, 'latest-observed-in-window');
   assert.deepEqual(result.result.population, { total: 3, exact: 1, finiteBounded: 1, unknownUnbounded: 1 });
-  assert.deepEqual(result.result.quantiles[0], { p: 0.5, lower: null, upper: null });
+  assert.deepEqual(result.result.quantiles, [
+    { p: 0.5, lower: 12, upper: null }, { p: 0.75, lower: 30, upper: null },
+    { p: 0.9, lower: 30, upper: null }, { p: 0.95, lower: 30, upper: null }
+  ]);
   assert.equal(result.result.exactOnlyPartial.length, 1);
   assert.equal(result.overview.coverage.completeWindow, false);
 });
@@ -57,6 +60,64 @@ test('finite interval quantiles enclose the whole representative population', as
   const result = await service.query(request('distribution'), admin);
   assert.deepEqual(result.result.population, { total: 3, exact: 1, finiteBounded: 2, unknownUnbounded: 0 });
   assert.deepEqual(result.result.quantiles[0], { p: 0.5, lower: 30, upper: 50 });
+});
+
+test('count metrics retain zero when a lower endpoint is unavailable', async () => {
+  const { service, rows } = fixture();
+  rows[2].projection.totals.lines.changed = bounded(undefined, 50);
+  const result = await service.query(request('distribution'), admin);
+  assert.deepEqual(result.result.quantiles[0], { p: 0.5, lower: 0, upper: null });
+  assert.deepEqual(result.result.population, { total: 3, exact: 1, finiteBounded: 1, unknownUnbounded: 1 });
+  for (const row of rows) row.fileSet.total = { status: 'unknown' };
+  const files = await service.query(request('distribution', { metric: { kind: 'total', name: 'files', scope: 'all-observed' } }), admin);
+  assert.deepEqual(files.result.quantiles[0], { p: 0.5, lower: 0, upper: null });
+  for (const row of rows) row.files[0].lines.changed = { status: 'unknown' };
+  const observed = await service.query(request('distribution', { metric: { kind: 'total', name: 'changed', scope: 'all-observed' } }), admin);
+  assert.deepEqual(observed.result.quantiles[0], { p: 0.5, lower: 0, upper: null });
+});
+
+test('configured metrics preserve signed values and unknown lower endpoints', async () => {
+  const { service, rows } = fixture();
+  rows[1].results.metrics[0].result = exact(-12);
+  rows[2].results.metrics[0].result = bounded(undefined, -5);
+  const result = await service.query(request('distribution', { metric: { kind: 'configured', ref: 'custom' } }), admin);
+  assert.deepEqual(result.result.quantiles[0], { p: 0.5, lower: null, upper: null });
+  assert.deepEqual(result.result.exactOnlyPartial, [-12]);
+});
+
+test('bounded current baselines rank only separated intervals and retain overlap as uncertain', async () => {
+  const { service, rows } = fixture();
+  const at = '2026-09-09T00:00:00.000Z';
+  rows.push(record(4, 'above', at, exact(60)), record(5, 'lower-touch', at, exact(30)),
+    record(6, 'upper-touch', at, exact(50)), record(7, 'overlap', at, bounded(40, 70)));
+  const baseline = await service.baseline(request('distribution', { current: bounded(30, 50), currentIdentity: lensIdentity }), admin);
+  assert.equal(baseline.n, 7);
+  assert.equal(baseline.ordinalBelow, 1);
+  assert.equal(baseline.ordinalAbove, 1);
+  assert.equal(baseline.ordinalEqual, 0);
+  assert.equal(baseline.uncertain, 5);
+  assert.deepEqual(baseline.rankInterval, { minimum: 2, maximum: 6 });
+  assert.equal(baseline.percentileInterval, null);
+  const openUpper = await service.baseline(request('distribution', { current: bounded(30, undefined), currentIdentity: lensIdentity }), admin);
+  assert.equal(openUpper.ordinalBelow, 1);
+  assert.equal(openUpper.ordinalAbove, 0);
+  const openLower = await service.baseline(request('distribution', { current: bounded(undefined, 50), currentIdentity: lensIdentity }), admin);
+  assert.equal(openLower.ordinalBelow, 0);
+  assert.equal(openLower.ordinalAbove, 1);
+  const exactCurrent = await service.baseline(request('distribution', { current: exact(30), currentIdentity: lensIdentity }), admin);
+  assert.equal(exactCurrent.ordinalEqual, 1);
+  await assert.rejects(service.baseline(request('distribution', { current: { status: 'unknown' }, currentIdentity: lensIdentity }), admin),
+    { code: 'E_HISTORY_BASELINE_CURRENT' });
+});
+
+test('bounded baseline percentile endpoints are exposed only at the established sample size', async () => {
+  const { service, rows } = fixture();
+  rows.splice(0, rows.length, ...Array.from({ length: 20 }, (_, index) => record(index + 1, 'sample', '2026-09-09T00:00:00.000Z', exact(index))));
+  const baseline = await service.baseline(request('distribution', { current: bounded(5, 10), currentIdentity: lensIdentity }), admin);
+  assert.equal(baseline.presentation, 'rank-interval');
+  assert.deepEqual(baseline.rankInterval, { minimum: 6, maximum: 11 });
+  assert.deepEqual(baseline.percentileInterval, { minimum: 0.25, maximum: 0.55 });
+  assert.equal(baseline.uncertain, 6);
 });
 
 test('all-observed change on an incomplete file set is a lower bound', async () => {
@@ -151,7 +212,8 @@ test('versioned result schema accepts executable specimens for every query famil
     operator: 'gte', threshold: 10, ruleRef: 'rule', reportVersion: 'report-v1', metricVersion: 'metrics-v1', policyId: 'policy-a' };
   await service.saveLens(17, { version: 1, id: 'large', query: request('distribution', { metric: { kind: 'configured', ref: 'custom' } }), identity: lensIdentity }, admin);
   assert.equal(lensValid((await service.lenses(17, admin))[0]), true, JSON.stringify(lensValid.errors));
-  for (const result of [baseline, await service.compare(request('distribution'), request('distribution'), admin),
+  for (const result of [baseline, await service.baseline(request('distribution', { current: bounded(30, 50), currentIdentity: lensIdentity }), admin),
+    await service.compare(request('distribution'), request('distribution'), admin),
     await service.policyLab(request('distribution'), proposal, admin),
     await service.lens({ repositoryId: 17, lensId: 'large' }, admin), await service.exportNumeric(17, admin)])
     assert.equal(resultValid(result), true, `${result.kind}: ${JSON.stringify(resultValid.errors)}`);

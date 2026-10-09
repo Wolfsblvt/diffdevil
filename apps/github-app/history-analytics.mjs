@@ -73,15 +73,18 @@ export function normalizeHistoryLens(repositoryId, lens) {
   return { version: 1, id, ...(lens.name !== undefined ? { name: label(lens.name, 120) } : {}),
     ...(lens.description !== undefined ? { description: label(lens.description, 500) } : {}), query, identity, ...(focus ? { focus } : {}) };
 }
-function bound(value) {
-  if (!value || typeof value !== 'object') return { status: 'unknown', lower: null, upper: null };
+function bound(value, nonNegative = false) {
+  // Count domains prove zero even when acquisition supplied no lower endpoint.
+  // Configured numeric metrics may be signed and do not inherit that floor.
+  const floor = nonNegative ? 0 : null;
+  if (!value || typeof value !== 'object') return { status: 'unknown', lower: floor, upper: null };
   if (value.status === 'exact' && Number.isFinite(value.value)) return { status: 'exact', lower: value.value, upper: value.value };
-  if (value.status === 'bounded') return { status: 'bounded', lower: Number.isFinite(value.minimum) ? value.minimum : null,
+  if (value.status === 'bounded') return { status: 'bounded', lower: Number.isFinite(value.minimum) ? value.minimum : floor,
     upper: Number.isFinite(value.maximum) ? value.maximum : null };
-  return { status: 'unknown', lower: null, upper: null };
+  return { status: 'unknown', lower: floor, upper: null };
 }
 function sum(values) {
-  const parts = values.map(bound);
+  const parts = values.map(value => bound(value, true));
   const lower = parts.every(value => value.lower !== null) ? parts.reduce((total, value) => total + value.lower, 0) : null;
   const upper = parts.every(value => value.upper !== null) ? parts.reduce((total, value) => total + value.upper, 0) : null;
   return { status: parts.every(value => value.status === 'exact') ? 'exact' : parts.some(value => value.status === 'unknown') ? 'unknown' : 'bounded', lower, upper };
@@ -92,15 +95,15 @@ function measure(record, selected) {
   if (selected.kind === 'configured') return bound(results.metrics?.find(item => item.metric === selected.ref)?.result);
   if (selected.kind === 'scope') {
     const scope = results.scopes?.find(item => item.ref === selected.ref);
-    return bound(selected.name === 'files' ? scope?.fileSet?.total : selected.name === 'changed' ? scope?.totals?.lines?.changed : scope?.totals?.raw?.churn);
+    return bound(selected.name === 'files' ? scope?.fileSet?.total : selected.name === 'changed' ? scope?.totals?.lines?.changed : scope?.totals?.raw?.churn, true);
   }
-  if (selected.name === 'files') return bound(record.fileSet.total);
-  if (selected.name === 'includedFiles') return bound(record.fileSet.included);
+  if (selected.name === 'files') return bound(record.fileSet.total, true);
+  if (selected.name === 'includedFiles') return bound(record.fileSet.included, true);
   if (selected.scope === 'all-observed') {
     const observed = sum(record.files.map(file => selected.name === 'changed' ? file.lines?.changed : file.raw?.churn));
     return record.fileSet.complete === true ? observed : { status: 'bounded', lower: observed.lower, upper: null };
   }
-  return bound(selected.name === 'changed' ? record.projection.totals?.lines?.changed : record.projection.totals?.raw?.churn);
+  return bound(selected.name === 'changed' ? record.projection.totals?.lines?.changed : record.projection.totals?.raw?.churn, true);
 }
 function standing(value) { return value.status === 'exact' ? 'exact' : value.status === 'bounded' && value.lower !== null && value.upper !== null ? 'finite-bounded' : 'unknown-unbounded'; }
 function population(values) {
@@ -160,7 +163,7 @@ function ratio(numerator, denominator) {
 function concentration(records) {
   return records.map(record => {
     if (record.fileSet.complete !== true) return { pullRequest: record.pullRequest, comparisonId: record.comparisonId, standing: 'incomplete-file-set', largest: null, topThree: null };
-    const files = record.files.map(file => bound(file.lines?.changed));
+    const files = record.files.map(file => bound(file.lines?.changed, true));
     const total = sum(record.files.map(file => file.lines?.changed));
     const top = side => files.every(file => file[side] !== null) ? files.map(file => file[side]).sort((a, b) => b - a) : null;
     const lower = top('lower'), upper = top('upper');
@@ -270,8 +273,8 @@ export function createHistoryAnalyticsService({ store, authorize }) {
   }
   async function baseline(request, actor) {
     const { selected, records, representatives, excluded } = await load(request, actor);
-    const current = bound(request.current);
-    if (current.status !== 'exact') throw invalid('E_HISTORY_BASELINE_CURRENT');
+    const current = bound(request.current, selected.metric.kind !== 'configured');
+    if (current.status === 'unknown') throw invalid('E_HISTORY_BASELINE_CURRENT');
     const identity = request.currentIdentity;
     if (!identity || typeof identity.reportVersion !== 'string' || !REF.test(identity.reportVersion)
       || typeof identity.metricVersion !== 'string' || !REF.test(identity.metricVersion)
@@ -280,9 +283,10 @@ export function createHistoryAnalyticsService({ store, authorize }) {
     const compatible = representatives.filter(record => record.reportVersion === identity.reportVersion && record.metricVersion === identity.metricVersion
       && ((selected.metric.kind === 'total' && selected.metric.scope === 'all-observed') || record.policyId === identity.policyId));
     const values = compatible.map(record => measure(record, selected.metric));
-    const below = values.filter(value => value.upper !== null && value.upper < current.lower).length;
-    const above = values.filter(value => value.lower !== null && value.lower > current.lower).length;
-    const equal = values.filter(value => value.lower === current.lower && value.upper === current.upper).length;
+    const below = values.filter(value => current.lower !== null && value.upper !== null && value.upper < current.lower).length;
+    const above = values.filter(value => current.upper !== null && value.lower !== null && value.lower > current.upper).length;
+    const equal = values.filter(value => current.lower !== null && current.lower === current.upper
+      && value.lower === current.lower && value.upper === current.upper).length;
     const n = values.length, uncertain = n - below - above - equal;
     return { kind: 'diffdevil.repository-baseline', version: HISTORY_QUERY_VERSION, metric: selected.metric, currentIdentity: identity,
       n, incompatible: representatives.length - compatible.length,
