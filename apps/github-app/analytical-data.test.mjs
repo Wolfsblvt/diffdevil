@@ -56,6 +56,12 @@ test('six surfaces use final merged facts, independent revisions, current policy
   assert.equal(detail.result.measurement.head, head);
   assert.equal(detail.result.measurement.basis, 'final-merged-comparison');
   assert.equal(detail.result.measurement.standing, 'recovered');
+  assert.equal(detail.result.measurement.files.observed, 1);
+  assert.equal(detail.result.composition.modified.lower, 0, 'PR composition follows current policy');
+  const baseService = createAnalyticalDataService({ store: { analyticalRecords: async () => [record()], analyticalSizes: async () => [] },
+    authorize: async () => true, entitlement: async () => 'pro', currentPolicy: async () => null });
+  const baseHistory = await baseService.query(query('history'), actor);
+  assert.equal(baseHistory.result.buckets.find(bucket => bucket.samples === 1).composition.modified.lower, 1, 'mosaic composition comes from engine facts rather than raw-churn subtraction');
   assert.equal(detail.result.files[0].included, false);
   const file = await service.query(query('file', { path: 'a.txt' }), actor);
   assert.equal(file.result.cochange.samples, 1, 'co-change excludes unrecovered rows from every denominator');

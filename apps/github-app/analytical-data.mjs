@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-import { readReport, withPathPolicy, evaluatePolicy, unwrap } from '@wolfsblvt/diffdevil';
+import { readReport, withPathPolicy, evaluatePolicy, unwrap, SEMANTICS } from '@wolfsblvt/diffdevil';
 
 const DAY = 86_400_000;
 const surfaces = new Set(['overview', 'prs', 'history', 'files', 'pr', 'file']);
@@ -128,7 +128,10 @@ const changed = value => value?.report?.totals.lines.changed;
 const raw = value => value?.report?.totals.raw.churn;
 function summarize(values) {
   return { samples: values.length, recovered: values.filter(value => value.report).length,
-    changed: sum(values.map(changed)), rawChurn: sum(values.map(raw)), medianChanged: median(values.map(changed)), medianRawChurn: median(values.map(raw)) };
+    changed: sum(values.map(changed)), rawChurn: sum(values.map(raw)), medianChanged: median(values.map(changed)), medianRawChurn: median(values.map(raw)),
+    composition: { version: SEMANTICS.replacementLines, addedOnly: sum(values.map(value => value.report?.totals.lines.added)),
+      deletedOnly: sum(values.map(value => value.report?.totals.lines.deleted)), modified: sum(values.map(value => value.report?.totals.lines.modified)),
+      rawAdded: sum(values.map(value => value.report?.totals.raw.added)), rawDeleted: sum(values.map(value => value.report?.totals.raw.deleted)) } };
 }
 function sizeMix(records) {
   const counts = new Map();
@@ -269,9 +272,12 @@ export function createAnalyticalDataService({ store, authorize, entitlement, cur
         return { repositoryId: record.repositoryId, pullRequest: record.pullRequest, state: record.state, openedAt: record.openedAt,
           readyAt: record.readyAt, mergedAt: record.mergedAt, closedAt: record.closedAt, updatedAt: record.updatedAt,
           changed: sum([changed(measured)]), rawChurn: sum([raw(measured)]), band: measured.band,
+          composition: summarize([measured]).composition,
           policy: { id: measured.policyId, basis: measured.basis, requestedId: policies.get(record.repositoryId)?.id ?? null },
           measurement: { basis: record.state === 'merged' ? 'final-merged-comparison' : 'pull-request-revision',
-            standing: measured.report ? 'recovered' : 'unrecovered', base: comparison?.base ?? null, head: comparison?.head ?? null, observedAt: comparison?.observedAt ?? null },
+            standing: measured.report ? 'recovered' : 'unrecovered', quality: measured.report?.measurement.status ?? 'unknown',
+            files: measured.report ? { complete: measured.report.fileSet.complete, total: sum([measured.report.fileSet.total]), observed: measured.report.files.length } : null,
+            base: comparison?.base ?? null, head: comparison?.head ?? null, observedAt: comparison?.observedAt ?? null },
           analyzedHeads: new Set(record.revisions.map(value => value.head)).size,
           freshness: { basis: 'pr-development-head', analyzedHead: revision?.head ?? null, currentHead: record.currentHead, standing: !revision ? 'unavailable' : revision.head === record.currentHead ? 'current' : 'stale' },
           original: revision ? { policyId: revision.originalPolicyId, band: revision.originalBand } : null,

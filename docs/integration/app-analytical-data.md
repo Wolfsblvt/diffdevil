@@ -40,7 +40,12 @@ upper endpoints; a null upper endpoint is unbounded. Empty medians are unavailab
 with zero samples. Median envelopes include every bounded or unrecovered PR rather
 than selecting only exact measurements. Even sample medians average the two central
 endpoints. Missing final comparisons count as non-negative, unbounded observations.
-Unknown size bands remain separate from the smallest band.
+Unknown size bands remain separate from the smallest band. PRs, buckets and period
+summaries expose engine-derived added-only, deleted-only and modified composition,
+with raw-added/raw-deleted facts and the replacement-line semantic version. PR
+measurement metadata distinguishes report quality and partial file-set acquisition
+from overall retained-window coverage; chart renderers must not infer composition
+by subtracting independently bounded Changed and raw-churn endpoints.
 
 The server's `currentPolicy({ repositoryId, actor })` returns `{ id, compiled }`
 using the existing shared-engine compiled policy, or null while unavailable. Every
