@@ -50,6 +50,12 @@ replaying provider effects. When a current policy is unavailable, results explic
 use unfiltered base facts and do not claim current-policy interpretation. Original
 recorded policy/band, desired label and observed label remain separate PR-detail lanes.
 
+File history exposes base numerical observations with explicit current-policy
+inclusion. Its scope and co-change scope are `all-observed-file-facts`. A file's
+`prChanged` comparison uses the same all-observed PR total; `prPolicyChanged` is
+the distinct current-policy total. An excluded file's physical change must not be
+compared as if it were included in the policy-filtered PR quantity.
+
 `authorize` must check current repository visibility at every invocation. The service
 checks before storage and again before returning data. `entitlement` returns the
 server-selected `free`, `pro`, or `business` plan for a repository namespace; a null

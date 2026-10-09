@@ -200,7 +200,8 @@ function fileRows(merged, query, observations) {
     if (!grouped.has(key)) grouped.set(key, { repositoryId: record.repositoryId, path: file.path, contributions: [] });
     grouped.get(key).contributions.push({ pullRequest: record.pullRequest, mergedAt: record.mergedAt, file,
       base: record.final.base, head: record.final.head,
-      size: record.final.sizes.find(value => value.path === file.path) ?? null, prChanged: record.facts.report.totals.lines.changed });
+      size: record.final.sizes.find(value => value.path === file.path) ?? null,
+      prChanged: record.final.report.totals.lines.changed, prPolicyChanged: record.facts.report.totals.lines.changed });
   }
   const rows = [...grouped.values()].map(value => {
     const missing = merged.filter(record => record.repositoryId === value.repositoryId && record.facts.report?.fileSet.complete !== true).length;
@@ -216,7 +217,9 @@ function fileRows(merged, query, observations) {
       const total = known.reduce((total, row) => total + Math.max(0, side === 'grown' ? row.size.after - row.size.before : row.size.before - row.size.after), 0);
       return amount(total, missing || known.length !== value.contributions.length ? null : total);
     };
-    return { ...value, mergedPullRequests: amount(value.contributions.length, value.contributions.length + missing),
+    const included = value.contributions.filter(row => row.file.included).length;
+    return { ...value, scope: 'all-observed-file-facts', inclusion: included === 0 ? 'excluded' : included === value.contributions.length ? 'included' : 'mixed',
+      mergedPullRequests: amount(value.contributions.length, value.contributions.length + missing),
       coverage: { missingComparisons: missing, standing: missing ? 'partial' : 'recovered-merged-population' }, changed,
       rawChurn: boundTotal(value.contributions.map(value => value.file.raw.churn)),
       grown: growth('grown'), shrunk: growth('shrunk'), sizeHistory, observedSize: sizeHistory.at(-1) ?? null,
@@ -229,7 +232,7 @@ function cochange(records, repositoryId, name) {
   const population = records.filter(record => record.repositoryId === repositoryId && record.facts.report?.fileSet.complete === true);
   const own = population.filter(record => record.facts.report.files.some(file => file.path === name));
   const neighbors = new Set(own.flatMap(record => record.facts.report.files.map(file => file.path)).filter(value => value !== name));
-  return { basis: 'complete-recovered-final-comparisons', samples: population.length, own: own.length,
+  return { basis: 'complete-recovered-final-comparisons', scope: 'all-observed-file-facts', samples: population.length, own: own.length,
     companions: [...neighbors].map(path => {
       const contains = record => record.facts.report.files.some(file => file.path === path);
       return { repositoryId, path, together: own.filter(contains).length, of: population.filter(contains).length, own: own.length };

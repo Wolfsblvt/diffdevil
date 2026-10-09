@@ -56,6 +56,9 @@ test('six surfaces use final merged facts, independent revisions, current policy
   assert.equal(detail.result.files[0].included, false);
   const file = await service.query(query('file', { path: 'a.txt' }), actor);
   assert.equal(file.result.cochange.samples, 1, 'co-change excludes unrecovered rows from every denominator');
+  assert.equal(file.result.inclusion, 'excluded');
+  assert.equal(file.result.contributions[0].prChanged.value, 1, 'file-versus-PR comparison uses the same all-observed quantity');
+  assert.equal(file.result.contributions[0].prPolicyChanged.value, 0, 'current-policy totals stay separate');
 });
 
 test('Free and unauthorized readers cannot obtain premium names or aggregate file history', async () => {
