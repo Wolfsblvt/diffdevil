@@ -56,7 +56,7 @@ function notice({ linkId, worksAccount = '77', productAccount = USER, epoch = 1,
  * report-history rule: a reused report version with different content is divergence.
  */
 function wirtDouble(clock) {
-  const state = { intents: new Map(), links: new Map(), codes: new Map(), tokens: new Map(), refresh: new Map(), reports: [], requests: [],
+  const state = { intents: new Map(), links: new Map(), codes: new Map(), tokens: new Map(), refresh: new Map(), reports: [], cases: [], requests: [],
     reportAnswer: undefined, establishmentLost: 0, latest: new Map(), history: new Map(), down: false };
   const respond = (status, value, headers = {}) => new Response(value === undefined ? null : JSON.stringify(value), { status, headers: { 'content-type': 'application/json', ...headers } });
   const issue = userId => {
@@ -139,7 +139,12 @@ function wirtDouble(clock) {
       const latest = state.latest.get(link.id) ?? state.seed?.(link);
       return latest ? respond(200, latest) : respond(409, { message: 'Commercial state is not yet available.' });
     }
-    state.reports.push(JSON.parse(text));
+    const report = JSON.parse(text);
+    // Wirt's report shape: authority is present|absent|unknown, a label only with present authority,
+    // and `partially-applied` opens a product-disagreement case (commercial-projection.md at e370ae6).
+    if (report.bindings.some(binding => !['present', 'absent', 'unknown'].includes(binding.authority) || (binding.authority !== 'present' && binding.display !== null))) return respond(422, {});
+    if (report.applied.result === 'partially-applied') state.cases.push({ linkId: link.id, case: 'product-partially-applied' });
+    state.reports.push(report);
     if (state.reportAnswer) return state.reportAnswer(path, link);
     const answered = recordReport(link.id, text);
     if (answered) return answered;
@@ -172,7 +177,10 @@ async function fixture({ Store = D1CommercialStore } = {}) {
   const sessions = new Map([[SESSION, USER], [OTHER_SESSION, OTHER_USER]]);
   // Users whose GitHub authorization the product still retains; the background observation needs it.
   const retained = new Set([USER, OTHER_USER]);
+  const github = { answering: true };
   const observe = userId => organisationId => {
+    // The real adapter answers `unknown` when GitHub does not answer the administration check.
+    if (!github.answering) return { userId, authority: 'unknown', display: null };
     const present = administers.get(userId)?.has(organisationId);
     return { userId, authority: present ? 'present' : 'absent', display: present ? 'example-org' : null };
   };
@@ -190,7 +198,7 @@ async function fixture({ Store = D1CommercialStore } = {}) {
   const worker = createGitHubAppWorker({ store: appStore, commercial });
   const call = (path, init = {}) => worker.fetch(new Request(`${APP}${path}`, init), env);
   const browser = (session = SESSION, cookies = '') => ({ cookie: [`__Host-diffdevil-session=${session}`, cookies].filter(Boolean).join('; '), origin: APP });
-  return { runtime, database, appStore, store, wirt, clock, commercial, worker, env, call, browser, administers, retained, vault };
+  return { runtime, database, appStore, store, wirt, clock, commercial, worker, env, call, browser, administers, retained, github, vault };
 }
 
 const at = source => Date.parse(source.clock.value);
@@ -648,14 +656,47 @@ test('authority is an observed, rechecked fact: funding survives its loss, organ
     assert.equal((await store.binding(ORG)).authority_observed, 'absent');
     assert.equal(await commercial.entitlement({ repositoryId: 21, actor: { userId: OTHER_USER } }), 'free');
 
-    // Without retained authorization nothing new is observed: the recorded observation and its time stand.
-    administers.get(USER).add(ORG);
-    retained.delete(USER);
-    clock.value = '2027-03-03T10:00:00.000Z';
-    assert.deepEqual((await commercial.maintain()).authority, { observed: 0, unknown: 1 });
-    assert.deepEqual(await store.binding(ORG).then(row => [row.authority_observed, row.authority_checked_at]), ['absent', '2027-03-02T09:00:00.000Z']);
+    // A fully applied order stays `applied`; the authority lapse rides only on the binding.
+    await push(source, projection({ linkId, version: 2, tier: 'business', slots: ['slot-included', 'slot-1'] }));
+    await commercial.flushReports();
+    assert.deepEqual(wirt.state.reports.at(-1).applied, { epoch: 1, version: 2, result: 'applied', reason: null, at: clock.value });
+    assert.deepEqual(wirt.state.reports.at(-1).bindings, [{ slot: 'slot-1', github_org_id: ORG, display: null, authority: 'absent', since: '2027-03-01' }]);
 
-    // A pending report holds the label only until it leaves the outbox; ending removes every label.
+    // GitHub not answering the funder's status read is `unknown`, not the earlier observation.
+    administers.get(USER).add(ORG);
+    clock.value = '2027-03-03T10:00:00.000Z';
+    assert.equal((await statusOf()).capacity.find(value => value.slot === 'slot-1').binding.authority, 'present');
+    source.github.answering = false;
+    status = await statusOf();
+    assert.deepEqual(status.capacity.find(value => value.slot === 'slot-1').binding, { organisationId: ORG, authority: 'unknown', authorityCheckedAt: clock.value, display: null });
+    assert.equal(status.plan, 'business');
+    assert.equal(await commercial.entitlement({ repositoryId: 21, actor: { userId: OTHER_USER } }), 'unknown', 'an unobservable check withholds organisation use');
+    source.github.answering = true;
+    assert.equal((await statusOf()).capacity.find(value => value.slot === 'slot-1').binding.authority, 'present');
+
+    // The funder signs out and the product no longer retains their authorization. The next check cannot
+    // observe authority, so it records `unknown` rather than letting an earlier `present` stand.
+    retained.delete(USER);
+    clock.value = '2027-03-04T11:00:00.000Z';
+    assert.deepEqual((await commercial.maintain()).authority, { observed: 0, unknown: 1 });
+    assert.deepEqual(await store.binding(ORG).then(row => [row.slot, row.authority_observed, row.authority_checked_at, row.display]), ['slot-1', 'unknown', clock.value, null],
+      'the binding and its funded slot remain');
+    assert.equal(await commercial.entitlement({ repositoryId: 21, actor: { userId: OTHER_USER } }), 'unknown');
+    assert.equal(await commercial.entitlement({ repositoryId: null, actor: { userId: USER } }), 'business', "the funder's own plan is unaffected");
+    assert.deepEqual(wirt.state.reports.at(-1).bindings, [{ slot: 'slot-1', github_org_id: ORG, display: null, authority: 'unknown', since: '2027-03-01' }]);
+    assert.equal(wirt.state.reports.at(-1).applied.result, 'applied');
+    assert.equal((await commercialBytes(source)).includes('example-org'), false, 'no label is retained while authority is unknown');
+    // `unknown` is rechecked at every maintenance pass; still unobservable only moves its time.
+    const reportsWhileUnknown = wirt.state.reports.length;
+    clock.value = '2027-03-04T12:00:00.000Z';
+    assert.deepEqual((await commercial.maintain()).authority, { observed: 0, unknown: 1 });
+    assert.equal((await store.binding(ORG)).authority_checked_at, clock.value);
+    assert.equal(wirt.state.reports.length, reportsWhileUnknown);
+    assert.deepEqual(wirt.state.cases, [], 'no authority change opened a partially-applied case at Wirt');
+
+    // The funder's next visit observes authority again. A pending report holds the label only until it
+    // leaves the outbox; ending removes every label.
+    retained.add(USER);
     status = await statusOf();
     assert.equal(status.capacity.find(value => value.slot === 'slot-1').binding.display, 'example-org');
     assert.equal((await store.latestReport(linkId)).state, 'pending');

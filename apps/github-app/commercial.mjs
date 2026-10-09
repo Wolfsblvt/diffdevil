@@ -27,6 +27,7 @@ function cookie(value, maxAge) { return `${COMMERCIAL_LINK_COOKIE}=${value}; Pat
 function json(status, body, headers = {}) { return new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', ...headers } }); }
 const orderOf = link => link.applied_epoch === null || link.applied_epoch === undefined ? undefined : { epoch: link.applied_epoch, version: link.applied_version };
 function compareOrder(left, right) { return left.epoch !== right.epoch ? Math.sign(left.epoch - right.epoch) : Math.sign(left.version - right.version); }
+const observedAuthority = result => result?.authority === 'present' || result?.authority === 'absent' ? result.authority : 'unknown';
 function plannedProjection(link) {
   if (!link?.projection_json) return undefined;
   try { return JSON.parse(link.projection_json); } catch { return undefined; }
@@ -59,8 +60,8 @@ export function planForLink(link) {
 
 /**
  * Funding and current GitHub authority are separate facts. An organisation funded through a binding is
- * usable only while its funder's administration was last observed present; observed absence withholds
- * use without ending the binding or the subscription.
+ * usable only while its funder's administration was last observed present; observed absence, or a check
+ * that could not observe it, withholds use without ending the binding or the subscription.
  */
 export function planForFunding({ link, binding } = {}) {
   const plan = planForLink(link);
@@ -127,9 +128,9 @@ export function createCommercialService({ store, wirt, signing, authorization, p
         // DiffDevil's documented unbinding rule: a slot absent from the applied capacity no longer funds its organisation.
         const removedSlots = bindings.filter(binding => !slots.has(binding.slot)).map(binding => binding.slot);
         const remaining = bindings.filter(binding => slots.has(binding.slot));
-        const partial = remaining.some(binding => binding.authority_observed !== 'present');
-        const applied = { epoch: message.order.epoch, version: message.order.version, result: partial ? 'partially-applied' : 'applied',
-          reason: partial ? 'organisation authority not present for a bound slot' : null, at: now() };
+        // The whole order is applied. Organisation authority is a separate product fact carried on
+        // `bindings[].authority`; Wirt treats `partially-applied` as a disagreement and opens a case.
+        const applied = { epoch: message.order.epoch, version: message.order.version, result: 'applied', reason: null, at: now() };
         change = { applied: { ...applied, projectionJson: JSON.stringify(message.projection) }, worksAccount: message.stream.worksAccount, removedSlots,
           report: report(link, message.stream, applied, remaining, refusals) };
       } else if (decision.kind === 'reject') {
@@ -227,8 +228,9 @@ export function createCommercialService({ store, wirt, signing, authorization, p
   }
 
   /**
-   * Record definite authority observations for one link. A change re-reports the bindings so Wirt drops a
-   * label it may no longer show; a confirmation only moves the observation time.
+   * Record authority checks for one link: `present`, `absent`, or `unknown` when the check could not
+   * observe it. A change re-reports the bindings so Wirt drops a label it may no longer show; a
+   * confirmation only moves the check time.
    */
   async function recordObservations(linkId, observed) {
     for (let attempt = 0; attempt < 3; attempt++) {
@@ -250,7 +252,10 @@ export function createCommercialService({ store, wirt, signing, authorization, p
     }
   }
 
-  /** Maintenance re-observes stale funder authority through the funder's retained authorization. `unknown` changes nothing. */
+  /**
+   * Maintenance rechecks stale and unknown funder authority through the funder's retained authorization.
+   * A check that cannot observe it records `unknown`, so an earlier `present` never stands in for current authority.
+   */
   async function recheckAuthority() {
     if (!authorization?.observeOrganisationAuthority) return { observed: 0, unknown: 0 };
     const stale = await store.staleObservations(new Date(clock() - AUTHORITY_RECHECK_MS).toISOString(), AUTHORITY_RECHECK_LIMIT);
@@ -260,9 +265,10 @@ export function createCommercialService({ store, wirt, signing, authorization, p
       let result;
       try { result = await authorization.observeOrganisationAuthority({ userId: binding.product_account, organisationId: binding.organisation_id }); }
       catch { result = { authority: 'unknown' }; }
-      if (result.authority !== 'present' && result.authority !== 'absent') { unknown++; continue; }
+      const authority = observedAuthority(result);
+      if (authority === 'unknown') unknown++;
       const values = byLink.get(binding.link_id) ?? [];
-      values.push({ slot: binding.slot, organisationId: binding.organisation_id, authority: result.authority, display: result.display ?? null });
+      values.push({ slot: binding.slot, organisationId: binding.organisation_id, authority, display: result.display ?? null });
       byLink.set(binding.link_id, values);
     }
     for (const [linkId, values] of byLink) await recordObservations(linkId, values);
@@ -479,8 +485,8 @@ export function createCommercialService({ store, wirt, signing, authorization, p
       for (const binding of await store.bindings(link.link_id)) {
         let result;
         try { result = await authorization.organisationAuthority({ session, organisationId: binding.organisation_id }); }
-        catch { break; } // Without the viewer's current authorization nothing new is observed.
-        if (result.authority === 'present' || result.authority === 'absent') observed.push({ slot: binding.slot, organisationId: binding.organisation_id, authority: result.authority, display: result.display ?? null });
+        catch { result = { authority: 'unknown' }; }
+        observed.push({ slot: binding.slot, organisationId: binding.organisation_id, authority: observedAuthority(result), display: result.display ?? null });
       }
       if (observed.length > 0) {
         await recordObservations(link.link_id, observed);

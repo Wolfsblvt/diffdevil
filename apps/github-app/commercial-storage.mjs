@@ -136,10 +136,10 @@ export class D1CommercialStore {
       this.now(), linkId, slot, organisationId, authority).run();
   }
 
-  /** Bindings of active links whose authority observation is older than `before`, oldest first. */
+  /** Bindings of active links whose authority is unknown or was checked before `before`, oldest check first. */
   async staleObservations(before, limit = PAGE) {
     return (await this.statement(`SELECT b.*, l.product_account FROM commercial_bindings b JOIN commercial_links l ON l.link_id=b.link_id
-      WHERE l.state='active' AND b.authority_checked_at < ? ORDER BY b.authority_checked_at LIMIT ?`, before, limit).all()).results ?? [];
+      WHERE l.state='active' AND (b.authority_checked_at < ? OR b.authority_observed='unknown') ORDER BY b.authority_checked_at LIMIT ?`, before, limit).all()).results ?? [];
   }
 
   /**
