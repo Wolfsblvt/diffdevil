@@ -2,11 +2,29 @@
 
 ## Meaning
 
-This records product/repository choices whose rationale cannot be reconstructed cheaply from source. D054–D063 carry the accepted edition, plan, funding and management settlement of 2026-10-02. They are selected product direction, not evidence that billing, collection or the expanded dashboard is live.
+This records product/repository choices whose rationale cannot be reconstructed cheaply from source. D044 preserves independent release families, D064–D073 carry the ratified analytical product, and D054–D063 carry the accepted edition, plan, funding and management settlement of 2026-10-02. They are selected product direction, not evidence that billing, collection or the expanded dashboard is live.
 
-The complete predecessor record is preserved byte-for-byte as [Decisions through D053](DECISIONS-through-d053.md), with its existing references to the complete D001–D043 record. Earlier headings remain below to preserve fragment destinations. A new decision supersedes only its named boundary; it does not erase the previous rationale or implementation evidence.
+The complete predecessor record is preserved byte-for-byte as [Decisions through D073](DECISIONS-through-d053.md), with its existing references to the complete D001–D043 record. Earlier headings remain below to preserve fragment destinations. A new decision supersedes only its named boundary; it does not erase the previous rationale or implementation evidence.
 
 [Plans](app-plans.md), [management](app-management.md), [dashboard](dashboard.md), [access](dashboard-access.md) and [privacy/data](PRIVACY-AND-DATA.md) own the joined maintained contracts. Private deliberation and owner transcripts are not part of this public record.
+
+## D044: Version the tools people install, not the whole repository
+
+**Status:** Settled by Wolf and Nyxara, 2026-09-30. Source adoption and qualification are distinct from publishing any release.
+
+**Decision.** diffdevil remains one product family and one deterministic engine, with four release families. The public npm library/core, CLI, root and three sub-actions, and standalone runtime share the open-tool version. The browser extension, App server/dashboard together, and canonical Agent Skill each own an independent SemVer. The website, manual, Playground and internal packages do not gain public counters simply because they are separate directories or deployments. No family synchronizes major, minor or patch numbers for cosmetic consistency.
+
+**Why.** Users install and operate these tools independently. A browser-layout fix should not force an unchanged npm package, Action, Skill or service release; a service fix should not wait for a Store publication. Version changes should communicate the affected consumer's contract rather than another surface's activity. The closely related CLI/library/Action/standalone family deliberately accepts bounded wrapper-only release churn. Product coherence comes from shared behavior, explicit contents, clear names and joined release communication, not matching integers.
+
+**Rejected.** One mandatory version and publication wave for every tool; periodic major/minor catch-up; a global counter that publishes only changed tools but still creates unrelated version jumps; independent semantic implementations; and another public suite/marketing version. Matching version numbers would not make Store, registry and service rollout atomic or establish shared-engine parity.
+
+**Consequences.** [Release families and versioning](RELEASING.md) is the canonical operational contract. Existing open-tool `vX.Y.Z` tags and Action `vMAJOR` aliases retain their meanings. Other exact release tags are `extension-vX.Y.Z`, `app-vX.Y.Z` and `skill-vX.Y.Z`. Update discovery and availability are family- and channel-specific, never the repository's unfiltered latest release. Every distribution identifies the actual engine and exact source/build it contains; a later checkout retaining an old package version must not masquerade as the published artifact. Compound Skill/runtime archives identify both components and their compatibility. Shared semantic, correctness and security changes are assessed and coordinated across affected consumers without forced unrelated publications. Public report, policy, language and metric contracts remain independently explicit.
+
+**Presentation.** Name the installed surface beside its version; put engine/source detail in diagnostics. A lower extension number does not mean an outdated engine. Keep one joined product release history with labeled family entries and accurate channel availability. Do not invent releases or retroactively renumber the immutable `v1.0.0` artifacts.
+
+**Supersession.** D002's universal version-together rationale is narrowed to the open-tool family. D014 and D029 still select one repository and joined product development; their references to a shared release lifecycle do not impose cross-family version or publication lockstep. The existing source/package/publication distinction in D016 and artifact-integrity boundary in D041 remain intact.
+
+**Source.** Wolf's direct approval of the independent-family recommendation and instruction to author its durable guidance on 2026-09-30. The public contract is recorded here without reproducing the private design conversation. Reopen only for an actual change to an independently consumed boundary or concrete release/compatibility evidence, not unequal version numbers.
 
 ## D054: Separate Community from private premium application capabilities
 
@@ -22,7 +40,7 @@ The complete predecessor record is preserved byte-for-byte as [Decisions through
 
 **Why.** A personal developer can buy codebase memory without paying for group coordination; a person or team can independently value Business operation. The free experience remains useful without giving away the entire paid product.
 
-**Superseded.** Unselected €19/€59 and Team/Scale hypotheses, and ambiguity about whether “Individual” meant Free or paid. D049's reader/visibility meaning remains. No per-reader seat, per-PR fee or purchased processing credits are introduced.
+**Superseded.** Unselected €19/€59 and Team/Scale hypotheses, and ambiguity about whether “Individual” meant Free or paid. D069's reader/visibility meaning remains. No per-reader seat, per-PR fee or purchased processing credits are introduced.
 
 ## D056: Let an individual subscription fund named organisation scopes
 
@@ -30,7 +48,7 @@ The complete predecessor record is preserved byte-for-byte as [Decisions through
 
 **Why.** One understandable personal purchase can support a personal estate and explicitly chosen organisations without multiplying paid readers or treating organisational records as the payer's property. One funder prevents colleagues stacking allowances.
 
-**Consequences.** Pro personal repositories have no count ceiling; each Pro organisation has three private slots and otherwise the same Pro capabilities. Business organisations have no repo-count ceiling. Installation reach and repository selection remain explicit. Funding does not grant access or administrative rights. This settles D049's previously open purchase unit.
+**Consequences.** Pro personal repositories have no count ceiling; each Pro organisation has three private slots and otherwise the same Pro capabilities. Business organisations have no repo-count ceiling. Installation reach and repository selection remain explicit. Funding does not grant access or administrative rights. This settles D069's previously open purchase unit.
 
 ## D057: Reserve shared policy coordination for Business
 
@@ -38,7 +56,7 @@ The complete predecessor record is preserved byte-for-byte as [Decisions through
 
 **Why.** A saved per-scope default supports deliberate manual use. A shared library with global drift and bulk application would already give away much of the coordinated product.
 
-**Superseded.** D050's unrestricted Individual named-library assumption. Arbitrary valid repository-specific configuration, portable policy, trusted repository overrides and manual history replay remain. This is a hosted capability boundary, not a limit on the open engine.
+**Superseded.** D070's unrestricted Individual named-library assumption. Arbitrary valid repository-specific configuration, portable policy, trusted repository overrides and manual history replay remain. This is a hosted capability boundary, not a limit on the open engine.
 
 ## D058: Retain base file facts on Free for compatible policy replay
 
@@ -46,7 +64,7 @@ The complete predecessor record is preserved byte-for-byte as [Decisions through
 
 **Why.** Aggregate totals cannot answer a new arbitrary path exclusion after file facts are discarded. Retaining the base foundation avoids unnecessary GitHub reacquisition without granting every derived premium feature.
 
-**Consequences.** No source contents/patches are retained. D045's data expansion and D047's current-policy interpretation remain; pending refreshes identify their actual displayed basis. A newly source-dependent metric still needs sufficient evidence. No fictional original results or policy-era warehouse.
+**Consequences.** No source contents/patches are retained. D065's data expansion and D067's current-policy interpretation remain; pending refreshes identify their actual displayed basis. A newly source-dependent metric still needs sufficient evidence. No fictional original results or policy-era warehouse.
 
 ## D059: Protect live operation and expose delayed historical work honestly
 
@@ -54,7 +72,7 @@ The complete predecessor record is preserved byte-for-byte as [Decisions through
 
 **Why.** Background workload should not turn ordinary PR use into a microtransaction or break the core workflow. Provider limits and actual service pressure still need honest pacing.
 
-**Consequences.** No bills for duplicates/recovery and no purchased credits. Durable continuation is separate from execution-message lifetime. Advanced provider-budget headroom can arrive later, but rate-limit compliance cannot. This settles D051's allowance direction without inventing numeric monthly budgets or a completion guarantee.
+**Consequences.** No bills for duplicates/recovery and no purchased credits. Durable continuation is separate from execution-message lifetime. Advanced provider-budget headroom can arrive later, but rate-limit compliance cannot. This settles D071's allowance direction without inventing numeric monthly budgets or a completion guarantee.
 
 ## D060: Make previews and Open Source support repository-scoped grants
 
@@ -88,6 +106,98 @@ The complete predecessor record is preserved byte-for-byte as [Decisions through
 
 **Boundaries.** Read/access and money-moving authority remain separate. Reuse shared billing/operations rather than duplicating a finance system. No contributor surveillance, raw payment-instrument exposure, private source storage or blanket marketing enrolment is selected.
 
+## D064: Make the App activity-first for collaborators as well as administrators
+
+**Status:** Selected product direction, 2026-10-01; implementation remains separate.
+
+**Decision.** The signed-in home presents authorised repository activity. Repository, PR and file details are first-class analytical destinations. Administration is a separate capability, not the entrance everyone must use. PR lifecycle/development and file activity receive equal treatment.
+
+**Why.** A collaborator who never configures an installation still benefits from its accumulated repository context. The optional PR brief needs a complete detail destination, and a file cloud needs somewhere useful to lead. An administrator-first control room would subordinate the product's daily value to setup and recovery.
+
+**Superseded.** The earlier control-room-first hierarchy as the permanent dashboard experience. Operational attention and configuration remain selected, but support the analytical entrance. The 2026-10-09 ratification releases Overview, Pull requests, History, Files, PR detail and File detail with the dark even-grid App shell, fixed existing header and side navigation. Both surface and trailing action read App. Useful Free panels, premium panel chips and namespace-versus-viewer entitlement presentation preserve daily value without giant blockers. Exact chart/cloud rendering remains provisional; its co-design comes first, then Manage/subscription design. The synthetic reference is not production source or an authenticated journey.
+
+## D065: Retain named file measurements and PR lifecycle without storing source
+
+**Status:** Selected, 2026-10-01; old pathless source is not upgraded by this decision.
+
+**Decision.** After explicit history enablement, retain repository names, filenames, relative paths, numerical file measurements, comparison identity, observed rename continuity and PR lifecycle facts. Retain permitted measurements for policy-excluded files while excluding them from ordinary analytics. File contents and patches may be processed transiently, then discarded, including from incidental logs, queues and caches.
+
+**Why.** Useful file frequency, Turnover, co-change, detail views and policy reinterpretation require durable file identity and lifecycle. The old within-analysis anonymous rows cannot provide these outcomes. A blanket pathless boundary would make an implementation shortcut the product ceiling.
+
+**Superseded.** D034's pathless-only/no-filename restriction and its prohibition on durable file identity, and the corresponding former Vision/privacy wording. D034's separate recovery/history consent and D036's deletion/offboarding protections remain. Named history does not silently widen the old numeric-only post-access-loss grace exception.
+
+**Rejected.** Retaining source, contributor-performance dimensions or complete reports; treating filenames as anonymous; installation automatically enabling history; or making a filename-free mode a prerequisite to useful first delivery. A future opt-out must disclose missing historical coverage.
+
+**Joined request/navigation consequence, 2026-10-09.** Named paths can occur in authenticated URLs and local browser history. App documents/responses select explicit `same-origin` referrer policy, excluding path/query cross-origin while retaining same-origin consumers. Diagnostics omit full private URLs, query strings and full referrers while retaining bounded operation/status/failure facts. Qualify the actual document and outbound-link route; no live leak or current logging qualification is inferred. [Privacy/data](PRIVACY-AND-DATA.md#named-paths-in-requests-and-navigation) owns the disclosure. This preserves useful queries and drill-down rather than treating a provider default or endpoint-only check as complete protection.
+
+## D066: Use final merged comparisons for general file activity and explicit metric names
+
+**Decision.** General file/repository history uses one final recoverable comparison per merged PR. Open PR development and revisions remain a separate subject. Change frequency, volume, growth/shrinkage, concentration and Turnover are distinct metrics. Prominent word clouds default to distinct merged-PR change frequency. Turnover is displayed as a multiple, with a short explanation and a separately specified calculation contract.
+
+**Why.** The selected population is understandable and avoids counting every evolving snapshot as delivered change. Frequency provides a useful cloud without making file size the automatic dominant signal. Concise names support reading; exhaustive wording belongs in details and documentation.
+
+**Superseded.** `latest-observed-in-window` as the permanent product-wide baseline once actual lifecycle/final-comparison evidence exists. That remains an honest name for older source data and must not be relabelled as merged history. Direct pushes and general branch-throughput collection are not added to the starting scope.
+
+**Joined calculation decision, 2026-10-09.** **turnover-v1 is adopted:** replacement-aware Changed in the selected period divided by the file's time-weighted average size during that period, displayed as a multiple such as `1.8×`. Its brief explanation remains **Change volume relative to file size**; it is not the percentage of unique lines rewritten and may exceed one. Bounded Changed produces a Turnover range. A file created or deleted during the period shows `n/a` with that reason. Zero-size, binary or unavailable size evidence must state applicability rather than yield infinity or an invented denominator. This file definition does not invent a repository-level denominator. The selected denominator accounts for changing file size over the period rather than silently using its endpoint size. This supersedes only the open file-level denominator above. Final-comparison acquisition, renamed-file continuity and applicability still require qualification; the older analysis-time population remains honestly named. No unique-lines, hotness or quality claim follows.
+
+## D067: Reinterpret history with current policy instead of multiplying policy-era dashboards
+
+**Decision.** Ordinary analytics uses current effective policy over retained measurements. A PR detail may additionally show its actually recorded original merge-time result with an understandable switch when it differs. Repository-owned trusted `.diffdevil.yml` keeps precedence over App defaults, with visible origins and overrides.
+
+**Why.** Users need the current view of repository activity, not a parallel repository-wide dashboard for every previous policy. Retaining excluded measurements enables honest reinterpretation without treating a filter as irreversible data loss.
+
+**Rejected.** Overwriting historical provider actions, inventing an original result for imported PRs, reversing repository precedence, or building rollback and whole-repository policy time travel as prerequisites. Unsupported source-dependent recalculation reports its limitation.
+
+## D068: Make the optional PR brief selective, deterministic and lifecycle-aware
+
+**Decision.** A bounded configurable brief selects useful context, joins the existing owned size comment when enabled and links to full PR detail. Settings choose modules, priorities, conditions and compactness without an LLM or new template engine. Refresh affected open PRs on own, neighbour and policy changes and after reopening. Do not keep updating closed replies. A separate optional final summary may be posted on merge.
+
+**Why.** Repository memory is most useful when it informs the next PR without requiring another dashboard visit. A short selection is more useful than an exhaustive statistics dump. Current same-file work and historical companions supply context without diagnosing conflicts or instructing people to edit files.
+
+**Boundaries.** Same-file change counts are not overlapping-line counts. Brief settings are App-only, not new `.diffdevil.yml` fields. Historical import never writes old PR labels/comments. Public brief text obeys the PR audience independently of its dashboard link.
+
+## D069: Derive visibility from GitHub and sell coordination rather than reader seats
+
+**Decision.** Anyone may sign in. Current collaborators can read the capabilities available for their connected repositories without their own subscription. GitHub visibility remains the ceiling; Team cannot grant access to otherwise inaccessible private repositories. Individual administration is manual with complete useful analytics. Team adds delegation, linked shared policy, coordinated refresh, account-wide automation and an administrative audit.
+
+**Why.** The reader and the administrator are different users of the same product. Charging for repeated coordination avoided is a coherent value proposition; withholding useful analytics or billing every reader would work against adoption.
+
+**Consequences.** Personal GitHub accounts may use Team, including a solo maintainer. Account defaults stay account-scoped. Native GitHub powers remain outside diffdevil's permission controls. A protected aggregate includes only repositories its reader may access. Per-member/seat billing is not selected; the commercial settlement in D055/D056 now owns the subscription unit and tier names.
+
+## D070: Give linked policies and automatic setup a real Team consequence
+
+**Decision.** Individual uses named/default configurations through deliberate per-repository application and difference inspection. Team may link repositories to shared settings, propagate edits, queue selected current-policy recalculation and refresh open labels/briefs. Explicit account automation can configure newly reachable repositories and start selected history/import behaviour. Both personal and organisation accounts support the applicable model.
+
+**Why.** Team buys operational leverage even when one person runs many repositories. A reused copy only saves initial setup; a maintained link removes recurring coordination. Automation should perform the selected setup rather than recreate the same manual confirmation on every repository.
+
+**Boundaries.** Automation follows real GitHub App reach. Policy choice does not silently grant history collection, publication or permissions. Individual retains the same underlying analytical and manual operating capabilities. No rollback feature is required by this decision.
+
+**Later settlement.** D057 narrows Pro to per-scope defaults and reserves named linked policies and coordinated operation for Business. That explicitly supersedes the original Individual named-library assumption without changing this decision's reason for maintained links.
+
+## D071: Import recoverable history without replaying effects
+
+**Decision.** Support explicit open-PR scans and progressive, resumable historical imports of all recoverable selected statistics. Recent results can become useful while a larger import continues; live PR work has priority. Imported and live observations deduplicate. Imported final facts do not invent vanished intermediate states or original App results.
+
+**Why.** Existing repositories should obtain useful context without waiting months. Calendar age alone does not measure acquisition work, so allowances need workload evidence rather than an assumed cost per month.
+
+**Boundaries.** No retroactive replies or labels, no implicit resurrection of deleted/disabled ranges, no completion-time guarantee and no new quotas in this decision. Revised free/paid import capacity and cost belong to pricing co-design.
+
+## D072: Publish an explicit anonymous analytical projection for public repositories
+
+**Decision.** An account has a boolean publication default and repositories use inherit/enabled/disabled. Only public GitHub repositories are eligible. Publication is explicit and the resulting read-only analytical view requires no account. Unpublication or repository privatisation stops serving it.
+
+**Why.** A public cloud and file/PR context can help people explore an open-source codebase. Requiring sign-in for intentionally public data adds friction without changing the intended audience.
+
+**Boundaries.** The public view is not an unlocked administrator session. It excludes settings, audit, members' administrative rights, billing and private sibling facts. A public repository is not automatically published. Previously copied public data cannot be recalled from readers.
+
+## D073: Research relationship selection and chart rendering as different problems
+
+**Decision.** Co-change and selective-brief relevance require deterministic algorithm design with sample, background-frequency, broad-change and tiny-edit treatment. Renderer research separately selects maintained charts/word-cloud/relationship tooling supporting filtering, switching metrics, linked exploration and accessible evidence. Owner-led design determines the final compositions.
+
+**Why.** A rendering library does not decide which observation is useful, and a pair-count algorithm does not choose a usable interactive chart. Keeping the questions distinct prevents a convenient library or a first scoring idea from becoming accidental product meaning.
+
+**Open.** Sub-five-line downweighting, broad-change exclusion and other thresholds are hypotheses, not accepted formulas. Earlier renderer recommendations are evidence to reassess against the expanded capability, not a preselected answer. No new dependency is adopted by this record.
+
 ## Earlier decisions and retained fragments
 
 The headings below preserve earlier links. Their full text remains in the exact predecessor record; follow its references for D001–D043. Later decisions above supersede only the stated portions. Historical source is not automatically current implementation.
@@ -98,7 +208,7 @@ The headings below preserve earlier links. Their full text remains in the exact 
 
 ### D002 — One repository and one public npm package
 
-[Retained D002](DECISIONS-through-d053.md#d002--one-repository-and-one-public-npm-package).
+[Retained D002](DECISIONS-through-d053.md#d002--one-repository-and-one-public-npm-package). D044 above narrows universal version coupling to the open-tool family.
 
 ### D003 — diffdevil is a portable diff-policy engine
 
@@ -266,41 +376,40 @@ The headings below preserve earlier links. Their full text remains in the exact 
 
 ### D044: Make the App activity-first for collaborators as well as administrators
 
-[Retained D044](DECISIONS-through-d053.md#d044-make-the-app-activity-first-for-collaborators-as-well-as-administrators).
+[Current D064](#d064-make-the-app-activity-first-for-collaborators-as-well-as-administrators). The draft's earlier number remains a fragment alias; its exact prior text is retained in [Decisions through D053](DECISIONS-through-d053.md#d044-make-the-app-activity-first-for-collaborators-as-well-as-administrators).
 
 ### D045: Retain named file measurements and PR lifecycle without storing source
 
-[Retained D045](DECISIONS-through-d053.md#d045-retain-named-file-measurements-and-pr-lifecycle-without-storing-source).
+[Current D065](#d065-retain-named-file-measurements-and-pr-lifecycle-without-storing-source). The draft's earlier number remains a fragment alias; its exact prior text is retained in [Decisions through D053](DECISIONS-through-d053.md#d045-retain-named-file-measurements-and-pr-lifecycle-without-storing-source).
 
 ### D046: Use final merged comparisons for general file activity and explicit metric names
 
-[Retained D046](DECISIONS-through-d053.md#d046-use-final-merged-comparisons-for-general-file-activity-and-explicit-metric-names).
+[Current D066](#d066-use-final-merged-comparisons-for-general-file-activity-and-explicit-metric-names). The draft's earlier number remains a fragment alias; its exact prior text is retained in [Decisions through D053](DECISIONS-through-d053.md#d046-use-final-merged-comparisons-for-general-file-activity-and-explicit-metric-names).
 
 ### D047: Reinterpret history with current policy instead of multiplying policy-era dashboards
 
-[Retained D047](DECISIONS-through-d053.md#d047-reinterpret-history-with-current-policy-instead-of-multiplying-policy-era-dashboards).
+[Current D067](#d067-reinterpret-history-with-current-policy-instead-of-multiplying-policy-era-dashboards). The draft's earlier number remains a fragment alias; its exact prior text is retained in [Decisions through D053](DECISIONS-through-d053.md#d047-reinterpret-history-with-current-policy-instead-of-multiplying-policy-era-dashboards).
 
 ### D048: Make the optional PR brief selective, deterministic and lifecycle-aware
 
-[Retained D048](DECISIONS-through-d053.md#d048-make-the-optional-pr-brief-selective-deterministic-and-lifecycle-aware).
+[Current D068](#d068-make-the-optional-pr-brief-selective-deterministic-and-lifecycle-aware). The draft's earlier number remains a fragment alias; its exact prior text is retained in [Decisions through D053](DECISIONS-through-d053.md#d048-make-the-optional-pr-brief-selective-deterministic-and-lifecycle-aware).
 
 ### D049: Derive visibility from GitHub and sell coordination rather than reader seats
 
-[Retained D049](DECISIONS-through-d053.md#d049-derive-visibility-from-github-and-sell-coordination-rather-than-reader-seats).
+[Current D069](#d069-derive-visibility-from-github-and-sell-coordination-rather-than-reader-seats). The draft's earlier number remains a fragment alias; its exact prior text is retained in [Decisions through D053](DECISIONS-through-d053.md#d049-derive-visibility-from-github-and-sell-coordination-rather-than-reader-seats).
 
 ### D050: Give linked policies and automatic setup a real Team consequence
 
-[Retained D050](DECISIONS-through-d053.md#d050-give-linked-policies-and-automatic-setup-a-real-team-consequence).
+[Current D070](#d070-give-linked-policies-and-automatic-setup-a-real-team-consequence). The draft's earlier number remains a fragment alias; its exact prior text is retained in [Decisions through D053](DECISIONS-through-d053.md#d050-give-linked-policies-and-automatic-setup-a-real-team-consequence).
 
 ### D051: Import recoverable history without replaying effects
 
-[Retained D051](DECISIONS-through-d053.md#d051-import-recoverable-history-without-replaying-effects).
+[Current D071](#d071-import-recoverable-history-without-replaying-effects). The draft's earlier number remains a fragment alias; its exact prior text is retained in [Decisions through D053](DECISIONS-through-d053.md#d051-import-recoverable-history-without-replaying-effects).
 
 ### D052: Publish an explicit anonymous analytical projection for public repositories
 
-[Retained D052](DECISIONS-through-d053.md#d052-publish-an-explicit-anonymous-analytical-projection-for-public-repositories).
+[Current D072](#d072-publish-an-explicit-anonymous-analytical-projection-for-public-repositories). The draft's earlier number remains a fragment alias; its exact prior text is retained in [Decisions through D053](DECISIONS-through-d053.md#d052-publish-an-explicit-anonymous-analytical-projection-for-public-repositories).
 
 ### D053: Research relationship selection and chart rendering as different problems
 
-[Retained D053](DECISIONS-through-d053.md#d053-research-relationship-selection-and-chart-rendering-as-different-problems).
-
+[Current D073](#d073-research-relationship-selection-and-chart-rendering-as-different-problems). The draft's earlier number remains a fragment alias; its exact prior text is retained in [Decisions through D053](DECISIONS-through-d053.md#d053-research-relationship-selection-and-chart-rendering-as-different-problems).

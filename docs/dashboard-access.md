@@ -1,4 +1,4 @@
-# Dashboard accounts, access and publication
+# App accounts, access and publication
 
 ## Meaning
 
@@ -31,6 +31,8 @@ A home or organisation summary is calculated from the reader's actual authorised
 Premium capability is evaluated at the repository, including its funding, preview or OSS grant. Missing entitlement or enrichment is not measured zero. Free's retained base file rows do not implicitly expose premium file-history APIs.
 
 Business may delegate or restrict within GitHub visibility; it provides no additional route to private repositories unavailable to the person on GitHub. The existing narrowly defined numeric/pathless post-access-loss grace is a separate recovery capability, not a general named-history access exception.
+
+Namespace analytical features follow that namespace's funded plan. A Free collaborator can read entitled features there under current repository access. Premium All-repositories aggregates instead follow the viewer's own plan and include only eligible premium-funded repositories, with excluded coverage named. A repository-count heuristic must not substitute for namespace versus All-repositories scope, and inaccessible repositories must not change the entitlement decision. [The ratified analytical experience](dashboard.md#ratified-analytical-experience) owns chips, useful Free states and navigation.
 
 ## Administration
 

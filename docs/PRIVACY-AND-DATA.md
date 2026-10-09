@@ -101,6 +101,14 @@ The same scope governs tables, charts, tooltips, DOM data, queries, exports and 
 
 On-demand source or PR context stays transient and belongs to the recorded immutable comparison. Do not join today's head to yesterday's measurement. Unavailable/deleted revisions constrain reconstruction without invalidating what was actually observed.
 
+### Named paths in requests and navigation
+
+Authenticated analytical queries and file drill-down may carry repository-relative paths in request URLs, query parameters and navigation links. A no-source-retention claim does not make those names anonymous or remove them from local browser history. Disclose that local-history consequence; a copied or bookmarked protected link still re-authorises when opened.
+
+The selected App boundary is an explicit `same-origin` referrer policy on App documents and responses: it preserves same-origin consumers while excluding path/query metadata from outbound cross-origin requests, including GitHub links. Application diagnostics omit full private request URLs, query strings and full referrers, retaining useful bounded operation/status/failure facts. Do not treat a URL as a safe diagnostic payload merely because it contains no source body.
+
+Qualify the real joined document/navigation route and outbound links; endpoint response headers alone do not prove browser navigation behaviour. This is the selected implementation/disclosure boundary, not evidence that a live leak occurred or that App/browser/provider logging is already qualified. The existing GET seam remains provisional; an alternative must preserve useful queries, authenticated links and file drill-down.
+
 ## Populations and statistical honesty
 
 PR lifecycle/development, current open work and final merged-PR file activity are distinct populations. General file/repository history uses one final recoverable comparison per merged PR. Current related-work uses a current open-PR file index.

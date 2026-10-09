@@ -10,6 +10,8 @@ The home, repository, PR and file destinations lead with activity and its meanin
 
 Administrators need a clear account scope: personal repositories, one explicitly connected organisation or another funded organisation. Selecting a scope does not change a reader's GitHub permissions. The subscription does not become a seat charge for everyone who can read.
 
+The analytical shell and six destinations are ratified for implementation. Manage/configuration/account/subscription visual and interaction design deliberately follows chart/cloud system co-design inside that shell. The commercial and lifecycle rules below are settled product contracts; they do not authorise inventing their screens or reopening the selected prices. [The analytical contract](dashboard.md#ratified-analytical-experience) names the current design boundary.
+
 ## Connect a subscription to an organisation
 
 The individual owns the subscription and its purchased organisation connections. An organisation has at most one ordinary funding subscriber at a time. Display who provides its plan, the available capabilities and whether the connection is included or an add-on.

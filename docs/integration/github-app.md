@@ -106,6 +106,8 @@ Public analytics is an explicit anonymous projection for eligible public reposit
 
 Financial downgrade, temporary processing pause, slot release, repository offboarding, installation removal and confirmed account deletion are distinct. A paused/inactive repository is not an implicit deletion request. Apply the [current retention/exit contract](../PRIVACY-AND-DATA.md#export-deletion-and-ending), including authorised export, selected-state archive, narrow numeric access-loss grace and restore-resistant deletion.
 
+App documents and responses select an explicit `same-origin` referrer policy, and application diagnostics omit full private request URLs, query strings and full referrers. [Named-path request/navigation privacy](../PRIVACY-AND-DATA.md#named-paths-in-requests-and-navigation) owns disclosure and joined document/outbound-link qualification. A header-only endpoint check does not establish that journey.
+
 ## Provider and operator boundaries
 
 Cloudflare Workers, Queues and D1 remain the first adapter. Confine credentials and platform queue/storage mechanics to it. Retain portable engine/application meaning, identity, data exit and Node consumers. Do not invent a generic provider platform or claim a second supported host from interface names.
@@ -122,4 +124,4 @@ Qualify base and premium module composition, live admission/effects, lifecycle/f
 
 Shared quote/payment tests and actual platform integration prove different boundaries. Old pathless, canary and auth checks do not automatically qualify the expanded product.
 
-This document performs no migration, history enablement, payment, deployment, dependency adoption or public-data publication. The complete user/operator journeys, renderer/algorithm choices and exact operating configuration remain implementation work under the selected product contract.
+This document performs no migration, history enablement, payment, deployment, dependency adoption or public-data publication. The six analytical destinations and shell are ratified for implementation; chart/cloud system co-design precedes Manage/subscription design. Complete user/operator journeys, renderer/algorithm qualification and exact operating configuration remain work under the selected product contract.

@@ -36,27 +36,39 @@ is active. Update the selected installation rather than creating competing copie
 ## Obtain one complete source snapshot
 
 The canonical repository is `Wolfsblvt/diffdevil`; the skill folder is
-`skills/diffdevil/`. The stable release manifest is:
+`skills/diffdevil/`. Discover release records through:
 
 ```text
-https://github.com/Wolfsblvt/diffdevil/releases/latest/download/diffdevil-release-manifest.json
+https://api.github.com/repos/Wolfsblvt/diffdevil/releases
 ```
 
-Its `skills.diffdevil.version` is the Skill's SemVer string; `assets.skill`
-names its immutable ZIP, SHA-256, and source commit. There is no CLI version
-range in the descriptor. The npm package and Skill can change independently.
+This is a paginated release collection, not a carrier manifest. For the stable
+Skill, follow all pages, exclude drafts and prereleases, require a valid stable
+`skill-vX.Y.Z` tag, and select the greatest Skill SemVer. Do not use a repository-wide
+Latest result, sort versions lexically, or confuse another family's higher number
+with a Skill update. For a selected preview, use its explicitly selected release.
+
+Read the selected release's actual asset named `diffdevil-release-manifest.json`
+through its returned download URL. Check that `skills.diffdevil.version` agrees
+with the tag and that `assets.skill` names an actually attached ZIP. Verify its
+SHA-256. Missing or inconsistent assets are an update-source failure, not permission
+to fabricate URLs, substitute another family or silently fall back to an older Skill.
+
+The manifest's `skills.diffdevil.version` is the Skill's SemVer string. Its
+`sourceCommit` identifies the full immutable source revision and `treeSha256`
+identifies the canonical Skill tree. The npm package and Skill change independently;
+no universal Skill-to-CLI compatibility matrix is implied.
 
 For installation or refresh:
 
-1. Read the stable release manifest and verify the selected `assets.skill`
-   download against its declared SHA-256 before extracting it.
-2. Obtain the complete released Skill folder from that asset, including all
-   referenced Markdown and notices. Its `skills.diffdevil.sourceCommit` is
-   provenance for that immutable published snapshot, not a request to follow
-   mutable `main`.
-3. Confirm the folder's `SKILL.md` name is `diffdevil` and its `metadata.version`
-   equals that snapshot's `skills.diffdevil.version` value. Check that its
-   local reference links resolve.
+1. Select the family release and verify its actual `assets.skill` archive against
+   the manifest digest before extracting it into a clean staging directory.
+2. Obtain the complete released Skill folder, including all referenced Markdown
+   and notices. Its source commit is provenance for that immutable snapshot,
+   not a request to follow mutable `main`.
+3. Confirm `SKILL.md` names `diffdevil`, its `metadata.version` matches
+   `skills.diffdevil.version`, and the canonical tree excluding generated
+   `MANIFEST.json` matches `treeSha256`. Check local reference links.
 4. Install that folder into the selected harness scope and read back the copied
    files. Preserve the original UTF-8 bytes, including line endings; do not
    rewrite frontmatter, insert local instructions, or reformat references.
@@ -66,24 +78,27 @@ Otherwise ordinary file copy/download is sufficient. When Git is the transport,
 use raw Git object bytes or a checkout configuration that preserves LF instead
 of silently converting the canonical payload to CRLF.
 
-Before the first carrier publication, the stable manifest may be absent. Do not
-describe mutable `main` as a stable release. When the user requested a development
-installation, resolve `main` once to a full commit and obtain the complete Skill
-folder from that immutable coordinate; report the commit and development standing.
-Otherwise retain an existing installation or report that the stable carrier is
-not yet available.
+Before the first carrier publication, no suitable Skill release/manifest may exist.
+Do not describe mutable `main` or the existing open-tool `v1.0.0` without custom
+assets as a stable Skill carrier. When the user requested a development installation,
+resolve `main` once to a full commit and obtain the complete Skill folder from that
+immutable coordinate; report the commit and development standing. Otherwise retain
+an existing installation or report that the stable carrier is not yet available.
 
 A package already on disk may supply the same canonical `skills/diffdevil/`
 directory without a network fetch. Its Skill version is read from its own
 frontmatter; it need not equal the containing npm version. A network check can
 discover a newer Skill without upgrading that npm package.
 
-The manifest also names `assets.bundled`, which carries this Skill together with
-the complete install-free runtime, and `assets.standalone`, which carries only
-that runtime. Use the bundled carrier when the harness needs both instruction
-and transient CLI execution; verify its digest before extraction, then run
-`node scripts/run.mjs --version`. Installing or discovering the Skill and
-executing the supplied runtime remain separate observed facts.
+A selected release may also contain `assets.bundled`, which identifies the Skill
+and an explicit runtime version. Verify both identities, actual attachment and
+digest before extraction, then run `node scripts/run.mjs --version`. A Skill-only
+release need not publish a bundle or standalone runtime. For runtime-only updates,
+select the open-tool family (`vX.Y.Z`) using the same stable-release rules and its
+actual `assets.standalone`. When no appropriate bundle is published, install the
+Skill and a compatible runtime separately rather than inventing a bundle or silently
+choosing older instructions. Installing the Skill and executing its runtime remain
+separate observed facts; no Skill update implicitly repins the user's executable.
 
 ## Confirm the usable installation
 
@@ -109,13 +124,14 @@ personal route before reducing the result to a file left in a transient sandbox.
 
 ## Check and refresh on use
 
-The Skill core checks the stable release manifest on first relevant use in each
-session. An explicit user request can check again. There is no daemon or
+The Skill core performs the family-scoped stable lookup on first relevant use in
+each session. An explicit user request can check again. There is no daemon or
 scheduled updater.
 
 Compare SemVer, not strings: `1.10.0` is newer than `1.9.0`. Equal versions need
-no update. A local newer/development version is not silently downgraded.
-The public index names the stable release; a preview is used only when selected.
+no update. A local newer/development version is not silently downgraded. The
+repository's release collection includes other families and previews; filter it
+before deciding that an update exists.
 
 Apply the user's update instructions and normal harness installation permissions.
 An existing standing update grant can cover replacement without another question.
@@ -126,8 +142,8 @@ automatic consent to broaden privileges.
 Stage the whole new folder before replacing a working installation. Compare
 existing installed files with their published version or the native installer's
 recorded source so local modifications remain visible. When no source record
-exists, use the matching released Skill ZIP named by the stable manifest and
-verify its digest before comparing the folder.
+exists, use the matching released Skill ZIP and verify its digest before comparing
+the folder. Do not compare an old installation with an unrelated latest release.
 
 For a modified copy, preserve the modifications and explain the actual difference
 before choosing replacement, migration to separate local instructions, or keeping
@@ -148,7 +164,7 @@ Then repeat the host's discovery/load check.
 With no network, use the installed core and references plus the available CLI
 and local sources/saved reports. Unknown update freshness is not a failed analysis.
 
-A missing index entry, malformed JSON, unavailable commit, version mismatch, or
+A missing release, malformed JSON, unavailable commit, version mismatch, or
 incomplete download is an update-source problem. Keep the working installation
 and report that update result, rather than claiming a new version arrived.
 

@@ -4,13 +4,38 @@
 
 This document owns the selected analytical and operating experience of the developing diffdevil App. It is not a claim that the dashboard, imports, premium capabilities, billing or public views are already available. [Direction](DIRECTION.md) owns current evidence; [plans and editions](app-plans.md) owns the accepted commercial boundary; [access](dashboard-access.md), [management](app-management.md), [privacy/data](PRIVACY-AND-DATA.md) and [App integration](integration/github-app.md) own their respective contracts.
 
-The complete destination is independent of the first delivery order. Final page composition, renderer adoption and numerical algorithm definitions remain separate from this capability contract.
+The complete destination is independent of the first delivery order. The analytical page structure and semantic presentation below are ratified; exact chart/cloud rendering, Manage/subscription UI and other undesigned surfaces remain open. This contract adopts no renderer dependency or new commercial choice.
 
 ## Product purpose
 
 The App has three joined jobs: **Understand change**, **Shape policy** and **Run it together**. Its ordinary entrance is activity-first, not an administrator's control room with statistics attached. People who never change a setting are intended users.
 
 The open CLI, library, Actions, extension and playground remain independently useful. The App uses the same semantic engine and adds repository-wide memory, historical context and coordinated operation. The Free/Community basic experience is useful on its own; Pro adds the historical file product and Business adds coordination. Do not narrow the open engine to create that distinction.
+
+## Ratified analytical experience
+
+The analytical design ratified on 2026-10-09 releases six complete destinations for implementation: **Overview**, **Pull requests**, **History**, **Files**, **PR detail** and **File detail**. Repository and namespace selections scope these pages; repository detail remains a first-class analytical destination. The visible location label and trailing product action both read **App**, including on the website header. “Dashboard” describes the analytical capability, not a competing surface name.
+
+The selected shell is dark-only for now, with an even 12-column panel grid, side navigation, the existing fixed Works header and its unchanged width, and a wide frame with side gutters. The period selection persists across pages. Panel metadata wraps rather than being ellipsized; freshness identifies the analysed comparison against the current one. Files are qualified by repository and path. Chart marks lead to contributing PRs, files or filtered lists.
+
+Premium feature panels show their Pro/Business chip. Navigation shows paid namespace chips and the viewer's current plan in the account switcher; Free has no navigation chip and breadcrumbs carry none. A namespace's features follow that namespace's funded plan, including for a Free collaborator. Premium All-repositories aggregates follow the viewer's own plan and include only eligible premium-funded repositories, naming excluded coverage. These entitlement rules never widen repository authorisation.
+
+Free has useful analytical panels and bounded See Pro placeholders rather than giant empty blockers. Its Files entrance can point to accessible funded namespaces and useful History; it does not expose premium file-history rows merely because base measurements are retained. Manage and future pricing links are navigation seams, not permission to invent those screens.
+
+| Destination | Ratified analytical content |
+| --- | --- |
+| Overview | Merged-PR lead and period comparison; lifecycle/size facts; eligible change cloud and current PR activity; size mix, flow and repository context. Free substitutes useful change-volume and time-to-merge panels. |
+| Pull requests | Analytics first: flow, lifecycle, size mix, time to merge and analysed-head development; then a searchable/filterable PR list with explicit state, size, measurement and repository. |
+| History | Bucketed Changed/composition, contributing PR drill-down and period comparison with coverage. Pro adds file growth/shrinkage and concentration; Free keeps merged-PR size activity. |
+| Files | Eligible frequency-first cloud with Changed/raw churn/Turnover alternatives, repository-qualified ranked files and selected-file facts/co-change. |
+| PR detail | Comparison identity/freshness, lifecycle, measured facts, policy, desired and observed effects; eligible same-file context; visible excluded files and separate head-by-head development. |
+| File detail | Changed, raw churn, distinct merged PRs, Turnover and size; contributions per merged PR, size trajectory, co-change and “here versus PR total”. |
+
+Most history analytics use merged PRs in the selected period. Flow also names its opened population and 13-week context; current activity uses active PRs; co-change declares its 90-day window. Unique PRs, revisions and attempts never substitute for one another. History buckets are daily for 7 days, two-day for 30 days, weekly for 90 days and calendar months for one year; missing earlier coverage is not a fictional full year.
+
+The selected measurement grammar makes bar height Changed and colour area its modified/added/deleted composition, with raw churn at its true scale as an outline. Bounded values show a range, not an approximate midpoint; incomplete acquisition shows a lower bound with partial coverage. Unknown size bands remain separate. Desired/proposed labels and actually observed GitHub labels remain distinguishable. This is semantic grammar; exact chart rendering remains provisional.
+
+**Design remainder:** chart and cloud system co-design comes first, then Manage/configuration/account/subscription co-design inside this shell. Modern, authored and usable chart interaction is core product design, not later cosmetic polish. Prototype SVGs or framework defaults must not become accepted aesthetics through implementation. Non-conflicting architecture, routes, data and shell work can continue. Renderer adoption, light theme, phone-width design, public/operator views and the other undesigned states remain separate; this document does not claim an exercised production journey.
 
 ## Destinations and ordinary journeys
 
@@ -44,7 +69,7 @@ Pro/Business and applicable repository grants supply a dedicated historical file
 
 Observed renames and immutable references support continuity only where established. Identical path spelling does not prove that two observations are the same historical file. Deletion, binary/empty data, unavailable evidence and identity gaps remain visible.
 
-Page, drawer or panel composition is a design choice. A commit-detail destination is a later possibility, not a commitment to a general commit-analytics subsystem.
+The ratified analytical experience includes a File detail page. A commit-detail destination is a later possibility, not a commitment to a general commit-analytics subsystem.
 
 ## Two distinct analytical subjects
 
@@ -73,7 +98,7 @@ These metrics describe merged-PR activity, not all target-branch changes. Direct
 | Breadth and concentration | Distribution of change across files or components. |
 | Co-change | Observed files/components appearing together, with sample context and contributing PRs. |
 
-Turnover's brief explanation is **Change volume relative to file size**. It is not the percentage of unique lines rewritten. The precise baseline, period aggregation, changing-size treatment and repository denominator require a calculation contract. New, empty, deleted, binary and unavailable files need explicit applicability rather than infinite or invented values.
+**turnover-v1 is adopted:** replacement-aware Changed in the selected period divided by the file's time-weighted average size during that period, displayed as a multiple such as `1.8×`. Its brief explanation remains **Change volume relative to file size**; it is not the percentage of unique lines rewritten and may exceed one. Bounded Changed produces a Turnover range. A file created or deleted during the period shows `n/a` with that reason. Zero-size, binary or unavailable size evidence must state applicability rather than yield infinity or an invented denominator. This file definition does not invent a repository-level denominator.
 
 Repository comparisons use explicit measures too. A personal Pro account can compare its repositories and use the supported repository clouds; these analytics do not require Business merely because several repositories are involved.
 
@@ -157,4 +182,4 @@ An administrator can publish anonymous read-only analytical views for eligible p
 
 A separate internal operator view needs service usage, processing health and cash-economics visibility with scoped agent support. It is not the customer's Business audit and not the ordinary analytical entrance. Optional news/feedback consent remains separate from necessary service messages.
 
-The selected product still requires concrete visual design, renderer adoption, co-change/brief algorithms, the Turnover definition, acquisition/storage qualification, operational tuning and shared commercial integration. Those implementation questions do not reopen settled pricing or shrink the product to the old pathless backend. No live effect or available paid service follows from this document.
+The analytical pages and file turnover-v1 are ratified. The selected product still requires chart/cloud co-design, then Manage/subscription design, renderer qualification, co-change/brief algorithms, acquisition/storage qualification, operational tuning and shared commercial integration. Those implementation questions do not reopen settled pricing or shrink the product to the old pathless backend. No live effect or available paid service follows from this document.

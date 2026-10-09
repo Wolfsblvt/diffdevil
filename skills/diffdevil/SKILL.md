@@ -13,19 +13,26 @@ compatibility: >-
   Local sources and saved reports can be used offline.
 metadata:
   version: "1.0.0"
-  versions-url: "https://github.com/Wolfsblvt/diffdevil/releases/latest/download/diffdevil-release-manifest.json"
+  releases-url: "https://api.github.com/repos/Wolfsblvt/diffdevil/releases"
+  release-tag-prefix: "skill-v"
 ---
 
 # diffdevil
 
 ## Check the skill version
 
-On first relevant use in a session, fetch `metadata.versions-url` and compare
-`skills.diffdevil.version` with this skill's `metadata.version`. These are skill
-versions, independent of the npm package. When an update is available, use
-[Install and update](references/install-and-update.md) under the user's existing
-update instructions. An offline or failed check leaves the installed skill usable;
-report unknown freshness only when it matters to the task.
+On first relevant use in a session, select the latest published stable Skill
+release from `metadata.releases-url` using `metadata.release-tag-prefix`, following
+pagination and comparing SemVer rather than strings. Ignore drafts, prereleases
+and other families. Read that release's actual `diffdevil-release-manifest.json`
+asset and compare `skills.diffdevil.version` with this skill's `metadata.version`.
+The release collection is not itself a carrier manifest. Do not use the repository's
+unfiltered Latest release or compare this Skill with the npm version.
+
+Use [Install and update](references/install-and-update.md) for complete discovery,
+asset verification and updates under the user's existing instructions. An offline,
+missing or failed check leaves the installed skill usable; report unknown freshness
+only when it matters to the task. Updating instructions never silently repins a CLI.
 
 ## Put measured changes to work
 
@@ -87,8 +94,8 @@ questions concern one captured comparison; acquire again for a current compariso
 
 Choose the output for its consumer: `agent` for a compact readable overview,
 `json` for structured facts and evidence, `value` for an exact scalar, and
-`lines` or `nul` for a determined selection. Use `nul` for arbitrary Git paths.
-Reports, query results, and plans are different JSON envelopes.
+`lines` or `nul` for a determined selection. Reports, query results, and plans
+are different JSON envelopes. Use `nul` for arbitrary Git paths.
 
 Raw churn counts additions plus deletions. Replacement-aware changed lines count
 added-only, deleted-only, and modified positions. A contiguous three-line
