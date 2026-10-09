@@ -165,7 +165,7 @@ test('callback, one-time artifact and rotated session preserve consent and do no
     assert.deepEqual(await service.authenticate(session), { userId: 123, returnContext: CONTEXT });
     assert.equal(result.headers['Set-Cookie'].includes('HttpOnly; Secure; SameSite=Lax'), true);
     assert.equal(result.headers['Set-Cookie'].includes('Path=/'), true);
-    assert.deepEqual(protectedHeaders(), { 'Cache-Control': 'private, no-store', Vary: 'Cookie' });
+    assert.deepEqual(protectedHeaders(), { 'Cache-Control': 'private, no-store', Vary: 'Cookie', 'Referrer-Policy': 'no-referrer' });
     assert.deepEqual(await appStore.repositoryConsentState(17), before);
     await assert.rejects(service.exchange({ artifact, returnContext: CONTEXT, method: 'POST', origin: ORIGIN }), { code: 'E_AUTH_ARTIFACT' });
 
