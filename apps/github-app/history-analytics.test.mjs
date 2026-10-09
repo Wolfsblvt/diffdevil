@@ -96,7 +96,7 @@ test('bounded current baselines rank only separated intervals and retain overlap
   assert.equal(baseline.ordinalAbove, 1);
   assert.equal(baseline.ordinalEqual, 0);
   assert.equal(baseline.uncertain, 5);
-  assert.deepEqual(baseline.rankInterval, { minimum: 2, maximum: 6 });
+  assert.deepEqual(baseline.rankInterval, { minimum: 2, maximum: 7 });
   assert.equal(baseline.percentileInterval, null);
   const openUpper = await service.baseline(request('distribution', { current: bounded(30, undefined), currentIdentity: lensIdentity }), admin);
   assert.equal(openUpper.ordinalBelow, 1);
@@ -115,9 +115,19 @@ test('bounded baseline percentile endpoints are exposed only at the established 
   rows.splice(0, rows.length, ...Array.from({ length: 20 }, (_, index) => record(index + 1, 'sample', '2026-09-09T00:00:00.000Z', exact(index))));
   const baseline = await service.baseline(request('distribution', { current: bounded(5, 10), currentIdentity: lensIdentity }), admin);
   assert.equal(baseline.presentation, 'rank-interval');
-  assert.deepEqual(baseline.rankInterval, { minimum: 6, maximum: 11 });
+  assert.deepEqual(baseline.rankInterval, { minimum: 6, maximum: 12 });
   assert.deepEqual(baseline.percentileInterval, { minimum: 0.25, maximum: 0.55 });
   assert.equal(baseline.uncertain, 6);
+});
+
+test('baseline rank places the current measurement among history plus itself at both extremes', async () => {
+  const { service, rows } = fixture();
+  rows.splice(0, rows.length, ...Array.from({ length: 20 }, (_, index) => record(index + 1, 'sample', '2026-09-09T00:00:00.000Z', exact(index + 10))));
+  const rank = async current => (await service.baseline(request('distribution', { current, currentIdentity: lensIdentity }), admin)).rankInterval;
+  assert.deepEqual(await rank(exact(1000)), { minimum: 21, maximum: 21 });
+  assert.deepEqual(await rank(exact(1)), { minimum: 1, maximum: 1 });
+  assert.deepEqual(await rank(exact(10)), { minimum: 1, maximum: 2 });
+  assert.deepEqual(await rank(bounded(500, undefined)), { minimum: 21, maximum: 21 });
 });
 
 test('all-observed change on an incomplete file set is a lower bound', async () => {

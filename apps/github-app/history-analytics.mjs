@@ -291,7 +291,7 @@ export function createHistoryAnalyticsService({ store, authorize }) {
     return { kind: 'diffdevil.repository-baseline', version: HISTORY_QUERY_VERSION, metric: selected.metric, currentIdentity: identity,
       n, incompatible: representatives.length - compatible.length,
       presentation: n < BASELINE_ORDINAL_BELOW ? 'ordinal' : 'rank-interval', ordinalBelow: below, ordinalEqual: equal, ordinalAbove: above,
-      uncertain, rankInterval: n ? { minimum: below + 1, maximum: n - above } : null,
+      uncertain, rankInterval: n ? { minimum: below + 1, maximum: n - above + 1 } : null,
       percentileInterval: n >= BASELINE_ORDINAL_BELOW && n ? { minimum: below / n, maximum: (n - above) / n } : null,
       median: distribution(compatible, selected.metric).quantiles[0],
       policyEras: [...new Set(compatible.map(record => record.policyId))],
