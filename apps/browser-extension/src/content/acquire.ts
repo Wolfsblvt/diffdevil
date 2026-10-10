@@ -1,9 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import type { BrowserComparison, BrowserInput } from '@wolfsblvt/diffdevil/browser';
-import { request, type Lookup, type Packet, type PolicySource, type PublicPull } from '../shared/protocol.js';
+import { request, type AcquisitionCoverage, type Lookup, type Packet, type PolicySource, type PublicPull } from '../shared/protocol.js';
 import { boundedText, ExtensionError, safePath } from '../shared/errors.js';
-import { blobText, embeddedFiles, pageComparison, sameComparison, unpatchedPaths, withEntries, type Route } from './github.js';
+import { DEFAULT_FILE_LIMIT, FILE_LIMIT, selectFiles, type DeclineReason } from '../shared/coverage.js';
+import { blobText, embeddedFiles, pageComparison, sameComparison, unpatchedPaths, visiblePaths, withEntries, type Route } from './github.js';
 const LIMIT = 8 * 1024 * 1024;
+/** The configured automatic limit, or the default when the setting is absent or unusable. */
+export const automaticLimit = (settings: Readonly<Record<string, unknown>>): number => { const value = settings['analysis.maximumFiles']; return Number.isSafeInteger(value) && Number(value) >= FILE_LIMIT.minimum && Number(value) <= FILE_LIMIT.maximum ? Number(value) : DEFAULT_FILE_LIMIT; };
 async function html(path: string, signal: AbortSignal): Promise<{ response: Response; document: Document }> {
   const response = await fetch(path, { credentials: 'same-origin', cache: 'no-store', signal: AbortSignal.any([signal, AbortSignal.timeout(20_000)]), headers: { Accept: 'text/html' } });
   const url = new URL(response.url);
@@ -58,7 +61,7 @@ async function unifiedDiff(current: Route, comparison: BrowserComparison, signal
  * existing evidence intact.
  */
 const ENTRY_BATCH = 8; const ENTRY_CONCURRENCY = 3; const ENTRY_HEADERS = { 'GitHub-Verified-Fetch': 'true', Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' };
-async function loadDiffEntries(current: Route, comparison: BrowserComparison, paths: readonly string[], signal: AbortSignal): Promise<{ entries: unknown[]; retryFailures: number; retryFailureCodes: string[] }> {
+export async function loadDiffEntries(current: Route, comparison: BrowserComparison, paths: readonly string[], signal: AbortSignal): Promise<{ entries: unknown[]; retryFailures: number; retryFailureCodes: string[] }> {
   const batches: string[][] = []; for (let index = 0; index < paths.length; index += ENTRY_BATCH) batches.push(paths.slice(index, index + ENTRY_BATCH));
   const entries: unknown[] = []; const retryFailureCodes = new Set<string>(); let retryFailures = 0; let next = 0;
   const fetchEntries = async (requested: readonly string[]): Promise<unknown[]> => {
@@ -95,12 +98,33 @@ async function loadDiffEntries(current: Route, comparison: BrowserComparison, pa
   await Promise.all(Array.from({ length: Math.min(ENTRY_CONCURRENCY, batches.length) }, worker));
   return { entries, retryFailures, retryFailureCodes: [...retryFailureCodes] };
 }
+/** What a fresh read of the same route said about a comparison shown from the cache. */
+export type Standing = { readonly standing: 'current' } | { readonly standing: 'moved'; readonly observed?: BrowserComparison } | { readonly standing: 'unconfirmed'; readonly code: string };
 export interface Acquired {
   readonly packet: Packet; readonly settings: Lookup['settings'];
-  /** Present when the result came straight from the worker's cache: checks the page's comparison against a fresh read of the same route. */
-  readonly verify?: () => Promise<{ moved: false } | { moved: true; observed?: BrowserComparison }>;
+  /** Present when the result came straight from held facts: reads the same route fresh and says whether the comparison still stands. */
+  readonly verify?: () => Promise<Standing>;
 }
 export interface AcquireOptions { /** A comparison already confirmed by a fresh same-route read; skips the pre-policy confirmation. */ readonly confirmed?: BrowserComparison }
+const identity = (comparison: BrowserComparison): string => `${comparison.repository.toLowerCase()}#${comparison.pullRequest}@${comparison.base}...${comparison.head}`;
+/**
+ * One browser profile acquires a comparison once. A tab that finds another tab already at work waits
+ * for it and then reads what it stored. Where the page has no usable lock manager the work simply runs.
+ */
+async function exclusive<T>(name: string, signal: AbortSignal, work: () => Promise<T>): Promise<T> {
+  const locks = (globalThis.navigator as { locks?: { request<R>(name: string, options: { signal: AbortSignal }, callback: () => Promise<R>): Promise<R> } } | undefined)?.locks;
+  if (!locks) return work();
+  let started = false;
+  try { return await locks.request(name, { signal }, async () => { started = true; return work(); }); }
+  catch (error) { if (started || signal.aborted) throw error; return work(); }
+}
+/** Provider-shaped files with patches kept only for the chosen paths: the automatic limit applied to a list that arrived whole. */
+function bound(files: readonly unknown[], limit: number, visible: readonly string[]): { files: unknown[]; coverage: AcquisitionCoverage } {
+  const records = files.map(file => file as Record<string, unknown>); const declined: Record<string, DeclineReason> = Object.create(null) as Record<string, DeclineReason>;
+  const withheld = new Set<string>(); for (const file of records) if (file.patch === undefined && Number(file.additions ?? 0) + Number(file.deletions ?? 0) > 0) { declined[String(file.filename)] = 'omitted'; withheld.add(String(file.filename)); }
+  const chosen = new Set(selectFiles(records.map(file => String(file.filename)), visible, limit, withheld));
+  return { files: records.map(file => chosen.has(String(file.filename)) || file.patch === undefined ? file : (({ patch: _patch, ...rest }) => rest)(file)), coverage: { limit, declined } };
+}
 /** Reads source through the signed-in page; all analysis runs in the extension worker. */
 export async function acquire(current: Route, document: Document, signal: AbortSignal, options: AcquireOptions = {}): Promise<Acquired> {
   let comparison = options.confirmed ?? pageComparison(document, current); let publicResult: PublicPull | undefined;
@@ -112,21 +136,30 @@ export async function acquire(current: Route, document: Document, signal: AbortS
   // After a soft navigation the tab's document can still be another route's
   // payload; file evidence comes from the fresh read that bound the comparison.
   let sourceDocument = document;
-  // A cached report exists only for a comparison that was confirmed for this PR
-  // before: reattach from it at once and confirm freshness in the background.
-  if (comparison && !options.confirmed) {
-    const cached = await request<Lookup>({ type: 'cache.lookup', comparison }); if (signal.aborted) throw signal.reason;
-    if (cached.reportCached && (cached.selected.mode === 'personal-only' || cached.policy)) {
-      const policy: PolicySource = cached.selected.mode === 'personal-only' ? { status: 'unavailable', at: Date.now() } : cached.policy!;
-      const selected = { ...cached.selected, ...(policy.status === 'present' ? { repository: policy.text! } : {}) };
-      const templates = await request<string[]>({ type: 'policy.templates', layers: selected });
-      if (!templates.length) {
-        const bound = comparison; const packet = await request<Packet>({ type: 'analysis.run', input: { comparison: bound, policy } });
-        if (signal.aborted) throw signal.reason;
-        return { packet, settings: cached.settings, verify: async () => {
-          try { await confirm(current, bound, confirmationPath, signal); return { moved: false }; }
-          catch (error) { if (signal.aborted) throw error; const observed = (error as { observed?: BrowserComparison }).observed; return { moved: true, ...(observed ? { observed } : {}) }; }
-        } };
+  // Held facts exist only for a comparison that was confirmed for this PR before: reattach from them
+  // at once and confirm freshness in the background. A page that cannot name its comparison, such as
+  // a private Conversation tab, is offered the last one confirmed for the pull request.
+  if (!options.confirmed) {
+    let held = comparison; let remembered = false;
+    if (!held) {
+      try { held = (await request<{ comparison?: BrowserComparison }>({ type: 'cache.recent', repository: current.repository, pullRequest: current.pullRequest })).comparison; remembered = held !== undefined; }
+      catch (error) { if (signal.aborted) throw error; }
+    }
+    if (held) {
+      const lookup = await request<Lookup>({ type: 'cache.lookup', comparison: held }); if (signal.aborted) throw signal.reason;
+      if (lookup.paused) throw new ExtensionError('REPOSITORY_PAUSED', 'diffdevil is paused for this repository.');
+      if (lookup.reportCached && (lookup.selected.mode === 'personal-only' || lookup.policy)) {
+        const policy: PolicySource = lookup.selected.mode === 'personal-only' ? { status: 'unavailable', at: Date.now() } : lookup.policy!;
+        const selected = { ...lookup.selected, ...(policy.status === 'present' ? { repository: policy.text! } : {}) };
+        const templates = await request<string[]>({ type: 'policy.templates', layers: selected });
+        if (templates.every(path => lookup.templatePaths?.includes(path))) {
+          const bound = held; const packet = await request<Packet>({ type: 'analysis.run', input: { comparison: bound, policy } });
+          if (signal.aborted) throw signal.reason; const path = remembered || changes ? changesPath : confirmationPath;
+          return { packet, settings: lookup.settings, verify: async (): Promise<Standing> => {
+            try { await confirm(current, bound, path, signal); return { standing: 'current' }; }
+            catch (error) { if (signal.aborted) throw error; const observed = (error as { observed?: BrowserComparison }).observed; return observed ? { standing: 'moved', observed } : { standing: 'unconfirmed', code: (error as { code?: string }).code ?? 'UNREACHABLE' }; }
+          } };
+        }
       }
     }
   }
@@ -152,63 +185,76 @@ export async function acquire(current: Route, document: Document, signal: AbortS
       }
     }
   }
-  const lookup = await request<Lookup>({ type: 'cache.lookup', comparison }); if (signal.aborted) throw signal.reason;
-  let acquisition: BrowserInput | undefined;
-  if (!lookup.reportCached) {
-    if (publicResult?.files) acquisition = { comparison, format: 'github-files', files: publicResult.files, complete: publicResult.files.length === comparison.changedFiles };
-    else {
-      try { acquisition = await unifiedDiff(current, comparison, signal); }
-      catch (error) {
-        if (signal.aborted) throw error;
-        // Signed-in route: the page's own summaries and embedded contents. A file
-        // without embedded content stays bounded; that is honest, not a failure.
-        let embedded = changes ? embeddedFiles(sourceDocument) : undefined;
-        if (embedded) {
-          // Files GitHub did not embed are loaded through the page's own route;
-          // supplied patches are measured exactly and failed paths stay bounded.
-          const pending = unpatchedPaths(embedded.files); let loaded = 0; let declined = 0; let routeError: string | undefined; let retryFailures = 0; let retryFailureCodes: string[] = [];
-          if (pending.length) {
-            try {
-              const result = await loadDiffEntries(current, comparison, pending, signal);
-              const merged = withEntries(embedded.files, result.entries);
-              embedded = { ...embedded, files: merged.files, patched: embedded.patched + merged.loaded };
-              loaded = merged.loaded; declined = merged.declined; retryFailures = result.retryFailures; retryFailureCodes = result.retryFailureCodes;
+  const resolved = comparison; const source = sourceDocument; const known = publicResult;
+  return exclusive(`diffdevil:acquire:${identity(resolved)}`, signal, async () => {
+    // Another tab may have stored this comparison while this one waited for the lock.
+    const lookup = await request<Lookup>({ type: 'cache.lookup', comparison: resolved }); if (signal.aborted) throw signal.reason;
+    if (lookup.paused) throw new ExtensionError('REPOSITORY_PAUSED', 'diffdevil is paused for this repository.');
+    const limit = automaticLimit(lookup.settings); let acquisition: BrowserInput | undefined; let coverage: AcquisitionCoverage | undefined; let provider = known;
+    if (!lookup.reportCached) {
+      const visible = visiblePaths(document);
+      const fromProvider = (result: PublicPull): BrowserInput => {
+        const limited = bound(result.files ?? [], limit, visible); coverage = limited.coverage;
+        return { comparison: result.comparison, format: 'github-files', files: limited.files, complete: result.files?.length === result.comparison.changedFiles };
+      };
+      if (provider?.files) acquisition = fromProvider(provider);
+      else {
+        try { acquisition = await unifiedDiff(current, resolved, signal); }
+        catch (error) {
+          if (signal.aborted) throw error;
+          // Signed-in route: the page's own summaries and embedded contents. The automatic limit chooses
+          // which files are measured now; a file without content stays bounded, and that is honest.
+          let embedded = changes ? embeddedFiles(source) : undefined; let routeError: string | undefined;
+          if (embedded) {
+            const declined: Record<string, DeclineReason> = { ...embedded.declined };
+            const order = embedded.files.map(file => String(file.filename)); const chosen = new Set(selectFiles(order, visiblePaths(document), limit, new Set(Object.keys(declined))));
+            let files = embedded.files.map(file => chosen.has(String(file.filename)) || file.patch === undefined ? file : (({ patch: _patch, ...rest }) => rest)(file));
+            const pending = unpatchedPaths(files).filter(path => chosen.has(path)); let loaded = 0; let declinedNow = 0; let retryFailures = 0; let retryFailureCodes: string[] = [];
+            if (pending.length) {
+              try {
+                const result = await loadDiffEntries(current, resolved, pending, signal);
+                const merged = withEntries(files, result.entries);
+                files = merged.files; loaded = merged.loaded; declinedNow = merged.declined; Object.assign(declined, merged.declinedPaths); retryFailures = result.retryFailures; retryFailureCodes = result.retryFailureCodes;
+              }
+              catch (routeFailure) { if (signal.aborted) throw routeFailure; routeError = (routeFailure as { code?: string }).code ?? 'DIFF_ENTRIES'; }
             }
-            catch (routeFailure) { if (signal.aborted) throw routeFailure; routeError = (routeFailure as { code?: string }).code ?? 'DIFF_ENTRIES'; }
+            const patched = files.filter(file => file.patch !== undefined).length;
+            embedded = { ...embedded, files, patched, declined };
+            console.info('[diffdevil] signed-in acquisition', { files: files.length, limit, chosen: chosen.size, embedded: patched - loaded, loaded, declined: declinedNow, bounded: files.length - patched, ...(retryFailures ? { retryFailures, retryFailureCodes } : {}), ...(routeError ? { routeError } : {}) });
+            coverage = { limit, declined };
+            acquisition = { comparison: resolved, format: 'github-files', files, complete: embedded.complete && files.length === (resolved.changedFiles ?? files.length) };
           }
-          console.info('[diffdevil] signed-in acquisition', { files: embedded.files.length, embedded: embedded.patched - loaded, loaded, declined, bounded: embedded.files.length - embedded.patched, ...(retryFailures ? { retryFailures, retryFailureCodes } : {}), ...(routeError ? { routeError } : {}) });
-          acquisition = { comparison, format: 'github-files', files: embedded.files, complete: embedded.complete && embedded.files.length === (comparison.changedFiles ?? embedded.files.length) };
-        }
-        if (!embedded || embedded.patched < embedded.files.length) {
-          // The anonymous API can complete a public comparison; a private one
-          // keeps the signed-in evidence it already has.
-          try {
-            const result = await request<PublicPull>({ type: 'source.public', repository: current.repository, pullRequest: current.pullRequest, files: true, ...(acquisition ? { optionalFallback: true } : {}) });
-            if (!sameComparison(comparison, result.comparison)) throw new ExtensionError('COMPARISON_MOVED', 'The pull request changed during acquisition. Refresh the comparison.');
-            publicResult = result; comparison = result.comparison;
-            acquisition = { comparison, format: 'github-files', files: result.files ?? [], complete: result.files?.length === comparison.changedFiles };
-          } catch (fallback) { if (signal.aborted || !acquisition) throw fallback; }
+          // The anonymous API completes a public comparison when the signed-in route could not; a private
+          // one keeps the signed-in evidence it already has. Files left bounded by the limit never reach it.
+          if (!embedded || routeError) {
+            try {
+              const result = await request<PublicPull>({ type: 'source.public', repository: current.repository, pullRequest: current.pullRequest, files: true, ...(acquisition ? { optionalFallback: true } : {}) });
+              if (!sameComparison(resolved, result.comparison)) throw new ExtensionError('COMPARISON_MOVED', 'The pull request changed during acquisition. Refresh the comparison.');
+              provider = result; acquisition = fromProvider(result);
+            } catch (fallback) { if (signal.aborted || !acquisition) throw fallback; }
+          }
         }
       }
     }
-  }
-  let policy: PolicySource = { status: 'unavailable', at: Date.now() };
-  if (lookup.selected.mode !== 'personal-only') {
-    try { policy = lookup.policy ?? await policyFile(comparison, '.diffdevil.yml', signal, Boolean(publicResult)); }
-    catch (error) { if (signal.aborted) throw error; }
-  }
-  const selected = { ...lookup.selected, ...(policy.status === 'present' ? { repository: policy.text! } : {}) };
-  const templates = await request<string[]>({ type: 'policy.templates', layers: selected }); const sources: Record<string, string> = Object.create(null) as Record<string, string>;
-  for (const path of templates) {
-    try { const value = await policyFile(comparison, path, signal, Boolean(publicResult)); if (value.status === 'present' && value.text !== undefined) sources[path] = value.text; }
-    catch (error) { if (signal.aborted) throw error; } // The compiler reports missing trusted template text.
-  }
-  if (!publicResult) await confirm(current, comparison, changes ? changesPath : current.path, signal);
-  else {
-    const after = await request<PublicPull>({ type: 'source.public', repository: current.repository, pullRequest: current.pullRequest });
-    if (!sameComparison(comparison, after.comparison) || comparison.changedFiles !== after.comparison.changedFiles) throw new ExtensionError('COMPARISON_MOVED', 'The comparison changed while policy was acquired.');
-  }
-  if (signal.aborted) throw signal.reason;
-  const packet = await request<Packet>({ type: 'analysis.run', input: { comparison, ...(acquisition ? { acquisition } : {}), policy, ...(templates.length ? { templates: sources } : {}) } });
-  if (signal.aborted) throw signal.reason; return { packet, settings: lookup.settings };
+    const comparisonNow = provider?.comparison ?? resolved; let policy: PolicySource = { status: 'unavailable', at: Date.now() };
+    if (lookup.selected.mode !== 'personal-only') {
+      try { policy = lookup.policy ?? await policyFile(comparisonNow, '.diffdevil.yml', signal, Boolean(provider)); }
+      catch (error) { if (signal.aborted) throw error; }
+    }
+    const selected = { ...lookup.selected, ...(policy.status === 'present' ? { repository: policy.text! } : {}) };
+    const templates = await request<string[]>({ type: 'policy.templates', layers: selected }); const sources: Record<string, string> = Object.create(null) as Record<string, string>; const absentTemplates: string[] = [];
+    for (const path of templates) {
+      if (lookup.templatePaths?.includes(path)) continue; // trusted at an immutable base: held already
+      try { const value = await policyFile(comparisonNow, path, signal, Boolean(provider)); if (value.status === 'present' && value.text !== undefined) sources[path] = value.text; else if (value.status === 'absent') absentTemplates.push(path); }
+      catch (error) { if (signal.aborted) throw error; } // The compiler reports missing trusted template text.
+    }
+    if (!provider) await confirm(current, comparisonNow, changes ? changesPath : current.path, signal);
+    else {
+      const after = await request<PublicPull>({ type: 'source.public', repository: current.repository, pullRequest: current.pullRequest });
+      if (!sameComparison(comparisonNow, after.comparison) || comparisonNow.changedFiles !== after.comparison.changedFiles) throw new ExtensionError('COMPARISON_MOVED', 'The comparison changed while policy was acquired.');
+    }
+    if (signal.aborted) throw signal.reason;
+    const packet = await request<Packet>({ type: 'analysis.run', input: { comparison: comparisonNow, ...(acquisition ? { acquisition } : {}), policy, ...(templates.length ? { templates: sources } : {}), ...(absentTemplates.length ? { absentTemplates } : {}), ...(coverage ? { coverage } : {}) } });
+    if (signal.aborted) throw signal.reason; return { packet, settings: lookup.settings };
+  });
 }

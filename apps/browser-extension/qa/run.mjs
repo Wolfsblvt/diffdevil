@@ -24,7 +24,7 @@ function packet(data = comparison, text = diff, input) {
   const policy = timed('compile-personal-policy', () => unwrap(m.compileBrowserPolicy(JSON.stringify({ mode: 'composed', personal: m.personalYaml(settings) }))));
   const view = timed('project-aggregate', () => m.decorateView(unwrap(m.humanReport(report, policy)), settings));
   const key = `${m.comparisonKey(data)}:${policy.digest}`;
-  const result = { key, comparison: data, view, files: report.files.map(file => ({ id: file.id, path: file.path, ...(file.oldPath ? { oldPath: file.oldPath } : {}) })), refreshedAt: Date.UTC(2026, 8, 19, 12), cached: false };
+  const result = { key, comparison: data, view, files: report.files.map(file => ({ path: file.path, ...(file.oldPath ? { oldPath: file.oldPath } : {}), standing: 'measured' })), coverage: { measured: report.files.length, bounded: 0, declined: 0, total: report.files.length, totalExact: true, limit: 150, automatic: report.files.length, topUp: 0, explicit: 0, onDemand: 0, declinedReasons: {} }, refreshedAt: Date.UTC(2026, 8, 19, 12), cached: false };
   contexts.set(key, { report, policy, packet: result }); return result;
 }
 let currentPacket = packet();
@@ -65,12 +65,12 @@ const assets = {};
 for (const file of await readdir('artifacts/browser-extension/unpacked/assets')) if (/\.(svg|png)$/u.test(file)) assets[`assets/${file}`] = `data:image/${file.endsWith('.svg') ? 'svg+xml' : 'png'};base64,${(await readFile(`artifacts/browser-extension/unpacked/assets/${file}`)).toString('base64')}`;
 const executablePath = process.env.CHROMIUM_PATH ?? (existsSync('/usr/bin/chromium') ? '/usr/bin/chromium' : undefined);
 const browser = await chromium.launch({ ...(executablePath ? { executablePath } : {}), headless: true, args: ['--no-sandbox', '--disable-gpu'] });
-async function environment({ dark = true, mobile = false } = {}) {
+async function environment({ dark = true, mobile = false, backend = rpc } = {}) {
   const context = await browser.newContext({ viewport: mobile ? { width: 375, height: 740 } : { width: 1280, height: 800 }, colorScheme: dark ? 'dark' : 'light', reducedMotion: 'reduce' });
   const page = await context.newPage(); page.setDefaultTimeout(4000);
   page.on('pageerror', error => errors.push({ page: page.url(), message: error.message }));
   page.on('request', request => { if (!request.url().startsWith('data:') && !request.url().startsWith('about:')) network.push(request.url()); });
-  await page.exposeFunction('__rpc', rpc);
+  await page.exposeFunction('__rpc', backend);
   await page.evaluate(({ assets }) => {
     const listeners = new Set(); globalThis.__emitSettings = () => { for (const listener of listeners) listener({ 'diffdevil.settings.v1': { newValue: true } }, 'local'); };
     globalThis.__emitError = () => { for (const listener of listeners) listener({ errors: { newValue: [] } }, 'local'); };
@@ -89,18 +89,19 @@ async function optionsPage(dark = true, mobile = false) {
   await env.page.evaluate(() => { const notice = document.createElement('div'); notice.id = 'qa-note'; notice.textContent = 'Rendered source candidate · Test storage · Not an installed-extension capture'; notice.style.cssText = 'position:fixed;bottom:0;left:0;right:0;text-align:center;padding:4px;z-index:9999;background:var(--bg);color:var(--fg-3);font:10px sans-serif;border-top:1px solid var(--hair)'; document.body.append(notice); });
   return env;
 }
-async function contentPage({ dark = true, modern = false, files = true, mobile = false, data = comparison, value = currentPacket, href, failures = 0, ready = '.ddx-root[data-ddx="aggregate"]' } = {}) {
-  const env = await environment({ dark, mobile }); await env.page.setContent(githubHtml({ dark, modern, files, data })); await env.page.addStyleTag({ content: githubCss + contentCss }); await env.page.addScriptTag({ content: domCode });
-  await env.page.evaluate(({ packet, settings, href, failures }) => {
-    globalThis.fixture = { href: href ?? 'https://github.com/example/cinder/pull/42/files', packet, settings, calls: 0, delay: 0, failures };
+async function contentPage({ dark = true, modern = false, files = true, mobile = false, data = comparison, value = currentPacket, href, failures = 0, ready = '.ddx-root[data-ddx="aggregate"]', backend, measure, headers = [], verifyResult, settings: pageSettings } = {}) {
+  const env = await environment({ dark, mobile, ...(backend ? { backend } : {}) });
+  if (measure) await env.page.exposeFunction('__measure', measure); await env.page.setContent(githubHtml({ dark, modern, files, data })); await env.page.addStyleTag({ content: githubCss + contentCss }); if (headers.length) await env.page.evaluate(paths => { for (const path of paths) document.querySelector('main').insertAdjacentHTML('beforeend', '<section data-path="' + path + '"><div class="file-header" data-path="' + path + '" style="height:30px"><span>' + path + '</span><span class="diffstat"><span>+2</span> <span>−1</span></span></div></section>'); }, headers); await env.page.addScriptTag({ content: domCode });
+  await env.page.evaluate(({ packet, settings, href, failures, verifyResult }) => {
+    globalThis.fixture = { href: href ?? 'https://github.com/example/cinder/pull/42/files', packet, settings, calls: 0, delay: 0, failures, verifyResult };
     globalThis.controller = DiffdevilUnderTest.startContent({ href: () => fixture.href, acquire: async () => {
       fixture.calls++; const packet = fixture.packet; const settings = fixture.settings; const delay = fixture.delay;
       if (delay) await new Promise(resolve => setTimeout(resolve, delay));
       if (fixture.hold) await new Promise(resolve => { fixture.release = resolve; });
       if (fixture.failures > 0) { fixture.failures--; throw Object.assign(new Error('Signed-in page source unavailable.'), { code: 'SIGNED_IN_UNAVAILABLE' }); }
-      return { packet, settings };
-    } });
-  }, { packet: value, settings, href, failures });
+      return { packet, settings, ...(fixture.verifyResult ? { verify: async () => { if (fixture.verifyHold) await new Promise(resolve => { fixture.verifyRelease = resolve; }); return fixture.verifyResult; } } : {}) };
+    }, ...(globalThis.__measure ? { measure: (scope, base, paths, via) => globalThis.__measure(paths, via) } : {}) });
+  }, { packet: value, settings: pageSettings ?? settings, href, failures, verifyResult });
   await env.page.locator(ready).waitFor(); return env;
 }
 let failure;
@@ -236,8 +237,82 @@ ${await page.evaluate(() => JSON.stringify({ calls: fixture.calls, href: fixture
   const hostileComp = { ...comparison, changedFiles: 1, additions: 1, deletions: 0 };
   const hostile = packet(hostileComp, '', { comparison: hostileComp, format: 'github-files', complete: true, files: [{ filename: dangerousPath, status: 'added', additions: 1, deletions: 0, patch: '@@ -0,0 +1 @@\n+x' }] });
   const hostileContext = contexts.get(hostile.key); const hostileView = unwrap(m.humanReport(hostileContext.report, hostileContext.policy, dangerousPath));
-  await check('Hostile path text is rendered as text rather than executable HTML', async () => { await injection.page.evaluate(view => { const popover = new DiffdevilUnderTest.Popover(); const anchor = document.createElement('button'); document.querySelector('#target').append(anchor); const actions = { copyText: async () => '', retry: () => {}, settingsUrl: 'about:blank', diagnostics: () => '', errorPanel: () => document.createElement('div') }; popover.toggle(anchor, DiffdevilUnderTest.filePanel(view, popover, actions), { width: 360, align: 'end' }); }, hostileView); const text = await injection.page.locator('.ddx-popover').innerText(); assert.ok(text.includes('<img src=x onerror=globalThis.injected=true>.ts'), text); assert.equal(await injection.page.locator('.ddx-popover img').count(), 0); assert.equal(await injection.page.evaluate(() => globalThis.injected), undefined); });
+  await check('Hostile path text is rendered as text rather than executable HTML', async () => { await injection.page.evaluate(view => { const popover = new DiffdevilUnderTest.Popover(); const anchor = document.createElement('button'); document.querySelector('#target').append(anchor); const actions = { copyText: async () => '', retry: () => {}, settingsUrl: 'about:blank', dataUrl: 'about:blank', provenance: () => 'live', coverage: { summary: () => undefined, progress: () => undefined, note: () => undefined, start() {}, cancel() {} }, fileStanding: () => undefined, measureFile() {}, pause() {}, diagnostics: () => '', errorPanel: () => document.createElement('div') }; popover.toggle(anchor, DiffdevilUnderTest.filePanel(view, popover, actions), { width: 360, align: 'end' }); }, hostileView); const text = await injection.page.locator('.ddx-popover').innerText(); assert.ok(text.includes('<img src=x onerror=globalThis.injected=true>.ts'), text); assert.equal(await injection.page.locator('.ddx-popover img').count(), 0); assert.equal(await injection.page.evaluate(() => globalThis.injected), undefined); });
   await injection.context.close();
+
+  // Continuity: the production worker logic (persisted report, coverage, extension) behind the same DOM controller.
+  const world = new m.Analysis({ cache: new m.AnalysisCache(new m.MemoryStore()), engine: 'qa' });
+  let worldSettings = m.validateSettings({ 'analysis.maximumFiles': 4 }); const pauseWrites = []; const measureCalls = [];
+  const fileName = index => 'src/f' + String(index).padStart(2, '0') + '.ts'; const fragment = '@@ -1,2 +1,3 @@\n-old\n+new\n+extra\n same\n';
+  const worldComparison = { ...comparison, changedFiles: 12, additions: 24, deletions: 12 };
+  const worldPacket = await world.run({ comparison: worldComparison, acquisition: { comparison: worldComparison, format: 'github-files', complete: true, files: Array.from({ length: 12 }, (_, index) => ({ filename: fileName(index), status: 'modified', additions: 2, deletions: 1, ...(index < 4 ? { patch: fragment } : {}) })) }, policy: { status: 'absent', at: 1 }, coverage: { limit: 4, declined: { [fileName(11)]: 'binary' } } }, worldSettings);
+  const worldBackend = async message => {
+    try {
+      let value;
+      switch (message.type) {
+        case 'settings.get': value = worldSettings; break;
+        case 'analysis.files': value = await world.files(message.key, message.comparison, message.paths, worldSettings); break;
+        case 'analysis.extend': value = await world.extend(message, worldSettings); break;
+        case 'report.text': value = await world.text(message.key, message.comparison, message.path, worldSettings); break;
+        case 'repository.pause': pauseWrites.push(message); worldSettings = { ...worldSettings, 'repositories.paused': m.pausedWith(String(worldSettings['repositories.paused']), message.repository, message.paused, 1) }; value = { paused: message.paused }; break;
+        default: throw new Error('Unexpected fixture message: ' + message.type);
+      }
+      return { ok: true, value };
+    } catch (error) { return { ok: false, code: error.code ?? 'TEST_OPERATION_FAILED', message: error.message }; }
+  };
+  const worldMeasure = async (paths, via) => { measureCalls.push({ paths, via }); const declined = paths.includes(fileName(11)); return world.extend({ comparison: worldComparison, patches: paths.filter(path => path !== fileName(11)).map(path => ({ path, patch: fragment })), ...(declined ? { declined: { [fileName(11)]: 'binary' } } : {}), via }, worldSettings); };
+  const headers = Array.from({ length: 12 }, (_, index) => fileName(index));
+  const continuity = await contentPage({ value: worldPacket, data: worldComparison, settings: worldSettings, backend: worldBackend, measure: worldMeasure, headers });
+  const reportText = () => continuity.page.locator('.ddx-popover').innerText();
+  await check('The aggregate seat is bounded and the report says exactly how much was measured, declined and left bounded', async () => {
+    assert.match(await continuity.page.locator('[data-ddx="aggregate"] .ddx-evidence').textContent(), /bounded/u);
+    await continuity.page.locator('[data-ddx="aggregate"] .ddx-trigger').click(); const text = await reportText();
+    assert.match(text, /measured\s+4/u); assert.match(text, /bounded\s+7/u); assert.match(text, /provider-declined\s+1/u); assert.match(text, /total\s+12/u); assert.match(text, /automatic limit 4/u); assert.ok(await continuity.page.getByRole('button', { name: 'Analyze remaining files' }).count() === 1);
+    await capture(continuity.page, 'continuity-report-partial');
+  });
+  await check('Files the reader settled on are measured within the configured allowance, in place, while the report stays open', async () => {
+    await continuity.page.waitForFunction(() => /measured\s+8/u.test(document.querySelector('.ddx-popover-host')?.shadowRoot?.querySelector('.ddx-popover')?.innerText ?? ''), null, { timeout: 4000 }).catch(async error => { throw new Error(error.message + ' · report: ' + (await continuity.page.locator('.ddx-popover').innerText().catch(() => 'closed')) + ' · calls: ' + JSON.stringify(measureCalls)); });
+    assert.equal(await continuity.page.locator('.ddx-popover').count(), 1, 'the open report was updated, not replaced by a closed one'); assert.match(await reportText(), /on-demand work added 4 files/u);
+    assert.equal(measureCalls.length, 1); assert.equal(measureCalls[0].via, 'visible'); assert.deepEqual(measureCalls[0].paths, [4, 5, 6, 7].map(fileName));
+    await continuity.page.waitForTimeout(900); assert.equal(measureCalls.length, 1, 'once the allowance is spent, scrolling measures nothing more');
+    assert.match(await continuity.page.locator('[data-ddx="file"]').nth(5).innerText(), /\d/u);
+  });
+  await check('Analyze remaining files is one explicit pass and ends with every file measured or declined', async () => {
+    await continuity.page.getByRole('button', { name: 'Analyze remaining files' }).click();
+    await continuity.page.waitForFunction(() => /bounded\s+0/u.test(document.querySelector('.ddx-popover-host')?.shadowRoot?.querySelector('.ddx-popover')?.innerText ?? ''), null, { timeout: 4000 }).catch(async error => { throw new Error(error.message + ' · report: ' + (await continuity.page.locator('.ddx-popover').innerText().catch(() => 'closed')) + ' · calls: ' + JSON.stringify(measureCalls)); });
+    const text = await reportText(); assert.match(text, /measured\s+11/u); assert.match(text, /provider-declined\s+1/u); assert.equal(await continuity.page.getByRole('button', { name: 'Analyze remaining files' }).count(), 0);
+    const explicit = measureCalls.filter(call => call.via === 'explicit'); assert.equal(explicit.length, 1); assert.deepEqual(explicit[0].paths, [8, 9, 10].map(fileName)); assert.match(text, /on-demand work added 7 files/u);
+  });
+  await check('Pausing from the report removes the seats, restores GitHub’s counters and leaves a way back on the page', async () => {
+    await continuity.page.getByRole('button', { name: 'Pause this repository' }).click(); await continuity.page.waitForFunction(() => globalThis.__paused === undefined, null, { timeout: 100 }).catch(() => undefined);
+    await continuity.page.evaluate(() => globalThis.__emitSettings()); await continuity.page.locator('[data-ddx="paused"]').waitFor();
+    assert.equal(pauseWrites.at(-1).paused, true); assert.equal(await continuity.page.locator('[data-ddx="aggregate"], [data-ddx="file"], .ddx-popover').count(), 0); assert.equal(await continuity.page.locator('.ddx-native-hidden, .ddx-native-faint').count(), 0);
+    assert.match(await continuity.page.locator('[data-ddx="paused"]').innerText(), /paused/u);
+  });
+  await check('Resuming brings the seats back without touching the stored data', async () => {
+    await continuity.page.getByRole('button', { name: 'Resume' }).click(); await continuity.page.evaluate(() => globalThis.__emitSettings()); await continuity.page.locator('[data-ddx="aggregate"]').waitFor();
+    assert.equal(pauseWrites.at(-1).paused, false); assert.equal(await continuity.page.locator('[data-ddx="paused"]').count(), 0);
+  });
+  await continuity.page.evaluate(() => controller.stop()); await continuity.context.close();
+  for (const [name, result, pattern] of [['cached facts are labelled while GitHub confirms them', undefined, /local · cached/u], ['facts GitHub confirmed are plain local', { standing: 'current' }, /^local$/u], ['facts GitHub could not confirm say so and stay exact', { standing: 'unconfirmed', code: 'UNREACHABLE' }, /not confirmed/u]]) {
+    const shown = await contentPage({ value: worldPacket, data: worldComparison, settings: worldSettings, backend: worldBackend, verifyResult: result ?? { standing: 'current' } });
+    await check('Provenance: ' + name, async () => { if (!result) { await shown.page.evaluate(() => { fixture.verifyHold = true; void controller.refresh(); }); await shown.page.waitForTimeout(120); } await shown.page.waitForFunction(pattern => new RegExp(pattern).test(document.querySelector('.ddx-provenance')?.textContent ?? ''), pattern.source, { timeout: 4000 }); });
+    await shown.page.evaluate(() => controller.stop()); await shown.context.close();
+  }
+  const panels = await environment(); await panels.page.setContent('<main id="target"></main>'); await panels.page.addStyleTag({ content: githubCss + contentCss }); await panels.page.addScriptTag({ content: domCode });
+  const worldView = unwrap(m.humanReport(world.contexts?.values?.().next().value?.report ?? unwrap(m.analyzeBrowserInput(JSON.stringify({ comparison: worldComparison, format: 'github-files', complete: true, files: [{ filename: fileName(0), status: 'modified', additions: 2, deletions: 1 }] }))), undefined, fileName(0)));
+  await check('A bounded file’s report offers to measure it, and a declined file says why it cannot be', async () => {
+    const answers = await panels.page.evaluate(view => {
+      const calls = []; const popover = new DiffdevilUnderTest.Popover(); const anchor = document.createElement('button'); document.querySelector('#target').append(anchor);
+      const make = standing => ({ copyText: async () => '', retry: () => {}, settingsUrl: 'about:blank', dataUrl: 'about:blank', provenance: () => 'live', coverage: { summary: () => ({ limit: 150 }), progress: () => undefined, note: () => undefined, start() {}, cancel() {} }, fileStanding: () => standing, measureFile: path => calls.push(path), pause() {}, diagnostics: () => '', errorPanel: () => document.createElement('div') });
+      popover.toggle(anchor, DiffdevilUnderTest.filePanel(view, popover, make({ standing: 'bounded' })), { width: 360, align: 'end' }); const bounded = document.querySelector('.ddx-popover-host').shadowRoot.querySelector('.ddx-file-coverage')?.textContent ?? '';
+      document.querySelector('.ddx-popover-host').shadowRoot.querySelector('[data-key="measure-file"]').click(); popover.close(false);
+      popover.toggle(anchor, DiffdevilUnderTest.filePanel(view, popover, make({ standing: 'declined', reason: 'binary' })), { width: 360, align: 'end' }); const declined = document.querySelector('.ddx-popover-host').shadowRoot.querySelector('.ddx-file-coverage')?.textContent ?? ''; popover.close(false);
+      return { bounded, declined, calls };
+    }, worldView);
+    assert.match(answers.bounded, /Not measured yet.*automatic limit of 150/u); assert.match(answers.bounded, /Measure this file/u); assert.equal(answers.calls.length, 1); assert.match(answers.declined, /declined to supply.*binary/u);
+  });
+  await panels.context.close();
   await check('UI tests generated no external network requests', async () => { assert.deepEqual(network, []); });
   await check('Rendered source generated no uncaught page errors', async () => { assert.deepEqual(errors, []); });
 } catch (error) { failure = error; }

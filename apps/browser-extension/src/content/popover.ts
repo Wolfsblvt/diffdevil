@@ -13,34 +13,48 @@ export class Popover {
   private host?: HTMLElement;
   private panel?: HTMLElement;
   private options: PopoverOptions = { width: 420, align: 'end' };
+  private rebuilder?: () => HTMLElement;
   private listeners?: AbortController;
   private detached?: MutationObserver;
   private resized?: ResizeObserver;
-  toggle(anchor: HTMLElement, panel: HTMLElement, options: PopoverOptions = { width: 420, align: 'end' }): void {
+  /** The report's shell: one dialog, one handle. A rebuilt panel gets the same treatment as the first. */
+  private static prepare(panel: HTMLElement): HTMLElement {
+    panel.classList.add('ddx-popover'); panel.id = 'diffdevil-report-popover'; panel.setAttribute('role', 'dialog'); panel.tabIndex = -1;
+    const handle = document.createElement('span'); handle.className = 'ddx-handle'; handle.setAttribute('aria-hidden', 'true'); panel.prepend(handle); return panel;
+  }
+  toggle(anchor: HTMLElement, panel: HTMLElement, options: PopoverOptions = { width: 420, align: 'end' }, rebuild?: () => HTMLElement): void {
     if (this.anchor === anchor) { this.close(); return; }
-    this.close(false); this.anchor = anchor; this.panel = panel; this.options = options;
+    this.close(false); this.anchor = anchor; this.panel = panel; this.options = options; if (rebuild) this.rebuilder = rebuild;
     const host = document.createElement('div'); host.className = 'ddx-popover-host'; host.setAttribute('data-diffdevil', '');
     const shadow = host.attachShadow({ mode: 'open' }); const style = document.createElement('style'); style.textContent = popoverCss;
-    panel.classList.add('ddx-popover'); panel.id = 'diffdevil-report-popover'; panel.setAttribute('role', 'dialog'); panel.tabIndex = -1;
-    const handle = document.createElement('span'); handle.className = 'ddx-handle'; handle.setAttribute('aria-hidden', 'true'); panel.prepend(handle);
+    Popover.prepare(panel);
     shadow.append(style, panel); this.host = host;
     anchor.setAttribute('aria-expanded', 'true'); anchor.setAttribute('aria-controls', panel.id); document.body.append(host);
     this.position();
     (panel.querySelector<HTMLElement>('.ddx-close') ?? panel).focus({ preventScroll: true });
     requestAnimationFrame(() => panel.classList.add('ddx-open'));
     const controller = this.listeners = new AbortController();
-    document.addEventListener('pointerdown', event => { const path = event.composedPath(); if (!path.includes(anchor) && !path.includes(panel)) this.close(false); }, { capture: true, signal: controller.signal });
+    document.addEventListener('pointerdown', event => { const path = event.composedPath(); if (!path.includes(anchor) && !(this.panel && path.includes(this.panel))) this.close(false); }, { capture: true, signal: controller.signal });
     document.addEventListener('keydown', event => { if (event.key === 'Escape') { event.preventDefault(); this.close(); } }, { signal: controller.signal });
     document.addEventListener('scroll', this.position, { capture: true, passive: true, signal: controller.signal }); window.addEventListener('resize', this.position, { signal: controller.signal });
     this.resized = new ResizeObserver(this.position); this.resized.observe(panel);
     this.detached = new MutationObserver(() => this.reconcile()); if (anchor.parentNode) this.detached.observe(anchor.parentNode, { childList: true });
   }
   get open(): boolean { return this.anchor !== undefined; }
+  /** Whether this trigger's report is the one on screen. */
+  shows(anchor: HTMLElement): boolean { return this.anchor === anchor; }
+  /** Replace the open report with a freshly built one in place: same anchor, same position, same focused control. */
+  rebuild(): void {
+    if (!this.anchor || !this.panel || !this.host?.shadowRoot || !this.rebuilder) return;
+    const old = this.panel; const focused = (this.host.shadowRoot.activeElement as HTMLElement | null)?.dataset.key;
+    const next = Popover.prepare(this.rebuilder()); next.classList.add('ddx-open'); this.resized?.unobserve(old); old.replaceWith(next); this.panel = next; this.resized?.observe(next); this.position();
+    if (focused) next.querySelector<HTMLElement>(`[data-key="${focused}"]`)?.focus({ preventScroll: true });
+  }
   reconcile(): void { if (this.anchor && !this.anchor.isConnected) this.close(false); }
   close(restore = true): void {
     const anchor = this.anchor; this.listeners?.abort(); this.detached?.disconnect(); this.resized?.disconnect(); this.host?.remove();
     anchor?.setAttribute('aria-expanded', 'false'); anchor?.removeAttribute('aria-controls');
-    delete this.anchor; delete this.panel; delete this.host; delete this.listeners; delete this.detached; delete this.resized;
+    delete this.anchor; delete this.panel; delete this.rebuilder; delete this.host; delete this.listeners; delete this.detached; delete this.resized;
     if (restore && anchor?.isConnected) anchor.focus({ preventScroll: true });
   }
   private position = (): void => {

@@ -10,10 +10,10 @@ import { node, button, isDark } from '../shared/dom.js';
 import { productIcon } from '../shared/icons.js';
 import { observedLabels } from './labels.js';
 import type { Popover } from './popover.js';
-import { aggregatePanel, concisePanel, filePanel, type ReportActions } from './report.js';
+import { aggregatePanel, concisePanel, filePanel, provenanceText, provenanceTitle, type Provenance, type ReportActions } from './report.js';
 export type SeatKind = 'aggregate' | 'toolbar' | 'file';
 export interface SeatContext { readonly settings: Settings; readonly popover: Popover; readonly document: Document; readonly actions: ReportActions }
-export interface Projection { root: HTMLElement; trigger: HTMLButtonElement; stale: (head?: string) => void; cleanup: () => void }
+export interface Projection { root: HTMLElement; trigger: HTMLButtonElement; stale: (head?: string) => void; standing: (state: Provenance) => void; update: (view: HumanReportView) => void; cleanup: () => void }
 export const sizeRail = (view: HumanReportView): Rail | undefined => view.rails.find(rail => rail.id === 'size') ?? view.rails[0];
 export const short = (sha: string | undefined): string => sha?.slice(0, 7) ?? '?';
 export function rangeText(cell: RailCell, subject?: string): string {
@@ -88,36 +88,38 @@ function excludedReason(view: HumanReportView): string {
   return reasons.map(reason => reason.subject ? `${reason.code} · ${reason.subject}` : reason.message ?? reason.code).join(' · ') || 'policy path rule';
 }
 /** One seat. The button carries icon, word, value, decomposition and chip; rail and provenance sit outside it. */
-export function projection(view: HumanReportView, kind: SeatKind, context: SeatContext): Projection {
-  const { settings, popover, document, actions } = context;
+export function projection(initial: HumanReportView, kind: SeatKind, context: SeatContext): Projection {
+  const { settings, popover, document, actions } = context; let view = initial;
   const root = node('span', 'ddx-root'); root.dataset.ddx = kind; root.setAttribute('data-diffdevil', '');
   const trigger = node('button', 'ddx-trigger'); trigger.type = 'button'; trigger.setAttribute('aria-expanded', 'false'); trigger.setAttribute('aria-haspopup', 'dialog');
-  const excluded = view.focus?.included === false; const exact = view.evidence.status === 'exact';
-  const mark = productIcon(String(settings['display.brandIcon']), isDark(document), chrome.runtime.getURL);
-  if (mark) { if (kind !== 'aggregate') mark.classList.add('ddx-brand-quiet'); trigger.append(mark); }
-  if (excluded) {
-    trigger.append(node('span', 'ddx-excluded', '— excluded'));
-    trigger.title = `Excluded by policy · ${excludedReason(view)} · not counted in Changed. Open the file report.`;
-  } else {
-    if (kind !== 'file') trigger.append(node('span', 'ddx-word', 'Changed'));
-    // Bounded reads "≈ 340–360"; unknown and unmeasurable keep the presenter's own glyphs.
-    trigger.append(node('strong', 'ddx-value', view.changed.status === 'bounded' ? `≈ ${value(view.changed)}` : value(view.changed)));
-    if (exact) trigger.append(decomposition(view)); else trigger.append(evidenceChip(view, kind === 'file'));
-    trigger.title = `Open the ${kind === 'file' ? 'file' : 'pull-request'} report. ${evidenceText(view.evidence.status)}. Replacements count once.`;
-  }
-  const rail = kind === 'aggregate' && !excluded ? sizeRail(view) : undefined;
-  if (rail || kind === 'aggregate' && view.errors.length && !excluded) trigger.append(sizeChip(view, rail ?? { id: 'size', expression: '', cells: [] }, document));
   const width = kind === 'aggregate' ? 420 : 360; const align = kind === 'toolbar' ? 'start' : 'end';
   const panel = (): HTMLElement => kind === 'aggregate' ? aggregatePanel(view, popover, actions) : kind === 'toolbar' ? concisePanel(view, popover, actions) : filePanel(view, popover, actions);
-  trigger.addEventListener('click', event => { event.stopPropagation(); popover.toggle(trigger, panel(), { width, align }); });
-  root.append(trigger);
-  if (rail && !view.errors.length) { const track = bandRail(view, rail); if (track) root.append(track); }
-  if (kind === 'aggregate') {
-    const provenance = node('span', 'ddx-provenance', 'local');
-    provenance.title = 'Computed in this browser from the pull-request comparison. No App report is implied.';
-    root.append(provenance);
-  }
-  let rereading: HTMLElement | undefined;
+  trigger.addEventListener('click', event => { event.stopPropagation(); popover.toggle(trigger, panel(), { width, align }, panel); });
+  let track: HTMLElement | undefined;
+  /** The seat's content follows its view, so a result that gains evidence updates in place and an open report stays open. */
+  const fill = (): void => {
+    trigger.replaceChildren(); track?.remove(); track = undefined;
+    const excluded = view.focus?.included === false; const exact = view.evidence.status === 'exact';
+    const mark = productIcon(String(settings['display.brandIcon']), isDark(document), chrome.runtime.getURL);
+    if (mark) { if (kind !== 'aggregate') mark.classList.add('ddx-brand-quiet'); trigger.append(mark); }
+    if (excluded) {
+      trigger.append(node('span', 'ddx-excluded', '— excluded'));
+      trigger.title = `Excluded by policy · ${excludedReason(view)} · not counted in Changed. Open the file report.`;
+    } else {
+      if (kind !== 'file') trigger.append(node('span', 'ddx-word', 'Changed'));
+      // Bounded reads "≈ 340–360"; unknown and unmeasurable keep the presenter's own glyphs.
+      trigger.append(node('strong', 'ddx-value', view.changed.status === 'bounded' ? `≈ ${value(view.changed)}` : value(view.changed)));
+      if (exact) trigger.append(decomposition(view)); else trigger.append(evidenceChip(view, kind === 'file'));
+      trigger.title = `Open the ${kind === 'file' ? 'file' : 'pull-request'} report. ${evidenceText(view.evidence.status)}. Replacements count once.`;
+    }
+    const rail = kind === 'aggregate' && !excluded ? sizeRail(view) : undefined;
+    if (rail || kind === 'aggregate' && view.errors.length && !excluded) trigger.append(sizeChip(view, rail ?? { id: 'size', expression: '', cells: [] }, document));
+    if (rail && !view.errors.length) { track = bandRail(view, rail); if (track) trigger.after(track); }
+  };
+  fill(); root.append(trigger); if (track) root.append(track);
+  let provenance: HTMLElement | undefined; let rereading: HTMLElement | undefined;
+  const standing = (state: Provenance): void => { if (provenance) { provenance.textContent = provenanceText(state, true); provenance.title = provenanceTitle(state); provenance.dataset.standing = state; } };
+  if (kind === 'aggregate') { provenance = node('span', 'ddx-provenance'); standing(actions.provenance()); root.append(provenance); }
   const stale = (head?: string): void => {
     root.classList.toggle('ddx-stale', head !== undefined); rereading?.remove(); rereading = undefined;
     if (head === undefined) return;
@@ -125,13 +127,13 @@ export function projection(view: HumanReportView, kind: SeatKind, context: SeatC
     rereading.title = 'The head advanced. The previous result stays visible until the new comparison is read.';
     trigger.insertAdjacentElement('afterend', rereading);
   };
-  return { root, trigger, stale, cleanup: () => { root.remove(); } };
+  return { root, trigger, stale, standing, update: next => { view = next; fill(); if (track && !track.isConnected) trigger.after(track); if (popover.shows(trigger)) popover.rebuild(); }, cleanup: () => { root.remove(); } };
 }
 /** The reading marker holds the failure marker's place while GitHub's counts stay untouched; it states only that a read is under way. */
-export function readingMarker(): Pick<Projection, 'root' | 'stale' | 'cleanup'> {
+export function readingMarker(): Pick<Projection, 'root' | 'stale' | 'standing' | 'update' | 'cleanup'> {
   const root = node('span', 'ddx-root'); root.dataset.ddx = 'reading'; root.setAttribute('data-diffdevil', ''); root.setAttribute('role', 'status');
   root.append(node('span', 'ddx-reading', '↻ diffdevil · reading'));
-  return { root, stale: () => undefined, cleanup: () => { root.remove(); } };
+  return { root, stale: () => undefined, standing: () => undefined, update: () => undefined, cleanup: () => { root.remove(); } };
 }
 /** The failure marker takes the seat's leading position; GitHub's counts stay at full colour after it. */
 export function failureMarker(error: { code: string; message: string }, popover: Popover, actions: ReportActions, retry: () => void): Projection {
@@ -141,6 +143,13 @@ export function failureMarker(error: { code: string; message: string }, popover:
   trigger.title = `diffdevil could not read this comparison. ${error.message} GitHub’s counts are unchanged.`;
   const again = button('Retry', retry, 'ddx-retry');
   root.append(trigger, node('span', 'ddx-dot', '·'), again);
-  return { root, trigger, stale: () => undefined, cleanup: () => { root.remove(); } };
+  return { root, trigger, stale: () => undefined, standing: () => undefined, update: () => undefined, cleanup: () => { root.remove(); } };
+}
+/** Where diffdevil stood before the repository was paused: one muted line in the seat, GitHub's counters untouched, and the way back. */
+export function pausedMarker(resume: () => void): Pick<Projection, 'root' | 'stale' | 'standing' | 'update' | 'cleanup'> {
+  const root = node('span', 'ddx-root'); root.dataset.ddx = 'paused'; root.setAttribute('data-diffdevil', ''); root.setAttribute('role', 'status');
+  const again = button('Resume', resume, 'ddx-retry'); again.title = 'Resume diffdevil on this repository. Nothing was deleted while it was paused.';
+  root.append(node('span', 'ddx-reading', '⏸ diffdevil paused'), node('span', 'ddx-dot', '·'), again);
+  return { root, stale: () => undefined, standing: () => undefined, update: () => undefined, cleanup: () => { root.remove(); } };
 }
 export { aggregatePanel as reportPanel } from './report.js';
