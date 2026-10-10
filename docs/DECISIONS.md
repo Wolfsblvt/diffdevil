@@ -206,7 +206,7 @@ The complete predecessor record is preserved byte-for-byte as [Decisions through
 
 ## D078: Let independent premium modules join the AGPL App through two named interfaces
 
-**Status:** Selected by Wolf, 2026-10-10. Numbered after D074–D077, which in-flight App source already uses. The exact permission wording is a candidate for its named review before any release relies on it.
+**Status:** Direction by Wolf, 2026-10-10 (quoted below): outside contributions and the private paid edition must coexist without a contributor-rights programme. The section 7 mechanism, its exact wording, its all-recipient scope and the narrow application bridge are the diffdevil Leads' selection under that direction: product and packaging judgment by Nyxara, technical acceptance by Katja, 2026-10-10. The wording is accepted as the project licence candidate; it is not legal-professional certification. Numbered after D074–D077, which in-flight App source already uses.
 
 **Decision.** The managed App program (`apps/github-app/`, `apps/shared/` and `apps/app/` where present) is licensed `AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0`. The [premium-interface permission](../LICENSES/AdditionRef-diffdevil-premium-interface-exception-1.0.txt) is an AGPLv3 section 7 additional permission: an independent module under other terms may join the App only through the Premium Service Interface (the optional `premium` argument of `createAnalyticalDataService`) and the Premium Application Interface (the extension resolved from `@diffdevil/premium-app` and `@diffdevil/premium-styles`, whose brief provider the managed-App Worker also resolves from `@diffdevil/premium-brief`), as a version Wolfsblvt Works publishes declares them, without becoming AGPL solely because of that combination. The App program and every modification of it stay AGPL, including the section 13 source offer. Copied or derived App code is never an independent module. Each version declares the exact files of each interface in `release.json`'s `premiumSeam`; current `main` declares `null` because the interfaces arrive with the Community App source.
 
@@ -216,11 +216,11 @@ The complete predecessor record is preserved byte-for-byte as [Decisions through
 
 **Consequences.** The [component licence map](../LICENSES/README.md#app-program--agpl-30-only-with-the-premium-interface-permission) owns the plain-language terms and the [account-wide contribution guide](https://github.com/Wolfsblvt/.github/blob/main/CONTRIBUTING.md) remains the complete contribution contract. Every licence notice in the App program carries the expression; a repository test refuses a plain AGPL notice there, so new App files cannot silently fall outside the permission. Anyone, not only Wolfsblvt Works, may join an independent module through the published interfaces; that is the honest scope of a public licence term, not a promise of a supported plugin system. A release declaring a seam must list files that carry the permission, which the release manifest builder enforces. Interface width is a product choice: every public module an extension imports belongs in the declaration or must stop being imported. Earlier AGPL-only versions stay as they were published. No customer licence, self-hosted commercial licence or legal certification is created.
 
-**Source.** Wolf's correction and the selected boundary in the diffdevil Lead conversation, 2026-10-10, quoted above.
+**Source.** Wolf's direction in the diffdevil Lead conversation, 2026-10-10, quoted above. The mechanism, wording, scope and bridge: the diffdevil Leads' recorded judgment under that direction, 2026-10-10.
 
 ## D079: Let App consumers follow App-family releases through an exact manifest
 
-**Status:** Selected by Wolf, 2026-10-10; the public half of the route. The private consumer's resolver and lock live in its own repository.
+**Status:** Direction by Wolf, 2026-10-10: consume the latest compatible App release instead of hand-maintained hashes. The manifest contract, selection rules and generated lock are the diffdevil Leads' selection under that direction: product judgment by Nyxara, technical acceptance by Katja, 2026-10-10. This is the public half of the route; the private consumer's resolver and lock live in its own repository.
 
 **Decision.** Each `app-vX.Y.Z` release attaches one `diffdevil-app-X.Y.Z.release.json` manifest derived from the exact release commit: version, tag, channel, source commit and tree, declared engine version, and the `premiumSeam` contract version, declared files of both interfaces and the permission that covers them. A consumer selects the greatest stable App-family release by numeric SemVer, verifies the manifest against the release and the fetched tag, checks seam compatibility, and records an exact generated lock. [Release families](RELEASING.md#app-family-release-manifest-and-its-consumers) owns the contract.
 
@@ -230,7 +230,7 @@ The complete predecessor record is preserved byte-for-byte as [Decisions through
 
 **Consequences.** The App's first named release also needs its `premiumSeam` declaration once the Community seam is on `main`; until then `main` declares `null`, which no premium consumer can join. A development manifest serves the consumer's local-checkout override with the same fields. An inconsistent selected release fails the refresh rather than silently falling back. Automatic private refresh on release is the private repository's route, not a public controller.
 
-**Source.** Wolf's correction of the composition model, 2026-10-10, in the diffdevil Lead conversation.
+**Source.** Wolf's correction of the composition model, 2026-10-10, in the diffdevil Lead conversation. The manifest, selection and lock mechanism: the diffdevil Leads' recorded judgment under that direction, 2026-10-10.
 
 ## Earlier decisions and retained fragments
 
