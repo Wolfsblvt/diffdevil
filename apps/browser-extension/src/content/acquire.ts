@@ -139,7 +139,7 @@ export async function acquire(current: Route, document: Document, signal: AbortS
     catch (error) { if (signal.aborted) throw error; }
   }
   if (!comparison) {
-    try { publicResult = await request<PublicPull>({ type: 'source.public', repository: current.repository, pullRequest: current.pullRequest, files: true }); comparison = publicResult.comparison; }
+    try { publicResult = await request<PublicPull>({ type: 'source.public', repository: current.repository, pullRequest: current.pullRequest, files: true, optionalFallback: true }); comparison = publicResult.comparison; }
     catch (error) {
       if (signal.aborted) throw error;
       // A private pull request has no anonymous route and its Conversation page
