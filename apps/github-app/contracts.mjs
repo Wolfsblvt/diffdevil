@@ -5,7 +5,7 @@ export const WORKER_RESULT_LIMIT = 4 * 1024 * 1024;
 export const APP_QUEUE_KIND = 'diffdevil.github-app-queue';
 export const APP_QUEUE_VERSION = 1;
 
-const pullRequestActions = new Set(['opened', 'reopened', 'synchronize', 'edited']);
+const pullRequestActions = new Set(['opened', 'reopened', 'synchronize', 'edited', 'closed', 'ready_for_review', 'converted_to_draft']);
 const lifecycleEvents = new Set(['installation', 'installation_repositories']);
 
 function integer(value, name) {

@@ -10,10 +10,12 @@ import { D1AuthorizationStore } from './authorization-storage.mjs';
 import { createAuthorizationService, protectedHeaders } from './authorization.mjs';
 import { createAdmissionService } from './admission.mjs';
 import { createHistoryAnalyticsService } from './history-analytics.mjs';
+import { createAnalyticalDataService } from './analytical-data.mjs';
+import { createGitHubAppWorker } from './app.mjs';
 
 const migrationNames = [
   '0001_initial.sql', '0002_consent-provenance.sql', '0003_preserve-active-consent.sql',
-  '0004_admission-settings.sql', '0005_offboarding-consent-tombstones.sql', '0006_user-authorization.sql', '0007_consent-actors.sql', '0008_history_analytics.sql'
+  '0004_admission-settings.sql', '0005_offboarding-consent-tombstones.sql', '0006_user-authorization.sql', '0007_consent-actors.sql', '0008_history_analytics.sql', '0009_analytical_app.sql'
 ];
 const ORIGIN = 'https://dashboard.example.test';
 const CALLBACK = `${ORIGIN}/oauth/callback`;
@@ -63,14 +65,17 @@ async function fixture() {
     checkRepositoryAccess: async ({ userId, installationId, repositoryId, kind }) => {
       assert.equal(userId, 123); assert.equal(installationId, 9); assert.equal(repositoryId, 17);
       assert.ok(['read', 'update'].includes(kind)); providerState.checks++;
-      return { installation: providerState.installation, repository: providerState.repository, canAdminister: providerState.canAdminister, fullName: REPOSITORY_NAME };
+      return { installation: providerState.installation, repository: providerState.repository, canAdminister: providerState.canAdminister, canRead: providerState.canRead, fullName: REPOSITORY_NAME };
     }
   };
   const admission = createAdmissionService({ store: appStore, authorize: async request => request.actor?.role === 'repository-admin' });
   const historyQueries = [];
   const history = createHistoryAnalyticsService({ store: { historyWindow: async repositoryId => { historyQueries.push(repositoryId); return []; },
     historySettings: async () => ({ enabled: true }) }, authorize: async ({ actor }) => actor?.userId === 123 });
-  const service = createAuthorizationService({ store, admission, history, provider, protector, returnContexts: [CONTEXT, 'account-home'], allowedOrigins: [ORIGIN], allowedCallbackUrls: [CALLBACK], sessionLifetimeMs: TEST_SESSION_MS, now: () => clock.value });
+  const analytics = createAnalyticalDataService({ store: appStore, authorize: async () => providerState.userValid
+    && providerState.installation === 'active' && providerState.repository === 'available' && (providerState.canRead || providerState.canAdminister),
+  entitlement: async () => 'pro', namespace: async () => 9, currentPolicy: async () => null });
+  const service = createAuthorizationService({ store, admission, history, analytics, provider, protector, returnContexts: [CONTEXT, 'account-home'], allowedOrigins: [ORIGIN], allowedCallbackUrls: [CALLBACK], sessionLifetimeMs: TEST_SESSION_MS, now: () => clock.value });
   return { runtime, database, appStore, store, service, clock, providerState, protector, historyQueries };
 }
 
@@ -83,6 +88,31 @@ async function signIn(service) {
   assert.ok(session);
   return { state: begun.state, browserBinding: oauthBinding(begun), artifact, session, result };
 }
+
+test('analytical HTTP uses the real session path for an ordinary reader, with current access and private refusals', async () => {
+  const source = await fixture();
+  try {
+    const { session } = await signIn(source.service);
+    source.providerState.canAdminister = false;
+    source.providerState.canRead = true;
+    const query = { version: 1, surface: 'overview', repositoryIds: [17], from: '2026-09-01T00:00:00.000Z', to: '2026-10-01T00:00:00.000Z' };
+    const worker = createGitHubAppWorker({ authorization: source.service });
+    const request = () => new Request(`${ORIGIN}/api/analytics?query=${encodeURIComponent(JSON.stringify(query))}`, { headers: { cookie: `__Host-diffdevil-session=${session}` } });
+    const result = await worker.fetch(request(), {});
+    assert.equal(result.status, 200);
+    const body = await result.json();
+    assert.equal(body.result.overview.medianChanged.status, 'unavailable');
+    assert.deepEqual(body.repositoryIdentities, [{ repositoryId: 17, fullName: REPOSITORY_NAME }]);
+    assert.equal(result.headers.get('cache-control'), 'private, no-store');
+    source.providerState.canRead = false;
+    const denied = await worker.fetch(request(), {});
+    assert.equal(denied.status, 403);
+    assert.deepEqual(await denied.json(), { code: 'E_APP_DATA_UNAUTHORIZED' });
+    source.providerState.canRead = true;
+    source.providerState.userValid = false;
+    assert.equal((await worker.fetch(request(), {})).status, 401);
+  } finally { await source.runtime.dispose(); }
+});
 
 test('history reads bind the exact current repository grant and comparisons omit denied repositories', async () => {
   const source = await fixture();
@@ -137,7 +167,7 @@ test('callback, one-time artifact and rotated session preserve consent and do no
     assert.deepEqual(await service.authenticate(session), { userId: 123, returnContext: CONTEXT });
     assert.equal(result.headers['Set-Cookie'].includes('HttpOnly; Secure; SameSite=Lax'), true);
     assert.equal(result.headers['Set-Cookie'].includes('Path=/'), true);
-    assert.deepEqual(protectedHeaders(), { 'Cache-Control': 'private, no-store', Vary: 'Cookie' });
+    assert.deepEqual(protectedHeaders(), { 'Cache-Control': 'private, no-store', Vary: 'Cookie', 'Referrer-Policy': 'no-referrer' });
     assert.deepEqual(await appStore.repositoryConsentState(17), before);
     await assert.rejects(service.exchange({ artifact, returnContext: CONTEXT, method: 'POST', origin: ORIGIN }), { code: 'E_AUTH_ARTIFACT' });
 
