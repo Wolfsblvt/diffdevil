@@ -112,6 +112,11 @@ export class D1AppStore {
       ON CONFLICT(repository_id) DO UPDATE SET installation_id=excluded.installation_id, access_state='available', state=CASE WHEN repositories.state IN ('removed', 'offboarding') THEN 'pending-enable' ELSE repositories.state END, updated_at=excluded.updated_at`, repositoryId, installationId, scope, now, scope, now, scope, now, scope, now, now);
   }
 
+  /** An installation never changes account; the first observed numeric owner is retained. */
+  async recordInstallationAccount(installationId, accountId) {
+    await this.statement('UPDATE installations SET account_id=? WHERE installation_id=? AND account_id IS NULL', accountId, installationId).run();
+  }
+
   async recordLifecycle(envelope) {
     const now = this.now(), removed = envelope.action === 'deleted';
     const suspended = envelope.action === 'suspend';

@@ -77,6 +77,7 @@ supplement authored explanation; none is a second hand-maintained API.
 | Manual | [Manual](../apps/manual/README.md): explicit source/route selection, generation, migration, joined search and two-host qualification |
 | Public-PR acquisition | [Playground adapter](../apps/playground/README.md): local/Worker API, throttling and transport |
 | Managed App | [App operator source](../apps/github-app/README.md) and [architecture](integration/github-app.md): supported backend, storage, recovery and provider boundaries |
+| Wirt commercial link, benefit projection and entitlement | [Commercial link consumer](integration/app-commercial-link.md) |
 | Browser extension | [Extension component](../apps/browser-extension/README.md): build, permissions, settings and qualification; [privacy source](../apps/browser-extension/privacy.md) |
 | Agent Skill and setup | [Canonical Skill](../skills/diffdevil/SKILL.md), its complete references, and [rendered setup payloads](setup/) |
 

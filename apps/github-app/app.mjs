@@ -7,6 +7,7 @@ import { createAppJwt, verifyWebhookSignature } from './crypto.mjs';
 import { D1AppStore } from './storage.mjs';
 import { DEFAULT_SIZE_POLICY, resolveEffectivePolicy, validateRepositoryConfiguration } from './configuration.mjs';
 import { checkSummary } from '../shared/check-summary.mjs';
+import { COMMERCIAL_LINK_COOKIE, commercialFromEnv } from './commercial.mjs';
 
 const JSON_HEADERS = { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' };
 
@@ -201,10 +202,12 @@ async function consumeMessage(message, dependencies) {
   if (accepted.kind === 'active') return message.retry();
   if (envelope.type === 'lifecycle') {
     await dependencies.store.recordLifecycle(envelope);
+    if (envelope.accountId !== undefined) await dependencies.store.recordInstallationAccount(envelope.installationId, envelope.accountId);
     if (envelope.event === 'installation_repositories') await dependencies.store.reconcileRepositories(envelope.installationId, await dependencies.listInstallationRepositories(dependencies.env, envelope.installationId));
     await dependencies.store.finishLifecycle(envelope, accepted);
     return message.ack();
   }
+  if (envelope.accountId !== undefined) await dependencies.store.recordInstallationAccount(envelope.installationId, envelope.accountId);
   const execution = await dependencies.store.claimExecution(envelope, accepted);
   if (execution.kind === 'active') return message.retry();
   try {
@@ -219,16 +222,95 @@ async function consumeMessage(message, dependencies) {
   }
 }
 
+function cookieValue(request, name) {
+  for (const part of (request.headers.get('cookie') ?? '').split(';')) {
+    const [key, ...value] = part.trim().split('=');
+    if (key === name) return value.join('=');
+  }
+  return undefined;
+}
+/** Protected results keep their private cache and cookie headers instead of the public JSON defaults. */
+function protectedResponse(status, body, headers = {}) {
+  const merged = new Headers(JSON_HEADERS);
+  for (const [name, value] of Object.entries(headers)) merged.set(name, value);
+  return new Response(body === null ? null : JSON.stringify(body), { status, headers: merged });
+}
+function protectedFailure(error) {
+  const status = Number.isSafeInteger(error?.status) ? error.status : typeof error?.code === 'string' ? 403 : 503;
+  return protectedResponse(status, { ok: false, code: typeof error?.code === 'string' ? error.code : 'E_COMMERCIAL_UNAVAILABLE' }, error?.headers);
+}
+async function jsonInput(request) {
+  if (!(request.headers.get('content-type') ?? '').startsWith('application/json')) throw Object.assign(appError('E_COMMERCIAL_INPUT'), { status: 400 });
+  try { return JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(await readBodyWithinLimit(request))); }
+  catch { throw Object.assign(appError('E_COMMERCIAL_INPUT'), { status: 400 }); }
+}
+
+/** Wirt commercial routes. The receiver needs only signing keys and D1; browser routes need the installed authorization adapter. */
+export const COMMERCIAL_ROUTES = Object.freeze({
+  projection: '/integrations/wirt/projection', link: '/integrations/wirt/link', callback: '/integrations/wirt/link/callback',
+  unlink: '/integrations/wirt/unlink', bindings: '/integrations/wirt/bindings', status: '/integrations/wirt/status'
+});
+
+async function commercialRoute(request, url, commercial, context) {
+  if (!commercial) return publicFailure(503, 'E_COMMERCIAL_UNAVAILABLE');
+  if (url.pathname === COMMERCIAL_ROUTES.projection) {
+    const { response: result, followUp } = await commercial.receive(request);
+    // Reports leave after the push answer: Wirt holds the stream lock until this response returns.
+    if (followUp) {
+      const pending = followUp().catch(() => undefined);
+      if (context?.waitUntil) context.waitUntil(pending); else await pending;
+    }
+    return result;
+  }
+  const session = cookieValue(request, '__Host-diffdevil-session');
+  const mutation = { session, method: request.method, origin: request.headers.get('origin') };
+  try {
+    if (url.pathname === COMMERCIAL_ROUTES.callback && request.method === 'GET') {
+      const result = await commercial.completeLink({ session, state: url.searchParams.get('state'), code: url.searchParams.get('code') ?? undefined,
+        error: url.searchParams.get('error') ?? undefined, browserBinding: cookieValue(request, COMMERCIAL_LINK_COOKIE) });
+      return protectedResponse(303, null, { ...result.headers, location: result.location, 'referrer-policy': 'no-referrer' });
+    }
+    if (url.pathname === COMMERCIAL_ROUTES.status && request.method === 'GET') {
+      const result = await commercial.status({ session });
+      return protectedResponse(200, result.body, result.headers);
+    }
+    if (request.method !== 'POST') return publicFailure(404, 'E_NOT_FOUND');
+    let result;
+    if (url.pathname === COMMERCIAL_ROUTES.link) {
+      const begun = await commercial.beginLink(mutation);
+      result = { body: begun.outcome === 'authorize' ? { ok: true, result: 'authorize', authorizationUrl: begun.authorizationUrl } : { ok: true, result: begun.outcome }, headers: begun.headers };
+    }
+    else if (url.pathname === COMMERCIAL_ROUTES.unlink) result = await commercial.unlink(mutation);
+    else if (url.pathname === COMMERCIAL_ROUTES.bindings) {
+      const input = await jsonInput(request);
+      if (!Number.isSafeInteger(input?.organisationId) || !['bind', 'unbind'].includes(input?.action) || (input.action === 'bind' && typeof input.slot !== 'string')) {
+        throw Object.assign(appError('E_COMMERCIAL_INPUT'), { status: 400 });
+      }
+      result = input.action === 'bind' ? await commercial.bind({ ...mutation, slot: input.slot, organisationId: input.organisationId })
+        : await commercial.unbind({ ...mutation, organisationId: input.organisationId });
+    }
+    else return publicFailure(404, 'E_NOT_FOUND');
+    const reports = commercial.flushReports().catch(() => undefined);
+    if (context?.waitUntil) context.waitUntil(reports); else await reports;
+    return protectedResponse(200, result.body, result.headers);
+  } catch (error) { return protectedFailure(error); }
+}
+
 /** Cloudflare Worker adapter: ingress only acknowledges a verified, durable enqueue. */
 export function createGitHubAppWorker(options = {}) {
+  const commercialFor = env => {
+    // Invalid commercial configuration leaves the commercial routes unavailable; it never blocks webhooks.
+    try { return options.commercial ?? commercialFromEnv(env); } catch { return undefined; }
+  };
   return {
-    async fetch(request, env) {
+    async fetch(request, env, context) {
       const url = new URL(request.url);
       if (request.method === 'GET' && url.pathname === '/health/ping') return response(200, { status: 'ok', service: 'diffdevil-github-app' });
       if (request.method === 'GET' && url.pathname === '/health/ready') {
         try { await (options.store ?? new D1AppStore(env.APP_DB)).readiness(); return response(200, { status: 'ready', service: 'diffdevil-github-app' }); }
         catch { return publicFailure(503, 'E_NOT_READY'); }
       }
+      if (Object.values(COMMERCIAL_ROUTES).includes(url.pathname)) return commercialRoute(request, url, commercialFor(env), context);
       if (request.method !== 'POST' || url.pathname !== '/webhooks/github') return publicFailure(404, 'E_NOT_FOUND');
       if (!bodyLimit(request)) return publicFailure(413, 'E_BODY_LIMIT');
       const id = deliveryId(request), event = request.headers.get('x-github-event');
@@ -254,6 +336,8 @@ export function createGitHubAppWorker(options = {}) {
     async scheduled(_controller, env, context) {
       const store = options.store ?? new D1AppStore(env.APP_DB);
       context.waitUntil(store.maintain());
+      const commercial = commercialFor(env);
+      if (commercial) context.waitUntil(commercial.maintain());
     }
   };
 }
