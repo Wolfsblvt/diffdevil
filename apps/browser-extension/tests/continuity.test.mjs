@@ -206,7 +206,6 @@ test('coverage read from storage tolerates anything and never grants more than i
   assert.deepEqual({ ...coverage, declined: { ...coverage.declined }, unresolved: { ...coverage.unresolved } }, { limit: 150, automatic: 0, topUp: 0, explicit: 3, declined: { a: 'binary' }, unresolved: { d: 'collapsed', f: 'unreachable' } }, 'a declined path is not also unresolved; unknown reasons are dropped');
   assert.equal(m.automaticRemaining({ ...coverage, topUp: 5 }, 3), 0); assert.equal(m.automaticRemaining({ ...coverage, automatic: 1 }, 3), 2); assert.equal(m.automaticRemaining({ ...coverage, automatic: 1, topUp: 1 }, 3), 1, 'opening and scrolling share one budget');
   const empty = m.readCoverage(null, 7); assert.deepEqual({ ...empty, declined: { ...empty.declined }, unresolved: { ...empty.unresolved } }, { limit: 7, automatic: 0, topUp: 0, explicit: 0, declined: {}, unresolved: {} });
-  assert.equal(m.retryable('collapsed'), false); assert.equal(m.retryable('disagrees'), false); assert.equal(m.retryable('unreachable'), true); assert.equal(m.retryable(undefined), true);
 });
 
 test('only a first install opens Settings at its ready section', () => {
