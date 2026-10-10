@@ -223,8 +223,15 @@ freshness; it never fails the read. This candidate does not claim that collectio
 its observer is deployed or composed into a live App.
 
 Co-change uses one compatible population throughout: complete recovered final
-comparisons from the same repository and declared window. `together`, `own` and `of`
-are counts in that population, not precision claims over unrecovered history.
+comparisons from the same repository and declared window. `samples` is that full
+eligible population. `subjectPullRequests` counts its comparisons containing the
+selected subject file. Each companion has `together` (eligible comparisons containing
+both files), `subjectPullRequests` (the subject-file denominator) and
+`partnerPullRequests` (comparisons containing the companion). The chart meter is
+`together / subjectPullRequests`: the share of the subject file's merged PRs that also
+touched this companion. These counts describe the recovered population and do not
+claim precision over unrecovered history. Consumers must use the named subject count
+for the meter; partner frequency is a separate fact.
 The cloud's default distinct-merged-PR frequency counts each PR once; partial file
 coverage exposes a possible count range instead of hiding missing comparisons.
 

@@ -301,10 +301,12 @@ function cochange(records, repositoryId, name) {
   const population = records.filter(record => record.repositoryId === repositoryId && record.facts.report?.fileSet.complete === true);
   const own = population.filter(record => record.facts.report.files.some(file => file.path === name));
   const neighbors = new Set(own.flatMap(record => record.facts.report.files.map(file => file.path)).filter(value => value !== name));
-  return { basis: 'complete-recovered-final-comparisons', scope: 'all-observed-file-facts', samples: population.length, own: own.length,
+  return { basis: 'complete-recovered-final-comparisons', scope: 'all-observed-file-facts', samples: population.length,
+    subjectPullRequests: own.length,
     companions: [...neighbors].map(path => {
       const contains = record => record.facts.report.files.some(file => file.path === path);
-      return { repositoryId, path, together: own.filter(contains).length, of: population.filter(contains).length, own: own.length };
+      return { repositoryId, path, together: own.filter(contains).length, subjectPullRequests: own.length,
+        partnerPullRequests: population.filter(contains).length };
     }).sort((a, b) => b.together - a.together || a.path.localeCompare(b.path)) };
 }
 

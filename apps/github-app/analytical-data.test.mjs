@@ -76,6 +76,35 @@ test('six surfaces use final merged facts, independent revisions, current policy
   assert.equal(file.result.contributions[0].prPolicyChanged.value, 0, 'current-policy totals stay separate');
 });
 
+test('co-change names its subject and partner counts and keeps the meter subject-directed', async () => {
+  const files = ['small.txt', 'hub.txt'];
+  const changedFiles = paths => paths.map(path =>
+    `diff --git a/${path} b/${path}\n--- a/${path}\n+++ b/${path}\n@@ -1 +1 @@\n-old\n+new\n`).join('');
+  const report = unwrap(analyzeDiff(changedFiles(files), { source: {
+    kind: 'github-api', comparison: 'direct', comparisonId: 'cochange', base, head,
+  } }));
+  const records = [
+    record(1, report),
+    record(2, report),
+    ...Array.from({ length: 8 }, (_, index) => record(index + 3, unwrap(analyzeDiff(
+      changedFiles(['hub.txt']), { source: { kind: 'github-api', comparison: 'direct', comparisonId: `hub-${index}`, base, head } })))),
+  ];
+  const { service } = fixture(records);
+  const small = await service.query(query('file', { path: 'small.txt' }), actor);
+  const hub = await service.query(query('file', { path: 'hub.txt' }), actor);
+
+  assert.equal(small.result.cochange.subjectPullRequests, 2);
+  assert.deepEqual(small.result.cochange.companions[0], {
+    repositoryId: 17, path: 'hub.txt', together: 2, subjectPullRequests: 2, partnerPullRequests: 10,
+  });
+  assert.equal(small.result.cochange.companions[0].together / small.result.cochange.subjectPullRequests, 1);
+  assert.deepEqual(hub.result.cochange.companions.find(value => value.path === 'small.txt'), {
+    repositoryId: 17, path: 'small.txt', together: 2, subjectPullRequests: 10, partnerPullRequests: 2,
+  });
+  assert.equal(hub.result.cochange.companions.find(value => value.path === 'small.txt').together
+    / hub.result.cochange.subjectPullRequests, 0.2);
+});
+
 test('Free and unauthorized readers cannot obtain premium names or aggregate file history', async () => {
   const { service, revoke } = fixture(undefined, 'free');
   const freeFiles = await service.query(query('files'), actor);
