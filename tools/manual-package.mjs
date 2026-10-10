@@ -7,7 +7,7 @@ import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { packageSource } from '../apps/manual/manifest.mjs';
 export const root = fileURLToPath(new URL('../',import.meta.url));
@@ -74,7 +74,9 @@ export function prepareManual() {
  }
  const unpacked=join(cache,'package');
  rmSync(unpacked,{recursive:true,force:true}); mkdirSync(unpacked,{recursive:true});
- run('tar',['-xzf',tarball,'-C',unpacked,'--strip-components=1']);
+ // Names are relative to the cache directory: GNU tar (first in PATH with Git for Windows) reads a
+ // drive prefix such as D:\ as a remote host:path, while bsdtar and Unix tar accept relative names alike.
+ run('tar',['-xzf',relative(cache,tarball),'-C',relative(cache,unpacked),'--strip-components=1'],{cwd:cache});
  // Directory packaging plus install-links preserves a portable lock: source identity
  // is proven by the accepted Git SHA and package receipt, not OS-specific tar headers.
  npm([unchangedDependencies?'ci':'install','--install-links','--ignore-scripts','--no-audit','--no-fund',...(offline?['--offline']:[])],manualRoot);
