@@ -29,7 +29,7 @@ export function readySection(host: HTMLElement, settings: Settings, review: () =
   for (const [key, value] of [
     ['policy', policyLine(settings)],
     ['cache', `${settings['cache.maximumSize']} MiB rebuildable local reports/policy`],
-    ['analysis', `up to ${plural(Number(settings['analysis.maximumFiles']), 'file')} measured automatically per pull request`],
+    ['analysis', `up to ${plural(Number(settings['analysis.maximumFiles']), 'file')} measured automatically per pull request; the rest when you ask`],
     ['native churn', settings['display.nativeChurn'] === 'faint' ? 'faint after Changed is known' : 'hidden after Changed is known'],
   ] as const) defaults.append(node('dt', '', key), node('dd', '', value));
   const example = node('a', 'primary-button', 'Open the public example PR'); example.href = EXAMPLE_PULL_REQUEST; example.target = '_blank'; example.rel = 'noopener noreferrer';

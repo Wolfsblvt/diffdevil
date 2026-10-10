@@ -7,7 +7,7 @@
  */
 import { measurementText as value, evidenceText } from '@wolfsblvt/diffdevil/browser/text';
 import type { HumanReportView, Rail } from '@wolfsblvt/diffdevil/browser';
-import type { CoverageSummary, DeclineReason, FileStanding } from '../shared/coverage.js';
+import { measuredAutomatically, type CoverageSummary, type DeclineReason, type FileStanding } from '../shared/coverage.js';
 import { node, button } from '../shared/dom.js';
 import { productIcon } from '../shared/icons.js';
 import type { Popover } from './popover.js';
@@ -48,12 +48,14 @@ export interface ReportActions {
   readonly errorPanel: (error: { code: string; message: string }, popover: Popover) => HTMLElement;
 }
 const short = (sha: string | undefined): string => sha?.slice(0, 7) ?? '?';
+/** A control's identity across rebuilds of the open report: the rebuilt report gives focus back to the control with the same key. */
+const keyed = <T extends HTMLElement>(control: T, key: string): T => { control.dataset.key = key; return control; };
 const glyph = (): HTMLElement => productIcon('monochrome', true, chrome.runtime.getURL)!;
 function header(title: string, meta: string | undefined, popover: Popover, mono = false): { header: HTMLElement; heading: HTMLElement } {
   const wrap = node('header', 'ddx-head'); const titles = node('div', 'ddx-titles');
   const heading = node('h2', `ddx-title${mono ? ' ddx-title-mono' : ''}`); heading.id = 'diffdevil-report-heading'; heading.append(glyph(), title); titles.append(heading);
   if (meta) titles.append(node('p', 'ddx-meta', meta));
-  const close = button('×', () => popover.close(), 'ddx-close'); close.setAttribute('aria-label', 'Close report');
+  const close = keyed(button('×', () => popover.close(), 'ddx-close'), 'close'); close.setAttribute('aria-label', 'Close report');
   wrap.append(titles, close); return { header: wrap, heading };
 }
 function eyebrow(text: string, standing?: string): HTMLElement {
@@ -131,7 +133,7 @@ function planBlock(view: HumanReportView, actions: ReportActions): HTMLElement |
   const status = node('span', 'ddx-label-status'); status.setAttribute('role', 'status');
   const select = [chip];
   if (!observed && actions.findLabel) {
-    const find = button('Find in labels ↗', () => actions.findLabel!(label, rail.members ?? [], status), 'ddx-secondary');
+    const find = keyed(button('Find in labels ↗', () => actions.findLabel!(label, rail.members ?? [], status), 'ddx-secondary'), 'find-label');
     find.title = `Opens GitHub’s Labels picker and pre-fills it with ${label}. Nothing is applied by diffdevil.`;
     select.push(find);
   }
@@ -139,46 +141,47 @@ function planBlock(view: HumanReportView, actions: ReportActions): HTMLElement |
   return block;
 }
 const REASON_TEXT: Readonly<Record<DeclineReason, string>> = { binary: 'binary', submodule: 'submodule', 'too-big': 'too big', truncated: 'truncated', omitted: 'no patch supplied' };
-/** measured / bounded / provider-declined / total, the automatic limit, and what on-demand work changed. */
+/** measured / bounded / provider-declined / total, the automatic limit, and how many files were measured automatically or on request. */
 function coverageBlock(actions: ReportActions): HTMLElement | undefined {
   const summary = actions.coverage.summary(); if (!summary) return undefined;
-  const block = node('div', 'ddx-block ddx-grid ddx-coverage'); block.append(eyebrow('coverage', summary.bounded === 0 ? 'every file measured' : 'bounded until the rest is measured'));
+  const block = node('div', 'ddx-block ddx-grid ddx-coverage'); block.append(eyebrow('coverage', summary.bounded > 0 ? 'bounded until the rest is measured' : summary.declined > 0 ? 'every file GitHub supplied is measured' : 'every file measured'));
   const declined = Object.entries(summary.declinedReasons).map(([reason, count]) => `${count} ${REASON_TEXT[reason as DeclineReason]}`).join(', ');
   const counts = node('span', 'ddx-coverage-counts');
   for (const [label, count, key] of [['measured', summary.measured, 'measured'], ['bounded', summary.bounded, 'bounded'], ['provider-declined', summary.declined, 'declined'], ['total', summary.total, 'total']] as const) {
     const item = node('span', 'ddx-coverage-item'); item.dataset.part = key; item.append(`${label} `, node('b', '', `${summary.totalExact || key !== 'total' ? '' : '≥ '}${count}`)); counts.append(item);
   }
   if (declined) counts.title = `Provider declined: ${declined}.`;
-  const limit = node('span', 'ddx-quiet', `automatic limit ${summary.limit}${summary.onDemand ? ` · on-demand work added ${summary.onDemand} ${summary.onDemand === 1 ? 'file' : 'files'}` : ''}`);
+  const limit = node('span', 'ddx-quiet', `automatic limit ${summary.limit} · ${measuredAutomatically(summary)} measured automatically${summary.explicit ? ` · ${summary.explicit} on request` : ''}`);
   block.append(...keyValue('files', counts), ...keyValue('limit', limit));
   const progress = actions.coverage.progress();
   if (progress) {
     const line = node('span', 'ddx-coverage-progress', `Analyzing remaining files · ${progress.done} of ${progress.total}${progress.failed ? ` · ${progress.failed} not supplied` : ''}`); line.setAttribute('role', 'status');
-    const cancel = button('Cancel', () => actions.coverage.cancel(), 'ddx-link'); cancel.dataset.key = 'cancel-continuation';
+    // Start and Cancel are one control slot, so focus moves from one to the other as the pass begins and ends.
+    const cancel = keyed(button('Cancel', () => actions.coverage.cancel(), 'ddx-link'), 'continuation');
     block.append(...keyValue('', line, cancel));
   } else if (summary.bounded > 0) {
     const stopped = actions.coverage.note(); if (stopped) block.append(...keyValue('', node('span', 'ddx-quiet', `The last pass stopped: ${stopped} What was measured is kept; run it again to continue.`)));
-    const more = button('Analyze remaining files', () => actions.coverage.start(), 'ddx-secondary'); more.dataset.key = 'analyze-remaining';
+    const more = keyed(button('Analyze remaining files', () => actions.coverage.start(), 'ddx-secondary'), 'continuation');
     more.title = `Reads ${summary.bounded} more ${summary.bounded === 1 ? 'file' : 'files'} from GitHub, one explicit pass for this comparison, and keeps the result in this browser. Nothing is estimated from the files already measured.`;
     block.append(...keyValue('', more));
   }
   return block;
 }
 function copyAction(actions: ReportActions, path?: string): HTMLButtonElement {
-  const copy = button('Copy facts', () => {
+  const copy = keyed(button('Copy facts', () => {
     void actions.copyText(path).then(text => navigator.clipboard.writeText(text)).then(() => { copy.textContent = 'Copied ✓'; setTimeout(() => { copy.textContent = 'Copy facts'; }, 1600); }, () => { copy.textContent = 'Clipboard unavailable'; });
-  }, 'ddx-link');
+  }, 'ddx-link'), 'copy-facts');
   copy.title = `Copies the canonical diffdevil human report for this ${path === undefined ? 'comparison' : 'file'} — the same text the CLI prints.`;
   return copy;
 }
 function externalLink(text: string, href: string): HTMLAnchorElement { const link = node('a', 'ddx-link', text); link.href = href; link.target = '_blank'; link.rel = 'noopener noreferrer'; return link; }
 function footer(view: HumanReportView, actions: ReportActions, file: boolean): HTMLElement {
   const wrap = node('footer', 'ddx-footer'); const left = node('span', 'ddx-footer-group'); const right = node('span', 'ddx-footer-group');
-  const details = actions.detailsUrl?.(view); const detailsLink = details ? externalLink('Details ↗', details) : undefined;
+  const details = actions.detailsUrl?.(view); const detailsLink = details ? keyed(externalLink('Details ↗', details), 'details') : undefined;
   if (file) { left.append(copyAction(actions, view.focus?.path)); if (detailsLink) left.append(detailsLink); wrap.append(left); return wrap; }
   if (detailsLink) left.append(detailsLink); left.append(copyAction(actions));
-  const pause = button('Pause this repository', actions.pause, 'ddx-link'); pause.title = 'Stops diffdevil on every pull request of this repository in this browser and brings GitHub’s own counters back. Nothing is deleted and nothing changes on GitHub; Resume is on the page and in Settings.';
-  right.append(pause, externalLink('Local data', actions.dataUrl), externalLink('Settings', actions.settingsUrl)); wrap.append(left, right); return wrap;
+  const pause = keyed(button('Pause this repository', actions.pause, 'ddx-link'), 'pause'); pause.title = 'Stops diffdevil on every pull request of this repository in this browser and brings GitHub’s own counters back. Nothing is deleted and nothing changes on GitHub; Resume is on the page and in Settings.';
+  right.append(pause, keyed(externalLink('Local data', actions.dataUrl), 'local-data'), keyed(externalLink('Settings', actions.settingsUrl), 'settings')); wrap.append(left, right); return wrap;
 }
 function shell(popover: Popover, parts: (HTMLElement | undefined)[], heading: HTMLElement): HTMLElement {
   const panel = node('div'); panel.setAttribute('aria-labelledby', heading.id);
@@ -209,7 +212,7 @@ function fileCoverage(view: HumanReportView, actions: ReportActions): HTMLElemen
   if (state.standing === 'declined') { block.textContent = `GitHub declined to supply this file’s lines (${REASON_TEXT[state.reason ?? 'omitted']}). Its numbers stay bounded.`; return block; }
   const summary = actions.coverage.summary();
   block.append(node('span', '', `Not measured yet${summary ? `: the automatic limit of ${summary.limit} files left it bounded.` : '.'} `));
-  const measure = button('Measure this file', () => actions.measureFile(path), 'ddx-secondary'); measure.dataset.key = 'measure-file'; block.append(measure); return block;
+  const measure = keyed(button('Measure this file', () => actions.measureFile(path), 'ddx-secondary'), 'measure-file'); block.append(measure); return block;
 }
 /** Failed claim · reason · consequence · next action. Text-colour border, no red wash. */
 export function errorPanel(error: { code: string; message: string }, meta: string | undefined, popover: Popover, actions: ReportActions): HTMLElement {
@@ -217,7 +220,7 @@ export function errorPanel(error: { code: string; message: string }, meta: strin
   const block = node('div', 'ddx-error');
   block.append(node('p', 'ddx-error-claim', '× Could not read this comparison.'), node('p', '', `${error.message} (${error.code})`), node('p', 'ddx-quiet', 'GitHub’s counts are unchanged. Nothing was measured.'));
   const row = node('div', 'ddx-actions');
-  const copy = button('Copy diagnostics', () => { void navigator.clipboard.writeText(actions.diagnostics(error)).then(() => { copy.textContent = 'Copied ✓'; setTimeout(() => { copy.textContent = 'Copy diagnostics'; }, 1600); }, () => { copy.textContent = 'Clipboard unavailable'; }); }, 'ddx-link');
-  row.append(button('Retry', () => { popover.close(false); actions.retry(); }, 'ddx-link'), copy, externalLink('Settings', actions.settingsUrl));
+  const copy = keyed(button('Copy diagnostics', () => { void navigator.clipboard.writeText(actions.diagnostics(error)).then(() => { copy.textContent = 'Copied ✓'; setTimeout(() => { copy.textContent = 'Copy diagnostics'; }, 1600); }, () => { copy.textContent = 'Clipboard unavailable'; }); }, 'ddx-link'), 'copy-diagnostics');
+  row.append(keyed(button('Retry', () => { popover.close(false); actions.retry(); }, 'ddx-link'), 'retry'), copy, keyed(externalLink('Settings', actions.settingsUrl), 'settings'));
   return shell(popover, [head.header, block, row], head.heading);
 }

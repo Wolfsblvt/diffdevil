@@ -106,12 +106,14 @@ export interface Acquired {
   readonly verify?: () => Promise<Standing>;
 }
 export interface AcquireOptions { /** A comparison already confirmed by a fresh same-route read; skips the pre-policy confirmation. */ readonly confirmed?: BrowserComparison }
-const identity = (comparison: BrowserComparison): string => `${comparison.repository.toLowerCase()}#${comparison.pullRequest}@${comparison.base}...${comparison.head}`;
+/** The name one browser profile coordinates work on a comparison under. */
+export const comparisonIdentity = (comparison: BrowserComparison): string => `${comparison.repository.toLowerCase()}#${comparison.pullRequest}@${comparison.base}...${comparison.head}`;
 /**
- * One browser profile acquires a comparison once. A tab that finds another tab already at work waits
- * for it and then reads what it stored. Where the page has no usable lock manager the work simply runs.
+ * One browser profile does one piece of work on a comparison at a time. A tab that finds another tab
+ * already at work waits for it and then reads what it stored. Where the page has no usable lock
+ * manager the work simply runs.
  */
-async function exclusive<T>(name: string, signal: AbortSignal, work: () => Promise<T>): Promise<T> {
+export async function exclusive<T>(name: string, signal: AbortSignal, work: () => Promise<T>): Promise<T> {
   const locks = (globalThis.navigator as { locks?: { request<R>(name: string, options: { signal: AbortSignal }, callback: () => Promise<R>): Promise<R> } } | undefined)?.locks;
   if (!locks) return work();
   let started = false;
@@ -186,7 +188,7 @@ export async function acquire(current: Route, document: Document, signal: AbortS
     }
   }
   const resolved = comparison; const source = sourceDocument; const known = publicResult;
-  return exclusive(`diffdevil:acquire:${identity(resolved)}`, signal, async () => {
+  return exclusive(`diffdevil:acquire:${comparisonIdentity(resolved)}`, signal, async () => {
     // Another tab may have stored this comparison while this one waited for the lock.
     const lookup = await request<Lookup>({ type: 'cache.lookup', comparison: resolved }); if (signal.aborted) throw signal.reason;
     if (lookup.paused) throw new ExtensionError('REPOSITORY_PAUSED', 'diffdevil is paused for this repository.');

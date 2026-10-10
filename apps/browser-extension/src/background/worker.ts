@@ -35,7 +35,10 @@ async function handle(message: Message, sender: chrome.runtime.Sender): Promise<
     case 'policy.templates': { const result = requiredTemplates(JSON.stringify(message.layers)); return result.ok ? result.value.slice(0, 16) : []; }
     case 'source.public': { const settings = await preferences.load(); if (isPaused(settings, message.repository)) throw new ExtensionError('REPOSITORY_PAUSED', 'diffdevil is paused for this repository.'); return provider.pull(message.repository, message.pullRequest, message.files === true, message.page); }
     case 'source.policy': { const settings = await preferences.load(); if (isPaused(settings, message.repository)) throw new ExtensionError('REPOSITORY_PAUSED', 'diffdevil is paused for this repository.'); return provider.policy(message.repository, message.base, message.path); }
-    case 'cache.lookup': return analysis.lookup(readComparison(message.comparison), await preferences.load());
+    case 'cache.lookup': {
+      if (message.paths !== undefined && (!Array.isArray(message.paths) || message.paths.length > 3000 || message.paths.some(path => typeof path !== 'string' || path.length > 4096))) throw new ExtensionError('FILE_LIMIT', 'Ask about at most 3,000 file paths.');
+      return analysis.lookup(readComparison(message.comparison), await preferences.load(), message.paths);
+    }
     case 'cache.recent': return analysis.recent(message.repository, message.pullRequest, await preferences.load());
     case 'analysis.run': return analysis.run(message.input, await preferences.load());
     case 'analysis.extend': return analysis.extend(message, await preferences.load());

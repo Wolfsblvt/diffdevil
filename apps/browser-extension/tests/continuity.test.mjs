@@ -138,12 +138,13 @@ test('coverage always adds up and says which files the provider declined', async
   assert.deepEqual(packet.files.map(file => file.standing), ['measured', 'measured', 'bounded', 'bounded', 'declined', 'declined']);
   assert.notEqual(packet.view.changed.status, 'exact', 'the aggregate stays honestly bounded'); assert.equal(packet.view.report.files.length, 0, 'the packet carries the aggregate, not every file record');
 });
-test('visible measurement spends the configured allowance and then stops', async () => {
-  const one = world(); const packet = await one.analysis.run(input(8, 2), settings({ 'analysis.maximumFiles': 2 })); const limited = settings({ 'analysis.maximumFiles': 2 });
+test('scrolling spends only what the opening pass left of the one automatic budget, and then stops', async () => {
+  const limited = settings({ 'analysis.maximumFiles': 4 }); const one = world(); const packet = await one.analysis.run(input(8, 2), limited);
   const first = await one.analysis.extend({ comparison: packet.comparison, patches: patchesFor([2, 3, 4]), via: 'visible' }, limited);
-  assert.equal(first.coverage.measured, 4, 'two of the three offered files fit the allowance'); assert.equal(first.coverage.topUp, 2); assert.equal(first.coverage.onDemand, 2); assert.notEqual(first.key, packet.key, 'the projection identity follows the report');
-  const second = await one.analysis.extend({ comparison: packet.comparison, patches: patchesFor([4, 5]), via: 'visible' }, limited); assert.equal(second.coverage.measured, 4, 'the allowance is spent; scrolling measures nothing more');
+  assert.equal(first.coverage.measured, 4, 'two opened plus two of the three offered files fill the budget of four'); assert.equal(first.coverage.topUp, 2); assert.equal(first.coverage.onDemand, 2); assert.notEqual(first.key, packet.key, 'the projection identity follows the report');
+  const second = await one.analysis.extend({ comparison: packet.comparison, patches: patchesFor([4, 5]), via: 'visible' }, limited); assert.equal(second.coverage.measured, 4, 'the budget is spent; scrolling measures nothing more');
   const explicit = await one.analysis.extend({ comparison: packet.comparison, patches: patchesFor([4, 5]), via: 'explicit' }, limited); assert.equal(explicit.coverage.measured, 6); assert.equal(explicit.coverage.explicit, 2); assert.equal(explicit.coverage.onDemand, 4);
+  assert.equal(m.measuredAutomatically(explicit.coverage), 4, 'automatic work never exceeded the configured limit');
   const lower = (a, b) => a.view.changed.lower <= b.view.changed.lower && a.view.changed.upper >= b.view.changed.upper; assert.ok(lower(packet, first) && lower(first, explicit), 'every step only narrows the aggregate');
 });
 test('continuing a partial comparison after a restart carries on from persisted coverage', async () => {
@@ -191,7 +192,7 @@ test('file selection puts the reader’s files first, then provider order, withi
 test('coverage read from storage tolerates anything and never grants more than it records', () => {
   const coverage = m.readCoverage({ limit: -4, automatic: 'x', topUp: 2.5, explicit: 3, declined: { a: 'binary', b: 'because', c: 7 } }, 150);
   assert.deepEqual({ ...coverage, declined: { ...coverage.declined } }, { limit: 150, automatic: 0, topUp: 0, explicit: 3, declined: { a: 'binary' } });
-  assert.equal(m.topUpRemaining({ ...coverage, topUp: 5 }, 3), 0); assert.equal(m.automaticRemaining({ ...coverage, automatic: 1 }, 3), 2);
+  assert.equal(m.automaticRemaining({ ...coverage, topUp: 5 }, 3), 0); assert.equal(m.automaticRemaining({ ...coverage, automatic: 1 }, 3), 2); assert.equal(m.automaticRemaining({ ...coverage, automatic: 1, topUp: 1 }, 3), 1, 'opening and scrolling share one budget');
   const empty = m.readCoverage(null, 7); assert.deepEqual({ ...empty, declined: { ...empty.declined } }, { limit: 7, automatic: 0, topUp: 0, explicit: 0, declined: {} });
 });
 
@@ -199,4 +200,88 @@ test('only a first install opens Settings at its ready section', () => {
   const url = path => `chrome-extension://id/${path}`;
   assert.equal(m.firstInstallUrl({ reason: 'install' }, url), 'chrome-extension://id/options.html#ready');
   for (const reason of ['update', 'chrome_update', 'shared_module_update', 'browser_update', 'unknown']) assert.equal(m.firstInstallUrl({ reason }, url), undefined, reason);
+});
+
+// Transaction ordering, purge fences, revision identity and shared measurement.
+test('the memory store serializes transactions on the state each one actually starts from, and a read-only one cannot write', async () => {
+  const store = new m.MemoryStore(); const cache = new m.AnalysisCache(store); const scope = { repository: 'github.com/a/b', pullRequest: 1 };
+  await Promise.all(['first', 'second', 'third'].map(key => cache.put(key, 'report', scope, 'c', { key })));
+  assert.deepEqual([...store.entries.keys()].sort(), ['first', 'second', 'third'], 'no concurrent write was lost');
+  await assert.rejects(store.run('readonly', async tx => { tx.put({ key: 'sneaky', kind: 'report', repository: 'x', compat: 'c', value: 1, touched: 0, size: 1 }); }), /read-only/u);
+  await store.run('readonly', async tx => { await tx.all(); }); assert.ok(!store.entries.has('sneaky'), 'a read-only transaction commits nothing');
+});
+/** Holds the next persisted report read open until `release`, so a clear can complete in between. */
+function holdReportRead(cache) {
+  const gate = Promise.withResolvers(); const entered = Promise.withResolvers(); const get = cache.get.bind(cache); let held = false;
+  cache.get = async (key, compat) => { const value = await get(key, compat); if (!held && key.startsWith('report:')) { held = true; entered.resolve(); await gate.promise; } return value; };
+  return { entered: entered.promise, release: () => { gate.resolve(); }, restore: () => { cache.get = get; } };
+}
+const personal = () => settings({ 'policy.mode': 'personal-only' });
+const unavailable = () => ({ status: 'unavailable', at: 1 });
+for (const [name, clear] of [['clear all', analysis => analysis.clearAll()], ['clear reports', analysis => analysis.clearReports()], ['clear this pull request', analysis => analysis.clearScope('fixture/example', 42)], ['clear this repository', analysis => analysis.clearScope('Fixture/Example')]]) {
+  test(`a rehydration that straddles “${name}” neither serves nor keeps the purged report`, async () => {
+    const one = world(); const packet = await one.analysis.run(input(2, 2, { policy: unavailable() }), personal());
+    one.analysis.forget(); const hold = holdReportRead(one.cache);
+    const pending = one.analysis.files(packet.key, packet.comparison, ['src/f00.ts'], personal()); await hold.entered;
+    await clear(one.analysis); hold.release();
+    await assert.rejects(pending, error => error.code === 'CONTEXT_EXPIRED', 'the read from before the clear is not served'); hold.restore();
+    await assert.rejects(one.analysis.files(packet.key, packet.comparison, ['src/f00.ts'], personal()), error => error.code === 'CONTEXT_EXPIRED', 'and no context was kept to serve a later request');
+  });
+}
+test('a clear of another pull request during rehydration only makes the worker read again', async () => {
+  const one = world(); const packet = await one.analysis.run(input(2, 2, { policy: unavailable() }), personal());
+  one.analysis.forget(); const hold = holdReportRead(one.cache);
+  const pending = one.analysis.files(packet.key, packet.comparison, ['src/f00.ts'], personal()); await hold.entered;
+  await one.analysis.clearScope('fixture/example', 7); hold.release();
+  assert.ok((await pending)['src/f00.ts'], 'the report it needs was untouched and is served');
+});
+test('a measurement another tab already answered rewrites nothing, and a lookup names which asked-for files are still bounded', async () => {
+  let reportWrites = 0; const one = world(); const original = one.cache.put.bind(one.cache);
+  one.cache.put = async (key, kind, ...rest) => { if (kind === 'report') reportWrites++; return original(key, kind, ...rest); };
+  const packet = await one.analysis.run(input(4, 1), settings()); await one.analysis.extend({ comparison: packet.comparison, patches: patchesFor([1]), via: 'explicit' }, settings());
+  const writes = reportWrites; const again = await one.analysis.extend({ comparison: packet.comparison, patches: [], via: 'explicit' }, settings());
+  assert.equal(reportWrites, writes, 'nothing gained, nothing written'); assert.equal(again.coverage.measured, 2);
+  const lookup = await one.analysis.lookup(packet.comparison, settings(), ['src/f00.ts', 'src/f01.ts', 'src/f02.ts', 'nope.ts']); assert.deepEqual(lookup.bounded, ['src/f02.ts']);
+});
+/** Production `measure` against the production worker: the classic page has no page_data route, so the public API answers. */
+function publicRoute(one, publicComparison, patchText = fragment) {
+  const messages = []; let entryRequests = 0;
+  globalThis.fetch = async () => { entryRequests++; throw new TypeError('The classic page has no page_data route.'); };
+  globalThis.chrome = { runtime: { sendMessage: async message => {
+    messages.push(message);
+    try {
+      if (message.type === 'cache.lookup') return { ok: true, value: await one.analysis.lookup(message.comparison, settings(), message.paths) };
+      if (message.type === 'source.public') return { ok: true, value: { comparison: publicComparison, files: [{ ...fileObject(1, false), patch: patchText }] } };
+      if (message.type === 'analysis.extend') return { ok: true, value: await one.analysis.extend(message, settings()) };
+      return { ok: false, code: 'UNEXPECTED', message: message.type };
+    } catch (error) { return { ok: false, code: error.code ?? 'FAILED', message: error.message }; }
+  } } };
+  return { messages, entries: () => entryRequests };
+}
+const pullRoute = { repository: comparison.repository, pullRequest: 42, path: '/fixture/example/pull/42' };
+test('a public page read after the head moved is refused instead of extending the old comparison', async () => {
+  const one = world(); const packet = await one.analysis.run(input(4, 1), settings());
+  const moved = { ...packet.comparison, head: 'd'.repeat(40) };
+  // Same raw counters, different shape: the engine's counter check alone cannot tell the revisions apart.
+  const route = publicRoute(one, moved, '@@ -1,3 +1,3 @@\n-old\n keep\n+new\n+extra\n');
+  await assert.rejects(m.measure(pullRoute, packet, ['src/f01.ts'], 'explicit', new AbortController().signal), error => error.code === 'COMPARISON_MOVED' && error.observed.head === moved.head);
+  assert.ok(!route.messages.some(message => message.type === 'analysis.extend'), 'no patch reached the report');
+  assert.equal((await one.analysis.lookup(packet.comparison, settings())).coverage.measured, 1, 'the stored report is untouched');
+  const recounted = publicRoute(one, { ...packet.comparison, changedFiles: 5 });
+  await assert.rejects(m.measure(pullRoute, packet, ['src/f01.ts'], 'explicit', new AbortController().signal), error => error.code === 'COMPARISON_MOVED'); assert.ok(!recounted.messages.some(message => message.type === 'analysis.extend'));
+});
+test('a public page for the same comparison still measures, and a file already measured is not read again', async () => {
+  const one = world(); const packet = await one.analysis.run(input(4, 1), settings());
+  const route = publicRoute(one, packet.comparison); const next = await m.measure(pullRoute, packet, ['src/f01.ts'], 'explicit', new AbortController().signal);
+  assert.equal(next.coverage.measured, 2); assert.equal(route.messages.filter(message => message.type === 'source.public').length, 1);
+  const repeat = publicRoute(one, packet.comparison); const same = await m.measure(pullRoute, packet, ['src/f01.ts'], 'explicit', new AbortController().signal);
+  assert.equal(same.coverage.measured, 2); assert.equal(repeat.entries(), 0, 'no page_data request'); assert.equal(repeat.messages.filter(message => message.type === 'source.public').length, 0, 'no provider request for a file another call already measured');
+});
+test('an opening pass that used the whole limit leaves scrolling nothing, and declined files do not spend the budget', async () => {
+  const limited = settings({ 'analysis.maximumFiles': 3 }); const one = world();
+  const packet = await one.analysis.run(input(8, 3, { coverage: { limit: 3, declined: { 'src/f07.ts': 'binary' } } }), limited);
+  const scrolled = await one.analysis.extend({ comparison: packet.comparison, patches: patchesFor([3, 4]), via: 'visible' }, limited);
+  assert.equal(scrolled.coverage.measured, 3, 'the opening pass spent the budget'); assert.equal(scrolled.coverage.declined, 1); assert.equal(m.measuredAutomatically(scrolled.coverage), 3);
+  const raised = settings({ 'analysis.maximumFiles': 5 }); const filled = await one.analysis.extend({ comparison: packet.comparison, patches: patchesFor([3, 4, 5]), via: 'automatic' }, raised);
+  assert.equal(filled.coverage.measured, 5, 'raising the limit spends only the difference'); assert.equal(filled.coverage.limit, 5);
 });

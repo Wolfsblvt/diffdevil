@@ -43,12 +43,18 @@ export class Popover {
   get open(): boolean { return this.anchor !== undefined; }
   /** Whether this trigger's report is the one on screen. */
   shows(anchor: HTMLElement): boolean { return this.anchor === anchor; }
-  /** Replace the open report with a freshly built one in place: same anchor, same position, same focused control. */
+  /**
+   * Replace the open report with a freshly built one in place: same anchor, same position, same focused
+   * control. Controls are matched by their `data-key`; when the focused one no longer exists, focus stays
+   * on the report itself rather than falling back to the page. Focus outside the report is left alone.
+   */
   rebuild(): void {
     if (!this.anchor || !this.panel || !this.host?.shadowRoot || !this.rebuilder) return;
-    const old = this.panel; const focused = (this.host.shadowRoot.activeElement as HTMLElement | null)?.dataset.key;
+    const old = this.panel; const active = this.host.shadowRoot.activeElement as HTMLElement | null; const inside = active !== null && old.contains(active); const focused = active?.dataset.key;
     const next = Popover.prepare(this.rebuilder()); next.classList.add('ddx-open'); this.resized?.unobserve(old); old.replaceWith(next); this.panel = next; this.resized?.observe(next); this.position();
-    if (focused) next.querySelector<HTMLElement>(`[data-key="${focused}"]`)?.focus({ preventScroll: true });
+    if (!inside) return;
+    const same = focused ? next.querySelector<HTMLElement>(`[data-key="${CSS.escape(focused)}"]`) : null;
+    (same ?? next).focus({ preventScroll: true });
   }
   reconcile(): void { if (this.anchor && !this.anchor.isConnected) this.close(false); }
   close(restore = true): void {

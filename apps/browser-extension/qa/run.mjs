@@ -89,9 +89,9 @@ async function optionsPage(dark = true, mobile = false) {
   await env.page.evaluate(() => { const notice = document.createElement('div'); notice.id = 'qa-note'; notice.textContent = 'Rendered source candidate · Test storage · Not an installed-extension capture'; notice.style.cssText = 'position:fixed;bottom:0;left:0;right:0;text-align:center;padding:4px;z-index:9999;background:var(--bg);color:var(--fg-3);font:10px sans-serif;border-top:1px solid var(--hair)'; document.body.append(notice); });
   return env;
 }
-async function contentPage({ dark = true, modern = false, files = true, mobile = false, data = comparison, value = currentPacket, href, failures = 0, ready = '.ddx-root[data-ddx="aggregate"]', backend, measure, headers = [], verifyResult, settings: pageSettings } = {}) {
+async function contentPage({ dark = true, modern = false, files = true, mobile = false, data = comparison, value = currentPacket, href, failures = 0, ready = '.ddx-root[data-ddx="aggregate"]', backend, measure, headers = [], headerHeight = 30, verifyResult, settings: pageSettings } = {}) {
   const env = await environment({ dark, mobile, ...(backend ? { backend } : {}) });
-  if (measure) await env.page.exposeFunction('__measure', measure); await env.page.setContent(githubHtml({ dark, modern, files, data })); await env.page.addStyleTag({ content: githubCss + contentCss }); if (headers.length) await env.page.evaluate(paths => { for (const path of paths) document.querySelector('main').insertAdjacentHTML('beforeend', '<section data-path="' + path + '"><div class="file-header" data-path="' + path + '" style="height:30px"><span>' + path + '</span><span class="diffstat"><span>+2</span> <span>−1</span></span></div></section>'); }, headers); await env.page.addScriptTag({ content: domCode });
+  if (measure) await env.page.exposeFunction('__measure', measure); await env.page.setContent(githubHtml({ dark, modern, files, data })); await env.page.addStyleTag({ content: githubCss + contentCss }); if (headers.length) await env.page.evaluate(({ paths, height }) => { for (const path of paths) document.querySelector('main').insertAdjacentHTML('beforeend', '<section data-path="' + path + '" style="min-height:' + height + 'px"><div class="file-header" data-path="' + path + '" style="height:30px"><span>' + path + '</span><span class="diffstat"><span>+2</span> <span>−1</span></span></div></section>'); }, { paths: headers, height: headerHeight }); await env.page.addScriptTag({ content: domCode });
   await env.page.evaluate(({ packet, settings, href, failures, verifyResult }) => {
     globalThis.fixture = { href: href ?? 'https://github.com/example/cinder/pull/42/files', packet, settings, calls: 0, delay: 0, failures, verifyResult };
     globalThis.controller = DiffdevilUnderTest.startContent({ href: () => fixture.href, acquire: async () => {
@@ -242,10 +242,10 @@ ${await page.evaluate(() => JSON.stringify({ calls: fixture.calls, href: fixture
 
   // Continuity: the production worker logic (persisted report, coverage, extension) behind the same DOM controller.
   const world = new m.Analysis({ cache: new m.AnalysisCache(new m.MemoryStore()), engine: 'qa' });
-  let worldSettings = m.validateSettings({ 'analysis.maximumFiles': 4 }); const pauseWrites = []; const measureCalls = [];
+  let worldSettings = m.validateSettings({ 'analysis.maximumFiles': 6 }); const pauseWrites = []; const measureCalls = [];
   const fileName = index => 'src/f' + String(index).padStart(2, '0') + '.ts'; const fragment = '@@ -1,2 +1,3 @@\n-old\n+new\n+extra\n same\n';
   const worldComparison = { ...comparison, changedFiles: 12, additions: 24, deletions: 12 };
-  const worldPacket = await world.run({ comparison: worldComparison, acquisition: { comparison: worldComparison, format: 'github-files', complete: true, files: Array.from({ length: 12 }, (_, index) => ({ filename: fileName(index), status: 'modified', additions: 2, deletions: 1, ...(index < 4 ? { patch: fragment } : {}) })) }, policy: { status: 'absent', at: 1 }, coverage: { limit: 4, declined: { [fileName(11)]: 'binary' } } }, worldSettings);
+  const worldPacket = await world.run({ comparison: worldComparison, acquisition: { comparison: worldComparison, format: 'github-files', complete: true, files: Array.from({ length: 12 }, (_, index) => ({ filename: fileName(index), status: 'modified', additions: 2, deletions: 1, ...(index < 4 ? { patch: fragment } : {}) })) }, policy: { status: 'absent', at: 1 }, coverage: { limit: 6, declined: { [fileName(11)]: 'binary' } } }, worldSettings);
   const worldBackend = async message => {
     try {
       let value;
@@ -260,28 +260,39 @@ ${await page.evaluate(() => JSON.stringify({ calls: fixture.calls, href: fixture
       return { ok: true, value };
     } catch (error) { return { ok: false, code: error.code ?? 'TEST_OPERATION_FAILED', message: error.message }; }
   };
-  const worldMeasure = async (paths, via) => { measureCalls.push({ paths, via }); const declined = paths.includes(fileName(11)); return world.extend({ comparison: worldComparison, patches: paths.filter(path => path !== fileName(11)).map(path => ({ path, patch: fragment })), ...(declined ? { declined: { [fileName(11)]: 'binary' } } : {}), via }, worldSettings); };
+  const worldMeasure = async (paths, via) => { measureCalls.push({ paths, via }); if (via === 'explicit') await new Promise(resolve => setTimeout(resolve, 300)); const declined = paths.includes(fileName(11)); return world.extend({ comparison: worldComparison, patches: paths.filter(path => path !== fileName(11)).map(path => ({ path, patch: fragment })), ...(declined ? { declined: { [fileName(11)]: 'binary' } } : {}), via }, worldSettings); };
   const headers = Array.from({ length: 12 }, (_, index) => fileName(index));
   const continuity = await contentPage({ value: worldPacket, data: worldComparison, settings: worldSettings, backend: worldBackend, measure: worldMeasure, headers });
   const reportText = () => continuity.page.locator('.ddx-popover').innerText();
   await check('The aggregate seat is bounded and the report says exactly how much was measured, declined and left bounded', async () => {
     assert.match(await continuity.page.locator('[data-ddx="aggregate"] .ddx-evidence').textContent(), /bounded/u);
     await continuity.page.locator('[data-ddx="aggregate"] .ddx-trigger').click(); const text = await reportText();
-    assert.match(text, /measured\s+4/u); assert.match(text, /bounded\s+7/u); assert.match(text, /provider-declined\s+1/u); assert.match(text, /total\s+12/u); assert.match(text, /automatic limit 4/u); assert.ok(await continuity.page.getByRole('button', { name: 'Analyze remaining files' }).count() === 1);
+    assert.match(text, /measured\s+4/u); assert.match(text, /bounded\s+7/u); assert.match(text, /provider-declined\s+1/u); assert.match(text, /total\s+12/u); assert.match(text, /automatic limit 6 · 4 measured automatically/u); assert.ok(await continuity.page.getByRole('button', { name: 'Analyze remaining files' }).count() === 1);
     await capture(continuity.page, 'continuity-report-partial');
   });
-  await check('Files the reader settled on are measured within the configured allowance, in place, while the report stays open', async () => {
-    await continuity.page.waitForFunction(() => /measured\s+8/u.test(document.querySelector('.ddx-popover-host')?.shadowRoot?.querySelector('.ddx-popover')?.innerText ?? ''), null, { timeout: 4000 }).catch(async error => { throw new Error(error.message + ' · report: ' + (await continuity.page.locator('.ddx-popover').innerText().catch(() => 'closed')) + ' · calls: ' + JSON.stringify(measureCalls)); });
-    assert.equal(await continuity.page.locator('.ddx-popover').count(), 1, 'the open report was updated, not replaced by a closed one'); assert.match(await reportText(), /on-demand work added 4 files/u);
-    assert.equal(measureCalls.length, 1); assert.equal(measureCalls[0].via, 'visible'); assert.deepEqual(measureCalls[0].paths, [4, 5, 6, 7].map(fileName));
-    await continuity.page.waitForTimeout(900); assert.equal(measureCalls.length, 1, 'once the allowance is spent, scrolling measures nothing more');
+  const shadowFocus = () => continuity.page.evaluate(() => { const active = document.querySelector('.ddx-popover-host')?.shadowRoot?.activeElement; return active ? { key: active.dataset.key ?? null, role: active.getAttribute('role'), text: active.textContent } : null; });
+  await check('Files rendered below the viewport are not the reader’s demand: nothing is measured until they are scrolled onto', async () => {
+    await continuity.page.waitForTimeout(900); assert.deepEqual(measureCalls, [], 'the second allowance is not spent at opening');
+  });
+  await check('Files the reader scrolled onto are measured within what the opening pass left of the budget, in place, while the report stays open and keeps keyboard focus', async () => {
+    assert.equal((await shadowFocus())?.key, 'close', 'opening the report focuses Close');
+    await continuity.page.evaluate(() => scrollBy(0, 120));
+    await continuity.page.waitForFunction(() => /[56] measured automatically/u.test(document.querySelector('.ddx-popover-host')?.shadowRoot?.querySelector('.ddx-popover')?.innerText ?? ''), null, { timeout: 4000 }).catch(async error => { throw new Error(error.message + ' · report: ' + (await continuity.page.locator('.ddx-popover').innerText().catch(() => 'closed')) + ' · calls: ' + JSON.stringify(measureCalls)); });
+    assert.equal(measureCalls.length, 1); assert.equal(measureCalls[0].via, 'visible'); const onScreen = await continuity.page.evaluate(() => [...document.querySelectorAll('.file-header')].filter(header => { const box = header.getBoundingClientRect(); return box.top >= 0 && box.top < innerHeight; }).map(header => header.dataset.path));
+    const expected = [4, 5, 6, 7, 8, 9, 10].map(fileName).filter(path => onScreen.includes(path)).slice(0, 2); assert.ok(expected.length > 0, `the scroll brought bounded files on screen: ${JSON.stringify(onScreen)}`);
+    assert.deepEqual(measureCalls[0].paths, expected, 'the bounded files now on screen, within the two files the opening pass left of the budget of six');
+    assert.equal(await continuity.page.locator('.ddx-popover').count(), 1, 'the open report was updated, not replaced by a closed one'); assert.match(await reportText(), new RegExp(`measured\\s+${4 + expected.length}`, 'u'));
+    assert.equal((await shadowFocus())?.key, 'close', 'the rebuilt report gave focus back to the same control');
     assert.match(await continuity.page.locator('[data-ddx="file"]').nth(5).innerText(), /\d/u);
   });
-  await check('Analyze remaining files is one explicit pass and ends with every file measured or declined', async () => {
-    await continuity.page.getByRole('button', { name: 'Analyze remaining files' }).click();
+  await check('Analyze remaining files is one explicit pass, operable from the keyboard, and ends with every file measured or declined', async () => {
+    await continuity.page.getByRole('button', { name: 'Analyze remaining files' }).focus(); await continuity.page.keyboard.press('Enter');
+    await continuity.page.waitForFunction(() => document.querySelector('.ddx-popover-host')?.shadowRoot?.activeElement?.textContent === 'Cancel', null, { timeout: 2000 }).catch(() => { throw new Error('focus did not move from Analyze remaining files to Cancel'); });
     await continuity.page.waitForFunction(() => /bounded\s+0/u.test(document.querySelector('.ddx-popover-host')?.shadowRoot?.querySelector('.ddx-popover')?.innerText ?? ''), null, { timeout: 4000 }).catch(async error => { throw new Error(error.message + ' · report: ' + (await continuity.page.locator('.ddx-popover').innerText().catch(() => 'closed')) + ' · calls: ' + JSON.stringify(measureCalls)); });
     const text = await reportText(); assert.match(text, /measured\s+11/u); assert.match(text, /provider-declined\s+1/u); assert.equal(await continuity.page.getByRole('button', { name: 'Analyze remaining files' }).count(), 0);
-    const explicit = measureCalls.filter(call => call.via === 'explicit'); assert.equal(explicit.length, 1); assert.deepEqual(explicit[0].paths, [8, 9, 10].map(fileName)); assert.match(text, /on-demand work added 7 files/u);
+    const explicit = measureCalls.filter(call => call.via === 'explicit'); assert.equal(explicit.length, 1); assert.deepEqual(explicit[0].paths, [4, 5, 6, 7, 8, 9, 10].map(fileName).filter(path => !measureCalls[0].paths.includes(path))); assert.match(text, /measured automatically · \d+ on request/u); assert.match(text, new RegExp(`${4 + measureCalls[0].paths.length} measured automatically · ${7 - measureCalls[0].paths.length} on request`, 'u'));
+    assert.match(text, /every file GitHub supplied is measured/u, 'a declined file is not called measured');
+    const focus = await shadowFocus(); assert.equal(focus?.role, 'dialog', `when the continuation control is gone, focus stays on the report: ${JSON.stringify(focus)}`);
   });
   await check('Pausing from the report removes the seats, restores GitHub’s counters and leaves a way back on the page', async () => {
     await continuity.page.getByRole('button', { name: 'Pause this repository' }).click(); await continuity.page.waitForFunction(() => globalThis.__paused === undefined, null, { timeout: 100 }).catch(() => undefined);
@@ -294,6 +305,65 @@ ${await page.evaluate(() => JSON.stringify({ calls: fixture.calls, href: fixture
     assert.equal(pauseWrites.at(-1).paused, false); assert.equal(await continuity.page.locator('[data-ddx="paused"]').count(), 0);
   });
   await continuity.page.evaluate(() => controller.stop()); await continuity.context.close();
+
+  // Visible demand on a long page: eight files a screen apart, three measured on opening, a budget of six.
+  const far = new m.Analysis({ cache: new m.AnalysisCache(new m.MemoryStore()), engine: 'qa' }); const farSettings = m.validateSettings({ 'analysis.maximumFiles': 6 }); const farCalls = [];
+  const farComparison = { ...comparison, changedFiles: 8, additions: 16, deletions: 8 };
+  const farPacket = await far.run({ comparison: farComparison, acquisition: { comparison: farComparison, format: 'github-files', complete: true, files: Array.from({ length: 8 }, (_, index) => ({ filename: fileName(index), status: 'modified', additions: 2, deletions: 1, ...(index < 3 ? { patch: fragment } : {}) })) }, policy: { status: 'absent', at: 1 }, coverage: { limit: 6, declined: {} } }, farSettings);
+  const farBackend = async message => {
+    try {
+      if (message.type === 'settings.get') return { ok: true, value: farSettings };
+      if (message.type === 'analysis.files') return { ok: true, value: await far.files(message.key, message.comparison, message.paths, farSettings) };
+      throw new Error('Unexpected fixture message: ' + message.type);
+    } catch (error) { return { ok: false, code: error.code ?? 'TEST_OPERATION_FAILED', message: error.message }; }
+  };
+  let farPage;
+  const farMeasure = async (paths, via) => {
+    const seen = await farPage.evaluate(paths => ({ height: innerHeight, boxes: paths.map(path => { const box = document.querySelector(`section[data-path="${path}"]`).getBoundingClientRect(); return { path, top: Math.round(box.top), bottom: Math.round(box.bottom) }; }) }), paths);
+    farCalls.push({ paths, via, ...seen }); return far.extend({ comparison: farComparison, patches: paths.map(path => ({ path, patch: fragment })), via }, farSettings);
+  };
+  const longPage = await contentPage({ value: farPacket, data: farComparison, settings: farSettings, backend: farBackend, measure: farMeasure, headers: Array.from({ length: 8 }, (_, index) => fileName(index)), headerHeight: 1000 }); farPage = longPage.page;
+  const scrollTo = index => farPage.evaluate(path => { document.querySelector(`.file-header[data-path="${path}"]`).scrollIntoView(); scrollBy(0, -100); }, fileName(index));
+  await check('Opening a long pull request spends nothing of the remaining budget on files rendered further down', async () => {
+    await farPage.waitForTimeout(900); assert.deepEqual(farCalls, [], JSON.stringify(farCalls));
+  });
+  await check('Scrolling measures only the files whose diff is on screen, and stops when the shared budget is spent', async () => {
+    await scrollTo(5); await farPage.waitForFunction(() => true); await farPage.waitForTimeout(700);
+    assert.equal(farCalls.length, 1, JSON.stringify(farCalls)); assert.deepEqual(farCalls[0].paths, [4, 5].map(fileName), 'the file still filling the top of the screen, then the one below it');
+    assert.ok(farCalls[0].boxes.every(box => box.top < farCalls[0].height && box.bottom > 0), `every measured file was on screen: ${JSON.stringify(farCalls[0])}`);
+    await scrollTo(7); await farPage.waitForTimeout(700);
+    assert.equal(farCalls.length, 2, JSON.stringify(farCalls)); assert.deepEqual(farCalls[1].paths, [fileName(6)], 'one file of the budget remained');
+    await farPage.evaluate(() => scrollTo(0, document.documentElement.scrollHeight)); await farPage.waitForTimeout(700); assert.equal(farCalls.length, 2, 'the budget is spent'); assert.equal(farCalls.flatMap(call => call.paths).length + 3, 6, 'automatic work stopped at the limit');
+  });
+  await farPage.evaluate(() => controller.stop()); await longPage.context.close();
+
+  // The production worker against the browser's own IndexedDB: purge fences and independent writes.
+  const workerCode = (await build({ stdin: { contents: "export { Analysis } from './apps/browser-extension/src/background/analysis.ts'; export { AnalysisCache } from './apps/browser-extension/src/background/cache.ts'; export { validateSettings } from './apps/browser-extension/src/shared/settings.ts';", resolveDir: resolve('.') }, write: false, bundle: true, platform: 'browser', format: 'iife', target: 'chrome120', globalName: 'WorkerUnderTest', alias: { '@wolfsblvt/diffdevil/browser': resolve('dist/browser/index.js') } })).outputFiles[0].text;
+  const native = await browser.newContext(); await native.route('https://indexeddb.qa.invalid/**', route => route.fulfill({ status: 200, contentType: 'text/html', body: '<!doctype html><title>IndexedDB qualification</title>' }));
+  const nativePage = await native.newPage(); await nativePage.goto('https://indexeddb.qa.invalid/'); await nativePage.addScriptTag({ content: workerCode });
+  for (const [name, clear] of [['clear all', 'all'], ['clear this pull request', 'pull'], ['clear this repository', 'repository'], ['clear reports', 'reports']]) {
+    await check(`Native IndexedDB: a rehydration straddling “${name}” is neither served nor retained`, async () => {
+      const result = await nativePage.evaluate(async clear => {
+        const cache = new WorkerUnderTest.AnalysisCache(indexedDB); const analysis = new WorkerUnderTest.Analysis({ cache, engine: 'qa-native' }); await cache.clear();
+        const settings = WorkerUnderTest.validateSettings({ 'analysis.maximumFiles': 3, 'policy.mode': 'personal-only' });
+        const comparison = { host: 'github.com', repository: 'example/cinder', pullRequest: 42, base: 'a'.repeat(40), head: 'b'.repeat(40), changedFiles: 1, additions: 1, deletions: 1 };
+        const packet = await analysis.run({ comparison, acquisition: { comparison, format: 'github-files', complete: true, files: [{ filename: 'f0.ts', status: 'modified', additions: 1, deletions: 1, patch: '@@ -1,2 +1,2 @@\n-old\n+new\n same\n' }] }, policy: { status: 'unavailable', at: 1 } }, settings);
+        analysis.forget(); const gate = Promise.withResolvers(); const entered = Promise.withResolvers(); const get = cache.get.bind(cache); let held = false;
+        cache.get = async (key, compat) => { const value = await get(key, compat); if (!held && key.startsWith('report:')) { held = true; entered.resolve(); await gate.promise; } return value; };
+        const pending = analysis.files(packet.key, comparison, ['f0.ts'], settings).then(() => 'served', error => error.code); await entered.promise;
+        await (clear === 'all' ? analysis.clearAll() : clear === 'reports' ? analysis.clearReports() : clear === 'pull' ? analysis.clearScope('example/cinder', 42) : analysis.clearScope('Example/Cinder'));
+        gate.resolve(); const inFlight = await pending; cache.get = get;
+        const later = await analysis.files(packet.key, comparison, ['f0.ts'], settings).then(() => 'served', error => error.code);
+        return { inFlight, later, reports: (await cache.summary()).reportEntries };
+      }, clear);
+      assert.deepEqual(result, { inFlight: 'CONTEXT_EXPIRED', later: 'CONTEXT_EXPIRED', reports: 0 });
+    });
+  }
+  await check('Native IndexedDB: concurrent writes of independent keys are all kept', async () => {
+    const keys = await nativePage.evaluate(async () => { const cache = new WorkerUnderTest.AnalysisCache(indexedDB); await cache.clear(); await Promise.all(['first', 'second', 'third'].map(key => cache.put(key, 'report', { repository: 'github.com/a/b', pullRequest: 1 }, 'c', { key }))); return (await cache.inventory()).repositories.flatMap(item => item.pullRequests).length; });
+    assert.equal(keys, 3);
+  });
+  await native.close();
   for (const [name, result, pattern] of [['cached facts are labelled while GitHub confirms them', undefined, /local · cached/u], ['facts GitHub confirmed are plain local', { standing: 'current' }, /^local$/u], ['facts GitHub could not confirm say so and stay exact', { standing: 'unconfirmed', code: 'UNREACHABLE' }, /not confirmed/u]]) {
     const shown = await contentPage({ value: worldPacket, data: worldComparison, settings: worldSettings, backend: worldBackend, verifyResult: result ?? { standing: 'current' } });
     await check('Provenance: ' + name, async () => { if (!result) { await shown.page.evaluate(() => { fixture.verifyHold = true; void controller.refresh(); }); await shown.page.waitForTimeout(120); } await shown.page.waitForFunction(pattern => new RegExp(pattern).test(document.querySelector('.ddx-provenance')?.textContent ?? ''), pattern.source, { timeout: 4000 }); });
