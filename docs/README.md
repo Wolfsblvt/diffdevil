@@ -17,7 +17,7 @@ the [complete manual](manual/README.md); its canonical standalone
 | How do I restore, build, run or verify it? | [Development](DEVELOPMENT.md) |
 | Why were consequential choices made? | [Decisions](DECISIONS.md) |
 | Which behavior is exercised, and which is still unobserved? | [Qualification](qualification.md) |
-| Which tools share versions, and how do updates work? | [Release families and versioning](RELEASING.md) and [reader release guidance](manual/help/releases.md) |
+| Which tools share versions, and how do updates work? | [Release families and versioning](RELEASING.md), including the [App-family release manifest](RELEASING.md#app-family-release-manifest-and-its-consumers), and [reader release guidance](manual/help/releases.md) |
 | How are authorized releases published and read back? | [Publication boundary](publication-boundary.md) |
 | What owns the manual's prose, routes, examples and migration? | [Documentation design](documentation.md) and [manual application](../apps/manual/README.md) |
 | What owns wording and presentation? | [Branding](branding.md), [shared presenters](presentation.md) and [design source](../packages/design/README.md) |

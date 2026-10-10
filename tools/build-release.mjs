@@ -9,6 +9,7 @@ import { writeDeterministicZip } from './deterministic-zip.mjs';
 const root = fileURLToPath(new URL('..', import.meta.url));
 const options = new Map(process.argv.slice(2).flatMap((value, index, values) => value.startsWith('--') ? [[value.slice(2), values[index + 1]]] : []));
 const family = options.get('family') ?? 'all';
+if (family === 'app') throw new Error('App-family release metadata is built by apps/github-app/release-manifest.mjs (npm run build:app-release); see docs/RELEASING.md.');
 if (!['all', 'open-tool', 'skill'].includes(family)) throw new Error('--family must be all, open-tool, or skill.');
 const includeBundle = family === 'all' || options.has('include-bundle');
 const includeRuntime = family !== 'skill' || includeBundle;

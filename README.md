@@ -183,5 +183,6 @@ report or choosing credentials. Report suspected vulnerabilities through the
 
 The [component licence map](LICENSE.md) assigns **MIT** to reusable engine, CLI, API,
 Action software and mapped runnable examples, **AGPL-3.0-only** to application/service
-software and **CC BY 4.0** to original documentation prose, while brand and visual
+software (the managed App with a narrow section 7 permission at its two premium
+interfaces) and **CC BY 4.0** to original documentation prose, while brand and visual
 rights remain reserved as detailed in [LICENSES/README.md](LICENSES/README.md).

@@ -1,4 +1,4 @@
--- SPDX-License-Identifier: AGPL-3.0-only
+-- SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
 PRAGMA foreign_keys = ON;
 CREATE TABLE IF NOT EXISTS installations (installation_id INTEGER PRIMARY KEY, state TEXT NOT NULL, updated_at TEXT NOT NULL, offboarding_at TEXT, tombstoned_at TEXT);
 CREATE TABLE IF NOT EXISTS repositories (repository_id INTEGER PRIMARY KEY, installation_id INTEGER NOT NULL, full_name TEXT, history_enabled INTEGER NOT NULL DEFAULT 0, retention_days INTEGER, state TEXT NOT NULL DEFAULT 'pending-enable', access_state TEXT NOT NULL DEFAULT 'unknown', policy_id TEXT, consent_origin TEXT, configuration_json TEXT, updated_at TEXT NOT NULL, FOREIGN KEY (installation_id) REFERENCES installations(installation_id));

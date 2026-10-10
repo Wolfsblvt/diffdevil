@@ -17,7 +17,7 @@ This contract does not publish a package, move an Action alias, submit an extens
 
 `X.Y.Z` is the selected family version, not a shared generation. Existing open-tool `v1.0.0` and the maintained Action alias `v1` keep their meanings. Browser stores can publish the same extension release at different times without becoming separate version families. Material browser-specific behavior or packaging changes are still extension changes.
 
-The App metadata currently contains `version: null`: no named App release has been selected. It is not version zero, an npm version, or a declaration that the existing canary is a published service release. Before its first named release, select the App SemVer there and include it with the exact source/deployment identity in operator diagnostics. Server and dashboard share that service version; a deployment ID or database migration counter does not replace it.
+The App metadata currently contains `version: null`: no named App release has been selected. It is not version zero, an npm version, or a declaration that the existing canary is a published service release. Before its first named release, select the App SemVer there and include it with the exact source/deployment identity in operator diagnostics. Server and dashboard share that service version; a deployment ID or database migration counter does not replace it. The same file declares the App's `premiumSeam`, described in [App-family release manifest](#app-family-release-manifest-and-its-consumers).
 
 The website, manual, Playground and internal implementation packages do not gain public SemVer tracks merely because they are separate directories or deployments. Record their exact deployed/build source; a Playground build also identifies its engine. A genuinely new independently consumed package needs a release-boundary decision, not an automatic counter.
 
@@ -77,6 +77,58 @@ For stable discovery, read the repository's [GitHub Releases collection](https:/
 
 Up to date is relative to the tool and selected channel. A GitHub extension archive does not prove the same version cleared a Store. Registry, Store, release-asset and managed-deployment readbacks are separate facts. No update prompt compares an extension number with npm, or moves a stable installation to a prerelease without a channel choice. Unknown freshness remains unknown, not a failure of the installed tool.
 
+## App-family release manifest and its consumers
+
+Every `app-vX.Y.Z` GitHub release attaches exactly one machine-readable manifest, `diffdevil-app-X.Y.Z.release.json`. It is how a consumer that builds on a public App release, such as Wolfsblvt Works' private premium edition or a self-hoster pinning a release, learns the exact source and seam it is building on without reading `main`. [D079](DECISIONS.md#d079-let-app-consumers-follow-app-family-releases-through-an-exact-manifest) records why.
+
+`npm run build:app-release -- --source-ref COMMIT` (`apps/github-app/release-manifest.mjs`) derives it from that one commit through Git, never from the working tree, and writes it under `artifacts/release/app/X.Y.Z/`:
+
+```json
+{
+  "kind": "diffdevil.app-release",
+  "schemaVersion": "1.0",
+  "family": "app",
+  "version": "1.2.0",
+  "tag": "app-v1.2.0",
+  "channel": "stable",
+  "source": { "repository": "Wolfsblvt/diffdevil", "commit": "<40-hex commit>", "tree": "<40-hex tree>" },
+  "engine": { "declaredVersion": "1.7.4" },
+  "premiumSeam": {
+    "version": 1,
+    "interfaces": {
+      "service": ["apps/github-app/analytical-data.mjs", "…"],
+      "application": ["apps/app/premium-selection.mjs", "apps/app/src/premium/registry.mjs", "…"]
+    },
+    "permission": {
+      "id": "AdditionRef-diffdevil-premium-interface-exception-1.0",
+      "path": "LICENSES/AdditionRef-diffdevil-premium-interface-exception-1.0.txt"
+    }
+  }
+}
+```
+
+- `version` comes from `apps/github-app/release.json` at that commit; the builder refuses `null`. A SemVer suffix makes `channel` `prerelease`, which must be published as a GitHub prerelease.
+- `source.tree` is the Git tree of `source.commit`, the content identity a consumer verifies after fetching the tag.
+- `engine.declaredVersion` is the root `package.json` version at that commit. It names the contained engine source, not a published npm artifact.
+- `premiumSeam` projects `release.json`'s declaration: the integer version of the extension contract the public App offers, and the exact files of its two named interfaces, `service` (the `premium` argument of `createAnalyticalDataService`) and `application` (the extension resolved from `@diffdevil/premium-app`). These are the Declared Interface Files of the [premium-interface permission](../LICENSES/README.md#app-program--agpl-30-only-with-the-premium-interface-permission), and `permission` names it. List every public file an extension joins through, including public modules its page bodies import; a file left out is not part of the published interface. The builder refuses a declaration that does not name exactly both interfaces, a declared file absent from the tree or outside the App program, a declared file whose licence notice lacks the permission, and a tree without the permission text. `null` means the release offers no extension seam; current `main` declares `null` because the seam arrives with the Community App source. Increase the seam version only for a change an existing extension cannot consume; additive, backward-compatible seam changes keep it.
+- The builder refuses a tree containing `premium/`. A public App release is Community source, never a composite.
+
+`--development` writes the same shape for an unreleased commit, with `channel: development`, `tag: null` and the release metadata's current `version` (possibly `null`). It is never attached to a release. A consumer's local-checkout override can use it so joined development and release consumption record the same identity and seam fields.
+
+### Selecting the newest compatible App release
+
+A consumer follows the App family, not `main`, the promoted repository Latest or a mutable `latest` download URL:
+
+1. Read every page of the Releases collection. Keep published records that are not drafts or prereleases and whose tag is exactly `app-vMAJOR.MINOR.PATCH` with numeric components.
+2. Order those by numeric SemVer and take the greatest.
+3. Read its `diffdevil-app-X.Y.Z.release.json` asset. Require `kind`, `schemaVersion` major `1`, `family: app`, `channel: stable`, and `tag` and `version` equal to the release's tag. Record the asset's SHA-256 (GitHub reports it as the asset `digest`; compute it from the downloaded bytes either way).
+4. Fetch the tag and require `tag^{commit}` and its tree to equal `source.commit` and `source.tree`.
+5. Compare `premiumSeam.version` with the seam versions the consumer supports, and require `premiumSeam.permission.id` to be a permission the consumer's licensing relies on.
+
+A missing or inconsistent manifest, a tag that does not resolve to the manifest's commit or tree, or a manifest that disagrees with its release fails the refresh. It never silently falls back to an older release. A consistent newer release whose seam the consumer does not yet support is a compatibility result, not an error: the consumer may stay on, or select, the greatest consistent release it supports, and reports the newer unsupported one by tag and seam version.
+
+The consumer writes what it resolved into its own exact lock: tag, release ID, manifest asset name and SHA-256, commit, tree, seam version and permission id. It composes and qualifies from that immutable source. Unrelated public merges create no App release and therefore no consumer update. A new App release is the only stable refresh occasion; the private consumer owns its resolver, lock and refresh command.
+
 ## Browser version constraints
 
 The extension manifest, never root `package.json`, owns the browser update number. Stable extension releases use three numeric components satisfying [Chrome's version rules](https://developer.chrome.com/docs/extensions/reference/manifest/version): no leading zeroes, no all-zero version, and each component at most 65535. `version_name` is display text, not update ordering.
@@ -115,4 +167,4 @@ Build and exercise the actual distributed consumer. Check version/source identit
 
 Prepare the family-scoped release account and exact asset manifest, then perform only separately authorized effects through [Publication procedure](publication-boundary.md). Read actual registry, tag, alias, Store and deployment identities back. A failed later channel does not erase an earlier successful publication, nor does earlier success prove the later one.
 
-This adoption does not renumber `v1.0.0`, publish absent custom assets, or declare the App or extension generally available. Current source versions remain candidates until cut. The App's first named release still needs its selected non-null version and operator diagnostic/deployment integration; Store release preparation still needs truthful candidate display/channel handling. Those are concrete release obligations under this settled contract, not another product-design fork.
+This adoption does not renumber `v1.0.0`, publish absent custom assets, or declare the App or extension generally available. Current source versions remain candidates until cut. The App's first named release still needs its selected non-null version, its `premiumSeam` declaration once the Community seam is in the tree, and operator diagnostic/deployment integration; Store release preparation still needs truthful candidate display/channel handling. Those are concrete release obligations under this settled contract, not another product-design fork.

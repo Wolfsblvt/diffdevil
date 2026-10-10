@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
 
 export const WEBHOOK_BODY_LIMIT = 1024 * 1024;
 export const WORKER_RESULT_LIMIT = 4 * 1024 * 1024;

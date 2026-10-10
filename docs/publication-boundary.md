@@ -24,7 +24,7 @@ blanket-bump the repository or move an Action alias for another family's release
 | --- | --- |
 | Open tool | Registry artifact, immutable `vX.Y.Z`, corresponding release/assets and authorized Action major-alias promotion; retain Marketplace and real consumer evidence |
 | Extension | `extension-vX.Y.Z`, qualified extension archive and explicitly authorized Store submission; read back the actual listing/version and installed result separately |
-| App | `app-vX.Y.Z`, App-owned version/build metadata and qualified self-hosted release; explicitly authorized deployment/migrations and operator journey remain separate |
+| App | `app-vX.Y.Z` at the exact release commit, a GitHub release with `make_latest: false` carrying exactly one `diffdevil-app-X.Y.Z.release.json` manifest from `npm run build:app-release`, and the qualified self-hosted release; read back the tag commit/tree against the manifest and the attached asset digest. Explicitly authorized deployment/migrations and operator journey remain separate |
 | Skill | `skill-vX.Y.Z`, complete canonical Skill archive and matching manifest; an optional bundle names both Skill and runtime versions; no npm or Action effect is implied |
 
 Prepare only the selected manifest/assets. The family-scoped carrier builder and

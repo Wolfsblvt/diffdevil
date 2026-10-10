@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
 
 const changed = result => (result?.meta?.changes ?? 0) === 1;
 const conflict = () => Object.assign(new Error('E_COMMERCIAL_CONFLICT'), { code: 'E_COMMERCIAL_CONFLICT' });

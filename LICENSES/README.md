@@ -10,7 +10,28 @@ The portable diff engine, public TypeScript API and npm package, CLI, GitHub Act
 
 ## Application and hosted-service software — AGPL-3.0-only
 
-Website and interactive demo application code, hosted runtime, GitHub App backend, hosted configuration, orchestration and management UI, and comparable service-side product code are selected for [GNU AGPL-3.0-only](AGPL-3.0-only.txt). These application/service surfaces may live in this same repository. The application surfaces are `apps/playground/` (local server, Worker adapter, browser code, styles, page assets), `apps/github-app/` (the managed-App runtime), `apps/website/` (the public website, its playground island, catalogue data and derived assets), `apps/browser-extension/` (Chrome application, settings, browser UI, tests and QA), and `apps/shared/` (presenters both applications use); each explicitly carries `AGPL-3.0-only`. MIT-covered engine code incorporated into an AGPL-covered application keeps its MIT notices. Future application paths must name their licence just as explicitly rather than inheriting it from a neighboring directory.
+Website and interactive demo application code, hosted runtime, GitHub App backend, hosted configuration, orchestration and management UI, and comparable service-side product code are selected for [GNU AGPL-3.0-only](AGPL-3.0-only.txt). These application/service surfaces may live in this same repository. The application surfaces are `apps/playground/` (local server, Worker adapter, browser code, styles, page assets), `apps/github-app/` (the managed-App runtime), `apps/website/` (the public website, its playground island, catalogue data and derived assets), `apps/browser-extension/` (Chrome application, settings, browser UI, tests and QA), and `apps/shared/` (presenters both applications use); each explicitly carries `AGPL-3.0-only`, and the App program below carries it with one additional permission. MIT-covered engine code incorporated into an AGPL-covered application keeps its MIT notices. Future application paths must name their licence just as explicitly rather than inheriting it from a neighboring directory.
+
+### App program — AGPL-3.0-only with the premium-interface permission
+
+The managed App program is `apps/github-app/`, `apps/shared/` and, where present, `apps/app/`. Its files are licensed `AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0`: AGPLv3 plus the narrow section 7 additional permission in [the diffdevil Premium Interface Exception 1.0](AdditionRef-diffdevil-premium-interface-exception-1.0.txt). Every licence notice in those paths states that expression; a file the program adds must state it too.
+
+AGPL already permits private, paid and commercial operation. A modified network-facing App must offer its Corresponding Source to its remote users. What AGPL alone does not settle is an independent module under other terms joined into the same running program. The permission settles that at exactly two named interfaces:
+
+- the **Premium Service Interface**: the optional `premium` argument of `createAnalyticalDataService`, through which an extension supplies the analytical file surfaces from a host the program provides; and
+- the **Premium Application Interface**: the optional extension the App build resolves from `@diffdevil/premium-app` and `@diffdevil/premium-styles`, which renders in the premium slots of the App's pages, including its pull-request brief provider, which the managed-App Worker also resolves from `@diffdevil/premium-brief`.
+
+An independent module that joins only through those interfaces, as a version Wolfsblvt Works publishes declares them, may keep its own terms. Each version declares the exact files of each interface in `premiumSeam.interfaces` of `apps/github-app/release.json`; until the interfaces exist in this tree, that declaration is `null` and the permission has nothing to apply to. Every App release manifest names the declared files and this permission ([App-family release manifest](../docs/RELEASING.md#app-family-release-manifest-and-its-consumers)).
+
+The permission stays narrow:
+
+- the App program itself, and every modification of it, remains AGPL-3.0-only, including the section 13 source offer for a modified network-facing version;
+- code copied or derived from the App program is not an independent module, wherever it is moved;
+- no other part of the program is an interface, and modifying an interface does not extend the permission to the modified interface until a published version declares it;
+- it is granted to every recipient, not only to Wolfsblvt Works; it is not a plugin platform, registry, discovery mechanism or stability promise; and
+- third-party material keeps its own licence and notices.
+
+Contributions to the App program are made under its applicable licence, through the [account-wide contribution guide](https://github.com/Wolfsblvt/.github/blob/main/CONTRIBUTING.md): AGPL-3.0-only with this permission. No separate contributor agreement or relicensing grant exists or is needed. Wolfsblvt Works' privately maintained premium modules are proprietary independent modules that join through these two interfaces; they are not part of this repository or its licence. [D078](../docs/DECISIONS.md#d078-let-independent-premium-modules-join-the-agpl-app-through-two-named-interfaces) records why.
 
 ## Documentation and examples
 

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
 
 import { protectedHeaders, validOrigin } from './authorization.mjs';
 import { D1CommercialStore } from './commercial-storage.mjs';

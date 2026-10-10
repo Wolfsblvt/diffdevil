@@ -1,4 +1,4 @@
--- SPDX-License-Identifier: AGPL-3.0-only
+-- SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
 -- Repository admission changes are compare-and-set operations.  The revision is
 -- deliberately separate from provider reach so an interrupted installation can
 -- never be mistaken for an administrator settings update.
