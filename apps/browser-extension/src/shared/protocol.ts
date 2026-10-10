@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import type { BrowserComparison, BrowserInput, HumanReportView, PolicyLayers } from '@wolfsblvt/diffdevil/browser';
 import type { Settings } from './catalogue.js';
-import type { CoverageSummary, DeclineReason, FileStanding } from './coverage.js';
+import type { CoverageSummary, DeclineReason, FileStanding, UnresolvedReason } from './coverage.js';
 export interface PolicySource { status: 'present' | 'absent' | 'unavailable'; text?: string; blob?: string; at: number }
 /** What the acquiring page knew about the limit it applied; the worker adds what the report itself proves. */
-export interface AcquisitionCoverage { limit: number; declined: Record<string, DeclineReason> }
+export interface AcquisitionCoverage { limit: number; declined: Record<string, DeclineReason>; /** Chosen files the page asked GitHub for and could not measure, with what it observed. */ unresolved?: Record<string, UnresolvedReason> }
 export interface AnalysisInput { comparison: BrowserComparison; acquisition?: BrowserInput; policy: PolicySource; templates?: Record<string, string>; /** Template paths the exact trusted base was confirmed not to have. */ absentTemplates?: string[]; coverage?: AcquisitionCoverage }
-export interface PacketFile { path: string; oldPath?: string; standing: FileStanding; /** Why the provider declined, when it did. */ reason?: DeclineReason }
+export interface PacketFile { path: string; oldPath?: string; standing: FileStanding; /** Why the provider declined, when it did. */ reason?: DeclineReason; /** For a bounded file that was asked for: what the last attempt observed. */ unresolved?: UnresolvedReason }
 export interface Packet { key: string; comparison: BrowserComparison; view: HumanReportView; files: readonly PacketFile[]; refreshedAt: number; cached: boolean; coverage: CoverageSummary }
 export interface Lookup { settings: Settings; selected: PolicyLayers; reportCached: boolean; policy?: PolicySource; /** Trusted-base template paths already held for this comparison, found or confirmed absent. */ templatePaths?: string[]; coverage?: CoverageSummary; paused?: boolean; /** Of the paths asked about, those the held report still has bounded. */ bounded?: string[] }
 export interface PublicPull { comparison: BrowserComparison; files?: readonly unknown[] }
@@ -25,7 +25,7 @@ export type Message =
   | { type: 'cache.lookup'; comparison: BrowserComparison; paths?: string[] }
   | { type: 'cache.recent'; repository: string; pullRequest: number }
   | { type: 'analysis.run'; input: AnalysisInput }
-  | { type: 'analysis.extend'; comparison: BrowserComparison; patches: { path: string; patch: string }[]; declined?: Record<string, DeclineReason>; via: MeasureVia }
+  | { type: 'analysis.extend'; comparison: BrowserComparison; patches: { path: string; patch: string }[]; declined?: Record<string, DeclineReason>; unresolved?: Record<string, UnresolvedReason>; via: MeasureVia }
   | { type: 'analysis.files'; key: string; comparison: BrowserComparison; paths: string[] }
   | { type: 'report.text'; key: string; comparison: BrowserComparison; path?: string }
   | { type: 'repository.pause'; repository: string; paused: boolean }

@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import type { BrowserComparison } from '@wolfsblvt/diffdevil/browser';
 import { request, type Lookup, type MeasureVia, type Packet, type PublicPull } from '../shared/protocol.js';
-import type { DeclineReason } from '../shared/coverage.js';
+import type { DeclineReason, UnresolvedReason } from '../shared/coverage.js';
 import { ExtensionError } from '../shared/errors.js';
-import { comparisonIdentity, exclusive, loadDiffEntries } from './acquire.js';
+import { comparisonIdentity, exclusive, loadDiffEntries, tally } from './acquire.js';
 import { measurableEntries, pageComparison, sameComparison, type Route } from './github.js';
 /** GitHub lists a pull request's files 100 to a page, at most 30 pages. */
 const PAGE = 100;
-interface Found { patches: { path: string; patch: string }[]; declined: Record<string, DeclineReason> }
+interface Found { patches: { path: string; patch: string }[]; declined: Record<string, DeclineReason>; unresolved: Record<string, UnresolvedReason> }
 /** Patch text read for another comparison never extends this one; the error carries what GitHub named instead. */
 function moved(observed: BrowserComparison): ExtensionError {
   return Object.assign(new ExtensionError('COMPARISON_MOVED', 'The pull request changed since this report was measured. Its new comparison is read again.'), { observed });
@@ -27,11 +27,14 @@ export async function measure(current: Route, packet: Packet, paths: readonly st
     const lookup = await request<Lookup>({ type: 'cache.lookup', comparison, paths: [...paths] }); if (signal.aborted) throw signal.reason;
     if (lookup.paused) throw new ExtensionError('REPOSITORY_PAUSED', 'diffdevil is paused for this repository.');
     const pending = new Set(lookup.bounded ?? paths); const asked = paths.filter(path => pending.has(path));
-    let found: Found = { patches: [], declined: Object.create(null) as Record<string, DeclineReason> };
+    let found: Found = { patches: [], declined: Object.create(null) as Record<string, DeclineReason>, unresolved: Object.create(null) as Record<string, UnresolvedReason> };
     if (asked.length) {
       try {
         // The signed-in route is asked for the packet's own head; the page must not already name another comparison.
-        found = measurableEntries((await loadDiffEntries(current, comparison, asked, signal)).entries, pending);
+        const loaded = await loadDiffEntries(current, comparison, asked, signal); const read = measurableEntries(loaded.entries, new Set(asked));
+        for (const path of loaded.failedPaths) read.unresolved[path] = 'unreachable';
+        found = read;
+        if (Object.keys(read.unresolved).length) console.info('[diffdevil] files not measured', { via, asked: asked.length, measured: read.patches.length, unresolvedReasons: tally(read.unresolved), shapes: read.shapes });
         const shown = typeof document === 'undefined' ? undefined : pageComparison(document, current);
         if (shown && !sameComparison(comparison, shown)) throw moved(shown);
       } catch (error) {
@@ -41,13 +44,13 @@ export async function measure(current: Route, packet: Packet, paths: readonly st
       }
     }
     if (signal.aborted) throw signal.reason;
-    return request<Packet>({ type: 'analysis.extend', comparison, patches: found.patches, ...(Object.keys(found.declined).length ? { declined: found.declined } : {}), via });
+    return request<Packet>({ type: 'analysis.extend', comparison, patches: found.patches, ...(Object.keys(found.declined).length ? { declined: found.declined } : {}), ...(Object.keys(found.unresolved).length ? { unresolved: found.unresolved } : {}), via });
   });
 }
 async function publicPages(packet: Packet, paths: readonly string[], current: Route, wanted: ReadonlySet<string>): Promise<Found> {
   const comparison = packet.comparison;
   const order = packet.files.map(file => file.path); const pages = new Set(paths.map(path => Math.floor(Math.max(0, order.indexOf(path)) / PAGE) + 1));
-  const patches: { path: string; patch: string }[] = []; const declined: Record<string, DeclineReason> = Object.create(null) as Record<string, DeclineReason>;
+  const patches: { path: string; patch: string }[] = []; const declined: Record<string, DeclineReason> = Object.create(null) as Record<string, DeclineReason>; const seen = new Set<string>();
   for (const page of [...pages].slice(0, 3)) {
     const result = await request<PublicPull>({ type: 'source.public', repository: current.repository, pullRequest: current.pullRequest, files: true, page });
     // Each page is consistent with itself; it must also be the comparison this report measures.
@@ -55,8 +58,11 @@ async function publicPages(packet: Packet, paths: readonly string[], current: Ro
     if (!sameComparison(comparison, observed) || comparison.changedFiles !== undefined && observed.changedFiles !== undefined && comparison.changedFiles !== observed.changedFiles) throw moved(observed);
     for (const item of result.files ?? []) {
       const file = item as Record<string, unknown>; const path = String(file.filename);
-      if (wanted.has(path) && typeof file.patch === 'string') patches.push({ path, patch: file.patch }); else if (wanted.has(path)) declined[path] = 'omitted';
+      if (!wanted.has(path)) continue; seen.add(path);
+      if (typeof file.patch === 'string') patches.push({ path, patch: file.patch }); else declined[path] = 'omitted';
     }
   }
-  return { patches, declined };
+  const unresolved: Record<string, UnresolvedReason> = Object.create(null) as Record<string, UnresolvedReason>;
+  for (const path of paths) if (!seen.has(path)) unresolved[path] = 'not-returned';
+  return { patches, declined, unresolved };
 }

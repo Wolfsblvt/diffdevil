@@ -4,13 +4,13 @@ import type { Settings } from '../shared/catalogue.js';
 import { request as defaultRequest, type MeasureVia, type Packet, type PacketFile } from '../shared/protocol.js';
 import { SETTINGS_KEY } from '../shared/settings-key.js';
 import { isPaused } from '../shared/repository.js';
-import { automaticRemaining, selectFiles } from '../shared/coverage.js';
+import { automaticRemaining, retryable, selectFiles } from '../shared/coverage.js';
 import { node, button } from '../shared/dom.js';
 import { acquire as defaultAcquire, automaticLimit, type Standing } from './acquire.js';
 import { measure as defaultMeasure } from './measure.js';
 import { route, aggregateNative, toolbarNative, fileNative, treeCounters, pathAnchors, FILE_HEADERS, PROVIDER_CHANGE, filePath, pageComparison, sameComparison, fullFilesView, visiblePaths, viewportPaths, type NativeStat } from './github.js';
 import { projection, failureMarker, readingMarker, pausedMarker, type Projection } from './render.js';
-import { errorPanel, type Progress, type Provenance, type ReportActions } from './report.js';
+import { errorPanel, type Attempt, type Progress, type Provenance, type ReportActions } from './report.js';
 import { labelHandoff, pickerAvailable } from './labels.js';
 import { Popover } from './popover.js';
 /** Dependencies are explicit so lifecycle tests never need to impersonate a browser origin. */
@@ -26,6 +26,11 @@ const VISIBLE_SETTLE_MS = 350;
 const CONTINUATION_SLICE = 48;
 const VISIBLE_BATCH = 24;
 const LABEL_INTENT = 'diffdevil.labelIntent';
+/** Two slices of one pass, as one outcome. */
+function joinAttempts(a: Attempt, b: Attempt): Attempt {
+  const unresolved = { ...a.unresolved }; for (const [reason, count] of Object.entries(b.unresolved) as [keyof Attempt['unresolved'], number][]) unresolved[reason] = (unresolved[reason] ?? 0) + count;
+  return { asked: a.asked + b.asked, measured: a.measured + b.measured, declined: a.declined + b.declined, unresolved, changed: a.changed || b.changed };
+}
 const reduced = (): boolean => matchMedia('(prefers-reduced-motion: reduce)').matches;
 export function startContent(dependencies: ContentDependencies = {}): { refresh: () => Promise<void>; stop: () => void } {
   const href = dependencies.href ?? (() => location.href);
@@ -47,6 +52,8 @@ export function startContent(dependencies: ContentDependencies = {}): { refresh:
   // Measurement: one operation at a time, never more files per comparison than the configured automatic limit without an explicit act.
   let index = new Map<string, PacketFile>(); let measuring = false; let settleTimer: ReturnType<typeof setTimeout> | undefined; let attempted = new Set<string>(); let filled = '';
   let continuation: AbortController | undefined; let progress: Progress | undefined; let note: string | undefined;
+  // What the last explicit pass changed, so finishing one is never mistaken for a silent no-op; and the files the reader asked about again.
+  let lastPass: Attempt | undefined; const askedAgain = new Set<string>();
   // GitHub anchors a file as `diff-` + SHA-256(path). Hashing the packet's own
   // paths binds a tree counter to its file without trusting hashed class names.
   let hashes = new Map<string, string>(); let hashing: string | undefined;
@@ -80,9 +87,9 @@ export function startContent(dependencies: ContentDependencies = {}): { refresh:
     settingsUrl: chrome.runtime.getURL('options.html'),
     dataUrl: chrome.runtime.getURL('options.html#data.controls'),
     provenance: () => provenance,
-    coverage: { summary: () => packet?.coverage, progress: () => progress, start: () => startContinuation(), cancel: () => continuation?.abort(), note: () => note },
-    fileStanding: path => { const file = index.get(path); return file && { standing: file.standing, ...(file.reason ? { reason: file.reason } : {}) }; },
-    measureFile: path => { void measureNow('explicit', [path]); },
+    coverage: { summary: () => packet?.coverage, progress: () => progress, start: () => startContinuation(), cancel: () => continuation?.abort(), note: () => note, outcome: () => lastPass, remaining: () => continuable().length },
+    fileStanding: path => { const file = index.get(path); return file && { standing: file.standing, ...(file.reason ? { reason: file.reason } : {}), ...(file.unresolved ? { unresolved: file.unresolved } : {}), ...(askedAgain.has(path) ? { askedAgain: true } : {}) }; },
+    measureFile: path => { void measureNow('explicit', [path]).then(attempt => { if (attempt && !attempt.measured && !attempt.declined) { askedAgain.add(path); popover.rebuild(); } }); },
     pause: () => { void setPause(true); },
     diagnostics: error => JSON.stringify({ kind: 'diffdevil.failure/1', code: error.code, message: error.message, version: chrome.runtime.getManifest().version, route: current()?.path, comparison: packet ? { base: packet.comparison.base, head: packet.comparison.head } : undefined, at: new Date().toISOString() }, null, 2),
     errorPanel: (error, host) => { const scope = current(); return errorPanel(error, scope ? `${scope.repository} #${scope.pullRequest}` : undefined, host, actions); },
@@ -207,25 +214,46 @@ export function startContent(dependencies: ContentDependencies = {}): { refresh:
       showStatus(`File Changed is unavailable. ${error instanceof Error ? error.message : 'File evidence is unavailable.'} (${code})`, () => { void refresh(true); });
     } finally { fileBusy = false; schedule(); }
   }
-  /** Measure files in the order given, through the worker that owns the report; the result replaces the packet. Never throws. */
-  async function measureNow(via: MeasureVia, paths: readonly string[], signal: AbortSignal = lifecycle.signal): Promise<boolean> {
-    const scope = current(); if (!scope || !packet || !paths.length || stopped) return false;
+  /**
+   * Measure files in the order given, through the worker that owns the report. A result with new
+   * evidence replaces the packet; an identical one is not adopted, so nothing redraws as though it
+   * had progressed. Resolves to what changed for the asked files, or undefined when the work stopped. Never throws.
+   */
+  async function measureNow(via: MeasureVia, paths: readonly string[], signal: AbortSignal = lifecycle.signal): Promise<Attempt | undefined> {
+    const scope = current(); if (!scope || !packet || !paths.length || stopped) return undefined;
     const revision = generation; const base = packet; measuring = true;
     try {
-      const next = await measure(scope, base, paths, via, signal); if (revision !== generation || signal.aborted) return false;
-      adopt(next); return true;
+      const next = await measure(scope, base, paths, via, signal); if (revision !== generation || signal.aborted) return undefined;
+      const attempt = compare(base, next, paths);
+      if (attempt.changed) adopt(next);
+      return attempt;
     } catch (error) {
-      if (signal.aborted || revision !== generation) return false;
+      if (signal.aborted || revision !== generation) return undefined;
       const code = (error as { code?: string }).code ?? 'MEASURE_FAILED'; console.info('[diffdevil] measurement stopped', { via, code });
       // GitHub now names another comparison: these facts are no longer current, so they are read again rather than extended.
       if (code === 'COMPARISON_MOVED') {
         const observed = (error as { observed?: BrowserComparison }).observed; measuring = false; continuation?.abort();
-        void settle(revision, controller?.signal ?? lifecycle.signal, { standing: 'moved', ...(observed ? { observed } : {}) }, scope); return false;
+        void settle(revision, controller?.signal ?? lifecycle.signal, { standing: 'moved', ...(observed ? { observed } : {}) }, scope); return undefined;
       }
       note = error instanceof Error ? error.message : 'GitHub did not supply the files.';
-      return false;
+      return undefined;
     } finally { measuring = false; schedule(); popover.rebuild(); }
   }
+  /** What a measurement did for the files it asked about, judged from the packets before and after. */
+  function compare(before: Packet, after: Packet, paths: readonly string[]): Attempt {
+    const old = new Map(before.files.map(file => [file.path, file])); const now = new Map(after.files.map(file => [file.path, file]));
+    let measured = 0; let declined = 0; const unresolved: Attempt['unresolved'] = {};
+    for (const path of paths) {
+      const was = old.get(path); const is = now.get(path); if (!is) continue;
+      if (is.standing === 'measured') { if (was?.standing !== 'measured') measured++; }
+      else if (is.standing === 'declined') { if (was?.standing !== 'declined') declined++; }
+      else { const reason = is.unresolved ?? 'not-returned'; unresolved[reason] = (unresolved[reason] ?? 0) + 1; }
+    }
+    const changed = after.key !== before.key || JSON.stringify(after.coverage) !== JSON.stringify(before.coverage) || JSON.stringify(after.files) !== JSON.stringify(before.files);
+    return { asked: paths.length, measured, declined, unresolved, changed };
+  }
+  /** Bounded files an explicit pass can still hope to measure: GitHub's settled answer for this head is not asked for again. */
+  const continuable = (): string[] => packet ? packet.files.filter(file => file.standing === 'bounded' && retryable(file.unresolved)).map(file => file.path) : [];
   /** Files on screen where the reader settled, outside the measured set, within what remains of the comparison's automatic budget. */
   function scheduleVisible(): void {
     if (!packet || stopped || measuring || continuation) return;
@@ -235,7 +263,8 @@ export function startContent(dependencies: ContentDependencies = {}): { refresh:
     if (!packet || stopped || measuring || continuation || !fullFilesView(href())) return;
     const room = automaticRemaining(packet.coverage, automaticLimit(settings)); if (room <= 0) return;
     const seated = new Set([...fileSeats.entries()].filter(([, items]) => [...items].some(item => item.root.isConnected)).map(([path]) => path));
-    const wanted = viewportPaths(document).filter(path => seated.has(path) && index.get(path)?.standing === 'bounded' && !attempted.has(path)).slice(0, Math.min(room, VISIBLE_BATCH));
+    // A file the last attempt could not measure is asked about again only by an explicit act.
+    const wanted = viewportPaths(document).filter(path => seated.has(path) && index.get(path)?.standing === 'bounded' && !index.get(path)?.unresolved && !attempted.has(path)).slice(0, Math.min(room, VISIBLE_BATCH));
     if (!wanted.length) return;
     wanted.forEach(path => attempted.add(path)); await measureNow('visible', wanted);
   }
@@ -243,22 +272,25 @@ export function startContent(dependencies: ContentDependencies = {}): { refresh:
   async function fillToLimit(): Promise<void> {
     if (!packet || measuring || continuation) return; const limit = automaticLimit(settings); const room = automaticRemaining(packet.coverage, limit); const identity = `${packet.key}:${limit}`;
     if (limit <= packet.coverage.limit || room <= 0 || packet.coverage.bounded <= 0 || filled === identity) return; filled = identity;
-    const bounded = packet.files.filter(file => file.standing === 'bounded').map(file => file.path);
+    const bounded = packet.files.filter(file => file.standing === 'bounded' && !file.unresolved).map(file => file.path);
     const chosen = selectFiles(bounded, visiblePaths(document), room); if (chosen.length) await measureNow('automatic', chosen);
   }
   /** The one explicit continuation: every file still bounded, in slices that are each persisted before the next begins. */
   function startContinuation(): void {
     if (!packet || continuation) return; const scope = current(); if (!scope) return;
-    const control = continuation = new AbortController(); const paths = packet.files.filter(file => file.standing === 'bounded').map(file => file.path);
-    progress = { done: 0, total: paths.length, failed: 0 }; note = undefined; popover.rebuild();
+    const paths = continuable(); if (!paths.length) return;
+    const control = continuation = new AbortController();
+    progress = { done: 0, total: paths.length, failed: 0 }; note = undefined; lastPass = undefined; popover.rebuild();
+    let total: Attempt = { asked: 0, measured: 0, declined: 0, unresolved: {}, changed: false };
     void (async () => {
       try {
         for (let at = 0; at < paths.length && !control.signal.aborted; at += CONTINUATION_SLICE) {
-          const slice = paths.slice(at, at + CONTINUATION_SLICE); const ok = await measureNow('explicit', slice, control.signal);
-          if (!ok) break;
+          const slice = paths.slice(at, at + CONTINUATION_SLICE); const attempt = await measureNow('explicit', slice, control.signal);
+          if (!attempt) break;
+          total = joinAttempts(total, attempt);
           progress = { done: progress!.done + slice.length, total: paths.length, failed: progress!.failed + slice.filter(path => index.get(path)?.standing === 'bounded').length }; popover.rebuild();
         }
-      } finally { continuation = undefined; progress = undefined; popover.rebuild(); schedule(); }
+      } finally { if (total.asked) lastPass = total; continuation = undefined; progress = undefined; popover.rebuild(); schedule(); }
     })();
   }
   function observe(): void {
@@ -279,7 +311,7 @@ export function startContent(dependencies: ContentDependencies = {}): { refresh:
     });
     observer.observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-current-head-oid', 'data-base-ref-oid', 'value'] });
   }
-  const reset = (): void => { clear(); fileViews.clear(); waiting.clear(); failed.clear(); attempted = new Set(); };
+  const reset = (): void => { clear(); fileViews.clear(); waiting.clear(); failed.clear(); attempted = new Set(); lastPass = undefined; askedAgain.clear(); };
   /** Facts shown from held data were checked against a fresh read of the same route; say what that read found. */
   async function verified(revision: number, signal: AbortSignal, verify: () => Promise<Standing>, scope: { repository: string; pullRequest: number; path: string }): Promise<void> {
     let outcome: Standing;

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import type { BrowserComparison } from '@wolfsblvt/diffdevil/browser';
-import type { DeclineReason } from '../shared/coverage.js';
+import type { DeclineReason, UnresolvedReason } from '../shared/coverage.js';
 export interface Route { repository: string; pullRequest: number; path: string }
 export function route(url: string): Route | undefined {
   const parsed = new URL(url); if (parsed.origin !== 'https://github.com') return undefined;
@@ -127,29 +127,59 @@ export function embeddedFiles(document: Document): EmbeddedFiles | undefined {
 }
 /** Files still without patch text that GitHub might supply through its page_data route. */
 export const unpatchedPaths = (files: readonly Record<string, unknown>[]): string[] => files.filter(file => file.patch === undefined).map(file => String(file.filename));
-/** Merge `page_data/diff_entries` entries (the same shape as embedded contents) into the file list, by digest or path. */
-export function withEntries(files: readonly Record<string, unknown>[], entries: readonly unknown[]): { files: Record<string, unknown>[]; loaded: number; declined: number; declinedPaths: Record<string, DeclineReason> } {
+/** What one returned entry gives: patch text, GitHub's own decline, or why it still cannot be measured. */
+export type EntryOutcome = { readonly patch: string } | { readonly declined: DeclineReason } | { readonly unresolved: Exclude<UnresolvedReason, 'not-returned' | 'disagrees' | 'unreachable'> };
+export function entryOutcome(entry: Record<string, unknown>): EntryOutcome {
+  const reason = declineReason(entry); if (reason) return { declined: reason };
+  const patch = contentPatch(entry); if (patch !== undefined) return { patch };
+  const lines = Array.isArray(entry.diffLines) ? entry.diffLines.length : Array.isArray(entry.hunks) ? entry.hunks.length : 0;
+  if (lines > 0 || text(entry.patch) !== undefined) return { unresolved: 'unreadable' };
+  // Observed on a private pull request: a generated lockfile comes back with exact counters, every
+  // decline flag false and no lines; only its new tree entry says `isGenerated`. GitHub offers it on
+  // demand, so it is collapsed, not declined.
+  return { unresolved: record(entry.newTreeEntry)?.isGenerated === true || record(entry.oldTreeEntry)?.isGenerated === true ? 'collapsed' : 'no-lines' };
+}
+/**
+ * The shape of an entry that could not be measured, for the path-free diagnostic: GitHub's field
+ * names, which of its flags are set, and how many lines of which kinds it carried. Never a path,
+ * a line's text or any other value.
+ */
+export function entryShape(entry: Record<string, unknown>): { keys: string[]; set: string[]; lines: number; lineTypes: string[] } {
+  const lines = Array.isArray(entry.diffLines) ? entry.diffLines : [];
+  return { keys: Object.keys(entry).sort(), set: Object.keys(entry).filter(key => entry[key] === true).sort(), lines: lines.length,
+    lineTypes: [...new Set(lines.map(line => String(record(line)?.type ?? record(line)?.kind ?? '?').slice(0, 24)))].sort().slice(0, 12) };
+}
+/** Merge `page_data/diff_entries` entries (the same shape as embedded contents) into the file list, by digest or path. Requested files the entries cannot measure say why. */
+export function withEntries(files: readonly Record<string, unknown>[], entries: readonly unknown[], requested: ReadonlySet<string> = new Set()): { files: Record<string, unknown>[]; loaded: number; declined: number; declinedPaths: Record<string, DeclineReason>; unresolved: Record<string, UnresolvedReason>; shapes: ReturnType<typeof entryShape>[] } {
   const byKey = new Map<string, Record<string, unknown>>();
   for (const item of entries) { const entry = record(item); if (!entry) continue; for (const key of [entry.pathDigest, entry.path]) if (typeof key === 'string') byKey.set(key, entry); }
   let loaded = 0; let declined = 0; const declinedPaths: Record<string, DeclineReason> = Object.create(null) as Record<string, DeclineReason>;
+  const unresolved: Record<string, UnresolvedReason> = Object.create(null) as Record<string, UnresolvedReason>; const shapes: ReturnType<typeof entryShape>[] = [];
   const merged = files.map(file => {
     if (file.patch !== undefined) return file;
-    const entry = byKey.get(String(file.filename)) ?? (typeof file.pathDigest === 'string' ? byKey.get(file.pathDigest) : undefined); if (!entry) return file;
-    const reason = declineReason(entry); if (reason) { declined++; declinedPaths[String(file.filename)] = reason; return file; }
-    const patch = contentPatch(entry); if (patch === undefined) return file;
-    loaded++; return { ...file, patch };
+    const path = String(file.filename);
+    const entry = byKey.get(path) ?? (typeof file.pathDigest === 'string' ? byKey.get(file.pathDigest) : undefined);
+    if (!entry) { if (requested.has(path)) unresolved[path] = 'not-returned'; return file; }
+    const outcome = entryOutcome(entry);
+    if ('declined' in outcome) { declined++; declinedPaths[path] = outcome.declined; return file; }
+    if ('unresolved' in outcome) { unresolved[path] = outcome.unresolved; shapes.push(entryShape(entry)); return file; }
+    loaded++; return { ...file, patch: outcome.patch };
   });
-  return { files: merged, loaded, declined, declinedPaths };
+  return { files: merged, loaded, declined, declinedPaths, unresolved, shapes };
 }
-/** What the page_data route returned for the requested paths: usable patch text, and the files GitHub itself declined. */
-export function measurableEntries(entries: readonly unknown[], requested: ReadonlySet<string>): { patches: { path: string; patch: string }[]; declined: Record<string, DeclineReason> } {
+/** What the page_data route returned for the requested paths: usable patch text, the files GitHub itself declined, and why any other requested file is still unmeasured. */
+export function measurableEntries(entries: readonly unknown[], requested: ReadonlySet<string>): { patches: { path: string; patch: string }[]; declined: Record<string, DeclineReason>; unresolved: Record<string, UnresolvedReason>; shapes: ReturnType<typeof entryShape>[] } {
   const patches: { path: string; patch: string }[] = []; const declined: Record<string, DeclineReason> = Object.create(null) as Record<string, DeclineReason>;
+  const unresolved: Record<string, UnresolvedReason> = Object.create(null) as Record<string, UnresolvedReason>; const shapes: ReturnType<typeof entryShape>[] = []; const seen = new Set<string>();
   for (const item of entries) {
-    const entry = record(item); const path = text(entry?.path); if (!entry || !path || !requested.has(path)) continue;
-    const reason = declineReason(entry); if (reason) { declined[path] = reason; continue; }
-    const patch = contentPatch(entry); if (patch !== undefined) patches.push({ path, patch });
+    const entry = record(item); const path = text(entry?.path); if (!entry || !path || !requested.has(path) || seen.has(path)) continue; seen.add(path);
+    const outcome = entryOutcome(entry);
+    if ('declined' in outcome) declined[path] = outcome.declined;
+    else if ('unresolved' in outcome) { unresolved[path] = outcome.unresolved; shapes.push(entryShape(entry)); }
+    else patches.push({ path, patch: outcome.patch });
   }
-  return { patches, declined };
+  for (const path of requested) if (!seen.has(path)) unresolved[path] = 'not-returned';
+  return { patches, declined, unresolved, shapes };
 }
 /**
  * The files the reader has in front of them: headers rendered near the viewport first, then the other
