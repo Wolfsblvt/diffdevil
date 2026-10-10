@@ -55,14 +55,23 @@ export class IndexedDbStore implements CacheStore {
     catch (error) { try { tx.abort(); } catch { /* Already finished. */ } await finished.catch(() => undefined); throw error; }
   }
 }
-/** The same contract in memory: used where no IndexedDB exists and to test the cache's own rules. Work is serialized like a transaction. */
+/**
+ * The same contract in memory: used where no IndexedDB exists and to test the cache's own rules. Work is
+ * serialized like a transaction: each one sees every earlier commit, and a read-only one cannot write.
+ */
 export class MemoryStore implements CacheStore {
   readonly entries = new Map<string, CacheEntry>(); private tail: Promise<unknown> = Promise.resolve();
-  run<T>(_mode: 'readonly' | 'readwrite', work: (transaction: Transaction) => Promise<T>): Promise<T> {
-    const staged = new Map(this.entries);
-    const transaction: Transaction = { all: async () => [...staged.values()].map(entry => structuredClone(entry)), get: async key => { const entry = staged.get(key); return entry && structuredClone(entry); },
-      put: entry => { staged.set(entry.key, structuredClone(entry)); }, delete: keys => { for (const key of keys) staged.delete(key); }, clear: () => { staged.clear(); } };
-    const result = this.tail.then(async () => { const value = await work(transaction); this.entries.clear(); for (const [key, entry] of staged) this.entries.set(key, entry); return value; });
+  run<T>(mode: 'readonly' | 'readwrite', work: (transaction: Transaction) => Promise<T>): Promise<T> {
+    const result = this.tail.then(async () => {
+      // The snapshot is taken when this transaction's turn comes, not when it was requested.
+      const staged = new Map(this.entries);
+      const writable = (): void => { if (mode === 'readonly') throw new Error('A read-only cache transaction cannot write.'); };
+      const transaction: Transaction = { all: async () => [...staged.values()].map(entry => structuredClone(entry)), get: async key => { const entry = staged.get(key); return entry && structuredClone(entry); },
+        put: entry => { writable(); staged.set(entry.key, structuredClone(entry)); }, delete: keys => { writable(); for (const key of keys) staged.delete(key); }, clear: () => { writable(); staged.clear(); } };
+      const value = await work(transaction);
+      if (mode === 'readwrite') { this.entries.clear(); for (const [key, entry] of staged) this.entries.set(key, entry); }
+      return value;
+    });
     this.tail = result.catch(() => undefined); return result;
   }
 }

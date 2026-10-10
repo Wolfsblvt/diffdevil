@@ -12,7 +12,7 @@ Requests use the signed-in GitHub page when available. A public GitHub API fallb
 
 ## Local processing and storage
 
-Analysis runs locally in the extension worker. Raw diffs and referenced template contents are held in memory for analysis and are not persisted as an analysis cache. There is no telemetry, advertising identifier, analytics service, source-upload endpoint, or request to a Wolfsblvt Works backend. No hosted analysis is triggered.
+Analysis runs locally in the extension worker. Raw diffs and patches are held in memory for analysis and are never persisted. Trusted repository-policy text and the templates it explicitly references, read from the exact base revision, are kept in the rebuildable cache described below so a cached report can be shown again under the same policy. There is no telemetry, advertising identifier, analytics service, source-upload endpoint, or request to a Wolfsblvt Works backend. No hosted analysis is triggered.
 
 The bounded rebuildable cache contains normalized reports, file paths, revision identities, how many files were measured, bounded or declined by GitHub, trusted repository-policy text and templates, exact-base missing-file results, and the last comparison confirmed for each pull request. These can reveal private repository information to someone with access to the browser profile. Cache data is not independently encrypted. Least-recently-used eviction and a configurable size limit bound the retained data, and it survives tab changes, reloads and browser restarts so a comparison can reappear at once.
 

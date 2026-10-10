@@ -163,6 +163,24 @@ export function visiblePaths(document: Document): string[] {
   }
   return [...near, ...rest];
 }
+/**
+ * The files whose diff is on screen now: every rendered header inside the viewport, and the file whose
+ * header has scrolled above it while its lines still fill the top. Only these are the reader's demand;
+ * a file further down is not, however soon it was rendered.
+ */
+export function viewportPaths(document: Document): string[] {
+  const height = document.defaultView?.innerHeight ?? 0; const inside: string[] = []; const seen = new Set<string>();
+  let above: string | undefined; let nextTop: number | undefined;
+  for (const header of document.querySelectorAll<HTMLElement>(FILE_HEADERS)) {
+    const path = filePath(header); if (!path || seen.has(path)) continue; seen.add(path);
+    const box = header.getBoundingClientRect(); if (!(box.width > 0 || box.height > 0)) continue;
+    if (box.top < 0) { above = path; nextTop = undefined; continue; }
+    nextTop ??= box.top;
+    if (box.top < height) inside.push(path);
+  }
+  // The file above the viewport is still being read unless the next header sits at the very top.
+  return above !== undefined && (nextTop === undefined || nextTop > 0) ? [above, ...inside] : inside;
+}
 export const FILE_HEADERS = '.file-header, [data-testid="file-header"], [data-test-selector="file-header"], [data-testid="diff-file-header"], [data-diff-header-wrapper]';
 export const LIVE_DIFFSTAT = '[data-testid~="diffstat"]';
 const NOT_A_SUMMARY = `${FILE_HEADERS}, [data-testid="progressive-diffs-list"], [data-testid*="file-tree"], [data-testid*="fileTree"], file-tree, [role="tree"], aside, nav`;

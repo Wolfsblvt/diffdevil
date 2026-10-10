@@ -21,6 +21,7 @@ export async function productionModules() {
     `export * from './apps/browser-extension/src/background/diagnostic.ts';`,
     `export * from './apps/browser-extension/src/background/public-source.ts';`,
     `export * from './apps/browser-extension/src/content/github.ts';`,
+    `export * from './apps/browser-extension/src/content/measure.ts';`,
     `export * from './dist/browser/index.js';`,
   ].join('\n'), resolveDir: resolve('.') }, outfile: file, bundle: true, platform: 'node', format: 'esm', target: 'node22', alias: { '@wolfsblvt/diffdevil/browser': resolve('dist/browser/index.js') } });
   return { module: await import(pathToFileURL(file).href), cleanup: () => rm(directory, { recursive: true, force: true }) };

@@ -14,7 +14,7 @@ The single purpose is local measurement and inspection of the GitHub pull reques
 
 | Category | Declare | Exact standing |
 | --- | --- | --- |
-| Website content | Yes | Available diff text, file identities, revisions, trusted repository policy/templates and relevant native label controls are processed for the visible PR feature. Raw patches and template contents are not persisted by the report cache. |
+| Website content | Yes | Available diff text, file identities, revisions, trusted repository policy/templates and relevant native label controls are processed for the visible PR feature. Raw patches are not persisted. Trusted repository-policy text and the templates it references, read at the exact base, are kept in the local rebuildable cache. |
 | Web browsing activity | Yes, limited | Processing is confined to supported GitHub PR routes. The persisted report cache, its last-confirmed-comparison pointers and last-analysis identity can reveal which PRs were used, and Settings can list and clear them by repository and pull request. The extension does not build or transmit a general browsing history. |
 | User-provided content | Yes | Display/guided settings, advanced policy, repository overrides and deliberate imports/exports are handled. Small preferences may synchronize through Chrome; advanced policy and repository overrides remain local. |
 | Authentication information | No | The extension does not collect a PAT, password, authentication cookie or OAuth token. Ordinary browser/GitHub requests may use the user's existing signed-in browser context without exposing those credentials to diffdevil storage. |

@@ -7,7 +7,7 @@
 /** `omitted` is a text file for which the provider simply supplied no patch. */
 export type DeclineReason = 'binary' | 'submodule' | 'too-big' | 'truncated' | 'omitted';
 export type FileStanding = 'measured' | 'bounded' | 'declined';
-/** Automatic work is bounded by one configured number; an explicit act is bounded only by the comparison. */
+/** Automatic work is bounded by one configured number per comparison; an explicit act is bounded only by the comparison. */
 export interface Coverage {
   /** Automatic limit in force when automatic work last ran for this comparison. */
   readonly limit: number;
@@ -36,10 +36,10 @@ export const emptyCoverage = (limit: number): Coverage => ({ limit, automatic: 0
 export const isDeclineReason = (value: unknown): value is DeclineReason => value === 'binary' || value === 'submodule' || value === 'too-big' || value === 'truncated' || value === 'omitted';
 /** What a file is, as the report knows it: measured, or declined (with why), or neither yet. */
 export interface FileFact { readonly path: string; readonly measured: boolean; readonly declined?: DeclineReason }
-/** How many more files the reader's scrolling may measure automatically under the limit now configured. */
-export const topUpRemaining = (coverage: Coverage, limit: number): number => Math.max(0, limit - coverage.topUp);
-/** How many more files an automatic pass may measure after the limit was raised since the last one. */
-export const automaticRemaining = (coverage: Coverage, limit: number): number => Math.max(0, limit - coverage.automatic);
+/** Files measured without an explicit act: the opening pass, a pass after the limit was raised, and scrolling. */
+export const measuredAutomatically = (coverage: Pick<Coverage, 'automatic' | 'topUp'>): number => coverage.automatic + coverage.topUp;
+/** How many more files automatic work may measure for this comparison: one budget, shared by every automatic pass and by scrolling. */
+export const automaticRemaining = (coverage: Pick<Coverage, 'automatic' | 'topUp'>, limit: number): number => Math.max(0, limit - measuredAutomatically(coverage));
 export const standing = (file: FileFact): FileStanding => file.measured ? 'measured' : file.declined ? 'declined' : 'bounded';
 /** Counts that always add up: measured + bounded + declined = total. A file the provider never listed is bounded. */
 export function summarize(files: readonly FileFact[], declaredTotal: number | undefined, coverage: Coverage): CoverageSummary {

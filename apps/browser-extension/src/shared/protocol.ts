@@ -8,7 +8,7 @@ export interface AcquisitionCoverage { limit: number; declined: Record<string, D
 export interface AnalysisInput { comparison: BrowserComparison; acquisition?: BrowserInput; policy: PolicySource; templates?: Record<string, string>; /** Template paths the exact trusted base was confirmed not to have. */ absentTemplates?: string[]; coverage?: AcquisitionCoverage }
 export interface PacketFile { path: string; oldPath?: string; standing: FileStanding; /** Why the provider declined, when it did. */ reason?: DeclineReason }
 export interface Packet { key: string; comparison: BrowserComparison; view: HumanReportView; files: readonly PacketFile[]; refreshedAt: number; cached: boolean; coverage: CoverageSummary }
-export interface Lookup { settings: Settings; selected: PolicyLayers; reportCached: boolean; policy?: PolicySource; /** Trusted-base template paths already held for this comparison, found or confirmed absent. */ templatePaths?: string[]; coverage?: CoverageSummary; paused?: boolean }
+export interface Lookup { settings: Settings; selected: PolicyLayers; reportCached: boolean; policy?: PolicySource; /** Trusted-base template paths already held for this comparison, found or confirmed absent. */ templatePaths?: string[]; coverage?: CoverageSummary; paused?: boolean; /** Of the paths asked about, those the held report still has bounded. */ bounded?: string[] }
 export interface PublicPull { comparison: BrowserComparison; files?: readonly unknown[] }
 export interface CacheInfo { entries: number; bytes: number; reportEntries: number; reportBytes: number; policyEntries: number; policyBytes: number; maximumBytes: number }
 export interface InventoryPullRequest { pullRequest: number; bytes: number; base: string; head: string; files: number; measured: number; bounded: number; declined: number; touched: number }
@@ -22,7 +22,7 @@ export type Message =
   | { type: 'policy.templates'; layers: PolicyLayers }
   | { type: 'source.public'; repository: string; pullRequest: number; files?: boolean; page?: number; optionalFallback?: true }
   | { type: 'source.policy'; repository: string; base: string; path: string }
-  | { type: 'cache.lookup'; comparison: BrowserComparison }
+  | { type: 'cache.lookup'; comparison: BrowserComparison; paths?: string[] }
   | { type: 'cache.recent'; repository: string; pullRequest: number }
   | { type: 'analysis.run'; input: AnalysisInput }
   | { type: 'analysis.extend'; comparison: BrowserComparison; patches: { path: string; patch: string }[]; declined?: Record<string, DeclineReason>; via: MeasureVia }

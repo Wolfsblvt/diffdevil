@@ -4,7 +4,7 @@ import type { AnalysisCache, CacheKind, CacheScope } from './cache.js';
 import { decorateView, isPaused, selectedPolicy } from '../shared/settings.js';
 import type { Settings } from '../shared/catalogue.js';
 import { ExtensionError } from '../shared/errors.js';
-import { automaticRemaining, emptyCoverage, isDeclineReason, readCoverage, summarize, standing, topUpRemaining, type Coverage, type DeclineReason, type FileFact } from '../shared/coverage.js';
+import { automaticRemaining, emptyCoverage, isDeclineReason, readCoverage, summarize, standing, type Coverage, type DeclineReason, type FileFact } from '../shared/coverage.js';
 import type { AnalysisInput, Inventory, Lookup, MeasureVia, Packet, PacketFile, PolicySource } from '../shared/protocol.js';
 /** Persisted report and what is known about how far it was measured. */
 export interface StoredReport { report: Report; coverage: Coverage; at: number }
@@ -153,14 +153,26 @@ export class Analysis {
     }
     return context.packet;
   }
-  /** What the page may use at once: whether the report and policy are held, and how far the report was measured. */
-  async lookup(comparison: BrowserComparison, settings: Settings): Promise<Lookup> {
+  /**
+   * What the page may use at once: whether the report and policy are held, and how far the report was measured.
+   * With `paths`, also which of them are still bounded, so a tab asks GitHub only for files no other tab has measured.
+   */
+  async lookup(comparison: BrowserComparison, settings: Settings, paths?: readonly string[]): Promise<Lookup> {
     const selected = selectedPolicy(settings, comparison.repository); await this.prepare(settings);
     if (isPaused(settings, comparison.repository)) return { settings, selected, reportCached: false, paused: true };
     const [stored, policy] = await Promise.all([this.storedReport(comparison, settings), this.storedPolicy(comparison)]);
     const { templates, ...source } = policy ?? ({} as StoredPolicy);
+    const bounded = paths && this.stillBounded(comparison, stored, paths);
     return { settings, selected, reportCached: Boolean(stored), ...(policy ? { policy: source as PolicySource } : {}), ...(templates ? { templatePaths: Object.keys(templates) } : {}),
-      ...(stored ? { coverage: summarize(facts(stored.report, stored.coverage), stored.report.fileSet.total.status === 'exact' ? stored.report.fileSet.total.value : undefined, stored.coverage) } : {}) };
+      ...(stored ? { coverage: summarize(facts(stored.report, stored.coverage), stored.report.fileSet.total.status === 'exact' ? stored.report.fileSet.total.value : undefined, stored.coverage) } : {}),
+      ...(bounded ? { bounded } : {}) };
+  }
+  /** Which of `paths` the report still has bounded; the worker's own copy stands in when the rebuildable cache could not keep it. */
+  private stillBounded(comparison: BrowserComparison, stored: StoredReport | undefined, paths: readonly string[]): string[] | undefined {
+    const resident = stored ? undefined : this.resident(this.reportKey(comparison)); const held = stored ?? (resident && { report: resident.report, coverage: resident.coverage });
+    if (!held) return undefined;
+    const pending = new Set(facts(held.report, held.coverage).filter(file => standing(file) === 'bounded').map(file => file.path));
+    return paths.filter(path => pending.has(path));
   }
   /** The last comparison confirmed for a pull request, for a page that cannot name its own. */
   async recent(repository: string, pullRequest: number, settings: Settings): Promise<{ comparison?: BrowserComparison }> {
@@ -169,11 +181,20 @@ export class Analysis {
     const pointer = await this.optional(() => this.cache.get<Pointer>(this.pointerKey(comparison), this.compat.pointer));
     return pointer ? { comparison: readComparison(pointer.comparison) } : {};
   }
+  /**
+   * A context rebuilt from persisted facts. A clear that happens while it is being rebuilt is a boundary
+   * like any other: what was read before it is neither served nor kept, and the facts are read again.
+   */
   private async context(key: string, comparison: BrowserComparison, settings: Settings): Promise<Context> {
     const held = this.contexts.get(key); if (held) return held;
     this.guard(comparison, settings); await this.prepare(settings);
-    const stored = await this.storedReport(comparison, settings); if (!stored) throw new ExtensionError('CONTEXT_EXPIRED', 'The analysis context was evicted and its report is no longer held. Refresh the report.');
-    return this.remember(await this.project(comparison, stored, await this.policyEvidence(comparison, settings), settings, true));
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const generation = this.cache.generation;
+      const stored = await this.storedReport(comparison, settings); if (!stored) break;
+      const context = await this.project(comparison, stored, await this.policyEvidence(comparison, settings), settings, true);
+      if (generation === this.cache.generation) return this.remember(context);
+    }
+    throw new ExtensionError('CONTEXT_EXPIRED', 'The analysis context was evicted and its report is no longer held. Refresh the report.');
   }
   async files(key: string, comparisonInput: BrowserComparison, paths: string[], settings: Settings): Promise<Record<string, HumanReportView>> {
     const comparison = readComparison(comparisonInput); const context = await this.context(key, comparison, settings);
@@ -215,7 +236,7 @@ export class Analysis {
     return this.exclusive(key, async () => {
       const resident = this.resident(key); const stored = await this.storedReport(comparison, settings) ?? (resident && { report: resident.report, coverage: resident.coverage, at: resident.packet.refreshedAt });
       if (!stored) throw new ExtensionError('CACHE_MISS', 'This comparison is no longer held. Refresh the report.');
-      const allowance = request.via === 'visible' ? topUpRemaining(stored.coverage, limit) : request.via === 'automatic' ? automaticRemaining(stored.coverage, limit) : Infinity;
+      const allowance = request.via === 'explicit' ? Infinity : automaticRemaining(stored.coverage, limit);
       const outcome = measureBoundedFiles(stored.report, request.patches.slice(0, Math.min(request.patches.length, allowance)));
       if (!outcome.ok) throw new ExtensionError('MEASURE_FAILED', outcome.diagnostics.map(item => item.message).join('\n'));
       const { report, measured: gained } = outcome.value; const exact = new Set(gained); const unmeasured = new Set(report.files.filter(file => !measured(file)).map(file => file.path));
@@ -224,7 +245,9 @@ export class Analysis {
       const count = gained.length; const coverage: Coverage = { ...stored.coverage, declined,
         ...(request.via === 'automatic' ? { automatic: stored.coverage.automatic + count, limit } : request.via === 'visible' ? { topUp: stored.coverage.topUp + count } : { explicit: stored.coverage.explicit + count }) };
       const next: StoredReport = { report, coverage, at: stored.at };
-      await this.persist(comparison, next, generation);
+      // A request another tab already answered gains nothing; the stored facts are served without rewriting them.
+      const unchanged = count === 0 && coverage.limit === stored.coverage.limit && Object.keys(declined).length === Object.keys(stored.coverage.declined).length;
+      if (!unchanged) await this.persist(comparison, next, generation);
       this.forget(context => this.reportKey(context.comparison) === key);
       const context = await this.project(comparison, next, await this.policyEvidence(comparison, settings, resident), settings, true);
       if (generation === this.cache.generation) this.remember(context);

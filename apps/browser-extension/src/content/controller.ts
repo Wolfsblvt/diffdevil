@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-import type { HumanReportView } from '@wolfsblvt/diffdevil/browser';
+import type { BrowserComparison, HumanReportView } from '@wolfsblvt/diffdevil/browser';
 import type { Settings } from '../shared/catalogue.js';
 import { request as defaultRequest, type MeasureVia, type Packet, type PacketFile } from '../shared/protocol.js';
 import { SETTINGS_KEY } from '../shared/settings-key.js';
 import { isPaused } from '../shared/repository.js';
-import { selectFiles } from '../shared/coverage.js';
+import { automaticRemaining, selectFiles } from '../shared/coverage.js';
 import { node, button } from '../shared/dom.js';
 import { acquire as defaultAcquire, automaticLimit, type Standing } from './acquire.js';
 import { measure as defaultMeasure } from './measure.js';
-import { route, aggregateNative, toolbarNative, fileNative, treeCounters, pathAnchors, FILE_HEADERS, PROVIDER_CHANGE, filePath, pageComparison, sameComparison, fullFilesView, visiblePaths, type NativeStat } from './github.js';
+import { route, aggregateNative, toolbarNative, fileNative, treeCounters, pathAnchors, FILE_HEADERS, PROVIDER_CHANGE, filePath, pageComparison, sameComparison, fullFilesView, visiblePaths, viewportPaths, type NativeStat } from './github.js';
 import { projection, failureMarker, readingMarker, pausedMarker, type Projection } from './render.js';
 import { errorPanel, type Progress, type Provenance, type ReportActions } from './report.js';
 import { labelHandoff, pickerAvailable } from './labels.js';
@@ -44,7 +44,7 @@ export function startContent(dependencies: ContentDependencies = {}): { refresh:
   let stopLabelObservation: (() => void) | undefined;
   // Provenance: where the facts on screen came from and whether GitHub has confirmed them since.
   let provenance: Provenance = 'live'; let paused = false; let verifyAgain: (() => Promise<Standing>) | undefined;
-  // Measurement: one operation at a time, never more files than the configured automatic limit allows without an explicit act.
+  // Measurement: one operation at a time, never more files per comparison than the configured automatic limit without an explicit act.
   let index = new Map<string, PacketFile>(); let measuring = false; let settleTimer: ReturnType<typeof setTimeout> | undefined; let attempted = new Set<string>(); let filled = '';
   let continuation: AbortController | undefined; let progress: Progress | undefined; let note: string | undefined;
   // GitHub anchors a file as `diff-` + SHA-256(path). Hashing the packet's own
@@ -215,27 +215,34 @@ export function startContent(dependencies: ContentDependencies = {}): { refresh:
       const next = await measure(scope, base, paths, via, signal); if (revision !== generation || signal.aborted) return false;
       adopt(next); return true;
     } catch (error) {
-      if (!signal.aborted && revision === generation) { note = error instanceof Error ? error.message : 'GitHub did not supply the files.'; console.info('[diffdevil] measurement stopped', { via, code: (error as { code?: string }).code ?? 'MEASURE_FAILED' }); }
+      if (signal.aborted || revision !== generation) return false;
+      const code = (error as { code?: string }).code ?? 'MEASURE_FAILED'; console.info('[diffdevil] measurement stopped', { via, code });
+      // GitHub now names another comparison: these facts are no longer current, so they are read again rather than extended.
+      if (code === 'COMPARISON_MOVED') {
+        const observed = (error as { observed?: BrowserComparison }).observed; measuring = false; continuation?.abort();
+        void settle(revision, controller?.signal ?? lifecycle.signal, { standing: 'moved', ...(observed ? { observed } : {}) }, scope); return false;
+      }
+      note = error instanceof Error ? error.message : 'GitHub did not supply the files.';
       return false;
     } finally { measuring = false; schedule(); popover.rebuild(); }
   }
-  /** Files the reader has settled on, outside the measured set, within what scrolling may spend under the configured limit. */
+  /** Files on screen where the reader settled, outside the measured set, within what remains of the comparison's automatic budget. */
   function scheduleVisible(): void {
     if (!packet || stopped || measuring || continuation) return;
     clearTimeout(settleTimer); settleTimer = setTimeout(() => { void measureVisible(); }, VISIBLE_SETTLE_MS);
   }
   async function measureVisible(): Promise<void> {
     if (!packet || stopped || measuring || continuation || !fullFilesView(href())) return;
-    const room = Math.max(0, automaticLimit(settings) - packet.coverage.topUp); if (room <= 0) return;
+    const room = automaticRemaining(packet.coverage, automaticLimit(settings)); if (room <= 0) return;
     const seated = new Set([...fileSeats.entries()].filter(([, items]) => [...items].some(item => item.root.isConnected)).map(([path]) => path));
-    const wanted = visiblePaths(document).filter(path => seated.has(path) && index.get(path)?.standing === 'bounded' && !attempted.has(path)).slice(0, Math.min(room, VISIBLE_BATCH));
+    const wanted = viewportPaths(document).filter(path => seated.has(path) && index.get(path)?.standing === 'bounded' && !attempted.has(path)).slice(0, Math.min(room, VISIBLE_BATCH));
     if (!wanted.length) return;
     wanted.forEach(path => attempted.add(path)); await measureNow('visible', wanted);
   }
-  /** The reader raised the limit since this comparison was last measured: one automatic pass fills what the new limit allows. */
+  /** The reader raised the limit since this comparison was last measured: one automatic pass spends what the higher limit adds. */
   async function fillToLimit(): Promise<void> {
-    if (!packet || measuring || continuation) return; const limit = automaticLimit(settings); const room = limit - packet.coverage.automatic; const identity = `${packet.key}:${limit}`;
-    if (room <= 0 || packet.coverage.bounded <= 0 || filled === identity) return; filled = identity;
+    if (!packet || measuring || continuation) return; const limit = automaticLimit(settings); const room = automaticRemaining(packet.coverage, limit); const identity = `${packet.key}:${limit}`;
+    if (limit <= packet.coverage.limit || room <= 0 || packet.coverage.bounded <= 0 || filled === identity) return; filled = identity;
     const bounded = packet.files.filter(file => file.standing === 'bounded').map(file => file.path);
     const chosen = selectFiles(bounded, visiblePaths(document), room); if (chosen.length) await measureNow('automatic', chosen);
   }
@@ -281,6 +288,10 @@ export function startContent(dependencies: ContentDependencies = {}): { refresh:
     if (outcome.standing === 'current') { verifyAgain = undefined; setProvenance('live'); return; }
     // GitHub could not be asked: the exact facts stay on screen, labelled as not confirmed, and are checked again when it is reachable.
     if (outcome.standing === 'unconfirmed') { verifyAgain = verify; setProvenance('unconfirmed'); return; }
+    await settle(revision, signal, outcome, scope);
+  }
+  /** The comparison moved: the facts on screen are marked stale and the comparison GitHub named now is acquired. */
+  async function settle(revision: number, signal: AbortSignal, outcome: Extract<Standing, { standing: 'moved' }>, scope: { repository: string; pullRequest: number; path: string }): Promise<void> {
     verifyAgain = undefined; popover.close(false); for (const item of mounted.values()) item.stale(outcome.observed?.head ?? '');
     if (!outcome.observed) { void refresh(true); return; }
     acquiring = true;
