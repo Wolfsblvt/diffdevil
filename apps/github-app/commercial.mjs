@@ -60,7 +60,7 @@ export function planForLink(link) {
 
 /**
  * Funding and current GitHub authority are separate facts. An organisation funded through a binding is
- * usable only while its funder's administration was last observed present; observed absence, or a check
+ * usable only after the encounter observes its funder's administration present; observed absence, or a check
  * that could not observe it, withholds use without ending the binding or the subscription.
  */
 export function planForFunding({ link, binding } = {}) {
@@ -149,6 +149,11 @@ export function createCommercialService({ store, wirt, signing, authorization, p
   async function flushReport(row) {
     const link = await store.link(row.link_id);
     if (!link || link.state !== 'active') return 'skipped';
+    // A queued report's label is not current authority. Re-observe before disclosure and use the
+    // replacement report if that observation superseded the queued one.
+    await observeBindings(link);
+    row = await store.latestReport(link.link_id);
+    if (!row || row.state !== 'pending' || row.next_attempt_at > now()) return 'skipped';
     let result;
     try { result = await wirt.report({ linkId: link.link_id, productAccount: link.product_account, body: outbound(row) }); }
     catch (error) { result = { kind: 'retry', code: error?.code ?? 'E_COMMERCIAL_TRANSPORT' }; }
@@ -250,6 +255,21 @@ export function createCommercialService({ store, wirt, signing, authorization, p
       const change = { observations: changes, ...(orderOf(link) ? { report: report(link, { worksAccount: link.works_account }, lastApplied(link), next, refusals) } : {}) };
       if (await store.transition(link, change)) { await confirm(); return; }
     }
+    throw refusal('E_COMMERCIAL_CONFLICT', 409);
+  }
+
+  /** Observe the funder through their retained service grant, independently of browser presence. */
+  async function observeBinding(link, binding) {
+    let result;
+    try { result = await authorization?.observeOrganisationAuthority({ userId: link.product_account, organisationId: binding.organisation_id }); }
+    catch { result = undefined; }
+    return { slot: binding.slot, organisationId: binding.organisation_id, authority: observedAuthority(result), display: result?.display ?? null };
+  }
+
+  async function observeBindings(link) {
+    const observed = [];
+    for (const binding of await store.bindings(link.link_id)) observed.push(await observeBinding(link, binding));
+    if (observed.length > 0) await recordObservations(link.link_id, observed);
   }
 
   /**
@@ -516,7 +536,15 @@ export function createCommercialService({ store, wirt, signing, authorization, p
     async entitlement({ repositoryId, actor: viewer }) {
       const account = repositoryId === null ? viewer?.userId : await store.repositoryNamespace(repositoryId);
       if (!Number.isSafeInteger(account) || account <= 0) return 'unknown';
-      return planForFunding(await store.funding(account));
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const funding = await store.funding(account);
+        if (!funding.binding) return planForFunding(funding);
+        await recordObservations(funding.link.link_id, [await observeBinding(funding.link, funding.binding)]);
+        const current = await store.funding(account);
+        // A concurrent rebind belongs to its new funder; never carry the old observation across it.
+        if (current.link?.link_id === funding.link.link_id && current.binding?.slot === funding.binding.slot) return planForFunding(current);
+      }
+      throw refusal('E_COMMERCIAL_CONFLICT', 409);
     },
 
     /**

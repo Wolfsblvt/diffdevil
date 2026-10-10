@@ -20,6 +20,8 @@ The older pathless backend is narrower evidence, not the product ceiling. Named 
 
 The old thirty-day rolling Free-history and financial-entitlement deletion assumptions do not define the new offer. Hosted history and inactive archives must follow the published selected service policy, not an incidental storage TTL. Community's operator chooses its retention and resource limits.
 
+An active organisation-funding binding needs the funder's existing protected GitHub authorization to recheck authority at premium use and before organisation-label disclosure. Browser logout, account switching and session expiry do not end that service purpose. Revocation and grant expiry still make authority unavailable. Once no active binding, usable browser session or pending sign-in remains, ordinary authorization maintenance removes the protected grant. This retains one existing grant for the requested service; it adds no provider permission or credential copy.
+
 No history promise supplies infinite physical storage, perpetual operation or permission to retain deleted data. Necessary account state must not expire after seven quiet days; equally, an account is not consent to collect optional history.
 
 ## Execution, history and enrichment are separate

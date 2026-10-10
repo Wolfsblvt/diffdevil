@@ -1,5 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
+// A bound organisation is active service, even with no dashboard session. The binding's lifecycle
+// owns this purpose; unbind/capacity removal/link ending releases it without a second retention flag.
+const NO_ORGANISATION_FUNDING = `NOT EXISTS (SELECT 1 FROM commercial_bindings b
+  JOIN commercial_links l ON l.link_id=b.link_id
+  WHERE l.product_account=user_authorizations.user_id AND l.state='active')`;
+
 /** D1 adapter for one-time user authorization and opaque browser sessions. */
 export class D1AuthorizationStore {
   constructor(database, { now = () => new Date().toISOString() } = {}) {
@@ -78,7 +84,8 @@ export class D1AuthorizationStore {
         AND EXISTS (SELECT 1 FROM browser_sessions WHERE session_hash=?)`, now, previousSessionHash, sessionHash),
       this.statement(`DELETE FROM user_authorizations WHERE user_id=(SELECT user_id FROM browser_sessions WHERE session_hash=?)
         AND NOT EXISTS (SELECT 1 FROM browser_sessions WHERE user_id=user_authorizations.user_id AND revoked_at IS NULL AND expires_at > ?)
-        AND NOT EXISTS (SELECT 1 FROM authorization_artifacts WHERE user_id=user_authorizations.user_id AND consumed_at IS NULL AND expires_at > ?)`,
+        AND NOT EXISTS (SELECT 1 FROM authorization_artifacts WHERE user_id=user_authorizations.user_id AND consumed_at IS NULL AND expires_at > ?)
+        AND ${NO_ORGANISATION_FUNDING}`,
       previousSessionHash, now, now)
     );
     const results = await this.database.batch(statements);
@@ -108,7 +115,8 @@ export class D1AuthorizationStore {
       this.statement('UPDATE browser_sessions SET revoked_at=? WHERE session_hash=? AND revoked_at IS NULL', now, hash),
       this.statement(`DELETE FROM user_authorizations WHERE user_id=(SELECT user_id FROM browser_sessions WHERE session_hash=?)
         AND NOT EXISTS (SELECT 1 FROM browser_sessions WHERE user_id=user_authorizations.user_id AND revoked_at IS NULL AND expires_at > ?)
-        AND NOT EXISTS (SELECT 1 FROM authorization_artifacts WHERE user_id=user_authorizations.user_id AND consumed_at IS NULL AND expires_at > ?)`,
+        AND NOT EXISTS (SELECT 1 FROM authorization_artifacts WHERE user_id=user_authorizations.user_id AND consumed_at IS NULL AND expires_at > ?)
+        AND ${NO_ORGANISATION_FUNDING}`,
       hash, now, now)
     ]);
   }
@@ -125,7 +133,8 @@ export class D1AuthorizationStore {
       this.statement('DELETE FROM browser_sessions WHERE expires_at <= ?', now),
       this.statement(`DELETE FROM user_authorizations WHERE expires_at <= ? OR revoked_at IS NOT NULL
         OR (NOT EXISTS (SELECT 1 FROM browser_sessions WHERE user_id=user_authorizations.user_id AND revoked_at IS NULL AND expires_at > ?)
-          AND NOT EXISTS (SELECT 1 FROM authorization_artifacts WHERE user_id=user_authorizations.user_id AND consumed_at IS NULL AND expires_at > ?))`, now, now, now)
+          AND NOT EXISTS (SELECT 1 FROM authorization_artifacts WHERE user_id=user_authorizations.user_id AND consumed_at IS NULL AND expires_at > ?)
+          AND ${NO_ORGANISATION_FUNDING})`, now, now, now)
     ]);
   }
 }

@@ -12,6 +12,8 @@ import { D1CommercialStore } from './commercial-storage.mjs';
 import { readSigningKeys, signedHeaders, verifySignedMessage } from './commercial-wirt.mjs';
 import { normalizeWebhookEvent } from './contracts.mjs';
 import { D1AppStore } from './storage.mjs';
+import { D1AuthorizationStore } from './authorization-storage.mjs';
+import { createAuthorizationService } from './authorization.mjs';
 
 const migrations = ['0001_initial.sql', '0002_consent-provenance.sql', '0003_preserve-active-consent.sql', '0004_admission-settings.sql',
   '0005_offboarding-consent-tombstones.sql', '0006_user-authorization.sql', '0007_consent-actors.sql', '0010_commercial-links.sql'];
@@ -160,7 +162,7 @@ function wirtDouble(clock) {
   return { state, fetch, approve, signedTerminal };
 }
 
-async function fixture({ Store = D1CommercialStore } = {}) {
+async function fixture({ Store = D1CommercialStore, realAuthorization = false } = {}) {
   const clock = { value: '2027-03-01T06:00:20.000Z' };
   const now = () => clock.value;
   const runtime = new Miniflare({ workers: [{
@@ -184,7 +186,7 @@ async function fixture({ Store = D1CommercialStore } = {}) {
     const present = administers.get(userId)?.has(organisationId);
     return { userId, authority: present ? 'present' : 'absent', display: present ? 'example-org' : null };
   };
-  const authorization = {
+  let authorization = {
     authenticate: async session => { if (!sessions.has(session)) throw Object.assign(new Error('E_SESSION_UNAVAILABLE'), { code: 'E_SESSION_UNAVAILABLE' }); return { userId: sessions.get(session) }; },
     organisationAuthority: async ({ session, organisationId }) => {
       const userId = sessions.get(session);
@@ -193,12 +195,42 @@ async function fixture({ Store = D1CommercialStore } = {}) {
     },
     observeOrganisationAuthority: async ({ userId, organisationId }) => retained.has(userId) ? observe(userId)(organisationId) : { userId, authority: 'unknown', display: null }
   };
+  const authStore = new D1AuthorizationStore(database, { now });
+  const browserSessions = new Map();
+  let signIn;
+  if (realAuthorization) {
+    const provider = {
+      authorizationUrl: async ({ state }) => `https://github.com/login/oauth/authorize?state=${state}&redirect_uri=${encodeURIComponent(`${APP}/oauth/callback`)}`,
+      exchangeCode: async ({ code }) => ({ material: { userId: Number(code) }, expiresAt: '2027-04-01T00:00:00.000Z' }),
+      userForAuthorization: async material => material.userId,
+      verifyUserAuthorization: async ({ userId, material }) => ({ valid: retained.has(userId) && material.userId === userId }),
+      checkOrganisationAdministration: async ({ userId, material, organisationId }) => {
+        assert.equal(material.userId, userId);
+        if (!github.answering) throw new Error('fixture provider unavailable');
+        return { administer: administers.get(userId)?.has(organisationId) === true, login: 'example-org' };
+      }
+    };
+    authorization = createAuthorizationService({ store: authStore, admission: {}, provider, protector, returnContexts: ['account'],
+      allowedOrigins: [APP], allowedCallbackUrls: [`${APP}/oauth/callback`], sessionLifetimeMs: 60 * 60_000, now });
+    signIn = async (userId, previousSession) => {
+      const begun = await authorization.begin('account');
+      const browserBinding = begun.headers['Set-Cookie'].match(/^__Host-diffdevil-oauth=([^;]+)/u)[1];
+      const completed = await authorization.complete({ state: begun.state, code: String(userId), browserBinding });
+      const exchanged = await authorization.exchange({ artifact: completed.artifact, returnContext: 'account', method: 'POST', origin: APP, previousSession });
+      const session = exchanged.headers['Set-Cookie'].match(/^__Host-diffdevil-session=([^;]+)/u)[1];
+      browserSessions.set(userId === USER ? SESSION : OTHER_SESSION, session);
+      return session;
+    };
+    await signIn(USER);
+    await signIn(OTHER_USER);
+  }
   const env = { APP_DB: database, WIRT_SIGNING_KEY_CURRENT: KEY, WIRT_SIGNING_KEY_PREVIOUS: PREVIOUS, WIRT_ORIGIN: WIRT, WIRT_OAUTH_CLIENT_ID: 'diffdevil-public-client', WIRT_LINK_CALLBACK_URL: CALLBACK };
   const commercial = commercialFromEnv(env, { store, authorization, protector, allowedOrigins: [APP], linkContinuationUrl: CONTINUATION, fetch: wirt.fetch, now });
   const worker = createGitHubAppWorker({ store: appStore, commercial });
   const call = (path, init = {}) => worker.fetch(new Request(`${APP}${path}`, init), env);
-  const browser = (session = SESSION, cookies = '') => ({ cookie: [`__Host-diffdevil-session=${session}`, cookies].filter(Boolean).join('; '), origin: APP });
-  return { runtime, database, appStore, store, wirt, clock, commercial, worker, env, call, browser, administers, retained, github, vault };
+  const browser = (session = SESSION, cookies = '') => ({ cookie: [`__Host-diffdevil-session=${browserSessions.get(session) ?? session}`, cookies].filter(Boolean).join('; '), origin: APP });
+  return { runtime, database, appStore, store, wirt, clock, commercial, worker, env, call, browser, administers, retained, github, vault,
+    authorization, authStore, browserSessions, signIn };
 }
 
 const at = source => Date.parse(source.clock.value);
@@ -674,7 +706,7 @@ test('authority is an observed, rechecked fact: funding survives its loss, organ
     source.github.answering = true;
     assert.equal((await statusOf()).capacity.find(value => value.slot === 'slot-1').binding.authority, 'present');
 
-    // The funder signs out and the product no longer retains their authorization. The next check cannot
+    // The funder's authorization is revoked. The next check cannot
     // observe authority, so it records `unknown` rather than letting an earlier `present` stand.
     retained.delete(USER);
     clock.value = '2027-03-04T11:00:00.000Z';
@@ -709,6 +741,116 @@ test('authority is an observed, rechecked fact: funding survives its loss, organ
     assert.deepEqual((await rows(source, 'commercial_reports')).filter(row => row.link_id === linkId), [], 'an ended link keeps only its link identity after thirty days');
     assert.equal((await store.link(linkId)).state, 'ended');
   } finally { await source.runtime.dispose(); }
+});
+
+test('premium encounters and queued reports recheck funder authority before maintenance or a dashboard visit', async () => {
+  const source = await fixture();
+  try {
+    const { commercial, store, administers, github, clock, wirt } = source;
+    await link(source, { owner: 77 });
+    const linkId = (await store.activeLink(USER)).link_id;
+    await fundedOrganisation(source, linkId);
+    await bindRequest(source, { action: 'bind', slot: 'slot-1', organisationId: ORG });
+    const entitlement = () => commercial.entitlement({ repositoryId: 21, actor: { userId: OTHER_USER } });
+
+    administers.get(USER).delete(ORG);
+    clock.value = '2027-03-01T06:01:00.000Z';
+    assert.equal(await entitlement(), 'free', 'a recent stored present cannot authorize the next premium encounter');
+    assert.deepEqual(await store.binding(ORG).then(row => [row.authority_observed, row.authority_checked_at, row.display]), ['absent', clock.value, null]);
+    await commercial.flushReports();
+    assert.equal(wirt.state.reports.at(-1).bindings[0].display, null);
+    assert.equal(wirt.state.reports.at(-1).applied.result, 'applied');
+
+    administers.get(USER).add(ORG);
+    assert.equal(await entitlement(), 'business', 'recovery happens at the same encounter without a funder visit');
+    github.answering = false;
+    assert.equal(await entitlement(), 'unknown');
+    assert.equal((await store.binding(ORG)).display, null);
+    github.answering = true;
+    assert.equal(await entitlement(), 'business');
+
+    // The recovered label is queued, then authority is lost before the transport sends it.
+    assert.ok((await store.latestReport(linkId)).disclosure);
+    administers.get(USER).delete(ORG);
+    await commercial.flushReports();
+    assert.equal(wirt.state.reports.at(-1).bindings[0].authority, 'absent');
+    assert.equal(wirt.state.reports.at(-1).bindings[0].display, null, 'an unsent present report cannot disclose a now-unconfirmed label');
+    assert.equal((await commercialBytes(source)).includes('example-org'), false);
+    assert.equal((await store.binding(ORG)).slot, 'slot-1');
+    assert.equal(await commercial.entitlement({ repositoryId: null, actor: { userId: USER } }), 'business');
+    assert.deepEqual(wirt.state.cases, []);
+    administers.get(USER).add(ORG);
+    assert.equal(await entitlement(), 'business');
+    administers.get(USER).delete(ORG);
+    store.transition = async () => false;
+    await assert.rejects(entitlement(), { code: 'E_COMMERCIAL_CONFLICT' }, 'an unrecorded authority loss cannot return the stored premium plan');
+  } finally { await source.runtime.dispose(); }
+});
+
+test('a bound funder grant survives real logout, account switching and session expiry, but not revocation', async () => {
+  const source = await fixture({ realAuthorization: true });
+  try {
+    const { commercial, store, authorization, authStore, browserSessions, clock, signIn } = source;
+    await link(source, { owner: 77 });
+    await fundedOrganisation(source, (await store.activeLink(USER)).link_id);
+    await bindRequest(source, { action: 'bind', slot: 'slot-1', organisationId: ORG });
+    const entitlement = () => commercial.entitlement({ repositoryId: 21, actor: { userId: OTHER_USER } });
+    const funderSession = browserSessions.get(SESSION);
+    await authorization.logout({ session: funderSession, method: 'POST', origin: APP });
+    await assert.rejects(authorization.authenticate(funderSession), { code: 'E_SESSION_UNAVAILABLE' });
+    assert.ok((await authStore.authorization(USER))?.protected_material);
+    const reader = await authorization.authenticate(browserSessions.get(OTHER_SESSION));
+    assert.equal(await commercial.entitlement({ repositoryId: 21, actor: reader }), 'business');
+
+    // Replacing a funder cookie with a different account also releases only the browser session.
+    const nextFunderSession = await signIn(USER);
+    await signIn(OTHER_USER, nextFunderSession);
+    await assert.rejects(authorization.authenticate(nextFunderSession), { code: 'E_SESSION_UNAVAILABLE' });
+    clock.value = '2027-03-01T08:00:00.000Z';
+    await authStore.maintain();
+    assert.ok((await authStore.authorization(USER))?.protected_material, 'active service retains the grant after every session expires');
+    assert.equal(await authStore.authorization(OTHER_USER), null, 'a reader without funded bindings still loses a dormant grant');
+    assert.equal(await entitlement(), 'business');
+
+    await authStore.revokeAuthorization(USER);
+    assert.equal(await entitlement(), 'unknown', 'retention never substitutes for current grant authority');
+    assert.equal((await store.binding(ORG)).slot, 'slot-1', 'grant revocation does not end funding');
+    await authStore.maintain();
+    assert.equal(await authStore.authorization(USER), null);
+
+    await signIn(USER);
+    await authorization.logout({ session: browserSessions.get(SESSION), method: 'POST', origin: APP });
+    assert.equal(await entitlement(), 'business', 'a renewed authorization restores service without keeping its session');
+    clock.value = '2027-04-01T00:00:00.000Z';
+    assert.equal(await entitlement(), 'unknown', 'an expired retained grant cannot supply authority');
+    await authStore.maintain();
+    assert.equal(await authStore.authorization(USER), null);
+  } finally { await source.runtime.dispose(); }
+});
+
+test('ending the last binding purpose releases a sessionless protected grant', async t => {
+  for (const ending of ['unbind', 'capacity-removal', 'link-ended']) await t.test(ending, async () => {
+    const source = await fixture({ realAuthorization: true });
+    try {
+      const { commercial, store, authorization, authStore, browserSessions } = source;
+      await link(source, { owner: 77 });
+      const linkId = (await store.activeLink(USER)).link_id;
+      await fundedOrganisation(source, linkId);
+      await bindRequest(source, { action: 'bind', slot: 'slot-1', organisationId: ORG });
+      await authorization.logout({ session: browserSessions.get(SESSION), method: 'POST', origin: APP });
+      if (ending === 'unbind') {
+        assert.equal((await bindRequest(source, { action: 'unbind', organisationId: ORG }, OTHER_SESSION)).status, 200);
+      } else if (ending === 'capacity-removal') {
+        await push(source, projection({ linkId, version: 2, tier: 'business', slots: [] }));
+      } else {
+        assert.equal((await push(source, notice({ linkId, version: 2 }))).status, 200);
+      }
+      assert.equal(await store.binding(ORG), null);
+      await authStore.maintain();
+      assert.equal(await authStore.authorization(USER), null, 'no paid binding leaves a dormant grant behind');
+      assert.equal(await commercial.entitlement({ repositoryId: 21, actor: { userId: OTHER_USER } }), 'free');
+    } finally { await source.runtime.dispose(); }
+  });
 });
 
 test('an interrupted link recovers its committed association with a refreshed retained grant', async () => {
