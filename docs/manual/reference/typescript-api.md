@@ -392,10 +392,13 @@ and examples outside the markers remain authored.
 | `BrowserInput` | `BrowserInput` | [Declaration](#api-browser-acquisition-browserinput) |
 | `BrowserPolicy` | `BrowserPolicy` | [Declaration](#api-browser-policy-browserpolicy) |
 | `Diagnostic` | `Diagnostic` | [Declaration](#api-model-diagnostic) |
+| `FileRecord` | `FileRecord` | [Declaration](#api-model-filerecord) |
 | `HUMAN_VIEW_VERSION` | `HUMAN_VIEW_VERSION` | [Declaration](#api-browser-view-human_view_version) |
 | `HumanReportView` | `HumanReportView` | [Declaration](#api-browser-view-humanreportview) |
 | `MAX_ACQUISITION_BYTES` | `MAX_ACQUISITION_BYTES` | [Declaration](#api-browser-acquisition-max_acquisition_bytes) |
+| `MeasureOutcome` | `MeasureOutcome` | [Declaration](#api-browser-measure-measureoutcome) |
 | `NumericMeasurement` | `NumericMeasurement` | [Declaration](#api-model-numericmeasurement) |
+| `PatchEvidence` | `PatchEvidence` | [Declaration](#api-browser-measure-patchevidence) |
 | `PolicyLayers` | `PolicyLayers` | [Declaration](#api-browser-policy-policylayers) |
 | `PolicyMode` | `PolicyMode` | [Declaration](#api-browser-policy-policymode) |
 | `Rail` | `Rail` | [Declaration](#api-browser-view-rail) |
@@ -412,6 +415,7 @@ and examples outside the markers remain authored.
 | `evidenceText` | `evidenceText` | [Declaration](#api-browser-text-evidencetext) |
 | `formatReport` | `formatReport` | [Declaration](#api-format-formatreport) |
 | `humanReport` | `humanReport` | [Declaration](#api-browser-view-humanreport) |
+| `measureBoundedFiles` | `measureBoundedFiles` | [Declaration](#api-browser-measure-measureboundedfiles) |
 | `measurementText` | `measurementText` | [Declaration](#api-browser-text-measurementtext) |
 | `readComparison` | `readComparison` | [Declaration](#api-browser-acquisition-readcomparison) |
 | `readPolicyText` | `readPolicyText` | [Declaration](#api-browser-policy-readpolicytext) |
@@ -544,6 +548,46 @@ export interface AppReportIdentity {
 
 ```typescript
 export type AppStanding = 'local' | 'matching' | 'policy-mismatch' | 'stale' | 'incompatible';
+```
+
+<a id="api-browser-measure-measureboundedfiles"></a>
+
+#### `measureBoundedFiles`
+
+[Canonical source](../../../src/diffdevil/browser/measure.ts)
+
+```typescript
+export declare function measureBoundedFiles(input: Report, patches: readonly PatchEvidence[]): Result<MeasureOutcome>;
+```
+
+<a id="api-browser-measure-measureoutcome"></a>
+
+#### `MeasureOutcome`
+
+[Canonical source](../../../src/diffdevil/browser/measure.ts)
+
+```typescript
+export interface MeasureOutcome {
+    readonly report: Report;
+    readonly measured: readonly string[];
+    readonly rejected: readonly {
+        readonly path: string;
+        readonly code: string;
+    }[];
+}
+```
+
+<a id="api-browser-measure-patchevidence"></a>
+
+#### `PatchEvidence`
+
+[Canonical source](../../../src/diffdevil/browser/measure.ts)
+
+```typescript
+export interface PatchEvidence {
+    readonly path: string;
+    readonly patch: string;
+}
 ```
 
 <a id="api-browser-policy-browserpolicy"></a>
