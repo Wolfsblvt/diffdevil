@@ -20,7 +20,8 @@ const actor = { userId: 123, authorizedRepositoryIds: [17] };
 function record(number = 1, report = unwrap(analyzeDiff(patch, { source: { kind: 'github-api', comparison: 'direct', comparisonId: 'final', base, head } }))) {
   return normalizeAnalyticalRecord({ version: 1, repositoryId: 17, pullRequest: number, state: 'merged', openedAt: from, readyAt: from,
     mergedAt: at, closedAt: at, updatedAt: at, currentHead: other, revisions: [],
-    final: report ? { base, head, observedAt: at, report, sizes: [{ path: 'a.txt', before: 100, after: 100 }], basis: 'final-merged-comparison' } : null });
+     final: report ? { base, head, observedAt: at, report,
+       sizes: report.files.map(file => ({ path: file.path, before: 100, after: 100 })), basis: 'final-merged-comparison' } : null });
 }
 function fixture(records = [record()], plan = 'pro') {
   let accesses = true;
