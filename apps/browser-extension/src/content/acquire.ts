@@ -2,7 +2,7 @@
 import type { BrowserComparison, BrowserInput } from '@wolfsblvt/diffdevil/browser';
 import { request, type AcquisitionCoverage, type Lookup, type Packet, type PolicySource, type PublicPull } from '../shared/protocol.js';
 import { boundedText, ExtensionError, safePath } from '../shared/errors.js';
-import { DEFAULT_FILE_LIMIT, FILE_LIMIT, selectFiles, type DeclineReason } from '../shared/coverage.js';
+import { DEFAULT_FILE_LIMIT, FILE_LIMIT, selectFiles, type DeclineReason, type UnresolvedReason } from '../shared/coverage.js';
 import { blobText, embeddedFiles, pageComparison, sameComparison, unpatchedPaths, visiblePaths, withEntries, type Route } from './github.js';
 const LIMIT = 8 * 1024 * 1024;
 /** The configured automatic limit, or the default when the setting is absent or unusable. */
@@ -61,9 +61,9 @@ async function unifiedDiff(current: Route, comparison: BrowserComparison, signal
  * existing evidence intact.
  */
 const ENTRY_BATCH = 8; const ENTRY_CONCURRENCY = 3; const ENTRY_HEADERS = { 'GitHub-Verified-Fetch': 'true', Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' };
-export async function loadDiffEntries(current: Route, comparison: BrowserComparison, paths: readonly string[], signal: AbortSignal): Promise<{ entries: unknown[]; retryFailures: number; retryFailureCodes: string[] }> {
+export async function loadDiffEntries(current: Route, comparison: BrowserComparison, paths: readonly string[], signal: AbortSignal): Promise<{ entries: unknown[]; retryFailures: number; retryFailureCodes: string[]; /** Paths whose single-path retry failed: unreachable this time, not absent. */ failedPaths: string[] }> {
   const batches: string[][] = []; for (let index = 0; index < paths.length; index += ENTRY_BATCH) batches.push(paths.slice(index, index + ENTRY_BATCH));
-  const entries: unknown[] = []; const retryFailureCodes = new Set<string>(); let retryFailures = 0; let next = 0;
+  const entries: unknown[] = []; const retryFailureCodes = new Set<string>(); const failedPaths: string[] = []; let retryFailures = 0; let next = 0;
   const fetchEntries = async (requested: readonly string[]): Promise<unknown[]> => {
     const url = `${current.path}/page_data/diff_entries?paths=${requested.map(encodeURIComponent).join(',')}&w=0&range=${comparison.head}`;
     const response = await fetch(url, { credentials: 'same-origin', cache: 'no-store', signal: AbortSignal.any([signal, AbortSignal.timeout(20_000)]), headers: ENTRY_HEADERS });
@@ -89,14 +89,14 @@ export async function loadDiffEntries(current: Route, comparison: BrowserCompari
         try { entries.push(...await fetchEntries([path])); }
         catch (error) {
           if (signal.aborted) throw error;
-          retryFailures++;
+          retryFailures++; failedPaths.push(path);
           retryFailureCodes.add(error instanceof ExtensionError ? error.code : 'DIFF_ENTRIES');
         }
       }
     }
   };
   await Promise.all(Array.from({ length: Math.min(ENTRY_CONCURRENCY, batches.length) }, worker));
-  return { entries, retryFailures, retryFailureCodes: [...retryFailureCodes] };
+  return { entries, retryFailures, retryFailureCodes: [...retryFailureCodes], failedPaths };
 }
 /** What a fresh read of the same route said about a comparison shown from the cache. */
 export type Standing = { readonly standing: 'current' } | { readonly standing: 'moved'; readonly observed?: BrowserComparison } | { readonly standing: 'unconfirmed'; readonly code: string };
@@ -127,6 +127,8 @@ function bound(files: readonly unknown[], limit: number, visible: readonly strin
   const chosen = new Set(selectFiles(records.map(file => String(file.filename)), visible, limit, withheld));
   return { files: records.map(file => chosen.has(String(file.filename)) || file.patch === undefined ? file : (({ patch: _patch, ...rest }) => rest)(file)), coverage: { limit, declined } };
 }
+/** How many paths each reason covers: the path-free form a diagnostic may carry. */
+export const tally = (reasons: Readonly<Record<string, string>>): Record<string, number> => { const counts: Record<string, number> = {}; for (const reason of Object.values(reasons)) counts[reason] = (counts[reason] ?? 0) + 1; return counts; };
 /** Reads source through the signed-in page; all analysis runs in the extension worker. */
 export async function acquire(current: Route, document: Document, signal: AbortSignal, options: AcquireOptions = {}): Promise<Acquired> {
   let comparison = options.confirmed ?? pageComparison(document, current); let publicResult: PublicPull | undefined;
@@ -212,18 +214,22 @@ export async function acquire(current: Route, document: Document, signal: AbortS
             const order = embedded.files.map(file => String(file.filename)); const chosen = new Set(selectFiles(order, visiblePaths(document), limit, new Set(Object.keys(declined))));
             let files = embedded.files.map(file => chosen.has(String(file.filename)) || file.patch === undefined ? file : (({ patch: _patch, ...rest }) => rest)(file));
             const pending = unpatchedPaths(files).filter(path => chosen.has(path)); let loaded = 0; let declinedNow = 0; let retryFailures = 0; let retryFailureCodes: string[] = [];
+            const unresolved: Record<string, UnresolvedReason> = Object.create(null) as Record<string, UnresolvedReason>; let shapes: unknown[] = [];
             if (pending.length) {
               try {
                 const result = await loadDiffEntries(current, resolved, pending, signal);
-                const merged = withEntries(files, result.entries);
-                files = merged.files; loaded = merged.loaded; declinedNow = merged.declined; Object.assign(declined, merged.declinedPaths); retryFailures = result.retryFailures; retryFailureCodes = result.retryFailureCodes;
+                const merged = withEntries(files, result.entries, new Set(pending));
+                files = merged.files; loaded = merged.loaded; declinedNow = merged.declined; Object.assign(declined, merged.declinedPaths); Object.assign(unresolved, merged.unresolved); shapes = merged.shapes;
+                for (const path of result.failedPaths) unresolved[path] = 'unreachable';
+                retryFailures = result.retryFailures; retryFailureCodes = result.retryFailureCodes;
               }
-              catch (routeFailure) { if (signal.aborted) throw routeFailure; routeError = (routeFailure as { code?: string }).code ?? 'DIFF_ENTRIES'; }
+              catch (routeFailure) { if (signal.aborted) throw routeFailure; routeError = (routeFailure as { code?: string }).code ?? 'DIFF_ENTRIES'; for (const path of pending) unresolved[path] = 'unreachable'; }
             }
             const patched = files.filter(file => file.patch !== undefined).length;
             embedded = { ...embedded, files, patched, declined };
-            console.info('[diffdevil] signed-in acquisition', { files: files.length, limit, chosen: chosen.size, embedded: patched - loaded, loaded, declined: declinedNow, bounded: files.length - patched, ...(retryFailures ? { retryFailures, retryFailureCodes } : {}), ...(routeError ? { routeError } : {}) });
-            coverage = { limit, declined };
+            const unresolvedCount = Object.keys(unresolved).length;
+            console.info('[diffdevil] signed-in acquisition', { files: files.length, limit, chosen: chosen.size, embedded: patched - loaded, loaded, declined: declinedNow, bounded: files.length - patched, ...(unresolvedCount ? { unresolved: unresolvedCount, unresolvedReasons: tally(unresolved), shapes } : {}), ...(retryFailures ? { retryFailures, retryFailureCodes } : {}), ...(routeError ? { routeError } : {}) });
+            coverage = { limit, declined, ...(unresolvedCount ? { unresolved } : {}) };
             acquisition = { comparison: resolved, format: 'github-files', files, complete: embedded.complete && files.length === (resolved.changedFiles ?? files.length) };
           }
           // The anonymous API completes a public comparison when the signed-in route could not; a private

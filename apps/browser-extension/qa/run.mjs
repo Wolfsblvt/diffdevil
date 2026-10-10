@@ -369,18 +369,58 @@ ${await page.evaluate(() => JSON.stringify({ calls: fixture.calls, href: fixture
     await check('Provenance: ' + name, async () => { if (!result) { await shown.page.evaluate(() => { fixture.verifyHold = true; void controller.refresh(); }); await shown.page.waitForTimeout(120); } await shown.page.waitForFunction(pattern => new RegExp(pattern).test(document.querySelector('.ddx-provenance')?.textContent ?? ''), pattern.source, { timeout: 4000 }); });
     await shown.page.evaluate(() => controller.stop()); await shown.context.close();
   }
+  const lockName = 'generated/vendor.lock'; const lateName = 'src/late.ts'; const lockComparison = { ...comparison, changedFiles: 3, additions: 6, deletions: 3 };
+  const lockSettings = m.validateSettings({ 'analysis.maximumFiles': 2 }); const lockWorld = new m.Analysis({ cache: new m.AnalysisCache(new m.MemoryStore()), engine: 'qa' });
+  const lockPacket = await lockWorld.run({ comparison: lockComparison, acquisition: { comparison: lockComparison, format: 'github-files', complete: true, files: [{ filename: 'src/a.ts', status: 'modified', additions: 2, deletions: 1, patch: fragment }, { filename: lockName, status: 'modified', additions: 2, deletions: 1 }, { filename: lateName, status: 'modified', additions: 2, deletions: 1 }] }, policy: { status: 'absent', at: 1 }, coverage: { limit: 2, declined: {}, unresolved: { [lockName]: 'collapsed', [lateName]: 'not-returned' } } }, lockSettings);
+  const lockCalls = []; let lockAnswers = 0;
+  const lockBackend = async message => {
+    try {
+      let value;
+      switch (message.type) {
+        case 'settings.get': value = lockSettings; break;
+        case 'analysis.files': value = await lockWorld.files(message.key, message.comparison, message.paths, lockSettings); break;
+        default: throw new Error('Unexpected fixture message: ' + message.type);
+      }
+      return { ok: true, value };
+    } catch (error) { return { ok: false, code: error.code ?? 'TEST_OPERATION_FAILED', message: error.message }; }
+  };
+  // GitHub omits the late file twice and then returns it; the collapsed file is never asked for again.
+  const lockMeasure = async (paths, via) => { lockCalls.push({ paths, via }); lockAnswers++; return lockWorld.extend({ comparison: lockComparison, patches: lockAnswers >= 3 && paths.includes(lateName) ? [{ path: lateName, patch: fragment }] : [], ...(lockAnswers < 3 ? { unresolved: Object.fromEntries(paths.map(path => [path, 'not-returned'])) } : {}), via }, lockSettings); };
+  const lockPage = await contentPage({ value: lockPacket, data: lockComparison, settings: lockSettings, backend: lockBackend, measure: lockMeasure, headers: ['src/a.ts', lockName, lateName] });
+  await check('A file GitHub collapses stays bounded with its reason, a pass never re-asks it, and a pass that measures nothing says so without redrawing the report as progress', async () => {
+    const popoverText = () => lockPage.page.locator('.ddx-popover').innerText();
+    await lockPage.page.locator('[data-ddx="aggregate"] .ddx-trigger').click(); let text = await popoverText();
+    assert.match(text, /bounded\s+2/u); assert.match(text, /not supplied\s+1 collapsed by GitHub \(generated\), 1 not returned/u);
+    const more = lockPage.page.getByRole('button', { name: 'Analyze remaining files' }); assert.equal(await more.count(), 1); assert.match(await more.getAttribute('title'), /Reads 1 more file /u, 'only the file GitHub might still return is offered');
+    await more.click(); await lockPage.page.waitForFunction(() => /none could be measured/u.test(document.querySelector('.ddx-popover-host')?.shadowRoot?.querySelector('.ddx-popover')?.innerText ?? ''), null, { timeout: 4000 });
+    await lockPage.page.evaluate(() => { document.querySelector('[data-ddx="aggregate"]').dataset.sameNode = 'yes'; });
+    await lockPage.page.getByRole('button', { name: 'Analyze remaining files' }).click(); await lockPage.page.waitForTimeout(300);
+    text = await popoverText(); assert.match(text, /Asked GitHub for 1 file; none could be measured: 1 not returned\./u);
+    assert.equal(await lockPage.page.locator('[data-ddx="aggregate"]').getAttribute('data-same-node'), 'yes', 'an attempt that changed nothing did not rebuild the seats');
+    await lockPage.page.getByRole('button', { name: 'Analyze remaining files' }).click();
+    await lockPage.page.waitForFunction(() => /Asked GitHub for 1 file: 1 measured\./u.test(document.querySelector('.ddx-popover-host')?.shadowRoot?.querySelector('.ddx-popover')?.innerText ?? ''), null, { timeout: 4000 });
+    text = await popoverText(); assert.match(text, /measured\s+2/u); assert.match(text, /bounded\s+1/u); assert.match(text, /not supplied\s+1 collapsed by GitHub \(generated\)\s/u);
+    assert.equal(await lockPage.page.getByRole('button', { name: 'Analyze remaining files' }).count(), 0, 'with only GitHub’s settled answer left, no pass is offered');
+    assert.ok(lockCalls.length === 3 && lockCalls.every(call => call.via === 'explicit' && !call.paths.includes(lockName)), JSON.stringify(lockCalls));
+    await capture(lockPage.page, 'continuity-report-collapsed');
+  });
+  await lockPage.page.evaluate(() => controller.stop()); await lockPage.context.close();
   const panels = await environment(); await panels.page.setContent('<main id="target"></main>'); await panels.page.addStyleTag({ content: githubCss + contentCss }); await panels.page.addScriptTag({ content: domCode });
   const worldView = unwrap(m.humanReport(world.contexts?.values?.().next().value?.report ?? unwrap(m.analyzeBrowserInput(JSON.stringify({ comparison: worldComparison, format: 'github-files', complete: true, files: [{ filename: fileName(0), status: 'modified', additions: 2, deletions: 1 }] }))), undefined, fileName(0)));
   await check('A bounded file’s report offers to measure it, and a declined file says why it cannot be', async () => {
     const answers = await panels.page.evaluate(view => {
       const calls = []; const popover = new DiffdevilUnderTest.Popover(); const anchor = document.createElement('button'); document.querySelector('#target').append(anchor);
-      const make = standing => ({ copyText: async () => '', retry: () => {}, settingsUrl: 'about:blank', dataUrl: 'about:blank', provenance: () => 'live', coverage: { summary: () => ({ limit: 150 }), progress: () => undefined, note: () => undefined, start() {}, cancel() {} }, fileStanding: () => standing, measureFile: path => calls.push(path), pause() {}, diagnostics: () => '', errorPanel: () => document.createElement('div') });
+      const make = standing => ({ copyText: async () => '', retry: () => {}, settingsUrl: 'about:blank', dataUrl: 'about:blank', provenance: () => 'live', coverage: { summary: () => ({ limit: 150, automatic: 150, topUp: 0 }), progress: () => undefined, note: () => undefined, outcome: () => undefined, remaining: () => 0, start() {}, cancel() {} }, fileStanding: () => standing, measureFile: path => calls.push(path), pause() {}, diagnostics: () => '', errorPanel: () => document.createElement('div') });
+      const coverageText = standing => { popover.toggle(anchor, DiffdevilUnderTest.filePanel(view, popover, make(standing)), { width: 360, align: 'end' }); const root = document.querySelector('.ddx-popover-host').shadowRoot; const result = { text: root.querySelector('.ddx-file-coverage')?.textContent ?? '', button: root.querySelector('[data-key="measure-file"]')?.textContent ?? null }; popover.close(false); return result; };
       popover.toggle(anchor, DiffdevilUnderTest.filePanel(view, popover, make({ standing: 'bounded' })), { width: 360, align: 'end' }); const bounded = document.querySelector('.ddx-popover-host').shadowRoot.querySelector('.ddx-file-coverage')?.textContent ?? '';
       document.querySelector('.ddx-popover-host').shadowRoot.querySelector('[data-key="measure-file"]').click(); popover.close(false);
       popover.toggle(anchor, DiffdevilUnderTest.filePanel(view, popover, make({ standing: 'declined', reason: 'binary' })), { width: 360, align: 'end' }); const declined = document.querySelector('.ddx-popover-host').shadowRoot.querySelector('.ddx-file-coverage')?.textContent ?? ''; popover.close(false);
-      return { bounded, declined, calls };
+      const collapsed = coverageText({ standing: 'bounded', unresolved: 'collapsed' }); const unreachable = coverageText({ standing: 'bounded', unresolved: 'unreachable', askedAgain: true });
+      return { bounded, declined, calls, collapsed, unreachable };
     }, worldView);
     assert.match(answers.bounded, /Not measured yet.*automatic limit of 150/u); assert.match(answers.bounded, /Measure this file/u); assert.equal(answers.calls.length, 1); assert.match(answers.declined, /declined to supply.*binary/u);
+    assert.match(answers.collapsed.text, /generated.*Load diff.*range/u); assert.doesNotMatch(answers.collapsed.text, /automatic limit/u, 'a file GitHub collapsed was not left bounded by the limit'); assert.equal(answers.collapsed.button, null, 'GitHub’s settled answer is not offered as a request that can only repeat it');
+    assert.match(answers.unreachable.text, /Asked again just now\. GitHub could not be reached/u); assert.equal(answers.unreachable.button, 'Ask GitHub again');
   });
   await panels.context.close();
   await check('UI tests generated no external network requests', async () => { assert.deepEqual(network, []); });

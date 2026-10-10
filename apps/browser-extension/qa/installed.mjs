@@ -99,8 +99,10 @@ if (receipt.policyEvidence.length) {
     await check('Measuring bounded files in the real worker persists across restart and never exceeds what was asked', async () => {
       const big = synthetic(40); const patches = Array.from({ length: 12 }, (_, index) => ({ path: 'src/f' + String(index + 5).padStart(3, '0') + '.ts', patch: '@@ -1,2 +1,3 @@\n-old\n+new\n+extra\n same\n' }));
       const visible = await call({ type: 'analysis.extend', comparison: big.comparison, patches, via: 'visible' }); assert.equal(visible.coverage.measured, 5 + 12, 'allowance is the configured limit, which is large enough here'); assert.equal(visible.coverage.topUp, 12);
+      // A generated file GitHub collapses (counts, no lines) stays bounded with that reason; it is not declined and spends nothing.
+      const collapsed = await call({ type: 'analysis.extend', comparison: big.comparison, patches: [], unresolved: { 'src/f020.ts': 'collapsed' }, via: 'explicit' }); assert.equal(collapsed.coverage.declined, 1); assert.deepEqual(collapsed.coverage.unresolvedReasons, { collapsed: 1 }); assert.equal(collapsed.coverage.explicit, 0);
       await context.close(); context = await launch(); const reopened = await context.newPage(); active = reopened; await reopened.goto(base + '/options.html');
-      const lookup = await reopened.evaluate(comparison => chrome.runtime.sendMessage({ type: 'cache.lookup', comparison }), big.comparison); assert.equal(lookup.value.coverage.measured, 17); assert.equal(lookup.value.coverage.topUp, 12);
+      const lookup = await reopened.evaluate(comparison => chrome.runtime.sendMessage({ type: 'cache.lookup', comparison }), big.comparison); assert.equal(lookup.value.coverage.measured, 17); assert.equal(lookup.value.coverage.topUp, 12); assert.deepEqual(lookup.value.coverage.unresolvedReasons, { collapsed: 1 }, 'what GitHub did is persisted with the report');
     });
     await check('Concurrent tabs of one comparison produce one stored report and never an error', async () => {
       const second = synthetic(30, 43); const tabs = await Promise.all([runPage(), runPage(), runPage()]);

@@ -165,6 +165,18 @@ test('a patch that disagrees with the held counters, or a declined path, is reco
   const result = await one.analysis.extend({ comparison: packet.comparison, patches: [{ path: 'src/f02.ts', patch: '@@ -1 +1 @@\n-a\n+b\n' }, ...patchesFor([3])], declined: { 'src/f02.ts': 'truncated', 'src/f00.ts': 'binary', 'nope.ts': 'binary' }, via: 'explicit' }, settings());
   assert.deepEqual(result.files.map(file => file.standing), ['measured', 'measured', 'declined', 'measured']); assert.deepEqual(result.coverage.declinedReasons, { truncated: 1 });
 });
+test('a file asked for and not supplied stays bounded with what was observed, never counted as declined, until it is measured', async () => {
+  const one = world(); const packet = await one.analysis.run(input(4, 1, { coverage: { limit: 4, declined: {}, unresolved: { 'src/f01.ts': 'collapsed', 'src/f00.ts': 'collapsed', 'nope.ts': 'no-lines' } } }), settings());
+  assert.equal(packet.coverage.bounded, 3); assert.equal(packet.coverage.declined, 0); assert.equal(packet.coverage.unresolved, 1); assert.deepEqual(packet.coverage.unresolvedReasons, { collapsed: 1 }, 'a measured file or an unknown path is not unresolved');
+  assert.equal(packet.files.find(file => file.path === 'src/f01.ts').unresolved, 'collapsed');
+  const unchanged = await one.analysis.extend({ comparison: packet.comparison, patches: [], unresolved: { 'src/f01.ts': 'collapsed' }, via: 'explicit' }, settings());
+  assert.deepEqual(unchanged.files, packet.files); assert.deepEqual(unchanged.coverage, packet.coverage);
+  const disagreed = await one.analysis.extend({ comparison: packet.comparison, patches: [{ path: 'src/f02.ts', patch: '@@ -1 +1 @@\n-a\n+b\n' }], unresolved: { 'src/f03.ts': 'unreachable' }, via: 'explicit' }, settings());
+  assert.deepEqual(disagreed.coverage.unresolvedReasons, { collapsed: 1, disagrees: 1, unreachable: 1 }, 'a patch the engine rejects against GitHub’s counters is recorded as a disagreement');
+  const later = await one.analysis.extend({ comparison: packet.comparison, patches: patchesFor([1, 3]), via: 'explicit' }, settings());
+  assert.equal(later.coverage.measured, 3); assert.deepEqual(later.coverage.unresolvedReasons, { disagrees: 1 }); assert.equal(later.files.find(file => file.path === 'src/f01.ts').unresolved, undefined);
+  const reloaded = await world(one.store).analysis.run({ comparison: packet.comparison, policy: absent() }, settings()); assert.deepEqual(reloaded.coverage.unresolvedReasons, { disagrees: 1 }, 'the outcome is persisted with the report');
+});
 test('a measured file leaves the declined set and a declined file is never offered again as bounded', async () => {
   const one = world(); const packet = await one.analysis.run(input(3, 1, { coverage: { limit: 3, declined: { 'src/f02.ts': 'too-big' } } }), settings());
   assert.equal(packet.coverage.declined, 1); const later = await one.analysis.extend({ comparison: packet.comparison, patches: patchesFor([2]), via: 'explicit' }, settings());
@@ -190,10 +202,11 @@ test('file selection puts the reader’s files first, then provider order, withi
   assert.deepEqual(m.selectFiles(order, ['f'], 2), m.selectFiles(order, ['f'], 2));
 });
 test('coverage read from storage tolerates anything and never grants more than it records', () => {
-  const coverage = m.readCoverage({ limit: -4, automatic: 'x', topUp: 2.5, explicit: 3, declined: { a: 'binary', b: 'because', c: 7 } }, 150);
-  assert.deepEqual({ ...coverage, declined: { ...coverage.declined } }, { limit: 150, automatic: 0, topUp: 0, explicit: 3, declined: { a: 'binary' } });
+  const coverage = m.readCoverage({ limit: -4, automatic: 'x', topUp: 2.5, explicit: 3, declined: { a: 'binary', b: 'because', c: 7 }, unresolved: { a: 'collapsed', d: 'collapsed', e: 'gone', f: 'unreachable' } }, 150);
+  assert.deepEqual({ ...coverage, declined: { ...coverage.declined }, unresolved: { ...coverage.unresolved } }, { limit: 150, automatic: 0, topUp: 0, explicit: 3, declined: { a: 'binary' }, unresolved: { d: 'collapsed', f: 'unreachable' } }, 'a declined path is not also unresolved; unknown reasons are dropped');
   assert.equal(m.automaticRemaining({ ...coverage, topUp: 5 }, 3), 0); assert.equal(m.automaticRemaining({ ...coverage, automatic: 1 }, 3), 2); assert.equal(m.automaticRemaining({ ...coverage, automatic: 1, topUp: 1 }, 3), 1, 'opening and scrolling share one budget');
-  const empty = m.readCoverage(null, 7); assert.deepEqual({ ...empty, declined: { ...empty.declined } }, { limit: 7, automatic: 0, topUp: 0, explicit: 0, declined: {} });
+  const empty = m.readCoverage(null, 7); assert.deepEqual({ ...empty, declined: { ...empty.declined }, unresolved: { ...empty.unresolved } }, { limit: 7, automatic: 0, topUp: 0, explicit: 0, declined: {}, unresolved: {} });
+  assert.equal(m.retryable('collapsed'), false); assert.equal(m.retryable('disagrees'), false); assert.equal(m.retryable('unreachable'), true); assert.equal(m.retryable(undefined), true);
 });
 
 test('only a first install opens Settings at its ready section', () => {

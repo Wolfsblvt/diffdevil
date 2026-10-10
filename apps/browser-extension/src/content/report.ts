@@ -7,7 +7,7 @@
  */
 import { measurementText as value, evidenceText } from '@wolfsblvt/diffdevil/browser/text';
 import type { HumanReportView, Rail } from '@wolfsblvt/diffdevil/browser';
-import { measuredAutomatically, type CoverageSummary, type DeclineReason, type FileStanding } from '../shared/coverage.js';
+import { measuredAutomatically, retryable, type CoverageSummary, type DeclineReason, type FileStanding, type UnresolvedReason } from '../shared/coverage.js';
 import { node, button } from '../shared/dom.js';
 import { productIcon } from '../shared/icons.js';
 import type { Popover } from './popover.js';
@@ -20,11 +20,17 @@ export const provenanceTitle = (state: Provenance): string => state === 'live' ?
   : 'GitHub could not be reached to confirm this comparison. These facts are exact for the base and head named here and were read earlier on this device.';
 /** A continuation in progress; `failed` counts files the provider did not supply. */
 export interface Progress { readonly done: number; readonly total: number; readonly failed: number }
+/** What one explicit act did for the files it asked about. `changed` is whether the report gained any evidence at all. */
+export interface Attempt { readonly asked: number; readonly measured: number; readonly declined: number; readonly unresolved: Partial<Record<UnresolvedReason, number>>; readonly changed: boolean }
 export interface CoverageControl {
   readonly summary: () => CoverageSummary | undefined;
   readonly progress: () => Progress | undefined;
   /** Why the last pass stopped, when it did. */
   readonly note: () => string | undefined;
+  /** What the last completed pass did. */
+  readonly outcome: () => Attempt | undefined;
+  /** Bounded files a pass can still ask GitHub for; GitHub's settled answer for this head is not asked for again. */
+  readonly remaining: () => number;
   /** The one explicit continuation: measure every file still bounded. */
   readonly start: () => void;
   readonly cancel: () => void;
@@ -33,7 +39,7 @@ export interface ReportActions {
   readonly provenance: () => Provenance;
   readonly coverage: CoverageControl;
   /** Where one file stands, and why the provider declined it. */
-  readonly fileStanding: (path: string) => { readonly standing: FileStanding; readonly reason?: DeclineReason } | undefined;
+  readonly fileStanding: (path: string) => { readonly standing: FileStanding; readonly reason?: DeclineReason; readonly unresolved?: UnresolvedReason; /** The reader asked again and nothing changed. */ readonly askedAgain?: boolean } | undefined;
   readonly measureFile: (path: string) => void;
   readonly pause: () => void;
   readonly dataUrl: string;
@@ -141,6 +147,26 @@ function planBlock(view: HumanReportView, actions: ReportActions): HTMLElement |
   return block;
 }
 const REASON_TEXT: Readonly<Record<DeclineReason, string>> = { binary: 'binary', submodule: 'submodule', 'too-big': 'too big', truncated: 'truncated', omitted: 'no patch supplied' };
+/** Short forms for counts: `1 collapsed by GitHub`. */
+const UNRESOLVED_SHORT: Readonly<Record<UnresolvedReason, string>> = { collapsed: 'collapsed by GitHub (generated)', 'no-lines': 'sent without lines', 'not-returned': 'not returned', unreadable: 'in an unread format', disagrees: 'not matching GitHub’s counts', unreachable: 'unreachable' };
+/** One file's sentence: what GitHub did and what follows. */
+const UNRESOLVED_TEXT: Readonly<Record<UnresolvedReason, string>> = {
+  collapsed: 'GitHub marks this file generated and collapses it: it reports the counts but sends none of its lines unless you choose Load diff on the page. diffdevil cannot read a collapsed file yet, so its numbers stay a range.',
+  'no-lines': 'GitHub returned this file with its counts but none of its lines and no reason. Its numbers stay a range.',
+  'not-returned': 'GitHub did not return this file when it was asked for. Its numbers stay a range until it is asked for again.',
+  unreadable: 'GitHub sent this file’s lines in a form diffdevil does not read. Its numbers stay a range.',
+  disagrees: 'The lines GitHub sent for this file do not match GitHub’s own counts, so they were not used. Its numbers stay a range.',
+  unreachable: 'GitHub could not be reached for this file. Its numbers stay a range until it is asked for again.',
+};
+const plural = (count: number, one: string, many = `${one}s`): string => `${count} ${count === 1 ? one : many}`;
+const reasonList = (reasons: Partial<Record<UnresolvedReason, number>>): string => Object.entries(reasons).map(([reason, count]) => `${count} ${UNRESOLVED_SHORT[reason as UnresolvedReason]}`).join(', ');
+/** The finished pass in one sentence: never a bare redraw that looks like progress. */
+export function attemptText(attempt: Attempt): string {
+  const still = Object.values(attempt.unresolved).reduce((sum, count) => sum + (count ?? 0), 0); const asked = `Asked GitHub for ${plural(attempt.asked, 'file')}`;
+  if (!attempt.measured && !attempt.declined) return `${asked}; none could be measured${still ? `: ${reasonList(attempt.unresolved)}` : ''}.`;
+  const parts = [`${attempt.measured} measured`, ...(attempt.declined ? [`${attempt.declined} declined by GitHub`] : []), ...(still ? [`${still} still bounded: ${reasonList(attempt.unresolved)}`] : [])];
+  return `${asked}: ${parts.join(' · ')}.`;
+}
 /** measured / bounded / provider-declined / total, the automatic limit, and how many files were measured automatically or on request. */
 function coverageBlock(actions: ReportActions): HTMLElement | undefined {
   const summary = actions.coverage.summary(); if (!summary) return undefined;
@@ -153,17 +179,22 @@ function coverageBlock(actions: ReportActions): HTMLElement | undefined {
   if (declined) counts.title = `Provider declined: ${declined}.`;
   const limit = node('span', 'ddx-quiet', `automatic limit ${summary.limit} · ${measuredAutomatically(summary)} measured automatically${summary.explicit ? ` · ${summary.explicit} on request` : ''}`);
   block.append(...keyValue('files', counts), ...keyValue('limit', limit));
+  if (summary.unresolved > 0) block.append(...keyValue('not supplied', node('span', 'ddx-quiet', reasonList(summary.unresolvedReasons))));
   const progress = actions.coverage.progress();
   if (progress) {
     const line = node('span', 'ddx-coverage-progress', `Analyzing remaining files · ${progress.done} of ${progress.total}${progress.failed ? ` · ${progress.failed} not supplied` : ''}`); line.setAttribute('role', 'status');
     // Start and Cancel are one control slot, so focus moves from one to the other as the pass begins and ends.
     const cancel = keyed(button('Cancel', () => actions.coverage.cancel(), 'ddx-link'), 'continuation');
     block.append(...keyValue('', line, cancel));
-  } else if (summary.bounded > 0) {
-    const stopped = actions.coverage.note(); if (stopped) block.append(...keyValue('', node('span', 'ddx-quiet', `The last pass stopped: ${stopped} What was measured is kept; run it again to continue.`)));
-    const more = keyed(button('Analyze remaining files', () => actions.coverage.start(), 'ddx-secondary'), 'continuation');
-    more.title = `Reads ${summary.bounded} more ${summary.bounded === 1 ? 'file' : 'files'} from GitHub, one explicit pass for this comparison, and keeps the result in this browser. Nothing is estimated from the files already measured.`;
-    block.append(...keyValue('', more));
+  } else {
+    const stopped = actions.coverage.note(); const finished = actions.coverage.outcome(); const remaining = actions.coverage.remaining();
+    if (stopped && summary.bounded > 0) block.append(...keyValue('', node('span', 'ddx-quiet', `The last pass stopped: ${stopped} What was measured is kept; run it again to continue.`)));
+    else if (finished) { const line = node('span', 'ddx-quiet ddx-coverage-outcome', attemptText(finished)); line.setAttribute('role', 'status'); block.append(...keyValue('', line)); }
+    if (remaining > 0) {
+      const more = keyed(button('Analyze remaining files', () => actions.coverage.start(), 'ddx-secondary'), 'continuation');
+      more.title = `Reads ${plural(remaining, 'more file')} from GitHub, one explicit pass for this comparison, and keeps the result in this browser. Nothing is estimated from the files already measured.`;
+      block.append(...keyValue('', more));
+    }
   }
   return block;
 }
@@ -210,8 +241,16 @@ function fileCoverage(view: HumanReportView, actions: ReportActions): HTMLElemen
   const path = view.focus?.path; const state = path === undefined ? undefined : actions.fileStanding(path); if (!path || !state || state.standing === 'measured') return undefined;
   const block = node('div', 'ddx-strip ddx-file-coverage');
   if (state.standing === 'declined') { block.textContent = `GitHub declined to supply this file’s lines (${REASON_TEXT[state.reason ?? 'omitted']}). Its numbers stay bounded.`; return block; }
+  if (state.unresolved) {
+    const line = node('span', '', `${state.askedAgain ? 'Asked again just now. ' : ''}${UNRESOLVED_TEXT[state.unresolved]} `); if (state.askedAgain) line.setAttribute('role', 'status');
+    block.append(line);
+    // GitHub's own answer for this head does not change; offering the same request again would only redraw.
+    if (retryable(state.unresolved)) block.append(keyed(button('Ask GitHub again', () => actions.measureFile(path), 'ddx-secondary'), 'measure-file'));
+    return block;
+  }
   const summary = actions.coverage.summary();
-  block.append(node('span', '', `Not measured yet${summary ? `: the automatic limit of ${summary.limit} files left it bounded.` : '.'} `));
+  const limited = summary !== undefined && measuredAutomatically(summary) >= summary.limit;
+  block.append(node('span', '', `Not measured yet${limited ? `: the automatic limit of ${summary.limit} files left it bounded.` : '.'} `));
   const measure = keyed(button('Measure this file', () => actions.measureFile(path), 'ddx-secondary'), 'measure-file'); block.append(measure); return block;
 }
 /** Failed claim · reason · consequence · next action. Text-colour border, no red wash. */

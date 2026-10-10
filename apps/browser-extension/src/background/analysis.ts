@@ -4,7 +4,7 @@ import type { AnalysisCache, CacheKind, CacheScope } from './cache.js';
 import { decorateView, isPaused, selectedPolicy } from '../shared/settings.js';
 import type { Settings } from '../shared/catalogue.js';
 import { ExtensionError } from '../shared/errors.js';
-import { automaticRemaining, emptyCoverage, isDeclineReason, readCoverage, summarize, standing, type Coverage, type DeclineReason, type FileFact } from '../shared/coverage.js';
+import { automaticRemaining, emptyCoverage, isDeclineReason, isUnresolvedReason, readCoverage, summarize, standing, type Coverage, type DeclineReason, type FileFact, type UnresolvedReason } from '../shared/coverage.js';
 import type { AnalysisInput, Inventory, Lookup, MeasureVia, Packet, PacketFile, PolicySource } from '../shared/protocol.js';
 /** Persisted report and what is known about how far it was measured. */
 export interface StoredReport { report: Report; coverage: Coverage; at: number }
@@ -27,7 +27,20 @@ const errorDiagnostic = (code: string, message: string): Diagnostic => ({ code, 
 const measured = (file: FileRecord): boolean => file.family?.blocksComplete === true;
 /** A file that is not text has no lines to measure whatever anyone asks, so it is the provider's decline by kind. */
 const KIND_REASON: Readonly<Partial<Record<FileRecord['kind'], DeclineReason>>> = { binary: 'binary', submodule: 'submodule', unknown: 'omitted' };
-const facts = (report: Report, coverage: Coverage): FileFact[] => report.files.map(file => { const declined = measured(file) ? undefined : coverage.declined[file.path] ?? KIND_REASON[file.kind]; return { path: file.path, measured: measured(file), ...(declined ? { declined } : {}) }; });
+const facts = (report: Report, coverage: Coverage): FileFact[] => report.files.map(file => {
+  const declined = measured(file) ? undefined : coverage.declined[file.path] ?? KIND_REASON[file.kind]; const unresolved = measured(file) || declined ? undefined : coverage.unresolved[file.path];
+  return { path: file.path, measured: measured(file), ...(declined ? { declined } : {}), ...(unresolved ? { unresolved } : {}) };
+});
+/** Engine rejections that say the supplied lines did not fit GitHub's own counts; a file the report cannot verify at all keeps what was known before. */
+const DISAGREES = (code: string): boolean => code !== 'FILE_ABSENT' && code !== 'RAW_COUNTS_UNAVAILABLE';
+/** Unresolved outcomes kept for files that are still neither measured nor declined. */
+function stillUnresolved(report: Report, declined: Readonly<Record<string, DeclineReason>>, ...sources: readonly (Readonly<Record<string, unknown>> | undefined)[]): Record<string, UnresolvedReason> {
+  const open = new Set(report.files.filter(file => !measured(file) && !declined[file.path] && !KIND_REASON[file.kind]).map(file => file.path));
+  const result: Record<string, UnresolvedReason> = Object.create(null) as Record<string, UnresolvedReason>;
+  for (const source of sources) for (const [path, reason] of Object.entries(source ?? {})) if (isUnresolvedReason(reason) && open.has(path)) result[path] = reason;
+  return result;
+}
+const sameRecord = (a: Readonly<Record<string, string>>, b: Readonly<Record<string, string>>): boolean => Object.keys(a).length === Object.keys(b).length && Object.entries(a).every(([key, value]) => b[key] === value);
 /**
  * Everything the worker knows how to do with a comparison. The persisted facts are the canonical
  * report, its coverage and the trusted policy evidence; contexts are only an accelerator that is
@@ -96,7 +109,7 @@ export class Analysis {
     if (!projection.ok) throw new ExtensionError('REPORT_VIEW', projection.diagnostics.map(item => item.message).join('\n'));
     const digest = policy ? policy.digest : await sha256(JSON.stringify([selected, errors]));
     const key = `${comparisonKey(comparison)}:${report.reportId}:${digest}`; const view = decorateView(projection.value, settings);
-    const known = facts(report, coverage); const files: PacketFile[] = report.files.map((file, index) => ({ path: file.path, ...(file.oldPath === undefined ? {} : { oldPath: file.oldPath }), standing: standing(known[index]!), ...(known[index]!.declined && !known[index]!.measured ? { reason: known[index]!.declined } : {}) }));
+    const known = facts(report, coverage); const files: PacketFile[] = report.files.map((file, index) => ({ path: file.path, ...(file.oldPath === undefined ? {} : { oldPath: file.oldPath }), standing: standing(known[index]!), ...(known[index]!.declined && !known[index]!.measured ? { reason: known[index]!.declined } : {}), ...(known[index]!.unresolved ? { unresolved: known[index]!.unresolved } : {}) }));
     const total = report.fileSet.total.status === 'exact' ? report.fileSet.total.value : undefined;
     // The reader needs the aggregate, not every file record again; file views are projected on request.
     const packet: Packet = { key, comparison, view: { ...view, report: { ...view.report, files: [] } }, files, refreshedAt: stored.at, cached,
@@ -131,7 +144,10 @@ export class Analysis {
       const report = result.value; const exact = new Set(report.files.filter(measured).map(file => file.path));
       const declined: Record<string, DeclineReason> = Object.create(null) as Record<string, DeclineReason>;
       for (const [path, reason] of Object.entries(input.coverage?.declined ?? {})) if (isDeclineReason(reason) && !exact.has(path) && report.files.some(file => file.path === path)) declined[path] = reason;
-      const fresh: StoredReport = { report, coverage: { ...emptyCoverage(input.coverage?.limit ?? limit), automatic: exact.size, declined }, at: this.now() };
+      // A patch the page supplied that the engine did not accept is a disagreement observed now, not a file nobody asked about.
+      const supplied = input.acquisition.format === 'github-files' ? Object.fromEntries((input.acquisition.files ?? []).flatMap(item => { const file = item as Record<string, unknown>; return typeof file.patch === 'string' && typeof file.filename === 'string' ? [[file.filename, 'disagrees']] : []; })) : {};
+      const unresolved = stillUnresolved(report, declined, input.coverage?.unresolved, supplied);
+      const fresh: StoredReport = { report, coverage: { ...emptyCoverage(input.coverage?.limit ?? limit), automatic: exact.size, declined, unresolved }, at: this.now() };
       await this.persist(comparison, fresh, generation);
       await this.optional(() => this.cache.put(this.pointerKey(comparison), 'pointer', this.scope(comparison), this.compat.pointer, { comparison, at: fresh.at } satisfies Pointer, generation));
       return { stored: fresh, cached: false };
@@ -229,7 +245,7 @@ export class Analysis {
    * Measure bounded files from patch text fetched by the page. The persisted report is replaced by the
    * engine's own recomputation, coverage records what the work was, and nothing is extrapolated.
    */
-  async extend(request: { comparison: BrowserComparison; patches: { path: string; patch: string }[]; declined?: Record<string, DeclineReason>; via: MeasureVia }, settings: Settings): Promise<Packet> {
+  async extend(request: { comparison: BrowserComparison; patches: { path: string; patch: string }[]; declined?: Record<string, DeclineReason>; unresolved?: Record<string, UnresolvedReason>; via: MeasureVia }, settings: Settings): Promise<Packet> {
     const comparison = readComparison(request.comparison); this.guard(comparison, settings); const generation = this.cache.generation; await this.prepare(settings);
     if (!['automatic', 'visible', 'explicit'].includes(request.via)) throw new ExtensionError('MEASURE_VIA', 'Unknown measurement request.');
     const limit = Number(settings['analysis.maximumFiles']); const key = this.reportKey(comparison);
@@ -242,11 +258,13 @@ export class Analysis {
       const { report, measured: gained } = outcome.value; const exact = new Set(gained); const unmeasured = new Set(report.files.filter(file => !measured(file)).map(file => file.path));
       const declined: Record<string, DeclineReason> = Object.create(null) as Record<string, DeclineReason>;
       for (const [path, reason] of [...Object.entries(stored.coverage.declined), ...Object.entries(request.declined ?? {})]) if (isDeclineReason(reason) && unmeasured.has(path) && !exact.has(path)) declined[path] = reason;
-      const count = gained.length; const coverage: Coverage = { ...stored.coverage, declined,
+      const rejected = Object.fromEntries(outcome.value.rejected.filter(item => DISAGREES(item.code)).map(item => [item.path, 'disagrees' as const]));
+      const unresolved = stillUnresolved(report, declined, stored.coverage.unresolved, request.unresolved, rejected);
+      const count = gained.length; const coverage: Coverage = { ...stored.coverage, declined, unresolved,
         ...(request.via === 'automatic' ? { automatic: stored.coverage.automatic + count, limit } : request.via === 'visible' ? { topUp: stored.coverage.topUp + count } : { explicit: stored.coverage.explicit + count }) };
       const next: StoredReport = { report, coverage, at: stored.at };
       // A request another tab already answered gains nothing; the stored facts are served without rewriting them.
-      const unchanged = count === 0 && coverage.limit === stored.coverage.limit && Object.keys(declined).length === Object.keys(stored.coverage.declined).length;
+      const unchanged = count === 0 && coverage.limit === stored.coverage.limit && sameRecord(declined, stored.coverage.declined) && sameRecord(unresolved, stored.coverage.unresolved);
       if (!unchanged) await this.persist(comparison, next, generation);
       this.forget(context => this.reportKey(context.comparison) === key);
       const context = await this.project(comparison, next, await this.policyEvidence(comparison, settings, resident), settings, true);
