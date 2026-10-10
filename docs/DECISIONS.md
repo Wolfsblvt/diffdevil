@@ -2,7 +2,7 @@
 
 ## Meaning
 
-This records product/repository choices whose rationale cannot be reconstructed cheaply from source. D044 preserves independent release families, D064–D073 carry the ratified analytical product, and D054–D063 carry the accepted edition, plan, funding and management settlement of 2026-10-02. They are selected product direction, not evidence that billing, collection or the expanded dashboard is live.
+This records product/repository choices whose rationale cannot be reconstructed cheaply from source. D044 preserves independent release families, D064–D073 carry the ratified analytical product, and D054–D063 carry the accepted edition, plan, funding and management settlement of 2026-10-02. D056 also carries the purpose-bound GitHub service-connection settlement of 2026-10-10. These are selected product direction, not evidence that billing, collection or the expanded dashboard is live.
 
 The complete predecessor record is preserved byte-for-byte as [Decisions through D073](DECISIONS-through-d053.md), with its existing references to the complete D001–D043 record. Earlier headings remain below to preserve fragment destinations. A new decision supersedes only its named boundary; it does not erase the previous rationale or implementation evidence.
 
@@ -49,6 +49,12 @@ The complete predecessor record is preserved byte-for-byte as [Decisions through
 **Why.** One understandable personal purchase can support a personal estate and explicitly chosen organisations without multiplying paid readers or treating organisational records as the payer's property. One funder prevents colleagues stacking allowances.
 
 **Consequences.** Pro personal repositories have no count ceiling; each Pro organisation has three private slots and otherwise the same Pro capabilities. Business organisations have no repo-count ceiling. Installation reach and repository selection remain explicit. Funding does not grant access or administrative rights. This settles D069's previously open purchase unit.
+
+**Service-connection settlement (2026-10-10).** Keep the funder's same-scope protected GitHub connection while an active organisation binding needs current authority checks, independently of browser logout. Disclose that retention at bind/connection and logout and allow the connection to be revoked without unbinding. Removing the last binding purpose releases a sessionless grant to ordinary cleanup; actual revocation and expiry still withhold use. This supersedes the earlier unconditional final-session grant-deletion promise for this service purpose only.
+
+**Why and rejected alternatives.** The selected organisation capability must remain usable for authorised collaborators without depending on the funder's dashboard presence. Keeping deletion at logout would turn that browser action into a funded-organisation interruption; adding GitHub App Members-read instead would select another provider-permission route. Neither alternative is selected. The retained grant changes no subscription, GitHub scope or repository authority. The customer disclosure/disconnect journey still needs designed and qualified delivery before adoption; source behavior is not that delivery.
+
+**Sources.** [Account/service-connection contract](dashboard-access.md#browser-access-and-the-funding-service-connection), [privacy boundary](PRIVACY-AND-DATA.md#distinct-purposes-and-lifetimes), and [executable revocation seam](integration/app-commercial-link.md#independent-github-connection-revocation).
 
 ## D057: Reserve shared policy coordination for Business
 

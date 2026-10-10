@@ -828,6 +828,73 @@ test('a bound funder grant survives real logout, account switching and session e
   } finally { await source.runtime.dispose(); }
 });
 
+test('independent funding-authorization revocation preserves funding, reports unknown and reconnects without rebinding', async () => {
+  const source = await fixture({ realAuthorization: true });
+  try {
+    const { commercial, authorization, authStore, store, browserSessions, wirt, signIn } = source;
+    await link(source, { owner: 77 });
+    const linkId = (await store.activeLink(USER)).link_id;
+    await fundedOrganisation(source, linkId);
+    await bindRequest(source, { action: 'bind', slot: 'slot-1', organisationId: ORG });
+    const before = await store.activeLink(USER);
+    const mutation = { session: browserSessions.get(SESSION), method: 'POST', origin: APP };
+    await assert.rejects(commercial.revokeFundingAuthorization({ ...mutation, origin: 'https://foreign.example' }), { code: 'E_AUTH_ORIGIN' });
+    await assert.rejects(commercial.revokeFundingAuthorization({ ...mutation, method: 'GET' }), { code: 'E_AUTH_METHOD' });
+    assert.ok((await authStore.authorization(USER)).protected_material);
+
+    // A collaborator can revoke their own connection, never the funder's, even if they supply its ID.
+    await commercial.revokeFundingAuthorization({ ...mutation, session: browserSessions.get(OTHER_SESSION), userId: USER });
+    assert.ok((await authStore.authorization(USER)).protected_material);
+    assert.equal((await store.binding(ORG)).authority_observed, 'present');
+    source.github.answering = false;
+    source.retained.delete(USER);
+    const revoked = await commercial.revokeFundingAuthorization(mutation);
+    assert.deepEqual(revoked.body, { ok: true, result: 'authorization-revoked', authorityReconciliation: 'recorded' });
+    assert.match(revoked.headers['Set-Cookie'], /Max-Age=0/u);
+    await assert.rejects(authorization.authenticate(mutation.session), { code: 'E_SESSION_UNAVAILABLE' });
+    assert.equal((await authStore.authorization(USER)).protected_material, '');
+    const after = await store.activeLink(USER);
+    assert.equal(after.link_id, before.link_id);
+    assert.equal(after.projection_json, before.projection_json);
+    assert.equal(after.protected_grant, before.protected_grant, 'the Wirt owner grant is a separate connection');
+    assert.deepEqual(await store.binding(ORG).then(row => [row.slot, row.authority_observed, row.display]), ['slot-1', 'unknown', null]);
+    assert.equal(await commercial.entitlement({ repositoryId: 21, actor: { userId: OTHER_USER } }), 'unknown');
+    assert.equal(await commercial.entitlement({ repositoryId: null, actor: { userId: USER } }), 'business');
+    await commercial.flushReports();
+    assert.deepEqual(wirt.state.reports.at(-1).bindings[0], { slot: 'slot-1', github_org_id: ORG, authority: 'unknown', display: null, since: '2027-03-01' });
+    assert.equal(wirt.state.reports.at(-1).applied.result, 'applied');
+    assert.deepEqual(wirt.state.cases, []);
+
+    source.github.answering = true;
+    source.retained.add(USER);
+    await signIn(USER);
+    assert.equal(await commercial.entitlement({ repositoryId: 21, actor: { userId: OTHER_USER } }), 'business');
+    assert.equal((await store.binding(ORG)).slot, 'slot-1', 'explicit reconnection restores use without changing its funded binding');
+  } finally { await source.runtime.dispose(); }
+});
+
+test('a failed authority reconciliation reports the already-committed disconnect instead of inviting a duplicate revoke', async () => {
+  const source = await fixture({ realAuthorization: true });
+  try {
+    const { commercial, store, authStore, authorization, browserSessions } = source;
+    await link(source, { owner: 77 });
+    await fundedOrganisation(source, (await store.activeLink(USER)).link_id);
+    await bindRequest(source, { action: 'bind', slot: 'slot-1', organisationId: ORG });
+    const transition = store.transition.bind(store);
+    store.transition = async () => false;
+    const session = browserSessions.get(SESSION);
+    const result = await commercial.revokeFundingAuthorization({ session, method: 'POST', origin: APP });
+    assert.deepEqual(result.body, { ok: false, result: 'authorization-revoked', authorityReconciliation: 'required', code: 'E_COMMERCIAL_CONFLICT' });
+    assert.equal((await authStore.authorization(USER)).protected_material, '');
+    await assert.rejects(authorization.authenticate(session), { code: 'E_SESSION_UNAVAILABLE' });
+    store.transition = transition;
+    assert.equal(await commercial.entitlement({ repositoryId: 21, actor: { userId: OTHER_USER } }), 'unknown');
+    assert.equal((await store.binding(ORG)).slot, 'slot-1');
+    assert.equal((await store.binding(ORG)).display, null);
+    await commercial.flushReports();
+  } finally { await source.runtime.dispose(); }
+});
+
 test('ending the last binding purpose releases a sessionless protected grant', async t => {
   for (const ending of ['unbind', 'capacity-removal', 'link-ended']) await t.test(ending, async () => {
     const source = await fixture({ realAuthorization: true });

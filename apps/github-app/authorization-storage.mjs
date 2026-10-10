@@ -55,7 +55,8 @@ export class D1AuthorizationStore {
     const now = this.now();
     await this.database.batch([
       this.statement("UPDATE user_authorizations SET revoked_at=?, protected_material='' WHERE user_id=?", now, userId),
-      this.statement('UPDATE browser_sessions SET revoked_at=? WHERE user_id=? AND revoked_at IS NULL', now, userId)
+      this.statement('UPDATE browser_sessions SET revoked_at=? WHERE user_id=? AND revoked_at IS NULL', now, userId),
+      this.statement('UPDATE authorization_artifacts SET consumed_at=? WHERE user_id=? AND consumed_at IS NULL', now, userId)
     ]);
   }
 

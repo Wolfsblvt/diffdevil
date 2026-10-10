@@ -192,6 +192,19 @@ export function createAuthorizationService({ store, admission, history, provider
       return { headers: { ...protectedHeaders(), 'Set-Cookie': cookie(SESSION_COOKIE_NAME, '', 0) } };
     },
 
+    /**
+     * Disconnect this session owner's retained GitHub authorization, independently of commercial
+     * funding. The opaque session identifies its owner even when GitHub no longer answers. Because
+     * browser access uses the same grant, its sessions and pending artifacts end with the connection.
+     */
+    async revokeAuthorization({ session, method, origin }) {
+      validOrigin(origin, origins, method);
+      const actor = await principal(session);
+      try { await store.revokeAuthorization(actor.userId); }
+      catch { throw refusal('E_AUTHORIZATION_REVOKE_UNCONFIRMED'); }
+      return { ...actor, headers: { ...protectedHeaders(), 'Set-Cookie': cookie(SESSION_COOKIE_NAME, '', 0) } };
+    },
+
     async readAdmission({ session, repositoryId }) {
       const actor = await authorizedAdmission(session, repositoryId, 'read');
       return { body: await admissionCall(() => admission.read(repositoryId, actor)), headers: protectedHeaders() };

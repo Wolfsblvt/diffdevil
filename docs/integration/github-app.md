@@ -100,6 +100,8 @@ The one-time preview and OSS grants are separately attributable benefits, not in
 
 Preserve browser-bound OAuth state, server-side token custody, opaque sessions, mutation CSRF/Origin protection and current operation authorisation. Source checks do not prove live OAuth/cookies/migrations. No arbitrary new short session cap is introduced by this expansion.
 
+Browser logout is separate from the [purpose-bound funding service connection](../dashboard-access.md#browser-access-and-the-funding-service-connection): active organisation funding keeps the same protected grant available for current authority checks. The independent disconnect removes that local grant and its sessions/artifacts without unbinding or ending payment. Bind/connection and logout disclosures, plus the customer disconnect path, remain required qualification of the designed Account experience before customer adoption.
+
 Protected responses are private and not share-cacheable. Tokens never enter chart payloads, URLs or browser storage by convenience.
 
 Public analytics is an explicit anonymous projection for eligible public repositories with account default and repository override. Exclude settings, audit, billing, delegation and private siblings. Unpublish/privatisation invalidates serving and its applicable cache.

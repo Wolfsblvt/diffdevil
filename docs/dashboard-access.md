@@ -22,6 +22,14 @@ Funding grants no additional GitHub reach or administrative power. Organisationa
 
 Defaults remain scoped: personal defaults apply to owned personal repositories; each organisation has its own defaults. A signed-in home may aggregate several accessible scopes, but cannot apply the reader's configuration to collaborator repositories merely because they are visible.
 
+## Browser access and the funding service connection
+
+Browser logout ends browser access. While an active organisation-funding binding needs current GitHub authority checks, the product keeps the funder's same protected GitHub service connection with the same scope. A collaborator's funded capability does not depend on the funder keeping a dashboard session open. Grant expiry, actual revocation and absent or unobservable current authority still withhold organisation premium use; payment does not manufacture authority.
+
+The funder can explicitly disconnect the retained connection without unbinding the organisation or ending the subscription. Disconnect removes the locally protected grant and invalidates its browser sessions and pending sign-in artifacts. The binding remains funded with `unknown` authority and no provider-derived label. A new explicit GitHub connection can restore current authority and use without rebinding. Unbind, capacity removal or link ending releases the service purpose; a grant with no remaining purpose, usable session or pending sign-in is removed by ordinary cleanup.
+
+Before customer adoption, the designed Account experience must disclose retention at organisation bind/connection and at logout, and offer the independent disconnect action with its premium-use consequence. It must distinguish disconnect from commercial unlink or slot release. The backend seam is implemented in the [commercial consumer](integration/app-commercial-link.md#independent-github-connection-revocation); the Account/Manage/subscription screens and their disclosure/revocation journey remain undesigned or unqualified.
+
 ## Read access
 
 Protected analytical access requires current supported GitHub user/repository and App grant checks. Loss of access affects charts, details, queries, exports and aggregates, not only navigation.

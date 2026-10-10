@@ -268,6 +268,39 @@ test('expired or revoked user authorization denies sessions independently of ins
   } finally { await source.runtime.dispose(); }
 });
 
+test('connection revocation needs the session owner, not a provider answer, and consumes pending sign-in artifacts', async () => {
+  const source = await fixture();
+  try {
+    const { service, store, providerState } = source;
+    const first = await signIn(service);
+    const second = await signIn(service);
+    const begun = await service.begin(CONTEXT);
+    const pending = await service.complete({ state: begun.state, code: CODE, browserBinding: oauthBinding(begun) });
+    const mutation = { session: first.session, method: 'POST', origin: ORIGIN };
+    await assert.rejects(service.revokeAuthorization({ ...mutation, method: 'GET' }), { code: 'E_AUTH_METHOD' });
+    await assert.rejects(service.revokeAuthorization({ ...mutation, origin: 'https://foreign.example' }), { code: 'E_AUTH_ORIGIN' });
+    await assert.rejects(service.revokeAuthorization({ ...mutation, session: 'unusable' }), { code: 'E_SESSION_UNAVAILABLE' });
+    assert.ok((await store.authorization(123)).protected_material);
+
+    const revoke = store.revokeAuthorization.bind(store);
+    store.revokeAuthorization = async () => { throw new Error('private-failure-fixture'); };
+    await assert.rejects(service.revokeAuthorization(mutation), { code: 'E_AUTHORIZATION_REVOKE_UNCONFIRMED', message: 'E_AUTHORIZATION_REVOKE_UNCONFIRMED' });
+    store.revokeAuthorization = revoke;
+    providerState.userValid = false;
+    const revoked = await service.revokeAuthorization(mutation);
+    assert.equal(revoked.userId, 123);
+    assert.equal(revoked.headers['Cache-Control'], 'private, no-store');
+    assert.match(revoked.headers['Set-Cookie'], /Max-Age=0; HttpOnly; Secure; SameSite=Lax/u);
+    assert.equal((await store.authorization(123)).protected_material, '');
+    for (const session of [first.session, second.session]) await assert.rejects(service.authenticate(session), { code: 'E_SESSION_UNAVAILABLE' });
+
+    providerState.userValid = true;
+    await signIn(service);
+    await assert.rejects(service.exchange({ artifact: pending.artifact, returnContext: CONTEXT, method: 'POST', origin: ORIGIN }),
+      { code: 'E_AUTH_ARTIFACT' }, 'reconnecting cannot revive an artifact issued before the disconnect');
+  } finally { await source.runtime.dispose(); }
+});
+
 test('provider and authorization refusals expose only stable codes and protected headers', async () => {
   const source = await fixture();
   try {
