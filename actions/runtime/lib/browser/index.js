@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 /** Self-contained browser bundle; executable dependencies and validators ship locally. */
 export { analyzeBrowserInput, readComparison, comparisonKey, BROWSER_ADAPTER, MAX_ACQUISITION_BYTES } from './acquisition.js';
+export { measureBoundedFiles } from './measure.js';
 export { compileBrowserPolicy, readPolicyText, requiredTemplates } from './policy.js';
 export { humanReport, HUMAN_VIEW_VERSION } from './view.js';
 export { appStanding } from './app.js';
