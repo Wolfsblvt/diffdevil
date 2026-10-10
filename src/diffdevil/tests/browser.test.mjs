@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { analyzeBrowserInput, compileBrowserPolicy, humanReport, comparisonKey, appStanding, measurementText, requiredTemplates } from '../../../dist/lib/browser/index.js';
+import { analyzeBrowserInput, compileBrowserPolicy, humanReport, comparisonKey, appStanding, measurementText, requiredTemplates, measureBoundedFiles } from '../../../dist/lib/browser/index.js';
 import { createHash as portableHash } from '../../../dist/lib/browser/runtime/crypto.js';
 const identity = { host: 'github.com', repository: 'test/project', pullRequest: 7, base: 'a'.repeat(40), head: 'b'.repeat(40), changedFiles: 1 };
 const patch = 'diff --git a/src/a.ts b/src/a.ts\n--- a/src/a.ts\n+++ b/src/a.ts\n@@ -1,2 +1,3 @@\n-old\n+new\n+extra\n same\n';
@@ -95,4 +95,39 @@ test('App matching requires exact report, policy and version identities', () => 
   assert.equal(appStanding(local), 'local'); assert.equal(appStanding(local, local), 'matching');
   assert.equal(appStanding(local, { ...local, policyDigest: 'other' }), 'policy-mismatch'); assert.equal(appStanding(local, { ...local, comparison: { ...identity, head: 'c'.repeat(40) } }), 'stale');
   for (const key of ['engine', 'schema', 'measurement', 'presenter', 'reportId']) assert.equal(appStanding(local, { ...local, [key]: 'other' }), 'incompatible');
+});
+
+const fragment = '@@ -1,2 +1,3 @@\n-old\n+new\n+extra\n same\n';
+const fragmentB = '@@ -1,3 +1,3 @@\n-one\n+uno\n two\n-three\n+tres\n';
+const boundedPair = () => unwrap(analyzeBrowserInput(JSON.stringify({ comparison: { ...identity, changedFiles: 2 }, complete: true, format: 'github-files', files: [
+  { filename: 'a.ts', status: 'modified', additions: 2, deletions: 1 }, { filename: 'b.ts', status: 'modified', additions: 2, deletions: 2 } ] })));
+test('measuring a bounded file replaces only its record and tightens the aggregate', () => {
+  const before = boundedPair(); assert.equal(before.totals.lines.changed.status, 'bounded');
+  const result = unwrap(measureBoundedFiles(before, [{ path: 'a.ts', patch: fragment }]));
+  assert.deepEqual(result.measured, ['a.ts']); assert.deepEqual(result.rejected, []);
+  const [a, b] = result.report.files; assert.equal(a.lines.changed.status, 'exact'); assert.equal(a.lines.changed.value, 2); assert.equal(a.family.blocksComplete, true);
+  assert.deepEqual(b, before.files[1]); assert.equal(result.report.totals.lines.changed.status, 'bounded');
+  const [lowBefore, highBefore] = [before.totals.lines.changed.lower, before.totals.lines.changed.upper]; const low = result.report.totals.lines.changed.lower; const high = result.report.totals.lines.changed.upper;
+  assert.ok(low >= lowBefore && high <= highBefore && high - low < highBefore - lowBefore, 'the interval narrows and never widens');
+  assert.equal(result.report.fileSet.complete, true); assert.notEqual(result.report.reportId, before.reportId);
+});
+test('measuring every bounded file reproduces the report acquired with every patch', () => {
+  const together = unwrap(analyzeBrowserInput(JSON.stringify({ comparison: { ...identity, changedFiles: 2 }, complete: true, format: 'github-files', files: [
+    { filename: 'a.ts', status: 'modified', additions: 2, deletions: 1, patch: fragment }, { filename: 'b.ts', status: 'modified', additions: 2, deletions: 2, patch: fragmentB } ] })));
+  const stepwise = unwrap(measureBoundedFiles(unwrap(measureBoundedFiles(boundedPair(), [{ path: 'b.ts', patch: fragmentB }])).report, [{ path: 'a.ts', patch: fragment }])).report;
+  assert.equal(stepwise.reportId, together.reportId, 'the content identity matches the report acquired in one step'); assert.equal(stepwise.totals.lines.changed.status, 'exact');
+});
+test('a patch that contradicts the held raw counters is rejected and the file stays bounded', () => {
+  const result = unwrap(measureBoundedFiles(boundedPair(), [{ path: 'a.ts', patch: fragmentB }, { path: 'missing.ts', patch: fragment }]));
+  assert.deepEqual(result.measured, []); assert.deepEqual(result.rejected.map(item => item.path), ['a.ts', 'missing.ts']); assert.equal(result.rejected[0].code, 'PATCH_INCOMPLETE');
+  assert.equal(result.report.files[0].lines.changed.status, 'bounded');
+});
+test('measuring is idempotent and never replaces an exact file', () => {
+  const once = unwrap(measureBoundedFiles(boundedPair(), [{ path: 'a.ts', patch: fragment }])).report;
+  const again = unwrap(measureBoundedFiles(once, [{ path: 'a.ts', patch: fragment }])); assert.deepEqual(again.measured, []); assert.deepEqual(again.report, once);
+});
+test('a report without file-set proof stays honestly incomplete after measuring', () => {
+  const partial = unwrap(analyzeBrowserInput(JSON.stringify({ comparison: { ...identity, changedFiles: 3 }, complete: false, format: 'github-files', files: [{ filename: 'a.ts', status: 'modified', additions: 2, deletions: 1 }] })));
+  const result = unwrap(measureBoundedFiles(partial, [{ path: 'a.ts', patch: fragment }])).report;
+  assert.equal(result.fileSet.complete, false); assert.notEqual(result.totals.lines.changed.status, 'exact');
 });

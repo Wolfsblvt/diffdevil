@@ -4,7 +4,7 @@ import { chromium } from 'playwright-core';
 import { build } from 'esbuild';
 import { mkdir, readFile, writeFile, access } from 'node:fs/promises';
 import { resolve, join } from 'node:path';
-import { githubHtml, githubChangesHtml, comparison, diff } from './fixtures.mjs';
+import { githubHtml, githubChangesHtml, comparison, comparison as defaultComparison, diff } from './fixtures.mjs';
 const out = resolve('artifacts/browser-extension/qa'); await mkdir(out, { recursive: true });
 await build({ entryPoints: ['apps/browser-extension/qa/dom-entry.ts'], outfile: join(out, 'acquisition-test-entry.js'), bundle: true, platform: 'browser', format: 'iife', globalName: 'ExtensionQA', target: 'chrome120', alias: { '@wolfsblvt/diffdevil/browser/text': resolve('dist/lib/browser/text.js'), '@wolfsblvt/diffdevil/browser': resolve('dist/browser/index.js') } });
 let executablePath = process.env.CHROMIUM_EXECUTABLE; if (!executablePath) try { await access('/usr/bin/chromium'); executablePath = '/usr/bin/chromium'; } catch {}
@@ -13,17 +13,20 @@ const browser = await chromium.launch({ ...(executablePath ? { executablePath } 
 const conversationHtml = '<!doctype html><html><body><main><h1>Pull request #42</h1><script type="application/json" data-target="react-app.embeddedData">{"payload":{"pullRequestsConversationsRoute":{"pullRequest":{"headSha":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}}}}</script></main></body></html>';
 const receipt = { kind: 'diffdevil.acquisition-qa/1', browser: browser.version(), qualification: 'Production signed-in acquisition adapter executed in a browser with authored provider responses and explicit worker transport. Not live GitHub, account access, network/CORS or installed-extension evidence.', checks: [] };
 async function run(options = {}) {
+  const comparison = options.comparison ?? defaultComparison;
   const page = await browser.newPage();
   try {
     const embeddedData = { ...comparison, ...(options.embeddedSummaries ? { embeddedSummaries: options.embeddedSummaries } : {}), ...(options.embeddedContents ? { embeddedContents: options.embeddedContents } : {}) };
     await page.setContent(options.conversation ? conversationHtml : options.changes ? githubChangesHtml(options.stale ? { ...embeddedData, base: 'd'.repeat(40) } : embeddedData) : githubHtml({ data: options.empty ? { ...comparison, changedFiles: 0, additions: 0, deletions: 0 } : comparison }));
+    if (options.visible?.length) await page.evaluate(paths => { for (const path of paths) document.body.insertAdjacentHTML('beforeend', `<div class="file-header" data-path="${path}" style="height:30px">${path}</div>`); }, options.visible);
     await page.evaluate(({ options, comparison, diff, afterHtml, lateHtml }) => {
       window.transport = []; window.analysisInputs = []; window.fetches = []; window.errors = [];
       console.error = (...args) => window.errors.push(args);
       const source = options.empty ? { ...comparison, changedFiles: 0, additions: 0, deletions: 0 } : comparison;
       window.chrome = { runtime: { sendMessage: async message => {
         window.transport.push(message);
-        if (message.type === 'cache.lookup') return { ok: true, value: { settings: {}, reportCached: Boolean(options.cached), selected: { mode: options.personalOnly ? 'personal-only' : 'composed', personal: 'version: 1\n' }, ...(options.cachedPolicy ? { policy: { status: 'absent', at: 1 } } : {}) } };
+        if (message.type === 'cache.recent') return { ok: true, value: options.recent ? { comparison: options.recent } : {} };
+        if (message.type === 'cache.lookup') return { ok: true, value: { settings: options.settings ?? {}, ...(options.paused ? { paused: true } : {}), ...(options.heldTemplates ? { templatePaths: options.heldTemplates } : {}), reportCached: Boolean(options.cached), selected: { mode: options.personalOnly ? 'personal-only' : 'composed', personal: 'version: 1\n' }, ...(options.cachedPolicy ? { policy: { status: 'absent', at: 1 } } : {}) } };
         if (message.type === 'policy.templates') return { ok: true, value: options.template ? [options.template] : [] };
         if (message.type === 'source.public') return { ok: false, code: 'PUBLIC_UNAVAILABLE', message: 'Synthetic private comparison has no public API route.' };
         if (message.type === 'analysis.run') { window.analysisInputs.push(message.input); return { ok: true, value: { key: 'acquisition-test', comparison: source, view: null, files: [], refreshedAt: 1, cached: Boolean(options.cached) } }; }
@@ -32,7 +35,12 @@ async function run(options = {}) {
       // GitHub's page_data/diff_entries route, in the shape observed on public #48: an array of
       // entries whose diffLines carry their prefix in `text`. Every line of the fixture patch is
       // returned so the engine can verify the entry against the summary counters.
-      const entries = paths => paths.filter(path => diff.includes(`diff --git a/${path} `)).map(path => {
+      const generated = path => options.many && /^src\/f\d+\.ts$/u.test(path);
+      // A generated file GitHub collapses: the field set observed live on a private pull request, with synthetic names and values.
+      const collapsedEntry = path => ({ isBinary: false, isSubmodule: false, isTooBig: false, diffLines: [], linesAdded: 2, linesChanged: 3, linesDeleted: 1, oldCommitOid: 'synthetic-old', newCommitOid: 'synthetic-new', oldTreeEntry: { mode: 33188, path, lineCount: 40 }, newTreeEntry: { mode: 33188, path, lineCount: 41, isGenerated: true }, path, pathDigest: null, richDiff: { canToggleRichDiff: true, defaultToRichDiff: false, proseDiffHtml: null, renderInfo: null, dependencyDiffPath: '/synthetic/dependency-diff' }, submodule: null, status: 'MODIFIED', truncatedReason: null, diffSize: '' });
+      const entries = paths => paths.filter(path => !(options.missing ?? []).includes(path)).filter(path => (options.collapsed ?? []).includes(path) || generated(path) || diff.includes(`diff --git a/${path} `)).map(path => {
+        if ((options.collapsed ?? []).includes(path)) return collapsedEntry(path);
+        if (generated(path)) { const lines = ['@@ -1,2 +1,3 @@', '-old', '+new', '+extra', ' same']; return { isBinary: false, isSubmodule: false, isTooBig: false, diffLines: lines.map((text, position) => ({ type: text.startsWith('@@') ? 'HUNK' : text.startsWith('+') ? 'ADDITION' : text.startsWith('-') ? 'DELETION' : 'CONTEXT', blobLineNumber: position, position, text, left: position, right: position })), linesAdded: 2, linesDeleted: 1, path, pathDigest: null, status: 'MODIFIED', truncatedReason: null, diffSize: '', reviewed: false }; }
         const section = diff.split('diff --git ').find(part => part.startsWith(`a/${path} `)); const lines = section.split('\n').slice(4).filter(line => line !== '');
         const tooBig = (options.tooBig ?? []).includes(path) || paths.length > 1 && (options.batchTooBig ?? []).includes(path);
         return { isBinary: false, isSubmodule: false, isTooBig: tooBig, diffLines: tooBig ? [] : lines.map((text, position) => ({ type: text.startsWith('@@') ? 'HUNK' : text.startsWith('+') ? 'ADDITION' : text.startsWith('-') ? 'DELETION' : 'CONTEXT', blobLineNumber: position, position, text, left: position, right: position, problems: [] })),
@@ -44,8 +52,14 @@ async function run(options = {}) {
       window.fetch = async (path, init) => {
         window.fetches.push({ path, credentials: init.credentials, method: init.method ?? 'GET', headers: init.headers });
         if (init.signal.aborted) throw init.signal.reason;
+        if (options.unreachable && path.endsWith('/changes')) throw new TypeError('Failed to fetch');
         let body = ''; let status = 200; let type = 'text/html'; let url = `https://github.com${path}`;
-        if (path.includes('/page_data/diff_entries?')) {
+        if (path.includes('/page_data/diff_entry_lines?')) {
+          // GitHub's Load diff route, in the shape observed live: { diffEntryLines: [{ type, text, left, right, ... }] }. Synthetic lines.
+          const query = new URL(url).searchParams; window.lineRequests = [...(window.lineRequests ?? []), { keys: [...query.keys()], range: query.get('range'), verified: init.headers?.['GitHub-Verified-Fetch'] === 'true' && init.headers?.Accept === 'application/json' }];
+          if (options.linesFail) { status = 503; body = ''; }
+          else { type = 'application/json; charset=utf-8'; const lines = options.linesEmpty ? [] : ['@@ -1,2 +1,3 @@', '-old', '+new', '+extra', ' same']; body = JSON.stringify({ diffEntryLines: lines.map((text, position) => ({ type: text.startsWith('@@') ? 'HUNK' : text.startsWith('+') ? 'ADDITION' : text.startsWith('-') ? 'DELETION' : 'CONTEXT', blobLineNumber: position, position, text, html: '', left: position, right: position, problems: [] })) }); }
+        } else if (path.includes('/page_data/diff_entries?')) {
           const verified = init.headers?.['GitHub-Verified-Fetch'] === 'true' && init.headers?.Accept === 'application/json' && init.headers?.['X-Requested-With'] === 'XMLHttpRequest';
           if (!verified || options.routeRefused) { status = 406; body = ''; }
           else if (options.retryFailure && new URL(url).searchParams.get('paths') === 'src/renderer.ts') { status = 503; body = ''; }
@@ -73,7 +87,7 @@ async function run(options = {}) {
       try { result = await ExtensionQA.acquire(ExtensionQA.route(`https://github.com/example/cinder/pull/42${route}`), document, window.controller.signal); } catch (exception) { error = { code: exception.code, message: exception.message }; }
       const requestsBeforeVerify = window.fetches.length; let verified;
       if (result?.verify) { try { verified = await result.verify(); } catch (exception) { verified = { error: exception.code }; } }
-      return { ok: Boolean(result), error, inputs: window.analysisInputs, requests: window.fetches, requestsBeforeVerify, verified, messages: window.transport, acquisitionLogs: window.acquisitionLogs, errors: window.errors };
+      return { ok: Boolean(result), error, inputs: window.analysisInputs, requests: window.fetches, requestsBeforeVerify, verified, messages: window.transport, acquisitionLogs: window.acquisitionLogs, errors: window.errors, lineRequests: window.lineRequests ?? [] };
     }, options.conversation ? '' : options.changes ? '/changes' : '/files');
   } finally { await page.close(); }
 }
@@ -87,8 +101,8 @@ try {
   await check('Stale embedded /changes base cannot select policy or submit analysis', async () => { const result = await run({ changes: true, stale: true }); assert.equal(result.error.code, 'COMPARISON_MOVED'); assert.equal(result.inputs.length, 0); assert.ok(!result.requests.some(request => request.path.includes('/blob/'))); });
   await check('Moved React /changes comparison cannot submit analysis', async () => { const result = await run({ changes: true, moved: true }); assert.equal(result.error.code, 'COMPARISON_MOVED'); assert.equal(result.inputs.length, 0); });
   await check('React /changes moving after policy lookup cannot submit analysis', async () => { const result = await run({ changes: true, lateMoved: true }); assert.equal(result.error.code, 'COMPARISON_MOVED'); assert.equal(result.inputs.length, 0); assert.ok(result.requests.some(request => request.path.includes('/blob/'))); });
-  await check('Cache hit reattaches before any request, then confirms the same comparison with one fresh read', async () => { const result = await run({ cached: true, cachedPolicy: true }); assert.equal(result.ok, true); assert.equal(result.requestsBeforeVerify, 0); assert.equal(result.requests.length, 1); assert.equal(result.inputs[0].acquisition, undefined); assert.deepEqual(result.verified, { moved: false }); });
-  await check('Cache hit on a moved React /changes head reports the confirmed comparison instead of a stale result', async () => { const result = await run({ changes: true, cached: true, cachedPolicy: true, moved: true }); assert.equal(result.ok, true); assert.equal(result.requestsBeforeVerify, 0); assert.equal(result.verified.moved, true); assert.equal(result.verified.observed.head, 'c'.repeat(40)); });
+  await check('Cache hit reattaches before any request, then confirms the same comparison with one fresh read', async () => { const result = await run({ cached: true, cachedPolicy: true }); assert.equal(result.ok, true); assert.equal(result.requestsBeforeVerify, 0); assert.equal(result.requests.length, 1); assert.equal(result.inputs[0].acquisition, undefined); assert.deepEqual(result.verified, { standing: 'current' }); });
+  await check('Cache hit on a moved React /changes head reports the confirmed comparison instead of a stale result', async () => { const result = await run({ changes: true, cached: true, cachedPolicy: true, moved: true }); assert.equal(result.ok, true); assert.equal(result.requestsBeforeVerify, 0); assert.equal(result.verified.standing, 'moved'); assert.equal(result.verified.observed.head, 'c'.repeat(40)); });
   await check('Signed-in /changes loads the files GitHub did not embed through its own page_data route and measures them exactly, without the anonymous API', async () => { const result = await run({ changes: true, corsFail: true }); assert.equal(result.ok, true); const acquisition = result.inputs[0].acquisition; assert.equal(acquisition.format, 'github-files'); assert.deepEqual(acquisition.files.map(file => file.filename), ['src/cache.ts', 'src/renderer.ts']); assert.equal(acquisition.files[0].status, 'modified'); assert.equal(acquisition.files[0].additions, 30); assert.ok(acquisition.files.every(file => typeof file.patch === 'string' && file.patch.startsWith('@@ ')), JSON.stringify(acquisition.files.map(file => file.patch?.slice(0, 20)))); assert.equal(acquisition.complete, true); assert.ok(!result.messages.some(message => message.type === 'source.public')); const route = result.requests.filter(request => request.path.includes('/page_data/diff_entries?')); assert.equal(route.length, 1); assert.ok(route[0].path.includes(`&range=${comparison.head}`) && route[0].path.includes('paths=src%2Fcache.ts,src%2Frenderer.ts') && route[0].credentials === 'same-origin' && route[0].headers['GitHub-Verified-Fetch'] === 'true', JSON.stringify(route[0])); assert.ok(!result.requests.some(request => request.path.endsWith('/pull/42'))); });
   await check('An empty too-big result in a batch retries alone and supplies the exact patch', async () => { const result = await run({ changes: true, corsFail: true, batchTooBig: ['src/renderer.ts'] }); assert.equal(result.ok, true); const files = result.inputs[0].acquisition.files; assert.ok(files.every(file => typeof file.patch === 'string')); assert.equal(result.inputs[0].acquisition.complete, true); const routes = result.requests.filter(request => request.path.includes('/page_data/diff_entries?')); assert.equal(routes.length, 2); assert.deepEqual(routes.map(request => new URL(`https://github.com${request.path}`).searchParams.get('paths')), ['src/cache.ts,src/renderer.ts', 'src/renderer.ts']); });
   await check('A failed single-path retry leaves its file bounded and keeps successful batch mates', async () => { const result = await run({ changes: true, corsFail: true, batchTooBig: ['src/renderer.ts'], retryFailure: true }); assert.equal(result.ok, true); const files = result.inputs[0].acquisition.files; assert.equal(files[0].patch?.startsWith('@@ '), true); assert.equal(files[1].patch, undefined); assert.equal(files[1].additions, 130); assert.equal(result.inputs[0].acquisition.complete, true); const routes = result.requests.filter(request => request.path.includes('/page_data/diff_entries?')); assert.equal(routes.length, 2); assert.deepEqual(routes.map(request => new URL(`https://github.com${request.path}`).searchParams.get('paths')), ['src/cache.ts,src/renderer.ts', 'src/renderer.ts']); const diagnostic = result.acquisitionLogs.find(([name]) => name === '[diffdevil] signed-in acquisition')?.[1]; assert.equal(diagnostic.retryFailures, 1); assert.deepEqual(diagnostic.retryFailureCodes, ['DIFF_ENTRIES']); assert.ok(!JSON.stringify(diagnostic).includes('renderer.ts')); });
@@ -108,5 +122,143 @@ try {
   await check('Oversized diff is stopped at the acquisition limit rather than persisted', async () => { const result = await run({ oversize: true }); assert.equal(result.inputs.length, 0); assert.equal(result.error.code, 'PUBLIC_UNAVAILABLE'); });
   await check('Cancellation prevents a report submission', async () => { const result = await run({ aborted: true }); assert.equal(result.inputs.length, 0); assert.equal(result.ok, false); });
   await check('Independently observed empty comparison forwards an empty diff, not an error page', async () => { const result = await run({ empty: true }); assert.equal(result.ok, true); assert.equal(result.inputs[0].comparison.changedFiles, 0); assert.equal(result.inputs[0].acquisition.text, ''); });
+
+  // The automatic limit, the reader's files first, and what the provider declines.
+  const path = index => 'src/f' + String(index).padStart(3, '0') + '.ts';
+  const many = (count, flags = {}) => ({ many: count, comparison: { ...comparison, changedFiles: count, additions: count * 2, deletions: count }, embeddedSummaries: Array.from({ length: count }, (_, index) => [path(index), 2, 1, 'MODIFIED', undefined, flags[index]]) });
+  const requested = result => result.requests.filter(request => request.path.includes('/page_data/diff_entries?')).flatMap(request => new URL('https://github.com' + request.path).searchParams.get('paths').split(',').map(decodeURIComponent));
+  await check('The automatic limit decides which files are read; the rest stay bounded and the limit is declared', async () => {
+    const result = await run({ changes: true, corsFail: true, ...many(40), settings: { 'analysis.maximumFiles': 10 } }); assert.equal(result.ok, true, JSON.stringify(result.error));
+    assert.deepEqual([...new Set(requested(result))].sort(), Array.from({ length: 10 }, (_, index) => path(index)), 'provider order fills the budget when nothing is on screen');
+    const input = result.inputs[0]; assert.equal(input.acquisition.files.length, 40); assert.equal(input.acquisition.files.filter(file => typeof file.patch === 'string').length, 10); assert.equal(input.coverage.limit, 10); assert.equal(input.comparison.changedFiles, 40);
+  });
+  await check('Files already rendered on the page are measured before provider order', async () => {
+    const result = await run({ changes: true, corsFail: true, ...many(40), settings: { 'analysis.maximumFiles': 10 }, visible: [path(35), path(36)] });
+    const asked = new Set(requested(result)); assert.ok(asked.has(path(35)) && asked.has(path(36)), 'both rendered files were read'); assert.equal(asked.size, 10); for (let index = 0; index < 8; index++) assert.ok(asked.has(path(index)), path(index) + ' keeps provider order after the rendered files');
+    const patched = result.inputs[0].acquisition.files.filter(file => typeof file.patch === 'string').map(file => file.filename); assert.ok(patched.includes(path(35)) && patched.length === 10);
+  });
+  await check('A file the provider declines is recorded as declined and does not spend the limit', async () => {
+    const result = await run({ changes: true, corsFail: true, ...many(40, { 0: { isBinary: true }, 1: { isSubmodule: true } }), settings: { 'analysis.maximumFiles': 5 } });
+    assert.deepEqual([...new Set(requested(result))].sort(), [2, 3, 4, 5, 6].map(path)); assert.deepEqual(result.inputs[0].coverage.declined, { [path(0)]: 'binary', [path(1)]: 'submodule' });
+  });
+  await check('A generated file GitHub collapses is read through its own Load diff route without rendering, and verified like any other patch', async () => {
+    const result = await run({ changes: true, corsFail: true, ...many(12), collapsed: [path(3)], settings: { 'analysis.maximumFiles': 150 } }); assert.equal(result.ok, true, JSON.stringify(result.error));
+    const input = result.inputs[0]; assert.equal(input.acquisition.files.filter(file => typeof file.patch === 'string').length, 12, 'the collapsed file now carries its patch');
+    assert.deepEqual(input.coverage.declined, {}); assert.equal(input.coverage.unresolved, undefined, 'nothing is left unresolved');
+    assert.deepEqual(result.lineRequests, [{ keys: ['path', 'w', 'range'], range: comparison.head, verified: true }], 'one request, with the route GitHub uses, bound to the head');
+    assert.equal(result.acquisitionLogs.find(([name]) => name === '[diffdevil] signed-in acquisition')?.[1].onDemand, 1);
+  });
+  await check('When the Load diff route also fails, a collapsed file is unresolved, not declined, and a path the route omits is not-returned; the diagnostic carries the shape without a path', async () => {
+    const result = await run({ changes: true, corsFail: true, ...many(12), collapsed: [path(3)], missing: [path(4)], linesFail: true, settings: { 'analysis.maximumFiles': 150 } }); assert.equal(result.ok, true, JSON.stringify(result.error));
+    const input = result.inputs[0]; const patched = input.acquisition.files.filter(file => typeof file.patch === 'string').map(file => file.filename);
+    assert.equal(patched.length, 10); assert.ok(!patched.includes(path(3)) && !patched.includes(path(4)));
+    assert.deepEqual(input.coverage.declined, {}, 'a collapsed file is offered on demand by GitHub, so it is not a provider decline');
+    assert.deepEqual({ ...input.coverage.unresolved }, { [path(3)]: 'collapsed', [path(4)]: 'not-returned' });
+    const log = result.acquisitionLogs.find(([name]) => name === '[diffdevil] signed-in acquisition')?.[1]; assert.deepEqual(log.unresolvedReasons, { collapsed: 1, 'not-returned': 1 }); assert.deepEqual(log.onDemandFailures, ['DIFF_ENTRY_LINES']);
+    assert.ok(log.shapes[0].keys.includes('newTreeEntry') && log.shapes[0].lines === 0, JSON.stringify(log.shapes)); assert.ok(!JSON.stringify(log).includes('src/f'), 'the diagnostic names no path');
+  });
+  await check('A limit above the file count reads every file, as before', async () => { const result = await run({ changes: true, corsFail: true, ...many(12), settings: { 'analysis.maximumFiles': 150 } }); assert.equal(result.inputs[0].acquisition.files.filter(file => typeof file.patch === 'string').length, 12); });
+  await check('A missing or unusable limit setting falls back to the shipped default, never to unbounded work', async () => { const result = await run({ changes: true, corsFail: true, ...many(400), settings: { 'analysis.maximumFiles': 'many' } }); assert.equal(result.inputs[0].coverage.limit, 150); assert.equal(result.inputs[0].acquisition.files.filter(file => typeof file.patch === 'string').length, 150); });
+  // Held facts, the pointer, offline standing and pause.
+  await check('A Conversation tab with no comparison of its own reattaches from the last confirmed comparison and confirms it through /changes', async () => {
+    const result = await run({ conversation: true, corsFail: true, cached: true, cachedPolicy: true, recent: comparison }); assert.equal(result.ok, true, JSON.stringify(result.error)); assert.equal(result.requestsBeforeVerify, 0); assert.equal(result.inputs[0].acquisition, undefined);
+    assert.deepEqual(result.verified, { standing: 'current' }); assert.ok(result.requests.at(-1).path.endsWith('/changes'));
+  });
+  await check('When GitHub cannot be reached, cached facts are kept and reported as unconfirmed rather than failed', async () => {
+    const result = await run({ changes: true, cached: true, cachedPolicy: true, changesFail: true, conversation: false, unreachable: true }); assert.equal(result.ok, true); assert.equal(result.verified.standing, 'unconfirmed'); assert.ok(result.verified.code);
+  });
+  await check('A paused repository stops acquisition before any request', async () => { const result = await run({ paused: true }); assert.equal(result.ok, false); assert.equal(result.error.code, 'REPOSITORY_PAUSED'); assert.equal(result.requests.length, 0); assert.equal(result.inputs.length, 0); });
+  await check('Trusted templates already held for the base are not fetched again', async () => { const result = await run({ template: '.github/report.md', cached: false, cachedPolicy: true, heldTemplates: ['.github/report.md'] }); assert.ok(!result.requests.some(request => request.path.includes('/blob/') && request.path.includes('report.md'))); });
+  await check('Two tabs of one browser acquire a comparison once: the second waits, then reads what the first stored', async () => {
+    const context = await browser.newContext(); let stored = false; let pages = 0; const fetches = []; const runs = [];
+    await context.route('https://github.com/**', route => route.fulfill({ status: 200, contentType: 'text/html', body: githubChangesHtml(comparison) }));
+    const setup = async () => {
+      const id = pages++; const page = await context.newPage(); await page.goto('https://github.com/example/cinder/pull/42/changes');
+      await page.exposeFunction('__rpc', async message => {
+        if (message.type === 'cache.recent') return { ok: true, value: {} };
+        if (message.type === 'cache.lookup') return { ok: true, value: { settings: {}, reportCached: stored, selected: { mode: 'personal-only', personal: 'version: 1\n' } } };
+        if (message.type === 'policy.templates') return { ok: true, value: [] };
+        if (message.type === 'analysis.run') { const acquisition = Boolean(message.input.acquisition); if (acquisition) { await new Promise(resolve => setTimeout(resolve, 150)); stored = true; } runs.push({ id, acquisition }); return { ok: true, value: { key: 'k', comparison, view: null, files: [], refreshedAt: 1, cached: !acquisition } }; }
+        return { ok: false, code: 'UNEXPECTED', message: message.type };
+      });
+      await page.exposeFunction('__fetched', path => { fetches.push({ id, path }); });
+      await page.evaluate(() => { window.chrome = { runtime: { sendMessage: message => window.__rpc(message) } };
+        const original = window.fetch.bind(window); window.fetch = async (path, init) => { window.__fetched(String(path)); if (String(path).endsWith('.diff')) throw new TypeError('Failed to fetch'); if (String(path).includes('/page_data/diff_entries')) { await new Promise(resolve => setTimeout(resolve, 120)); return new Response('[]', { status: 200, headers: { 'content-type': 'application/json' } }); } return original(path, init); }; });
+      await page.addScriptTag({ path: join(out, 'acquisition-test-entry.js') }); return page;
+    };
+    const first = await setup(); const second = await setup();
+    const outcome = await Promise.all([first, second].map(page => page.evaluate(async () => { try { await ExtensionQA.acquire(ExtensionQA.route(location.href), document, new AbortController().signal); return 'acquired'; } catch (error) { return error.code ?? String(error); } })));
+    await context.close(); assert.deepEqual(outcome, ['acquired', 'acquired']); assert.equal(runs.length, 2);
+    const leader = runs.find(item => item.acquisition)?.id; const follower = runs.find(item => !item.acquisition)?.id; assert.ok(leader !== undefined && follower !== undefined && leader !== follower, 'one analysis carried the diff and the other found it stored');
+    assert.ok(fetches.some(item => item.id === leader && item.path.includes('/page_data/diff_entries')), 'the leader read the files from GitHub');
+    assert.ok(!fetches.some(item => item.id === follower && item.path.includes('/page_data/diff_entries')), 'the follower read no file from GitHub');
+  });
+  // Incremental measurement: tabs of one browser share the work through the browser's own lock manager, and
+  // nothing read for another comparison extends this one. The worker is a declared double holding one report.
+  const measuring = async ({ html = githubChangesHtml(comparison), entriesFail = false, publicComparison = comparison, collapsed = [], linesFail = false } = {}) => {
+    const context = await browser.newContext(); const measured = new Set(); const reads = []; const extended = []; const publicReads = []; const outcomes = [];
+    const files = ['src/f0.ts', 'src/f1.ts', 'src/f2.ts'];
+    const packet = () => ({ key: 'k', comparison, view: null, refreshedAt: 1, cached: true, files: files.map(path => ({ path, standing: measured.has(path) ? 'measured' : 'bounded' })) });
+    await context.route('https://github.com/**', route => route.fulfill({ status: 200, contentType: 'text/html', body: html }));
+    const backend = async message => {
+      if (message.type === 'cache.lookup') return { ok: true, value: { settings: {}, reportCached: true, selected: { mode: 'personal-only' }, ...(message.paths ? { bounded: message.paths.filter(path => !measured.has(path)) } : {}) } };
+      if (message.type === 'source.public') { publicReads.push(message.page); await new Promise(resolve => setTimeout(resolve, 120)); return { ok: true, value: { comparison: publicComparison, files: files.map(filename => ({ filename, status: 'modified', additions: 1, deletions: 1, patch: '@@ -1 +1 @@\n-a\n+b\n' })) } }; }
+      if (message.type === 'analysis.extend') { extended.push(message.patches.map(item => item.path)); outcomes.push({ unresolved: { ...message.unresolved }, declined: { ...message.declined } }); for (const item of message.patches) measured.add(item.path); return { ok: true, value: packet() }; }
+      return { ok: false, code: 'UNEXPECTED', message: message.type };
+    };
+    const open = async () => {
+      const page = await context.newPage(); await page.goto('https://github.com/example/cinder/pull/42/changes');
+      await page.exposeFunction('__rpc', backend); await page.exposeFunction('__read', paths => { reads.push(paths); });
+      await page.evaluate(({ entriesFail, collapsed, linesFail }) => {
+        window.chrome = { runtime: { sendMessage: message => window.__rpc(message) } }; const original = window.fetch.bind(window);
+        window.fetch = async (path, init) => {
+          const url = new URL(String(path), location.href);
+          if (url.pathname.endsWith('/page_data/diff_entry_lines')) {
+            const response = linesFail ? new Response('', { status: 503 }) : new Response(JSON.stringify({ diffEntryLines: [{ type: 'HUNK', text: '@@ -1 +1 @@' }, { type: 'DELETION', text: '-a' }, { type: 'ADDITION', text: '+b' }] }), { status: 200, headers: { 'content-type': 'application/json' } });
+            Object.defineProperty(response, 'url', { value: url.href }); return response;
+          }
+          if (!url.pathname.endsWith('/page_data/diff_entries')) return original(path, init);
+          const paths = url.searchParams.get('paths').split(',').map(decodeURIComponent); window.__read(paths); await new Promise(resolve => setTimeout(resolve, 120));
+          const lines = ['@@ -1 +1 @@', '-a', '+b'];
+          const entry = item => collapsed.includes(item) ? { path: item, isBinary: false, isSubmodule: false, isTooBig: false, truncatedReason: null, diffSize: '', diffLines: [], linesAdded: 1, linesDeleted: 1, newTreeEntry: { mode: 33188, path: item, lineCount: 9, isGenerated: true } }
+            : { path: item, isBinary: false, isSubmodule: false, isTooBig: false, truncatedReason: null, diffLines: lines.map(text => ({ type: text.startsWith('@@') ? 'HUNK' : text.startsWith('+') ? 'ADDITION' : 'DELETION', text })) };
+          const response = entriesFail ? new Response('', { status: 404 }) : new Response(JSON.stringify(paths.map(entry)), { status: 200, headers: { 'content-type': 'application/json' } });
+          Object.defineProperty(response, 'url', { value: url.href }); return response;
+        };
+      }, { entriesFail, collapsed, linesFail });
+      await page.addScriptTag({ path: join(out, 'acquisition-test-entry.js') }); return page;
+    };
+    const measure = (page, paths) => page.evaluate(async ({ packet, paths }) => { try { const next = await ExtensionQA.measure(ExtensionQA.route(location.href), packet, paths, 'explicit', new AbortController().signal); return next.files.filter(file => file.standing === 'measured').map(file => file.path); } catch (error) { return error.code ?? String(error); } }, { packet: packet(), paths });
+    return { context, open, measure, reads, extended, publicReads, measured, outcomes };
+  };
+  await check('Two tabs measuring overlapping files read each file from GitHub once, through the browser lock', async () => {
+    const tabs = await measuring(); const [first, second] = [await tabs.open(), await tabs.open()];
+    const outcome = await Promise.all([tabs.measure(first, ['src/f0.ts', 'src/f1.ts']), tabs.measure(second, ['src/f1.ts', 'src/f2.ts'])]); await tabs.context.close();
+    assert.ok(outcome.every(Array.isArray), JSON.stringify(outcome)); assert.deepEqual([...tabs.measured].sort(), ['src/f0.ts', 'src/f1.ts', 'src/f2.ts']);
+    assert.deepEqual(tabs.reads.flat().sort(), ['src/f0.ts', 'src/f1.ts', 'src/f2.ts'], `each file was read once: ${JSON.stringify(tabs.reads)}`);
+  });
+  await check('Two tabs measuring the same file through the public fallback make one provider read', async () => {
+    const tabs = await measuring({ entriesFail: true }); const [first, second] = [await tabs.open(), await tabs.open()];
+    const outcome = await Promise.all([tabs.measure(first, ['src/f0.ts']), tabs.measure(second, ['src/f0.ts'])]); await tabs.context.close();
+    assert.ok(outcome.every(result => Array.isArray(result) && result.includes('src/f0.ts')), JSON.stringify(outcome)); assert.equal(tabs.publicReads.length, 1); assert.equal(tabs.reads.length, 1, 'the waiting tab did not even ask the signed-in route');
+  });
+  await check('Measuring a collapsed generated file reads it through GitHub’s Load diff route', async () => {
+    const tabs = await measuring({ collapsed: ['src/f1.ts'] }); const page = await tabs.open();
+    const outcome = await tabs.measure(page, ['src/f0.ts', 'src/f1.ts']); await tabs.context.close();
+    assert.deepEqual(outcome, ['src/f0.ts', 'src/f1.ts']); assert.deepEqual(tabs.extended, [['src/f0.ts', 'src/f1.ts']]); assert.deepEqual(tabs.outcomes, [{ unresolved: {}, declined: {} }]);
+  });
+  await check('When that route also fails, the worker is told why the collapsed file stays bounded instead of it being dropped silently', async () => {
+    const tabs = await measuring({ collapsed: ['src/f1.ts'], linesFail: true }); const page = await tabs.open();
+    const outcome = await tabs.measure(page, ['src/f0.ts', 'src/f1.ts']); await tabs.context.close();
+    assert.deepEqual(outcome, ['src/f0.ts']); assert.deepEqual(tabs.extended, [['src/f0.ts']]); assert.deepEqual(tabs.outcomes, [{ unresolved: { 'src/f1.ts': 'collapsed' }, declined: {} }], 'a failed request is not counted as the public fallback either');
+  });
+  await check('A signed-in measurement on a page that already names another head is refused, not attached to the old comparison', async () => {
+    const tabs = await measuring({ html: githubChangesHtml({ ...comparison, head: 'c'.repeat(40) }) }); const page = await tabs.open();
+    const outcome = await tabs.measure(page, ['src/f0.ts']); await tabs.context.close(); assert.equal(outcome, 'COMPARISON_MOVED'); assert.deepEqual(tabs.extended, []);
+  });
+  await check('A public page answering for a moved head is refused, not attached to the old comparison', async () => {
+    const tabs = await measuring({ entriesFail: true, publicComparison: { ...comparison, head: 'c'.repeat(40) } }); const page = await tabs.open();
+    const outcome = await tabs.measure(page, ['src/f0.ts']); await tabs.context.close(); assert.equal(outcome, 'COMPARISON_MOVED'); assert.deepEqual(tabs.extended, []);
+  });
 } catch { process.exitCode = 1; }
 finally { await browser.close(); receipt.passed = receipt.checks.filter(check => check.passed).length; receipt.failed = receipt.checks.length - receipt.passed; await writeFile(join(out, 'acquisition-receipt.json'), JSON.stringify(receipt, null, 2) + '\n'); console.log(JSON.stringify(receipt, null, 2)); }

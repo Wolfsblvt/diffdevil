@@ -31,11 +31,15 @@ if (receipt.policyEvidence.length) {
     profile = await mkdtemp(join(tmpdir(), 'diffdevil-installed-'));
     context = await launch();
     const worker = context.serviceWorkers()[0] ?? await context.waitForEvent('serviceworker', { timeout: 20_000 });
-    const base = worker.url().replace(/\/background\.js(?:[?#].*)?$/u, ''); const page = await context.newPage();
+    const base = worker.url().replace(/\/background\.js(?:[?#].*)?$/u, ''); const readyUrl = `${base}/options.html#ready`;
+    // The first install, and only that, opens Settings at its ready section.
+    const firstInstallTab = await (async () => { for (let attempt = 0; attempt < 50; attempt++) { const found = context.pages().find(candidate => candidate.url() === readyUrl); if (found) return found; await new Promise(resolve => setTimeout(resolve, 100)); } return undefined; })();
+    const page = await context.newPage();
     page.on('pageerror', error => receipt.errors.push(error.message));
     await page.goto(`${base}/options.html`); await page.locator('.setting').first().waitFor();
+    let active = page;
     const call = async message => {
-      const response = await page.evaluate(message => chrome.runtime.sendMessage(message), message);
+      const response = await active.evaluate(message => chrome.runtime.sendMessage(message), message);
       assert.equal(response?.ok, true, response?.message ?? 'Missing worker response'); return response.value;
     };
     await check('Actual MV3 service worker and options page initialize under manifest CSP', async () => {
@@ -54,25 +58,73 @@ if (receipt.policyEvidence.length) {
       packet = await call({ type: 'analysis.run', input: { comparison, acquisition: { comparison, format: 'diff', text: patch, complete: true }, policy: { status: 'absent', at: Date.now() } } });
       assert.equal(packet.view.changed.value, 178); assert.equal(packet.view.raw.churn.value, 278);
       const info = await call({ type: 'diagnostics.get' }); assert.equal(info.cache.reportEntries, 1);
-      const files = await call({ type: 'analysis.files', key: packet.key, paths: ['src/cache.ts', 'src/renderer.ts'] }); assert.equal(files['src/cache.ts'].changed.value, 32);
+      const files = await call({ type: 'analysis.files', key: packet.key, comparison, paths: ['src/cache.ts', 'src/renderer.ts'] }); assert.equal(files['src/cache.ts'].changed.value, 32);
       const entries = await page.evaluate(() => new Promise((resolve, reject) => {
-        const opening = indexedDB.open('diffdevil-rebuildable-v1', 1);
+        const opening = indexedDB.open('diffdevil-rebuildable-v1', 2);
         opening.onerror = () => reject(opening.error?.message);
         opening.onsuccess = () => { const db = opening.result; const tx = db.transaction('entries'); const read = tx.objectStore('entries').getAll(); read.onsuccess = () => { resolve(read.result); db.close(); }; read.onerror = () => reject(read.error?.message); };
       }));
       assert.ok(entries.length); assert.ok(!JSON.stringify(entries).includes('diff --git')); assert.ok(!JSON.stringify(entries).includes('old_0'));
     });
     await check('User settings and numeric cache survive actual browser/worker restart', async () => {
-      await context.close(); context = await launch(); const restarted = await context.newPage(); restarted.on('pageerror', error => receipt.errors.push(error.message)); await restarted.goto(`${base}/options.html`); await restarted.locator('.setting').first().waitFor();
+      await context.close(); context = await launch(); const restarted = await context.newPage(); active = restarted; restarted.on('pageerror', error => receipt.errors.push(error.message)); await restarted.goto(`${base}/options.html`); await restarted.locator('.setting').first().waitFor();
       const settings = await restarted.evaluate(() => chrome.runtime.sendMessage({ type: 'settings.get' })); assert.equal(settings.value['display.nativeChurn'], 'faint');
       const cache = await restarted.evaluate(comparison => chrome.runtime.sendMessage({ type: 'cache.lookup', comparison }), comparison); assert.equal(cache.value.reportCached, true);
-      const files = await restarted.evaluate(key => chrome.runtime.sendMessage({ type: 'analysis.files', key, paths: ['src/cache.ts'] }), packet.key); assert.equal(files.ok, false); assert.equal(files.code, 'CONTEXT_EXPIRED');
+      // Chrome re-announces a command-line-loaded unpacked extension as an install on every launch, so a restart cannot prove the negative here; the reason test is in the unit suite.
+      const files = await restarted.evaluate(({ key, comparison }) => chrome.runtime.sendMessage({ type: 'analysis.files', key, comparison, paths: ['src/cache.ts'] }), { key: packet.key, comparison }); assert.equal(files.ok, true, JSON.stringify(files)); assert.equal(files.value['src/cache.ts'].changed.value, 32, 'the file view came from persisted facts after the worker lost every context');
+      const text = await restarted.evaluate(({ key, comparison }) => chrome.runtime.sendMessage({ type: 'report.text', key, comparison }), { key: packet.key, comparison }); assert.equal(text.ok, true); assert.match(text.value, /178/u);
       const again = await restarted.evaluate(comparison => chrome.runtime.sendMessage({ type: 'analysis.run', input: { comparison, policy: { status: 'absent', at: Date.now() } } }), comparison); assert.equal(again.ok, true); assert.equal(again.value.cached, true); assert.equal(again.value.view.changed.value, 178);
       const refused = await restarted.evaluate(() => chrome.runtime.sendMessage({ type: 'data.action', action: 'data.resetAll' })); assert.equal(refused.code, 'CONFIRMATION_REQUIRED');
       const cleared = await restarted.evaluate(() => chrome.runtime.sendMessage({ type: 'data.action', action: 'data.clearAnalysisCache' })); assert.equal(cleared.ok, true); assert.equal(cleared.value.cache.reportEntries, 0);
       const retained = await restarted.evaluate(() => chrome.runtime.sendMessage({ type: 'settings.get' })); assert.equal(retained.value['display.nativeChurn'], 'faint');
       const reset = await restarted.evaluate(() => chrome.runtime.sendMessage({ type: 'data.action', action: 'data.resetAll', confirmed: true })); assert.equal(reset.ok, true); assert.equal(reset.value.cache.entries, 0);
       const defaults = await restarted.evaluate(() => chrome.runtime.sendMessage({ type: 'settings.get' })); assert.equal(defaults.value['display.nativeChurn'], 'hidden');
+    });
+    await check('First install opened Settings at its ready section, and the section explains the defaults in effect', async () => {
+      assert.ok(firstInstallTab, 'no #ready tab opened on first install'); const tab = await context.newPage(); await tab.goto(readyUrl);
+      await tab.locator('#ready-heading').waitFor(); assert.equal(await tab.locator('#ready-heading').textContent(), 'Ready on GitHub pull requests.'); assert.equal(await tab.evaluate(() => document.activeElement?.id), 'ready-heading', 'the section takes focus');
+      const text = await tab.locator('#ready').innerText(); for (const phrase of ['No account, personal token, telemetry or source upload', 'composed', '16 MiB', 'hidden after Changed is known', 'automatically per pull request']) assert.ok(text.includes(phrase), phrase);
+      const example = await tab.getByRole('link', { name: 'Open the public example PR' }).getAttribute('href'); assert.match(example, /^https:\/\/github\.com\/[^/]+\/[^/]+\/pull\/\d+$/u);
+      assert.equal(await tab.locator('#ready input[type=checkbox]').count(), 0, 'no consent checkbox and no required choice'); await tab.close();
+    });
+    const synthetic = (count, pullRequest = comparison.pullRequest) => ({ comparison: { ...comparison, pullRequest, changedFiles: count, additions: count * 2, deletions: count }, format: 'github-files', complete: true, files: Array.from({ length: count }, (_, index) => ({ filename: 'src/f' + String(index).padStart(3, '0') + '.ts', status: 'modified', additions: 2, deletions: 1, ...(index < 5 ? { patch: '@@ -1,2 +1,3 @@\n-old\n+new\n+extra\n same\n' } : {}) })) });
+    const runPage = async () => { const tab = await context.newPage(); await tab.goto(base + '/options.html'); return tab; };
+    await check('The service worker is terminated and the next request still rehydrates every view from persisted facts', async () => {
+      const big = synthetic(40); const run = await call({ type: 'analysis.run', input: { comparison: big.comparison, acquisition: big, policy: { status: 'absent', at: Date.now() }, coverage: { limit: 5, declined: { 'src/f039.ts': 'binary' } } } });
+      assert.equal(run.coverage.measured, 5); assert.equal(run.coverage.bounded, 34); assert.equal(run.coverage.declined, 1); assert.equal(run.coverage.total, 40);
+      const cdp = await context.newCDPSession(active); await cdp.send('ServiceWorker.enable'); await cdp.send('ServiceWorker.stopAllWorkers'); await new Promise(resolve => setTimeout(resolve, 500));
+      const views = await call({ type: 'analysis.files', key: run.key, comparison: big.comparison, paths: ['src/f000.ts', 'src/f010.ts'] }); assert.equal(views['src/f000.ts'].changed.value, 2); assert.equal(views['src/f010.ts'].changed.status, 'bounded');
+      const again = await call({ type: 'analysis.run', input: { comparison: big.comparison, policy: { status: 'absent', at: Date.now() } } }); assert.equal(again.cached, true); assert.equal(again.key, run.key); assert.deepEqual(again.coverage, run.coverage, 'coverage is part of the persisted analysis fact');
+    });
+    await check('Measuring bounded files in the real worker persists across restart and never exceeds what was asked', async () => {
+      const big = synthetic(40); const patches = Array.from({ length: 12 }, (_, index) => ({ path: 'src/f' + String(index + 5).padStart(3, '0') + '.ts', patch: '@@ -1,2 +1,3 @@\n-old\n+new\n+extra\n same\n' }));
+      const visible = await call({ type: 'analysis.extend', comparison: big.comparison, patches, via: 'visible' }); assert.equal(visible.coverage.measured, 5 + 12, 'allowance is the configured limit, which is large enough here'); assert.equal(visible.coverage.topUp, 12);
+      // A generated file GitHub collapses (counts, no lines) stays bounded with that reason; it is not declined and spends nothing.
+      const collapsed = await call({ type: 'analysis.extend', comparison: big.comparison, patches: [], unresolved: { 'src/f020.ts': 'collapsed' }, via: 'explicit' }); assert.equal(collapsed.coverage.declined, 1); assert.deepEqual(collapsed.coverage.unresolvedReasons, { collapsed: 1 }); assert.equal(collapsed.coverage.explicit, 0);
+      await context.close(); context = await launch(); const reopened = await context.newPage(); active = reopened; await reopened.goto(base + '/options.html');
+      const lookup = await reopened.evaluate(comparison => chrome.runtime.sendMessage({ type: 'cache.lookup', comparison }), big.comparison); assert.equal(lookup.value.coverage.measured, 17); assert.equal(lookup.value.coverage.topUp, 12); assert.deepEqual(lookup.value.coverage.unresolvedReasons, { collapsed: 1 }, 'what GitHub did is persisted with the report');
+    });
+    await check('Concurrent tabs of one comparison produce one stored report and never an error', async () => {
+      const second = synthetic(30, 43); const tabs = await Promise.all([runPage(), runPage(), runPage()]);
+      const results = await Promise.all(tabs.map((tab, index) => tab.evaluate(input => chrome.runtime.sendMessage({ type: 'analysis.run', input }), { comparison: second.comparison, acquisition: second, policy: index === 0 ? { status: 'absent', at: 1 } : { status: 'present', text: 'version: 1\n', at: 1 } })));
+      assert.ok(results.every(result => result.ok), JSON.stringify(results.map(result => result.code))); assert.equal(results.filter(result => !result.value.cached).length, 1, 'exactly one request analysed the diff');
+      const inventory = await call({ type: 'data.inventory' }); const stored = inventory.repositories.flatMap(item => item.pullRequests); assert.equal(stored.filter(item => item.files === 30).length, 1); for (const tab of tabs) await tab.close();
+    });
+    await check('A paused repository refuses work everywhere and keeps its data until resumed', async () => {
+      const paused = await call({ type: 'repository.pause', repository: 'Example/Cinder', paused: true }); assert.equal(paused.paused, true);
+      const refused = await active.evaluate(comparison => chrome.runtime.sendMessage({ type: 'analysis.run', input: { comparison, policy: { status: 'absent', at: 1 } } }), comparison); assert.equal(refused.ok, false); assert.equal(refused.code, 'REPOSITORY_PAUSED');
+      const lookup = await call({ type: 'cache.lookup', comparison }); assert.equal(lookup.paused, true);
+      assert.ok((await call({ type: 'data.inventory' })).repositories.some(item => item.repository === 'github.com/example/cinder'), 'pausing deleted nothing');
+      const resumed = await call({ type: 'repository.pause', repository: 'example/cinder', paused: false }); assert.equal(resumed.paused, false);
+      const lookupAgain = await call({ type: 'cache.lookup', comparison }); assert.notEqual(lookupAgain.paused, true);
+    });
+    await check('The settings page lists local data by scope and clears exactly one pull request', async () => {
+      const settingsTab = await runPage(); settingsTab.on('dialog', dialog => { void dialog.accept(); }); await settingsTab.locator('[id="data.controls"] .inventory-repository').first().waitFor();
+      const before = (await call({ type: 'data.inventory' })).repositories.flatMap(item => item.pullRequests).length; assert.ok(before >= 1);
+      await settingsTab.locator('[id="data.controls"] .inventory-repository').first().locator('summary').click(); await settingsTab.getByRole('button', { name: 'Clear this PR' }).first().click();
+      await settingsTab.waitForFunction(count => document.querySelectorAll('[id="data.controls"] .inventory-pull').length < count, before, { timeout: 5000 }).catch(() => undefined);
+      const after = (await call({ type: 'data.inventory' })).repositories.flatMap(item => item.pullRequests).length; assert.equal(after, before - 1, 'one pull request left and the rest stayed');
+      assert.ok((await call({ type: 'settings.get' }))['analysis.maximumFiles'] >= 1, 'settings are untouched'); await settingsTab.close();
     });
     await check('No uncaught extension page error was observed', async () => assert.deepEqual(receipt.errors, []));
     receipt.status = 'passed';

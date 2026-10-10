@@ -2,7 +2,7 @@
 
 ## Meaning
 
-This records product/repository choices whose rationale cannot be reconstructed cheaply from source. D044 preserves independent release families, D064–D073 carry the ratified analytical product, and D054–D063 carry the accepted edition, plan, funding and management settlement of 2026-10-02. D056 also carries the purpose-bound GitHub service-connection settlement of 2026-10-10. These are selected product direction, not evidence that billing, collection or the expanded dashboard is live.
+This records product/repository choices whose rationale cannot be reconstructed cheaply from source. D044 preserves independent release families, D064–D073 carry the ratified analytical product, D074 the extension's persistence boundary, and D054–D063 carry the accepted edition, plan, funding and management settlement of 2026-10-02. D056 also carries the purpose-bound GitHub service-connection settlement of 2026-10-10. These are selected product direction, not evidence that billing, collection or the expanded dashboard is live.
 
 The complete predecessor record is preserved byte-for-byte as [Decisions through D073](DECISIONS-through-d053.md), with its existing references to the complete D001–D043 record. Earlier headings remain below to preserve fragment destinations. A new decision supersedes only its named boundary; it does not erase the previous rationale or implementation evidence.
 
@@ -203,6 +203,18 @@ The complete predecessor record is preserved byte-for-byte as [Decisions through
 **Why.** A rendering library does not decide which observation is useful, and a pair-count algorithm does not choose a usable interactive chart. Keeping the questions distinct prevents a convenient library or a first scoring idea from becoming accidental product meaning.
 
 **Open.** Sub-five-line downweighting, broad-change exclusion and other thresholds are hypotheses, not accepted formulas. Earlier renderer recommendations are evidence to reassess against the expanded capability, not a preselected answer. No new dependency is adopted by this record.
+
+## D074: Persist the browser extension's facts, not its views, and bound automatic work rather than inspection
+
+**Status:** Direction by Wolf ("Keep the PR data, because it's genuinely tiny. Provide a purge option in the extension settings, and a max file limit."), product contract by Nyxara in the #542 room, implemented by the extension continuity candidate. Not a release.
+
+**Decision.** The extension persists the canonical normalized report with its coverage, trusted policy evidence and a last-confirmed-comparison pointer, and recomputes every presentation and effective-policy projection from them under the settings in force. The configurable automatic file limit bounds automatic whole-PR acquisition and analysis only: files near the viewport first, then provider order, with scrolling spending the same number and an explicit act measuring the rest. The aggregate stays bounded until files are measured, the report always shows measured, bounded, provider-declined and total, and nothing is extrapolated from a subset. Pause is a local per-repository state, separate from clearing data.
+
+**Why.** A decorated DOM or view packet would duplicate the cache for every theme and policy change and would resurrect old presentation after a restart; the report is the only fact worth keeping, and it costs about 0.8 KB per file. A file order is not a statistical sample, so a limit that extrapolated would invent evidence, and a limit that made later files permanently unanalysable would make the reader's own file a blind spot. Stopping work is not forgetting data, so pause and clear stay different requests.
+
+**Rejected.** Serializing the decorated view; extrapolating from the analysed subset; a limit on what the reader may open; deleting data when pausing; a consent step for first use, because installation and Chrome's permission grant already selected the local capability.
+
+**Reconsider when.** An App-delivered report becomes a second source for the same comparison, or measured use shows the default of 150 is the wrong cut.
 
 ## Earlier decisions and retained fragments
 

@@ -24,7 +24,7 @@ function packet(data = comparison, text = diff, input) {
   const policy = timed('compile-personal-policy', () => unwrap(m.compileBrowserPolicy(JSON.stringify({ mode: 'composed', personal: m.personalYaml(settings) }))));
   const view = timed('project-aggregate', () => m.decorateView(unwrap(m.humanReport(report, policy)), settings));
   const key = `${m.comparisonKey(data)}:${policy.digest}`;
-  const result = { key, comparison: data, view, files: report.files.map(file => ({ id: file.id, path: file.path, ...(file.oldPath ? { oldPath: file.oldPath } : {}) })), refreshedAt: Date.UTC(2026, 8, 19, 12), cached: false };
+  const result = { key, comparison: data, view, files: report.files.map(file => ({ path: file.path, ...(file.oldPath ? { oldPath: file.oldPath } : {}), standing: 'measured' })), coverage: { measured: report.files.length, bounded: 0, declined: 0, total: report.files.length, totalExact: true, limit: 150, automatic: report.files.length, topUp: 0, explicit: 0, onDemand: 0, declinedReasons: {} }, refreshedAt: Date.UTC(2026, 8, 19, 12), cached: false };
   contexts.set(key, { report, policy, packet: result }); return result;
 }
 let currentPacket = packet();
@@ -65,12 +65,12 @@ const assets = {};
 for (const file of await readdir('artifacts/browser-extension/unpacked/assets')) if (/\.(svg|png)$/u.test(file)) assets[`assets/${file}`] = `data:image/${file.endsWith('.svg') ? 'svg+xml' : 'png'};base64,${(await readFile(`artifacts/browser-extension/unpacked/assets/${file}`)).toString('base64')}`;
 const executablePath = process.env.CHROMIUM_PATH ?? (existsSync('/usr/bin/chromium') ? '/usr/bin/chromium' : undefined);
 const browser = await chromium.launch({ ...(executablePath ? { executablePath } : {}), headless: true, args: ['--no-sandbox', '--disable-gpu'] });
-async function environment({ dark = true, mobile = false } = {}) {
+async function environment({ dark = true, mobile = false, backend = rpc } = {}) {
   const context = await browser.newContext({ viewport: mobile ? { width: 375, height: 740 } : { width: 1280, height: 800 }, colorScheme: dark ? 'dark' : 'light', reducedMotion: 'reduce' });
   const page = await context.newPage(); page.setDefaultTimeout(4000);
   page.on('pageerror', error => errors.push({ page: page.url(), message: error.message }));
   page.on('request', request => { if (!request.url().startsWith('data:') && !request.url().startsWith('about:')) network.push(request.url()); });
-  await page.exposeFunction('__rpc', rpc);
+  await page.exposeFunction('__rpc', backend);
   await page.evaluate(({ assets }) => {
     const listeners = new Set(); globalThis.__emitSettings = () => { for (const listener of listeners) listener({ 'diffdevil.settings.v1': { newValue: true } }, 'local'); };
     globalThis.__emitError = () => { for (const listener of listeners) listener({ errors: { newValue: [] } }, 'local'); };
@@ -89,18 +89,19 @@ async function optionsPage(dark = true, mobile = false) {
   await env.page.evaluate(() => { const notice = document.createElement('div'); notice.id = 'qa-note'; notice.textContent = 'Rendered source candidate · Test storage · Not an installed-extension capture'; notice.style.cssText = 'position:fixed;bottom:0;left:0;right:0;text-align:center;padding:4px;z-index:9999;background:var(--bg);color:var(--fg-3);font:10px sans-serif;border-top:1px solid var(--hair)'; document.body.append(notice); });
   return env;
 }
-async function contentPage({ dark = true, modern = false, files = true, mobile = false, data = comparison, value = currentPacket, href, failures = 0, ready = '.ddx-root[data-ddx="aggregate"]' } = {}) {
-  const env = await environment({ dark, mobile }); await env.page.setContent(githubHtml({ dark, modern, files, data })); await env.page.addStyleTag({ content: githubCss + contentCss }); await env.page.addScriptTag({ content: domCode });
-  await env.page.evaluate(({ packet, settings, href, failures }) => {
-    globalThis.fixture = { href: href ?? 'https://github.com/example/cinder/pull/42/files', packet, settings, calls: 0, delay: 0, failures };
+async function contentPage({ dark = true, modern = false, files = true, mobile = false, data = comparison, value = currentPacket, href, failures = 0, ready = '.ddx-root[data-ddx="aggregate"]', backend, measure, headers = [], headerHeight = 30, verifyResult, settings: pageSettings } = {}) {
+  const env = await environment({ dark, mobile, ...(backend ? { backend } : {}) });
+  if (measure) await env.page.exposeFunction('__measure', measure); await env.page.setContent(githubHtml({ dark, modern, files, data })); await env.page.addStyleTag({ content: githubCss + contentCss }); if (headers.length) await env.page.evaluate(({ paths, height }) => { for (const path of paths) document.querySelector('main').insertAdjacentHTML('beforeend', '<section data-path="' + path + '" style="min-height:' + height + 'px"><div class="file-header" data-path="' + path + '" style="height:30px"><span>' + path + '</span><span class="diffstat"><span>+2</span> <span>−1</span></span></div></section>'); }, { paths: headers, height: headerHeight }); await env.page.addScriptTag({ content: domCode });
+  await env.page.evaluate(({ packet, settings, href, failures, verifyResult }) => {
+    globalThis.fixture = { href: href ?? 'https://github.com/example/cinder/pull/42/files', packet, settings, calls: 0, delay: 0, failures, verifyResult };
     globalThis.controller = DiffdevilUnderTest.startContent({ href: () => fixture.href, acquire: async () => {
       fixture.calls++; const packet = fixture.packet; const settings = fixture.settings; const delay = fixture.delay;
       if (delay) await new Promise(resolve => setTimeout(resolve, delay));
       if (fixture.hold) await new Promise(resolve => { fixture.release = resolve; });
       if (fixture.failures > 0) { fixture.failures--; throw Object.assign(new Error('Signed-in page source unavailable.'), { code: 'SIGNED_IN_UNAVAILABLE' }); }
-      return { packet, settings };
-    } });
-  }, { packet: value, settings, href, failures });
+      return { packet, settings, ...(fixture.verifyResult ? { verify: async () => { if (fixture.verifyHold) await new Promise(resolve => { fixture.verifyRelease = resolve; }); return fixture.verifyResult; } } : {}) };
+    }, ...(globalThis.__measure ? { measure: (scope, base, paths, via) => globalThis.__measure(paths, via) } : {}) });
+  }, { packet: value, settings: pageSettings ?? settings, href, failures, verifyResult });
   await env.page.locator(ready).waitFor(); return env;
 }
 let failure;
@@ -236,8 +237,201 @@ ${await page.evaluate(() => JSON.stringify({ calls: fixture.calls, href: fixture
   const hostileComp = { ...comparison, changedFiles: 1, additions: 1, deletions: 0 };
   const hostile = packet(hostileComp, '', { comparison: hostileComp, format: 'github-files', complete: true, files: [{ filename: dangerousPath, status: 'added', additions: 1, deletions: 0, patch: '@@ -0,0 +1 @@\n+x' }] });
   const hostileContext = contexts.get(hostile.key); const hostileView = unwrap(m.humanReport(hostileContext.report, hostileContext.policy, dangerousPath));
-  await check('Hostile path text is rendered as text rather than executable HTML', async () => { await injection.page.evaluate(view => { const popover = new DiffdevilUnderTest.Popover(); const anchor = document.createElement('button'); document.querySelector('#target').append(anchor); const actions = { copyText: async () => '', retry: () => {}, settingsUrl: 'about:blank', diagnostics: () => '', errorPanel: () => document.createElement('div') }; popover.toggle(anchor, DiffdevilUnderTest.filePanel(view, popover, actions), { width: 360, align: 'end' }); }, hostileView); const text = await injection.page.locator('.ddx-popover').innerText(); assert.ok(text.includes('<img src=x onerror=globalThis.injected=true>.ts'), text); assert.equal(await injection.page.locator('.ddx-popover img').count(), 0); assert.equal(await injection.page.evaluate(() => globalThis.injected), undefined); });
+  await check('Hostile path text is rendered as text rather than executable HTML', async () => { await injection.page.evaluate(view => { const popover = new DiffdevilUnderTest.Popover(); const anchor = document.createElement('button'); document.querySelector('#target').append(anchor); const actions = { copyText: async () => '', retry: () => {}, settingsUrl: 'about:blank', dataUrl: 'about:blank', provenance: () => 'live', coverage: { summary: () => undefined, progress: () => undefined, note: () => undefined, start() {}, cancel() {} }, fileStanding: () => undefined, measureFile() {}, pause() {}, diagnostics: () => '', errorPanel: () => document.createElement('div') }; popover.toggle(anchor, DiffdevilUnderTest.filePanel(view, popover, actions), { width: 360, align: 'end' }); }, hostileView); const text = await injection.page.locator('.ddx-popover').innerText(); assert.ok(text.includes('<img src=x onerror=globalThis.injected=true>.ts'), text); assert.equal(await injection.page.locator('.ddx-popover img').count(), 0); assert.equal(await injection.page.evaluate(() => globalThis.injected), undefined); });
   await injection.context.close();
+
+  // Continuity: the production worker logic (persisted report, coverage, extension) behind the same DOM controller.
+  const world = new m.Analysis({ cache: new m.AnalysisCache(new m.MemoryStore()), engine: 'qa' });
+  let worldSettings = m.validateSettings({ 'analysis.maximumFiles': 6 }); const pauseWrites = []; const measureCalls = [];
+  const fileName = index => 'src/f' + String(index).padStart(2, '0') + '.ts'; const fragment = '@@ -1,2 +1,3 @@\n-old\n+new\n+extra\n same\n';
+  const worldComparison = { ...comparison, changedFiles: 12, additions: 24, deletions: 12 };
+  const worldPacket = await world.run({ comparison: worldComparison, acquisition: { comparison: worldComparison, format: 'github-files', complete: true, files: Array.from({ length: 12 }, (_, index) => ({ filename: fileName(index), status: 'modified', additions: 2, deletions: 1, ...(index < 4 ? { patch: fragment } : {}) })) }, policy: { status: 'absent', at: 1 }, coverage: { limit: 6, declined: { [fileName(11)]: 'binary' } } }, worldSettings);
+  const worldBackend = async message => {
+    try {
+      let value;
+      switch (message.type) {
+        case 'settings.get': value = worldSettings; break;
+        case 'analysis.files': value = await world.files(message.key, message.comparison, message.paths, worldSettings); break;
+        case 'analysis.extend': value = await world.extend(message, worldSettings); break;
+        case 'report.text': value = await world.text(message.key, message.comparison, message.path, worldSettings); break;
+        case 'repository.pause': pauseWrites.push(message); worldSettings = { ...worldSettings, 'repositories.paused': m.pausedWith(String(worldSettings['repositories.paused']), message.repository, message.paused, 1) }; value = { paused: message.paused }; break;
+        default: throw new Error('Unexpected fixture message: ' + message.type);
+      }
+      return { ok: true, value };
+    } catch (error) { return { ok: false, code: error.code ?? 'TEST_OPERATION_FAILED', message: error.message }; }
+  };
+  const worldMeasure = async (paths, via) => { measureCalls.push({ paths, via }); if (via === 'explicit') await new Promise(resolve => setTimeout(resolve, 300)); const declined = paths.includes(fileName(11)); return world.extend({ comparison: worldComparison, patches: paths.filter(path => path !== fileName(11)).map(path => ({ path, patch: fragment })), ...(declined ? { declined: { [fileName(11)]: 'binary' } } : {}), via }, worldSettings); };
+  const headers = Array.from({ length: 12 }, (_, index) => fileName(index));
+  const continuity = await contentPage({ value: worldPacket, data: worldComparison, settings: worldSettings, backend: worldBackend, measure: worldMeasure, headers });
+  const reportText = () => continuity.page.locator('.ddx-popover').innerText();
+  await check('The aggregate seat is bounded and the report says exactly how much was measured, declined and left bounded', async () => {
+    assert.match(await continuity.page.locator('[data-ddx="aggregate"] .ddx-evidence').textContent(), /bounded/u);
+    await continuity.page.locator('[data-ddx="aggregate"] .ddx-trigger').click(); const text = await reportText();
+    assert.match(text, /measured\s+4/u); assert.match(text, /bounded\s+7/u); assert.match(text, /provider-declined\s+1/u); assert.match(text, /total\s+12/u); assert.match(text, /automatic limit 6 · 4 measured automatically/u); assert.ok(await continuity.page.getByRole('button', { name: 'Analyze remaining files' }).count() === 1);
+    await capture(continuity.page, 'continuity-report-partial');
+  });
+  const shadowFocus = () => continuity.page.evaluate(() => { const active = document.querySelector('.ddx-popover-host')?.shadowRoot?.activeElement; return active ? { key: active.dataset.key ?? null, role: active.getAttribute('role'), text: active.textContent } : null; });
+  await check('Files rendered below the viewport are not the reader’s demand: nothing is measured until they are scrolled onto', async () => {
+    await continuity.page.waitForTimeout(900); assert.deepEqual(measureCalls, [], 'the second allowance is not spent at opening');
+  });
+  await check('Files the reader scrolled onto are measured within what the opening pass left of the budget, in place, while the report stays open and keeps keyboard focus', async () => {
+    assert.equal((await shadowFocus())?.key, 'close', 'opening the report focuses Close');
+    await continuity.page.evaluate(() => scrollBy(0, 120));
+    await continuity.page.waitForFunction(() => /[56] measured automatically/u.test(document.querySelector('.ddx-popover-host')?.shadowRoot?.querySelector('.ddx-popover')?.innerText ?? ''), null, { timeout: 4000 }).catch(async error => { throw new Error(error.message + ' · report: ' + (await continuity.page.locator('.ddx-popover').innerText().catch(() => 'closed')) + ' · calls: ' + JSON.stringify(measureCalls)); });
+    assert.equal(measureCalls.length, 1); assert.equal(measureCalls[0].via, 'visible'); const onScreen = await continuity.page.evaluate(() => [...document.querySelectorAll('.file-header')].filter(header => { const box = header.getBoundingClientRect(); return box.top >= 0 && box.top < innerHeight; }).map(header => header.dataset.path));
+    const expected = [4, 5, 6, 7, 8, 9, 10].map(fileName).filter(path => onScreen.includes(path)).slice(0, 2); assert.ok(expected.length > 0, `the scroll brought bounded files on screen: ${JSON.stringify(onScreen)}`);
+    assert.deepEqual(measureCalls[0].paths, expected, 'the bounded files now on screen, within the two files the opening pass left of the budget of six');
+    assert.equal(await continuity.page.locator('.ddx-popover').count(), 1, 'the open report was updated, not replaced by a closed one'); assert.match(await reportText(), new RegExp(`measured\\s+${4 + expected.length}`, 'u'));
+    assert.equal((await shadowFocus())?.key, 'close', 'the rebuilt report gave focus back to the same control');
+    assert.match(await continuity.page.locator('[data-ddx="file"]').nth(5).innerText(), /\d/u);
+  });
+  await check('Analyze remaining files is one explicit pass, operable from the keyboard, and ends with every file measured or declined', async () => {
+    await continuity.page.getByRole('button', { name: 'Analyze remaining files' }).focus(); await continuity.page.keyboard.press('Enter');
+    await continuity.page.waitForFunction(() => document.querySelector('.ddx-popover-host')?.shadowRoot?.activeElement?.textContent === 'Cancel', null, { timeout: 2000 }).catch(() => { throw new Error('focus did not move from Analyze remaining files to Cancel'); });
+    await continuity.page.waitForFunction(() => /bounded\s+0/u.test(document.querySelector('.ddx-popover-host')?.shadowRoot?.querySelector('.ddx-popover')?.innerText ?? ''), null, { timeout: 4000 }).catch(async error => { throw new Error(error.message + ' · report: ' + (await continuity.page.locator('.ddx-popover').innerText().catch(() => 'closed')) + ' · calls: ' + JSON.stringify(measureCalls)); });
+    const text = await reportText(); assert.match(text, /measured\s+11/u); assert.match(text, /provider-declined\s+1/u); assert.equal(await continuity.page.getByRole('button', { name: 'Analyze remaining files' }).count(), 0);
+    const explicit = measureCalls.filter(call => call.via === 'explicit'); assert.equal(explicit.length, 1); assert.deepEqual(explicit[0].paths, [4, 5, 6, 7, 8, 9, 10].map(fileName).filter(path => !measureCalls[0].paths.includes(path))); assert.match(text, /measured automatically · \d+ on request/u); assert.match(text, new RegExp(`${4 + measureCalls[0].paths.length} measured automatically · ${7 - measureCalls[0].paths.length} on request`, 'u'));
+    assert.match(text, /every file GitHub supplied is measured/u, 'a declined file is not called measured');
+    const focus = await shadowFocus(); assert.equal(focus?.role, 'dialog', `when the continuation control is gone, focus stays on the report: ${JSON.stringify(focus)}`);
+  });
+  await check('Pausing from the report removes the seats, restores GitHub’s counters and leaves a way back on the page', async () => {
+    await continuity.page.getByRole('button', { name: 'Pause this repository' }).click(); await continuity.page.waitForFunction(() => globalThis.__paused === undefined, null, { timeout: 100 }).catch(() => undefined);
+    await continuity.page.evaluate(() => globalThis.__emitSettings()); await continuity.page.locator('[data-ddx="paused"]').waitFor();
+    assert.equal(pauseWrites.at(-1).paused, true); assert.equal(await continuity.page.locator('[data-ddx="aggregate"], [data-ddx="file"], .ddx-popover').count(), 0); assert.equal(await continuity.page.locator('.ddx-native-hidden, .ddx-native-faint').count(), 0);
+    assert.match(await continuity.page.locator('[data-ddx="paused"]').innerText(), /paused/u);
+  });
+  await check('Resuming brings the seats back without touching the stored data', async () => {
+    await continuity.page.getByRole('button', { name: 'Resume' }).click(); await continuity.page.evaluate(() => globalThis.__emitSettings()); await continuity.page.locator('[data-ddx="aggregate"]').waitFor();
+    assert.equal(pauseWrites.at(-1).paused, false); assert.equal(await continuity.page.locator('[data-ddx="paused"]').count(), 0);
+  });
+  await continuity.page.evaluate(() => controller.stop()); await continuity.context.close();
+
+  // Visible demand on a long page: eight files a screen apart, three measured on opening, a budget of six.
+  const far = new m.Analysis({ cache: new m.AnalysisCache(new m.MemoryStore()), engine: 'qa' }); const farSettings = m.validateSettings({ 'analysis.maximumFiles': 6 }); const farCalls = [];
+  const farComparison = { ...comparison, changedFiles: 8, additions: 16, deletions: 8 };
+  const farPacket = await far.run({ comparison: farComparison, acquisition: { comparison: farComparison, format: 'github-files', complete: true, files: Array.from({ length: 8 }, (_, index) => ({ filename: fileName(index), status: 'modified', additions: 2, deletions: 1, ...(index < 3 ? { patch: fragment } : {}) })) }, policy: { status: 'absent', at: 1 }, coverage: { limit: 6, declined: {} } }, farSettings);
+  const farBackend = async message => {
+    try {
+      if (message.type === 'settings.get') return { ok: true, value: farSettings };
+      if (message.type === 'analysis.files') return { ok: true, value: await far.files(message.key, message.comparison, message.paths, farSettings) };
+      throw new Error('Unexpected fixture message: ' + message.type);
+    } catch (error) { return { ok: false, code: error.code ?? 'TEST_OPERATION_FAILED', message: error.message }; }
+  };
+  let farPage;
+  const farMeasure = async (paths, via) => {
+    const seen = await farPage.evaluate(paths => ({ height: innerHeight, boxes: paths.map(path => { const box = document.querySelector(`section[data-path="${path}"]`).getBoundingClientRect(); return { path, top: Math.round(box.top), bottom: Math.round(box.bottom) }; }) }), paths);
+    farCalls.push({ paths, via, ...seen }); return far.extend({ comparison: farComparison, patches: paths.map(path => ({ path, patch: fragment })), via }, farSettings);
+  };
+  const longPage = await contentPage({ value: farPacket, data: farComparison, settings: farSettings, backend: farBackend, measure: farMeasure, headers: Array.from({ length: 8 }, (_, index) => fileName(index)), headerHeight: 1000 }); farPage = longPage.page;
+  const scrollTo = index => farPage.evaluate(path => { document.querySelector(`.file-header[data-path="${path}"]`).scrollIntoView(); scrollBy(0, -100); }, fileName(index));
+  await check('Opening a long pull request spends nothing of the remaining budget on files rendered further down', async () => {
+    await farPage.waitForTimeout(900); assert.deepEqual(farCalls, [], JSON.stringify(farCalls));
+  });
+  await check('Scrolling measures only the files whose diff is on screen, and stops when the shared budget is spent', async () => {
+    await scrollTo(5); await farPage.waitForFunction(() => true); await farPage.waitForTimeout(700);
+    assert.equal(farCalls.length, 1, JSON.stringify(farCalls)); assert.deepEqual(farCalls[0].paths, [4, 5].map(fileName), 'the file still filling the top of the screen, then the one below it');
+    assert.ok(farCalls[0].boxes.every(box => box.top < farCalls[0].height && box.bottom > 0), `every measured file was on screen: ${JSON.stringify(farCalls[0])}`);
+    await scrollTo(7); await farPage.waitForTimeout(700);
+    assert.equal(farCalls.length, 2, JSON.stringify(farCalls)); assert.deepEqual(farCalls[1].paths, [fileName(6)], 'one file of the budget remained');
+    await farPage.evaluate(() => scrollTo(0, document.documentElement.scrollHeight)); await farPage.waitForTimeout(700); assert.equal(farCalls.length, 2, 'the budget is spent'); assert.equal(farCalls.flatMap(call => call.paths).length + 3, 6, 'automatic work stopped at the limit');
+  });
+  await farPage.evaluate(() => controller.stop()); await longPage.context.close();
+
+  // The production worker against the browser's own IndexedDB: purge fences and independent writes.
+  const workerCode = (await build({ stdin: { contents: "export { Analysis } from './apps/browser-extension/src/background/analysis.ts'; export { AnalysisCache } from './apps/browser-extension/src/background/cache.ts'; export { validateSettings } from './apps/browser-extension/src/shared/settings.ts';", resolveDir: resolve('.') }, write: false, bundle: true, platform: 'browser', format: 'iife', target: 'chrome120', globalName: 'WorkerUnderTest', alias: { '@wolfsblvt/diffdevil/browser': resolve('dist/browser/index.js') } })).outputFiles[0].text;
+  const native = await browser.newContext(); await native.route('https://indexeddb.qa.invalid/**', route => route.fulfill({ status: 200, contentType: 'text/html', body: '<!doctype html><title>IndexedDB qualification</title>' }));
+  const nativePage = await native.newPage(); await nativePage.goto('https://indexeddb.qa.invalid/'); await nativePage.addScriptTag({ content: workerCode });
+  for (const [name, clear] of [['clear all', 'all'], ['clear this pull request', 'pull'], ['clear this repository', 'repository'], ['clear reports', 'reports']]) {
+    await check(`Native IndexedDB: a rehydration straddling “${name}” is neither served nor retained`, async () => {
+      const result = await nativePage.evaluate(async clear => {
+        const cache = new WorkerUnderTest.AnalysisCache(indexedDB); const analysis = new WorkerUnderTest.Analysis({ cache, engine: 'qa-native' }); await cache.clear();
+        const settings = WorkerUnderTest.validateSettings({ 'analysis.maximumFiles': 3, 'policy.mode': 'personal-only' });
+        const comparison = { host: 'github.com', repository: 'example/cinder', pullRequest: 42, base: 'a'.repeat(40), head: 'b'.repeat(40), changedFiles: 1, additions: 1, deletions: 1 };
+        const packet = await analysis.run({ comparison, acquisition: { comparison, format: 'github-files', complete: true, files: [{ filename: 'f0.ts', status: 'modified', additions: 1, deletions: 1, patch: '@@ -1,2 +1,2 @@\n-old\n+new\n same\n' }] }, policy: { status: 'unavailable', at: 1 } }, settings);
+        analysis.forget(); const gate = Promise.withResolvers(); const entered = Promise.withResolvers(); const get = cache.get.bind(cache); let held = false;
+        cache.get = async (key, compat) => { const value = await get(key, compat); if (!held && key.startsWith('report:')) { held = true; entered.resolve(); await gate.promise; } return value; };
+        const pending = analysis.files(packet.key, comparison, ['f0.ts'], settings).then(() => 'served', error => error.code); await entered.promise;
+        await (clear === 'all' ? analysis.clearAll() : clear === 'reports' ? analysis.clearReports() : clear === 'pull' ? analysis.clearScope('example/cinder', 42) : analysis.clearScope('Example/Cinder'));
+        gate.resolve(); const inFlight = await pending; cache.get = get;
+        const later = await analysis.files(packet.key, comparison, ['f0.ts'], settings).then(() => 'served', error => error.code);
+        return { inFlight, later, reports: (await cache.summary()).reportEntries };
+      }, clear);
+      assert.deepEqual(result, { inFlight: 'CONTEXT_EXPIRED', later: 'CONTEXT_EXPIRED', reports: 0 });
+    });
+  }
+  await check('Native IndexedDB: concurrent writes of independent keys are all kept', async () => {
+    const keys = await nativePage.evaluate(async () => { const cache = new WorkerUnderTest.AnalysisCache(indexedDB); await cache.clear(); await Promise.all(['first', 'second', 'third'].map(key => cache.put(key, 'report', { repository: 'github.com/a/b', pullRequest: 1 }, 'c', { key }))); return (await cache.inventory()).repositories.flatMap(item => item.pullRequests).length; });
+    assert.equal(keys, 3);
+  });
+  await native.close();
+  for (const [name, result, pattern] of [['cached facts are labelled while GitHub confirms them', undefined, /local · cached/u], ['facts GitHub confirmed are plain local', { standing: 'current' }, /^local$/u], ['facts GitHub could not confirm say so and stay exact', { standing: 'unconfirmed', code: 'UNREACHABLE' }, /not confirmed/u]]) {
+    const shown = await contentPage({ value: worldPacket, data: worldComparison, settings: worldSettings, backend: worldBackend, verifyResult: result ?? { standing: 'current' } });
+    await check('Provenance: ' + name, async () => { if (!result) { await shown.page.evaluate(() => { fixture.verifyHold = true; void controller.refresh(); }); await shown.page.waitForTimeout(120); } await shown.page.waitForFunction(pattern => new RegExp(pattern).test(document.querySelector('.ddx-provenance')?.textContent ?? ''), pattern.source, { timeout: 4000 }); });
+    await shown.page.evaluate(() => controller.stop()); await shown.context.close();
+  }
+  const lockName = 'generated/vendor.lock'; const lateName = 'src/late.ts'; const lockComparison = { ...comparison, changedFiles: 3, additions: 6, deletions: 3 };
+  const lockSettings = m.validateSettings({ 'analysis.maximumFiles': 2 }); const lockWorld = new m.Analysis({ cache: new m.AnalysisCache(new m.MemoryStore()), engine: 'qa' });
+  const lockPacket = await lockWorld.run({ comparison: lockComparison, acquisition: { comparison: lockComparison, format: 'github-files', complete: true, files: [{ filename: 'src/a.ts', status: 'modified', additions: 2, deletions: 1, patch: fragment }, { filename: lockName, status: 'modified', additions: 2, deletions: 1 }, { filename: lateName, status: 'modified', additions: 2, deletions: 1 }] }, policy: { status: 'absent', at: 1 }, coverage: { limit: 2, declined: {}, unresolved: { [lockName]: 'collapsed', [lateName]: 'not-returned' } } }, lockSettings);
+  const lockCalls = []; let lockAnswers = 0;
+  const lockBackend = async message => {
+    try {
+      let value;
+      switch (message.type) {
+        case 'settings.get': value = lockSettings; break;
+        case 'analysis.files': value = await lockWorld.files(message.key, message.comparison, message.paths, lockSettings); break;
+        default: throw new Error('Unexpected fixture message: ' + message.type);
+      }
+      return { ok: true, value };
+    } catch (error) { return { ok: false, code: error.code ?? 'TEST_OPERATION_FAILED', message: error.message }; }
+  };
+  // GitHub omits the late file twice and then returns it, and supplies the collapsed file's lines only on the fourth ask.
+  const lockMeasure = async (paths, via) => {
+    lockCalls.push({ paths, via }); lockAnswers++;
+    const patches = [...(lockAnswers >= 3 && paths.includes(lateName) ? [{ path: lateName, patch: fragment }] : []), ...(lockAnswers >= 4 && paths.includes(lockName) ? [{ path: lockName, patch: fragment }] : [])];
+    const unresolved = Object.fromEntries(paths.filter(path => !patches.some(item => item.path === path)).map(path => [path, path === lockName ? 'collapsed' : 'not-returned']));
+    return lockWorld.extend({ comparison: lockComparison, patches, ...(Object.keys(unresolved).length ? { unresolved } : {}), via }, lockSettings);
+  };
+  const lockPage = await contentPage({ value: lockPacket, data: lockComparison, settings: lockSettings, backend: lockBackend, measure: lockMeasure, headers: ['src/a.ts', lockName, lateName] });
+  await check('A file GitHub collapses stays bounded with its reason, nothing automatic re-asks it, an explicit pass always may, and a pass that measures nothing says so without redrawing the report as progress', async () => {
+    const popoverText = () => lockPage.page.locator('.ddx-popover').innerText();
+    await lockPage.page.locator('[data-ddx="aggregate"] .ddx-trigger').click(); let text = await popoverText();
+    assert.match(text, /bounded\s+2/u); assert.match(text, /not supplied\s+1 collapsed by GitHub \(generated\), 1 not returned/u);
+    await lockPage.page.waitForTimeout(800); assert.deepEqual(lockCalls, [], 'nothing automatic re-asked an unresolved file');
+    const more = lockPage.page.getByRole('button', { name: 'Analyze remaining files' }); assert.equal(await more.count(), 1); assert.match(await more.getAttribute('title'), /Reads 2 more files /u, 'the explicit pass includes the collapsed file');
+    await more.click(); await lockPage.page.waitForFunction(() => /none could be measured/u.test(document.querySelector('.ddx-popover-host')?.shadowRoot?.querySelector('.ddx-popover')?.innerText ?? ''), null, { timeout: 4000 });
+    await lockPage.page.evaluate(() => { document.querySelector('[data-ddx="aggregate"]').dataset.sameNode = 'yes'; });
+    await lockPage.page.getByRole('button', { name: 'Analyze remaining files' }).click(); await lockPage.page.waitForTimeout(300);
+    text = await popoverText(); assert.match(text, /Asked GitHub for 2 files; none could be measured: 1 collapsed by GitHub \(generated\), 1 not returned\./u);
+    assert.equal(await lockPage.page.locator('[data-ddx="aggregate"]').getAttribute('data-same-node'), 'yes', 'an attempt that changed nothing did not rebuild the seats');
+    await lockPage.page.getByRole('button', { name: 'Analyze remaining files' }).click();
+    await lockPage.page.waitForFunction(() => /Asked GitHub for 2 files: 1 measured · 1 still bounded: 1 collapsed by GitHub \(generated\)\./u.test(document.querySelector('.ddx-popover-host')?.shadowRoot?.querySelector('.ddx-popover')?.innerText ?? ''), null, { timeout: 4000 });
+    text = await popoverText(); assert.match(text, /measured\s+2/u); assert.match(text, /bounded\s+1/u); assert.match(text, /not supplied\s+1 collapsed by GitHub \(generated\)\s/u);
+    assert.equal(await lockPage.page.getByRole('button', { name: 'Analyze remaining files' }).count(), 1, 'an unresolved file can still be asked for explicitly');
+    await lockPage.page.getByRole('button', { name: 'Analyze remaining files' }).click();
+    await lockPage.page.waitForFunction(() => /Asked GitHub for 1 file: 1 measured\./u.test(document.querySelector('.ddx-popover-host')?.shadowRoot?.querySelector('.ddx-popover')?.innerText ?? ''), null, { timeout: 4000 });
+    text = await popoverText(); assert.match(text, /measured\s+3/u); assert.match(text, /bounded\s+0/u); assert.doesNotMatch(text, /not supplied/u);
+    assert.ok(lockCalls.length === 4 && lockCalls.every(call => call.via === 'explicit') && lockCalls.slice(0, 3).every(call => call.paths.includes(lockName)), JSON.stringify(lockCalls));
+    await capture(lockPage.page, 'continuity-report-collapsed');
+  });
+  await lockPage.page.evaluate(() => controller.stop()); await lockPage.context.close();
+  const panels = await environment(); await panels.page.setContent('<main id="target"></main>'); await panels.page.addStyleTag({ content: githubCss + contentCss }); await panels.page.addScriptTag({ content: domCode });
+  const worldView = unwrap(m.humanReport(world.contexts?.values?.().next().value?.report ?? unwrap(m.analyzeBrowserInput(JSON.stringify({ comparison: worldComparison, format: 'github-files', complete: true, files: [{ filename: fileName(0), status: 'modified', additions: 2, deletions: 1 }] }))), undefined, fileName(0)));
+  await check('A bounded file’s report offers to measure it, and a declined file says why it cannot be', async () => {
+    const answers = await panels.page.evaluate(view => {
+      const calls = []; const popover = new DiffdevilUnderTest.Popover(); const anchor = document.createElement('button'); document.querySelector('#target').append(anchor);
+      const make = standing => ({ copyText: async () => '', retry: () => {}, settingsUrl: 'about:blank', dataUrl: 'about:blank', provenance: () => 'live', coverage: { summary: () => ({ limit: 150, automatic: 150, topUp: 0 }), progress: () => undefined, note: () => undefined, outcome: () => undefined, remaining: () => 0, start() {}, cancel() {} }, fileStanding: () => standing, measureFile: path => calls.push(path), pause() {}, diagnostics: () => '', errorPanel: () => document.createElement('div') });
+      const coverageText = standing => { popover.toggle(anchor, DiffdevilUnderTest.filePanel(view, popover, make(standing)), { width: 360, align: 'end' }); const root = document.querySelector('.ddx-popover-host').shadowRoot; const result = { text: root.querySelector('.ddx-file-coverage')?.textContent ?? '', button: root.querySelector('[data-key="measure-file"]')?.textContent ?? null }; popover.close(false); return result; };
+      popover.toggle(anchor, DiffdevilUnderTest.filePanel(view, popover, make({ standing: 'bounded' })), { width: 360, align: 'end' }); const bounded = document.querySelector('.ddx-popover-host').shadowRoot.querySelector('.ddx-file-coverage')?.textContent ?? '';
+      document.querySelector('.ddx-popover-host').shadowRoot.querySelector('[data-key="measure-file"]').click(); popover.close(false);
+      popover.toggle(anchor, DiffdevilUnderTest.filePanel(view, popover, make({ standing: 'declined', reason: 'binary' })), { width: 360, align: 'end' }); const declined = document.querySelector('.ddx-popover-host').shadowRoot.querySelector('.ddx-file-coverage')?.textContent ?? ''; popover.close(false);
+      const collapsed = coverageText({ standing: 'bounded', unresolved: 'collapsed' }); const unreachable = coverageText({ standing: 'bounded', unresolved: 'unreachable', askedAgain: true });
+      return { bounded, declined, calls, collapsed, unreachable };
+    }, worldView);
+    assert.match(answers.bounded, /Not measured yet.*automatic limit of 150/u); assert.match(answers.bounded, /Measure this file/u); assert.equal(answers.calls.length, 1); assert.match(answers.declined, /declined to supply.*binary/u);
+    assert.match(answers.collapsed.text, /generated.*Load diff.*range/u); assert.doesNotMatch(answers.collapsed.text, /automatic limit/u, 'a file GitHub collapsed was not left bounded by the limit'); assert.equal(answers.collapsed.button, 'Ask GitHub again', 'the reader can always ask again explicitly');
+    assert.match(answers.unreachable.text, /Asked again just now\. GitHub could not be reached/u); assert.equal(answers.unreachable.button, 'Ask GitHub again');
+  });
+  await panels.context.close();
   await check('UI tests generated no external network requests', async () => { assert.deepEqual(network, []); });
   await check('Rendered source generated no uncaught page errors', async () => { assert.deepEqual(errors, []); });
 } catch (error) { failure = error; }

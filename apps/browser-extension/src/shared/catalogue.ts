@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
+import { DEFAULT_FILE_LIMIT, FILE_LIMIT } from './coverage.js';
 export type SettingValue = boolean | string | number;
 export type Settings = Record<string, SettingValue>;
 export interface Setting {
   readonly id: string; readonly name: string; readonly description: string;
-  readonly group: 'Display' | 'Policy' | 'Integration' | 'Data' | 'Appearance';
-  readonly kind: 'boolean' | 'choice' | 'bands' | 'paths' | 'yaml' | 'overrides' | 'number' | 'action';
-  readonly default: SettingValue; readonly advanced?: boolean; readonly choices?: readonly (readonly [string, string])[]; readonly keywords?: string; readonly destructive?: boolean;
+  readonly group: 'Display' | 'Policy' | 'Analysis' | 'Integration' | 'Data' | 'Appearance';
+  readonly kind: 'boolean' | 'choice' | 'bands' | 'paths' | 'yaml' | 'overrides' | 'number' | 'action' | 'paused' | 'inventory';
+  readonly default: SettingValue; readonly advanced?: boolean; readonly min?: number; readonly max?: number; readonly unit?: string; readonly choices?: readonly (readonly [string, string])[]; readonly keywords?: string; readonly destructive?: boolean;
 }
 const flag = (id: string, name: string, description: string, value = true, advanced = false): Setting => ({ id, name, description, default: value, advanced, kind: 'boolean', group: id.startsWith('app.') || id.startsWith('labels.') ? 'Integration' : 'Display' });
 export const DEFAULT_BANDS = JSON.stringify([
@@ -15,6 +16,10 @@ export const DEFAULT_BANDS = JSON.stringify([
   { id: 'l', name: 'L', lt: 1000, label: 'size/L', color: 'D4C5F9' },
   { id: 'xl', name: 'XL', lt: null, label: 'size/XL', color: 'DCC6E0' },
 ]);
+/** A real public pull request the extension is exercised against: the first-install section links here, and the public installed QA reads it. */
+export const EXAMPLE_PULL_REQUEST = 'https://github.com/Wolfsblvt/diffdevil/pull/48';
+/** Settings that hold a value; an action or the local-data view only presents controls. */
+export const holdsValue = (item: Setting): boolean => item.kind !== 'action' && item.kind !== 'inventory';
 export const SETTINGS: readonly Setting[] = [
   flag('display.enabled', 'Enable diffdevil on GitHub', 'Add replacement-aware measurements to pull-request pages. Disabling removes injected controls and restores native counters.'),
   // Extension Grammar v1 §10: two rendering preferences, both cosmetic. What the
@@ -33,20 +38,23 @@ export const SETTINGS: readonly Setting[] = [
   flag('app.showPolicyMismatch', 'Show App policy mismatches', 'Retained for future report delivery. A personal policy result must stay separate from a different App policy.', true, true),
   flag('app.showStaleResult', 'Show stale App standing', 'Retained for future report delivery. An older-head report must never validate the current comparison.', true, true),
   flag('labels.nativeHandoff', 'Offer the native label picker', 'Open and search GitHub’s visible picker for the mapped existing label. You confirm the native selection. No hidden POST, label creation or automatic mutation.', true, true),
-  { id: 'cache.maximumSize', name: 'Rebuildable cache limit', description: 'MiB for normalized reports and trusted-base policy documents. Least-recently-used entries are evicted. Raw patches are never stored.', group: 'Data', kind: 'number', default: 16, advanced: true },
+  { id: 'analysis.maximumFiles', name: 'Automatically analyzed files', description: 'The most files diffdevil measures by itself in one pull request: files near where you are when it opens, then files you scroll onto, until the limit is reached. Files GitHub declines do not count. Files beyond it stay bounded until you open one or choose Analyze remaining files; the aggregate says so and is never extrapolated. This limits automatic work, not GitHub or what you can inspect.', group: 'Analysis', kind: 'number', default: DEFAULT_FILE_LIMIT, min: FILE_LIMIT.minimum, max: FILE_LIMIT.maximum, unit: 'files', keywords: 'maximum limit large pull request budget partial coverage bounded performance' },
+  { id: 'repositories.paused', name: 'Paused repositories', description: 'Repositories where diffdevil does nothing: no analysis, no seats, and GitHub’s own counters come back at once. Local to this browser profile; it never changes a repository’s .diffdevil.yml, an App or GitHub. Cached data and your policy stay until you clear them.', group: 'Data', kind: 'paused', default: '{}', keywords: 'pause resume stop disable repository' },
+  { id: 'data.controls', name: 'Local data', description: 'What this browser holds for each repository and pull request, and a separate control to clear exactly that. Reports hold normalized counts, paths and revision identities. Raw patches, page HTML and credentials are never stored.', group: 'Data', kind: 'inventory', default: '', keywords: 'purge clear delete cache reports storage privacy size' },
+  { id: 'cache.maximumSize', name: 'Rebuildable cache limit', description: 'MiB for normalized reports and trusted-base policy documents. Least-recently-used entries are evicted. Raw patches are never stored.', group: 'Data', kind: 'number', default: 16, min: 4, max: 128, unit: 'MiB', advanced: true },
   { id: 'appearance.theme', name: 'Settings theme', description: 'Follow the system, or select the authored dark or light settings theme. GitHub controls follow GitHub’s theme independently.', group: 'Appearance', kind: 'choice', default: 'system', choices: [['dark', 'Dark'], ['system', 'Automatic'], ['light', 'Light']] },
   ...[
-    ['data.clearAnalysisCache', 'Clear analysis cache', 'Delete normalized reports without changing preferences or policy documents.', false],
-    ['data.clearPolicyCache', 'Clear repository-policy cache', 'Delete trusted-base policy documents and exact-base missing-file results.', false],
+    ['data.clearAnalysisCache', 'Clear all reports', 'Delete every stored normalized report, for every repository, without changing preferences or policy documents.', false],
+    ['data.clearPolicyCache', 'Clear trusted policy', 'Delete every stored trusted-base policy document and exact-base missing-file result. Reports stay.', false],
     ['data.clearRepositoryOverrides', 'Clear repository overrides', 'Remove all explicit per-repository preferences. Global personal settings remain.', true],
-    ['data.resetAll', 'Reset all extension data', 'Delete preferences, overrides, caches and diagnostics after confirmation.', true],
+    ['data.resetAll', 'Reset all extension data', 'Delete preferences, overrides, paused repositories, caches and diagnostics after confirmation.', true],
     ['diagnostics.copySupportSnapshot', 'Copy support snapshot', 'Copy versions, safe display preferences, sanitized error codes and storage totals. No source, private paths, repository identities or policy text.', false],
   ].map(([id, name, description, destructive]): Setting => ({ id: id as string, name: name as string, description: description as string, destructive: destructive as boolean, group: 'Data', kind: 'action', default: '', advanced: true })),
 ];
-export const DEFAULTS: Readonly<Settings> = Object.freeze(Object.fromEntries(SETTINGS.filter(item => item.kind !== 'action').map(item => [item.id, item.default])));
+export const DEFAULTS: Readonly<Settings> = Object.freeze(Object.fromEntries(SETTINGS.filter(holdsValue).map(item => [item.id, item.default])));
 export const findSetting = (id: string): Setting | undefined => SETTINGS.find(item => item.id === id);
-export const advancedChanges = (settings: Settings): readonly Setting[] => SETTINGS.filter(item => item.advanced && item.kind !== 'action' && settings[item.id] !== item.default);
+export const advancedChanges = (settings: Settings): readonly Setting[] => SETTINGS.filter(item => item.advanced && holdsValue(item) && settings[item.id] !== item.default);
 export function searchSettings(query: string, values?: Settings): readonly Setting[] {
   const terms = query.toLocaleLowerCase('en').trim().split(/\s+/u).filter(Boolean);
-  return SETTINGS.filter(item => terms.every(term => term === '@modified' ? values && values[item.id] !== item.default && item.kind !== 'action' : term === '@advanced' ? item.advanced : `${item.id} ${item.name} ${item.description} ${item.group} ${item.keywords ?? ''}`.toLocaleLowerCase('en').includes(term.replace(/^#/u, ''))));
+  return SETTINGS.filter(item => terms.every(term => term === '@modified' ? values && values[item.id] !== item.default && holdsValue(item) : term === '@advanced' ? item.advanced : `${item.id} ${item.name} ${item.description} ${item.group} ${item.keywords ?? ''}`.toLocaleLowerCase('en').includes(term.replace(/^#/u, ''))));
 }

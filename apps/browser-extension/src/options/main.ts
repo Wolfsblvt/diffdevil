@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-import { SETTINGS, DEFAULTS, advancedChanges, searchSettings, type Setting, type Settings, type SettingValue } from '../shared/catalogue.js';
+import { SETTINGS, DEFAULTS, advancedChanges, holdsValue, searchSettings, type Setting, type Settings, type SettingValue } from '../shared/catalogue.js';
 import { bands, overrides, personalYaml, repositoryKey } from '../shared/settings.js';
 import { request, type Diagnostics } from '../shared/protocol.js';
 import { productIcon, GLYPH_STATUS } from '../shared/icons.js';
 import { node, button, isDark } from '../shared/dom.js';
+import { inventoryEditor, pausedEditor, readySection, type DataHost } from './data.js';
 const byId = <T extends HTMLElement>(id: string): T => { const result = document.getElementById(id); if (!result) throw new Error(`Missing options control ${id}.`); return result as T; };
 let settings: Settings = { ...DEFAULTS };
 let view: 'basic' | 'advanced' = 'basic';
@@ -41,6 +42,7 @@ function defaultText(item: Setting): string {
   if (item.kind === 'bands') return 'Five size bands';
   if (item.kind === 'yaml') return 'Guided policy';
   if (item.kind === 'overrides') return 'No overrides';
+  if (item.kind === 'paused') return 'None paused';
   return item.default === '' ? 'Empty' : String(item.default);
 }
 const origin = (item: Setting): string => `Default: ${defaultText(item)} · ${settings[item.id] === item.default ? 'Default' : 'Modified'} · ${item.group === 'Policy' ? 'Personal layer; effective repository provenance is shown in the report' : 'Personal preference'}`;
@@ -109,6 +111,8 @@ function overrideEditor(item: Setting, error: HTMLElement): HTMLElement {
 }
 function control(item: Setting, error: HTMLElement): HTMLElement {
   const host = node('div', 'setting-control'); const value = settings[item.id] ?? item.default; const id = `control-${item.id}`;
+  if (item.kind === 'paused') return pausedEditor(item, error, dataHost);
+  if (item.kind === 'inventory') return inventoryEditor(item, error, dataHost);
   if (item.kind === 'boolean') {
     const wrapper = node('label', 'switch'); const input = node('input'); input.type = 'checkbox'; input.id = id; input.checked = Boolean(value); input.setAttribute('aria-labelledby', `name-${item.id}`); input.setAttribute('aria-describedby', `description-${item.id}`);
     input.addEventListener('change', () => { void save(item, input.checked, error).then(ok => { if (!ok) input.checked = Boolean(settings[item.id]); }); });
@@ -130,8 +134,8 @@ function control(item: Setting, error: HTMLElement): HTMLElement {
     select.addEventListener('change', () => { void save(item, select.value, error).then(ok => { if (!ok) select.value = String(settings[item.id]); }); }); host.append(select); return host;
   }
   if (item.kind === 'number') {
-    const input = node('input'); input.type = 'number'; input.id = id; input.min = '4'; input.max = '128'; input.step = '1'; input.value = String(value); input.setAttribute('aria-labelledby', `name-${item.id}`);
-    input.addEventListener('change', () => { void save(item, Number(input.value), error).then(ok => { if (!ok) input.value = String(settings[item.id]); }); }); host.append(input, node('span', 'input-unit', 'MiB')); return host;
+    const input = node('input'); input.type = 'number'; input.id = id; input.min = String(item.min ?? 1); input.max = String(item.max ?? 1_000_000); input.step = '1'; input.value = String(value); input.setAttribute('aria-labelledby', `name-${item.id}`);
+    input.addEventListener('change', () => { void save(item, Number(input.value), error).then(ok => { if (!ok) input.value = String(settings[item.id]); }); }); host.append(input, node('span', 'input-unit', item.unit ?? '')); return host;
   }
   if (item.kind === 'bands') return bandEditor(item, error);
   if (item.kind === 'overrides') return overrideEditor(item, error);
@@ -147,14 +151,14 @@ function control(item: Setting, error: HTMLElement): HTMLElement {
   host.append(text, actions); return host;
 }
 function card(item: Setting): HTMLElement {
-  const section = node('section', `setting${item.kind !== 'action' && settings[item.id] !== item.default ? ' is-modified' : ''}`); section.id = item.id; section.setAttribute('aria-labelledby', `name-${item.id}`);
+  const section = node('section', `setting${holdsValue(item) && settings[item.id] !== item.default ? ' is-modified' : ''}`); section.id = item.id; section.setAttribute('aria-labelledby', `name-${item.id}`);
   const anchorRow = node('div', 'setting-anchor'); const anchor = node('a', '', `#${item.id}`); anchor.href = `#${item.id}`;
   anchorRow.append(anchor, button('Copy link', () => { void navigator.clipboard.writeText(`${location.href.split('#')[0]}#${item.id}`).then(() => announce(`Copied #${item.id}`), () => announce('Clipboard access was declined.', true)); }, 'copy-link')); if (item.advanced) anchorRow.append(node('span', 'advanced-tag', 'Advanced'));
   const title = node('div', 'setting-title'); const name = node('h3', '', item.name); name.id = `name-${item.id}`; title.append(name);
-  if (item.kind !== 'action') title.append(button('Reset', () => { void save(item, item.default).then(ok => { if (ok) { drafts.delete(`${item.id}:editor`); render(); document.getElementById(item.id)?.querySelector<HTMLButtonElement>('.reset-setting')?.focus({ preventScroll: true }); } }); }, 'reset-setting'));
+  if (holdsValue(item) && item.kind !== 'paused') title.append(button('Reset', () => { void save(item, item.default).then(ok => { if (ok) { drafts.delete(`${item.id}:editor`); render(); document.getElementById(item.id)?.querySelector<HTMLButtonElement>('.reset-setting')?.focus({ preventScroll: true }); } }); }, 'reset-setting'));
   const description = node('p', 'setting-description', item.description); description.id = `description-${item.id}`;
   const error = node('p', 'validation-message'); error.setAttribute('role', 'alert'); section.append(anchorRow, title, description);
-  if (item.kind !== 'action') section.append(node('p', 'setting-origin', origin(item)));
+  if (holdsValue(item)) section.append(node('p', 'setting-origin', origin(item)));
   section.append(control(item, error), error);
   if (String(settings['policy.advancedYaml']).trim() && ['policy.preset', 'policy.primaryMetric', 'policy.bands', 'policy.includeOnly', 'policy.exclude', 'policy.forceInclude'].includes(item.id)) section.append(node('p', 'control-note', 'Advanced personal YAML is active. This guided value is preserved but not applied.'));
   return section;
@@ -163,7 +167,7 @@ function render(): void {
   content.replaceChildren(); const categories = byId('categories'); categories.replaceChildren(); const query = search.value.trim();
   let visible = query ? searchSettings(query, settings) : SETTINGS.filter(item => view === 'advanced' || !item.advanced || revealed.has(item.id));
   if (modifiedOnly && !query) visible = advancedChanges(settings);
-  for (const group of ['Display', 'Policy', 'Integration', 'Appearance', 'Data']) {
+  for (const group of ['Display', 'Policy', 'Analysis', 'Integration', 'Appearance', 'Data']) {
     const items = visible.filter(item => item.group === group); if (!items.length) continue;
     const section = node('section', 'settings-group'); section.id = `category-${group.toLowerCase()}`; section.append(node('h2', 'category-heading', group));
     for (const item of items) section.append(card(item)); content.append(section);
@@ -171,12 +175,13 @@ function render(): void {
   }
   if (!visible.length) content.append(node('p', 'empty-search', 'No matching settings. Try a name, description or #identifier.'));
   byId('search-summary').textContent = query || modifiedOnly ? `${visible.length} ${visible.length === 1 ? 'result' : 'results'}${query && view === 'basic' && visible.some(item => item.advanced) ? ' · includes Advanced' : ''}` : '';
-  indicators(); theme();
+  indicators(); theme(); readySection(byId('ready'), settings, () => { search.scrollIntoView({ block: 'start' }); search.focus({ preventScroll: true }); });
 }
 function revealFragment(): void {
   let id: string; try { id = decodeURIComponent(location.hash.slice(1)); } catch { return; }
   if (SETTINGS.some(item => item.id === id)) { revealed.add(id); search.value = ''; modifiedOnly = false; render(); }
   const target = document.getElementById(id); if (!target) return;
+  if (id === 'ready') { requestAnimationFrame(() => { target.scrollIntoView({ block: 'start' }); document.getElementById('ready-heading')?.focus({ preventScroll: true }); }); return; }
   requestAnimationFrame(() => { target.scrollIntoView({ block: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' }); target.classList.add('is-targeted'); target.querySelector<HTMLElement>('.setting-control input, .setting-control select, textarea, .band-editor input, .override-editor input, .setting-control button')?.focus({ preventScroll: true }); });
 }
 async function showDiagnostics(): Promise<void> {
@@ -207,13 +212,14 @@ for (const option of document.querySelectorAll<HTMLButtonElement>('#view-control
 search.addEventListener('input', () => { modifiedOnly = false; render(); window.scrollTo({ top: 0, behavior: 'instant' }); });
 byId('show-changed').addEventListener('click', () => { modifiedOnly = true; search.value = ''; render(); });
 byId('refresh-details').addEventListener('click', () => { void showDiagnostics(); });
+const dataHost: DataHost = { settings: () => settings, announce, details: () => showDiagnostics(), reload: async () => { settings = await request<Settings>({ type: 'settings.get' }); render(); } };
 byId('export-settings').addEventListener('click', () => download('diffdevil-settings.json', JSON.stringify({ kind: 'diffdevil.settings', version: 1, settings }, null, 2), 'application/json'));
 const importFile = byId<HTMLInputElement>('import-file'); byId('import-settings').addEventListener('click', () => importFile.click());
 importFile.addEventListener('change', () => { void (async () => {
   try {
     const file = importFile.files?.[0]; if (!file) return; if (file.size > 2 * 1024 * 1024) throw new Error('A settings export must be at most 2 MiB.');
     const parsed = JSON.parse(await file.text()) as Record<string, unknown>; if (parsed.kind !== 'diffdevil.settings' || parsed.version !== 1) throw new Error('This is not a supported diffdevil settings export.');
-    if (!confirm('Replace your extension settings with this export? Rebuildable reports are not imported.')) return;
+    if (!confirm('Replace your extension settings with this export? Paused repositories in the export replace yours. Rebuildable reports are not imported.')) return;
     settings = await request<Settings>({ type: 'settings.save', patch: parsed.settings, replace: true }); drafts.clear(); render(); await showDiagnostics(); announce('Imported and validated settings.');
   } catch (exception) { announce(exception instanceof Error ? exception.message : 'Import failed.', true); } finally { importFile.value = ''; }
 })(); });

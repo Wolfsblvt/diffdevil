@@ -2,6 +2,7 @@
 // Test exports of production code, not a separate demonstration implementation.
 export { startContent } from '../src/content/controller.js';
 export { acquire } from '../src/content/acquire.js';
+export { measure } from '../src/content/measure.js';
 export { Popover } from '../src/content/popover.js';
 export { projection, reportPanel } from '../src/content/render.js';
 export { filePanel, errorPanel } from '../src/content/report.js';

@@ -1,15 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { compileBrowserPolicy, readPolicyText, stringifyPolicy, type PolicyLayers, type HumanReportView } from '@wolfsblvt/diffdevil/browser';
-import { SETTINGS, DEFAULTS, type Settings, type SettingValue } from './catalogue.js';
+import { SETTINGS, DEFAULTS, holdsValue, type Settings, type SettingValue } from './catalogue.js';
+import { repositoryKey, pausedRepositories } from './repository.js';
 export { SETTINGS_KEY } from './settings-key.js';
 export const bytes = (value: unknown): number => new TextEncoder().encode(typeof value === 'string' ? value : JSON.stringify(value)).byteLength;
 export interface Band { id: string; name: string; lt: number | null; label: string; color: string }
 export interface Override { mode?: PolicyLayers['mode']; yaml?: string }
-export function repositoryKey(value: string): string {
-  const key = value.toLowerCase();
-  if (!/^[a-z0-9_.-]+\/[a-z0-9_.-]+$/u.test(key) || key.split('/').some(part => part === '.' || part === '..')) throw new Error('Use owner/repository, without a URL.');
-  return key;
-}
+export { repositoryKey, pauseKey, pausedRepositories, isPaused, pausedWith, type Pause } from './repository.js';
 
 export function bands(text: string): Band[] {
   const value: unknown = JSON.parse(text);
@@ -64,14 +61,14 @@ export function validateSettings(input: unknown, previous: Settings = { ...DEFAU
   if (!input || typeof input !== 'object' || Array.isArray(input)) throw new Error('Settings must be an object.');
   const result = { ...previous };
   for (const [id, value] of Object.entries(input)) {
-    const item = SETTINGS.find(item => item.id === id && item.kind !== 'action'); if (!item) throw new Error(`Unknown setting: ${id}`);
+    const item = SETTINGS.find(item => item.id === id && holdsValue(item)); if (!item) throw new Error(`Unknown setting: ${id}`);
     if (typeof value !== typeof item.default) throw new Error(`${item.name} has the wrong value type.`);
     if (item.choices && !item.choices.some(([choice]) => choice === value)) throw new Error(`${item.name} has an unsupported choice.`);
-    if (item.kind === 'number' && (!Number.isInteger(value) || Number(value) < 4 || Number(value) > 128)) throw new Error('Cache limit must be 4–128 MiB.');
+    if (item.kind === 'number' && (!Number.isInteger(value) || Number(value) < item.min! || Number(value) > item.max!)) throw new Error(`${item.name} must be a whole number from ${item.min} to ${item.max}${item.unit ? ` ${item.unit}` : ''}.`);
     if (typeof value === 'string' && bytes(value) > (item.kind === 'overrides' ? 1024 * 1024 : 256 * 1024)) throw new Error(`${item.name} is too large.`);
     result[id] = value as SettingValue;
   }
-  bands(String(result['policy.bands'])); overrides(String(result['policy.repositoryOverrides']));
+  bands(String(result['policy.bands'])); overrides(String(result['policy.repositoryOverrides'])); pausedRepositories(String(result['repositories.paused']));
   const compiled = compileBrowserPolicy(JSON.stringify({ mode: 'personal-only', personal: personalYaml(result) }));
   if (!compiled.ok && !compiled.diagnostics.every(error => error.code === 'E_TEMPLATE_SOURCE')) throw new Error(compiled.diagnostics.map(error => error.message).join('\n'));
   return result;
