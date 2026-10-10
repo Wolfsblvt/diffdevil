@@ -13,7 +13,7 @@ import { createHistoryAnalyticsService } from './history-analytics.mjs';
 
 const migrationNames = [
   '0001_initial.sql', '0002_consent-provenance.sql', '0003_preserve-active-consent.sql',
-  '0004_admission-settings.sql', '0005_offboarding-consent-tombstones.sql', '0006_user-authorization.sql', '0007_consent-actors.sql', '0008_history_analytics.sql', '0010_commercial-links.sql'
+  '0004_admission-settings.sql', '0005_offboarding-consent-tombstones.sql', '0006_user-authorization.sql', '0007_consent-actors.sql', '0008_history_analytics.sql', '0010_commercial-links.sql', '0011_service-connection.sql'
 ];
 const ORIGIN = 'https://dashboard.example.test';
 const CALLBACK = `${ORIGIN}/oauth/callback`;
@@ -251,6 +251,83 @@ test('consent decisions retain the session administrator only in protected repos
   } finally { await source.runtime.dispose(); }
 });
 
+test('definite provider invalidation removes the grant, but unknown failures preserve it', async () => {
+  const source = await fixture();
+  try {
+    const { service, store, providerState, database } = source;
+    const { session } = await signIn(service);
+    const material = (await store.authorization(123)).protected_material;
+    providerState.onVerify = () => { throw new Error('fixture temporary rate limit'); };
+    assert.equal((await service.observeOrganisationAuthority({ userId: 123, organisationId: 9001 })).authority, 'unknown');
+    assert.equal((await store.authorization(123)).protected_material, material);
+    assert.equal((await store.authorization(123)).revoked_at, null);
+    providerState.onVerify = undefined;
+    providerState.userValid = undefined;
+    await assert.rejects(service.authenticate(session), { code: 'E_AUTHORIZATION_UNAVAILABLE' });
+    assert.equal((await store.authorization(123)).revoked_at, null, 'an unspecified validity answer is unknown');
+    providerState.userValid = false;
+    assert.equal((await service.observeOrganisationAuthority({ userId: 123, organisationId: 9001 })).authority, 'unknown');
+    assert.equal((await store.authorization(123)).protected_material, '');
+    assert.ok((await store.authorization(123)).revoked_at);
+    await assert.rejects(service.authenticate(session), { code: 'E_SESSION_UNAVAILABLE' });
+    assert.equal((await database.prepare('SELECT count(*) AS count FROM user_service_connections').first()).count, 0, 'provider invalidation is not the owner disconnect preference');
+    await store.maintain();
+    assert.equal(await store.authorization(123), null);
+  } finally { await source.runtime.dispose(); }
+});
+
+test('a stale definite invalidation cannot revoke a concurrently renewed grant', async () => {
+  const source = await fixture();
+  try {
+    const { service, store, providerState, protector } = source;
+    const { session } = await signIn(service);
+    const renewed = await protector.seal({ accessToken: TOKEN });
+    providerState.userValid = false;
+    providerState.onVerify = () => store.saveAuthorizationWithArtifact(123, renewed, providerState.authorizationExpiresAt, 'new-artifact-hash', CONTEXT, '2026-09-23T00:02:00.000Z');
+    await assert.rejects(service.authenticate(session), { code: 'E_AUTHORIZATION_UNAVAILABLE' });
+    assert.equal((await store.authorization(123)).protected_material, renewed);
+    assert.equal((await store.authorization(123)).revoked_at, null);
+    providerState.onVerify = undefined;
+    providerState.userValid = true;
+    assert.equal((await service.authenticate(session)).userId, 123);
+  } finally { await source.runtime.dispose(); }
+});
+
+test('explicit service reconnect refuses an unconfirmed or superseded grant without enabling the preference', async () => {
+  const source = await fixture();
+  try {
+    const { service, store, providerState } = source;
+    const first = await signIn(service);
+    await service.revokeAuthorization({ session: first.session, method: 'POST', origin: ORIGIN });
+    const browser = await signIn(service);
+    const mutation = { session: browser.session, method: 'POST', origin: ORIGIN };
+    const reconnect = store.reconnectService.bind(store);
+    store.reconnectService = async () => false;
+    await assert.rejects(service.reconnectService(mutation), { code: 'E_SERVICE_RECONNECT_UNCONFIRMED' });
+    assert.equal(await store.serviceDisconnected(123), true);
+    store.reconnectService = async () => { throw new Error('private-fixture-failure'); };
+    await assert.rejects(service.reconnectService(mutation), { code: 'E_SERVICE_RECONNECT_UNCONFIRMED', message: 'E_SERVICE_RECONNECT_UNCONFIRMED' });
+    store.reconnectService = reconnect;
+    providerState.onVerify = () => store.revokeAuthorization(123);
+    await assert.rejects(service.reconnectService(mutation), { code: 'E_AUTHORIZATION_UNAVAILABLE' });
+    assert.equal(await store.serviceDisconnected(123), true);
+  } finally { await source.runtime.dispose(); }
+});
+
+test('logout returns only the authenticated owner connection fact, with unknown standing after a read failure', async () => {
+  const source = await fixture();
+  try {
+    const { service, store } = source;
+    const { session } = await signIn(service);
+    store.serviceConnection = async () => { throw new Error('private fixture failure'); };
+    const result = await service.logout({ session, method: 'POST', origin: ORIGIN });
+    assert.deepEqual(result.body, { serviceConnection: 'unknown' });
+    await assert.rejects(service.authenticate(session), { code: 'E_SESSION_UNAVAILABLE' });
+    assert.deepEqual((await service.logout({ session, method: 'POST', origin: ORIGIN })).body, { serviceConnection: 'unknown' });
+    assert.deepEqual((await service.logout({ session: 'bad-cookie', method: 'POST', origin: ORIGIN })).body, { serviceConnection: 'unknown' });
+  } finally { await source.runtime.dispose(); }
+});
+
 test('expired or revoked user authorization denies sessions independently of installation consent', async () => {
   const source = await fixture();
   try {
@@ -259,8 +336,9 @@ test('expired or revoked user authorization denies sessions independently of ins
     providerState.userValid = false;
     await assert.rejects(service.authenticate(session), { code: 'E_AUTHORIZATION_UNAVAILABLE' });
     providerState.userValid = true;
+    const renewed = await signIn(service);
     clock.value = '2026-09-23T01:00:00.000Z';
-    await assert.rejects(service.authenticate(session), { code: 'E_AUTHORIZATION_UNAVAILABLE' });
+    await assert.rejects(service.authenticate(renewed.session), { code: 'E_AUTHORIZATION_UNAVAILABLE' });
     assert.equal((await appStore.repositoryConsentState(17)).execution.reason, 'never-enabled');
     clock.value = '2026-09-23T00:30:00.000Z';
     await store.revokeAuthorization(123);

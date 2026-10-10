@@ -52,8 +52,9 @@ export function createAuthorizationService({ store, admission, history, provider
     return value;
   }
 
-  async function currentAuthorization(userId) {
+  async function currentAuthorization(userId, { service = false, withLease = false } = {}) {
     for (let attempt = 0; attempt < 2; attempt++) {
+      if (service && await store.serviceDisconnected(userId)) throw refusal('E_SERVICE_DISCONNECTED');
       const row = await store.authorization(userId);
       if (!row || row.revoked_at || row.expires_at <= now()) throw refusal('E_AUTHORIZATION_UNAVAILABLE');
       let material;
@@ -62,7 +63,13 @@ export function createAuthorizationService({ store, admission, history, provider
         material = await protector.open(row.protected_material);
         if (!material) throw refusal('E_AUTHORIZATION_UNAVAILABLE');
         const result = await provider.verifyUserAuthorization({ userId, material });
-        if (!result?.valid) throw refusal('E_AUTHORIZATION_UNAVAILABLE');
+        // Only an explicit invalid answer retires the grant. Missing answers, exceptions and
+        // transient/rate-limit failures withhold this use without manufacturing revocation.
+        if (result?.valid === false) {
+          await store.revokeAuthorization(userId, { expectedMaterial: row.protected_material });
+          throw refusal('E_AUTHORIZATION_UNAVAILABLE');
+        }
+        if (result?.valid !== true) throw refusal('E_AUTHORIZATION_UNAVAILABLE');
         if (result.material) {
           if (!validExpiry(result.expiresAt, now)) throw refusal('E_AUTHORIZATION_UNAVAILABLE');
           expectedProtectedMaterial = await protector.seal(result.material);
@@ -75,7 +82,8 @@ export function createAuthorizationService({ store, admission, history, provider
       } catch { throw refusal('E_AUTHORIZATION_UNAVAILABLE'); }
       const current = await store.authorization(userId);
       if (!current || current.revoked_at || current.expires_at <= now()) throw refusal('E_AUTHORIZATION_UNAVAILABLE');
-      if (current.protected_material === expectedProtectedMaterial) return material;
+      if (service && await store.serviceDisconnected(userId)) throw refusal('E_SERVICE_DISCONNECTED');
+      if (current.protected_material === expectedProtectedMaterial) return withLease ? { material, protectedMaterial: expectedProtectedMaterial } : material;
       if (attempt === 1) throw refusal('E_AUTHORIZATION_UNAVAILABLE');
     }
     throw refusal('E_AUTHORIZATION_UNAVAILABLE');
@@ -188,8 +196,15 @@ export function createAuthorizationService({ store, admission, history, provider
       validOrigin(origin, origins, method);
       let sessionHash;
       try { sessionHash = await digest(session); } catch { /* Clearing a malformed cookie still succeeds. */ }
+      const row = sessionHash ? await store.session(sessionHash) : undefined;
+      // An invalid/expired cookie must not reveal any account's connection standing.
+      const userId = row && !row.revoked_at && row.expires_at > now() ? row.user_id : undefined;
       if (sessionHash) await store.revokeSession(sessionHash);
-      return { headers: { ...protectedHeaders(), 'Set-Cookie': cookie(SESSION_COOKIE_NAME, '', 0) } };
+      let serviceConnection = 'unknown';
+      if (userId) {
+        try { serviceConnection = await store.serviceConnection(userId); } catch { /* Logout committed; standing remains unobserved. */ }
+      }
+      return { body: { serviceConnection }, headers: { ...protectedHeaders(), 'Set-Cookie': cookie(SESSION_COOKIE_NAME, '', 0) } };
     },
 
     /**
@@ -200,9 +215,26 @@ export function createAuthorizationService({ store, admission, history, provider
     async revokeAuthorization({ session, method, origin }) {
       validOrigin(origin, origins, method);
       const actor = await principal(session);
-      try { await store.revokeAuthorization(actor.userId); }
+      try { await store.revokeAuthorization(actor.userId, { disconnectService: true }); }
       catch { throw refusal('E_AUTHORIZATION_REVOKE_UNCONFIRMED'); }
       return { ...actor, headers: { ...protectedHeaders(), 'Set-Cookie': cookie(SESSION_COOKIE_NAME, '', 0) } };
+    },
+
+    /** Re-enable service use deliberately, through this signed-in owner's current same-scope grant. */
+    async reconnectService({ session, method, origin }) {
+      validOrigin(origin, origins, method);
+      const actor = await principal(session);
+      const verified = await currentAuthorization(actor.userId, { withLease: true });
+      try {
+        if (!await store.reconnectService(actor.userId, verified.protectedMaterial)) throw refusal('E_SERVICE_RECONNECT_UNCONFIRMED');
+      } catch { throw refusal('E_SERVICE_RECONNECT_UNCONFIRMED'); }
+      return { ...actor, headers: protectedHeaders() };
+    },
+
+    /** Account disclosure fact; it describes local retention, not a live GitHub validity check. */
+    async serviceConnection({ session }) {
+      const actor = await principal(session);
+      return { body: { serviceConnection: await store.serviceConnection(actor.userId) }, headers: protectedHeaders() };
     },
 
     async readAdmission({ session, repositoryId }) {
@@ -224,7 +256,7 @@ export function createAuthorizationService({ store, admission, history, provider
     async observeOrganisationAuthority({ userId, organisationId }) {
       if (!Number.isSafeInteger(userId) || userId <= 0 || !Number.isSafeInteger(organisationId) || organisationId <= 0) throw refusal('E_ORGANISATION_UNAVAILABLE');
       let material;
-      try { material = await currentAuthorization(userId); } catch { return { userId, authority: 'unknown', display: null }; }
+      try { material = await currentAuthorization(userId, { service: true }); } catch { return { userId, authority: 'unknown', display: null }; }
       return { userId, ...await checkOrganisation(material, userId, organisationId) };
     },
 

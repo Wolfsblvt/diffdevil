@@ -16,7 +16,7 @@ import { D1AuthorizationStore } from './authorization-storage.mjs';
 import { createAuthorizationService } from './authorization.mjs';
 
 const migrations = ['0001_initial.sql', '0002_consent-provenance.sql', '0003_preserve-active-consent.sql', '0004_admission-settings.sql',
-  '0005_offboarding-consent-tombstones.sql', '0006_user-authorization.sql', '0007_consent-actors.sql', '0010_commercial-links.sql'];
+  '0005_offboarding-consent-tombstones.sql', '0006_user-authorization.sql', '0007_consent-actors.sql', '0010_commercial-links.sql', '0011_service-connection.sql'];
 const APP = 'https://app.example.test';
 const WIRT = 'https://works.example.test';
 const KEY = 'fixture-signing-key-material-of-at-least-32-bytes';
@@ -796,7 +796,7 @@ test('a bound funder grant survives real logout, account switching and session e
     await bindRequest(source, { action: 'bind', slot: 'slot-1', organisationId: ORG });
     const entitlement = () => commercial.entitlement({ repositoryId: 21, actor: { userId: OTHER_USER } });
     const funderSession = browserSessions.get(SESSION);
-    await authorization.logout({ session: funderSession, method: 'POST', origin: APP });
+    assert.equal((await authorization.logout({ session: funderSession, method: 'POST', origin: APP })).body.serviceConnection, 'retained');
     await assert.rejects(authorization.authenticate(funderSession), { code: 'E_SESSION_UNAVAILABLE' });
     assert.ok((await authStore.authorization(USER))?.protected_material);
     const reader = await authorization.authenticate(browserSessions.get(OTHER_SESSION));
@@ -867,7 +867,21 @@ test('independent funding-authorization revocation preserves funding, reports un
 
     source.github.answering = true;
     source.retained.add(USER);
-    await signIn(USER);
+    const reconnectedSession = await signIn(USER);
+    assert.deepEqual(await authorization.authenticate(reconnectedSession), { userId: USER, returnContext: 'account' });
+    assert.equal((await authorization.serviceConnection({ session: reconnectedSession })).body.serviceConnection, 'disconnected');
+    assert.equal(await commercial.entitlement({ repositoryId: 21, actor: { userId: OTHER_USER } }), 'unknown', 'ordinary sign-in does not reconnect funding');
+    assert.equal((await commercial.status({ session: reconnectedSession })).body.capacity.find(value => value.binding)?.binding.authority, 'unknown', 'a dashboard visit also preserves disconnect');
+    await assert.rejects(commercial.reconnectFundingAuthorization({ session: reconnectedSession, method: 'GET', origin: APP }), { code: 'E_AUTH_METHOD' });
+    await assert.rejects(commercial.reconnectFundingAuthorization({ session: reconnectedSession, method: 'POST', origin: 'https://foreign.example' }), { code: 'E_AUTH_ORIGIN' });
+    await assert.rejects(commercial.reconnectFundingAuthorization({ session: 'unusable', method: 'POST', origin: APP }), { code: 'E_SESSION_UNAVAILABLE' });
+    assert.equal((await authorization.logout({ session: reconnectedSession, method: 'POST', origin: APP })).body.serviceConnection, 'disconnected');
+    await authStore.maintain();
+    assert.equal(await authStore.authorization(USER), null, 'disconnected preference supplies no sessionless purpose');
+    const deliberateSession = await signIn(USER);
+    const connected = await commercial.reconnectFundingAuthorization({ session: deliberateSession, method: 'POST', origin: APP, userId: OTHER_USER });
+    assert.deepEqual(connected.body, { ok: true, result: 'service-reconnected', authorityReconciliation: 'recorded' });
+    assert.equal((await authorization.logout({ session: deliberateSession, method: 'POST', origin: APP })).body.serviceConnection, 'retained');
     assert.equal(await commercial.entitlement({ repositoryId: 21, actor: { userId: OTHER_USER } }), 'business');
     assert.equal((await store.binding(ORG)).slot, 'slot-1', 'explicit reconnection restores use without changing its funded binding');
   } finally { await source.runtime.dispose(); }
@@ -892,6 +906,65 @@ test('a failed authority reconciliation reports the already-committed disconnect
     assert.equal((await store.binding(ORG)).slot, 'slot-1');
     assert.equal((await store.binding(ORG)).display, null);
     await commercial.flushReports();
+    const reconnectSession = await source.signIn(USER);
+    store.transition = async () => false;
+    const connected = await commercial.reconnectFundingAuthorization({ session: reconnectSession, method: 'POST', origin: APP });
+    assert.deepEqual(connected.body, { ok: false, result: 'service-reconnected', authorityReconciliation: 'required', code: 'E_COMMERCIAL_CONFLICT' });
+    assert.equal(await authStore.serviceDisconnected(USER), false, 'performed reconnection stays distinct from its failed reconciliation');
+    store.transition = transition;
+    assert.equal(await commercial.entitlement({ repositoryId: 21, actor: { userId: OTHER_USER } }), 'business');
+  } finally { await source.runtime.dispose(); }
+});
+
+test('funding standing, not spare capacity, owns sessionless retention and observations', async t => {
+  for (const standing of ['ended', 'first-payment-pending']) await t.test(standing, async () => {
+    const source = await fixture({ realAuthorization: true });
+    try {
+      const { commercial, store, authStore, authorization, browserSessions, vault } = source;
+      await link(source, { owner: 77 });
+      const linkId = (await store.activeLink(USER)).link_id;
+      await fundedOrganisation(source, linkId);
+      await bindRequest(source, { action: 'bind', slot: 'slot-1', organisationId: ORG });
+      await push(source, projection({ linkId, version: 2, standing, tier: 'business', slots: ['slot-1'] }));
+      // A retained capacity slot and binding survive; they are no longer a credential purpose.
+      assert.ok(await store.binding(ORG));
+      const opened = vault.get((await authStore.authorization(USER)).protected_material);
+      opened.userId = 0; // Any attempted service verification would now invalidate this fixture grant.
+      assert.equal(await commercial.entitlement({ repositoryId: 21, actor: { userId: OTHER_USER } }), 'free');
+      await commercial.flushReports();
+      await commercial.maintain();
+      assert.equal((await authStore.authorization(USER)).revoked_at, null, 'unfunded encounters do not exercise the grant');
+      const result = await authorization.logout({ session: browserSessions.get(SESSION), method: 'POST', origin: APP });
+      assert.equal(result.body.serviceConnection, 'not-retained');
+      await authStore.maintain();
+      assert.equal(await authStore.authorization(USER), null);
+      assert.ok(await store.binding(ORG), 'releasing authorization does not erase funding recovery state');
+      await source.signIn(USER);
+      assert.equal((await bindRequest(source, { action: 'bind', slot: 'slot-1', organisationId: ORG })).status, 409, 'capacity alone cannot start funded binding');
+    } finally { await source.runtime.dispose(); }
+  });
+});
+
+test('a restore hold preserves only a last funded purpose and withholds observation until reconciled', async () => {
+  const source = await fixture({ realAuthorization: true });
+  try {
+    const { commercial, store, authStore, authorization, browserSessions } = source;
+    await link(source, { owner: 77 });
+    const linkId = (await store.activeLink(USER)).link_id;
+    await fundedOrganisation(source, linkId);
+    await bindRequest(source, { action: 'bind', slot: 'slot-1', organisationId: ORG });
+    await store.holdRestoredLinks(source.clock.value);
+    assert.equal((await authorization.logout({ session: browserSessions.get(SESSION), method: 'POST', origin: APP })).body.serviceConnection, 'retained');
+    await authStore.maintain();
+    assert.ok((await authStore.authorization(USER)).protected_material);
+    source.retained.delete(USER);
+    assert.equal(await commercial.entitlement({ repositoryId: 21, actor: { userId: OTHER_USER } }), 'unknown');
+    assert.equal((await authStore.authorization(USER)).revoked_at, null, 'held funding does not exercise the old provider grant');
+    await push(source, projection({ linkId, version: 2, standing: 'ended', tier: 'business', slots: ['slot-1'] }));
+    assert.ok((await store.link(linkId)).restored_at);
+    await authStore.maintain();
+    assert.equal(await authStore.authorization(USER), null, 'restore alone cannot preserve an ended funding purpose');
+    assert.ok(await store.binding(ORG));
   } finally { await source.runtime.dispose(); }
 });
 

@@ -58,6 +58,13 @@ export function planForLink(link) {
   return PREMIUM_STANDINGS.has(projection.commercial?.standing) ? projection.commercial.tier : 'free';
 }
 
+/** The last applied funded projection owns retention; a restore hold owns no new funding. */
+function hasFundedPurpose(link) {
+  const projection = plannedProjection(link);
+  return link?.state === 'active' && PREMIUM_STANDINGS.has(projection?.commercial?.standing)
+    && ['pro', 'business'].includes(projection?.commercial?.tier);
+}
+
 /**
  * Funding and current GitHub authority are separate facts. An organisation funded through a binding is
  * usable only after the encounter observes its funder's administration present; observed absence, or a check
@@ -261,7 +268,9 @@ export function createCommercialService({ store, wirt, signing, authorization, p
   /** Observe the funder through their retained service grant, independently of browser presence. */
   async function observeBinding(link, binding) {
     let result;
-    try { result = await authorization?.observeOrganisationAuthority({ userId: link.product_account, organisationId: binding.organisation_id }); }
+    try {
+      if (hasFundedPurpose(link) && !link.restored_at) result = await authorization?.observeOrganisationAuthority({ userId: link.product_account, organisationId: binding.organisation_id });
+    }
     catch { result = undefined; }
     return { slot: binding.slot, organisationId: binding.organisation_id, authority: observedAuthority(result), display: result?.display ?? null };
   }
@@ -282,9 +291,8 @@ export function createCommercialService({ store, wirt, signing, authorization, p
     const byLink = new Map();
     let unknown = 0;
     for (const binding of stale) {
-      let result;
-      try { result = await authorization.observeOrganisationAuthority({ userId: binding.product_account, organisationId: binding.organisation_id }); }
-      catch { result = { authority: 'unknown' }; }
+      const link = await store.link(binding.link_id);
+      const result = await observeBinding(link, binding);
       const authority = observedAuthority(result);
       if (authority === 'unknown') unknown++;
       const values = byLink.get(binding.link_id) ?? [];
@@ -443,11 +451,15 @@ export function createCommercialService({ store, wirt, signing, authorization, p
     async bind({ session, method, origin, slot, organisationId }) {
       requireLinkRoute();
       validOrigin(origin, origins, method);
-      const authority = await authorization.organisationAuthority({ session, organisationId });
+      const viewer = await actor(session);
       for (let attempt = 0; attempt < 3; attempt++) {
-        const link = await store.activeLink(authority.userId);
+        const link = await store.activeLink(viewer.userId);
         const projection = plannedProjection(link);
         if (!link || !projection || !orderOf(link)) throw refusal('E_COMMERCIAL_NOT_LINKED', 404);
+        if (!hasFundedPurpose(link) || link.restored_at) throw refusal('E_COMMERCIAL_NOT_FUNDED', 409);
+        // Binding is not an implicit reconnect. Use the same service preference and current grant
+        // as every later organisation encounter, while the browser only establishes the owner.
+        const authority = await authorization.observeOrganisationAuthority({ userId: viewer.userId, organisationId });
         if (!projection.benefits.organisation_capacity.some(value => value.slot === slot)) throw refusal('E_COMMERCIAL_SLOT_UNAVAILABLE', 409);
         const [bindings, refusals, existing] = await Promise.all([store.bindings(link.link_id), store.refusals(link.link_id), store.binding(organisationId)]);
         const stream = { worksAccount: link.works_account };
@@ -515,6 +527,20 @@ export function createCommercialService({ store, wirt, signing, authorization, p
       return { headers: revoked.headers, body: { ok: true, result: 'authorization-revoked', authorityReconciliation: 'recorded' } };
     },
 
+    /** Explicit reconnect changes only service preference; authority is re-observed before use. */
+    async reconnectFundingAuthorization({ session, method, origin }) {
+      if (!authorization?.reconnectService) throw refusal('E_COMMERCIAL_UNAVAILABLE', 503);
+      const connected = await authorization.reconnectService({ session, method, origin });
+      try {
+        const link = await store.activeLink(connected.userId);
+        if (link) await observeBindings(link);
+      } catch (error) {
+        return { headers: connected.headers, body: { ok: false, result: 'service-reconnected', authorityReconciliation: 'required',
+          code: error?.code === 'E_COMMERCIAL_CONFLICT' ? error.code : 'E_COMMERCIAL_AUTHORITY_RECONCILIATION' } };
+      }
+      return { headers: connected.headers, body: { ok: true, result: 'service-reconnected', authorityReconciliation: 'recorded' } };
+    },
+
     /**
      * The signed-in account's own commercial standing, without payment instruments or other accounts.
      * Reading it re-observes the funder's authority for each bound organisation.
@@ -526,9 +552,7 @@ export function createCommercialService({ store, wirt, signing, authorization, p
       if (!link) return { body: { linked: false }, headers: protectedHeaders() };
       const observed = [];
       for (const binding of await store.bindings(link.link_id)) {
-        let result;
-        try { result = await authorization.organisationAuthority({ session, organisationId: binding.organisation_id }); }
-        catch { result = { authority: 'unknown' }; }
+        const result = await observeBinding(link, binding);
         observed.push({ slot: binding.slot, organisationId: binding.organisation_id, authority: observedAuthority(result), display: result.display ?? null });
       }
       if (observed.length > 0) {
@@ -561,7 +585,7 @@ export function createCommercialService({ store, wirt, signing, authorization, p
       if (!Number.isSafeInteger(account) || account <= 0) return 'unknown';
       for (let attempt = 0; attempt < 3; attempt++) {
         const funding = await store.funding(account);
-        if (!funding.binding) return planForFunding(funding);
+        if (!funding.binding || !hasFundedPurpose(funding.link)) return planForFunding(funding);
         await recordObservations(funding.link.link_id, [await observeBinding(funding.link, funding.binding)]);
         const current = await store.funding(account);
         // A concurrent rebind belongs to its new funder; never carry the old observation across it.

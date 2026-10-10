@@ -100,7 +100,7 @@ The one-time preview and OSS grants are separately attributable benefits, not in
 
 Preserve browser-bound OAuth state, server-side token custody, opaque sessions, mutation CSRF/Origin protection and current operation authorisation. Source checks do not prove live OAuth/cookies/migrations. No arbitrary new short session cap is introduced by this expansion.
 
-Browser logout is separate from the [purpose-bound funding service connection](../dashboard-access.md#browser-access-and-the-funding-service-connection): active organisation funding keeps the same protected grant available for current authority checks. The independent disconnect removes that local grant and its sessions/artifacts without unbinding or ending payment. Bind/connection and logout disclosures, plus the customer disconnect path, remain required qualification of the designed Account experience before customer adoption.
+Browser logout is separate from the [purpose-bound funding service connection](../dashboard-access.md#browser-access-and-the-funding-service-connection): an enabled connection with actually funded organisation standing keeps the same protected grant available for current authority checks. Independent disconnect removes that local grant and its sessions/artifacts without unbinding or ending payment, and stays off across ordinary sign-ins until explicit reconnect. Logout returns local connection standing for disclosure after its session is gone. Bind/reconnect/logout disclosures, the customer disconnect/reconnect path and historical restore of that preference remain required qualification before customer adoption.
 
 Protected responses are private and not share-cacheable. Tokens never enter chart payloads, URLs or browser storage by convenience.
 

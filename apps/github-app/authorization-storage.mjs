@@ -1,10 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-// A bound organisation is active service, even with no dashboard session. The binding's lifecycle
-// owns this purpose; unbind/capacity removal/link ending releases it without a second retention flag.
+// Only actual funded standing earns sessionless retention. A restore hold preserves that last
+// funded purpose for reconciliation, but never makes an ended/pending projection funded.
 const NO_ORGANISATION_FUNDING = `NOT EXISTS (SELECT 1 FROM commercial_bindings b
   JOIN commercial_links l ON l.link_id=b.link_id
-  WHERE l.product_account=user_authorizations.user_id AND l.state='active')`;
+  WHERE l.product_account=user_authorizations.user_id AND l.state='active'
+    AND json_extract(l.projection_json,'$.commercial.standing') IN ('funded','renewal-in-grace')
+    AND json_extract(l.projection_json,'$.commercial.tier') IN ('pro','business'))`;
+const SERVICE_DISCONNECTED = `EXISTS (SELECT 1 FROM user_service_connections c
+  WHERE c.user_id=user_authorizations.user_id AND c.disconnected_at IS NOT NULL)`;
+const NO_SERVICE_PURPOSE = `(${SERVICE_DISCONNECTED} OR ${NO_ORGANISATION_FUNDING})`;
 
 /** D1 adapter for one-time user authorization and opaque browser sessions. */
 export class D1AuthorizationStore {
@@ -40,6 +45,29 @@ export class D1AuthorizationStore {
     return this.statement('SELECT protected_material, expires_at, revoked_at FROM user_authorizations WHERE user_id=?', userId).first();
   }
 
+  async serviceConnection(userId) {
+    const row = await this.statement(`SELECT protected_material, revoked_at, expires_at,
+      NOT ${NO_ORGANISATION_FUNDING} AS funded
+      FROM user_authorizations WHERE user_id=?`, userId).first();
+    const preference = await this.statement('SELECT disconnected_at FROM user_service_connections WHERE user_id=?', userId).first();
+    if (preference?.disconnected_at) return 'disconnected';
+    if (!row?.funded) return 'not-retained';
+    return row.protected_material && !row.revoked_at && row.expires_at > this.now() ? 'retained' : 'unavailable';
+  }
+
+  async serviceDisconnected(userId) {
+    return Boolean((await this.statement('SELECT disconnected_at FROM user_service_connections WHERE user_id=?', userId).first())?.disconnected_at);
+  }
+
+  /** Deliberate reconnect requires the same verified grant to still be current at commit. */
+  async reconnectService(userId, expectedMaterial) {
+    const now = this.now();
+    const result = await this.statement(`INSERT INTO user_service_connections (user_id, disconnected_at, updated_at)
+      SELECT user_id, NULL, ? FROM user_authorizations WHERE user_id=? AND protected_material=? AND revoked_at IS NULL AND expires_at > ?
+      ON CONFLICT(user_id) DO UPDATE SET disconnected_at=NULL, updated_at=excluded.updated_at`, now, userId, expectedMaterial, now).run();
+    return (result.meta?.changes ?? 0) === 1;
+  }
+
   /** Commit a fresh user grant and its pending one-time artifact in one D1 transaction. */
   async saveAuthorizationWithArtifact(userId, protectedMaterial, authorizationExpiresAt, artifactHash, returnContext, artifactExpiresAt) {
     const now = this.now();
@@ -51,13 +79,18 @@ export class D1AuthorizationStore {
     ]);
   }
 
-  async revokeAuthorization(userId) {
+  async revokeAuthorization(userId, { disconnectService = false, expectedMaterial } = {}) {
     const now = this.now();
-    await this.database.batch([
-      this.statement("UPDATE user_authorizations SET revoked_at=?, protected_material='' WHERE user_id=?", now, userId),
-      this.statement('UPDATE browser_sessions SET revoked_at=? WHERE user_id=? AND revoked_at IS NULL', now, userId),
-      this.statement('UPDATE authorization_artifacts SET consumed_at=? WHERE user_id=? AND consumed_at IS NULL', now, userId)
-    ]);
+    const matches = expectedMaterial === undefined ? '' : ' AND EXISTS (SELECT 1 FROM user_authorizations WHERE user_id=? AND protected_material=?)';
+    const lease = expectedMaterial === undefined ? [] : [userId, expectedMaterial];
+    const statements = [
+      this.statement(`UPDATE browser_sessions SET revoked_at=? WHERE user_id=? AND revoked_at IS NULL${matches}`, now, userId, ...lease),
+      this.statement(`UPDATE authorization_artifacts SET consumed_at=? WHERE user_id=? AND consumed_at IS NULL${matches}`, now, userId, ...lease),
+      this.statement(`UPDATE user_authorizations SET revoked_at=?, protected_material='' WHERE user_id=?${expectedMaterial === undefined ? '' : ' AND protected_material=?'}`, now, userId, ...(expectedMaterial === undefined ? [] : [expectedMaterial]))
+    ];
+    if (disconnectService) statements.push(this.statement(`INSERT INTO user_service_connections (user_id, disconnected_at, updated_at)
+      VALUES (?, ?, ?) ON CONFLICT(user_id) DO UPDATE SET disconnected_at=excluded.disconnected_at, updated_at=excluded.updated_at`, userId, now, now));
+    await this.database.batch(statements);
   }
 
   async artifactUser(hash, returnContext) {
@@ -86,7 +119,7 @@ export class D1AuthorizationStore {
       this.statement(`DELETE FROM user_authorizations WHERE user_id=(SELECT user_id FROM browser_sessions WHERE session_hash=?)
         AND NOT EXISTS (SELECT 1 FROM browser_sessions WHERE user_id=user_authorizations.user_id AND revoked_at IS NULL AND expires_at > ?)
         AND NOT EXISTS (SELECT 1 FROM authorization_artifacts WHERE user_id=user_authorizations.user_id AND consumed_at IS NULL AND expires_at > ?)
-        AND ${NO_ORGANISATION_FUNDING}`,
+        AND ${NO_SERVICE_PURPOSE}`,
       previousSessionHash, now, now)
     );
     const results = await this.database.batch(statements);
@@ -117,7 +150,7 @@ export class D1AuthorizationStore {
       this.statement(`DELETE FROM user_authorizations WHERE user_id=(SELECT user_id FROM browser_sessions WHERE session_hash=?)
         AND NOT EXISTS (SELECT 1 FROM browser_sessions WHERE user_id=user_authorizations.user_id AND revoked_at IS NULL AND expires_at > ?)
         AND NOT EXISTS (SELECT 1 FROM authorization_artifacts WHERE user_id=user_authorizations.user_id AND consumed_at IS NULL AND expires_at > ?)
-        AND ${NO_ORGANISATION_FUNDING}`,
+        AND ${NO_SERVICE_PURPOSE}`,
       hash, now, now)
     ]);
   }
@@ -135,7 +168,7 @@ export class D1AuthorizationStore {
       this.statement(`DELETE FROM user_authorizations WHERE expires_at <= ? OR revoked_at IS NOT NULL
         OR (NOT EXISTS (SELECT 1 FROM browser_sessions WHERE user_id=user_authorizations.user_id AND revoked_at IS NULL AND expires_at > ?)
           AND NOT EXISTS (SELECT 1 FROM authorization_artifacts WHERE user_id=user_authorizations.user_id AND consumed_at IS NULL AND expires_at > ?)
-          AND ${NO_ORGANISATION_FUNDING})`, now, now, now)
+          AND ${NO_SERVICE_PURPOSE})`, now, now, now)
     ]);
   }
 }
