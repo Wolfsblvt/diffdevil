@@ -5,9 +5,12 @@ import type { Message } from '../shared/protocol.js';
 /** No arbitrary-URL proxy and no content-script access to settings mutations. */
 export function authorize(sender: chrome.runtime.Sender, message: Message, extensionId: string): { options: boolean; repository?: string; pullRequest?: number } {
   if (sender.id !== extensionId) throw new ExtensionError('SENDER_REJECTED', 'The message did not originate in this extension.');
-  const url = new URL(sender.url ?? sender.tab?.url ?? 'about:blank');
-  if (url.protocol === 'chrome-extension:' && url.hostname === extensionId && url.pathname === '/options.html') return { options: true };
-  if (url.origin !== 'https://github.com' || sender.frameId !== undefined && sender.frameId !== 0) throw new ExtensionError('SENDER_REJECTED', 'A supported top-level GitHub page is required.');
+  const frame = new URL(sender.url ?? 'about:blank');
+  if (frame.protocol === 'chrome-extension:' && frame.hostname === extensionId && frame.pathname === '/options.html') return { options: true };
+  // The frame origin authenticates the content script. Chrome's tab URL is the
+  // current top-level route after GitHub changes history within that document.
+  const url = new URL(sender.tab?.url ?? 'about:blank');
+  if (frame.origin !== 'https://github.com' || url.origin !== 'https://github.com' || sender.frameId !== 0) throw new ExtensionError('SENDER_REJECTED', 'A supported top-level GitHub page is required.');
   const route = /^\/([^/]+\/[^/]+)\/pull\/([1-9]\d*)(?:\/|$)/u.exec(url.pathname);
   if (!route) throw new ExtensionError('SENDER_REJECTED', 'This request requires a GitHub pull-request page.');
   if (['settings.save', 'data.action', 'diagnostics.get'].includes(message.type)) throw new ExtensionError('OPTIONS_REQUIRED', 'Manage extension data from Settings.');

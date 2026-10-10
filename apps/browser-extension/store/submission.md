@@ -2,11 +2,15 @@
 
 ## Meaning
 
-A finite release checklist for an already authored application and asset set. Publication, public website changes, developer verification and the final Store submission are intentionally outside the source contribution. Do not treat an unverified candidate as a released extension.
+A finite release checklist for an already authored application and source-backed Store kit. Publication, public website changes, developer verification and the final Store submission remain explicit later effects. Do not treat an unverified candidate, ignored artifact or provider-dashboard draft as released product truth.
 
 ## Source and reproducibility
 
 Record the accepted commit and base, Node/TypeScript/browser versions, package-lock integrity, build receipt and unpacked file hashes. Use the corresponding source, not a detached binary. Run the normal repository gates, application/core tests, browser DOM/acquisition tests and installed suite. Confirm no unrelated website, deployment or npm publication step is part of the build. Review generated Action-runtime changes and check their freshness.
+
+Store copy and upload bytes come from `apps/browser-extension/store/`. Run `npm run extension:store` to validate the committed asset manifest and copy the exact source-backed kit into `artifacts/browser-extension/store/`. Do not edit descriptions only in the Chrome Web Store dashboard and do not upload an image that has no committed counterpart.
+
+The committed visual set renders the Extension Grammar v1 implementation against authored fixtures. Review it against the accepted in-place experience before any Store submission; regenerate it deliberately whenever the rendered interface changes.
 
 ## Browser release gate
 
@@ -18,9 +22,36 @@ Confirm the full-colour/none choices and the pinned accepted centre-seam monochr
 
 Build the exact version without development harnesses, source maps, tokens, credentials, test browser profiles or dependency caches in the unpacked package. The manifest must remain MV3 with the declared minimal permissions and no remote-code allowance. The package must contain its applicable code/font notices and corresponding-source location. A font-free package is supported; do not advertise bundled typography in that package.
 
-Prepare the 128×128 icon with the existing master symbol, five supported 1280×800 screenshots, 440×280 small promotional tile and optional 1400×560 marquee. Generated promotional rasters are PNG24 RGB; the icon deliberately has transparent outer padding. Preserve true proportions and verify small-size readability. Review all visible source-candidate/fixture disclosures before deciding whether to replace them with accepted release captures. Do not relabel fixture images as real installed screenshots.
+Create the ignored extension archive only from an accepted unpacked build:
 
-Use Listing for the single purpose, short and detailed descriptions. Use Privacy Answers to disclose website content, limited PR-route activity and local/synchronized configuration. Set a real public privacy-policy URL and real owner contact identity. Do not invent a Store URL or hardcode a made-up extension ID into the footer. The source/options/product links can remain the existing repository links.
+```sh
+npm run extension:build
+npm run extension:package
+```
+
+`extension:package` requires the unpacked tree to match its build receipt exactly, packages only the explicit extension-member allowlist in stable member and timestamp order, then reads the ZIP back and verifies every member's path, size, CRC-32 and SHA-256. Its ZIP and receipt are local release artifacts, not Store publication evidence.
+
+The committed Store source must contain:
+
+- `assets/store-icon-128.png`;
+- five 1280×800 RGB screenshots under `assets/screenshots/`;
+- the 440×280 small promotional PNG and editable SVG under `assets/promo/`;
+- the optional 1400×560 marquee PNG and editable SVG under `assets/promo/`; and
+- `assets/asset-manifest.json` with exact dimensions, colour type, SHA-256, provenance and standing.
+
+Generated promotional rasters are PNG24 RGB; the icon deliberately has transparent outer padding. Preserve true proportions and verify small-size readability. Review all visible fixture disclosures before deciding whether accepted release captures should replace them. Do not relabel fixture images as real installed screenshots.
+
+Intentional regeneration uses:
+
+```sh
+npm run extension:build
+npm run extension:qa
+npm run extension:store:generate
+```
+
+That command rewrites tracked source and therefore requires visual inspection plus an ordinary source diff. Routine Store preparation validates and copies; it does not silently regenerate artwork.
+
+Use `listing.md` for the single purpose, short and detailed descriptions. Use `privacy-answers.md` to disclose website content, limited PR-route activity and local/synchronized configuration. Set a real public privacy-policy URL and real owner contact identity. Do not invent a Store URL or hardcode a made-up extension ID into the footer. The source/options/product links can remain the existing repository links until the accepted public website supplies better canonical routes.
 
 ## Reviewer instructions
 
@@ -30,4 +61,4 @@ A writable repository is not required for local counts or virtual bands. Native-
 
 ## Primary image specification
 
-[Chrome Web Store images](https://developer.chrome.com/docs/webstore/images), checked 2026-09-19. Image dimensions and file hashes are independently recorded in `artifacts/browser-extension/store/asset-manifest.json`. This checklist does not grant publication authority or claim Store approval.
+[Chrome Web Store images](https://developer.chrome.com/docs/webstore/images), checked 2026-09-19. Image dimensions and file hashes are recorded in `apps/browser-extension/store/assets/asset-manifest.json`; `artifacts/browser-extension/store/` is only its validated disposable copy. This checklist does not grant publication authority or claim Store approval.

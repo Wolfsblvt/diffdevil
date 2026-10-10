@@ -7,4 +7,6 @@ export { appStanding } from './app.js';
 export { SEMANTICS } from '../model.js';
 export { stringify as stringifyPolicy } from 'yaml';
 export { measurementText, evidenceText } from './text.js';
+/** The CLI's own presenters, so a browser host can copy the canonical text instead of scraping its DOM. */
+export { formatReport } from '../format.js';
 //# sourceMappingURL=index.js.map

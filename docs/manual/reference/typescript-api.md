@@ -400,7 +400,9 @@ and examples outside the markers remain authored.
 | `PolicyMode` | `PolicyMode` | [Declaration](#api-browser-policy-policymode) |
 | `Rail` | `Rail` | [Declaration](#api-browser-view-rail) |
 | `RailCell` | `RailCell` | [Declaration](#api-browser-view-railcell) |
+| `Rendered` | `Rendered` | [Declaration](#api-format-rendered) |
 | `Report` | `Report` | [Declaration](#api-model-report) |
+| `ReportFormat` | `ReportFormat` | [Declaration](#api-format-reportformat) |
 | `Result` | `Result` | [Declaration](#api-model-result) |
 | `SEMANTICS` | `SEMANTICS` | [Declaration](#api-model-semantics) |
 | `analyzeBrowserInput` | `analyzeBrowserInput` | [Declaration](#api-browser-acquisition-analyzebrowserinput) |
@@ -408,6 +410,7 @@ and examples outside the markers remain authored.
 | `comparisonKey` | `comparisonKey` | [Declaration](#api-browser-acquisition-comparisonkey) |
 | `compileBrowserPolicy` | `compileBrowserPolicy` | [Declaration](#api-browser-policy-compilebrowserpolicy) |
 | `evidenceText` | `evidenceText` | [Declaration](#api-browser-text-evidencetext) |
+| `formatReport` | `formatReport` | [Declaration](#api-format-formatreport) |
 | `humanReport` | `humanReport` | [Declaration](#api-browser-view-humanreport) |
 | `measurementText` | `measurementText` | [Declaration](#api-browser-text-measurementtext) |
 | `readComparison` | `readComparison` | [Declaration](#api-browser-acquisition-readcomparison) |
@@ -765,6 +768,29 @@ export declare function formatQuery(result: EvaluationResult, options?: {
 
 ```typescript
 export declare function formatReport(report: Report, format?: ReportFormat, options?: TextPresentationOptions): Result<Rendered>;
+```
+
+<a id="api-format-rendered"></a>
+
+#### `Rendered`
+
+[Canonical source](../../../src/diffdevil/format.ts)
+
+```typescript
+export interface Rendered {
+    readonly stdout: string;
+    readonly exitCode: 0 | 1 | 2 | 3;
+}
+```
+
+<a id="api-format-reportformat"></a>
+
+#### `ReportFormat`
+
+[Canonical source](../../../src/diffdevil/format.ts)
+
+```typescript
+export type ReportFormat = 'human' | 'markdown' | 'agent' | 'json' | 'jsonl' | 'env';
 ```
 
 <a id="api-github-apply-applygithubpolicy"></a>
