@@ -4,10 +4,10 @@
 
 This owns the source contract supporting Overview, Pull requests, History, Files,
 PR detail and File detail. It separates final merged comparisons from PR development
-and from the older pathless, latest-observed history API. The implementation is a
-source candidate, not a deployed or adopted App. Named-history admission depends
-on acceptance of the revised privacy and final-merged product contract before landing.
-The older pathless export and query contracts retain their original meaning.
+and from the older pathless, latest-observed history API. The accepted pathless
+foundation and revised privacy/final-merged contracts are now on current `main`.
+This implementation remains a source candidate, not a deployed or adopted App;
+the older pathless export and query contracts retain their original meaning.
 
 ## Read it
 
@@ -241,10 +241,10 @@ deletion and the Worker HTTP entry. The authorization suite exercises the actual
 session/OAuth service with a provider double and ordinary-reader denial/revocation.
 This is local source/consumer evidence, not live GitHub, deployed D1 or real-user proof.
 
-The integration owner must reconcile this candidate with the accepted pathless
-foundation repair and revised privacy/final-merged contracts, select the real
+The current base supplies the accepted pathless foundation and revised
+privacy/final-merged contracts. Remaining adoption work is to select the real
 authorization/entitlement/current-policy adapters and exercise the authenticated
-App. Final squash/rebase
-boundary recovery and incomplete import coverage remain explicit operating seams.
+App. Final squash/rebase boundary recovery and incomplete import coverage remain
+explicit operating seams.
 The analytical App, including its separately selected experience and chart design,
 remains the complete destination; this backend candidate does not close it.
