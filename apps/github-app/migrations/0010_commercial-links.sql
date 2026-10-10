@@ -1,4 +1,4 @@
--- SPDX-License-Identifier: AGPL-3.0-only
+-- SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
 -- Customer-authorized Wirt links, the latest applied benefit projection, organisation
 -- bindings and the product-report outbox. Commercial facts never become GitHub authority:
 -- a binding records the funder's organisation administration as an observation with its time.

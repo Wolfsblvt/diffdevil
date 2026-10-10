@@ -1,4 +1,4 @@
--- SPDX-License-Identifier: AGPL-3.0-only
+-- SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
 -- Query retained analyses by repository and observation time without indexing
 -- path-bearing or user-authored configuration.
 CREATE INDEX IF NOT EXISTS history_repository_window ON history_records(repository_id, state, observed_at DESC, id DESC);

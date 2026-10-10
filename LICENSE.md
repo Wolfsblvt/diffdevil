@@ -3,7 +3,7 @@
 diffdevil uses component-specific terms. No single licence applies to every file in this repository or npm artifact.
 
 - Reusable engine, TypeScript API, npm/CLI and GitHub Action software is licensed under the [MIT License](LICENSES/MIT.txt).
-- Website, playground, GitHub App and hosted-service software is licensed under [GNU AGPL-3.0-only](LICENSES/AGPL-3.0-only.txt) when present.
+- Website, playground, GitHub App and hosted-service software is licensed under [GNU AGPL-3.0-only](LICENSES/AGPL-3.0-only.txt) when present. The managed App program additionally carries the narrow section 7 [premium-interface permission](LICENSES/AdditionRef-diffdevil-premium-interface-exception-1.0.txt) at two named interfaces.
 - Original documentation prose is licensed under CC BY 4.0, runnable examples are MIT, and product/visual identity remains reserved as described in the component map.
 - Third-party dependencies retain their own licences and notices.
 

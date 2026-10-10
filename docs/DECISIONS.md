@@ -2,7 +2,7 @@
 
 ## Meaning
 
-This records product/repository choices whose rationale cannot be reconstructed cheaply from source. D044 preserves independent release families, D064–D073 carry the ratified analytical product, and D054–D063 carry the accepted edition, plan, funding and management settlement of 2026-10-02. D056 also carries the purpose-bound GitHub service-connection settlement of 2026-10-10. These are selected product direction, not evidence that billing, collection or the expanded dashboard is live.
+This records product/repository choices whose rationale cannot be reconstructed cheaply from source. D044 preserves independent release families, D064–D073 carry the ratified analytical product, and D054–D063 carry the accepted edition, plan, funding and management settlement of 2026-10-02. D056 also carries the purpose-bound GitHub service-connection settlement of 2026-10-10. D078 and D079 carry the App's premium-interface permission and its App-family release channel of 2026-10-10. These are selected product direction, not evidence that billing, collection or the expanded dashboard is live.
 
 The complete predecessor record is preserved byte-for-byte as [Decisions through D073](DECISIONS-through-d053.md), with its existing references to the complete D001–D043 record. Earlier headings remain below to preserve fragment destinations. A new decision supersedes only its named boundary; it does not erase the previous rationale or implementation evidence.
 
@@ -203,6 +203,34 @@ The complete predecessor record is preserved byte-for-byte as [Decisions through
 **Why.** A rendering library does not decide which observation is useful, and a pair-count algorithm does not choose a usable interactive chart. Keeping the questions distinct prevents a convenient library or a first scoring idea from becoming accidental product meaning.
 
 **Open.** Sub-five-line downweighting, broad-change exclusion and other thresholds are hypotheses, not accepted formulas. Earlier renderer recommendations are evidence to reassess against the expanded capability, not a preselected answer. No new dependency is adopted by this record.
+
+## D078: Let independent premium modules join the AGPL App through two named interfaces
+
+**Status:** Selected by Wolf, 2026-10-10. Numbered after D074–D077, which in-flight App source already uses. The exact permission wording is a candidate for its named review before any release relies on it.
+
+**Decision.** The managed App program (`apps/github-app/`, `apps/shared/` and `apps/app/` where present) is licensed `AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0`. The [premium-interface permission](../LICENSES/AdditionRef-diffdevil-premium-interface-exception-1.0.txt) is an AGPLv3 section 7 additional permission: an independent module under other terms may join the App only through the Premium Service Interface (the optional `premium` argument of `createAnalyticalDataService`) and the Premium Application Interface (the extension resolved from `@diffdevil/premium-app` and `@diffdevil/premium-styles`, whose brief provider the managed-App Worker also resolves from `@diffdevil/premium-brief`), as a version Wolfsblvt Works publishes declares them, without becoming AGPL solely because of that combination. The App program and every modification of it stay AGPL, including the section 13 source offer. Copied or derived App code is never an independent module. Each version declares the exact files of each interface in `release.json`'s `premiumSeam`; current `main` declares `null` because the interfaces arrive with the Community App source.
+
+**Why.** AGPL already permits private, paid and commercial operation, so contributions and the paid edition never needed a relicensing grant. Wolf: “Doesn't AGPL-3.0 say the code can be used wherever, even in a private, paid proprietary server, etc etc, just that any modifications to that code need to be made public as well?” The remaining boundary is a combined work: AGPL alone does not let an independent proprietary module be built into the same covered program. A narrow permission at the two seams that the Community App source separates (D075, which arrives with that source) gives the private Pro/Business modules a lawful joining boundary, keeps every public change source-available, and lets outside contributions arrive under the ordinary component licence. Declaring the interface files per version keeps the permission exactly as wide as the published interface rather than the whole program.
+
+**Rejected.** A diffdevil-local contribution agreement, PR rights acknowledgement or proprietary relicensing grant (Wolf: “The shared CONTRIBUTING was designed to cover cases like diffdevil or shelfbound.”); a CLA, DCO programme or rights audit; a permission for any module or any part of the program, which would be a general proprietary-plugin platform; a permission limited to Wolfsblvt Works, which would be a private grant dressed as a public licence term; and leaving the combined-work question to assumption.
+
+**Consequences.** The [component licence map](../LICENSES/README.md#app-program--agpl-30-only-with-the-premium-interface-permission) owns the plain-language terms and the [account-wide contribution guide](https://github.com/Wolfsblvt/.github/blob/main/CONTRIBUTING.md) remains the complete contribution contract. Every licence notice in the App program carries the expression; a repository test refuses a plain AGPL notice there, so new App files cannot silently fall outside the permission. Anyone, not only Wolfsblvt Works, may join an independent module through the published interfaces; that is the honest scope of a public licence term, not a promise of a supported plugin system. A release declaring a seam must list files that carry the permission, which the release manifest builder enforces. Interface width is a product choice: every public module an extension imports belongs in the declaration or must stop being imported. Earlier AGPL-only versions stay as they were published. No customer licence, self-hosted commercial licence or legal certification is created.
+
+**Source.** Wolf's correction and the selected boundary in the diffdevil Lead conversation, 2026-10-10, quoted above.
+
+## D079: Let App consumers follow App-family releases through an exact manifest
+
+**Status:** Selected by Wolf, 2026-10-10; the public half of the route. The private consumer's resolver and lock live in its own repository.
+
+**Decision.** Each `app-vX.Y.Z` release attaches one `diffdevil-app-X.Y.Z.release.json` manifest derived from the exact release commit: version, tag, channel, source commit and tree, declared engine version, and the `premiumSeam` contract version, declared files of both interfaces and the permission that covers them. A consumer selects the greatest stable App-family release by numeric SemVer, verifies the manifest against the release and the fetched tag, checks seam compatibility, and records an exact generated lock. [Release families](RELEASING.md#app-family-release-manifest-and-its-consumers) owns the contract.
+
+**Why.** An exact bootstrap hash is a useful receipt, but a maintained product should consume the latest compatible release rather than turn every relevant public merge into a manual premium update. Release selection keeps unrelated merges inert, and the lock keeps every build reproducible without anyone editing hashes. A declared seam version tells the consumer whether it can join a release before it builds anything.
+
+**Rejected.** Following `main` (unreleased and unrelated changes would flow in); GitHub's repository-wide Latest or a mutable `latest` download URL (reserved for the open tool by D044, and not family-aware); a human-maintained exact pin as product direction; a source archive asset (the Git tree already identifies the content); and a general cross-repository release controller.
+
+**Consequences.** The App's first named release also needs its `premiumSeam` declaration once the Community seam is on `main`; until then `main` declares `null`, which no premium consumer can join. A development manifest serves the consumer's local-checkout override with the same fields. An inconsistent selected release fails the refresh rather than silently falling back. Automatic private refresh on release is the private repository's route, not a public controller.
+
+**Source.** Wolf's correction of the composition model, 2026-10-10, in the diffdevil Lead conversation.
 
 ## Earlier decisions and retained fragments
 

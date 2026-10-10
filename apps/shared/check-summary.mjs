@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
 /**
  * The App's native check summary text, shared by the managed App runtime (which posts
  * it) and the public playground (which previews it). One composer, one wording.

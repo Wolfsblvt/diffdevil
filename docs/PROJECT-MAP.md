@@ -25,6 +25,7 @@ and disposable outputs without introducing independently versioned products.
 | `action.yml` | One-step root Action, forwarding to the shared runtime. |
 | `package.json`, `package-lock.json`, `tsconfig.json` | Reusable product package, root development lock and core compiler boundary. The manual's private application toolchain has its own package metadata and qualification lock. |
 | `README.md`, `AGENTS.md` | Public product front door and repository-local contribution contract. |
+| `apps/github-app/release.json`, `apps/github-app/release-manifest.mjs` | App-family version and premium-interface declaration, and the builder of the exact release manifest App consumers resolve. |
 
 `apps/playground/`, `apps/github-app/`, `apps/browser-extension/` and `apps/website/` consume the built reusable engine; none duplicates measurement, policy, or provider semantics. The website's playground bundles that engine through two small shims for its Node-only imports, while the extension consumes the closed browser export and lightweight formatter. Their browser/server/Worker, managed ingress/Queue/D1 and GitHub-DOM adapters are application code, not npm-package contents.
 

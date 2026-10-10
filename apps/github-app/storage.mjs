@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
 import { normalizeHistoryLens } from './history-analytics.mjs';
 
 const DAY = 86_400_000;

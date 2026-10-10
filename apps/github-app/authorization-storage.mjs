@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
 
 // Only actual funded standing earns sessionless retention. A restore hold preserves that last
 // funded purpose for reconciliation, but never makes an ended/pending projection funded.

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
 
 export const HISTORY_QUERY_VERSION = 1;
 export const BASELINE_ORDINAL_BELOW = 20;

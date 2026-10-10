@@ -1,4 +1,4 @@
--- SPDX-License-Identifier: AGPL-3.0-only
+-- SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
 -- Browser authorization is independent of repository execution and history consent.
 CREATE TABLE authorization_attempts (state_hash TEXT PRIMARY KEY, browser_hash TEXT NOT NULL, return_context TEXT NOT NULL, expires_at TEXT NOT NULL, consumed_at TEXT);
 CREATE INDEX authorization_attempts_expiry ON authorization_attempts(expires_at);

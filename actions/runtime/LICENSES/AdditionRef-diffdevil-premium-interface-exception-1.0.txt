@@ -1,0 +1,113 @@
+diffdevil Premium Interface Exception, version 1.0
+
+Additional permission under section 7 of the GNU Affero General Public License,
+version 3
+
+Copyright (c) 2026 Wolfsblvt Works
+
+This additional permission supplements the GNU Affero General Public License,
+version 3 ("AGPLv3"), for each file of the diffdevil App whose licence notice
+states that it applies, for example with the SPDX expression
+
+    AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
+
+It is granted under section 7 of AGPLv3. It only adds permissions. It removes
+and restricts none of the permissions AGPLv3 grants.
+
+0. Definitions
+
+"The Program" means the files licensed under AGPLv3 with this permission, and
+any modification of them.
+
+"The Premium Service Interface" means the optional `premium` argument of
+`createAnalyticalDataService` in `apps/github-app/analytical-data.mjs`: the
+extension object supplied through that argument, the host object the Program
+provides to compose it, and the calls and data shapes the Program documents
+for that exchange.
+
+"The Premium Application Interface" means the optional extension the App
+build resolves from the module specifiers `@diffdevil/premium-app` and
+`@diffdevil/premium-styles`: the composed extension object and its documented
+parts, including its pull-request brief provider, which the managed-App Worker
+also resolves from the module specifier `@diffdevil/premium-brief`; the
+premium slots of the App's pages that render those parts; and the
+registration calls the Program documents for that extension.
+
+"The Declared Interface Files" of a version of the Program are the files that
+version lists for each interface in `premiumSeam.interfaces` of
+`apps/github-app/release.json`.
+
+"A Published Interface" means the Premium Service Interface or the Premium
+Application Interface exactly as it exists, unmodified, in a version of the
+Program that Wolfsblvt Works has published as source and that declares it.
+A Published Interface consists of that version's Declared Interface Files for
+that interface.
+
+"An Independent Module" means a work that:
+
+  (a) is not a copy or modification of the Program, or of any part of it,
+      and is not otherwise derived from or based on the Program;
+
+  (b) joins the Program only through one or both Published Interfaces, used
+      as the Program documents them, including by importing, calling or
+      rendering their Declared Interface Files; and
+
+  (c) contains, from the Program, only the names, module specifiers, function
+      signatures and data shapes needed to use those interfaces.
+
+Code copied from or derived from the Program does not become an Independent
+Module because it is moved into another file, package or repository.
+
+"A Combined Work" means a work, in source form, in object form or as a
+program run for users interacting with it remotely, that consists of the
+Program combined with one or more Independent Modules through Published
+Interfaces.
+
+1. Permission
+
+You may convey a Combined Work, and you may run a Combined Work for users
+interacting with it remotely through a computer network, under terms of your
+choice for its Independent Modules, provided that you comply with AGPLv3 for
+every part of the Combined Work that is the Program. In particular:
+
+  (a) An Independent Module need not be licensed under AGPLv3, and is not part
+      of the Corresponding Source of the Program or of the Combined Work for
+      the purposes of AGPLv3, solely because it is combined with the Program
+      through a Published Interface. The requirement of AGPLv3 section 5(c)
+      to license the entire work as a whole does not extend to it.
+
+  (b) The Program, including every modification of it, remains licensed under
+      AGPLv3. If you modify the Program and run it for users interacting with
+      it remotely, section 13 of AGPLv3 still requires you to offer them the
+      Corresponding Source of your modified Program. That Corresponding Source
+      need not include Independent Modules.
+
+  (c) You must keep intact the Program's copyright and licence notices,
+      including the notice that this permission applies.
+
+2. Limits
+
+  (a) This permission applies only to a combination through a Published
+      Interface. It does not extend to a combination through any other part
+      of the Program, through an interface whose Declared Interface Files you
+      or anyone else have modified, or through an interface you add, unless
+      and until a version of the Program that Wolfsblvt Works publishes as
+      source declares that same interface.
+
+  (b) It grants no permission for a module that is copied from or derived
+      from the Program, and no permission to remove or alter the Program's
+      notices or to withhold its Corresponding Source.
+
+  (c) It does not change the licence of third-party material in or
+      distributed with the Program, which keeps its own terms. It does not
+      invalidate any other reason why a module may be covered by AGPLv3.
+
+  (d) It is not a promise that any interface will remain available, stable or
+      supported, and it creates no plugin registry, discovery mechanism or
+      support obligation.
+
+3. Removing this permission
+
+As section 7 of AGPLv3 allows, when you convey a copy of the Program you may
+remove this additional permission from that copy, or from any part of it.
+While it remains, it applies on these terms.
