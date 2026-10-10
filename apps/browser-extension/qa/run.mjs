@@ -384,24 +384,33 @@ ${await page.evaluate(() => JSON.stringify({ calls: fixture.calls, href: fixture
       return { ok: true, value };
     } catch (error) { return { ok: false, code: error.code ?? 'TEST_OPERATION_FAILED', message: error.message }; }
   };
-  // GitHub omits the late file twice and then returns it; the collapsed file is never asked for again.
-  const lockMeasure = async (paths, via) => { lockCalls.push({ paths, via }); lockAnswers++; return lockWorld.extend({ comparison: lockComparison, patches: lockAnswers >= 3 && paths.includes(lateName) ? [{ path: lateName, patch: fragment }] : [], ...(lockAnswers < 3 ? { unresolved: Object.fromEntries(paths.map(path => [path, 'not-returned'])) } : {}), via }, lockSettings); };
+  // GitHub omits the late file twice and then returns it, and supplies the collapsed file's lines only on the fourth ask.
+  const lockMeasure = async (paths, via) => {
+    lockCalls.push({ paths, via }); lockAnswers++;
+    const patches = [...(lockAnswers >= 3 && paths.includes(lateName) ? [{ path: lateName, patch: fragment }] : []), ...(lockAnswers >= 4 && paths.includes(lockName) ? [{ path: lockName, patch: fragment }] : [])];
+    const unresolved = Object.fromEntries(paths.filter(path => !patches.some(item => item.path === path)).map(path => [path, path === lockName ? 'collapsed' : 'not-returned']));
+    return lockWorld.extend({ comparison: lockComparison, patches, ...(Object.keys(unresolved).length ? { unresolved } : {}), via }, lockSettings);
+  };
   const lockPage = await contentPage({ value: lockPacket, data: lockComparison, settings: lockSettings, backend: lockBackend, measure: lockMeasure, headers: ['src/a.ts', lockName, lateName] });
-  await check('A file GitHub collapses stays bounded with its reason, a pass never re-asks it, and a pass that measures nothing says so without redrawing the report as progress', async () => {
+  await check('A file GitHub collapses stays bounded with its reason, nothing automatic re-asks it, an explicit pass always may, and a pass that measures nothing says so without redrawing the report as progress', async () => {
     const popoverText = () => lockPage.page.locator('.ddx-popover').innerText();
     await lockPage.page.locator('[data-ddx="aggregate"] .ddx-trigger').click(); let text = await popoverText();
     assert.match(text, /bounded\s+2/u); assert.match(text, /not supplied\s+1 collapsed by GitHub \(generated\), 1 not returned/u);
-    const more = lockPage.page.getByRole('button', { name: 'Analyze remaining files' }); assert.equal(await more.count(), 1); assert.match(await more.getAttribute('title'), /Reads 1 more file /u, 'only the file GitHub might still return is offered');
+    await lockPage.page.waitForTimeout(800); assert.deepEqual(lockCalls, [], 'nothing automatic re-asked an unresolved file');
+    const more = lockPage.page.getByRole('button', { name: 'Analyze remaining files' }); assert.equal(await more.count(), 1); assert.match(await more.getAttribute('title'), /Reads 2 more files /u, 'the explicit pass includes the collapsed file');
     await more.click(); await lockPage.page.waitForFunction(() => /none could be measured/u.test(document.querySelector('.ddx-popover-host')?.shadowRoot?.querySelector('.ddx-popover')?.innerText ?? ''), null, { timeout: 4000 });
     await lockPage.page.evaluate(() => { document.querySelector('[data-ddx="aggregate"]').dataset.sameNode = 'yes'; });
     await lockPage.page.getByRole('button', { name: 'Analyze remaining files' }).click(); await lockPage.page.waitForTimeout(300);
-    text = await popoverText(); assert.match(text, /Asked GitHub for 1 file; none could be measured: 1 not returned\./u);
+    text = await popoverText(); assert.match(text, /Asked GitHub for 2 files; none could be measured: 1 collapsed by GitHub \(generated\), 1 not returned\./u);
     assert.equal(await lockPage.page.locator('[data-ddx="aggregate"]').getAttribute('data-same-node'), 'yes', 'an attempt that changed nothing did not rebuild the seats');
     await lockPage.page.getByRole('button', { name: 'Analyze remaining files' }).click();
-    await lockPage.page.waitForFunction(() => /Asked GitHub for 1 file: 1 measured\./u.test(document.querySelector('.ddx-popover-host')?.shadowRoot?.querySelector('.ddx-popover')?.innerText ?? ''), null, { timeout: 4000 });
+    await lockPage.page.waitForFunction(() => /Asked GitHub for 2 files: 1 measured · 1 still bounded: 1 collapsed by GitHub \(generated\)\./u.test(document.querySelector('.ddx-popover-host')?.shadowRoot?.querySelector('.ddx-popover')?.innerText ?? ''), null, { timeout: 4000 });
     text = await popoverText(); assert.match(text, /measured\s+2/u); assert.match(text, /bounded\s+1/u); assert.match(text, /not supplied\s+1 collapsed by GitHub \(generated\)\s/u);
-    assert.equal(await lockPage.page.getByRole('button', { name: 'Analyze remaining files' }).count(), 0, 'with only GitHub’s settled answer left, no pass is offered');
-    assert.ok(lockCalls.length === 3 && lockCalls.every(call => call.via === 'explicit' && !call.paths.includes(lockName)), JSON.stringify(lockCalls));
+    assert.equal(await lockPage.page.getByRole('button', { name: 'Analyze remaining files' }).count(), 1, 'an unresolved file can still be asked for explicitly');
+    await lockPage.page.getByRole('button', { name: 'Analyze remaining files' }).click();
+    await lockPage.page.waitForFunction(() => /Asked GitHub for 1 file: 1 measured\./u.test(document.querySelector('.ddx-popover-host')?.shadowRoot?.querySelector('.ddx-popover')?.innerText ?? ''), null, { timeout: 4000 });
+    text = await popoverText(); assert.match(text, /measured\s+3/u); assert.match(text, /bounded\s+0/u); assert.doesNotMatch(text, /not supplied/u);
+    assert.ok(lockCalls.length === 4 && lockCalls.every(call => call.via === 'explicit') && lockCalls.slice(0, 3).every(call => call.paths.includes(lockName)), JSON.stringify(lockCalls));
     await capture(lockPage.page, 'continuity-report-collapsed');
   });
   await lockPage.page.evaluate(() => controller.stop()); await lockPage.context.close();
@@ -419,7 +428,7 @@ ${await page.evaluate(() => JSON.stringify({ calls: fixture.calls, href: fixture
       return { bounded, declined, calls, collapsed, unreachable };
     }, worldView);
     assert.match(answers.bounded, /Not measured yet.*automatic limit of 150/u); assert.match(answers.bounded, /Measure this file/u); assert.equal(answers.calls.length, 1); assert.match(answers.declined, /declined to supply.*binary/u);
-    assert.match(answers.collapsed.text, /generated.*Load diff.*range/u); assert.doesNotMatch(answers.collapsed.text, /automatic limit/u, 'a file GitHub collapsed was not left bounded by the limit'); assert.equal(answers.collapsed.button, null, 'GitHub’s settled answer is not offered as a request that can only repeat it');
+    assert.match(answers.collapsed.text, /generated.*Load diff.*range/u); assert.doesNotMatch(answers.collapsed.text, /automatic limit/u, 'a file GitHub collapsed was not left bounded by the limit'); assert.equal(answers.collapsed.button, 'Ask GitHub again', 'the reader can always ask again explicitly');
     assert.match(answers.unreachable.text, /Asked again just now\. GitHub could not be reached/u); assert.equal(answers.unreachable.button, 'Ask GitHub again');
   });
   await panels.context.close();

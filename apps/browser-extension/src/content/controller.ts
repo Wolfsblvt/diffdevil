@@ -4,7 +4,7 @@ import type { Settings } from '../shared/catalogue.js';
 import { request as defaultRequest, type MeasureVia, type Packet, type PacketFile } from '../shared/protocol.js';
 import { SETTINGS_KEY } from '../shared/settings-key.js';
 import { isPaused } from '../shared/repository.js';
-import { automaticRemaining, retryable, selectFiles } from '../shared/coverage.js';
+import { automaticRemaining, selectFiles } from '../shared/coverage.js';
 import { node, button } from '../shared/dom.js';
 import { acquire as defaultAcquire, automaticLimit, type Standing } from './acquire.js';
 import { measure as defaultMeasure } from './measure.js';
@@ -252,8 +252,8 @@ export function startContent(dependencies: ContentDependencies = {}): { refresh:
     const changed = after.key !== before.key || JSON.stringify(after.coverage) !== JSON.stringify(before.coverage) || JSON.stringify(after.files) !== JSON.stringify(before.files);
     return { asked: paths.length, measured, declined, unresolved, changed };
   }
-  /** Bounded files an explicit pass can still hope to measure: GitHub's settled answer for this head is not asked for again. */
-  const continuable = (): string[] => packet ? packet.files.filter(file => file.standing === 'bounded' && retryable(file.unresolved)).map(file => file.path) : [];
+  /** Every bounded file: an explicit pass asks again even where the last attempt could not measure. */
+  const continuable = (): string[] => packet ? packet.files.filter(file => file.standing === 'bounded').map(file => file.path) : [];
   /** Files on screen where the reader settled, outside the measured set, within what remains of the comparison's automatic budget. */
   function scheduleVisible(): void {
     if (!packet || stopped || measuring || continuation) return;

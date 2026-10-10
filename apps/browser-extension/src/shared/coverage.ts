@@ -13,7 +13,9 @@ export type FileStanding = 'measured' | 'bounded' | 'declined';
  * counters but no lines because it marks the file generated and renders it only on demand (Load
  * diff); `no-lines` is any other entry returned without lines or a decline flag; `not-returned` is a requested path the response did not name; `unreadable` is lines in a shape
  * diffdevil does not read; `disagrees` is a patch the engine rejected against GitHub's own
- * counters; `unreachable` is a request for it that failed. Only an explicit act asks again.
+ * counters; `unreachable` is a request for it that failed. The head fixes the comparison, not
+ * whether GitHub supplied it or the adapter could read it, so an explicit act may always ask again;
+ * automatic work (an opening pass, scrolling, a raised limit) never re-asks an unresolved file.
  */
 export type UnresolvedReason = 'collapsed' | 'no-lines' | 'not-returned' | 'unreadable' | 'disagrees' | 'unreachable';
 /** Automatic work is bounded by one configured number per comparison; an explicit act is bounded only by the comparison. */
@@ -48,8 +50,6 @@ export const FILE_LIMIT = { minimum: 1, maximum: 3000 } as const;
 export const DEFAULT_FILE_LIMIT = 150;
 export const emptyCoverage = (limit: number): Coverage => ({ limit, automatic: 0, topUp: 0, explicit: 0, declined: {}, unresolved: {} });
 export const isDeclineReason = (value: unknown): value is DeclineReason => value === 'binary' || value === 'submodule' || value === 'too-big' || value === 'truncated' || value === 'omitted';
-/** Whether asking again could give another answer: a failed or incomplete request can; GitHub's own answer for an immutable head does not change. */
-export const retryable = (reason: UnresolvedReason | undefined): boolean => reason === undefined || reason === 'unreachable' || reason === 'not-returned';
 export const isUnresolvedReason = (value: unknown): value is UnresolvedReason => value === 'collapsed' || value === 'no-lines' || value === 'not-returned' || value === 'unreadable' || value === 'disagrees' || value === 'unreachable';
 /** What a file is, as the report knows it: measured, or declined (with why), or neither yet (with what the last attempt saw, when one was made). */
 export interface FileFact { readonly path: string; readonly measured: boolean; readonly declined?: DeclineReason; readonly unresolved?: UnresolvedReason }

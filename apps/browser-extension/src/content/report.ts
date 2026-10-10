@@ -7,7 +7,7 @@
  */
 import { measurementText as value, evidenceText } from '@wolfsblvt/diffdevil/browser/text';
 import type { HumanReportView, Rail } from '@wolfsblvt/diffdevil/browser';
-import { measuredAutomatically, retryable, type CoverageSummary, type DeclineReason, type FileStanding, type UnresolvedReason } from '../shared/coverage.js';
+import { measuredAutomatically, type CoverageSummary, type DeclineReason, type FileStanding, type UnresolvedReason } from '../shared/coverage.js';
 import { node, button } from '../shared/dom.js';
 import { productIcon } from '../shared/icons.js';
 import type { Popover } from './popover.js';
@@ -29,7 +29,7 @@ export interface CoverageControl {
   readonly note: () => string | undefined;
   /** What the last completed pass did. */
   readonly outcome: () => Attempt | undefined;
-  /** Bounded files a pass can still ask GitHub for; GitHub's settled answer for this head is not asked for again. */
+  /** Bounded files an explicit pass asks GitHub for. */
   readonly remaining: () => number;
   /** The one explicit continuation: measure every file still bounded. */
   readonly start: () => void;
@@ -151,7 +151,7 @@ const REASON_TEXT: Readonly<Record<DeclineReason, string>> = { binary: 'binary',
 const UNRESOLVED_SHORT: Readonly<Record<UnresolvedReason, string>> = { collapsed: 'collapsed by GitHub (generated)', 'no-lines': 'sent without lines', 'not-returned': 'not returned', unreadable: 'in an unread format', disagrees: 'not matching GitHub’s counts', unreachable: 'unreachable' };
 /** One file's sentence: what GitHub did and what follows. */
 const UNRESOLVED_TEXT: Readonly<Record<UnresolvedReason, string>> = {
-  collapsed: 'GitHub marks this file generated and collapses it: it reports the counts but sends none of its lines unless you choose Load diff on the page. diffdevil cannot read a collapsed file yet, so its numbers stay a range.',
+  collapsed: 'GitHub marks this file generated and collapses it. It reported the counts, but neither its entry nor its on-demand Load diff route supplied lines when last asked, so its numbers stay a range.',
   'no-lines': 'GitHub returned this file with its counts but none of its lines and no reason. Its numbers stay a range.',
   'not-returned': 'GitHub did not return this file when it was asked for. Its numbers stay a range until it is asked for again.',
   unreadable: 'GitHub sent this file’s lines in a form diffdevil does not read. Its numbers stay a range.',
@@ -244,8 +244,8 @@ function fileCoverage(view: HumanReportView, actions: ReportActions): HTMLElemen
   if (state.unresolved) {
     const line = node('span', '', `${state.askedAgain ? 'Asked again just now. ' : ''}${UNRESOLVED_TEXT[state.unresolved]} `); if (state.askedAgain) line.setAttribute('role', 'status');
     block.append(line);
-    // GitHub's own answer for this head does not change; offering the same request again would only redraw.
-    if (retryable(state.unresolved)) block.append(keyed(button('Ask GitHub again', () => actions.measureFile(path), 'ddx-secondary'), 'measure-file'));
+    // The head fixes the comparison, not whether GitHub supplied it: the reader can always ask again.
+    block.append(keyed(button('Ask GitHub again', () => actions.measureFile(path), 'ddx-secondary'), 'measure-file'));
     return block;
   }
   const summary = actions.coverage.summary();

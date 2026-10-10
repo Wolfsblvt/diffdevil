@@ -3,7 +3,7 @@ import type { BrowserComparison } from '@wolfsblvt/diffdevil/browser';
 import { request, type Lookup, type MeasureVia, type Packet, type PublicPull } from '../shared/protocol.js';
 import type { DeclineReason, UnresolvedReason } from '../shared/coverage.js';
 import { ExtensionError } from '../shared/errors.js';
-import { comparisonIdentity, exclusive, loadDiffEntries, tally } from './acquire.js';
+import { comparisonIdentity, exclusive, expandOnDemand, loadDiffEntries, tally } from './acquire.js';
 import { measurableEntries, pageComparison, sameComparison, type Route } from './github.js';
 /** GitHub lists a pull request's files 100 to a page, at most 30 pages. */
 const PAGE = 100;
@@ -33,8 +33,10 @@ export async function measure(current: Route, packet: Packet, paths: readonly st
         // The signed-in route is asked for the packet's own head; the page must not already name another comparison.
         const loaded = await loadDiffEntries(current, comparison, asked, signal); const read = measurableEntries(loaded.entries, new Set(asked));
         for (const path of loaded.failedPaths) read.unresolved[path] = 'unreachable';
+        // A file GitHub collapsed is read through its own on-demand route, without rendering it.
+        const expanded = await expandOnDemand(current, comparison, read.unresolved, signal); read.patches.push(...expanded.patches);
         found = read;
-        if (Object.keys(read.unresolved).length) console.info('[diffdevil] files not measured', { via, asked: asked.length, measured: read.patches.length, unresolvedReasons: tally(read.unresolved), shapes: read.shapes });
+        if (Object.keys(read.unresolved).length || expanded.failureCodes.length) console.info('[diffdevil] files not measured', { via, asked: asked.length, measured: read.patches.length, onDemand: expanded.patches.length, ...(expanded.failureCodes.length ? { onDemandFailures: expanded.failureCodes } : {}), unresolvedReasons: tally(read.unresolved), shapes: read.shapes });
         const shown = typeof document === 'undefined' ? undefined : pageComparison(document, current);
         if (shown && !sameComparison(comparison, shown)) throw moved(shown);
       } catch (error) {

@@ -3,7 +3,7 @@ import type { BrowserComparison, BrowserInput } from '@wolfsblvt/diffdevil/brows
 import { request, type AcquisitionCoverage, type Lookup, type Packet, type PolicySource, type PublicPull } from '../shared/protocol.js';
 import { boundedText, ExtensionError, safePath } from '../shared/errors.js';
 import { DEFAULT_FILE_LIMIT, FILE_LIMIT, selectFiles, type DeclineReason, type UnresolvedReason } from '../shared/coverage.js';
-import { blobText, embeddedFiles, pageComparison, sameComparison, unpatchedPaths, visiblePaths, withEntries, type Route } from './github.js';
+import { blobText, contentPatch, embeddedFiles, pageComparison, sameComparison, unpatchedPaths, visiblePaths, withEntries, type Route } from './github.js';
 const LIMIT = 8 * 1024 * 1024;
 /** The configured automatic limit, or the default when the setting is absent or unusable. */
 export const automaticLimit = (settings: Readonly<Record<string, unknown>>): number => { const value = settings['analysis.maximumFiles']; return Number.isSafeInteger(value) && Number(value) >= FILE_LIMIT.minimum && Number(value) <= FILE_LIMIT.maximum ? Number(value) : DEFAULT_FILE_LIMIT; };
@@ -97,6 +97,39 @@ export async function loadDiffEntries(current: Route, comparison: BrowserCompari
   };
   await Promise.all(Array.from({ length: Math.min(ENTRY_CONCURRENCY, batches.length) }, worker));
   return { entries, retryFailures, retryFailureCodes: [...retryFailureCodes], failedPaths };
+}
+/**
+ * The route GitHub's own Load diff uses for one file it collapsed (observed live: a generated lockfile
+ * whose `diff_entries` entry carries exact counters and no lines). Same origin, headers and range as
+ * the entries route; it answers `{ diffEntryLines }`, which is read for patch text only and never
+ * rendered. Undefined when GitHub returns no lines either.
+ */
+export async function loadEntryLines(current: Route, comparison: BrowserComparison, path: string, signal: AbortSignal): Promise<string | undefined> {
+  const url = `${current.path}/page_data/diff_entry_lines?path=${encodeURIComponent(path)}&w=0&range=${comparison.head}`;
+  const response = await fetch(url, { credentials: 'same-origin', cache: 'no-store', signal: AbortSignal.any([signal, AbortSignal.timeout(20_000)]), headers: ENTRY_HEADERS });
+  if (new URL(response.url).origin !== 'https://github.com' || !response.ok || !/application\/json/iu.test(response.headers.get('Content-Type') ?? '')) throw new ExtensionError('DIFF_ENTRY_LINES', `GitHub’s diff entry lines route answered HTTP ${response.status}.`);
+  const value: unknown = JSON.parse(await boundedText(response, LIMIT));
+  const lines = value && typeof value === 'object' ? (value as { diffEntryLines?: unknown }).diffEntryLines : undefined;
+  if (!Array.isArray(lines)) throw new ExtensionError('DIFF_ENTRY_LINES', 'GitHub’s diff entry lines route did not return lines.');
+  return contentPatch({ path, diffLines: lines });
+}
+/** Reasons for which GitHub's on-demand route is asked: an entry that came back without lines. */
+const ON_DEMAND: ReadonlySet<UnresolvedReason> = new Set(['collapsed', 'no-lines']);
+/**
+ * Asks the on-demand route for every file the entries route returned without lines. A file it
+ * supplies gains its patch and loses its unresolved reason; any other keeps what was observed.
+ * Never throws except on cancellation; failures are counted for the path-free diagnostic.
+ */
+export async function expandOnDemand(current: Route, comparison: BrowserComparison, unresolved: Record<string, UnresolvedReason>, signal: AbortSignal): Promise<{ patches: { path: string; patch: string }[]; failureCodes: string[] }> {
+  const paths = Object.keys(unresolved).filter(path => ON_DEMAND.has(unresolved[path]!)); const patches: { path: string; patch: string }[] = []; const failureCodes = new Set<string>(); let next = 0;
+  const worker = async (): Promise<void> => {
+    for (let path = paths[next++]; path !== undefined; path = paths[next++]) {
+      try { const patch = await loadEntryLines(current, comparison, path, signal); if (patch !== undefined) { patches.push({ path, patch }); delete unresolved[path]; } }
+      catch (error) { if (signal.aborted) throw error; failureCodes.add(error instanceof ExtensionError ? error.code : 'DIFF_ENTRY_LINES'); }
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(ENTRY_CONCURRENCY, paths.length) }, worker));
+  return { patches, failureCodes: [...failureCodes] };
 }
 /** What a fresh read of the same route said about a comparison shown from the cache. */
 export type Standing = { readonly standing: 'current' } | { readonly standing: 'moved'; readonly observed?: BrowserComparison } | { readonly standing: 'unconfirmed'; readonly code: string };
@@ -214,13 +247,16 @@ export async function acquire(current: Route, document: Document, signal: AbortS
             const order = embedded.files.map(file => String(file.filename)); const chosen = new Set(selectFiles(order, visiblePaths(document), limit, new Set(Object.keys(declined))));
             let files = embedded.files.map(file => chosen.has(String(file.filename)) || file.patch === undefined ? file : (({ patch: _patch, ...rest }) => rest)(file));
             const pending = unpatchedPaths(files).filter(path => chosen.has(path)); let loaded = 0; let declinedNow = 0; let retryFailures = 0; let retryFailureCodes: string[] = [];
-            const unresolved: Record<string, UnresolvedReason> = Object.create(null) as Record<string, UnresolvedReason>; let shapes: unknown[] = [];
+            const unresolved: Record<string, UnresolvedReason> = Object.create(null) as Record<string, UnresolvedReason>; let shapes: unknown[] = []; let onDemand = 0; let onDemandFailures: string[] = [];
             if (pending.length) {
               try {
                 const result = await loadDiffEntries(current, resolved, pending, signal);
                 const merged = withEntries(files, result.entries, new Set(pending));
                 files = merged.files; loaded = merged.loaded; declinedNow = merged.declined; Object.assign(declined, merged.declinedPaths); Object.assign(unresolved, merged.unresolved); shapes = merged.shapes;
                 for (const path of result.failedPaths) unresolved[path] = 'unreachable';
+                // A file GitHub collapsed is read through its own on-demand route, without rendering it.
+                const expanded = await expandOnDemand(current, resolved, unresolved, signal); onDemand = expanded.patches.length; onDemandFailures = expanded.failureCodes;
+                if (onDemand) { const byPath = new Map(expanded.patches.map(item => [item.path, item.patch])); files = files.map(file => byPath.has(String(file.filename)) ? { ...file, patch: byPath.get(String(file.filename)) } : file); loaded += onDemand; }
                 retryFailures = result.retryFailures; retryFailureCodes = result.retryFailureCodes;
               }
               catch (routeFailure) { if (signal.aborted) throw routeFailure; routeError = (routeFailure as { code?: string }).code ?? 'DIFF_ENTRIES'; for (const path of pending) unresolved[path] = 'unreachable'; }
@@ -228,7 +264,7 @@ export async function acquire(current: Route, document: Document, signal: AbortS
             const patched = files.filter(file => file.patch !== undefined).length;
             embedded = { ...embedded, files, patched, declined };
             const unresolvedCount = Object.keys(unresolved).length;
-            console.info('[diffdevil] signed-in acquisition', { files: files.length, limit, chosen: chosen.size, embedded: patched - loaded, loaded, declined: declinedNow, bounded: files.length - patched, ...(unresolvedCount ? { unresolved: unresolvedCount, unresolvedReasons: tally(unresolved), shapes } : {}), ...(retryFailures ? { retryFailures, retryFailureCodes } : {}), ...(routeError ? { routeError } : {}) });
+            console.info('[diffdevil] signed-in acquisition', { files: files.length, limit, chosen: chosen.size, embedded: patched - loaded, loaded, declined: declinedNow, bounded: files.length - patched, ...(onDemand ? { onDemand } : {}), ...(onDemandFailures.length ? { onDemandFailures } : {}), ...(unresolvedCount ? { unresolved: unresolvedCount, unresolvedReasons: tally(unresolved), shapes } : {}), ...(retryFailures ? { retryFailures, retryFailureCodes } : {}), ...(routeError ? { routeError } : {}) });
             coverage = { limit, declined, ...(unresolvedCount ? { unresolved } : {}) };
             acquisition = { comparison: resolved, format: 'github-files', files, complete: embedded.complete && files.length === (resolved.changedFiles ?? files.length) };
           }
