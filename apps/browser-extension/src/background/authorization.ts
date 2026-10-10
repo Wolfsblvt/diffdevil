@@ -13,9 +13,10 @@ export function authorize(sender: chrome.runtime.Sender, message: Message, exten
   if (frame.origin !== 'https://github.com' || url.origin !== 'https://github.com' || sender.frameId !== 0) throw new ExtensionError('SENDER_REJECTED', 'A supported top-level GitHub page is required.');
   const route = /^\/([^/]+\/[^/]+)\/pull\/([1-9]\d*)(?:\/|$)/u.exec(url.pathname);
   if (!route) throw new ExtensionError('SENDER_REJECTED', 'This request requires a GitHub pull-request page.');
-  if (['settings.save', 'data.action', 'diagnostics.get'].includes(message.type)) throw new ExtensionError('OPTIONS_REQUIRED', 'Manage extension data from Settings.');
+  if (['settings.save', 'data.action', 'data.inventory', 'diagnostics.get'].includes(message.type)) throw new ExtensionError('OPTIONS_REQUIRED', 'Manage extension data from Settings.');
   const repository = repositoryKey(route[1]!); const pullRequest = Number(route[2]);
-  const target = message.type === 'analysis.run' ? message.input.comparison : message.type === 'cache.lookup' ? message.comparison : message.type === 'source.public' || message.type === 'source.policy' ? message : undefined;
+  // Every message that names a repository may name only the pull request the page is on.
+  const target = message.type === 'analysis.run' ? message.input.comparison : 'comparison' in message ? message.comparison : message.type === 'source.public' || message.type === 'source.policy' || message.type === 'cache.recent' || message.type === 'repository.pause' ? message : undefined;
   if (target && repositoryKey(target.repository) !== repository || target && 'pullRequest' in target && target.pullRequest !== pullRequest) throw new ExtensionError('SENDER_SCOPE', 'A page may acquire only its own pull request.');
   return { options: false, repository, pullRequest };
 }

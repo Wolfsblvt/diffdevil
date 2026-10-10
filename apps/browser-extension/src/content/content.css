@@ -52,3 +52,7 @@
 @media(max-width:700px){.ddx-status{inset-block-start:64px;inset-inline:12px;max-width:none}}
 @media(prefers-reduced-motion:reduce){.ddx-root,.ddx-native-leaving,.ddx-native-faint{transition:none}.ddx-root.ddx-entering{opacity:1}}
 @media(forced-colors:active){.ddx-cell{border-color:CanvasText}.ddx-cell.ddx-selected{background:Highlight;border-color:Highlight}.ddx-brand-mono{background:CanvasText}.ddx-swatch{border:1px solid CanvasText}}
+
+/* paused: one muted line in the aggregate seat, with the way back; GitHub's counts stay at full strength */
+.ddx-root[data-ddx=paused]{gap:6px;color:var(--fgColor-muted,var(--color-fg-muted,#59636e))}
+.ddx-provenance[data-standing=unconfirmed]{font-style:italic}

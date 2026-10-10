@@ -7,11 +7,36 @@
  */
 import { measurementText as value, evidenceText } from '@wolfsblvt/diffdevil/browser/text';
 import type { HumanReportView, Rail } from '@wolfsblvt/diffdevil/browser';
+import type { CoverageSummary, DeclineReason, FileStanding } from '../shared/coverage.js';
 import { node, button } from '../shared/dom.js';
 import { productIcon } from '../shared/icons.js';
 import type { Popover } from './popover.js';
 import { observedLabels } from './labels.js';
+/** Whether the facts on screen came from this browser's cache, and whether GitHub has since confirmed them. */
+export type Provenance = 'live' | 'cached' | 'unconfirmed';
+export const provenanceText = (state: Provenance, compact: boolean): string => state === 'live' ? 'local' : state === 'cached' ? (compact ? 'local · cached' : 'local · from cache · confirming') : (compact ? 'local · cached · not confirmed' : 'local · from cache · not confirmed');
+export const provenanceTitle = (state: Provenance): string => state === 'live' ? 'Computed in this browser from the pull-request comparison. No App report is implied.'
+  : state === 'cached' ? 'Shown at once from this browser’s local cache while GitHub confirms the comparison is unchanged. A moved head is never kept as current.'
+  : 'GitHub could not be reached to confirm this comparison. These facts are exact for the base and head named here and were read earlier on this device.';
+/** A continuation in progress; `failed` counts files the provider did not supply. */
+export interface Progress { readonly done: number; readonly total: number; readonly failed: number }
+export interface CoverageControl {
+  readonly summary: () => CoverageSummary | undefined;
+  readonly progress: () => Progress | undefined;
+  /** Why the last pass stopped, when it did. */
+  readonly note: () => string | undefined;
+  /** The one explicit continuation: measure every file still bounded. */
+  readonly start: () => void;
+  readonly cancel: () => void;
+}
 export interface ReportActions {
+  readonly provenance: () => Provenance;
+  readonly coverage: CoverageControl;
+  /** Where one file stands, and why the provider declined it. */
+  readonly fileStanding: (path: string) => { readonly standing: FileStanding; readonly reason?: DeclineReason } | undefined;
+  readonly measureFile: (path: string) => void;
+  readonly pause: () => void;
+  readonly dataUrl: string;
   /** The canonical human report for the scope: the text the CLI prints. */
   readonly copyText: (path?: string) => Promise<string>;
   readonly retry: () => void;
@@ -113,6 +138,32 @@ function planBlock(view: HumanReportView, actions: ReportActions): HTMLElement |
   block.append(...keyValue('select', ...select), ...keyValue('⟲ readback', observed ? `observed · ${label} on #${pr ?? '?'}` : 'not observed'), status);
   return block;
 }
+const REASON_TEXT: Readonly<Record<DeclineReason, string>> = { binary: 'binary', submodule: 'submodule', 'too-big': 'too big', truncated: 'truncated', omitted: 'no patch supplied' };
+/** measured / bounded / provider-declined / total, the automatic limit, and what on-demand work changed. */
+function coverageBlock(actions: ReportActions): HTMLElement | undefined {
+  const summary = actions.coverage.summary(); if (!summary) return undefined;
+  const block = node('div', 'ddx-block ddx-grid ddx-coverage'); block.append(eyebrow('coverage', summary.bounded === 0 ? 'every file measured' : 'bounded until the rest is measured'));
+  const declined = Object.entries(summary.declinedReasons).map(([reason, count]) => `${count} ${REASON_TEXT[reason as DeclineReason]}`).join(', ');
+  const counts = node('span', 'ddx-coverage-counts');
+  for (const [label, count, key] of [['measured', summary.measured, 'measured'], ['bounded', summary.bounded, 'bounded'], ['provider-declined', summary.declined, 'declined'], ['total', summary.total, 'total']] as const) {
+    const item = node('span', 'ddx-coverage-item'); item.dataset.part = key; item.append(`${label} `, node('b', '', `${summary.totalExact || key !== 'total' ? '' : '≥ '}${count}`)); counts.append(item);
+  }
+  if (declined) counts.title = `Provider declined: ${declined}.`;
+  const limit = node('span', 'ddx-quiet', `automatic limit ${summary.limit}${summary.onDemand ? ` · on-demand work added ${summary.onDemand} ${summary.onDemand === 1 ? 'file' : 'files'}` : ''}`);
+  block.append(...keyValue('files', counts), ...keyValue('limit', limit));
+  const progress = actions.coverage.progress();
+  if (progress) {
+    const line = node('span', 'ddx-coverage-progress', `Analyzing remaining files · ${progress.done} of ${progress.total}${progress.failed ? ` · ${progress.failed} not supplied` : ''}`); line.setAttribute('role', 'status');
+    const cancel = button('Cancel', () => actions.coverage.cancel(), 'ddx-link'); cancel.dataset.key = 'cancel-continuation';
+    block.append(...keyValue('', line, cancel));
+  } else if (summary.bounded > 0) {
+    const stopped = actions.coverage.note(); if (stopped) block.append(...keyValue('', node('span', 'ddx-quiet', `The last pass stopped: ${stopped} What was measured is kept; run it again to continue.`)));
+    const more = button('Analyze remaining files', () => actions.coverage.start(), 'ddx-secondary'); more.dataset.key = 'analyze-remaining';
+    more.title = `Reads ${summary.bounded} more ${summary.bounded === 1 ? 'file' : 'files'} from GitHub, one explicit pass for this comparison, and keeps the result in this browser. Nothing is estimated from the files already measured.`;
+    block.append(...keyValue('', more));
+  }
+  return block;
+}
 function copyAction(actions: ReportActions, path?: string): HTMLButtonElement {
   const copy = button('Copy facts', () => {
     void actions.copyText(path).then(text => navigator.clipboard.writeText(text)).then(() => { copy.textContent = 'Copied ✓'; setTimeout(() => { copy.textContent = 'Copy facts'; }, 1600); }, () => { copy.textContent = 'Clipboard unavailable'; });
@@ -122,11 +173,12 @@ function copyAction(actions: ReportActions, path?: string): HTMLButtonElement {
 }
 function externalLink(text: string, href: string): HTMLAnchorElement { const link = node('a', 'ddx-link', text); link.href = href; link.target = '_blank'; link.rel = 'noopener noreferrer'; return link; }
 function footer(view: HumanReportView, actions: ReportActions, file: boolean): HTMLElement {
-  const wrap = node('footer', 'ddx-footer'); const left = node('span', 'ddx-footer-group');
+  const wrap = node('footer', 'ddx-footer'); const left = node('span', 'ddx-footer-group'); const right = node('span', 'ddx-footer-group');
   const details = actions.detailsUrl?.(view); const detailsLink = details ? externalLink('Details ↗', details) : undefined;
   if (file) { left.append(copyAction(actions, view.focus?.path)); if (detailsLink) left.append(detailsLink); wrap.append(left); return wrap; }
   if (detailsLink) left.append(detailsLink); left.append(copyAction(actions));
-  wrap.append(left, externalLink('Settings', actions.settingsUrl)); return wrap;
+  const pause = button('Pause this repository', actions.pause, 'ddx-link'); pause.title = 'Stops diffdevil on every pull request of this repository in this browser and brings GitHub’s own counters back. Nothing is deleted and nothing changes on GitHub; Resume is on the page and in Settings.';
+  right.append(pause, externalLink('Local data', actions.dataUrl), externalLink('Settings', actions.settingsUrl)); wrap.append(left, right); return wrap;
 }
 function shell(popover: Popover, parts: (HTMLElement | undefined)[], heading: HTMLElement): HTMLElement {
   const panel = node('div'); panel.setAttribute('aria-labelledby', heading.id);
@@ -134,13 +186,13 @@ function shell(popover: Popover, parts: (HTMLElement | undefined)[], heading: HT
 }
 export function aggregatePanel(view: HumanReportView, popover: Popover, actions: ReportActions): HTMLElement {
   const source = view.report.source;
-  const meta = `${source.repository ?? source.kind}${source.pullRequest ? ` #${source.pullRequest}` : ''} · ${short(source.base)} → ${short(source.head)} · ${source.comparison ?? 'supplied'} · local`;
+  const meta = `${source.repository ?? source.kind}${source.pullRequest ? ` #${source.pullRequest}` : ''} · ${short(source.base)} → ${short(source.head)} · ${source.comparison ?? 'supplied'} · ${provenanceText(actions.provenance(), false)}`;
   const head = header('diffdevil analysis', meta, popover);
-  return shell(popover, [head.header, machineBlock(view, { accent: true, large: true, second: 'lines.changed' }), rawBlock(view, true), filesStrip(view), policyBlock(view), planBlock(view, actions), footer(view, actions, false)], head.heading);
+  return shell(popover, [head.header, machineBlock(view, { accent: true, large: true, second: 'lines.changed' }), rawBlock(view, true), filesStrip(view), coverageBlock(actions), policyBlock(view), planBlock(view, actions), footer(view, actions, false)], head.heading);
 }
 export function concisePanel(view: HumanReportView, popover: Popover, actions: ReportActions): HTMLElement {
   const source = view.report.source;
-  const head = header('diffdevil analysis', `${value(view.report.totals.files.total ?? view.report.fileSet.total)} files · ${short(source.base)} → ${short(source.head)} · local`, popover);
+  const head = header('diffdevil analysis', `${value(view.report.totals.files.total ?? view.report.fileSet.total)} files · ${short(source.base)} → ${short(source.head)} · ${provenanceText(actions.provenance(), true)}`, popover);
   return shell(popover, [head.header, machineBlock(view, { accent: true, large: false, second: 'lines.changed' }), rawBlock(view, true), filesStrip(view), footer(view, actions, false)], head.heading);
 }
 export function filePanel(view: HumanReportView, popover: Popover, actions: ReportActions): HTMLElement {
@@ -148,7 +200,16 @@ export function filePanel(view: HumanReportView, popover: Popover, actions: Repo
   const head = header(name, undefined, popover, true); head.heading.title = path;
   const lane = node('div', 'ddx-strip');
   lane.textContent = `${focus?.included === false ? '— excluded' : '▣ included'} · ${status}${focus?.included === false && focus.inclusionReasons?.length ? ` · ${focus.inclusionReasons.map(reason => reason.subject ?? reason.code).join(' · ')}` : ''}${view.evidence.status !== 'exact' && view.evidence.reasons.length ? ` · ${view.evidence.reasons.map(reason => `${reason.message ?? 'evidence bounded'} (${reason.code})`).join(' · ')}` : ''}`;
-  return shell(popover, [head.header, machineBlock(view, { accent: false, large: false, second: status }), rawBlock(view, false), lane, footer(view, actions, true)], head.heading);
+  return shell(popover, [head.header, machineBlock(view, { accent: false, large: false, second: status }), rawBlock(view, false), lane, fileCoverage(view, actions), footer(view, actions, true)], head.heading);
+}
+/** Why a file's numbers are a range, and the one act that can make them exact. */
+function fileCoverage(view: HumanReportView, actions: ReportActions): HTMLElement | undefined {
+  const path = view.focus?.path; const state = path === undefined ? undefined : actions.fileStanding(path); if (!path || !state || state.standing === 'measured') return undefined;
+  const block = node('div', 'ddx-strip ddx-file-coverage');
+  if (state.standing === 'declined') { block.textContent = `GitHub declined to supply this file’s lines (${REASON_TEXT[state.reason ?? 'omitted']}). Its numbers stay bounded.`; return block; }
+  const summary = actions.coverage.summary();
+  block.append(node('span', '', `Not measured yet${summary ? `: the automatic limit of ${summary.limit} files left it bounded.` : '.'} `));
+  const measure = button('Measure this file', () => actions.measureFile(path), 'ddx-secondary'); measure.dataset.key = 'measure-file'; block.append(measure); return block;
 }
 /** Failed claim · reason · consequence · next action. Text-colour border, no red wash. */
 export function errorPanel(error: { code: string; message: string }, meta: string | undefined, popover: Popover, actions: ReportActions): HTMLElement {

@@ -16,3 +16,12 @@ button:not(.segmented button,.copy-link,.reset-setting){border:1px solid var(--h
 input,select,textarea,button{scroll-margin-top:170px}.switch-track{pointer-events:none}
 
 #settings-content,.band-editor,.table-overflow{min-width:0;max-width:100%}
+
+/* the first-use section and the local-data surfaces */
+.ready-panel{padding:22px 24px;margin:0 0 24px;background:var(--bg-raised);border:1px solid var(--hair);border-radius:var(--r-card);scroll-margin-top:16px}
+.ready-panel h2{margin:0 0 8px;font-size:20px;line-height:1.3;font-weight:600;letter-spacing:var(--tracking-display)}.ready-panel h2:focus{outline:none}.ready-panel p{margin:0 0 6px;font-size:13px;color:var(--fg-2)}.ready-lede{font-size:14px!important;color:var(--fg)!important}
+.ready-label{margin-top:14px!important;font:11px/1.5 var(--font-mono);letter-spacing:.025em;color:var(--fg-3)!important}
+.ready-defaults{display:grid;grid-template-columns:max-content 1fr;gap:4px 18px;margin:6px 0 14px;font-size:12.5px}.ready-defaults dt{font:12px/1.6 var(--font-mono);color:var(--fg-3)}.ready-defaults dd{margin:0;color:var(--fg)}
+.ready-actions{margin:4px 0 10px}.ready-actions .primary-button{text-decoration:none;display:inline-flex;align-items:center}.ready-links{font-size:12px!important}.ready-links a{color:var(--fg-2)}
+.paused-list,.inventory{display:flex;flex-direction:column;gap:8px;width:100%}.paused-row,.inventory-pull{display:flex;align-items:center;flex-wrap:wrap;gap:6px 14px;padding:8px 0;border-top:1px solid var(--hair);font-size:12.5px}.paused-name,.inventory-name{font:12.5px/1.5 var(--font-mono);color:var(--fg)}.paused-since,.inventory-detail,.inventory-size{color:var(--fg-3);font-size:12px}.inventory-detail{flex:1 1 280px}
+.inventory-summary{font:12px/1.6 var(--font-mono);color:var(--fg-2);margin:0}.inventory-repository{border:1px solid var(--hair);border-radius:var(--r-control);padding:8px 14px;background:var(--bg)}.inventory-repository>summary{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:baseline;cursor:pointer;padding:4px 0}.inventory-repository .button-row{margin-top:6px}

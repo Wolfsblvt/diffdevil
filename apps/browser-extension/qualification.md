@@ -42,3 +42,22 @@ The compact default is the accepted shared centre-seam `diffdevil/brand` glyph, 
 The delivery manifest records the exact local source commit/tree and any actual remote branch/PR state. A created remote branch is not proof of a transferred source tree. Source ZIP, patch, font-free unpacked build, Store pack and evidence pack each have independent SHA-256 digests. No font files, browser profile, credentials, development dependency installation or downloaded toolchain archive are part of that handoff. The full source snapshot retains the repository’s already-tracked install-free Action dependency closure.
 
 Run the commands in README.md and qa.md against the exact source. The existing root Verify workflow remains intact. The new read-only browser job builds and tests the extension, requires actual installed MV3 verification, creates review assets and uploads evidence. It does not write repository source or publish anything.
+
+## Persistent continuity and the automatic file limit
+
+Measured on Windows 11 with Node 26.7 and Playwright Chromium, in the real installed MV3 worker with synthetic provider files (`npm run extension:benchmark`; single observations, not guarantees). Local cost is nearly independent of the limit; what the limit governs is how many files are read from GitHub.
+
+| Specimen | Measured / total | Acquisition message | Packet | Stored report | Cold analysis | Cold rehydration after worker death | Engine heap |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| small | 12 / 12 | 56 KB | 5 KB | 10 KB | 65 ms | 0.21 s | 2.0 MB |
+| 100+ | 150 / 150 | 0.78 MB | 13 KB | 110 KB | 0.12 s | 0.44 s | 0.6 MB |
+| 500+ | 150 / 600 | 0.82 MB | 39 KB | 471 KB | 0.30 s | 1.1 s | 1.6 MB |
+| 500+ | 600 / 600 | 3.1 MB | 40 KB | 436 KB | 0.40 s | 1.1 s | 1.2 MB |
+| provider ceiling | 150 / 3,000 | 1.0 MB | 179 KB | 2.4 MB | 2.5 s | 5.6 s | 6.5 MB |
+| provider ceiling | 3,000 / 3,000 | 16 MB | 181 KB | 2.2 MB | 2.0 s | 5.5 s | 6.1 MB |
+
+A stored report is about 0.8 KB per file whether measured or bounded, so the default 16 MiB budget holds several ceiling-size pull requests. The aggregate packet carries a path and a standing per file, not every file record. Projection and rehydration cost follows the inventory size, not the limit. The acquisition message follows the number of measured patches: at the 3,000-file ceiling with every patch it reaches 16 MB for ordinary patches, close enough to the 24 MiB message boundary that an unlimited automatic pass is not safe there, and a limit of 500 or less cannot reach it. On the signed-in route each eight files are one request and three run at a time, so the default of 150 is 19 requests (about seven sequential rounds) and 500 is 63. **150 is the default** because it measures a typical large pull request completely, costs about nineteen requests, and leaves everything beyond it one explicit act or one scroll away; the limit is user-configurable from 1 to the provider's 3,000.
+
+Live, anonymous, read-only runs of the built extension on public pull requests (the anonymous page is GitHub's classic page, so these ran through the public API route, whose requests follow the inventory, one per hundred files, whatever the limit): kubernetes/kubernetes#142173 (167 files) measured 150, left 9 bounded, 8 declined by GitHub, first seat in about 6 s with 6 API requests; rust-lang/rust#163306 (417 files) measured 150, 264 bounded, 3 declined, with 10 API requests. At the ceiling an anonymous visitor's sixty requests an hour are nearly spent by one pull request; that boundary is unchanged and still surfaces as a rate-limit failure.
+
+Unobserved here: the signed-in `diff_entries` route's latency and behavior at 150, 500 and 3,000 files on a real private pull request (anonymous GitHub does not serve it); Chrome's behavior with a real Web Store installation (a command-line-loaded unpacked extension is re-announced as an install on every launch); macOS and Linux; and keyboard, zoom and screen-reader journeys of the new report block and file report on live GitHub.

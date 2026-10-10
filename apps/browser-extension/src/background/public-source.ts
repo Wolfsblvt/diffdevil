@@ -13,7 +13,8 @@ export class PublicSource {
     if (!response.ok && response.status !== 404) throw new ExtensionError('GITHUB_HTTP', `GitHub returned HTTP ${response.status}.`);
     const text = await boundedText(response, maximum); return { response, value: text ? JSON.parse(text) as unknown : null };
   }
-  async pull(repository: string, pullRequest: number, includeFiles = false): Promise<PublicPull> {
+  /** `page` reads one 100-file page of the provider's list, for the measurement of files the first pass left bounded. */
+  async pull(repository: string, pullRequest: number, includeFiles = false, page?: number): Promise<PublicPull> {
     const repo = repositoryKey(repository); if (!Number.isSafeInteger(pullRequest) || pullRequest < 1) throw new ExtensionError('PR_IDENTITY', 'Invalid pull-request number.');
     const path = `/repos/${repo}/pulls/${pullRequest}`;
     const snapshot = async (): Promise<BrowserComparison> => {
@@ -24,9 +25,10 @@ export class PublicSource {
       return readComparison({ host: 'github.com', repository, pullRequest, base: base.sha, head: head.sha, changedFiles: safeInteger(value.changed_files), additions: safeInteger(value.additions), deletions: safeInteger(value.deletions) });
     };
     const before = await snapshot(); if (!includeFiles) return { comparison: before };
+    if (page !== undefined && (!Number.isSafeInteger(page) || page < 1 || page > 30)) throw new ExtensionError('PROVIDER_PAGE', 'GitHub lists at most 3,000 files in 30 pages.');
     const files: unknown[] = []; let acquiredBytes = 0;
-    for (let page = 1; files.length < Math.min(before.changedFiles ?? 0, 3000); page++) {
-      const result = await this.get(`${path}/files?per_page=100&page=${page}`, 6 * 1024 * 1024);
+    for (let current = page ?? 1; page !== undefined ? files.length === 0 : files.length < Math.min(before.changedFiles ?? 0, 3000); current++) {
+      const result = await this.get(`${path}/files?per_page=100&page=${current}`, 6 * 1024 * 1024);
       if (!result.response.ok || !Array.isArray(result.value)) throw new ExtensionError('PROVIDER_FILES', 'GitHub did not return the file collection.');
       acquiredBytes += new TextEncoder().encode(JSON.stringify(result.value)).byteLength;
       if (acquiredBytes > 20 * 1024 * 1024) throw new ExtensionError('SOURCE_LIMIT', 'The provider file collection exceeds 20 MiB.');

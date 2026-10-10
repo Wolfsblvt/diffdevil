@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import type { BrowserComparison } from '@wolfsblvt/diffdevil/browser';
+import type { DeclineReason } from '../shared/coverage.js';
 export interface Route { repository: string; pullRequest: number; path: string }
 export function route(url: string): Route | undefined {
   const parsed = new URL(url); if (parsed.origin !== 'https://github.com') return undefined;
@@ -76,11 +77,12 @@ export function sameComparison(a: BrowserComparison, b: BrowserComparison): bool
  * engine keeps a file without patch text honestly bounded. Undefined when the
  * page carries no usable summaries.
  */
-export interface EmbeddedFiles { readonly files: readonly Record<string, unknown>[]; readonly patched: number; readonly complete: boolean }
+export interface EmbeddedFiles { readonly files: readonly Record<string, unknown>[]; readonly patched: number; readonly complete: boolean; /** Files GitHub itself declined to give lines for, by path. */ readonly declined: Readonly<Record<string, DeclineReason>> }
 const STATUSES: Record<string, string> = { added: 'added', add: 'added', deleted: 'removed', removed: 'removed', delete: 'removed', modified: 'modified', modify: 'modified', changed: 'modified', renamed: 'renamed', rename: 'renamed', copied: 'copied', copy: 'copied', 'type-changed': 'changed', type_changed: 'changed', typechange: 'changed' };
 const text = (value: unknown): string | undefined => typeof value === 'string' && value ? value : undefined;
 /** GitHub itself declines to supply lines for these; the file stays honestly bounded. */
-export const unmeasurableEntry = (entry: Record<string, unknown>): boolean => entry.isBinary === true || entry.isSubmodule === true || entry.isTooBig === true || typeof entry.truncatedReason === 'string' && entry.truncatedReason !== '';
+export const declineReason = (entry: Record<string, unknown>): DeclineReason | undefined => entry.isBinary === true ? 'binary' : entry.isSubmodule === true ? 'submodule' : entry.isTooBig === true ? 'too-big' : typeof entry.truncatedReason === 'string' && entry.truncatedReason !== '' ? 'truncated' : undefined;
+export const unmeasurableEntry = (entry: Record<string, unknown>): boolean => declineReason(entry) !== undefined;
 export function contentPatch(entry: Record<string, unknown> | undefined): string | undefined {
   if (!entry || unmeasurableEntry(entry)) return undefined;
   const raw = text(entry.patch) ?? text(entry.rawPatch) ?? text(entry.diff); if (raw) return raw;
@@ -109,7 +111,7 @@ export function embeddedFiles(document: Document): EmbeddedFiles | undefined {
   const entries: Record<string, unknown>[] = Array.isArray(contents) ? contents.map(record).filter((entry): entry is Record<string, unknown> => entry !== undefined) : record(contents) ? Object.entries(record(contents)!).map(([key, value]): Record<string, unknown> => ({ path: key, ...(record(value) ?? {}) })) : [];
   const byKey = new Map<string, Record<string, unknown>>();
   for (const entry of entries) for (const key of [entry.pathDigest, entry.digest, entry.path, entry.newPath, entry.filename]) if (typeof key === 'string') byKey.set(key, entry);
-  const files: Record<string, unknown>[] = []; let patched = 0; let complete = true;
+  const files: Record<string, unknown>[] = []; let patched = 0; let complete = true; const declined: Record<string, DeclineReason> = Object.create(null) as Record<string, DeclineReason>;
   for (const item of summaries) {
     const summary = record(item); const path = cleanPath(text(summary?.path) ?? text(summary?.newPath) ?? text(summary?.filename));
     const additions = count(summary?.linesAdded ?? summary?.additions); const deletions = count(summary?.linesDeleted ?? summary?.deletions);
@@ -118,25 +120,48 @@ export function embeddedFiles(document: Document): EmbeddedFiles | undefined {
     const oldPath = cleanPath(text(summary.oldPath) ?? text(summary.previousPath) ?? text(summary.previous_filename));
     const entry = [summary.pathDigest, summary.digest, path].map(key => typeof key === 'string' ? byKey.get(key) : undefined).find(value => value !== undefined);
     const patch = summary.isBinary === true ? undefined : contentPatch(entry); if (patch !== undefined) patched++;
+    const reason = summary.isBinary === true ? 'binary' : summary.isSubmodule === true ? 'submodule' : entry ? declineReason(entry) : undefined; if (reason && patch === undefined) declined[path] = reason;
     files.push({ filename: path, status, additions, deletions, ...(typeof summary.pathDigest === 'string' ? { pathDigest: summary.pathDigest } : {}), ...(oldPath === undefined ? {} : { previous_filename: oldPath }), ...(patch === undefined ? {} : { patch }) });
   }
-  return files.length ? { files, patched, complete } : undefined;
+  return files.length ? { files, patched, complete, declined } : undefined;
 }
 /** Files still without patch text that GitHub might supply through its page_data route. */
 export const unpatchedPaths = (files: readonly Record<string, unknown>[]): string[] => files.filter(file => file.patch === undefined).map(file => String(file.filename));
 /** Merge `page_data/diff_entries` entries (the same shape as embedded contents) into the file list, by digest or path. */
-export function withEntries(files: readonly Record<string, unknown>[], entries: readonly unknown[]): { files: Record<string, unknown>[]; loaded: number; declined: number } {
+export function withEntries(files: readonly Record<string, unknown>[], entries: readonly unknown[]): { files: Record<string, unknown>[]; loaded: number; declined: number; declinedPaths: Record<string, DeclineReason> } {
   const byKey = new Map<string, Record<string, unknown>>();
   for (const item of entries) { const entry = record(item); if (!entry) continue; for (const key of [entry.pathDigest, entry.path]) if (typeof key === 'string') byKey.set(key, entry); }
-  let loaded = 0; let declined = 0;
+  let loaded = 0; let declined = 0; const declinedPaths: Record<string, DeclineReason> = Object.create(null) as Record<string, DeclineReason>;
   const merged = files.map(file => {
     if (file.patch !== undefined) return file;
     const entry = byKey.get(String(file.filename)) ?? (typeof file.pathDigest === 'string' ? byKey.get(file.pathDigest) : undefined); if (!entry) return file;
-    if (unmeasurableEntry(entry)) { declined++; return file; }
+    const reason = declineReason(entry); if (reason) { declined++; declinedPaths[String(file.filename)] = reason; return file; }
     const patch = contentPatch(entry); if (patch === undefined) return file;
     loaded++; return { ...file, patch };
   });
-  return { files: merged, loaded, declined };
+  return { files: merged, loaded, declined, declinedPaths };
+}
+/** What the page_data route returned for the requested paths: usable patch text, and the files GitHub itself declined. */
+export function measurableEntries(entries: readonly unknown[], requested: ReadonlySet<string>): { patches: { path: string; patch: string }[]; declined: Record<string, DeclineReason> } {
+  const patches: { path: string; patch: string }[] = []; const declined: Record<string, DeclineReason> = Object.create(null) as Record<string, DeclineReason>;
+  for (const item of entries) {
+    const entry = record(item); const path = text(entry?.path); if (!entry || !path || !requested.has(path)) continue;
+    const reason = declineReason(entry); if (reason) { declined[path] = reason; continue; }
+    const patch = contentPatch(entry); if (patch !== undefined) patches.push({ path, patch });
+  }
+  return { patches, declined };
+}
+/**
+ * The files the reader has in front of them: headers rendered near the viewport first, then the other
+ * rendered headers, each in page order. These are the first files an automatic pass measures.
+ */
+export function visiblePaths(document: Document): string[] {
+  const near: string[] = []; const rest: string[] = []; const seen = new Set<string>(); const height = document.defaultView?.innerHeight ?? 0;
+  for (const header of document.querySelectorAll<HTMLElement>(FILE_HEADERS)) {
+    const path = filePath(header); if (!path || seen.has(path)) continue; seen.add(path);
+    const box = header.getBoundingClientRect(); (box.bottom >= -height && box.top <= height * 2 && (box.width > 0 || box.height > 0) ? near : rest).push(path);
+  }
+  return [...near, ...rest];
 }
 export const FILE_HEADERS = '.file-header, [data-testid="file-header"], [data-test-selector="file-header"], [data-testid="diff-file-header"], [data-diff-header-wrapper]';
 export const LIVE_DIFFSTAT = '[data-testid~="diffstat"]';

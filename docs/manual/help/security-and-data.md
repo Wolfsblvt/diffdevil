@@ -26,7 +26,7 @@ A token supplies capability, not an instruction to mutate. Analyze remains read-
 
 ## Extension processing and storage
 
-The extension sends no source to a Wolfsblvt Works analysis backend, has no telemetry/advertising service, and asks for no personal access token or local daemon. Raw diffs and referenced template contents are transient analysis inputs. The rebuildable cache can retain normalized reports, private paths/revisions, trusted repository-policy text, and exact-base absence results; it is not independently encrypted from someone with access to the browser profile.
+The extension sends no source to a Wolfsblvt Works analysis backend, has no telemetry/advertising service, and asks for no personal access token or local daemon. Raw diffs and referenced template contents are transient analysis inputs. The rebuildable cache retains normalized reports with their measured/bounded/declined coverage, private paths/revisions, trusted repository-policy text and templates, exact-base absence results and the last comparison confirmed for each pull request, so a comparison can reappear after a reload or restart; it is not independently encrypted from someone with access to the browser profile.
 
 Small display/guided-policy preferences can synchronize through the browser provider when synchronization is enabled. Large advanced YAML and repository overrides remain local. “Local analysis” is not a claim that synchronized preferences never leave the device.
 
