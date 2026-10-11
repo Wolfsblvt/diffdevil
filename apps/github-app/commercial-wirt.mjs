@@ -3,7 +3,8 @@
 /**
  * Wirt projection protocol: exact-byte request signing, the bounded server-to-server client,
  * and the payload shapes diffdevil consumes. Wirt's adopted producer contract owns the grammar:
- * docs/commercial-projection-runtime.md and docs/commercial-projection.md at Wirt 04e253a8.
+ * docs/commercial-projection-runtime.md and docs/commercial-projection.md at Wirt 04e253a8;
+ * native beta_grants and commercial_timezone are candidate c33d5d9, pending producer/consumer acceptance.
  */
 
 export const WIRT_CLIENT = 'diffdevil';
@@ -138,6 +139,38 @@ function readBenefits(value) {
     slots.add(slot.slot);
   }
   for (const grant of value.grants) shape(object(grant) && typeof grant.kind === 'string' && date(grant.until));
+  const betaGrants = readProjectionBetaGrants(value);
+  return { ...value, ...(betaGrants === null ? {} : { beta_grants: betaGrants }),
+    ...(value.commercial_timezone === undefined ? {} : { commercial_timezone: readProjectionCommercialTimeZone(value) }) };
+}
+
+/** Native installation calendar; legacy, invalid and numeric-offset values establish no date basis. */
+export function readProjectionCommercialTimeZone(benefits) {
+  const timeZone = benefits?.commercial_timezone;
+  if (typeof timeZone !== 'string' || !timeZone || /^[+-]/u.test(timeZone)) return null;
+  try { new Intl.DateTimeFormat('en-CA', { timeZone }).format(0); return timeZone; }
+  catch { return null; }
+}
+
+/** Native beta facts: null is a legacy unknown; an empty array is an explicit absence. Private basis stays in Wirt. */
+export function readProjectionBetaGrants(benefits) {
+  if (benefits?.beta_grants === undefined) return null;
+  shape(Array.isArray(benefits.beta_grants));
+  const ids = new Set();
+  const window = value => {
+    shape(object(value) && date(value.started_on) && date(value.until) && value.started_on < value.until);
+    return { started_on: value.started_on, until: value.until };
+  };
+  return benefits.beta_grants.map(value => {
+    shape(object(value) && positive(value.id) && !ids.has(value.id) && value.kind === 'beta' && value.product === 'diffdevil'
+      && value.tier === 'pro' && value.promised_units === 30 && Number.isSafeInteger(value.remaining_units)
+      && value.remaining_units >= 0 && value.remaining_units <= 30 && Array.isArray(value.access_windows)
+      && (value.original_window === null || object(value.original_window)) && (value.current_access === null || object(value.current_access)));
+    ids.add(value.id);
+    return { id: value.id, kind: value.kind, product: value.product, tier: value.tier, promised_units: value.promised_units,
+      original_window: value.original_window === null ? null : window(value.original_window), access_windows: value.access_windows.map(window),
+      current_access: value.current_access === null ? null : window(value.current_access), remaining_units: value.remaining_units };
+  });
 }
 
 /** Read a pushed or pulled body into one of the two accepted message kinds. */
@@ -153,8 +186,80 @@ export function readWirtMessage(value) {
     && timestamp(value.generated_at) && (value.source_operation === null || (typeof value.source_operation === 'string' && value.source_operation.length <= 128))
     && Array.isArray(value.pending) && Array.isArray(value.bindings_seen));
   readCommercial(value.commercial);
-  readBenefits(value.benefits);
-  return { kind: 'projection', stream: readStream(value.stream), order: readOrder(value.order), lineage: value.account_lineage, projection: value };
+  const benefits = readBenefits(value.benefits);
+  return { kind: 'projection', stream: readStream(value.stream), order: readOrder(value.order), lineage: value.account_lineage, projection: { ...value, benefits } };
+}
+
+// Participation reward facts (Wirt `RewardFacts::visible`, its rewards route and its reward-quote route). The reader keeps
+// only what the customer may see or what reconciliation needs: the public campaign name and reason, the typed standing,
+// the alternatives with Wirt's remaining-use and first-eligible facts, and confirmed applications with Wirt's amounts.
+// Operation identities, actor records and correction evidence stay in Wirt.
+export const REWARD_STATES = Object.freeze(['available', 'accepted', 'reserved', 'partially-consumed', 'consumed', 'expired', 'corrected']);
+const ALTERNATIVE_STANDINGS = Object.freeze([...REWARD_STATES, 'retired']);
+const cents = value => Number.isSafeInteger(value) && value >= 0;
+const nullableCents = value => value === null || value === undefined || cents(value);
+const shortText = (value, limit = 240) => typeof value === 'string' && value.length > 0 && value.length <= limit;
+const nullableTimestamp = value => value === null || value === undefined || timestamp(value);
+const day = value => (typeof value === 'string' && value.length >= 10 && datePattern.test(value.slice(0, 10)) ? value.slice(0, 10) : null);
+
+function readDiscountLine(value) {
+  shape(object(value) && cents(value.amount_cents) && object(value.promise));
+  const promise = value.promise;
+  return { amountCents: value.amount_cents, reason: shortText(promise.campaign?.reason) ? promise.campaign.reason : null,
+    campaignKey: typeof promise.campaign?.key === 'string' ? promise.campaign.key : null, campaignVersion: Number.isSafeInteger(promise.campaign?.version) ? promise.campaign.version : null,
+    rewardKey: typeof promise.key === 'string' ? promise.key : null, cadence: oneOf(promise.cadence, ['monthly', 'annual']) ? promise.cadence : null,
+    unit: oneOf(promise.unit, ['percent', 'fixed']) ? promise.unit : null, value: Number.isSafeInteger(promise.value) ? promise.value : null,
+    remainingUsesAfter: Number.isSafeInteger(value.remaining_uses_after) ? value.remaining_uses_after : null,
+    postRewardBaseCents: cents(value.post_reward_base_cents) ? value.post_reward_base_cents : null };
+}
+
+/** One participation reward as Wirt's customer-visible facts describe it. */
+export function readRewardFacts(value) {
+  shape(object(value) && object(value.basis) && object(value.basis.campaign) && typeof value.basis.campaign.key === 'string'
+    && Number.isSafeInteger(value.basis.campaign.version) && shortText(value.basis.campaign.reason) && typeof value.state === 'string'
+    && Array.isArray(value.alternatives) && value.alternatives.length >= 1 && value.alternatives.length <= 8
+    && (value.applications === undefined || (Array.isArray(value.applications) && value.applications.length <= 64)));
+  const basis = value.basis;
+  const alternatives = value.alternatives.map(alternative => {
+    shape(object(alternative) && typeof alternative.key === 'string' && oneOf(alternative.kind, ['discount', 'time'])
+      && oneOf(alternative.cadence, ['monthly', 'annual']) && typeof alternative.tier === 'string');
+    return { key: alternative.key, kind: alternative.kind, tier: alternative.tier, cadence: alternative.cadence,
+      unit: oneOf(alternative.unit, ['percent', 'fixed']) ? alternative.unit : null, value: Number.isSafeInteger(alternative.value) ? alternative.value : null,
+      uses: Number.isSafeInteger(alternative.uses) ? alternative.uses : null,
+      remainingUses: Number.isSafeInteger(alternative.remaining_uses) ? alternative.remaining_uses : null,
+      firstEligibleOn: day(alternative.first_eligible_on), standing: oneOf(alternative.standing, ALTERNATIVE_STANDINGS) ? alternative.standing : 'unknown' };
+  });
+  const applications = (value.applications ?? []).map(application => {
+    shape(object(application) && nullableTimestamp(application.at) && object(application.discount));
+    return { at: application.at ?? null, ...readDiscountLine(application.discount) };
+  });
+  return { id: String(value.id ?? ''), campaign: { key: basis.campaign.key, version: basis.campaign.version, name: shortText(basis.campaign.name, 160) ? basis.campaign.name : null, reason: basis.campaign.reason },
+    kind: oneOf(basis.kind, ['discount', 'time']) ? basis.kind : 'discount', state: oneOf(value.state, REWARD_STATES) ? value.state : 'unknown',
+    selected: typeof value.selected_reward === 'string' ? value.selected_reward : null,
+    claimClosesAt: timestamp(basis.claim_closes_at) ? basis.claim_closes_at : null, validUntil: timestamp(basis.valid_until) ? basis.valid_until : null,
+    alternatives, applications };
+}
+
+/** A projection's optional participation rewards: `null` when Wirt did not send the field, never an invented empty list. */
+export function readProjectionRewards(benefits) {
+  if (!object(benefits) || benefits.participation_rewards === undefined) return null;
+  if (!Array.isArray(benefits.participation_rewards) || benefits.participation_rewards.length > 64) return null;
+  try { return benefits.participation_rewards.map(readRewardFacts); } catch { return null; }
+}
+
+function readNextCharge(value) {
+  if (value === null || value === undefined) return null;
+  shape(object(value) && date(day(value.on)) && cents(value.amount_cents) && nullableCents(value.base_total_cents) && Array.isArray(value.discounts));
+  return { on: day(value.on), amountCents: value.amount_cents, baseTotalCents: value.base_total_cents ?? null, discounts: value.discounts.map(readDiscountLine) };
+}
+
+function readQuote(value, cadence) {
+  shape(object(value) && value.schema === 'wirt.participation-quote/v1' && typeof value.quote_id === 'string' && value.cadence === cadence
+    && Array.isArray(value.charges) && value.charges.length <= 32 && Array.isArray(value.discounts) && cents(value.due_now_cents) && nullableCents(value.post_reward_total_cents));
+  return { quoteId: value.quote_id, cadence, tier: typeof value.tier === 'string' ? value.tier : null, currency: typeof value.currency === 'string' ? value.currency : 'EUR',
+    reviewUrl: typeof value.review_url === 'string' ? value.review_url : null, expiresOn: day(value.expires_on),
+    charges: value.charges.map(charge => { shape(object(charge) && cents(charge.amount_cents)); return { component: typeof charge.component_id === 'string' ? charge.component_id : null, amountCents: charge.amount_cents }; }),
+    discounts: value.discounts.map(readDiscountLine), dueNowCents: value.due_now_cents, postRewardTotalCents: value.post_reward_total_cents ?? null };
 }
 
 function readOrigin(value) {
@@ -267,6 +372,51 @@ export function createWirtClient({ origin, oauthClientId, callbackUrl, signing, 
       // A signed report's 401 is a signature or clock-skew refusal, not an established permanent one: retry within the bounded backoff.
       if (result.status === 401) return { kind: 'retry', status: 401, code: 'E_COMMERCIAL_REPORT_UNAUTHENTICATED' };
       return { kind: 'refused', status: result.status };
+    },
+    /**
+     * Deliver one participation completion: only the campaign, its version, the durable business event identity, the
+     * opaque product completion identity and the completion time. The fresh transport nonce is the signature's own. The
+     * link and the signed product account select the Works account; survey answers never leave. Wirt states `accepted`
+     * or `replayed` for this exact event with its reward facts; an answer that does not state one of them for this event
+     * is `unreadable`, never inferred. A thrown transport failure means the outcome is unknown.
+     */
+    async completeParticipation({ linkId, productAccount, completion }) {
+      const path = `/api/wirt/diffdevil/links/${encodeURIComponent(linkId)}/participation-completions`;
+      const result = await call(path, { method: 'POST', json: { campaign: completion.campaign, version: completion.version, event_id: completion.eventId, completion_id: completion.completionId, completed_at: completion.completedAt }, account: String(productAccount) });
+      if (result.status === 410) return terminal(result, path, productAccount);
+      if (result.status === 200 || result.status === 201) {
+        let value, reward;
+        try { value = parseJsonBytes(result.bytes); reward = readRewardFacts(value?.reward); }
+        catch { return { kind: 'unreadable', status: result.status }; }
+        if (value.schema !== 'wirt.participation-result/v1' || !oneOf(value.result, ['accepted', 'replayed']) || value.event_id !== completion.eventId) return { kind: 'unreadable', status: result.status };
+        return { kind: value.result, status: result.status, reward };
+      }
+      if (result.status === 429 || result.status === 503) return { kind: 'unavailable', status: result.status };
+      if (result.status >= 500) return { kind: 'unknown', status: result.status };
+      if (result.status === 401) return { kind: 'unavailable', status: 401, code: 'E_COMMERCIAL_COMPLETION_UNAUTHENTICATED' };
+      return { kind: 'refused', status: result.status };
+    },
+    /** The customer's participation rewards and the next charge's authoritative discount lines. */
+    async rewards({ linkId, productAccount }) {
+      const path = `/api/wirt/diffdevil/links/${encodeURIComponent(linkId)}/rewards`;
+      const result = await call(path, { account: String(productAccount) });
+      if (result.status === 410) return terminal(result, path, productAccount);
+      if (result.status !== 200) return { kind: 'unavailable', status: result.status };
+      const value = parseJsonBytes(result.bytes);
+      shape(object(value) && value.schema === 'wirt.participation-result/v1' && Array.isArray(value.rewards) && value.rewards.length <= 64);
+      return { kind: 'rewards', nextCharge: readNextCharge(value.next_charge), rewards: value.rewards.map(readRewardFacts) };
+    },
+    /** A Pro continuation preview through Wirt's own quote. A preview reserves nothing; acceptance stays at Works. */
+    async rewardQuote({ linkId, productAccount, cadence }) {
+      const path = `/api/wirt/diffdevil/links/${encodeURIComponent(linkId)}/reward-quotes`;
+      const result = await call(path, { method: 'POST', json: { tier: 'Pro', cadence }, account: String(productAccount) });
+      if (result.status === 410) return terminal(result, path, productAccount);
+      if (result.status === 409) return { kind: 'not-quotable', status: 409 };
+      if (result.status !== 200) return { kind: 'unavailable', status: result.status };
+      const quote = readQuote(parseJsonBytes(result.bytes), cadence);
+      // The customer reviews the quote only on Wirt's own origin.
+      if (quote.reviewUrl) { try { if (new URL(quote.reviewUrl).origin !== base) quote.reviewUrl = null; } catch { quote.reviewUrl = null; } }
+      return { kind: 'quote', quote };
     }
   };
 }

@@ -5,7 +5,7 @@ import { createHmac, createVerify, generateKeyPairSync } from 'node:crypto';
 import { test } from 'node:test';
 import { GitHubClient, GitHubRequestError } from '@wolfsblvt/diffdevil/github';
 import { createGitHubAppWorker, createInstallationClient, listInstallationRepositories } from './app.mjs';
-import { APP_QUEUE_KIND, WEBHOOK_BODY_LIMIT, WORKER_RESULT_LIMIT, historyProjection, normalizeWebhookEvent } from './contracts.mjs';
+import { APP_QUEUE_KIND, WEBHOOK_BODY_LIMIT, WORKER_RESULT_LIMIT, historyJobEnvelope, historyProjection, normalizeWebhookEvent, readQueueEnvelope } from './contracts.mjs';
 import { constantTimeEqual, createAppJwt } from './crypto.mjs';
 import { resolveEffectivePolicy } from './configuration.mjs';
 import { FakeGitHub } from '../../src/diffdevil/tests/helpers/github.mjs';
@@ -45,12 +45,12 @@ function policyStore(calls, configuration = { repository: { presets: [] } }) {
     async recordHistory() { return { status: 'disabled' }; }
   };
 }
-async function runPolicyDelivery(fake, configuration) {
+async function runPolicyDelivery(fake, configuration, options = {}) {
   const run = queueMessage();
   const fetch = async (input, init) => new URL(String(input)).pathname === '/repositories/17'
     ? new Response(JSON.stringify({ id: 17, full_name: 'example/repository' }), { headers: { 'content-type': 'application/json' } })
     : fake.fetch(input, init);
-  await createGitHubAppWorker({ store: policyStore(run.calls, configuration), clientFactory: async () => new GitHubClient({ fetch, readRetries: 0 }) }).queue({ messages: [run.message] }, {});
+  await createGitHubAppWorker({ store: policyStore(run.calls, configuration), clientFactory: async () => new GitHubClient({ fetch, readRetries: 0 }), ...options }).queue({ messages: [run.message] }, {});
   return run;
 }
 
@@ -216,6 +216,54 @@ test('the installation account is captured as a numeric namespace and survives t
   assert.deepEqual(run.calls.slice(-4), ['lifecycle', ['account', 9, 501], 'lifecycle-finish', 'ack']);
 });
 
+test('an unreadable linked namespace policy holds the pull request with a neutral check instead of executing under an empty layer', async () => {
+  const fake = new FakeGitHub();
+  fake.before = async call => call.method === 'POST' && call.path === '/repos/example/repository/check-runs'
+    ? new Response(JSON.stringify({ id: 8 }), { status: 201, headers: { 'content-type': 'application/json' } })
+    : undefined;
+  const run = await runPolicyDelivery(fake, undefined, { accountLayer: async () => { throw Object.assign(new Error('D1 unavailable'), { code: 'E_EFFECTIVE_POLICY_UNAVAILABLE' }); } });
+  const repair = run.calls.find(call => Array.isArray(call) && call[0] === 'finish');
+  assert.equal(repair[2], 'repair');
+  assert.equal(repair[3].code, 'E_EFFECTIVE_POLICY_UNAVAILABLE');
+  assert.deepEqual(repair[3].repair.projection.diagnostics, [{ code: 'E_EFFECTIVE_POLICY_UNAVAILABLE', phase: 'account-policy' }]);
+  assert.deepEqual(fake.writes().map(call => call.path), ['/repos/example/repository/check-runs'], 'no label or comment is written under another policy');
+});
+
+test('the operating allowance refuses execution before any credential is minted and records why', async () => {
+  const run = queueMessage();
+  let minted = false;
+  await createGitHubAppWorker({ store: policyStore(run.calls), clientFactory: async () => { minted = true; throw new Error('not reached'); },
+    operating: async () => ({ execution: 'held', history: 'held', reason: 'over-allowance-unchosen' }), collectAnalytics: async () => ({ status: 'held' }) }).queue({ messages: [run.message] }, {});
+  const finish = run.calls.find(call => Array.isArray(call) && call[0] === 'finish');
+  assert.equal(minted, false);
+  assert.equal(finish[2], 'rejected'); assert.equal(finish[3].code, 'E_APP_ALLOWANCE');
+  assert.deepEqual(run.calls.at(-1), 'ack');
+});
+
+test('account kind and visibility are identifier-level facts that survive the queue boundary and are recorded', async () => {
+  const lifecycle = normalizeWebhookEvent('installation', { action: 'created', installation: { id: 9, account: { id: 501, type: 'Organization', login: 'not-retained' } }, repositories: [] }, new Date().toISOString(), 'installation-3');
+  const pull = normalizeWebhookEvent('pull_request', { ...payload, repository: { id: 17, private: true, owner: { id: 501, type: 'Organization' } } }, new Date().toISOString(), 'delivery-3');
+  assert.equal(lifecycle.accountKind, 'organization'); assert.equal(pull.accountKind, 'organization'); assert.equal(pull.repositoryPrivate, true);
+  assert.deepEqual(readQueueEnvelope(pull), pull);
+  assert.throws(() => readQueueEnvelope({ ...pull, accountKind: 'Bot' }), /Account kind/u);
+  assert.throws(() => readQueueEnvelope({ ...pull, repositoryPrivate: 'yes' }), /visibility/u);
+  const run = queueMessage(pull), store = policyStore(run.calls);
+  store.recordInstallationAccount = async (...args) => run.calls.push(['account', ...args]);
+  store.recordRepositoryVisibility = async (...args) => run.calls.push(['visibility', ...args]);
+  await createGitHubAppWorker({ store, execute: async () => ({ status: 'verified' }), collectAnalytics: async () => ({ status: 'disabled' }) }).queue({ messages: [run.message] }, {});
+  assert.ok(run.calls.some(call => Array.isArray(call) && call[0] === 'account' && call[3] === 'organization'));
+  assert.ok(run.calls.some(call => Array.isArray(call) && call[0] === 'visibility' && call[1] === 17 && call[2] === true));
+});
+
+test('a history job message names only its job and step; arbitrary fields and kinds are refused', () => {
+  const step = historyJobEnvelope({ installationId: 9, repositoryId: 17, jobId: 'job-0000-aaaa', kind: 'import', sequence: 2 });
+  assert.equal(step.deliveryId, 'history-job:job-0000-aaaa:2');
+  assert.deepEqual(readQueueEnvelope(step), step);
+  assert.throws(() => readQueueEnvelope({ ...step, pullRequest: 4 }), /prohibited/u);
+  assert.throws(() => readQueueEnvelope({ ...step, action: 'rewrite' }), /unsupported kind/u);
+  assert.throws(() => historyJobEnvelope({ installationId: 9, repositoryId: 17, jobId: 'x', kind: 'import', sequence: 0 }), /identity/u);
+});
+
 test('installation creation retains its selected numeric repository identities in the minimized lifecycle envelope', () => {
   const lifecycle = normalizeWebhookEvent('installation', { action: 'created', installation: { id: 9 }, repositories: [{ id: 17 }, { id: 18, full_name: 'not-retained' }] }, new Date().toISOString(), 'installation-1');
   assert.deepEqual(lifecycle.addedRepositories, [17, 18]);
@@ -286,4 +334,19 @@ test('an explicit repository preset selection can remove inherited size behavior
   assert.equal(defaulted.document.rules.size !== undefined, true);
   assert.equal(optedOut.document.rules?.size, undefined);
   assert.equal(optedOut.provenance['/presets'], 'repository');
+});
+
+test('a lifecycle delivery hands newly granted repositories to the App\'s automatic setup after reconciliation, and a setup failure never fails the delivery', async () => {
+  const lifecycle = normalizeWebhookEvent('installation_repositories', { action: 'added', installation: { id: 9, account: { id: 501 } }, repositories_added: [{ id: 17 }] }, new Date().toISOString(), 'lifecycle-setup');
+  const run = queueMessage(lifecycle), given = [];
+  const store = { ...activeStore(run.calls), async recordInstallationAccount() {}, async reconcileRepositories(installationId, ids) { run.calls.push(['reconcile', installationId, ids]); } };
+  await createGitHubAppWorker({ store, listInstallationRepositories: async () => [17], automaticSetup: async input => { given.push(input); throw new Error('setup exploded'); } }).queue({ messages: [run.message] }, {});
+  assert.deepEqual(given, [{ installationId: 9, repositoryIds: [17] }]);
+  assert.deepEqual(run.calls.slice(-3), [['reconcile', 9, [17]], 'lifecycle-finish', 'ack'], 'setup runs after reconciliation and the delivery still completes');
+  const removal = normalizeWebhookEvent('installation', { action: 'deleted', installation: { id: 9, account: { id: 501 } }, repositories: [{ id: 17 }] }, new Date().toISOString(), 'lifecycle-gone');
+  const gone = queueMessage(removal);
+  given.length = 0;
+  await createGitHubAppWorker({ store: { ...activeStore(gone.calls), async recordInstallationAccount() {} }, automaticSetup: async input => { given.push(input); } }).queue({ messages: [gone.message] }, {});
+  assert.deepEqual(given, [], 'a removed installation sets nothing up');
+  assert.deepEqual(gone.calls.slice(-2), ['lifecycle-finish', 'ack']);
 });

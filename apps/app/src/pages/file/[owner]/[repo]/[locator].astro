@@ -1,0 +1,36 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
+// File detail, addressed by an opaque locator: the route never carries the path, the document title never names it,
+// and the page resolves the locator server-side against the files the reader is entitled to see. The detail itself
+// (tiles, Changed per merged PR, observed size, co-change, contributing merged PRs) is the premium extension's body;
+// this route owns the address, the authorisation outcome and the states around it.
+import AppShell from '../../../../layouts/AppShell.astro';
+import PageHead from '../../../../components/PageHead.astro';
+import Unavailable from '../../../../components/Unavailable.astro';
+import SeePro from '../../../../components/SeePro.astro';
+import { loadView, navModel, repositoryByFullName } from '../../../../lib/view.mjs';
+
+const runtime = Astro.locals.app;
+const { owner, repo, locator } = Astro.params;
+const fullName = `${owner}/${repo}`;
+const repository = runtime.locator.plausible(locator) ? repositoryByFullName(Astro.locals.viewer, fullName) : undefined;
+const view = await loadView({ url: new URL(Astro.url.pathname + (Astro.url.search || `?s=${repository ? fullName : 'all'}`), Astro.url), viewer: Astro.locals.viewer, session: Astro.locals.session, runtime, surface: 'files' });
+if (!repository) Astro.response.status = 404;
+const Body = runtime.premium.pages.file?.Body;
+const here = view.premiumHere && Boolean(Body);
+// Resolve the handle against this repository's file rows, then let the body read the file surface for the path it names.
+const file = repository && here ? await runtime.locator.resolve(locator, view.files.filter((candidate: any) => candidate.repositoryId === repository.repositoryId)) : undefined;
+if (repository && here && !file) Astro.response.status = 404;
+---
+<AppShell title={`File · ${repo}`} nav={navModel(view, 'file')} view={view}>
+  {!repository ? <div class="a-focus a-pn"><div class="a-pn-b" style="padding:28px 32px"><h1 style="font-size:22px;margin:0 0 8px">Not in your repositories</h1><p class="lede">{fullName} is not among the repositories your GitHub account currently reaches through an App installation, or the file handle is not valid. <a class="link-quiet" href="/">Back to the overview</a>.</p></div></div>
+  : !here ? <>
+    <PageHead view={view} title="File history" crumbs={[{ label: 'Files', href: view.href('/files') }]} scope={false}>
+      <div class="a-scope" slot="scope">{fullName}<span class="a-dot">·</span>{view.period.label}</div>
+    </PageHead>
+    <div class="a-grid">{view.entitlement.premium
+      ? <section class="a-pn s12"><div class="a-pn-b"><Unavailable what="File history is not part of this build" why="the plan includes it, but this build carries only the Community application; nothing was computed" /></div></section>
+      : <SeePro text="File history: Changed per merged PR, size over time, Turnover and the files it changes with" span={12} />}</div>
+  </> : !file ? <div class="a-focus a-pn"><div class="a-pn-b" style="padding:28px 32px"><h1 style="font-size:22px;margin:0 0 8px">No such file in this period</h1><p class="lede">No merged pull request names a file with this handle in {fullName} during the selected {view.period.label}. Widen the period, or <a class="link-quiet" href={view.href('/files', { s: fullName })}>pick a file</a>.</p></div></div>
+  : <Body view={view} repository={repository} file={file} fullName={fullName} />}
+</AppShell>

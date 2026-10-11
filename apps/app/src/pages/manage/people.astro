@@ -1,0 +1,18 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
+// Manage · People (Business): account administrators and repository administrators with what each can and can't do.
+// Delegates need GitHub access; funding and billing stay with the subscriber. The body is the premium extension's.
+import ManagePage from '../../components/manage/ManagePage.astro';
+import Unavailable from '../../components/Unavailable.astro';
+import { loadManage } from '../../lib/manage/model.mjs';
+const runtime = Astro.locals.app;
+const model = await loadManage({ viewer: Astro.locals.viewer, session: Astro.locals.session, runtime });
+const Body = runtime.premium.pages.manage?.People;
+const business = model.coordinates === true;
+---
+<ManagePage model={model} tab="people">
+  <div class="m-stack">
+    {!business && <section class="m-sec"><header><h2>People</h2><span class="a-plan biz">Business</span></header><div class="b"><p class="m-lede">Delegated administration comes with Business. On Free and Pro, one person administers each scope: the GitHub administrators of a repository can act on it here. <a class="link-quiet" href="/manage/plan">Compare plans</a></p></div></section>}
+    {business && (Body ? <Body model={model} /> : <section class="m-sec" data-people="not-provided"><header><h2>People</h2></header><div class="b"><Unavailable what="Delegated administration is not part of this build" why="Business includes it; in this Community build the GitHub administrators of a repository can act on it here" /></div></section>)}
+  </div>
+</ManagePage>

@@ -1,0 +1,1630 @@
+{
+  "repository": "example/relay",
+  "pullRequest": 452,
+  "files": [
+    {
+      "path": "src/policy.ts",
+      "modified": 72,
+      "added": 20,
+      "deleted": 8,
+      "changed": 100,
+      "rawAdded": 92,
+      "rawDeleted": 80
+    },
+    {
+      "path": "src/config.ts",
+      "modified": 40,
+      "added": 18,
+      "deleted": 10,
+      "changed": 68,
+      "rawAdded": 58,
+      "rawDeleted": 50
+    },
+    {
+      "path": "src/report.ts",
+      "modified": 32,
+      "added": 10,
+      "deleted": 4,
+      "changed": 46,
+      "rawAdded": 42,
+      "rawDeleted": 36
+    },
+    {
+      "path": "tests/config.test.ts",
+      "modified": 16,
+      "added": 8,
+      "deleted": 2,
+      "changed": 26,
+      "rawAdded": 24,
+      "rawDeleted": 18
+    },
+    {
+      "path": "docs/policy.md",
+      "modified": 0,
+      "added": 8,
+      "deleted": 0,
+      "changed": 8,
+      "rawAdded": 8,
+      "rawDeleted": 0
+    }
+  ],
+  "excluded": [
+    "pnpm-lock.yaml"
+  ],
+  "total": {
+    "modified": 160,
+    "added": 64,
+    "deleted": 24,
+    "changed": 248,
+    "rawAdded": 224,
+    "rawDeleted": 184,
+    "rawChurn": 408
+  },
+  "bounded": {
+    "lower": 244,
+    "upper": 280
+  },
+  "partial": {
+    "changed": 202,
+    "raw": 330
+  },
+  "basis": {
+    "base": "b406d85",
+    "head": "c7a91e2",
+    "newHead": "f81b902",
+    "contextAsOf": "10 Oct 2026, 02:20 UTC"
+  },
+  "history": {
+    "repository": "example/relay",
+    "windowStart": "2026-07-12T02:20:00Z",
+    "windowEnd": "2026-10-10T02:20:00Z",
+    "metric": "included replacement-aware Changed",
+    "measurementVersion": "replacement-lines-v1",
+    "scope": "same effective policy and path exclusions as the current comparison",
+    "coverage": {
+      "knownMerged": 40,
+      "recovered": 40,
+      "omitted": 0
+    },
+    "comparisons": [
+      {
+        "pr": 1001,
+        "changed": 8,
+        "measurement": "exact",
+        "finalComparison": true,
+        "mergedAt": "2026-07-14T02:20:00.000Z",
+        "files": [
+          "src/other.ts"
+        ],
+        "observations": [
+          {
+            "path": "src/other.ts",
+            "changed": 8,
+            "modified": 8,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 10000,
+            "headSize": 10000
+          }
+        ]
+      },
+      {
+        "pr": 1002,
+        "changed": 12,
+        "measurement": "exact",
+        "finalComparison": true,
+        "mergedAt": "2026-07-16T02:20:00.000Z",
+        "files": [
+          "src/other.ts"
+        ],
+        "observations": [
+          {
+            "path": "src/other.ts",
+            "changed": 12,
+            "modified": 12,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 10000,
+            "headSize": 10000
+          }
+        ]
+      },
+      {
+        "pr": 1003,
+        "changed": 18,
+        "measurement": "exact",
+        "finalComparison": true,
+        "mergedAt": "2026-07-18T02:20:00.000Z",
+        "files": [
+          "src/other.ts"
+        ],
+        "observations": [
+          {
+            "path": "src/other.ts",
+            "changed": 18,
+            "modified": 18,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 10000,
+            "headSize": 10000
+          }
+        ]
+      },
+      {
+        "pr": 1004,
+        "changed": 23,
+        "measurement": "exact",
+        "finalComparison": true,
+        "mergedAt": "2026-07-20T02:20:00.000Z",
+        "files": [
+          "src/other.ts"
+        ],
+        "observations": [
+          {
+            "path": "src/other.ts",
+            "changed": 23,
+            "modified": 23,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 10000,
+            "headSize": 10000
+          }
+        ]
+      },
+      {
+        "pr": 1005,
+        "changed": 31,
+        "measurement": "exact",
+        "finalComparison": true,
+        "mergedAt": "2026-07-22T02:20:00.000Z",
+        "files": [
+          "src/other.ts"
+        ],
+        "observations": [
+          {
+            "path": "src/other.ts",
+            "changed": 31,
+            "modified": 31,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 10000,
+            "headSize": 10000
+          }
+        ]
+      },
+      {
+        "pr": 1006,
+        "changed": 44,
+        "measurement": "exact",
+        "finalComparison": true,
+        "mergedAt": "2026-07-24T02:20:00.000Z",
+        "files": [
+          "tests/policy.test.ts",
+          "src/other.ts"
+        ],
+        "observations": [
+          {
+            "path": "tests/policy.test.ts",
+            "changed": 10,
+            "modified": 10,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 400,
+            "headSize": 400
+          },
+          {
+            "path": "src/other.ts",
+            "changed": 34,
+            "modified": 34,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 10000,
+            "headSize": 10000
+          }
+        ]
+      },
+      {
+        "pr": 1007,
+        "changed": 51,
+        "measurement": "exact",
+        "finalComparison": true,
+        "mergedAt": "2026-07-26T02:20:00.000Z",
+        "files": [
+          "src/other.ts"
+        ],
+        "observations": [
+          {
+            "path": "src/other.ts",
+            "changed": 51,
+            "modified": 51,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 10000,
+            "headSize": 10000
+          }
+        ]
+      },
+      {
+        "pr": 1008,
+        "changed": 60,
+        "measurement": "exact",
+        "finalComparison": true,
+        "mergedAt": "2026-07-28T02:20:00.000Z",
+        "files": [
+          "src/other.ts"
+        ],
+        "observations": [
+          {
+            "path": "src/other.ts",
+            "changed": 60,
+            "modified": 60,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 10000,
+            "headSize": 10000
+          }
+        ]
+      },
+      {
+        "pr": 1009,
+        "changed": 72,
+        "measurement": "exact",
+        "finalComparison": true,
+        "mergedAt": "2026-07-30T02:20:00.000Z",
+        "files": [
+          "src/other.ts"
+        ],
+        "observations": [
+          {
+            "path": "src/other.ts",
+            "changed": 72,
+            "modified": 72,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 10000,
+            "headSize": 10000
+          }
+        ]
+      },
+      {
+        "pr": 1010,
+        "changed": 80,
+        "measurement": "exact",
+        "finalComparison": true,
+        "mergedAt": "2026-08-01T02:20:00.000Z",
+        "files": [
+          "src/other.ts"
+        ],
+        "observations": [
+          {
+            "path": "src/other.ts",
+            "changed": 80,
+            "modified": 80,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 10000,
+            "headSize": 10000
+          }
+        ]
+      },
+      {
+        "pr": 1011,
+        "changed": 87,
+        "measurement": "exact",
+        "finalComparison": true,
+        "mergedAt": "2026-08-03T02:20:00.000Z",
+        "files": [
+          "src/other.ts"
+        ],
+        "observations": [
+          {
+            "path": "src/other.ts",
+            "changed": 87,
+            "modified": 87,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 10000,
+            "headSize": 10000
+          }
+        ]
+      },
+      {
+        "pr": 1012,
+        "changed": 94,
+        "measurement": "exact",
+        "finalComparison": true,
+        "mergedAt": "2026-08-05T02:20:00.000Z",
+        "files": [
+          "src/other.ts"
+        ],
+        "observations": [
+          {
+            "path": "src/other.ts",
+            "changed": 94,
+            "modified": 94,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 10000,
+            "headSize": 10000
+          }
+        ]
+      },
+      {
+        "pr": 1013,
+        "changed": 103,
+        "measurement": "exact",
+        "finalComparison": true,
+        "mergedAt": "2026-08-07T02:20:00.000Z",
+        "files": [
+          "src/other.ts"
+        ],
+        "observations": [
+          {
+            "path": "src/other.ts",
+            "changed": 103,
+            "modified": 103,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 10000,
+            "headSize": 10000
+          }
+        ]
+      },
+      {
+        "pr": 1014,
+        "changed": 108,
+        "measurement": "exact",
+        "finalComparison": true,
+        "mergedAt": "2026-08-09T02:20:00.000Z",
+        "files": [
+          "src/other.ts"
+        ],
+        "observations": [
+          {
+            "path": "src/other.ts",
+            "changed": 108,
+            "modified": 108,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 10000,
+            "headSize": 10000
+          }
+        ]
+      },
+      {
+        "pr": 1015,
+        "changed": 113,
+        "measurement": "exact",
+        "finalComparison": true,
+        "mergedAt": "2026-08-11T02:20:00.000Z",
+        "files": [
+          "src/other.ts"
+        ],
+        "observations": [
+          {
+            "path": "src/other.ts",
+            "changed": 113,
+            "modified": 113,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 10000,
+            "headSize": 10000
+          }
+        ]
+      },
+      {
+        "pr": 1016,
+        "changed": 119,
+        "measurement": "exact",
+        "finalComparison": true,
+        "mergedAt": "2026-08-13T02:20:00.000Z",
+        "files": [
+          "src/report.ts",
+          "src/other.ts"
+        ],
+        "observations": [
+          {
+            "path": "src/report.ts",
+            "changed": 10,
+            "modified": 10,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 500,
+            "headSize": 500
+          },
+          {
+            "path": "src/other.ts",
+            "changed": 109,
+            "modified": 109,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 10000,
+            "headSize": 10000
+          }
+        ]
+      },
+      {
+        "pr": 1017,
+        "changed": 124,
+        "measurement": "exact",
+        "finalComparison": true,
+        "mergedAt": "2026-08-15T02:20:00.000Z",
+        "files": [
+          "src/report.ts",
+          "tests/config.test.ts",
+          "src/other.ts"
+        ],
+        "observations": [
+          {
+            "path": "src/report.ts",
+            "changed": 10,
+            "modified": 10,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 500,
+            "headSize": 500
+          },
+          {
+            "path": "tests/config.test.ts",
+            "changed": 10,
+            "modified": 10,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 400,
+            "headSize": 400
+          },
+          {
+            "path": "src/other.ts",
+            "changed": 104,
+            "modified": 104,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 10000,
+            "headSize": 10000
+          }
+        ]
+      },
+      {
+        "pr": 1018,
+        "changed": 128,
+        "measurement": "exact",
+        "finalComparison": true,
+        "mergedAt": "2026-08-17T02:20:00.000Z",
+        "files": [
+          "src/report.ts",
+          "tests/config.test.ts",
+          "src/other.ts"
+        ],
+        "observations": [
+          {
+            "path": "src/report.ts",
+            "changed": 10,
+            "modified": 10,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 500,
+            "headSize": 500
+          },
+          {
+            "path": "tests/config.test.ts",
+            "changed": 10,
+            "modified": 10,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 400,
+            "headSize": 400
+          },
+          {
+            "path": "src/other.ts",
+            "changed": 108,
+            "modified": 108,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 10000,
+            "headSize": 10000
+          }
+        ]
+      },
+      {
+        "pr": 1019,
+        "changed": 130,
+        "measurement": "exact",
+        "finalComparison": true,
+        "mergedAt": "2026-08-19T02:20:00.000Z",
+        "files": [
+          "src/report.ts",
+          "tests/config.test.ts",
+          "src/other.ts"
+        ],
+        "observations": [
+          {
+            "path": "src/report.ts",
+            "changed": 10,
+            "modified": 10,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 500,
+            "headSize": 500
+          },
+          {
+            "path": "tests/config.test.ts",
+            "changed": 10,
+            "modified": 10,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 400,
+            "headSize": 400
+          },
+          {
+            "path": "src/other.ts",
+            "changed": 110,
+            "modified": 110,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 10000,
+            "headSize": 10000
+          }
+        ]
+      },
+      {
+        "pr": 1020,
+        "changed": 132,
+        "measurement": "exact",
+        "finalComparison": true,
+        "mergedAt": "2026-08-21T02:20:00.000Z",
+        "files": [
+          "src/report.ts",
+          "tests/config.test.ts",
+          "src/other.ts"
+        ],
+        "observations": [
+          {
+            "path": "src/report.ts",
+            "changed": 10,
+            "modified": 10,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 500,
+            "headSize": 500
+          },
+          {
+            "path": "tests/config.test.ts",
+            "changed": 10,
+            "modified": 10,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 400,
+            "headSize": 400
+          },
+          {
+            "path": "src/other.ts",
+            "changed": 112,
+            "modified": 112,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 10000,
+            "headSize": 10000
+          }
+        ]
+      },
+      {
+        "pr": 1021,
+        "changed": 132,
+        "measurement": "exact",
+        "finalComparison": true,
+        "mergedAt": "2026-08-23T02:20:00.000Z",
+        "files": [
+          "docs/policy.md",
+          "src/other.ts"
+        ],
+        "observations": [
+          {
+            "path": "docs/policy.md",
+            "changed": 4,
+            "modified": 4,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 300,
+            "headSize": 300
+          },
+          {
+            "path": "src/other.ts",
+            "changed": 128,
+            "modified": 128,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 10000,
+            "headSize": 10000
+          }
+        ]
+      },
+      {
+        "pr": 1022,
+        "changed": 138,
+        "measurement": "exact",
+        "finalComparison": true,
+        "mergedAt": "2026-08-25T02:20:00.000Z",
+        "files": [
+          "src/other.ts"
+        ],
+        "observations": [
+          {
+            "path": "src/other.ts",
+            "changed": 138,
+            "modified": 138,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 10000,
+            "headSize": 10000
+          }
+        ]
+      },
+      {
+        "pr": 1023,
+        "changed": 144,
+        "measurement": "exact",
+        "finalComparison": true,
+        "mergedAt": "2026-08-27T02:20:00.000Z",
+        "files": [
+          "src/policy.ts",
+          "src/other.ts"
+        ],
+        "observations": [
+          {
+            "path": "src/policy.ts",
+            "changed": 50,
+            "modified": 50,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 500,
+            "headSize": 500
+          },
+          {
+            "path": "src/other.ts",
+            "changed": 94,
+            "modified": 94,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 10000,
+            "headSize": 10000
+          }
+        ]
+      },
+      {
+        "pr": 1024,
+        "changed": 156,
+        "measurement": "exact",
+        "finalComparison": true,
+        "mergedAt": "2026-08-29T02:20:00.000Z",
+        "files": [
+          "src/policy.ts",
+          "src/other.ts"
+        ],
+        "observations": [
+          {
+            "path": "src/policy.ts",
+            "changed": 50,
+            "modified": 50,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 500,
+            "headSize": 500
+          },
+          {
+            "path": "src/other.ts",
+            "changed": 106,
+            "modified": 106,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 10000,
+            "headSize": 10000
+          }
+        ]
+      },
+      {
+        "pr": 1025,
+        "changed": 168,
+        "measurement": "exact",
+        "finalComparison": true,
+        "mergedAt": "2026-08-31T02:20:00.000Z",
+        "files": [
+          "src/policy.ts",
+          "src/other.ts"
+        ],
+        "observations": [
+          {
+            "path": "src/policy.ts",
+            "changed": 50,
+            "modified": 50,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 500,
+            "headSize": 500
+          },
+          {
+            "path": "src/other.ts",
+            "changed": 118,
+            "modified": 118,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 10000,
+            "headSize": 10000
+          }
+        ]
+      },
+      {
+        "pr": 1026,
+        "changed": 182,
+        "measurement": "exact",
+        "finalComparison": true,
+        "mergedAt": "2026-09-02T02:20:00.000Z",
+        "files": [
+          "src/policy.ts",
+          "src/other.ts"
+        ],
+        "observations": [
+          {
+            "path": "src/policy.ts",
+            "changed": 50,
+            "modified": 50,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 500,
+            "headSize": 500
+          },
+          {
+            "path": "src/other.ts",
+            "changed": 132,
+            "modified": 132,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 10000,
+            "headSize": 10000
+          }
+        ]
+      },
+      {
+        "pr": 1027,
+        "changed": 198,
+        "measurement": "exact",
+        "finalComparison": true,
+        "mergedAt": "2026-09-04T02:20:00.000Z",
+        "files": [
+          "src/policy.ts",
+          "tests/policy.test.ts",
+          "src/other.ts"
+        ],
+        "observations": [
+          {
+            "path": "src/policy.ts",
+            "changed": 50,
+            "modified": 50,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 500,
+            "headSize": 500
+          },
+          {
+            "path": "tests/policy.test.ts",
+            "changed": 10,
+            "modified": 10,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 400,
+            "headSize": 400
+          },
+          {
+            "path": "src/other.ts",
+            "changed": 138,
+            "modified": 138,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 10000,
+            "headSize": 10000
+          }
+        ]
+      },
+      {
+        "pr": 1028,
+        "changed": 212,
+        "measurement": "exact",
+        "finalComparison": true,
+        "mergedAt": "2026-09-06T02:20:00.000Z",
+        "files": [
+          "src/policy.ts",
+          "tests/policy.test.ts",
+          "src/other.ts"
+        ],
+        "observations": [
+          {
+            "path": "src/policy.ts",
+            "changed": 50,
+            "modified": 50,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 500,
+            "headSize": 500
+          },
+          {
+            "path": "tests/policy.test.ts",
+            "changed": 10,
+            "modified": 10,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 400,
+            "headSize": 400
+          },
+          {
+            "path": "src/other.ts",
+            "changed": 152,
+            "modified": 152,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 10000,
+            "headSize": 10000
+          }
+        ]
+      },
+      {
+        "pr": 1029,
+        "changed": 224,
+        "measurement": "exact",
+        "finalComparison": true,
+        "mergedAt": "2026-09-08T02:20:00.000Z",
+        "files": [
+          "src/policy.ts",
+          "src/config.ts",
+          "tests/policy.test.ts",
+          "src/other.ts"
+        ],
+        "observations": [
+          {
+            "path": "src/policy.ts",
+            "changed": 50,
+            "modified": 50,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 500,
+            "headSize": 500
+          },
+          {
+            "path": "src/config.ts",
+            "changed": 40,
+            "modified": 40,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 600,
+            "headSize": 600
+          },
+          {
+            "path": "tests/policy.test.ts",
+            "changed": 10,
+            "modified": 10,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 400,
+            "headSize": 400
+          },
+          {
+            "path": "src/other.ts",
+            "changed": 124,
+            "modified": 124,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 10000,
+            "headSize": 10000
+          }
+        ]
+      },
+      {
+        "pr": 1030,
+        "changed": 238,
+        "measurement": "exact",
+        "finalComparison": true,
+        "mergedAt": "2026-09-10T02:20:00.000Z",
+        "files": [
+          "src/policy.ts",
+          "src/config.ts",
+          "tests/policy.test.ts",
+          "src/other.ts"
+        ],
+        "observations": [
+          {
+            "path": "src/policy.ts",
+            "changed": 50,
+            "modified": 50,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 500,
+            "headSize": 500
+          },
+          {
+            "path": "src/config.ts",
+            "changed": 40,
+            "modified": 40,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 600,
+            "headSize": 600
+          },
+          {
+            "path": "tests/policy.test.ts",
+            "changed": 10,
+            "modified": 10,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 400,
+            "headSize": 400
+          },
+          {
+            "path": "src/other.ts",
+            "changed": 138,
+            "modified": 138,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 10000,
+            "headSize": 10000
+          }
+        ]
+      },
+      {
+        "pr": 1031,
+        "changed": 256,
+        "measurement": "exact",
+        "finalComparison": true,
+        "mergedAt": "2026-09-12T02:20:00.000Z",
+        "files": [
+          "src/policy.ts",
+          "src/config.ts",
+          "tests/policy.test.ts",
+          "src/other.ts"
+        ],
+        "observations": [
+          {
+            "path": "src/policy.ts",
+            "changed": 50,
+            "modified": 50,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 500,
+            "headSize": 500
+          },
+          {
+            "path": "src/config.ts",
+            "changed": 40,
+            "modified": 40,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 600,
+            "headSize": 600
+          },
+          {
+            "path": "tests/policy.test.ts",
+            "changed": 10,
+            "modified": 10,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 400,
+            "headSize": 400
+          },
+          {
+            "path": "src/other.ts",
+            "changed": 156,
+            "modified": 156,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 10000,
+            "headSize": 10000
+          }
+        ]
+      },
+      {
+        "pr": 1032,
+        "changed": 278,
+        "measurement": "exact",
+        "finalComparison": true,
+        "mergedAt": "2026-09-14T02:20:00.000Z",
+        "files": [
+          "src/policy.ts",
+          "src/config.ts",
+          "tests/policy.test.ts",
+          "src/other.ts"
+        ],
+        "observations": [
+          {
+            "path": "src/policy.ts",
+            "changed": 50,
+            "modified": 50,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 500,
+            "headSize": 500
+          },
+          {
+            "path": "src/config.ts",
+            "changed": 40,
+            "modified": 40,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 600,
+            "headSize": 600
+          },
+          {
+            "path": "tests/policy.test.ts",
+            "changed": 10,
+            "modified": 10,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 400,
+            "headSize": 400
+          },
+          {
+            "path": "src/other.ts",
+            "changed": 178,
+            "modified": 178,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 10000,
+            "headSize": 10000
+          }
+        ]
+      },
+      {
+        "pr": 1033,
+        "changed": 310,
+        "measurement": "exact",
+        "finalComparison": true,
+        "mergedAt": "2026-09-16T02:20:00.000Z",
+        "files": [
+          "src/policy.ts",
+          "src/config.ts",
+          "tests/policy.test.ts",
+          "src/other.ts"
+        ],
+        "observations": [
+          {
+            "path": "src/policy.ts",
+            "changed": 50,
+            "modified": 50,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 500,
+            "headSize": 500
+          },
+          {
+            "path": "src/config.ts",
+            "changed": 40,
+            "modified": 40,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 600,
+            "headSize": 600
+          },
+          {
+            "path": "tests/policy.test.ts",
+            "changed": 10,
+            "modified": 10,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 400,
+            "headSize": 400
+          },
+          {
+            "path": "src/other.ts",
+            "changed": 210,
+            "modified": 210,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 10000,
+            "headSize": 10000
+          }
+        ]
+      },
+      {
+        "pr": 1034,
+        "changed": 338,
+        "measurement": "exact",
+        "finalComparison": true,
+        "mergedAt": "2026-09-18T02:20:00.000Z",
+        "files": [
+          "src/policy.ts",
+          "src/config.ts",
+          "tests/policy.test.ts",
+          "src/other.ts"
+        ],
+        "observations": [
+          {
+            "path": "src/policy.ts",
+            "changed": 50,
+            "modified": 50,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 500,
+            "headSize": 500
+          },
+          {
+            "path": "src/config.ts",
+            "changed": 40,
+            "modified": 40,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 600,
+            "headSize": 600
+          },
+          {
+            "path": "tests/policy.test.ts",
+            "changed": 10,
+            "modified": 10,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 400,
+            "headSize": 400
+          },
+          {
+            "path": "src/other.ts",
+            "changed": 238,
+            "modified": 238,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 10000,
+            "headSize": 10000
+          }
+        ]
+      },
+      {
+        "pr": 1035,
+        "changed": 380,
+        "measurement": "exact",
+        "finalComparison": true,
+        "mergedAt": "2026-09-20T02:20:00.000Z",
+        "files": [
+          "src/policy.ts",
+          "src/config.ts",
+          "tests/policy.test.ts",
+          "src/other.ts"
+        ],
+        "observations": [
+          {
+            "path": "src/policy.ts",
+            "changed": 50,
+            "modified": 50,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 500,
+            "headSize": 500
+          },
+          {
+            "path": "src/config.ts",
+            "changed": 40,
+            "modified": 40,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 600,
+            "headSize": 600
+          },
+          {
+            "path": "tests/policy.test.ts",
+            "changed": 10,
+            "modified": 10,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 400,
+            "headSize": 400
+          },
+          {
+            "path": "src/other.ts",
+            "changed": 280,
+            "modified": 280,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 10000,
+            "headSize": 10000
+          }
+        ]
+      },
+      {
+        "pr": 1036,
+        "changed": 420,
+        "measurement": "exact",
+        "finalComparison": true,
+        "mergedAt": "2026-09-22T02:20:00.000Z",
+        "files": [
+          "src/policy.ts",
+          "src/config.ts",
+          "tests/policy.test.ts",
+          "src/other.ts"
+        ],
+        "observations": [
+          {
+            "path": "src/policy.ts",
+            "changed": 50,
+            "modified": 50,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 500,
+            "headSize": 500
+          },
+          {
+            "path": "src/config.ts",
+            "changed": 40,
+            "modified": 40,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 600,
+            "headSize": 600
+          },
+          {
+            "path": "tests/policy.test.ts",
+            "changed": 10,
+            "modified": 10,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 400,
+            "headSize": 400
+          },
+          {
+            "path": "src/other.ts",
+            "changed": 320,
+            "modified": 320,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 10000,
+            "headSize": 10000
+          }
+        ]
+      },
+      {
+        "pr": 1037,
+        "changed": 490,
+        "measurement": "exact",
+        "finalComparison": true,
+        "mergedAt": "2026-09-24T02:20:00.000Z",
+        "files": [
+          "src/policy.ts",
+          "src/config.ts",
+          "tests/policy.test.ts",
+          "src/other.ts"
+        ],
+        "observations": [
+          {
+            "path": "src/policy.ts",
+            "changed": 50,
+            "modified": 50,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 500,
+            "headSize": 500
+          },
+          {
+            "path": "src/config.ts",
+            "changed": 40,
+            "modified": 40,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 600,
+            "headSize": 600
+          },
+          {
+            "path": "tests/policy.test.ts",
+            "changed": 10,
+            "modified": 10,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 400,
+            "headSize": 400
+          },
+          {
+            "path": "src/other.ts",
+            "changed": 390,
+            "modified": 390,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 10000,
+            "headSize": 10000
+          }
+        ]
+      },
+      {
+        "pr": 1038,
+        "changed": 610,
+        "measurement": "exact",
+        "finalComparison": true,
+        "mergedAt": "2026-09-26T02:20:00.000Z",
+        "files": [
+          "src/policy.ts",
+          "src/config.ts",
+          "tests/policy.test.ts",
+          "src/other.ts"
+        ],
+        "observations": [
+          {
+            "path": "src/policy.ts",
+            "changed": 50,
+            "modified": 50,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 500,
+            "headSize": 500
+          },
+          {
+            "path": "src/config.ts",
+            "changed": 40,
+            "modified": 40,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 600,
+            "headSize": 600
+          },
+          {
+            "path": "tests/policy.test.ts",
+            "changed": 10,
+            "modified": 10,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 400,
+            "headSize": 400
+          },
+          {
+            "path": "src/other.ts",
+            "changed": 510,
+            "modified": 510,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 10000,
+            "headSize": 10000
+          }
+        ]
+      },
+      {
+        "pr": 1039,
+        "changed": 820,
+        "measurement": "exact",
+        "finalComparison": true,
+        "mergedAt": "2026-09-28T02:20:00.000Z",
+        "files": [
+          "src/policy.ts",
+          "src/config.ts",
+          "tests/policy.test.ts",
+          "src/other.ts"
+        ],
+        "observations": [
+          {
+            "path": "src/policy.ts",
+            "changed": 50,
+            "modified": 50,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 500,
+            "headSize": 500
+          },
+          {
+            "path": "src/config.ts",
+            "changed": 40,
+            "modified": 40,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 600,
+            "headSize": 600
+          },
+          {
+            "path": "tests/policy.test.ts",
+            "changed": 10,
+            "modified": 10,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 400,
+            "headSize": 400
+          },
+          {
+            "path": "src/other.ts",
+            "changed": 720,
+            "modified": 720,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 10000,
+            "headSize": 10000
+          }
+        ]
+      },
+      {
+        "pr": 1040,
+        "changed": 1140,
+        "measurement": "exact",
+        "finalComparison": true,
+        "mergedAt": "2026-09-30T02:20:00.000Z",
+        "files": [
+          "src/policy.ts",
+          "src/config.ts",
+          "tests/policy.test.ts",
+          "src/other.ts"
+        ],
+        "observations": [
+          {
+            "path": "src/policy.ts",
+            "changed": 50,
+            "modified": 50,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 500,
+            "headSize": 500
+          },
+          {
+            "path": "src/config.ts",
+            "changed": 40,
+            "modified": 40,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 600,
+            "headSize": 600
+          },
+          {
+            "path": "tests/policy.test.ts",
+            "changed": 10,
+            "modified": 10,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 400,
+            "headSize": 400
+          },
+          {
+            "path": "src/other.ts",
+            "changed": 1040,
+            "modified": 1040,
+            "addedOnly": 0,
+            "deletedOnly": 0,
+            "baseSize": 10000,
+            "headSize": 10000
+          }
+        ]
+      }
+    ],
+    "sizeEvidence": [
+      {
+        "path": "src/policy.ts",
+        "identity": "stable synthetic identity: src/policy.ts",
+        "coverage": "complete for the whole period",
+        "segments": [
+          {
+            "start": "2026-07-12T02:20:00Z",
+            "end": "2026-10-10T02:20:00Z",
+            "size": 500
+          }
+        ],
+        "createdOrDeletedWithinPeriod": false,
+        "binary": false
+      },
+      {
+        "path": "src/config.ts",
+        "identity": "stable synthetic identity: src/config.ts",
+        "coverage": "complete for the whole period",
+        "segments": [
+          {
+            "start": "2026-07-12T02:20:00Z",
+            "end": "2026-10-10T02:20:00Z",
+            "size": 600
+          }
+        ],
+        "createdOrDeletedWithinPeriod": false,
+        "binary": false
+      },
+      {
+        "path": "tests/policy.test.ts",
+        "identity": "stable synthetic identity: tests/policy.test.ts",
+        "coverage": "complete for the whole period",
+        "segments": [
+          {
+            "start": "2026-07-12T02:20:00Z",
+            "end": "2026-10-10T02:20:00Z",
+            "size": 400
+          }
+        ],
+        "createdOrDeletedWithinPeriod": false,
+        "binary": false
+      },
+      {
+        "path": "src/report.ts",
+        "identity": "stable synthetic identity: src/report.ts",
+        "coverage": "complete for the whole period",
+        "segments": [
+          {
+            "start": "2026-07-12T02:20:00Z",
+            "end": "2026-10-10T02:20:00Z",
+            "size": 500
+          }
+        ],
+        "createdOrDeletedWithinPeriod": false,
+        "binary": false
+      },
+      {
+        "path": "tests/config.test.ts",
+        "identity": "stable synthetic identity: tests/config.test.ts",
+        "coverage": "complete for the whole period",
+        "segments": [
+          {
+            "start": "2026-07-12T02:20:00Z",
+            "end": "2026-10-10T02:20:00Z",
+            "size": 400
+          }
+        ],
+        "createdOrDeletedWithinPeriod": false,
+        "binary": false
+      },
+      {
+        "path": "docs/policy.md",
+        "identity": "stable synthetic identity: docs/policy.md",
+        "coverage": "complete for the whole period",
+        "segments": [
+          {
+            "start": "2026-07-12T02:20:00Z",
+            "end": "2026-10-10T02:20:00Z",
+            "size": 300
+          }
+        ],
+        "createdOrDeletedWithinPeriod": false,
+        "binary": false
+      },
+      {
+        "path": "src/other.ts",
+        "identity": "stable synthetic identity: src/other.ts",
+        "coverage": "complete for the whole period",
+        "segments": [
+          {
+            "start": "2026-07-12T02:20:00Z",
+            "end": "2026-10-10T02:20:00Z",
+            "size": 10000
+          }
+        ],
+        "createdOrDeletedWithinPeriod": false,
+        "binary": false
+      }
+    ]
+  },
+  "neighbours": [
+    {
+      "number": 418,
+      "title": "Scope override precedence",
+      "state": "open",
+      "draft": false,
+      "files": [
+        "src/policy.ts",
+        "src/config.ts",
+        "tests/override.test.ts"
+      ],
+      "sharedFiles": [
+        "src/policy.ts",
+        "src/config.ts"
+      ]
+    },
+    {
+      "number": 427,
+      "title": "Validate inherited limits",
+      "state": "open",
+      "draft": true,
+      "files": [
+        "src/policy.ts",
+        "tests/inherited.test.ts"
+      ],
+      "sharedFiles": [
+        "src/policy.ts"
+      ]
+    }
+  ],
+  "selectedFileContext": [
+    {
+      "path": "src/policy.ts",
+      "frequency": 18,
+      "changed": 900,
+      "averageSize": 500,
+      "turnover": 1.8,
+      "currentChanged": 100
+    },
+    {
+      "path": "src/config.ts",
+      "frequency": 12,
+      "changed": 480,
+      "averageSize": 600,
+      "turnover": 0.8,
+      "currentChanged": 68
+    }
+  ]
+}

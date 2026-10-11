@@ -1,4 +1,4 @@
-import { readdirSync } from 'node:fs';
+import { existsSync, readdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { run } from 'node:test';
 import { tap } from 'node:test/reporters';
@@ -12,7 +12,8 @@ function discover(root) {
     return entry.isDirectory() ? discover(path) : entry.isFile() && entry.name.endsWith('.test.mjs') ? [path] : [];
   });
 }
-const roots = ['src/diffdevil/tests', 'apps'];
+// The premium extension's tests run where the extension is present; a Community checkout has no premium/ directory.
+const roots = ['src/diffdevil/tests', 'apps', ...(existsSync('premium') ? ['premium'] : [])];
 const files = roots.flatMap(discover).sort();
 if (files.length === 0) {
   console.error(`No ordinary test files were discovered under ${roots.join(' or ')}.`);
@@ -21,7 +22,9 @@ if (files.length === 0) {
 const observed = new Set();
 let failed = false;
 async function* inspectEvents() {
-  for await (const event of run({ files })) {
+  // D1 fixtures are process-isolated. Bound parallelism instead of serializing every
+  // file or scaling local work to every available core. Serial Windows CI timed out.
+  for await (const event of run({ files, concurrency: 2 })) {
     if (event.type === 'test:fail') failed = true;
     if (event.type === 'test:summary') {
       const { file, counts, success } = event.data;

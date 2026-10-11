@@ -1,0 +1,23 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
+// The console's sub-tabs: Overview · Repositories · Defaults · Plan & funding · Account; on Business, Defaults becomes
+// Policies and People and Audit join. Overview carries the count of things that need a decision.
+import Icon from '../Icon.astro';
+interface Props { model: any; current: string }
+const { model, current } = Astro.props;
+// Business replaces Defaults with Policies and adds People and Audit. Someone on Pro who coordinates a Business
+// organisation as its Account administrator keeps their own Defaults and gains the three Business tabs.
+const business = model.viewerPlan === 'Business';
+const coordinates = model.coordinates === true;
+const tabs = [
+  ['overview', '/manage', 'Overview', 'overview'], ['repositories', '/manage/repositories', 'Repositories', 'book'],
+  ...(business ? [] : [['defaults', '/manage/defaults', 'Defaults', 'file-code']]),
+  ...(coordinates ? [['policies', '/manage/policies', 'Policies', 'link'], ['people', '/manage/people', 'People', 'users'], ['audit', '/manage/audit', 'Audit', 'list-checks']] : []),
+  ['plan', '/manage/plan', 'Plan & funding', 'credit-card'], ['account', '/manage/account', 'Account', 'user']
+];
+const count = model.attention.length;
+const urgent = model.attention.some((item: any) => item.tone === 'err');
+---
+<nav class="m-tabs" aria-label="Manage">
+  {tabs.map(([key, href, label, icon]) => <a href={href} aria-current={current === key ? 'page' : undefined}><Icon name={icon as any} size={15} />{label}{key === 'overview' && count > 0 && <span class:list={['m-dotn', { err: urgent }]} title={`${count} ${count === 1 ? 'thing needs' : 'things need'} a decision`}>{count}</span>}</a>)}
+</nav>

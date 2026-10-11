@@ -1,0 +1,67 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
+// Manage · Account: four separate relationships (GitHub sign-in, GitHub App installations, the funding connection,
+// Wolfsblvt Works), each with what it does and doesn't do and its standing; sessions (signing out keeps the funding
+// connection, and says so); email; your data and leaving. The funding connection never reconnects by itself: only the
+// explicit Reconnect does.
+import ManagePage from '../../components/manage/ManagePage.astro';
+import Icon from '../../components/Icon.astro';
+import StatePill from '../../components/manage/StatePill.astro';
+import ActionForm from '../../components/manage/ActionForm.astro';
+import Banner from '../../components/manage/Banner.astro';
+import { loadManage } from '../../lib/manage/model.mjs';
+import { fmtDay } from '../../lib/manage/works.mjs';
+
+const runtime = Astro.locals.app;
+const viewer = Astro.locals.viewer;
+const model = await loadManage({ viewer, session: Astro.locals.session, runtime });
+const status = model.commercial?.status ?? null;
+const connection = model.serviceConnection;
+const sessions = await runtime.manage.sessionCount(viewer.userId);
+const confirm = Astro.url.searchParams.get('confirm') ?? '';
+const installations = new Map<number, string>();
+for (const repository of viewer.repositories) if (repository.standing) installations.set(repository.standing.installationId, repository.standing.installationState);
+const suspended = [...installations.values()].filter(state => state !== 'active').length;
+const funded = model.namespaces.filter((namespace: any) => ['own-slot', 'paused'].includes(namespace.funding.kind));
+const connectionPill = { retained: { tone: 'ok', icon: 'check', label: 'Connected' }, disconnected: { tone: 'warn', icon: 'alert-triangle', label: 'Disconnected' }, 'not-retained': { tone: 'off', icon: undefined, label: 'Not needed' }, unavailable: { tone: 'err', icon: 'circle-alert', label: 'Needs attention' }, unknown: { tone: 'off', icon: 'circle-dashed', label: 'Unknown' } }[connection as 'retained'] ?? { tone: 'off', icon: 'circle-dashed', label: 'Unknown' };
+const reachable = viewer.repositories.length;
+---
+<ManagePage model={model} tab="account">
+  <div class="m-stack">
+    {connection === 'disconnected' && <Banner tone="warn" icon="alert-triangle" title="Your GitHub funding connection is disconnected" text={`You can still sign in and read everything. But diffdevil can't confirm you administer the organisations you fund${funded.length ? `, so ${model.viewerPlan} is paused in ${funded.map((namespace: any) => namespace.login).join(', ')}` : ''}. Funding and slots are unchanged. It stays off until you reconnect; no renewal, sign-in or return from Works turns it back on.`} data-connection-banner>{model.commercial && <ActionForm action="reconnect" label="Reconnect" class="pri" back="/manage/account" />}</Banner>}
+    {connection === 'unavailable' && <Banner tone="err" icon="circle-alert" title="Your GitHub funding connection needs attention" text="diffdevil funds organisations for you, but the GitHub authorization it kept for that is no longer usable. Sign out and in again, then reconnect." />}
+    <section class="m-sec" data-relationships><header><h2>Four separate relationships</h2><span class="d">Each one does one thing. None implies another.</span></header>
+      <div class="m-rel">
+        <div><span class="h"><Icon name="user" />GitHub sign-in</span><p>Tells diffdevil who you are: <b>{viewer.login}</b>.</p><span class="not">Doesn't give access to any repository.</span><span class="st"><StatePill tone="ok" icon="check" label="Signed in" /></span></div>
+        <div><span class="h"><Icon name="git-fork" />GitHub App installations</span><p>Decide which repositories diffdevil can reach: {model.namespaces.map((namespace: any) => namespace.login).join(', ') || 'none yet'} · {reachable} {reachable === 1 ? 'repository' : 'repositories'}.</p><span class="not">Managed on GitHub. Reach isn't operation.</span><span class="st">{suspended ? <StatePill tone="err" icon="circle-alert" label={`${suspended} suspended`} /> : <StatePill tone="ok" icon="check" label={`${installations.size} active`} />}</span></div>
+        <div><span class="h"><Icon name="key" />Funding connection</span><p>Lets diffdevil confirm you still administer the organisations you fund{funded.length ? `: ${funded.map((namespace: any) => namespace.login).join(', ')}` : ''}.</p><span class="not">Kept only while you fund an organisation. Adds no permissions.</span><span class="st"><StatePill tone={connectionPill.tone} icon={connectionPill.icon as any} label={connectionPill.label} /></span></div>
+        <div><span class="h"><Icon name="shield" />Wolfsblvt Works</span><p>Sign-in for billing, your plan, invoices and payment.</p><span class="not">Never sees your repositories.</span><span class="st">{status?.linked ? <StatePill tone="ok" icon="link" label={`Linked${status.linkedSince ? ` since ${fmtDay(status.linkedSince)}` : ''}`} /> : <StatePill tone="off" label="Not linked" />}</span></div>
+      </div>
+      <footer>{connection === 'retained' && model.commercial && <a class="m-btn sm ghost" href="?confirm=disconnect">Disconnect funding connection…</a>}{connection === 'disconnected' && model.commercial && <ActionForm action="reconnect" label="Reconnect funding connection" class="sm" back="/manage/account" />}{status?.linked ? <a class="m-btn sm ghost" href="/manage/plan">Plan &amp; funding</a> : <a class="m-btn sm ghost" href="/manage/plan">Link Wolfsblvt Works when you upgrade</a>}<span class="push">Repository administration in diffdevil follows each account's plan: one administrator on Free and Pro, delegation on Business.</span></footer>
+    </section>
+    {confirm === 'disconnect' && <div class="m-confirm" role="alertdialog" aria-labelledby="dc-h" data-confirm="disconnect"><h3 id="dc-h">Disconnect your GitHub funding connection?</h3><ul><li>diffdevil removes the GitHub authorization it kept to confirm you administer the organisations you fund. Funding, slots and the subscription are unchanged.</li><li>{funded.length ? `${model.viewerPlan} is paused in ${funded.map((namespace: any) => namespace.login).join(', ')} until you reconnect: readers get Free features there meanwhile.` : 'No organisation is funded by you right now, so nothing pauses.'}</li><li>This also ends every browser session of your account, including this one. Sign in again to keep reading; signing in does not reconnect the funding connection.</li><li>It stays off until you choose Reconnect. No renewal, sign-in or return from Works brings it back.</li></ul><div class="m-acts"><ActionForm action="disconnect" label="Disconnect" class="dng" /><a class="m-btn ghost" href="/manage/account">Cancel</a></div></div>}
+
+    <div class="m-grid2">
+      <section class="m-sec" data-sessions><header><h2>Sessions</h2></header><div class="b"><div class="m-eff">
+        <div><Icon name="user" /><span><b>This browser</b><span class="d">Signing out keeps your funding connection{connection === 'retained' ? ' (it serves your funded organisations, not this browser)' : connection === 'disconnected' ? ' disconnected, as it is' : ''}; the sign-in page says so.</span></span><form class="m-form" method="post" action="/auth/logout"><button class="m-btn sm ghost" type="submit"><Icon name="log-out" size={14} />Sign out</button></form></div>
+        <div><Icon name="users" /><span><b>{sessions} {sessions === 1 ? 'session' : 'sessions'} in all</b><span class="d">Every browser signed in as {viewer.login}, including this one. Sessions last {runtime.config.sessionDays} days.</span></span><ActionForm action="sign-out-everywhere" label="Sign out everywhere" class="sm ghost" /></div>
+      </div></div></section>
+      <section class="m-sec" data-email><header><h2>Email</h2></header><div class="b"><div class="m-eff">
+        <div><Icon name="mail" /><span><b>Service messages</b><span class="d">Billing, security and service notices go to your Works contact address. Always on.</span></span>{status?.linked && model.worksOrigin ? <a class="m-btn sm ghost" href={`/manage/depart?to=account&purpose=browse&from=${encodeURIComponent('/manage/account')}`}>At Works <Icon name="arrow-up-right" size={13} /></a> : <span></span>}</div>
+        <div><Icon name="mail" /><span><b>Product news and feedback</b><span class="d">Occasional. Separate from service messages. Signing in never subscribes you; nothing is sent yet.</span></span><div class="a-seg sm" role="group" aria-label="Product news"><span aria-disabled="true" title="Product news isn't sent yet">On</span><span aria-current="true">Off</span></div></div>
+      </div></div></section>
+    </div>
+
+    <section class="m-sec" data-leaving><header><h2>Your data, and leaving</h2></header><div class="b"><div class="m-eff">
+      <div><Icon name="download" /><span><b>Export everything you administer</b><span class="d">Resolved policies, defaults and retained history for each repository, as files you can use without diffdevil.</span></span><a class="m-btn sm" href="/manage/export"><Icon name="download" size={14} />Export</a></div>
+      <div><Icon name="trash" /><span><b>Close your diffdevil account</b><span class="d">Offers the export first, then deletes your account data at once. Organisation data stays with each organisation. Your Works account and its invoices are separate.</span></span><a class="m-btn sm ghost dng" href={confirm === 'close' ? '/manage/account' : '?confirm=close'}>Close account…</a></div>
+    </div>
+    {confirm === 'close' && <div class="m-confirm" style="margin-top:14px" data-confirm="close"><h3>Close your diffdevil account?</h3><ol class="m-flow">
+      <li><Icon name="download" size={13} /><span><b>Export first</b> · resolved policies, defaults and retained history for everything you administer. <a class="m-btn sm" href="/manage/export">Download export</a></span></li>
+      <li><Icon name="trash" size={13} /><span><b>Then closing deletes at once</b> · your sessions, the GitHub authorization diffdevil kept, your Manage facts, and your personal repositories' history (they stop running). There's no 30-day grace for closure; a deletion record stops backups bringing the history back.</span></li>
+      <li><Icon name="building-2" size={13} /><span><b>Organisations keep their own data</b> · an organisation's settings and history stay with the organisation. If you fund it, its slot stops funding it when the plan ends.</span></li>
+      <li><Icon name="shield" size={13} /><span><b>Wolfsblvt Works is separate</b> · your Works account, invoices and any subscription stay there.{status?.linked ? ' Your account is linked to a Works plan: whether closure may end or unlink the plan is not settled yet, so unlink it at Works first.' : ''}</span></li></ol>
+      <ActionForm action="close-account" label="Close account" class="dng" disabled={status?.linked === true} title={status?.linked ? 'Unlink the Works plan first' : undefined}><label class="m-note" style="margin:0">Type <b style="font-family:var(--font-mono);color:var(--fg)">{viewer.login}</b> to confirm <input class="m-input" name="confirm" aria-label="Account name" placeholder={viewer.login} autocomplete="off" /></label> </ActionForm><a class="m-btn ghost" href="/manage/account">Cancel</a></div>}
+    </div></section>
+  </div>
+</ManagePage>

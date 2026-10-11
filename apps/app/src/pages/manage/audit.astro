@@ -1,0 +1,18 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
+// Manage · Audit (Business): when, who (unknown when only observed on GitHub), where, what, result. Settings, policies,
+// people, setup, imports and deletions; not contributor activity. The body is the premium extension's.
+import ManagePage from '../../components/manage/ManagePage.astro';
+import Unavailable from '../../components/Unavailable.astro';
+import { loadManage } from '../../lib/manage/model.mjs';
+const runtime = Astro.locals.app;
+const model = await loadManage({ viewer: Astro.locals.viewer, session: Astro.locals.session, runtime });
+const Body = runtime.premium.pages.manage?.Audit;
+const business = model.coordinates === true;
+---
+<ManagePage model={model} tab="audit">
+  <div class="m-stack">
+    {!business && <section class="m-sec"><header><h2>Audit</h2><span class="a-plan biz">Business</span></header><div class="b"><p class="m-lede">An attributable record of settings, policy, people and setup changes comes with Business. <a class="link-quiet" href="/manage/plan">Compare plans</a></p></div></section>}
+    {business && (Body ? <Body model={model} /> : <section class="m-sec" data-audit="not-provided"><header><h2>Audit</h2></header><div class="b"><Unavailable what="The administrative audit is not part of this build" why="Business includes it; this Community build keeps no administrative record beyond each repository's settings revision" /></div></section>)}
+  </div>
+</ManagePage>

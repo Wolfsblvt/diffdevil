@@ -1,0 +1,55 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
+// The ratified App shell: the unchanged site header in the same frame, the Works wide frame
+// (96rem) with the site gutters, a sticky docs-like side navigation, and the page. Dark only
+// for now, by decision; the light theme is not designed.
+import '../../../website/src/styles/fonts.css';
+import '../../../website/src/styles/tokens.css';
+import '../../../website/src/styles/global.css';
+import '../styles/app.css';
+import '../styles/charts.css';
+import '../styles/manage.css';
+// The joined premium extension's stylesheet, or the empty Community one (premium-selection.mjs).
+import '@diffdevil/premium-styles';
+import Nav from '../components/Nav.astro';
+import Invitation from '../components/participation/Invitation.astro';
+import { siteHeader } from '../lib/shell.mjs';
+import { manageBadge } from '../lib/manage/model.mjs';
+interface Props { title: string; nav?: any; view?: any; description?: string | undefined }
+const { title, nav, view, description = 'The diffdevil App: understand change across your repositories.' } = Astro.props;
+const header = await siteHeader(Astro.locals, Astro.locals.app?.config?.origin ?? Astro.url.origin);
+const viewer = Astro.locals.viewer;
+// The Manage badge counts the same decisions the console's Overview lists, from a per-isolate copy of the model.
+const badge = viewer && nav ? await manageBadge({ viewer, session: Astro.locals.session, runtime: Astro.locals.app }) : null;
+---
+<!doctype html>
+<html lang="en" data-theme="dark" data-theme-pref="dark" data-theme-next="light" data-theme-locked>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title} · diffdevil App</title>
+    <meta name="description" content={description} />
+    <meta name="robots" content="noindex, nosnippet" />
+    <meta name="theme-color" content="#151922" />
+    <meta name="color-scheme" content="dark" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  </head>
+  <body class="app-route">
+    <a class="visually-hidden" href="#main">Skip to content</a>
+    <Fragment set:html={header} />
+    <div class="a-page">
+      <div class="a-frame">
+        {viewer && nav && <Nav viewer={viewer} nav={nav} view={view} badge={badge} />}
+        <main class="a-main" id="main">
+          {viewer && nav && <Invitation />}
+          <slot />
+        </main>
+      </div>
+    </div>
+    <div class="live" role="status" aria-live="polite" data-live-region></div>
+    <script>
+      import '../client/app';
+      import '../client/manage';
+    </script>
+  </body>
+</html>

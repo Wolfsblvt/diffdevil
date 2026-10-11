@@ -2,7 +2,7 @@
 
 ## Meaning
 
-This document owns the selected management experience for the developing App: individual subscriptions funding organisations, explicit repository selection, background-history visibility, plan changes and data exit. It complements [plan definitions](app-plans.md), [authorisation and publication](dashboard-access.md), [analytical capabilities](dashboard.md) and [privacy/data](PRIVACY-AND-DATA.md). It describes planned behaviour, not a deployed billing service.
+This document owns the selected management experience for the developing App: individual subscriptions funding organisations, explicit repository selection, background-history visibility, plan changes and data exit. It complements [plan definitions](app-plans.md), [authorisation and publication](dashboard-access.md), [analytical capabilities](dashboard.md) and [privacy/data](PRIVACY-AND-DATA.md). The Manage console is implemented and locally qualified; [Direction](DIRECTION.md#implemented-app-source-and-remaining-delivery) separates that source evidence from remaining live delivery. The commercial rules below are settled contracts, not a claim of a deployed billing service.
 
 ## Keep activity and administration distinct
 
@@ -10,7 +10,7 @@ The home, repository, PR and file destinations lead with activity and its meanin
 
 Administrators need a clear account scope: personal repositories, one explicitly connected organisation or another funded organisation. Selecting a scope does not change a reader's GitHub permissions. The subscription does not become a seat charge for everyone who can read.
 
-The analytical shell and six destinations are ratified for implementation. Manage/configuration/account/subscription visual and interaction design deliberately follows chart/cloud system co-design inside that shell. The commercial and lifecycle rules below are settled product contracts; they do not authorise inventing their screens or reopening the selected prices. [The analytical contract](dashboard.md#ratified-analytical-experience) names the current design boundary.
+The analytical shell and six destinations are ratified for implementation, and so is the Manage console that carries the operating half of this document ([D080](DECISIONS.md#d080-manage-is-one-console-with-sub-tabs-capacity-first-and-the-first-works-link-lands-on-the-plan-page)): Manage, repository settings, Plan & funding and Account inside that shell, implemented in [the App](../apps/app/README.md). The commercial and lifecycle rules below are settled product contracts; the console presents them and does not reopen the selected prices. Where a rule names a value this document leaves unsettled (retention terms, the shared archive date, audit retention, the monthly import budget, closure while a paid plan runs), the console names the seam rather than inventing the value. [The analytical contract](dashboard.md#ratified-analytical-experience) names the analytical design boundary.
 
 ## Connect a subscription to an organisation
 
@@ -47,7 +47,7 @@ Each repository can have its own valid policy. Trusted `.diffdevil.yml` values o
 
 Pro has one reusable default for personal repositories and one for each connected organisation. Its apply/difference prompt belongs in that repository's settings. There is no Pro global unsynchronised-repository inventory, bulk apply or shared-policy library.
 
-Business adds named linked configurations, account-wide coordination, automatic eligible repository setup and delegated administration. Publishing a changed linked policy queues the affected history interpretation and eligible open-PR updates. Only work relevant to the changed settings is required: brief compactness does not imply full historical source reacquisition.
+Business adds named linked configurations, account-wide coordination, automatic eligible repository setup and delegated administration. Publishing a changed linked policy queues the affected history interpretation and eligible open-PR updates. The console implements this as [D081](DECISIONS.md#d081-business-coordination-is-published-into-repository-settings-delegated-within-githubs-ceiling-and-recorded-as-it-happened): a published revision is written into each linked repository's own settings with a kept result per repository, and queued work behind a busy repository is retried rather than scheduled. Only work relevant to the changed settings is required: brief compactness does not imply full historical source reacquisition.
 
 History collection, publication and delegated rights remain independent choices. A named policy does not silently enable them. Business automation may apply them only after the appropriate administrator explicitly chose that behaviour.
 
@@ -129,4 +129,4 @@ Product news and feedback invitations are optional and separate from necessary b
 
 ## Availability
 
-All capabilities here require implementation and qualification. The public documentation candidate does not change a subscription, collect data, deploy a worker, publish private history or activate a paid service.
+The Manage console implements repository selection, defaults and linked-policy publication, processing and allowance controls, Plan & funding, Account, People/delegation, Audit, export and offboarding. Community supplies its basic management experience; Business coordination joins through independent private modules. Local qualification used disposable storage and GitHub/commercial stand-ins. Real authentication and authority, Wirt interoperability, deployment and ordinary customer use remain separate delivery outcomes in [Direction](DIRECTION.md#implemented-app-source-and-remaining-delivery). The separate operator view and unsettled operating values remain their explicit remainder. This documentation does not change a subscription, collect data, deploy a worker, publish private history or activate a paid service.

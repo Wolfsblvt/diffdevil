@@ -1,0 +1,53 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
+// Organisation slots of a paid plan: Personal (included), then one card per Works capacity slot (an organisation, or
+// open and funding nothing), then the dashed Add an organisation slot at Works. On Free: the pooled personal scope,
+// the one connected organisation, and what more organisations would take.
+import Icon from '../Icon.astro';
+import PlanChip from '../PlanChip.astro';
+import Avatar from './Avatar.astro';
+import ActionForm from './ActionForm.astro';
+import { fmtDay } from '../../lib/manage/works.mjs';
+import { fundableOrganisations } from '../../lib/manage/model.mjs';
+import { ago } from '../../lib/format.mjs';
+interface Props { model: any; actions?: boolean; now: string }
+const { model, actions = false, now } = Astro.props;
+const status = model.commercial?.status;
+const personal = model.namespaces.find((namespace: any) => namespace.kind === 'user');
+const fundable = fundableOrganisations(model);
+const byAccount = (id: number) => model.namespaces.find((namespace: any) => namespace.accountId === id);
+const slotNumber = (slot: string) => slot.replace(/^slot-/u, '');
+const addHref = model.worksOrigin ? `/manage/depart?to=experience&purpose=add-slot&from=${encodeURIComponent(`${Astro.url.pathname}${Astro.url.search}`)}` : null;
+---
+<div class="m-orgs">
+  {!status?.linked
+    ? <>
+        <div class="m-org"><span class="k">Personal</span><b><Avatar login={model.login} kind="user" />{model.login}</b><span class="d">{model.viewerPlan === 'Free' ? 'Pooled Free allowance' : model.viewerPlan === 'Unknown' ? 'Plan not established' : 'No repository limit'}</span></div>
+        {model.freeConnected
+          ? <div class="m-org"><span class="k">Connected organisation</span><b><Avatar login={model.freeConnected.login} kind="org" />{model.freeConnected.login}</b><span class="d">Free connects one organisation</span></div>
+          : <div class="m-org open"><span class="k">Connected organisation</span><b class="quiet">None yet</b><span class="d">Free connects one organisation you administer</span></div>}
+        <div class="m-org open"><span class="k">More organisations</span><b class="quiet">With Pro or Business</b><span class="d">One included, more as paid add-ons</span></div>
+      </>
+    : <>
+        <div class="m-org"><span class="k">Personal · included</span><b><Avatar login={model.login} kind="user" />{model.login} <PlanChip plan={model.viewerPlan} /></b><span class="d">{personal?.installation?.state === 'suspended' ? <><Icon name="circle-alert" size={12} /> installation suspended</> : 'No repository limit'}</span></div>
+        {(status.capacity ?? []).map((slot: any) => {
+          const binding = slot.binding;
+          const organisation = binding ? byAccount(binding.organisationId) : null;
+          const ok = binding?.authority === 'present';
+          const label = organisation?.login ?? binding?.display ?? (binding ? `organisation ${binding.organisationId}` : null);
+          return binding
+            ? <div class:list={['m-org', { warn: !ok }]}><span class="k">Slot {slotNumber(slot.slot)} · {slot.funding === 'included' ? 'included' : slot.funding === 'grant' ? 'by grant' : 'additional'}</span>
+                <b>{organisation && <Avatar login={organisation.login} kind="org" />}{label} <PlanChip plan={model.viewerPlan} /></b>
+                <span class:list={['d', { warn: !ok }]}>{ok ? <>You administer it · checked {binding.authorityCheckedAt ? ago(binding.authorityCheckedAt, now) : 'now'}</> : binding?.authority === 'absent' ? <><Icon name="alert-triangle" size={12} /> {model.viewerPlan} paused: GitHub says you no longer administer it</> : <><Icon name="alert-triangle" size={12} /> {model.viewerPlan} paused: can't confirm you administer it</>}</span>
+                {slot.pendingEndOn && <span class="d warn"><Icon name="clock" size={12} /> Slot ends {fmtDay(slot.pendingEndOn)}</span>}
+                {actions && <span class="m-acts">{!ok && binding?.authority !== 'absent' && <a class="m-btn sm pri" href="/manage/account">Reconnect</a>}<ActionForm action="release-slot" fields={{ organisation: binding.organisationId }} label="Release" class="sm ghost" title="The organisation has no plan until it is funded again" /></span>}
+              </div>
+            : <div class="m-org open"><span class="k">Slot {slotNumber(slot.slot)} · {slot.funding === 'included' ? 'included' : 'additional'}</span><b class="quiet"><Icon name="building-2" size={14} />Open: funds nothing</b>
+                {actions && fundable.length > 0
+                  ? <span class="m-acts"><ActionForm action="fund" fields={{ slot: slot.slot }} label="Fund" class="sm pri"><select class="m-select" name="organisation" aria-label="Organisation">{fundable.map((namespace: any) => <option value={namespace.accountId}>{namespace.login}</option>)}</select></ActionForm></span>
+                  : <span class="d">{actions ? 'No unfunded organisation you administer is recorded yet' : 'You pay for it · fund an organisation'}</span>}
+              </div>;
+        })}
+        {addHref ? <a class="m-org add" href={addHref}><Icon name="arrow-up-right" size={14} /><span>Add an organisation slot</span><span class="d">at Wolfsblvt Works</span></a> : <span class="m-org add" aria-disabled="true"><Icon name="arrow-up-right" size={14} /><span>Add an organisation slot</span><span class="d">Works is not configured on this deployment</span></span>}
+      </>}
+</div>

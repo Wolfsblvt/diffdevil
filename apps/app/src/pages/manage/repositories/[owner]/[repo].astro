@@ -1,0 +1,164 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
+// Repository settings under the same console tabs, with a breadcrumb Manage / namespace: Operation (what it writes on
+// pull requests, the one-writer guidance and the pull-request message controls with their synthetic preview), History
+// (collection with acting-administrator provenance, coverage, processing, interpretation, allowance, retention),
+// Configuration (the chain of layers and the effective value of every setting with its origin), the pending / held /
+// removed / suspended / enable-again states, and Stop or leave. Administration is proved by the authorization service.
+import ManagePage from '../../../../components/manage/ManagePage.astro';
+import Icon from '../../../../components/Icon.astro';
+import PlanChip from '../../../../components/PlanChip.astro';
+import StatePill from '../../../../components/manage/StatePill.astro';
+import ActionForm from '../../../../components/manage/ActionForm.astro';
+import Banner from '../../../../components/manage/Banner.astro';
+import { loadManage } from '../../../../lib/manage/model.mjs';
+import { effectiveConfiguration, defaultComparison, LAYER_LABEL, LINKED_LAYER_LABEL } from '../../../../lib/manage/configuration.mjs';
+import { describeJob } from '../../../../lib/manage/jobs.mjs';
+import { namespacePath, repositoryPath } from '../../../../lib/manage/states.mjs';
+import { CONTEXT_MODULES } from '../../../../../../shared/pr-brief/contract.mjs';
+import { HISTORY_WINDOWS } from '../../../../../../shared/pr-brief/settings.mjs';
+import { fmtDate, ago, plural } from '../../../../lib/format.mjs';
+import { fmtDay } from '../../../../lib/manage/works.mjs';
+
+const runtime = Astro.locals.app;
+const viewer = Astro.locals.viewer, session = Astro.locals.session!;
+const fullName = `${Astro.params.owner}/${Astro.params.repo}`;
+const found = viewer.repositories.find((candidate: any) => candidate.fullName === fullName);
+if (!found) return new Response('Not in your repositories.', { status: 404, headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'private, no-store' } });
+let admission: any;
+try { admission = (await runtime.auth.readAdmission({ session: session.session, repositoryId: found.repositoryId })).body; }
+catch (error) {
+  const code = (error as any)?.code;
+  if (code === 'E_ADMISSION_UNAUTHORIZED') return new Response('You read this repository, but GitHub does not confirm you administer it right now, so its settings are not shown.', { status: 403, headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'private, no-store' } });
+  if (code === 'E_ADMISSION_WRITE_REQUIRED') return new Response('You were named a diffdevil administrator here, but GitHub gives you read access to this repository, not write. Managing diffdevil on a repository needs write access on GitHub, so its settings are not shown. Ask its GitHub administrators for write access.', { status: 403, headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'private, no-store' } });
+  if (code === 'E_ADMISSION_UNKNOWN_REPOSITORY') return new Response('GitHub grants this repository, but the App has not recorded it yet. Its next delivery records it.', { status: 404, headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'private, no-store' } });
+  throw error;
+}
+const model = await loadManage({ viewer, session, runtime });
+const namespace = model.namespaces.find((candidate: any) => candidate.login === found.owner);
+const repository = namespace?.repositories.find((candidate: any) => candidate.repositoryId === found.repositoryId) ?? { ...found, state: { kind: 'unknown', label: 'Unknown', tone: 'off', icon: 'circle-dashed', why: '' } };
+const state = repository.state;
+const standing = repository.standing;
+const namespaceDefault = namespace?.accountId !== null && namespace?.accountId !== undefined ? await runtime.manage.namespaceDefault(namespace.accountId) : null;
+const adoption = await runtime.manage.adoption(found.repositoryId);
+// Business: the policy this repository's App settings are linked to, with the revision they last took from it.
+const policyLink = namespace?.plan === 'Business' ? await runtime.manage.policyLink(found.repositoryId) : null;
+const linkedPolicy = policyLink ? await runtime.manage.linkedPolicy(policyLink.policyId) : null;
+const link = linkedPolicy ? { name: linkedPolicy.name, revision: linkedPolicy.revision, appliedRevision: policyLink!.appliedRevision, policyId: linkedPolicy.policyId } : null;
+const policies = namespace?.plan === 'Business' && namespace.accountId !== null ? await runtime.manage.linkedPolicies(namespace.accountId) : [];
+const configuration = effectiveConfiguration({ admission, namespace, namespaceDefault, adoption, login: namespace?.login ?? found.owner, link });
+const layerLabel = link ? LINKED_LAYER_LABEL : LAYER_LABEL;
+// Pro adopts the namespace default from here (D057): the differences, a preview of the result, then an explicit apply.
+const comparison = namespace?.plan === 'Pro' && namespaceDefault ? defaultComparison({ admission, namespaceDefault }) : null;
+const reviewing = Astro.url.searchParams.get('adopt') === '1' && comparison !== null;
+const [coverage, bounds, currentPolicy] = await Promise.all([runtime.store.analyticalCoverage([found.repositoryId]), runtime.store.observationBounds([found.repositoryId]), runtime.policies.current({ repositoryId: found.repositoryId })]);
+const retained = coverage.counts.get(found.repositoryId) ?? 0;
+const brief = admission.brief ?? { settings: { mode: 'off', modules: CONTEXT_MODULES, priority: CONTEXT_MODULES, historyWindowDays: 90, finalSummary: false }, route: { effective: 'off', reason: 'comments-off', templateRules: [] }, writer: { login: 'diffdevil[bot]', confidence: admission.writer.confidence } };
+const running = standing?.executionActive === true;
+const historyOn = standing?.historyEnabled === true;
+const confirm = Astro.url.searchParams.get('confirm') ?? '';
+const premiumPlan = ['Pro', 'Business'].includes(namespace?.plan ?? '');
+const writerResolved = ['detected', 'administrator-declared'].includes(admission.writer.confidence);
+const capacity = namespace?.capacity;
+const publicPlaces = capacity?.publicHistory;
+const consent = standing?.historyOrigin ?? 'unknown';
+const actorKnown = Number.isSafeInteger(standing?.historyActorId);
+const actorLine = historyOn ? (consent === 'dashboard' && actorKnown ? (standing.historyActorId === viewer.userId ? `Enabled by you, administrator of ${found.owner} at the time` : `Enabled by an administrator of ${found.owner} at the time (GitHub user ${standing.historyActorId})`) : consent === 'unknown' ? 'Enabled before diffdevil recorded who consented. Shown as unknown rather than guessed.' : `Enabled through ${consent}; the acting administrator was not recorded.`) : null;
+const modules: Record<string, { label: string; what: string }> = { neighbours: { label: 'Same-file open PRs', what: 'other open pull requests that change the same files, read live' }, activity: { label: 'File activity and Turnover', what: 'how often the files changed in the window, from retained history' }, companion: { label: 'Historical companion', what: 'a file that usually changes with one of these, from retained history' } };
+const retentionText = `${runtime.config.retentionDays} days while history is on`;
+// Imports and recalculation: the latest job of each kind, with its actual progress and the reason for any delay.
+const latestJobs = await runtime.jobs.latest(found.repositoryId).catch(() => ({}));
+const jobViews = (['import', 'recalculate'] as const).map(kind => ({ kind, job: (latestJobs as any)[kind] ?? null, view: describeJob((latestJobs as any)[kind] ?? null) })).filter(entry => entry.view);
+const openKinds = new Set(jobViews.filter(entry => entry.view!.open).map(entry => entry.kind));
+const importScopeText = runtime.commercial ? (namespace?.plan === 'Free' ? `up to ${model.allowances.free.importPullRequests ?? 'all'} recent closed pull requests` : 'all recoverable closed pull requests, recent first') : 'all recoverable closed pull requests, recent first';
+---
+<ManagePage model={model} tab="repositories" title={found.name} crumbs={[{ label: found.owner, href: namespacePath(found.owner) }]} sub={undefined} documentTitle={found.name}>
+  <Fragment slot="sub"><StatePill tone={state.tone} icon={state.icon} label={state.label} /><span class="a-dot">·</span>{found.private ? 'private' : 'public'}<span class="a-dot">·</span>{namespace?.plan === 'Pro' || namespace?.plan === 'Business' ? <PlanChip plan={namespace.plan} /> : (namespace?.plan ?? 'Free')}</Fragment>
+  <Fragment slot="tools"><a class="m-btn sm ghost" href={`/?s=${encodeURIComponent(fullName)}`}><Icon name="overview" size={14} />View activity</a></Fragment>
+  <div class="m-stack">
+    {state.kind === 'held' && <Banner tone="err" icon="circle-alert" title="Held: the policy could not be read on the last pull request" text={`${state.why} Fix the file on the default branch; diffdevil re-reads it on the next push.`}><a class="m-btn sm" href={`https://github.com/${fullName}/blob/HEAD/.diffdevil.yml`}>Open .diffdevil.yml <Icon name="arrow-up-right" size={13} /></a></Banner>}
+    {state.kind === 'stopped' && <Banner tone="err" icon="circle-alert" title="Stopped: installation suspended" text={state.why}><a class="m-btn sm" href="https://github.com/settings/installations">Review on GitHub <Icon name="arrow-up-right" size={13} /></a></Banner>}
+    {state.kind === 'removed' && <Banner tone="info" icon="info" title={`${found.name} left the GitHub App installation`} text={`Nothing runs and nothing new is collected. Its history is kept until ${standing?.retainedUntil ? fmtDay(standing.retainedUntil) : 'the offboarding period ends'} so an administrator can export or delete it; then it's removed. Adding the repository back on GitHub doesn't restart collection by itself.`}><a class="m-btn sm" href={`/manage/export?repository=${encodeURIComponent(fullName)}`}><Icon name="download" size={14} />Export history</a><a class="m-btn sm dng" href="?confirm=delete">Delete now</a></Banner>}
+    {state.kind === 'overAllowance' && <Banner tone="warn" icon="pause" title="Over the allowance: not running" text={state.why} data-over-allowance><a class="m-btn sm pri" href="/manage/plan#choose">Choose what stays</a><a class="m-btn sm" href={`${namespacePath(found.owner)}&swap=${encodeURIComponent(fullName)}`}>Swap in…</a></Banner>}
+    {state.historyHeld && <Banner tone="warn" icon="pause" title="History collection paused" text={state.why} data-history-held><a class="m-btn sm" href="/manage/repositories">Choose which keep history</a></Banner>}
+    {['pending', 'reconsent', 'inactive', 'stoppedByYou', 'available'].includes(state.kind) && !['Unconnected', 'Unfunded', 'Unknown'].includes(namespace?.plan ?? '') && <Banner tone="info" icon="clock" title={state.kind === 'reconsent' ? 'Enable again' : state.kind === 'inactive' ? 'Over the limit' : state.kind === 'pending' ? 'Not running yet' : 'Not running'} text={state.kind === 'inactive' ? state.why : `${found.name} ${state.kind === 'pending' ? `is selected${found.private && capacity?.kind === 'slots' ? ' and holds a private slot' : ''}` : state.kind === 'reconsent' ? 'was interrupted and restored' : 'is not running'}. Check the effective policy and what it will write, preview the pull-request message, then enable it. Enabling doesn't turn on history.`} data-enable-panel>
+      {state.kind !== 'inactive' && <ActionForm action="enable" fields={{ repository: fullName }} label="Enable" class="sm pri" icon="play" back={repositoryPath(repository)}>{!writerResolved && <label class="m-note" style="margin:0 10px 0 0;display:inline-flex;gap:7px;align-items:center"><input type="checkbox" name="writer" value="declared" /> No other writer (Action or bot) manages size labels here</label>}</ActionForm>}
+      {state.kind === 'inactive' && <a class="m-btn sm" href={`${namespacePath(found.owner)}&swap=${encodeURIComponent(fullName)}`}>Swap in…</a>}
+    </Banner>}
+    {confirm === 'delete' && <div class="m-confirm" role="alertdialog" aria-labelledby="cf-h" data-confirm="delete"><h3 id="cf-h">Delete {found.name}'s history?</h3><ul><li>Removes every retained pull request, file measurement, lifecycle record, rollup and pending export for {fullName}.</li><li>A deletion record stops imports, queued work and backup restores from bringing it back.</li><li>Labels and the check keep running if the repository is active. Collection is turned off by this; turn it on again separately.</li><li>This can't be undone, and paying again doesn't restore it.</li></ul>
+      <ActionForm action="delete-history" fields={{ repository: fullName }} label="Delete history" class="dng" back={repositoryPath(repository)}><label class="m-note">Type <b style="font-family:var(--font-mono);color:var(--fg)">{found.name}</b> to confirm <input class="m-input" name="confirm" aria-label="Repository name" placeholder={found.name} autocomplete="off" /></label> </ActionForm><a class="m-btn ghost" href={repositoryPath(repository)}>Cancel</a></div>}
+
+    <div class="m-grid2">
+      <section class="m-sec" data-operation>
+        <header><h2>Operation</h2><span class="d">What it writes on pull requests</span><span class="r">{state.kind !== 'removed' && state.kind !== 'stopped' && running && <div class="a-seg sm" role="group" aria-label="Operation">
+          {found.private
+            ? <><span aria-current="true">Running</span><ActionForm action="operate" fields={{ repository: fullName, mode: 'stop' }} label="Stopped" class="ghost sm" back={repositoryPath(repository)} /></>
+            : <>{historyOn ? <span aria-current="true">Labels + history</span> : <ActionForm action="operate" fields={{ repository: fullName, mode: 'labels-history' }} label="Labels + history" class="ghost sm" back={repositoryPath(repository)} disabled={publicPlaces?.of !== null && publicPlaces?.of !== undefined && publicPlaces.used >= publicPlaces.of} title={publicPlaces?.of !== null && publicPlaces?.of !== undefined && publicPlaces.used >= publicPlaces.of ? `All ${publicPlaces.of} public history places are in use` : undefined} />}{!historyOn ? <span aria-current="true">Labels only</span> : <ActionForm action="operate" fields={{ repository: fullName, mode: 'labels' }} label="Labels only" class="ghost sm" back={repositoryPath(repository)} />}<ActionForm action="operate" fields={{ repository: fullName, mode: 'stop' }} label="Stopped" class="ghost sm" back={repositoryPath(repository)} /></>}
+        </div>}</span></header>
+        <div class="b">
+          <div class="m-eff">
+            <div><Icon name="tag" /><span><b>Size labels</b><span class="d">One managed group, <code>size/XS</code> … <code>size/XL</code>. Missing label definitions are created. Other labels are never touched.</span></span>{running ? <StatePill tone="ok" icon="check" label="On" /> : <StatePill tone="off" label="Off" />}</div>
+            <div><Icon name="list-checks" /><span><b>Native check</b><span class="d">One summary on each pull-request head. A large size doesn't fail the check or change branch protection.</span></span>{running ? <StatePill tone="ok" icon="check" label="On" /> : <StatePill tone="off" label="Off" />}</div>
+            <div><Icon name="message-square" /><span><b>Pull-request message</b><span class="d">{brief.route.effective === 'off' ? 'Off by default. Turn it on below; the standard message is product-authored and bounded.' : brief.route.effective === 'standard' ? `The standard brief, as one owned comment per open pull request${brief.route.policyObserved === false ? ' (the repository file was not observed here; its own comment rules would take precedence)' : ''}.` : `Repository-authored comment rules (${(brief.route.templateRules ?? []).join(', ') || 'portable templates'}) are the route; the standard brief is not composed.`}</span></span>{brief.route.effective === 'off' ? <StatePill tone="off" label="Off" /> : <StatePill tone="ok" icon="check" label={brief.route.effective === 'standard' ? 'Standard' : 'Advanced'} />}</div>
+          </div>
+          <form class="m-brief" method="post" action="/manage/do" data-brief-form id="message">
+            <input type="hidden" name="action" value="brief" /><input type="hidden" name="repository" value={fullName} /><input type="hidden" name="back" value={repositoryPath(repository)} />
+            <div class="row"><span>Comment mode</span><div class="opts" role="radiogroup" aria-label="Comment mode">{[['off', 'Off'], ['standard', 'Standard brief'], ['advanced', 'Advanced: repository templates']].map(([value, label]) => <label><input type="radio" name="mode" value={value} checked={brief.settings.mode === value} /> {label}</label>)}</div></div>
+            <div class="row"><span>Context modules</span><div><div class="opts">{CONTEXT_MODULES.map((id: string) => <label title={modules[id]?.what}><input type="checkbox" name="modules" value={id} checked={brief.settings.modules.includes(id)} /> {modules[id]?.label ?? id}</label>)}</div><span class="hint">Shown only within entitlement, authority, consent and data availability: {premiumPlan ? `${namespace?.plan} context on this repository` : 'a Pro or Business plan supplies the context modules; the basic current-change report is always complete'}{historyOn ? '' : '; history-backed modules need history on'}.</span></div></div>
+            <div class="row"><span>Module priority</span><div><input class="m-input" name="priority" value={brief.settings.priority.join(',')} aria-label="Module priority, comma separated" style="width:300px" /><span class="hint">Which context is kept when the message reaches its size budget. It never changes the ratified reading order.</span></div></div>
+            <div class="row"><span>History window</span><div><select class="m-select" name="historyWindowDays" aria-label="History window">{HISTORY_WINDOWS.map((days: number) => <option value={days} selected={brief.settings.historyWindowDays === days}>{days} days</option>)}</select><span class="hint">Clipped to this repository's retention ({retentionText}). Coverage and consent are shown in the message's details.</span></div></div>
+            <div class="row"><span>Final merge summary</span><div><label class="hint" style="display:inline-flex;gap:7px;align-items:center"><input type="checkbox" name="finalSummary" checked={brief.settings.finalSummary} /> One factual summary when a pull request is merged (separate terminal comment, off by default)</label></div></div>
+            <div class="row"><span>Writer</span><div><span class="hint">Comments are written by <b>{brief.writer.login}</b> · lifecycle {brief.writer.lifecycle ?? 'diffdevil-app-brief/1'} · one owned comment per open PR, refreshed only after a fresh evaluation. {writerResolved ? 'Exclusive writer declared.' : 'Declare the App the exclusive writer when you enable the repository.'}</span></div></div>
+            <div class="m-acts"><button class="m-btn sm pri" type="submit">Save message settings</button><button class="m-btn sm" type="button" data-brief-preview-button disabled title="Preview needs scripting"><Icon name="eye" size={14} />Preview on synthetic evidence</button><span class="m-note">Saving re-evaluates open pull requests where the deployment can; nothing is posted by a preview.</span></div>
+          </form>
+          <div class="m-preview" data-brief-preview data-repository-id={found.repositoryId} hidden>
+            <div class="shell"><p class="notice" data-preview-notice></p><div class="a-seg sm" role="group" aria-label="Preview state" data-preview-states></div><div class="facts" data-preview-facts style="margin:10px 0"></div><pre data-preview-markdown></pre><span class="a-mini" data-preview-bytes></span></div>
+          </div>
+          <p class="m-note">One writer per effect. If an Action already writes size labels here, switch it off before enabling the App. <a class="link-quiet" href={`${runtime.config.siteOrigin}/manual/use/managed-app/`}>Moving between Actions and the App</a></p>
+        </div>
+      </section>
+
+      <section class="m-sec" data-history>
+        <header><h2>History</h2><span class="d">Optional. Independent of labels and the check.</span></header>
+        <div class="b"><dl class="m-dl">
+          <dt>Collection</dt><dd>{historyOn ? <>On<span class="sub">{actorLine}</span></> : standing?.historyConsented ? <>Paused with the repository<span class="sub">Consent stays; collection resumes when the repository runs again. What exists is kept.</span></> : standing?.historyReason === 're-consent-required' ? <>Interrupted<span class="sub">Access was interrupted; turning it on again starts collecting from now.</span></> : <>Off<span class="sub">Labels and the check don't need history. Turning it on starts collecting from now; past pull requests are not imported by this.</span></>}</dd>
+          {historyOn && <><dt>Coverage</dt><dd>{retained > 0 ? <>{plural(retained, 'pull request')} retained<span class="sub">Named records from {fmtDate(coverage.first)} · latest {coverage.latest ? ago(coverage.latest, runtime.now()) : '—'}</span></> : bounds.first ? <>Analyses since {fmtDate(bounds.first)}<span class="sub">Older pathless analyses only; named lifecycle is collected as pull requests arrive</span></> : <>Nothing retained yet<span class="sub">Collected as pull requests arrive</span></>}</dd>
+            <dt>Processing</dt>{jobViews.length ? <dd data-jobs>{jobViews.map(({ kind, job, view }) => <div class:list={['m-job', view!.tone]} data-job={kind} data-job-state={job.state}><b>{view!.title}</b><span class="sub">{view!.detail}</span>
+              {view!.actions.length > 0 && <span class="m-acts" style="margin-top:6px">{view!.actions.includes('pause') && <ActionForm action="job-pause" fields={{ repository: fullName, job: job.jobId }} label="Pause" class="sm ghost" icon="pause" back={repositoryPath(repository)} />}{(view!.actions.includes('resume') || view!.actions.includes('retry')) && <ActionForm action="job-resume" fields={{ repository: fullName, job: job.jobId }} label={view!.actions.includes('retry') ? 'Retry' : 'Resume'} class="sm" icon="play" back={repositoryPath(repository)} />}</span>}</div>)}</dd>
+              : <dd>Live pull requests<span class="sub">New pull requests are collected as they arrive. Import reads {importScopeText}; recalculation re-reads what the current policy can't interpret yet.</span></dd>}
+            <dt>Interpretation</dt><dd>{currentPolicy?.id ? 'Current policy' : 'Unfiltered'}<span class="sub">{currentPolicy?.basis === 'policy-unavailable' ? 'The linked policy could not be read right now, so retained base facts are shown unfiltered rather than under a different policy.' : currentPolicy?.id ? `${currentPolicy.basis === 'bundled-default' ? 'bundled size@1' : currentPolicy.basis === 'linked-policy' ? 'linked policy and App settings over size@1' : 'stored App settings over size@1'} · ${currentPolicy.id.slice(0, 14)}… · read on every view, so a policy change shows at once` : 'the stored settings do not compile; base facts are read unfiltered'}</span></dd>
+            {publicPlaces?.of !== null && publicPlaces?.of !== undefined && !found.private && <><dt>Allowance</dt><dd>1 of your {publicPlaces.of} public repositories with history<span class="sub">Switch to Labels only to free the place.</span></dd></>}
+            <dt>Kept</dt><dd>{retentionText}<span class="sub">Operator setting; the published retention terms are not settled yet. Stopping collection keeps what exists.</span></dd></>}
+        </dl></div>
+        <footer>{historyOn
+          ? <><ActionForm action="import" fields={{ repository: fullName }} label="Import past PRs" class="sm" icon="download" back={repositoryPath(repository)} disabled={openKinds.has('import')} title={openKinds.has('import') ? 'An import is in progress' : `Reads ${importScopeText}`} /><ActionForm action="recalculate" fields={{ repository: fullName }} label="Recalculate" class="sm ghost" icon="refresh" back={repositoryPath(repository)} disabled={openKinds.has('recalculate')} title={openKinds.has('recalculate') ? 'A recalculation is in progress' : 'Re-read retained history under the current policy'} /><a class="m-btn sm ghost" href={`/manage/export?repository=${encodeURIComponent(fullName)}`}><Icon name="download" size={14} />Export</a><ActionForm action="history" fields={{ repository: fullName }} label="Stop collecting" class="sm ghost" icon="pause" back={repositoryPath(repository)} /><a class="m-btn sm ghost dng" href="?confirm=delete">Delete…</a></>
+          : state.kind !== 'removed' && <ActionForm action="history" fields={{ repository: fullName, enabled: 'on' }} label="Turn on history" class="sm" icon="database" back={repositoryPath(repository)} disabled={!found.private && publicPlaces?.of !== null && publicPlaces?.of !== undefined && publicPlaces.used >= publicPlaces.of} title={!found.private && publicPlaces?.of !== null && publicPlaces?.of !== undefined && publicPlaces.used >= publicPlaces.of ? `All ${publicPlaces.of} public history places are in use` : undefined} />}</footer>
+      </section>
+    </div>
+
+    <section class="m-sec" data-configuration id="configuration">
+      <header><h2>Configuration</h2><span class="d">Effective policy and where each value comes from</span><span class="r">{state.kind !== 'removed' && <a class="m-btn sm" href="#message"><Icon name="eye" size={14} />Preview the message</a>}</span></header>
+      <div class="b"><div class="m-chain">{configuration.chain.map((layer: any, index: number) => <>{index > 0 && <Icon name="chevron-right" size={12} />}<span class:list={['m-from', layer.tone]}>{layer.label}</span></>)}<span style="margin-left:6px">Later layers win. The repository file always wins.</span></div>{!configuration.observed && <p class="m-note">The repository's own <code>.diffdevil.yml</code> is read on GitHub when a pull request is evaluated{runtime.config.loopback ? '' : ' and for the message preview when the deployment has App credentials'}; the values below are the App's layers, which it may override.</p>}</div>
+      <div class="b flush" style="padding-top:0">{configuration.compiles ? <table class="m-tbl m-cfg"><thead><tr><th>Setting</th><th>Effective value</th><th>From</th></tr></thead><tbody>{configuration.rows.map((row: any) => <tr><td>{row.key}</td><td>{row.value}{row.note && <span class="over">{row.note}</span>}</td><td><span class:list={['m-from', row.from === 'supplied' ? 'file' : row.from === 'preset' ? 'preset' : 'default']}>{(layerLabel as any)[row.from] ?? row.from}</span></td></tr>)}</tbody></table> : <p class="m-empty">The stored App settings do not compile; pull requests are evaluated with base facts unfiltered until they are repaired.</p>}</div>
+      {reviewing && comparison && <div class="b" data-adopt-review><div class="m-confirm" role="region" aria-labelledby="adopt-h"><h3 id="adopt-h">Apply the {found.owner} default (rev {comparison.revision}) to {found.name}?</h3>
+        {!comparison.compiles ? <p class="m-note">The default does not compile over this repository's settings, so it can't be applied. Fix it in Defaults first.</p>
+          : comparison.differences.length === 0 ? <p class="m-note">Nothing would change: this repository's App settings already match the default.</p>
+          : <table class="m-tbl m-cfg" data-adopt-differences><thead><tr><th>Setting</th><th>Now</th><th>With the default</th></tr></thead><tbody>{comparison.differences.map((row: any) => <tr><td>{row.key}</td><td>{row.before}</td><td>{row.after}</td></tr>)}</tbody></table>}
+        <ul><li>The default's sections become this repository's own App settings; sections the default doesn't set stay as they are.</li><li>Later changes to the default don't reach {found.name} until you apply again here. Removing the default or leaving Pro leaves these settings as they are.</li><li>A value the repository's <code>.diffdevil.yml</code> sets still wins. Policy after applying: <code>{(comparison.policyIdAfter ?? '').slice(0, 14)}…</code></li></ul>
+        <div class="m-acts">{comparison.compiles && comparison.differences.length > 0 && <ActionForm action="default-apply" fields={{ repository: fullName, defaultRevision: comparison.revision }} label={`Apply default rev ${comparison.revision}`} class="pri" back={repositoryPath(repository)} />}<a class="m-btn ghost" href={`/manage/export?repository=${encodeURIComponent(fullName)}`}><Icon name="download" size={14} />Export current policy</a><a class="m-btn ghost" href={repositoryPath(repository)}>Cancel</a></div></div></div>}
+      <footer data-policy-footer>{namespace?.plan === 'Business'
+        ? (link
+          ? <><span>Linked to the policy <b style="color:var(--fg)">{link.name}</b>{link.appliedRevision === null ? ' (not applied here yet)' : link.revision > link.appliedRevision ? ` (rev ${link.appliedRevision} here; rev ${link.revision} not published here yet)` : ` (rev ${link.appliedRevision})`}; publishing a revision updates it.</span><a class="m-btn sm" href={`/manage/policies?ns=${encodeURIComponent(found.owner)}&policy=${link.policyId}`}>Open policy</a>{state.kind !== 'removed' && <ActionForm action="policy-unlink" fields={{ repository: fullName }} label="Unlink" class="sm ghost" back={repositoryPath(repository)} title="Keeps the current settings as plain repository settings" />}</>
+          : policies.length > 0 && state.kind !== 'removed'
+            ? <form class="m-form m-acts" method="post" action="/manage/do" data-link-form><input type="hidden" name="action" value="policy-link" /><input type="hidden" name="repository" value={fullName} /><input type="hidden" name="back" value={repositoryPath(repository)} /><span>Not linked to a policy.</span><select class="m-select" name="policy" aria-label="Policy to link">{policies.map((policy: any) => <option value={policy.policyId}>{policy.name} (revision {policy.revision})</option>)}</select><button class="m-btn sm" type="submit">Link</button></form>
+            : <span>Not linked to a policy. {namespace.accountId !== null ? <a href={`/manage/policies?ns=${encodeURIComponent(found.owner)}`}>Policies</a> : ''}</span>)
+        : comparison ? <span data-adopt-summary>{adoption ? `Adopted the ${found.owner} default rev ${adoption.revision} on ${fmtDay(adoption.appliedAt)}. ` : ''}{comparison.differences.length === 0 ? `Matches the ${found.owner} default (rev ${comparison.revision}).` : <>Compared with the {found.owner} default (rev {comparison.revision}): {plural(comparison.differences.length, 'difference')} · <a href={`${repositoryPath(repository)}?adopt=1#configuration`}>Review and apply default…</a></>}</span>
+        : premiumPlan && namespace?.plan === 'Pro' ? <span>No default for {found.owner} yet. <a href={`/manage/defaults?ns=${encodeURIComponent(found.owner)}`}>Set one</a></span> : premiumPlan ? <span>No linked policy for {found.owner}.</span> : <span>Each repository has its own policy on Free.</span>}<span class="push"></span><a class="m-btn sm ghost" href={`/manage/export?repository=${encodeURIComponent(fullName)}`}><Icon name="download" size={14} />Export effective policy</a><a class="m-btn sm ghost" href={`${runtime.config.siteOrigin}/manual/`}><Icon name="terminal" size={14} />Use in CLI or Actions</a></footer>
+    </section>
+
+    {state.kind !== 'removed' && <section class="m-sec" data-leave><header><h2>Stop or leave</h2><span class="d">Different actions with different consequences</span></header><div class="b"><div class="m-eff">
+      <div><Icon name="pause" /><span><b>Stop operating {found.name}</b><span class="d">Labels and the check stop and {found.private ? 'its private slot frees up' : 'nothing is counted'}. History is kept; collection stops with it.</span></span>{running || state.holdsSlot ? <ActionForm action="stop" fields={{ repository: fullName }} label="Stop" class="sm" back={repositoryPath(repository)} /> : <StatePill tone="off" label="Not running" />}</div>
+      <div><Icon name="git-fork" /><span><b>Remove from the GitHub App installation</b><span class="d">Done on GitHub. diffdevil loses access, keeps history for the offboarding period, then removes it.</span></span><a class="m-btn sm ghost" href="https://github.com/settings/installations">On GitHub <Icon name="arrow-up-right" size={13} /></a></div>
+    </div></div></section>}
+  </div>
+</ManagePage>

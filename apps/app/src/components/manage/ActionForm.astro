@@ -1,0 +1,16 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
+// One Manage mutation as a same-origin form post to /manage/do: the action, its fields, where to come back to, and
+// one button. Everything works without scripting; the server answers with a redirect and a message code.
+import Icon from '../Icon.astro';
+interface Props { action: string; fields?: Record<string, string | number | undefined | null>; label: string; back?: string | undefined; class?: string | undefined; icon?: any; title?: string | undefined; disabled?: boolean; external?: boolean }
+const { action, fields = {}, label, back, class: extra = '', icon, title, disabled = false, external = false } = Astro.props;
+const current = `${Astro.url.pathname}${Astro.url.search}`.replace(/([?&])m=[^&]*(&|$)/u, (_, lead, tail) => (tail ? lead : '')).replace(/[?&]$/u, '');
+---
+<form class="m-form" method="post" action="/manage/do">
+  <input type="hidden" name="action" value={action} />
+  {Object.entries(fields).map(([name, value]) => value !== undefined && value !== null && <input type="hidden" name={name} value={String(value)} />)}
+  <input type="hidden" name="back" value={back ?? current} />
+  <slot />
+  <button class:list={['m-btn', extra]} type="submit" title={title} disabled={disabled || undefined}>{icon && <Icon name={icon} size={14} />}{label}{external && <Icon name="arrow-up-right" size={13} />}</button>
+</form>

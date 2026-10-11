@@ -1,0 +1,12 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
+// A banner: one glyph, a bold line, a sentence, and the action that resolves it.
+import Icon from '../Icon.astro';
+interface Props { tone?: 'info' | 'warn' | 'err' | 'ok'; icon?: any; title: string; text?: string | undefined; inset?: boolean; role?: string | undefined; class?: string | undefined }
+const { tone = 'info', icon = 'info', title, text, inset = false, role, class: extra, ...rest } = Astro.props;
+---
+<div class:list={['m-banner', tone, { inset }, extra]} role={role} {...rest}>
+  <Icon name={icon} size={18} />
+  <div><b>{title}</b>{text && <p>{text}</p>}<slot name="body" /></div>
+  <div class="m-acts"><slot /></div>
+</div>

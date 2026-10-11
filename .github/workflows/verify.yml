@@ -13,7 +13,9 @@ jobs:
   verify:
     name: ${{ matrix.os }} / Node ${{ matrix.node }}
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 20
+    # Joined real-D1 fixtures took about 16 minutes on Windows at f964981,
+    # before build and consumer checks; Linux uses the same complete criterion.
+    timeout-minutes: 35
     strategy:
       fail-fast: false
       matrix:

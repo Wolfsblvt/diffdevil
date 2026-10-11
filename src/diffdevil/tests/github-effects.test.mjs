@@ -198,3 +198,83 @@ test('untrusted report input is reacquired and a transported altered plan cannot
   const refused = await apply(fake, compiled, { inputReport: report, inputPlan: altered });
   assert.equal(refused.ok, false); assert.equal(fake.calls.some(c => c.path.endsWith('/files')), true); assert.equal(fake.writes().length, 0);
 });
+
+const hostPolicy = (extra = {}) => policy({ version: 1, presets: [], ...extra, rules: { ...(extra.rules ?? {}), brief: { when: 'true', effects: { comment: { mode: 'upsert', trigger: 'always', template: 'placeholder' } } } } });
+const hostCompose = (body = ({ report }) => `Changed ${report.totals.lines.changed.value}`) => ({ brief: { lifecycle: 'host-brief/1', compose: body } });
+test('host-composed bodies use the ordinary owned upsert lifecycle and an identical render writes nothing', async () => {
+  const fake = new FakeGitHub();
+  const first = unwrap(await apply(fake, hostPolicy(), { composeComments: hostCompose() }));
+  assert.equal(first.status, 'verified'); assert.equal(fake.comments.length, 1); assert.match(fake.comments[0].body, /^Changed 3\n<!-- diffdevil:state=/u);
+  assert.equal(first.plan.operations.find(op => op.kind === 'comment.reconcile').body, 'Changed 3');
+  const writes = fake.writes().length;
+  assert.equal(unwrap(await apply(fake, hostPolicy(), { composeComments: hostCompose() })).changed, 0);
+  assert.equal(fake.writes().length, writes, 'same semantic render: no write');
+});
+test('a host lifecycle survives a trusted policy change instead of starting a second comment', async () => {
+  const fake = new FakeGitHub();
+  unwrap(await apply(fake, hostPolicy(), { composeComments: hostCompose() }));
+  const changed = hostPolicy({ defaults: { paths: { exclude: ['docs/**'] } } });
+  const result = unwrap(await apply(fake, changed, { composeComments: hostCompose(() => 'Refreshed') }));
+  assert.equal(result.status, 'verified'); assert.equal(fake.comments.length, 1); assert.match(fake.comments[0].body, /^Refreshed\n/u);
+  // An ordinary template rule keeps policy-bound ownership: the same rule without a host lifecycle does not adopt it.
+  unwrap(await apply(fake, changed));
+  assert.equal(fake.comments.length, 2);
+});
+test('a host context is recorded with the publication, handed to the next composition and refreshes an otherwise identical body', async () => {
+  const fake = new FakeGitHub();
+  const seen = [];
+  const compose = context => hostCompose(({ previous }) => { seen.push(previous); return { body: 'Same body', context }; });
+  unwrap(await apply(fake, hostPolicy(), { composeComments: compose('n:7,12') }));
+  assert.deepEqual(seen.at(-1), { found: false });
+  const writes = fake.writes().length;
+  unwrap(await apply(fake, hostPolicy(), { composeComments: compose('n:7,12') }));
+  assert.deepEqual(seen.at(-1), { found: true, context: 'n:7,12' });
+  assert.equal(fake.writes().length, writes, 'same body and same context: no write');
+  unwrap(await apply(fake, hostPolicy(), { composeComments: compose('n:12') }));
+  assert.equal(fake.comments.length, 1); assert.ok(fake.writes().length > writes, 'a changed context alone updates the owned marker');
+  const { readHostCommentContext } = await import('../../../dist/lib/github/comments.js');
+  assert.deepEqual(await readHostCommentContext(client(fake), TARGET, { rule: 'brief', host: 'host-brief/1' }, fake.author), { found: true, context: 'n:12' });
+  const refused = await apply(fake, hostPolicy(), { composeComments: compose('<script>') });
+  assert.equal(refused.ok, false); assert.equal(refused.diagnostics[0].code, 'E_CONFIG');
+});
+test('beforeWrite receives the pending write, so a host can guard one write without blocking the others', async () => {
+  const fake = new FakeGitHub();
+  const seen = [];
+  const result = unwrap(await apply(fake, hostPolicy({ labelGroups: { size: ['size/S'] }, labelDefinitions: { 'size/S': { color: 'ffffff', description: 'Small' } }, rules: { label: { when: 'true', effects: { labels: { add: ['size/S'] } } } } }),
+    { composeComments: hostCompose(), beforeWrite: async write => { seen.push(`${write.kind}:${write.subject}`); if (write.subject === 'brief') throw new Error('guarded'); } }));
+  assert.equal(result.status, 'incomplete');
+  assert.ok(fake.labels.has('size/S'), 'the label write was admitted');
+  assert.equal(fake.comments.length, 0, 'the guarded comment write was refused before any request');
+  assert.ok(seen.includes('comment.create:brief'));
+});
+test('copied host markers from another author are never adopted', async () => {
+  const fake = new FakeGitHub();
+  unwrap(await apply(fake, hostPolicy(), { composeComments: hostCompose() }));
+  const own = fake.comments[0];
+  fake.comments.splice(0, 1, { ...own, id: 77, user: { id: 9, login: 'someone', type: 'User' } });
+  unwrap(await apply(fake, hostPolicy(), { composeComments: hostCompose(() => 'Mine') }));
+  assert.equal(fake.comments.find(comment => comment.id === 77).body, own.body, 'the copied comment is untouched');
+  assert.equal(fake.comments.filter(comment => comment.user.login === fake.author.login).length, 1);
+});
+test('host composition is refused for a rule without a comment effect or with a saved plan', async () => {
+  const fake = new FakeGitHub();
+  const missing = await apply(fake, policy({ version: 1, presets: [] }), { composeComments: hostCompose() });
+  assert.equal(missing.ok, false); assert.equal(missing.diagnostics[0].code, 'E_CONFIG');
+  const empty = await apply(fake, hostPolicy(), { composeComments: hostCompose(() => '   ') });
+  assert.equal(empty.ok, false); assert.equal(fake.writes().length, 0);
+});
+test('a terminal host comment is created once per occasion, including after an ambiguous create', async () => {
+  const { reconcileHostComment } = await import('../../../dist/lib/github/index.js');
+  const fake = new FakeGitHub(); fake.state = 'closed';
+  fake.before = (call, state) => {
+    if (call.method === 'POST' && call.path.endsWith('/comments') && !state.comments.length) { state.comments.push({ id: 5, body: call.body.body, user: state.author }); return json({}, 502); }
+  };
+  const request = { target: TARGET, policyId: 'p1', rule: 'final', host: 'final/1', occasionId: 'final:c1', body: 'Merged summary' };
+  const created = await reconcileHostComment(client(fake), request, fake.author);
+  assert.equal(created.status, 'created');
+  assert.equal(created.observations[0].request, 'ambiguous'); assert.equal(created.observations[0].readback, 'verified');
+  assert.equal((await reconcileHostComment(client(fake), request, fake.author)).status, 'unchanged');
+  assert.equal(fake.writes().length, 1); assert.equal(fake.comments.length, 1);
+  assert.equal((await reconcileHostComment(client(fake), { ...request, occasionId: 'final:c2' }, fake.author)).status, 'created');
+  assert.equal(fake.comments.length, 2);
+});

@@ -8,15 +8,17 @@ export interface EffectObservation {
   request: 'not-needed' | 'acknowledged' | 'ambiguous' | 'rejected';
   readback: 'verified' | 'failed' | 'unobserved';
 }
+/** The provider write a host's `beforeWrite` assertion is about to admit. */
+export interface PendingWrite { readonly kind: string; readonly subject: string }
 /** One application owns its serial writes and their separately observed postconditions. */
 export class EffectSession {
   readonly observations: EffectObservation[] = [];
-  constructor(private readonly beforeWrite: () => Promise<void> = async () => {}) {}
+  constructor(private readonly beforeWrite: (write: PendingWrite) => Promise<void> = async () => {}) {}
   unchanged(kind: string, subject: string): void {
     this.observations.push({ kind, subject, outcome: 'unchanged', request: 'not-needed', readback: 'verified' });
   }
   async write(operation: { kind: string; subject: string; perform: () => Promise<void>; verify: () => Promise<boolean> }): Promise<void> {
-    await this.beforeWrite();
+    await this.beforeWrite({ kind: operation.kind, subject: operation.subject });
     const observation: EffectObservation = { kind: operation.kind, subject: operation.subject, outcome: 'unresolved', request: 'ambiguous', readback: 'unobserved' };
     this.observations.push(observation);
     let error: unknown;

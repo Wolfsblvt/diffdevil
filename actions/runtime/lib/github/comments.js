@@ -4,9 +4,23 @@ import { DEFAULT_LIMITS, enforceBytes } from '../limits.js';
 import { GitHubClient } from './client.js';
 import { EffectSession } from './observation.js';
 import { githubInteger, githubRecord, githubString, repositoryPath } from './values.js';
+/** Host context is identifiers only: letters, digits and `._:,/-`, at most 1 KiB. */
+const HOST_CONTEXT = /^[A-Za-z0-9._:,/-]{0,1024}$/u;
+/** Validate a host context before it enters owned comment state. */
+export function hostContext(value) {
+    if (value === undefined)
+        return undefined;
+    if (typeof value !== 'string' || !HOST_CONTEXT.test(value))
+        return fail('E_CONFIG', 'Host comment context must be at most 1 KiB of identifier characters.', 'config');
+    return value;
+}
 const MARKER = /\n<!-- diffdevil:state=([A-Za-z0-9_-]+) -->$/u;
-/** Ownership requires both a selected actor and a validated target/policy/rule marker. */
-export async function readOwnedComments(client, plan, author) {
+/**
+ * Ownership requires both a selected actor and a validated target/policy/rule marker. A host-composed rule is owned by
+ * its target, rule and host lifecycle identity instead of the policy ID, so a trusted policy change refreshes the same
+ * comment rather than starting a second one; copied markers still need the expected author to be adopted.
+ */
+export async function readOwnedComments(client, plan, author, hosts = {}) {
     if (!author.login || author.id !== undefined && (!Number.isSafeInteger(author.id) || author.id < 1))
         fail('E_CONFIG', 'Expected comment author requires a login and an optional positive numeric ID.', 'config');
     const result = [];
@@ -32,7 +46,14 @@ export async function readOwnedComments(client, plan, author) {
         catch {
             return fail('E_COMMENT_STATE', 'Owned comment metadata is not valid JSON.', 'apply');
         }
-        if (state.v !== 1 || state.repository !== plan.target.repository.toLowerCase() || state.pullRequest !== plan.target.pullRequest || state.policyId !== plan.policyId || typeof state.rule !== 'string' || !Object.hasOwn(plan.rules, state.rule))
+        if (state.host !== undefined && typeof state.host !== 'string')
+            fail('E_COMMENT_STATE', 'Owned comment metadata has an invalid host lifecycle.', 'apply');
+        if (state.context !== undefined && (typeof state.context !== 'string' || !HOST_CONTEXT.test(state.context)))
+            fail('E_COMMENT_STATE', 'Owned comment metadata has an invalid host context.', 'apply');
+        const hosted = typeof state.rule === 'string' && Object.hasOwn(hosts, state.rule);
+        if (state.v !== 1 || state.repository !== plan.target.repository.toLowerCase() || state.pullRequest !== plan.target.pullRequest || typeof state.rule !== 'string' || !Object.hasOwn(plan.rules, state.rule))
+            continue;
+        if (hosted ? state.host !== hosts[state.rule] : state.host !== undefined || state.policyId !== plan.policyId)
             continue;
         if (!Number.isSafeInteger(state.sequence) || state.sequence < 0 || !Number.isSafeInteger(state.transition) || state.transition < 0 || state.decision !== undefined && typeof state.decision !== 'boolean' || state.band !== undefined && typeof state.band !== 'string' || state.occasion !== undefined && typeof state.occasion !== 'string')
             fail('E_COMMENT_STATE', 'Owned comment metadata has invalid lifecycle fields.', 'apply');
@@ -54,7 +75,7 @@ function bodyWithState(visible, state) {
     enforceBytes(body, DEFAULT_LIMITS.stringBytes, 'Owned comment', 'format');
     return body;
 }
-export function prepareComments(plan, definitions, current, occasionId) {
+export function prepareComments(plan, definitions, current, occasionId, hosts = {}, contexts = {}) {
     const output = [];
     const operations = new Map(plan.operations.filter(op => op.kind === 'comment.reconcile').map(op => [op.rule, op]));
     for (const [rule, definition] of Object.entries(definitions)) {
@@ -71,7 +92,8 @@ export function prepareComments(plan, definitions, current, occasionId) {
         const transition = (prior?.state.transition ?? 0) + (decision === true && prior?.state.decision !== true ? 1 : 0);
         const state = { v: 1, repository: plan.target.repository.toLowerCase(), pullRequest: plan.target.pullRequest, policyId: plan.policyId, rule,
             sequence: (prior?.state.sequence ?? 0) + 1, transition,
-            ...(decision === undefined ? {} : { decision }), ...(band === undefined ? {} : { band }), ...(occasionId === undefined ? {} : { occasion: occasionId }) };
+            ...(decision === undefined ? {} : { decision }), ...(band === undefined ? {} : { band }), ...(occasionId === undefined ? {} : { occasion: occasionId }),
+            ...(Object.hasOwn(hosts, rule) ? { host: hosts[rule] } : {}), ...(Object.hasOwn(contexts, rule) ? { context: contexts[rule] } : {}) };
         if (!Number.isSafeInteger(state.sequence) || !Number.isSafeInteger(transition))
             fail('E_LIMIT', 'Owned comment lifecycle counter exhausted its safe integer domain.', 'apply');
         if (!operation) {
@@ -92,14 +114,14 @@ export function prepareComments(plan, definitions, current, occasionId) {
             if (owned.some(comment => comment.state.occasion === occasionId))
                 continue;
         }
-        if (definition.mode === 'upsert' && prior && prior.visibleBody === operation.body && prior.state.decision === decision && prior.state.band === band)
+        if (definition.mode === 'upsert' && prior && prior.visibleBody === operation.body && prior.state.decision === decision && prior.state.band === band && prior.state.context === state.context)
             continue;
         const id = definition.mode === 'upsert' && prior ? prior.id : undefined;
         output.push({ rule, ...(id === undefined ? {} : { id }), body: bodyWithState(operation.body, state), state });
     }
     return output;
 }
-export async function reconcileComments(client, plan, author, prepared, session) {
+export async function reconcileComments(client, plan, author, prepared, session, hosts = {}) {
     const root = repositoryPath(plan.target.repository);
     for (const comment of prepared) {
         await session.write({ kind: comment.id === undefined ? 'comment.create' : 'comment.update', subject: comment.rule,
@@ -107,10 +129,55 @@ export async function reconcileComments(client, plan, author, prepared, session)
                 await client.json(comment.id === undefined ? `${root}/issues/${plan.target.pullRequest}/comments` : `${root}/issues/comments/${comment.id}`, { method: comment.id === undefined ? 'POST' : 'PATCH', body: { body: comment.body }, phase: 'apply' });
             },
             verify: async () => {
-                const current = await readOwnedComments(client, plan, author);
+                const current = await readOwnedComments(client, plan, author, hosts);
                 const matches = current.filter(item => item.state.rule === comment.rule && item.state.sequence === comment.state.sequence);
                 return matches.length === 1 && (comment.id === undefined || matches[0].id === comment.id) && bodyWithState(matches[0].visibleBody, matches[0].state) === comment.body;
             } });
     }
+}
+/** The latest owned host-composed comment's recorded context for one rule, read without any write. */
+export async function readHostCommentContext(client, target, request, author) {
+    const scope = { target, policyId: '', rules: { [request.rule]: { disposition: 'matched' } } };
+    const owned = (await readOwnedComments(client, scope, author, { [request.rule]: request.host })).filter(comment => comment.state.rule === request.rule).sort((a, b) => b.state.sequence - a.state.sequence);
+    const latest = owned[0];
+    return latest ? { found: true, ...(latest.state.context === undefined ? {} : { context: latest.state.context }) } : { found: false };
+}
+/**
+ * Create one host-composed comment exactly once per occasion. Existing ownership is read first, so a retry after an
+ * ambiguous create reconciles to the comment that already landed instead of posting another. A failure carries the
+ * request/readback observations made so far on its `observations` property.
+ */
+export async function reconcileHostComment(client, request, author, options = {}) {
+    const session = new EffectSession(options.beforeWrite);
+    try {
+        return { status: await writeHostComment(client, request, author, session), observations: session.observations };
+    }
+    catch (error) {
+        throw Object.assign(error, { observations: session.observations });
+    }
+}
+async function writeHostComment(client, request, author, session) {
+    if (!request.occasionId || !request.host || !request.rule)
+        fail('E_OCCASION_REQUIRED', 'A host comment requires a stable rule, host lifecycle and occasion.', 'apply');
+    const scope = { target: request.target, policyId: request.policyId, rules: { [request.rule]: { disposition: 'matched' } } };
+    const hosts = { [request.rule]: request.host };
+    const owned = await readOwnedComments(client, scope, author, hosts);
+    const prior = owned.filter(comment => comment.state.rule === request.rule).sort((a, b) => b.state.sequence - a.state.sequence);
+    if (prior.some(comment => comment.state.occasion === request.occasionId)) {
+        session.unchanged('comment.create', request.rule);
+        return 'unchanged';
+    }
+    const state = { v: 1, repository: request.target.repository.toLowerCase(), pullRequest: request.target.pullRequest, policyId: request.policyId,
+        rule: request.rule, sequence: (prior[0]?.state.sequence ?? 0) + 1, transition: 0, occasion: request.occasionId, host: request.host };
+    const body = bodyWithState(request.body, state);
+    const root = repositoryPath(request.target.repository);
+    await session.write({ kind: 'comment.create', subject: request.rule,
+        perform: async () => { await client.json(`${root}/issues/${request.target.pullRequest}/comments`, { method: 'POST', body: { body }, phase: 'apply' }); },
+        verify: async () => {
+            const current = await readOwnedComments(client, scope, author, hosts);
+            const matches = current.filter(item => item.state.rule === request.rule && item.state.occasion === request.occasionId);
+            return matches.length === 1 && bodyWithState(matches[0].visibleBody, matches[0].state) === body;
+        } });
+    return 'created';
 }
 //# sourceMappingURL=comments.js.map

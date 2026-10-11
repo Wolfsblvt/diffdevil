@@ -1,0 +1,76 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
+// Manage · Plan & funding · the participation survey. diffdevil owns the questions, the answers and their privacy;
+// Wolfsblvt Works learns only that the survey was completed, and when. Saving keeps a draft; completing commits the
+// answers and the outbound completion together. After completion the person sees what they sent, the reward's
+// standing as Works reports it, and can delete their answers without losing the reward.
+import ManagePage from '../../../components/manage/ManagePage.astro';
+import Icon from '../../../components/Icon.astro';
+import Banner from '../../../components/manage/Banner.astro';
+import ActionForm from '../../../components/manage/ActionForm.astro';
+import RewardCard from '../../../components/participation/RewardCard.astro';
+import { loadManage } from '../../../lib/manage/model.mjs';
+import { fmtDay } from '../../../lib/manage/works.mjs';
+import { describeAnswers, hasText } from '../../../lib/participation/survey.mjs';
+import { loadParticipation } from '../../../lib/participation/page.mjs';
+
+const runtime = Astro.locals.app;
+const viewer = Astro.locals.viewer;
+const model = await loadManage({ viewer, session: Astro.locals.session, runtime });
+const loaded = await loadParticipation({ runtime, viewer, session: Astro.locals.session, model });
+const view = loaded?.view ?? null;
+const survey = view?.survey;
+const answers = view?.response?.answers ?? {};
+const card = loaded?.card ?? null;
+const closesOn = view ? fmtDay(view.campaign.closesAt) : null;
+const why = view && !view.canAnswer && !view.completed ? (
+  view.eligibility === 'not-linked' ? 'The survey is for beta participants. Link your Wolfsblvt Works account from Plan & funding first; the reward needs somewhere to go.'
+  : view.eligibility === 'not-pro' ? 'This survey is for the Pro beta, so its reward doesn\'t apply to Business.'
+  : view.eligibility === 'unknown' ? 'Your plan can\'t be confirmed with Works right now, so the survey can\'t be answered yet. Nothing is lost; try again shortly.'
+  : view.window === 'not-open' ? `The survey opens on ${fmtDay(view.campaign.opensAt)}.`
+  : view.window === 'closed' ? `The survey closed on ${closesOn}.` : null) : null;
+const checked = (question: string, value: string) => (answers[question] ?? []).includes(value);
+---
+<ManagePage model={model} tab="plan" title={view ? view.campaign.name : 'Survey'} crumbs={[{ label: 'Plan & funding', href: '/manage/plan' }, { label: view?.campaign.name ?? 'Survey' }]} sub={view ? `About ${survey.minutes} minutes · open until ${closesOn}` : 'No survey is running'}>
+  <div class="m-stack" data-survey={view ? (view.completed ? 'completed' : view.canAnswer ? (view.response?.state === 'draft' ? 'draft' : 'open') : 'unavailable') : 'none'}>
+    {!view && <Banner tone="info" icon="info" title="No survey is running on this deployment" text="When diffdevil runs a participation campaign, its survey appears here and in Plan & funding." />}
+    {why && <Banner tone="info" icon="info" title="The survey can't be answered right now" text={why}><a class="m-btn" href="/manage/plan">Plan & funding</a></Banner>}
+
+    {view?.completed && card && <RewardCard card={card} surveyLink={false} />}
+
+    {view?.canAnswer && <section class="m-sec" data-survey-form>
+      <header><h2>Tell us how the beta went</h2><span class="d">{view.response?.state === 'draft' ? `Draft saved ${fmtDay(view.response.updatedAt)}` : 'Nothing is saved until you save or complete'}</span></header>
+      <div class="b">
+        <p class="m-lede">Completing the survey earns a discount on continuing with Pro. Critical, mixed and enthusiastic answers all count the same, and nobody reviews them before the reward is issued. Only the first question needs an answer.</p>
+        <form class="p-survey" method="post" action="/manage/do">
+          <input type="hidden" name="back" value="/manage/plan/survey" />
+          {survey.questions.map((question: any, index: number) => <fieldset class="p-q" aria-describedby={question.hint ? `hint-${question.id}` : undefined} data-question={question.id}>
+            <legend><span class="n">{index + 1}</span>{question.label}{question.required && <span class="req"> · needed to complete</span>}</legend>
+            {question.hint && <p class="m-note" id={`hint-${question.id}`}>{question.hint}</p>}
+            {question.kind === 'choices'
+              ? <div class="m-checks p-options">{question.options.map(([value, label]: [string, string]) => <label><input type="checkbox" name={question.id} value={value} checked={checked(question.id, value)} /><span>{label}</span></label>)}</div>
+              : <textarea class="m-input p-text" name={question.id} rows="4" maxlength="4000" aria-label={question.label}>{answers[question.id] ?? ''}</textarea>}
+            {question.detail && <label class="p-detail"><span class="m-k">{question.detail.label}</span><textarea class="m-input p-text" name={question.detail.id} rows="2" maxlength="4000">{answers[question.detail.id] ?? ''}</textarea></label>}
+          </fieldset>)}
+          <div class="m-acts p-submit">
+            <button class="m-btn pri" type="submit" name="action" value="survey-complete">Complete the survey</button>
+            <button class="m-btn ghost" type="submit" name="action" value="survey-save">Save and finish later</button>
+          </div>
+        </form>
+      </div>
+      <footer><Icon name="shield" size={13} /><span>Your answers stay with diffdevil and are used to improve it. Wolfsblvt Works only learns that you completed the survey, and when, so it can issue the reward; it never receives what you wrote. Your answers are in your account export, and you can delete them at any time without losing the reward.</span></footer>
+    </section>}
+
+    {view?.completed && <section class="m-sec" data-survey-answers>
+      <header><h2>What you sent</h2><span class="d">Completed {fmtDay(view.response.completedAt)}</span></header>
+      <div class="b">
+        {view.response.answersDeletedAt
+          ? <p class="m-note" style="margin:0" data-answers-deleted>You deleted your answers on {fmtDay(view.response.answersDeletedAt)}. The completion and its reward stay; Works was never sent the answers.</p>
+          : <><dl class="m-dl p-answers">{describeAnswers(survey, view.response.answers).map((entry: any) => <><dt>{entry.question}</dt><dd>{entry.choices.length > 0 && <span>{entry.choices.join(' · ')}</span>}{entry.text && <span class:list={['p-said', { sub: entry.choices.length > 0 }]}>{entry.text}</span>}{!entry.choices.length && !entry.text && <span class="sub">No answer</span>}</dd></>)}</dl>
+            <div class="m-acts" style="margin-top:14px"><ActionForm action="survey-delete" label={hasText(view.response.answers) ? 'Delete my answers and comments' : 'Delete my answers'} class="sm ghost dng" back="/manage/plan/survey" /><span class="m-note" style="margin:0">Deleting removes every answer from diffdevil. It doesn't take back the reward, and there's nothing to undo at Works.</span></div></>}
+      </div>
+    </section>}
+
+    {!view?.completed && view?.response?.state === 'draft' && !view.canAnswer && <section class="m-sec"><div class="b"><div class="m-acts"><ActionForm action="survey-delete" label="Delete my saved answers" class="sm ghost dng" back="/manage/plan/survey" /></div></div></section>}
+  </div>
+</ManagePage>

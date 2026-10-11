@@ -1,0 +1,23 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
+// Free's two finite allowances, pooled across the personal account and its one connected organisation: private
+// repositories as named cells, public repositories with history as ten segments (names on hover) with the Choose link.
+interface Props { capacity: any; model: any }
+const { capacity, model } = Astro.props;
+const connected = model.freeConnected?.login ?? null;
+const privateOf = capacity.of, privateUsed = capacity.inSlot.length;
+const publicOf = capacity.publicHistory.of, publicUsed = capacity.publicHistory.used;
+const unlimitedPrivate = privateOf === null, unlimitedPublic = publicOf === null;
+---
+<div class="m-allowg">
+  <div class="g">
+    <div class="h"><b>Private repositories</b><span class="num">{unlimitedPrivate ? `${privateUsed} · no limit` : <>{privateUsed} / {privateOf}<small>{Math.max(0, privateOf - privateUsed)} free</small></>}</span></div>
+    {!unlimitedPrivate && <span class="m-segs priv" role="img" aria-label={`${privateUsed} of ${privateOf} private slots used`}>{Array.from({ length: privateOf }, (_, index) => { const repository = capacity.inSlot[index]; return <i class={repository ? 'on' : ''} title={repository?.fullName}>{repository?.name ?? ''}</i>; })}</span>}
+    <span class="m-note">{connected ? `Pooled across ${model.login} and ${connected}` : 'Pooled with the one organisation you can connect'}{capacity.waiting.length > 0 && <> · <span style="color:var(--m-warn)">{capacity.waiting.length} over the limit</span></>}</span>
+  </div>
+  <div class="g">
+    <div class="h"><b>Public repositories with history</b><span class="num">{unlimitedPublic ? `${publicUsed} · no limit` : <>{publicUsed} / {publicOf}<small>{Math.max(0, publicOf - publicUsed)} free</small></>}</span></div>
+    {!unlimitedPublic && <span class="m-segs pub" role="img" aria-label={`${publicUsed} of ${publicOf} public history places used`}>{Array.from({ length: publicOf }, (_, index) => { const repository = capacity.publicHistory.repositories[index]; return <i class={repository ? 'on' : ''} title={repository?.fullName}></i>; })}</span>}
+    <span class="m-note">Public labels and checks have no limit. You choose which public repositories get history. <a href="/manage/repositories">Choose</a></span>
+  </div>
+</div>

@@ -9,4 +9,7 @@ export type { GitHubApplyOptions, GitHubApplyResult } from './apply.js';
 export { syncGitHubLabels } from './labels.js';
 export type { DefinitionResult } from './labels.js';
 export type { CommentAuthor } from './comments.js';
-export type { EffectObservation } from './observation.js';
+export type { EffectObservation, PendingWrite } from './observation.js';
+export { readHostCommentContext, reconcileHostComment } from './comments.js';
+export type { HostCommentRequest, HostCommentResult, HostLifecycles } from './comments.js';
+export type { HostComposedComment } from './apply.js';

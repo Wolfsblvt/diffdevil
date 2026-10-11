@@ -6,7 +6,8 @@
   "compatibility_flags": ["nodejs_compat"],
   "alias": {
     "@wolfsblvt/diffdevil": "../../dist/lib/index.js",
-    "@wolfsblvt/diffdevil/github": "../../dist/lib/github/index.js"
+    "@wolfsblvt/diffdevil/github": "../../dist/lib/github/index.js",
+    "@diffdevil/premium-brief": "./pr-brief-absent.mjs"
   },
   "workers_dev": false,
   "triggers": { "crons": ["17 3 * * *"] },

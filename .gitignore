@@ -48,3 +48,9 @@ apps/website/src/generated/source-targets.json
 apps/manual/package-lock.json
 
 apps/website/src/generated/source-provenance.json
+
+# Signed-in App: generated icon projection, local Worker variables and the Cloudflare Vite plugin's local state
+apps/app/src/generated/
+apps/app/.dev.vars
+apps/app/.dev.vars.*
+apps/app/.astro/

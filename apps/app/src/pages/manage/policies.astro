@@ -1,0 +1,20 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
+// Manage · Policies (Business): named linked policies with their linked repositories and per-repository overrides from
+// .diffdevil.yml, publishing with a per-repository result, and automatic setup per scope. The body is the premium
+// extension's; a Business account in a Community build is told the coordination surface is not part of the build,
+// and any other plan is pointed to what Business adds.
+import ManagePage from '../../components/manage/ManagePage.astro';
+import Unavailable from '../../components/Unavailable.astro';
+import { loadManage } from '../../lib/manage/model.mjs';
+const runtime = Astro.locals.app;
+const model = await loadManage({ viewer: Astro.locals.viewer, session: Astro.locals.session, runtime });
+const Body = runtime.premium.pages.manage?.Policies;
+const business = model.coordinates === true;
+---
+<ManagePage model={model} tab="policies">
+  <div class="m-stack">
+    {!business && <section class="m-sec"><header><h2>Policies</h2><span class="a-plan biz">Business</span></header><div class="b"><p class="m-lede">Named policies linked to repositories, with coordinated publishing and automatic setup, come with Business. <a class="link-quiet" href="/manage/plan">Compare plans</a></p></div></section>}
+    {business && (Body ? <Body model={model} /> : <section class="m-sec" data-policies="not-provided"><header><h2>Policies</h2></header><div class="b"><Unavailable what="Linked policies are not part of this build" why="Business includes them; this Community build carries each repository's own settings and the namespace default, not the coordination surface" /></div></section>)}
+  </div>
+</ManagePage>

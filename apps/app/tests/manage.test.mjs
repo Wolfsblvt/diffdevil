@@ -1,0 +1,395 @@
+// SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
+/**
+ * The Manage console: the pure product model (allowances, capacity, explanatory states, the attention list, the Works
+ * projection presentation and the return decision) and the console's journeys against the real local D1 and the
+ * authorization service: selecting, enabling (with the one-writer declaration), stopping, swapping within a full
+ * allowance, the Free connected organisation, history and the brief controls, the loopback commercial stand-in's
+ * slots, the funding connection's disconnect and reconnect, and account closure. Nothing here reaches GitHub or Works.
+ */
+import assert from 'node:assert/strict';
+import { after, test } from 'node:test';
+import { readAllowances, HOSTED_ALLOWANCES } from '../src/lib/manage/allowances.mjs';
+import { attentionItems, capacityOf, describeRepository, heldBy } from '../src/lib/manage/states.mjs';
+import { presentProjection, projectionKey, returnOutcome, formatMoney } from '../src/lib/manage/works.mjs';
+import { loadManage, manageBadge } from '../src/lib/manage/model.mjs';
+import { handleManageAction, handleDeparture, MESSAGES, briefSettingsFromForm } from '../src/lib/manage/actions.mjs';
+import { effectiveConfiguration, defaultComparison } from '../src/lib/manage/configuration.mjs';
+import { readNamespaceDefault } from '../src/lib/manage/defaults.mjs';
+import { SESSION_COOKIE, openSession } from '../src/lib/routes.mjs';
+import { resolveViewer } from '../src/lib/viewer.mjs';
+import { ACCOUNTS } from '../qa/fixture.mjs';
+import { fixture, disposeFixture, signIn, viewerFor, ORIGIN } from './support.mjs';
+
+after(disposeFixture);
+
+const standing = (over = {}) => ({ state: 'active', accessState: 'available', installationState: 'active', executionActive: true, executionReason: null, historyEnabled: false, historyReason: 'explicitly-disabled', selected: true, selectedAt: '2026-10-01T00:00:00.000Z', lastDelivery: null, retainedUntil: null, writerStanding: 'administrator-declared', revision: 1, ...over });
+// Distinct, stable identities per name: the capacity, choice and state functions compare repositories by ID.
+const idOf = fullName => [...fullName].reduce((hash, character) => (hash * 31 + character.charCodeAt(0)) % 1_000_000_007, 7);
+const repo = (fullName, over = {}, standingOver = {}) => { const [owner, name] = fullName.split('/'); return { repositoryId: idOf(fullName), fullName, owner, name, private: true, standing: standing(standingOver), ...over }; };
+const namespace = (login, over = {}) => ({ login, kind: login.includes('-labs') || login.includes('guild') ? 'org' : 'user', plan: 'Free', funding: { kind: 'personal' }, installation: { state: 'active' }, repositories: [], ...over });
+
+test('allowances follow the hosted offer when a subscription source exists and are unlimited otherwise, with operator configuration on top', () => {
+  assert.deepEqual(readAllowances(undefined, { hosted: true }).free, HOSTED_ALLOWANCES.free);
+  assert.equal(readAllowances(undefined, { hosted: false }).free.private, null);
+  assert.equal(readAllowances('{"free":{"private":5,"publicHistory":20},"proOrganisation":{"private":null}}').free.private, 5);
+  assert.equal(readAllowances('{"free":{"private":5,"publicHistory":20},"proOrganisation":{"private":null}}').proOrganisation.private, null);
+  assert.equal(readAllowances('not json', { hosted: true }).invalid, true);
+  assert.equal(readAllowances('{"free":{"private":-1}}', { hosted: true }).free.private, 3, 'an invalid value falls back whole');
+});
+
+test('capacity names the repositories holding each slot and, over the limit, never picks: only a saved choice decides what stays', () => {
+  const allowances = readAllowances(undefined, { hosted: true });
+  const pool = [repo('ada/one', {}, { selectedAt: '2026-10-01T00:00:00.000Z' }), repo('ada/two', {}, { selectedAt: '2026-10-02T00:00:00.000Z', executionActive: false, executionReason: 'unknown' }), repo('guild/three', {}, { selectedAt: '2026-10-03T00:00:00.000Z' }), repo('guild/four', {}, { selectedAt: '2026-10-04T00:00:00.000Z', executionActive: false, executionReason: 'unknown' }), repo('ada/pub', { private: false }, { historyEnabled: true, historyReason: null }), repo('ada/gone', {}, { state: 'offboarding', accessState: 'removed' })];
+  const capacity = capacityOf({ plan: 'Free', kind: 'user', pooled: true, repositories: pool }, { allowances });
+  assert.equal(capacity.kind, 'slots');
+  // Four private repositories hold places in a pool of three (a reduction made it so): without a choice none holds a slot.
+  assert.equal(capacity.over, true); assert.equal(capacity.chosen, false);
+  assert.deepEqual(capacity.inSlot, []);
+  assert.deepEqual(capacity.waiting.map(repository => repository.fullName), ['ada/one', 'ada/two', 'guild/three', 'guild/four']);
+  const chosen = capacityOf({ plan: 'Free', kind: 'user', pooled: true, repositories: pool }, { allowances, keep: [pool[0].repositoryId, pool[3].repositoryId] });
+  assert.deepEqual(chosen.inSlot.map(repository => repository.fullName), ['ada/one', 'guild/four'], 'the saved choice holds the slots');
+  assert.deepEqual(chosen.waiting.map(repository => repository.fullName), ['ada/two', 'guild/three']);
+  const within = capacityOf({ plan: 'Free', kind: 'user', pooled: true, repositories: pool.slice(0, 3) }, { allowances });
+  assert.equal(within.over, false); assert.equal(within.inSlot.length, 3);
+  assert.equal(capacity.publicHistory.used, 1); assert.equal(capacity.publicHistory.of, 10);
+  const unlimited = capacityOf({ plan: 'Pro', kind: 'user', repositories: pool }, { allowances });
+  assert.equal(unlimited.kind, 'unlimited');
+  assert.equal(capacityOf({ plan: 'Pro', kind: 'org', repositories: pool }, { allowances }).of, 3, 'a Pro organisation has three private slots');
+  assert.equal(capacityOf({ plan: 'Business', kind: 'org', repositories: pool }, { allowances }).kind, 'unlimited');
+  assert.equal(capacityOf({ plan: 'Unconnected', kind: 'org', repositories: pool }, { allowances }).kind, 'none');
+});
+
+test('explanatory states keep reach, selection, consent, the latest delivery and the plan apart', () => {
+  const allowances = readAllowances(undefined, { hosted: true });
+  const org = namespace('parser-guild', { plan: 'Pro', funding: { kind: 'own-slot' } });
+  const scope = { plan: 'Pro', kind: 'org', repositories: [] };
+  const describe = (over, standingOver, ns = org, capacity = capacityOf(scope, { allowances })) => describeRepository(repo('parser-guild/x', over, standingOver), ns, capacity);
+  assert.equal(describe({}, {}).kind, 'active');
+  assert.equal(describe({ private: false }, {}).kind, 'labels');
+  assert.equal(describe({}, { historyEnabled: true }).why, 'Size labels, the check and history.');
+  assert.equal(describe({}, { executionActive: false, executionReason: 'unknown', selected: true }).kind, 'pending');
+  assert.equal(describe({}, { executionActive: false, executionReason: 'explicitly-disabled', selected: false }).kind, 'stoppedByYou');
+  assert.equal(describe({}, { executionActive: false, executionReason: 'unknown', selected: false }).kind, 'available');
+  assert.equal(describe({}, { executionActive: false, executionReason: 're-consent-required', selected: true }).kind, 'reconsent');
+  assert.equal(describe({}, { state: 'offboarding', accessState: 'removed' }).kind, 'removed');
+  assert.equal(describe({}, { installationState: 'suspended', accessState: 'suspended' }).kind, 'stopped');
+  assert.equal(describe({}, { lastDelivery: { code: 'E_APP_POLICY', state: 'repair' } }).kind, 'held');
+  assert.equal(heldBy(standing({ lastDelivery: { code: 'E_EFFECT_INCOMPLETE', state: 'repair' } })), null, 'an effect failure is not a held policy');
+  assert.equal(describe({}, {}, namespace('quarry-labs', { plan: 'Unfunded', funding: { kind: 'unfunded' } })).kind, 'unfunded');
+  assert.equal(describe({}, {}, namespace('quarry-labs', { plan: 'Unconnected', funding: { kind: 'unconnected' } })).kind, 'unconnected');
+  assert.equal(describeRepository({ fullName: 'a/b', name: 'b', owner: 'a', private: true, standing: undefined }, org, null).kind, 'unrecorded');
+  // The fourth private repository of a Pro organisation is over the limit when it is not running, and running-over-the-allowance when it is.
+  const four = [1, 2, 3, 4].map(index => repo(`parser-guild/r${index}`, {}, { selectedAt: `2026-10-0${index}T00:00:00.000Z`, executionActive: index !== 4, executionReason: index === 4 ? 'unknown' : null }));
+  const capacity = capacityOf({ plan: 'Pro', kind: 'org', repositories: four }, { allowances });
+  // Over the allowance after a reduction: every one of them is held until the administrator chooses, running or not.
+  assert.equal(describeRepository(four[3], org, capacity).kind, 'overAllowance');
+  assert.equal(describeRepository(four[0], org, capacity).kind, 'overAllowance');
+  assert.match(describeRepository(four[0], org, capacity).why, /doesn't pick/u);
+  const kept = capacityOf({ plan: 'Pro', kind: 'org', repositories: four }, { allowances, keep: four.slice(0, 3).map(repository => repository.repositoryId) });
+  assert.equal(describeRepository(four[0], org, kept).kind, 'active');
+  assert.match(describeRepository(four[3], org, kept).why, /chose to keep/u);
+  // Public history over its places pauses collection for all of them; labels keep running.
+  const publics = Array.from({ length: 11 }, (_, index) => repo(`ada/p${index}`, { private: false, repositoryId: 500 + index }, { historyEnabled: true, historyReason: null }));
+  const free = namespace('ada', { plan: 'Free', kind: 'user' });
+  const pooled = capacityOf({ plan: 'Free', kind: 'user', pooled: true, repositories: publics }, { allowances });
+  assert.equal(pooled.publicHistory.over, true);
+  const paused = describeRepository(publics[0], free, pooled);
+  assert.equal(paused.label, 'History paused'); assert.equal(paused.historyHeld, true);
+});
+
+test('Needs you lists only decisions, in the console\'s words, and points at where each is made', () => {
+  const allowances = readAllowances(undefined, { hosted: true });
+  const held = repo('parser-guild/held', {}, { lastDelivery: { code: 'E_APP_POLICY', state: 'repair' } });
+  const pending = repo('parser-guild/pending', {}, { executionActive: false, executionReason: 'unknown', selected: true, selectedAt: '2026-10-05T00:00:00.000Z' });
+  const gone = repo('parser-guild/gone', {}, { state: 'offboarding', accessState: 'removed', retainedUntil: '2026-11-09T00:00:00.000Z' });
+  const org = namespace('parser-guild', { plan: 'Pro', funding: { kind: 'paused' }, installation: { state: 'suspended' }, repositories: [held, pending, gone] });
+  org.capacity = capacityOf({ plan: 'Pro', kind: 'org', repositories: org.repositories }, { allowances });
+  for (const repository of org.repositories) repository.state = describeRepository(repository, org, org.capacity);
+  const model = { viewerPlan: 'Pro', serviceConnection: 'disconnected', namespaces: [org], commercial: { status: { linked: true, commercial: { grace: { renewal: 'payment-due' } }, capacity: [{ slot: 'slot-2', funding: 'paid', binding: null }] } } };
+  const items = attentionItems(model);
+  assert.deepEqual(items.map(item => item.title), ['Your Pro renewal is overdue', 'GitHub App installation suspended on parser-guild', 'Pro is paused in parser-guild', 'parser-guild/held is held: invalid configuration', 'parser-guild/pending is waiting to be enabled', 'parser-guild/gone left the installation', 'Slot 2 is open: you pay for it, it funds nothing']);
+  assert.equal(items[2].go, 'Reconnect');
+  assert.equal(items[4].href, '/manage/repositories/parser-guild/pending');
+  assert.ok(items[5].detail.includes('9 Nov 2026'));
+});
+
+test('a Wirt projection presents as one of the designed states, without a grace length, end date or countdown', () => {
+  const base = { linked: true, plan: 'pro', reconciling: false, order: { epoch: 1, version: 3 }, pending: [], grants: [], protection: { kind: 'beta' }, capacity: [{ slot: 'slot-included', funding: 'included', pendingEndOn: null, binding: { organisationId: 7001, authority: 'present', display: 'parser-guild' } }, { slot: 'slot-2', funding: 'paid', pendingEndOn: null, binding: null }],
+    commercial: { standing: 'funded', tier: 'pro', cadence: 'annual', period: { started_on: '2026-03-14', ends_on: '2027-03-14' }, renewalPreference: 'automatic', cancellationIntent: 'none', grace: null, ended: null, nextRenewal: { on: '2027-03-14', total_cents: 18000, currency: 'EUR', tax_inclusive: true } } };
+  const with_ = over => ({ ...base, ...over, commercial: { ...base.commercial, ...(over.commercial ?? {}) } });
+  assert.equal(projectionKey({ linked: false }), 'free');
+  assert.equal(projectionKey(base), 'funded');
+  assert.equal(projectionKey(with_({ commercial: { standing: 'first-payment-pending' } })), 'first-payment');
+  assert.equal(projectionKey(with_({ commercial: { standing: 'renewal-in-grace', grace: { renewal: 'payment-due' } } })), 'overdue');
+  assert.equal(projectionKey(with_({ commercial: { standing: 'renewal-in-grace', grace: { renewal: 'not-yet-invoiced' } } })), 'preparing');
+  assert.equal(projectionKey(with_({ commercial: { cancellationIntent: 'at-period-end' } })), 'cancelling');
+  assert.equal(projectionKey(with_({ pending: [{ kind: 'plan-change', target: 'free', effective_on: '2027-03-14' }] })), 'downgrade');
+  assert.equal(projectionKey(with_({ commercial: { standing: 'ended', ended: { on: '2027-03-14', reason: 'cancelled', earlier_attempt: 'none' } } })), 'ended');
+  assert.equal(projectionKey(with_({ commercial: { standing: 'ended', ended: { on: '2026-10-08', reason: 'unpaid-after-grace', earlier_attempt: 'unresolved' } } })), 'ended-unresolved');
+  assert.equal(projectionKey(with_({ reconciling: true })), 'reconciling');
+  assert.equal(projectionKey({ linked: true, commercial: null }), 'linking');
+  const funded = presentProjection(base, { works: { experience: 'https://works.example/x' } });
+  assert.equal(funded.planName, 'Pro');
+  assert.match(funded.planSub, /Annual · with 1 additional organisation · €180 a year, tax included/u);
+  assert.deepEqual(funded.rows.map(row => row.term), ['Funded through', 'Next renewal', 'Organisations', 'Price']);
+  assert.equal(funded.rows[0].value, '13 Mar 2027');
+  assert.equal(funded.compareable, true); assert.equal(funded.choosing, null);
+  const overdue = presentProjection(with_({ commercial: { standing: 'renewal-in-grace', grace: { renewal: 'payment-due' } } }), { works: { experience: 'https://works.example/x' } });
+  assert.equal(overdue.banner.tone, 'err'); assert.equal(overdue.banner.action.purpose, 'pay');
+  assert.ok(!/grace|days left|countdown/iu.test(JSON.stringify(overdue)), 'no grace length or countdown anywhere');
+  const cancelling = presentProjection(with_({ commercial: { cancellationIntent: 'at-period-end' } }), {});
+  assert.equal(cancelling.choosing.target, 'free'); assert.equal(cancelling.banner.action, null, 'no Works action without a configured origin');
+  const ending = presentProjection(with_({ capacity: [{ ...base.capacity[0], pendingEndOn: '2027-03-14' }] }), {});
+  assert.equal(ending.slotBanners.length, 1); assert.match(ending.slotBanners[0].title, /Slot included ends on 14 Mar 2027/u);
+  const business = presentProjection(with_({ commercial: { tier: 'business' } }), {});
+  assert.equal(business.tier, 'Business');
+  const gift = presentProjection(with_({ grants: [{ kind: 'gift', until: '2027-03-14' }] }), {});
+  assert.ok(gift.rows.some(row => row.term === 'Funded by' && /gift/u.test(row.value)));
+  assert.equal(formatMoney({ total_cents: 4200, currency: 'EUR' }), '€42');
+  assert.equal(formatMoney({ total_cents: 4250, currency: 'EUR' }), '€42.50');
+});
+
+test('the return from Works is decided by what Works sent since the departure, never by the return itself', () => {
+  const status = order => ({ linked: true, order, capacity: [{ slot: 'slot-included', binding: null }] });
+  const departure = { purpose: 'change-plan', snapshot: { order: { epoch: 1, version: 3 }, capacity: 1 } };
+  assert.equal(returnOutcome({ departure, status: status({ epoch: 1, version: 3 }) }), 'wait');
+  assert.equal(returnOutcome({ departure, status: status({ epoch: 1, version: 4 }) }), 'done');
+  assert.equal(returnOutcome({ departure: { ...departure, snapshot: { order: { epoch: 1, version: 3 }, capacity: 0 } }, status: status({ epoch: 1, version: 3 }) }), 'done', 'a new slot counts as confirmed');
+  assert.equal(returnOutcome({ departure: { ...departure, purpose: 'browse' }, status: status({ epoch: 1, version: 3 }) }), 'none');
+  assert.equal(returnOutcome({ departure: { purpose: 'link', snapshot: null }, status: { linked: true } }), 'done');
+  assert.equal(returnOutcome({ departure: null, status: null, outcome: 'pending' }), 'link-failed');
+  assert.equal(returnOutcome({ departure: null, status: null }), null);
+});
+
+test('the brief controls read as the shared settings contract and refuse what it refuses', () => {
+  const form = new URLSearchParams({ mode: 'standard', historyWindowDays: '180', finalSummary: 'on', priority: 'companion,neighbours,activity' });
+  form.append('modules', 'neighbours'); form.append('modules', 'companion');
+  const settings = briefSettingsFromForm(form);
+  assert.deepEqual([...settings.modules], ['neighbours', 'companion']);
+  assert.deepEqual([...settings.priority], ['companion', 'neighbours', 'activity']);
+  assert.equal(settings.historyWindowDays, 180); assert.equal(settings.finalSummary, true);
+  assert.throws(() => briefSettingsFromForm(new URLSearchParams({ mode: 'llm' })));
+  assert.throws(() => briefSettingsFromForm(new URLSearchParams({ mode: 'standard', priority: 'neighbours' })), /priority/u);
+});
+
+test('a namespace default is read with the engine, keeps only the policy subset, and joins as the account layer', () => {
+  const parsed = readNamespaceDefault('version: 1\npresets: [size@1]\nscopes:\n  tests: { exclude: ["**/*.snap"] }\n');
+  assert.deepEqual(Object.keys(parsed.configuration).sort(), ['presets', 'scopes']);
+  assert.match(parsed.policyId, /^policy-/u);
+  assert.throws(() => readNamespaceDefault('version: 1\nbrief: { mode: standard }\n'), /does not allow brief/u);
+  assert.throws(() => readNamespaceDefault('{"version":1,"bands":{"size":{"S":40}}}'));
+});
+
+/** Post one console action as the signed-in browser would. */
+async function act(app, cookie, fields) {
+  const body = new URLSearchParams(fields);
+  const response = await handleManageAction(new Request(`${ORIGIN}/manage/do`, { method: 'POST', headers: { cookie: `${SESSION_COOKIE}=${cookie}`, origin: ORIGIN, 'content-type': 'application/x-www-form-urlencoded' }, body }), await locals(app, cookie));
+  assert.equal(response.status, 303, `${fields.action}: ${response.status}`);
+  const location = new URL(response.headers.get('location'), ORIGIN);
+  return { location, message: location.searchParams.get('m'), reason: location.searchParams.get('reason'), headers: response.headers };
+}
+async function locals(app, cookie) {
+  const opened = await openSession(new Request(`${ORIGIN}/manage`, { headers: { cookie: `${SESSION_COOKIE}=${cookie}` } }), app);
+  assert.ok(!('refusal' in opened), `session refused: ${opened.refusal}`);
+  const viewer = await resolveViewer({ reads: opened.reads, actor: opened.actor, store: app.store, entitlement: app.entitlement, cache: app.cache });
+  return { runtime: app, session: opened, viewer };
+}
+async function model(app, cookie) { const context = await locals(app, cookie); return { ...context, model: await loadManage({ viewer: context.viewer, session: context.session, runtime: app }) }; }
+const COMMERCIAL_PRO = JSON.stringify({ account: 123, linked: true, since: '2026-10-02', commercial: { standing: 'funded', tier: 'pro', cadence: 'annual', period: { started_on: '2026-03-14', ends_on: '2027-03-14' }, renewal_preference: 'automatic', cancellation_intent: 'none', grace: null, ended: null, next_renewal: { on: '2027-03-14', total_cents: 18000, currency: 'EUR', tax_inclusive: true } }, protection: { kind: 'beta' }, capacity: [{ slot: 'slot-included', funding: 'included', binding: { organisationId: 7001, authority: 'present', display: 'parser-guild' } }, { slot: 'slot-2', funding: 'paid', binding: null }], others: { 7002: 'business' } });
+const COMMERCIAL_FREE = JSON.stringify({ account: 123, linked: false, others: { 7002: 'business' } });
+
+test('without a subscription source the console is Free and unlimited, with the same count in the badge and in Needs you', async () => {
+  const { app: compose } = await fixture();
+  const app = compose();
+  const { cookie } = await signIn(app);
+  const { model: loaded, viewer, session } = await model(app, cookie);
+  assert.equal(loaded.viewerPlan, 'Free'); assert.equal(loaded.hosted, false);
+  assert.deepEqual(loaded.namespaces.map(namespace => namespace.login), ['ada-sample', 'parser-guild']);
+  assert.deepEqual(loaded.readers.map(namespace => namespace.login).sort(), ['kai-sample', 'northwind-tools']);
+  assert.equal(loaded.namespaces[0].capacity.kind, 'unlimited', 'no allowance without a subscription source');
+  assert.equal(loaded.namespaces[1].plan, 'Unconnected', 'an organisation on a Free account is not connected until chosen');
+  const states = Object.fromEntries(loaded.namespaces.flatMap(namespace => namespace.repositories.map(repository => [repository.fullName, repository.state.kind])));
+  assert.equal(states['ada-sample/dotfiles'], 'active'); assert.equal(states['ada-sample/notes-site'], 'labels'); assert.equal(states['parser-guild/parser-lab'], 'unconnected');
+  assert.equal(loaded.firstRun, false, 'running repositories mean the setup is past its first run');
+  const badge = await manageBadge({ viewer, session, runtime: app });
+  assert.equal(badge.count, loaded.attention.length);
+});
+
+test('on the hosted Free offer, selecting is bounded by the pooled allowance, an organisation must be connected first, and a swap lands the incoming repository as pending', async () => {
+  const { app: compose } = await fixture();
+  const app = compose(undefined, { env: { APP_COMMERCIAL_FIXTURE: COMMERCIAL_FREE, APP_PLAN_ALLOWANCES: JSON.stringify({ free: { private: 2, publicHistory: 10 }, proOrganisation: { private: 3 } }) } });
+  const { cookie } = await signIn(app);
+  let { model: loaded } = await model(app, cookie);
+  assert.equal(loaded.hosted, true); assert.equal(loaded.allowances.free.private, 2);
+  assert.equal(loaded.namespaces[0].capacity.kind, 'slots');
+  // parser-guild is not connected: nothing can be selected there yet.
+  assert.equal((await act(app, cookie, { action: 'select', repository: 'parser-guild/grammar-fuzz', back: '/manage/repositories' })).message, 'not-connected');
+  assert.equal((await act(app, cookie, { action: 'free-connect', organisation: String(ACCOUNTS['parser-guild']), back: '/manage/repositories' })).message, 'free-connected');
+  ({ model: loaded } = await model(app, cookie));
+  assert.equal(loaded.freeConnected?.login, 'parser-guild');
+  const guild = loaded.namespaces.find(namespace => namespace.login === 'parser-guild');
+  assert.equal(guild.plan, 'Free'); assert.equal(guild.capacity.pooled, true);
+  // dotfiles and parser-lab already run: the two pooled private slots are full, so grammar-fuzz must be swapped in.
+  assert.deepEqual(guild.capacity.inSlot.map(repository => repository.fullName).sort(), ['ada-sample/dotfiles', 'parser-guild/parser-lab']);
+  assert.equal((await act(app, cookie, { action: 'select', repository: 'parser-guild/grammar-fuzz', back: '/manage/repositories' })).message, 'allowance-full');
+  assert.equal((await act(app, cookie, { action: 'swap', repository: 'parser-guild/grammar-fuzz', outgoing: 'parser-guild/parser-lab', back: '/manage/repositories' })).message, 'swapped');
+  ({ model: loaded } = await model(app, cookie));
+  const states = Object.fromEntries(loaded.namespaces.flatMap(namespace => namespace.repositories.map(repository => [repository.fullName, repository.state.kind])));
+  assert.equal(states['parser-guild/parser-lab'], 'stoppedByYou', 'the outgoing repository stopped and keeps its history');
+  assert.equal(states['parser-guild/grammar-fuzz'], 'pending', 'the incoming repository holds the slot as Pending enable');
+  assert.equal((await app.appStore.repositoryAdmission(1001)).execution.reason, 'explicitly-disabled');
+  assert.equal((await app.store.repositoryStandings([1001])).get(1001).historyEnabled, false, 'stopping ends collection with it; what exists is kept');
+  // Enabling needs the one-writer declaration; with it the repository runs.
+  assert.equal((await act(app, cookie, { action: 'enable', repository: 'parser-guild/grammar-fuzz', back: '/manage/repositories' })).message, 'writer-undeclared');
+  assert.equal((await act(app, cookie, { action: 'enable', repository: 'parser-guild/grammar-fuzz', writer: 'declared', back: '/manage/repositories' })).message, 'enabled');
+  const enabled = await app.appStore.repositoryAdmission(1003);
+  assert.equal(enabled.state, 'active'); assert.equal(enabled.writer.confidence, 'administrator-declared'); assert.equal(enabled.execution.actorId, 123);
+  // Release the pending slot of a selected-but-stopped repository, then stop the running one: both free their slots.
+  assert.equal((await act(app, cookie, { action: 'stop', repository: 'parser-guild/grammar-fuzz', back: '/manage/repositories' })).message, 'stopped');
+  ({ model: loaded } = await model(app, cookie));
+  assert.equal(loaded.namespaces[0].capacity.inSlot.length, 1, 'only dotfiles holds a slot now');
+  // Disconnecting the organisation stops what runs there and keeps the selections waiting for a connection.
+  assert.equal((await act(app, cookie, { action: 'free-disconnect', back: '/manage/repositories' })).message, 'free-disconnected');
+  ({ model: loaded } = await model(app, cookie));
+  assert.equal(loaded.freeConnected, null);
+  assert.equal(loaded.namespaces.find(namespace => namespace.login === 'parser-guild').plan, 'Unconnected');
+  // Restore the fixture's running state for the other cases: parser-guild connected, parser-lab running with history on.
+  await act(app, cookie, { action: 'free-connect', organisation: String(ACCOUNTS['parser-guild']), back: '/manage/repositories' });
+  assert.equal((await act(app, cookie, { action: 'enable', repository: 'parser-guild/parser-lab', writer: 'declared', back: '/manage/repositories' })).message, 'enabled');
+  assert.equal((await act(app, cookie, { action: 'history', repository: 'parser-guild/parser-lab', enabled: 'on', back: '/manage/repositories' })).message, 'history-on');
+  assert.equal((await app.store.repositoryStandings([1001])).get(1001).historyEnabled, true);
+});
+
+test('the pull-request message controls save beside the stored policy layer and the effective configuration names every layer', async () => {
+  const { app: compose } = await fixture();
+  const app = compose();
+  const { cookie } = await signIn(app);
+  const form = new URLSearchParams({ action: 'brief', repository: 'ada-sample/dotfiles', mode: 'standard', historyWindowDays: '30', priority: 'activity,neighbours,companion', back: '/manage/repositories/ada-sample/dotfiles' });
+  form.append('modules', 'activity');
+  const saved = await act(app, cookie, Object.fromEntries(form)); // modules collapse to one; the shape is what matters here
+  assert.equal(saved.message, 'brief-saved');
+  const admission = await app.appStore.repositoryAdmission(1004);
+  assert.equal(admission.configuration.value.brief.mode, 'standard');
+  assert.equal(admission.configuration.value.brief.historyWindowDays, 30);
+  assert.deepEqual(admission.configuration.value.repository, {}, 'an empty repository layer is stored beside the brief settings');
+  const projected = (await app.auth.readAdmission({ session: cookie, repositoryId: 1004 })).body;
+  assert.equal(projected.brief.route.effective, 'standard');
+  const configuration = effectiveConfiguration({ admission: projected, namespace: { plan: 'Free', login: 'ada-sample' } });
+  assert.equal(configuration.compiles, true);
+  assert.deepEqual(configuration.chain.map(layer => layer.key), ['preset', 'supplied'], 'an empty App layer does not appear in the chain');
+  assert.ok(configuration.rows.some(row => row.key === 'bands.size' && /XS < 20 · S < 100 · M < 500 · L < 1000 · XL/u.test(row.value)));
+  assert.ok(configuration.rows.every(row => row.from === 'preset'));
+  assert.equal((await act(app, cookie, { action: 'brief', repository: 'ada-sample/dotfiles', mode: 'llm', back: '/manage' })).message, 'invalid');
+  assert.equal(await (await act(app, cookie, { action: 'brief', repository: 'northwind-tools/ci-recipes', mode: 'off', back: '/manage' })).message, 'unauthorized', 'a repository the person only reads cannot be configured');
+});
+
+test('a Pro default is saved by revision and adopted explicitly from a repository\'s settings; it is never a live layer', async () => {
+  const { app: compose } = await fixture();
+  const app = compose(undefined, { env: { APP_COMMERCIAL_FIXTURE: COMMERCIAL_PRO } });
+  const { cookie } = await signIn(app);
+  const { model: loaded } = await model(app, cookie);
+  assert.equal(loaded.viewerPlan, 'Pro');
+  const guild = loaded.namespaces.find(namespace => namespace.login === 'parser-guild');
+  assert.equal(guild.plan, 'Pro'); assert.equal(guild.funding.kind, 'own-slot'); assert.equal(guild.funding.slot, 'slot-included');
+  assert.equal(guild.capacity.of, 3, 'a Pro organisation has three private slots');
+  assert.equal(loaded.namespaces[0].capacity.kind, 'unlimited', 'Pro personal has no limit');
+  const saved = await act(app, cookie, { action: 'default-save', namespace: String(ACCOUNTS['parser-guild']), revision: '0', document: 'version: 1\npresets: [size@1]\nscopes:\n  generated: { exclude: ["**/*.snap"] }\n', back: '/manage/defaults' });
+  assert.equal(saved.message, 'default-saved');
+  const stored = await app.manage.namespaceDefault(7001);
+  assert.equal(stored.revision, 1);
+  assert.equal((await act(app, cookie, { action: 'default-save', namespace: String(ACCOUNTS['parser-guild']), revision: '0', document: 'version: 1\n', back: '/manage/defaults' })).message, 'stale', 'a stale revision writes nothing');
+  // Saving a default changes nothing that runs: Pro has no live layer, and no repository differs silently.
+  assert.equal((await app.policies.current({ repositoryId: 1001 })).basis, 'bundled-default');
+  let projected = (await app.auth.readAdmission({ session: cookie, repositoryId: 1001 })).body;
+  const comparison = defaultComparison({ admission: projected, namespaceDefault: stored });
+  assert.equal(comparison.compiles, true);
+  assert.ok(comparison.differences.some(row => row.key === 'scopes.generated' && row.before === '—' && /exclude \*\*\/\*\.snap/u.test(row.after)), 'the preview names what applying would change');
+  assert.equal((await act(app, cookie, { action: 'default-apply', repository: 'parser-guild/parser-lab', defaultRevision: '0', back: '/manage' })).message, 'default-unchanged', 'an outdated preview applies nothing');
+  assert.equal((await act(app, cookie, { action: 'default-apply', repository: 'ada-sample/dotfiles', defaultRevision: '1', back: '/manage' })).message, 'no-default', 'the personal namespace has no default to adopt');
+  assert.equal((await act(app, cookie, { action: 'default-apply', repository: 'parser-guild/parser-lab', defaultRevision: '1', back: '/manage' })).message, 'default-applied');
+  const adoption = await app.manage.adoption(1001);
+  assert.equal(adoption.revision, 1); assert.equal(adoption.accountId, 7001);
+  projected = (await app.auth.readAdmission({ session: cookie, repositoryId: 1001 })).body;
+  assert.deepEqual(projected.configuration.value.repository.scopes, { generated: { exclude: ['**/*.snap'] } });
+  assert.equal((await compose(undefined, { env: { APP_COMMERCIAL_FIXTURE: COMMERCIAL_PRO } }).policies.current({ repositoryId: 1001 })).basis, 'stored-app-configuration');
+  const configuration = effectiveConfiguration({ admission: projected, namespace: guild, namespaceDefault: stored, adoption, login: 'parser-guild' });
+  assert.deepEqual(configuration.chain.map(layer => layer.key), ['preset', 'repository', 'supplied']);
+  assert.match(configuration.chain[1].label, /from parser-guild default rev 1/u, 'the effective origin names the adopted revision');
+  assert.ok(configuration.rows.some(row => row.key === 'scopes.generated' && row.from === 'repository'));
+  assert.equal(defaultComparison({ admission: projected, namespaceDefault: stored }).differences.length, 0, 'after applying, the repository matches the default');
+  // Removing the default (or leaving Pro) leaves the adopted settings as the repository's own.
+  assert.equal((await act(app, cookie, { action: 'default-remove', namespace: String(ACCOUNTS['parser-guild']), back: '/manage/defaults' })).message, 'default-removed');
+  assert.equal(await app.manage.namespaceDefault(7001), null);
+  assert.deepEqual((await app.auth.readAdmission({ session: cookie, repositoryId: 1001 })).body.configuration.value.repository.scopes, { generated: { exclude: ['**/*.snap'] } });
+  // A saved default is not consulted by interpretation; only the applied settings are.
+  const independent = compose(undefined, { env: { APP_COMMERCIAL_FIXTURE: COMMERCIAL_PRO } });
+  independent.manage.namespaceDefault = async () => { throw new Error('D1 unavailable'); };
+  assert.equal((await independent.policies.current({ repositoryId: 1001 })).basis, 'stored-app-configuration');
+});
+
+test('the loopback Works stand-in carries the slots, the first link, the return and unlinking the way the consumer does', async () => {
+  const { app: compose } = await fixture();
+  const app = compose(undefined, { env: { APP_COMMERCIAL_FIXTURE: COMMERCIAL_PRO } });
+  const { cookie } = await signIn(app);
+  let { model: loaded } = await model(app, cookie);
+  assert.equal(loaded.commercialSource, 'fixture');
+  assert.equal(loaded.commercial.status.capacity[1].binding, null);
+  assert.equal(loaded.attention.some(item => /Slot 2 is open/u.test(item.title)), true);
+  // The open slot funds no organisation the person administers that is recorded: parser-guild is already bound; northwind-tools is read-only.
+  assert.equal((await act(app, cookie, { action: 'fund', slot: 'slot-2', organisation: String(ACCOUNTS['northwind-tools']), back: '/manage/plan' })).message, 'bind-refused', 'GitHub does not confirm administration of an organisation the person only reads');
+  assert.equal((await act(app, cookie, { action: 'release-slot', organisation: String(ACCOUNTS['parser-guild']), back: '/manage/plan' })).message, 'unbound');
+  assert.equal((await act(app, cookie, { action: 'fund', slot: 'slot-2', organisation: String(ACCOUNTS['parser-guild']), back: '/manage/plan' })).message, 'bound', 'the organisation the person administers binds through the real authorization check');
+  ({ model: loaded } = await model(app, cookie));
+  assert.equal(loaded.namespaces.find(namespace => namespace.login === 'parser-guild').funding.slot, 'slot-2');
+  // Departure and return: leaving records what the person was doing; a return before Works confirms waits, a confirmed slot shows as done.
+  const context = await locals(app, cookie);
+  const departed = await handleDeparture(new Request(`${ORIGIN}/manage/depart?to=experience&purpose=add-slot&from=%2Fmanage%2Fplan`), context);
+  assert.equal(departed.status, 303); assert.match(departed.headers.get('location'), /works-stand-in\?dest=experience$/u);
+  ({ model: loaded } = await model(app, cookie));
+  assert.equal(loaded.departure.purpose, 'add-slot');
+  assert.equal(returnOutcome({ departure: loaded.departure, status: loaded.commercial.status }), 'wait');
+  app.commercial.simulate('add-slot');
+  ({ model: loaded } = await model(app, cookie));
+  assert.equal(returnOutcome({ departure: loaded.departure, status: loaded.commercial.status }), 'done');
+  assert.equal((await act(app, cookie, { action: 'dismiss-return', back: '/manage/plan' })).message, 'return-dismissed');
+  assert.equal((await model(app, cookie)).model.departure, null);
+  assert.equal((await act(app, cookie, { action: 'unlink', back: '/manage/plan' })).message, 'unlinked');
+  ({ model: loaded } = await model(app, cookie));
+  assert.equal(loaded.commercial.status.linked, false); assert.equal(loaded.viewerPlan, 'Free');
+  const begun = await act(app, cookie, { action: 'link', back: '/manage/plan' });
+  assert.match(begun.location.pathname, /works-stand-in$/u);
+  assert.equal((await model(app, cookie)).model.departure.purpose, 'link');
+  assert.equal(app.commercial.simulate('link-complete'), 'linked');
+  ({ model: loaded } = await model(app, cookie));
+  assert.equal(returnOutcome({ departure: loaded.departure, status: loaded.commercial.status, outcome: 'linked' }), 'done');
+  assert.equal(projectionKey(loaded.commercial.status), 'first-payment');
+});
+
+test('disconnecting the funding connection ends the sessions and stays off until the explicit reconnect; closure refuses a linked plan and otherwise removes the account', async () => {
+  const { app: compose } = await fixture();
+  const app = compose(undefined, { env: { APP_COMMERCIAL_FIXTURE: COMMERCIAL_PRO } });
+  const { cookie } = await signIn(app);
+  assert.equal((await model(app, cookie)).model.serviceConnection, 'not-retained', 'the stand-in writes no commercial binding rows, so no funded purpose retains the grant');
+  const disconnected = await act(app, cookie, { action: 'disconnect', back: '/manage/account' });
+  assert.equal(disconnected.reason, 'E_FUNDING_DISCONNECTED');
+  assert.match(disconnected.headers.get('set-cookie'), /__Host-diffdevil-session=;/u);
+  assert.equal((await openSession(new Request(`${ORIGIN}/manage`, { headers: { cookie: `${SESSION_COOKIE}=${cookie}` } }), app)).refusal, 'E_SESSION_UNAVAILABLE', 'the browser session ended with the grant');
+  const { cookie: again } = await signIn(app);
+  assert.equal((await model(app, again)).model.serviceConnection, 'disconnected', 'ordinary sign-in does not reconnect');
+  assert.equal((await act(app, again, { action: 'reconnect', back: '/manage/account' })).message, 'reconnected');
+  assert.notEqual((await model(app, again)).model.serviceConnection, 'disconnected');
+  assert.equal((await act(app, again, { action: 'close-account', confirm: 'ada-sample', back: '/manage/account' })).message, 'close-linked', 'closure while a Works plan is linked is an unsettled seam');
+  assert.equal((await act(app, again, { action: 'close-account', confirm: 'wrong', back: '/manage/account' })).message, 'confirm-mismatch');
+  await act(app, again, { action: 'unlink', back: '/manage/plan' });
+  const closed = await act(app, again, { action: 'close-account', confirm: 'ada-sample', back: '/manage/account' });
+  assert.equal(closed.reason, 'E_ACCOUNT_CLOSED');
+  assert.equal((await openSession(new Request(`${ORIGIN}/manage`, { headers: { cookie: `${SESSION_COOKIE}=${again}` } }), app)).refusal, 'E_SESSION_UNAVAILABLE');
+  assert.equal((await app.store.repositoryStandings([1004])).get(1004).historyEnabled, false, 'the personal repository\'s history is gone');
+  assert.equal((await app.appStore.repositoryAdmission(1004)).state, 'pending-enable', 'and it stopped');
+  assert.equal((await app.store.repositoryStandings([1001])).get(1001).historyEnabled, true, 'an organisation keeps its data');
+  assert.equal(await app.manage.freeConnection(123), null);
+  // A fresh sign-in is a fresh account.
+  const { cookie: fresh } = await signIn(app);
+  assert.equal((await model(app, fresh)).model.serviceConnection, 'not-retained');
+  assert.ok(Object.values(MESSAGES).every(message => typeof message.text === 'string' && message.text.length > 0));
+});

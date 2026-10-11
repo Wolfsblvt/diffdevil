@@ -11,7 +11,9 @@ import { origins } from '../../public-origins.mjs';
 export const ORIGIN: string = (import.meta.env.DIFFDEVIL_SITE_ORIGIN ?? origins.site).replace(/\/$/u, '');
 export const ORIGIN_IS_PLACEHOLDER = ORIGIN.endsWith('.invalid');
 const isManual = import.meta.env.DIFFDEVIL_SURFACE === 'manual';
-function sitePath(path: string): string { return isManual ? ORIGIN + path : path; }
+/** The manual and the App live on their own hosts; their links to the product site are absolute. */
+const onOtherHost = isManual || import.meta.env.DIFFDEVIL_SURFACE === 'app';
+function sitePath(path: string): string { return onOtherHost ? ORIGIN + path : path; }
 export const PLAYGROUND_API: string = (import.meta.env.PUBLIC_PLAYGROUND_API ?? 'http://127.0.0.1:4173').replace(/\/$/u, '');
 /** Every install action targets a real configured destination, never an invented host. */
 export const APP_INSTALL_URL: string | undefined = import.meta.env.PUBLIC_APP_INSTALL_URL || undefined;

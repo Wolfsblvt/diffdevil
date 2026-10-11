@@ -1,0 +1,52 @@
+/* diffdevil Surface Grammar v1.1 — chart section (canonical, machine-readable companion to chart-grammar-v1.1.md).
+   Extends tokens.css for the analytical App's charts and cloud without changing the preserved v1 bytes. Every
+   value here derives from v1 tokens; a consumer imports tokens.css first, then this file.
+   Dark is the reference theme and the only qualified one for charts so far; light-theme values are provisional
+   derivations named here so the light occasion starts from a declared place rather than an inversion. */
+
+:root {
+  /* ── ink ramp for marks and words ── */
+  --ch-ink-1: var(--fg);          /* lead values, tier-1 words, medians, the backlog line */
+  --ch-ink-2: var(--fg-2);        /* ordinary marks and words */
+  --ch-ink-3: var(--fg-3);        /* ticks, axis words, tier-3 words, dim labels */
+  --ch-grid: #22262f;             /* hairline gridlines inside a plot (quieter than --hair) */
+  --ch-focus-wash: rgb(255 255 255 / 3.5%);   /* hovered bucket or row band */
+  --ch-dim: .26;                  /* unfocused words when something is focused; charts dim marks to .30–.42 */
+
+  /* ── motion ── */
+  --ch-glide: 560ms cubic-bezier(.16, 1, .3, 1);   /* expo-out: layout moves (cloud words, Top column, arrange) */
+  --ch-quick: 140ms cubic-bezier(.2, .7, .2, 1);   /* hover, dim, focus */
+  --ch-morph: 620ms;                               /* period change: marks re-bucket and readout totals count */
+  --ch-enter: 480ms;                               /* first draw: marks grow out of the skeleton's shape */
+
+  /* ── evidence and state fills ── */
+  --ch-unres: repeating-linear-gradient(45deg, var(--fg-3) 0 1.6px, #2c303a 1.6px 4.5px);  /* bounded / unresolved part, drawn at its proven minimum */
+  --ch-merged: #c3b5ff;           /* merged pull requests (the syntax-key lavender; never magenta) */
+  --ch-open: var(--status-success);
+  --ch-closed: var(--status-error);
+  --ch-closed-hatch: repeating-linear-gradient(45deg, #ff7a70cc 0 1.5px, transparent 1.5px 4px);
+
+  /* ── readout geometry (a layout contract: hover, keyboard and pin never move the plot) ── */
+  --ch-readout-h: 66px;           /* line 1 (20px) + values (40px) + gap */
+  --ch-readout-line: 20px;
+  --ch-readout-vals: 40px;
+  --ch-chip-h: 18px;              /* tags, size chips and the clear button share one height */
+  --ch-meter-w: 74px;             /* partner meter chips in the cloud: equal width so the fill reads as a scale */
+  --ch-meter-row-w: 118px;        /* "Often changed with" meter plates */
+  --ch-top-w: 300px;              /* the cloud's Top column */
+}
+
+/* Light (provisional derivation, unqualified): the same roles over the authored light tokens. */
+[data-theme="light"] {
+  --ch-grid: #e3e6eb;
+  --ch-focus-wash: rgb(22 27 36 / 4%);
+  --ch-unres: repeating-linear-gradient(45deg, var(--fg-3) 0 1.6px, #e9ebef 1.6px 4.5px);
+  --ch-merged: #7a5af5;
+}
+
+/* Colour use (prose contract; see chart-grammar-v1.1.md):
+   composition and growth/shrinkage use --diff-mod / --diff-add / --diff-del;
+   pull-request flow uses open = --ch-open, merged = --ch-merged, closed unmerged = --ch-closed hatched;
+   size chips, rows and dots use the size-v1 label colours, Unknown dashed;
+   magenta (--accent) is selection and focus only: pin frame, pinned dot ring, keyboard ring, selected-bucket band;
+   neutral --ch-ink-1 is the median, the backlog line and lead values. */

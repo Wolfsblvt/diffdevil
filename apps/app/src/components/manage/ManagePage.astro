@@ -1,0 +1,27 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
+// The Manage console page: the App shell with the analytical navigation intact, the console head, the sub-tabs and
+// the message a redirect carried. Repository settings pass their own breadcrumb and title under the same tabs.
+import AppShell from '../../layouts/AppShell.astro';
+import Icon from '../Icon.astro';
+import ManageTabs from './ManageTabs.astro';
+import { MESSAGES } from '../../lib/manage/actions.mjs';
+interface Props { model: any; tab: string; title?: string; crumbs?: { label: string; href?: string }[]; sub?: string | undefined; documentTitle?: string | undefined }
+const { model, tab, title = 'Manage', crumbs = [], sub = 'Your plan, what it funds, and the repositories you administer', documentTitle } = Astro.props;
+const trail = [{ label: 'Manage', href: title === 'Manage' ? undefined : '/manage' }, ...crumbs];
+const code = Astro.url.searchParams.get('m') ?? '';
+const message = (MESSAGES as Record<string, { tone: string; text: string }>)[code];
+---
+<AppShell title={documentTitle ?? (title === 'Manage' ? ({ overview: 'Manage', repositories: 'Repositories', defaults: 'Defaults', policies: 'Policies', people: 'People', audit: 'Audit', plan: 'Plan & funding', account: 'Account' } as Record<string, string>)[tab] ?? 'Manage' : title)} nav={{ section: 'manage', active: null, premium: model.viewerPlan !== 'Free' }}>
+  <div class="a-head">
+    <div class="ttl">
+      <nav class="crumb" aria-label="Breadcrumb">{trail.map((part, index) => <>{index > 0 && <span class="a-sep" aria-hidden="true">/</span>}{part.href ? <a href={part.href}>{part.label}</a> : <span>{part.label}</span>}</>)}</nav>
+      <h1><slot name="title">{title}</slot></h1>
+      {sub !== undefined && <div class="a-scope"><slot name="sub">{sub}</slot></div>}
+    </div>
+    <div class="tools"><slot name="tools" /></div>
+  </div>
+  <ManageTabs model={model} current={tab} />
+  {message && <div class:list={['m-banner', 'm-msg', message.tone]} role={message.tone === 'err' ? 'alert' : 'status'}><Icon name={message.tone === 'ok' ? 'circle-check' : message.tone === 'err' ? 'circle-alert' : 'info'} size={18} /><div><b>{message.text}</b></div><div></div></div>}
+  <slot />
+</AppShell>

@@ -9,7 +9,8 @@ import { D1AppStore } from './storage.mjs';
 import { createAdmissionService } from './admission.mjs';
 import { DEFAULT_SIZE_POLICY, readConfigurationExport, resolveEffectivePolicy } from './configuration.mjs';
 
-const migrations = ['0001_initial.sql', '0002_consent-provenance.sql', '0003_preserve-active-consent.sql', '0004_admission-settings.sql', '0005_offboarding-consent-tombstones.sql', '0006_user-authorization.sql', '0007_consent-actors.sql', '0008_history_analytics.sql'];
+const migrations = ['0001_initial.sql', '0002_consent-provenance.sql', '0003_preserve-active-consent.sql', '0004_admission-settings.sql', '0005_offboarding-consent-tombstones.sql', '0006_user-authorization.sql', '0007_consent-actors.sql', '0008_history_analytics.sql', '0009_analytical_app.sql',
+  '0010_commercial-links.sql', '0011_service-connection.sql', '0012_manage.sql', '0013_business.sql', '0014_operating-continuity.sql', '0015_participation.sql'];
 const projection = {
   schemaVersion: 3, engineVersion: 'engine-v1', reportVersion: 'report-v1', metricVersion: 'metrics-v1', source: { base: 'base', head: 'head' }, evidence: 'exact', fileSet: { complete: true, total: { status: 'exact', value: 1 } }, totals: {}, configuredResults: [], gaps: [], files: [{ ordinal: 0, raw: {}, lines: {} }], effects: [{ kind: 'label.add', outcome: 'changed', request: 'accepted', readback: 'verified' }]
 };
@@ -21,13 +22,22 @@ async function localStore(clock, attemptIds = [], schema = migrations) {
   }] });
   const database = await runtime.getD1Database('APP_DB');
   const store = new D1AppStore(database, { now: () => clock.value, leaseMs: 60_000, attemptId: () => attemptIds.shift() ?? 'attempt-default' });
-  for (const migration of schema) await store.migrate(await readFile(resolve('apps/github-app/migrations', migration), 'utf8'));
+  try {
+    for (const migration of schema) await store.migrate(await readFile(resolve('apps/github-app/migrations', migration), 'utf8'));
+  } catch (error) {
+    await runtime.dispose();
+    throw error;
+  }
   return { runtime, database, store };
 }
 
 async function repositoryRow(database, repositoryId) {
   return database.prepare('SELECT repository_id, state, access_state, history_enabled FROM repositories WHERE repository_id=?').bind(repositoryId).first();
 }
+
+test('a failed migration fixture releases its local runtime and preserves the file error', async () => {
+  await assert.rejects(localStore({ value: '2026-09-17T00:00:00.000Z' }, [], ['missing-fixture.sql']), { code: 'ENOENT' });
+});
 
 test('local D1 keeps execution fences, repair claims, expiry, offboarding, and portable state separate', async () => {
   const clock = { value: '2026-09-17T00:00:00.000Z' };
@@ -335,4 +345,27 @@ test('local D1 keeps preset-history identities, repair contracts, and portable n
     await source.store.recordLifecycle({ installationId: 9, action: 'unsuspend', addedRepositories: [], removedRepositories: [] });
     assert.equal(await source.store.executionAllowed(17), false, 'resume never silently restores execution consent');
   } finally { await source.runtime.dispose(); }
+});
+
+test('a brief refresh part keeps, renews and releases its own delivery claim without a PR execution lease', async () => {
+  const clock = { value: '2026-10-10T12:00:00.000Z' };
+  const { runtime, database, store } = await localStore(clock, ['part-a', 'part-redelivered', 'part-b', 'part-replayed']);
+  try {
+    const { briefRefreshEnvelope } = await import('./contracts.mjs');
+    const part = briefRefreshEnvelope({ installationId: 9, repositoryId: 17, targets: 'open', cause: 'settings', causeId: 'revision-3', receivedAt: clock.value });
+    const first = await store.claimDelivery(part);
+    assert.equal(first.kind, 'claimed');
+    // Fifty seconds in, the part renews; at seventy it still owns its claim, so a redelivered copy stays out.
+    clock.value = '2026-10-10T12:00:50.000Z'; await store.renewDelivery(part, first);
+    clock.value = '2026-10-10T12:01:10.000Z';
+    assert.deepEqual(await store.claimDelivery(part), { kind: 'active' });
+    // A failed part releases its claim; the next attempt acquires a higher fence at once.
+    await store.releaseDelivery(part, first, 'E_BRIEF_REFRESH_CONTINUATION');
+    assert.equal((await database.prepare('SELECT state, code FROM deliveries WHERE delivery_id=?').bind(part.deliveryId).first()).state, 'retryable');
+    const second = await store.claimDelivery(part);
+    assert.equal(second.kind, 'claimed'); assert.ok(second.fence > first.fence);
+    await assert.rejects(store.renewDelivery(part, first), error => error.code === 'E_LEASE_LOST', 'the superseded attempt no longer owns the delivery');
+    await store.finishLifecycle(part, second, 'complete');
+    assert.deepEqual(await store.claimDelivery(part), { kind: 'duplicate' });
+  } finally { await runtime.dispose(); }
 });

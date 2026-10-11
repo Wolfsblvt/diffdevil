@@ -62,7 +62,7 @@ const installCurrent = current === 'app' || current === 'extension';
         <ThemeControl />
       </div>
       {DASHBOARD_URL
-        ? <a class="trailing-action" href={DASHBOARD_URL} data-trailing="dashboard">{copy.nav.dashboard}</a>
+        ? <a class="trailing-action" href={DASHBOARD_URL} data-trailing="app" aria-current={current === 'app' ? 'page' : undefined}>{copy.nav.app}</a>
         : <button class="trailing-action trailing-copy" type="button" data-copy={copy.nav.command} data-copy-state aria-label={`Copy install command: ${copy.nav.command}`} data-trailing="npm">
             <span class="copy-swap"><span class="copy-swap-rest">{copy.nav.command}</span><span class="copy-swap-done" aria-hidden="true">{copy.nav.copied}</span></span><Icon name="copy" size={13} class="copy-glyph" />
           </button>}

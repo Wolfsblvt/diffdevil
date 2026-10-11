@@ -2,7 +2,7 @@
 
 import { protectedHeaders, validOrigin } from './authorization.mjs';
 import { D1CommercialStore } from './commercial-storage.mjs';
-import { WIRT_CLIENT, WIRT_NONCE_MS, createWirtClient, parseJsonBytes, readBoundedBody, readExactHttpsUrl, readSigningKeys, readWirtMessage, sha256Hex, verifySignedMessage } from './commercial-wirt.mjs';
+import { WIRT_CLIENT, WIRT_NONCE_MS, createWirtClient, parseJsonBytes, readBoundedBody, readExactHttpsUrl, readProjectionBetaGrants, readProjectionCommercialTimeZone, readProjectionRewards, readSigningKeys, readWirtMessage, sha256Hex, verifySignedMessage } from './commercial-wirt.mjs';
 
 export const COMMERCIAL_LINK_COOKIE = '__Host-diffdevil-works-link';
 const ATTEMPT_MS = 10 * 60_000;
@@ -563,17 +563,36 @@ export function createCommercialService({ store, wirt, signing, authorization, p
       const projection = plannedProjection(link);
       const bindings = await store.bindings(link.link_id);
       const commercial = projection?.commercial;
-      return { headers: protectedHeaders(), body: { linked: true, plan: planForLink(link), reconciling: Boolean(link.restored_at),
+      return { headers: protectedHeaders(), body: { linked: true, plan: planForLink(link), reconciling: Boolean(link.restored_at), order: orderOf(link) ?? null,
         commercial: commercial ? { standing: commercial.standing, tier: commercial.tier, cadence: commercial.cadence, period: commercial.period,
           renewalPreference: commercial.renewal_preference, cancellationIntent: commercial.cancellation_intent, grace: commercial.grace,
           ended: commercial.ended, nextRenewal: commercial.next_renewal } : null,
         pending: projection?.pending ?? [],
+        // Display-only benefit facts the designed Plan & funding page names: grants and price protection, as Wirt sent them.
+        grants: projection?.benefits?.grants ?? [], protection: projection?.benefits?.protection ?? null, linkedSince: link.established_at,
+        betaGrants: readProjectionBetaGrants(projection?.benefits),
+        betaTimeZone: readProjectionCommercialTimeZone(projection?.benefits),
+        // Wirt's participation reward facts from the applied projection: `null` when this projection carries none.
+        participationRewards: readProjectionRewards(projection?.benefits),
         capacity: (projection?.benefits.organisation_capacity ?? []).map(value => {
           const binding = bindings.find(candidate => candidate.slot === value.slot);
           return { slot: value.slot, funding: value.funding, pendingEndOn: value.pending_end_on,
             binding: binding ? { organisationId: binding.organisation_id, authority: binding.authority_observed, authorityCheckedAt: binding.authority_checked_at,
               display: binding.authority_observed === 'present' ? binding.display : null } : null };
         }) } };
+    },
+
+    /**
+     * Which funding relationship one account has, for the App's operating allowance: its own active link (a personal
+     * subscriber), an organisation binding with the subscriber who funds it, or none. Plan standing and authority stay
+     * the entitlement's; this only names the scope a plan's allowance is counted in.
+     */
+    async fundingScope({ accountId }) {
+      if (!Number.isSafeInteger(accountId) || accountId <= 0) return { kind: 'unknown' };
+      const funding = await store.funding(accountId);
+      if (funding.binding) return { kind: 'organisation', subscriber: funding.link?.product_account ?? null };
+      if (funding.link) return { kind: 'personal', subscriber: accountId };
+      return { kind: 'none' };
     },
 
     /**
@@ -605,6 +624,60 @@ export function createCommercialService({ store, wirt, signing, authorization, p
       const outcomes = await reconcileRestored();
       await flushReports();
       return { held, ...outcomes };
+    },
+
+    /**
+     * Deliver one participation completion through the account's active link. The outcome is typed and never a reward
+     * by itself: Wirt-stated `accepted`/`replayed` carry Wirt's own facts; `reconciled` means Wirt refused this completion but its
+     * current facts already hold this campaign's reward for the linked Works account (a restore that lost the original
+     * event; Wirt issues once per campaign key across its versions);
+     * `refused` is Wirt's definite refusal; `unavailable` means Wirt did not process it; `unknown` means it may have.
+     * `link-required` holds delivery until the account is linked again.
+     */
+    async deliverParticipation({ userId, completion }) {
+      if (!wirt) return { kind: 'unavailable', code: 'E_COMMERCIAL_UNAVAILABLE' };
+      const link = await store.activeLink(userId);
+      if (!link) return { kind: 'link-required' };
+      let result;
+      try { result = await wirt.completeParticipation({ linkId: link.link_id, productAccount: link.product_account, completion }); }
+      catch { return { kind: 'unknown', linkId: link.link_id, code: 'E_COMMERCIAL_TRANSPORT' }; }
+      if (result.kind === 'ended') {
+        await store.endLink(link.link_id, { source: 'wirt-answer', endedAt: result.notice.endedAt });
+        return { kind: 'link-required', linkId: link.link_id, ended: true };
+      }
+      if (result.kind === 'refused') {
+        let current;
+        try { current = await wirt.rewards({ linkId: link.link_id, productAccount: link.product_account }); } catch { current = undefined; }
+        const reward = current?.kind === 'rewards' ? current.rewards.find(value => value.campaign.key === completion.campaign) : undefined;
+        if (reward) return { kind: 'reconciled', linkId: link.link_id, status: result.status, reward };
+      }
+      return { ...result, linkId: link.link_id };
+    },
+
+    /** The signed-in account's participation rewards and next-charge discount lines, read live from Wirt. */
+    async rewardStanding({ session }) {
+      const { userId } = await actor(session);
+      const link = await store.activeLink(userId);
+      if (!link || !wirt || link.restored_at) return { available: false, reason: !link ? 'not-linked' : link.restored_at ? 'reconciling' : 'unavailable' };
+      try {
+        const result = await wirt.rewards({ linkId: link.link_id, productAccount: link.product_account });
+        if (result.kind === 'ended') { await store.endLink(link.link_id, { source: 'wirt-answer', endedAt: result.notice.endedAt }); return { available: false, reason: 'not-linked' }; }
+        if (result.kind !== 'rewards') return { available: false, reason: 'unavailable' };
+        return { available: true, nextCharge: result.nextCharge, rewards: result.rewards };
+      } catch { return { available: false, reason: 'unavailable' }; }
+    },
+
+    /** A Pro continuation quote preview for one cadence. A preview reserves nothing; the customer accepts at Works. */
+    async rewardQuote({ session, cadence }) {
+      if (!['monthly', 'annual'].includes(cadence)) throw refusal('E_COMMERCIAL_INPUT', 400);
+      const { userId } = await actor(session);
+      const link = await store.activeLink(userId);
+      if (!link || !wirt || link.restored_at) return { available: false, reason: !link ? 'not-linked' : link.restored_at ? 'reconciling' : 'unavailable' };
+      try {
+        const result = await wirt.rewardQuote({ linkId: link.link_id, productAccount: link.product_account, cadence });
+        if (result.kind === 'quote') return { available: true, quote: result.quote };
+        return { available: false, reason: result.kind === 'not-quotable' ? 'not-quotable' : 'unavailable' };
+      } catch { return { available: false, reason: 'unavailable' }; }
     },
 
     flushReports,

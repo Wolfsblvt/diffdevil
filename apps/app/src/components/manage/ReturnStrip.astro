@@ -1,0 +1,40 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
+// Back from Wolfsblvt Works: the strip Plan & funding shows while a departure is open. Waiting reads as live work
+// (info tint, the three steps with the current one spinning, a slow working line; static under reduced motion),
+// confirmed uses the success tint with the next action, nothing-changed and a link that didn't finish stay neutral.
+// The decision is diffdevil's: it compares the applied order Works has sent with the one recorded when the person left.
+import Icon from '../Icon.astro';
+import ActionForm from './ActionForm.astro';
+import { fundableOrganisations } from '../../lib/manage/model.mjs';
+import { returnOutcome } from '../../lib/manage/works.mjs';
+interface Props { model: any; outcome?: string | null }
+const { model, outcome = null } = Astro.props;
+const departure = model.departure;
+const status = model.commercial?.status ?? null;
+const purposeWord: Record<string, string> = { link: 'link Wolfsblvt Works', 'change-plan': 'change your plan', renewal: 'change renewal', pay: 'pay a renewal', 'add-slot': 'add an organisation slot', browse: 'look at Works' };
+const fromLabel = departure?.fromPath ? (departure.fromPath.startsWith('/manage/repositories') ? 'Repositories' : departure.fromPath.startsWith('/manage/account') ? 'Account' : departure.fromPath === '/manage' ? 'Overview' : 'Plan & funding') : null;
+const left = departure ? `You left to ${purposeWord[departure.purpose] ?? 'look at Works'}${fromLabel ? `, from ${fromLabel}` : ''}` : '';
+// Confirmed when Works has sent a newer order than the one recorded at departure, or a slot appeared, or the link is now there.
+const snapshot = departure?.snapshot ?? null;
+const slotAdded = snapshot && status ? (status.capacity ?? []).length > (snapshot.capacity ?? 0) : false;
+const nowLinked = departure?.purpose === 'link' && status?.linked;
+const openSlot = (status?.capacity ?? []).find((slot: any) => !slot.binding);
+const fundable = fundableOrganisations(model);
+const kind = returnOutcome({ departure, status, outcome });
+const steps = (done: number) => [['At Wolfsblvt Works', 0], ['Works confirms', 1], ['Ready in diffdevil', 2]] as [string, number][];
+const linkMessages: Record<string, string> = { pending: 'Works didn\'t answer after you approved. Nothing was charged and no plan changed. Try again: it continues the same link instead of starting over.', denied: 'You didn\'t approve the link at Works. Nothing was charged and no plan changed.', expired: 'The link attempt expired before it finished. Nothing was charged; start it again when you like.', conflict: 'Works already links this diffdevil account elsewhere. Nothing was charged.', ended: 'Works reports this link as ended. Start again at Works if you want to link.', invalid: 'The return from Works did not match the attempt this browser started. Nothing was charged; start again from here.', 'session-required': 'Your diffdevil session ended before Works returned. Sign in and start the link again.', failed: 'Works could not finish the link. Nothing was charged; try again.' };
+---
+{kind && (
+  kind === 'link-failed'
+    ? <div class="m-return" role="status"><Icon name="info" size={20} /><div><span class="k">Linking Wolfsblvt Works</span><b>The link didn't finish</b><p>{linkMessages[outcome!] ?? linkMessages.failed}</p></div><div class="m-acts"><ActionForm action="link" label="Try again" class="pri" external /><ActionForm action="dismiss-return" label="Dismiss" class="ghost" /></div></div>
+  : kind === 'done'
+    ? <div class="m-return done" role="status"><Icon name="circle-check" size={20} /><div><span class="k">Back from Wolfsblvt Works</span><b>{nowLinked ? 'Linked to Wolfsblvt Works' : slotAdded ? 'A new organisation slot is ready' : 'Works confirmed the change'}</b><p>{left}. Works confirmed it{slotAdded ? '; nothing runs until you choose what it funds' : ''}.</p>
+        <div class="m-steps3">{steps(2).map(([label]) => <span class="done"><Icon name="check" size={12} /> {label}</span>)}</div></div>
+        <div class="m-acts">{slotAdded && openSlot && fundable.length > 0 && <ActionForm action="fund" fields={{ slot: openSlot.slot }} label={`Fund ${fundable[0].login}`} class="pri"><select class="m-select" name="organisation" aria-label="Organisation">{fundable.map((namespace: any) => <option value={namespace.accountId}>{namespace.login}</option>)}</select></ActionForm>}{departure?.fromPath && <a class="m-btn ghost" href={departure.fromPath}>Back to {fromLabel}</a>}<ActionForm action="dismiss-return" label="Done" class="ghost" /></div></div>
+  : kind === 'none'
+    ? <div class="m-return" role="status"><Icon name="info" size={20} /><div><span class="k">Back from Wolfsblvt Works</span><b>Nothing changed</b><p>{left}. Works hasn't recorded a change, so your plan is as before. If you paid, it shows up here once Works confirms it.</p></div><div class="m-acts">{departure?.fromPath && <a class="m-btn" href={departure.fromPath}>Back to {fromLabel}</a>}<ActionForm action="dismiss-return" label="Dismiss" class="ghost" /></div></div>
+    : <div class="m-return wait" role="status" aria-live="polite"><i class="m-spin lg" aria-hidden="true"></i><div><span class="k">Back from Wolfsblvt Works</span><b>Waiting for Works to confirm</b><p>{left}. Returning here doesn't prove payment; the change appears as soon as Works confirms it. You don't need to pay again or refresh.</p>
+        <div class="m-steps3"><span class="done"><Icon name="check" size={12} /> At Wolfsblvt Works</span><span class="now"><i class="m-spin" aria-hidden="true"></i> Works confirms</span><span>Ready in diffdevil</span></div></div>
+        <div class="m-acts">{departure?.fromPath && <a class="m-btn ghost" href={departure.fromPath}>Back to {fromLabel}</a>}<ActionForm action="dismiss-return" label="Dismiss" class="ghost" /></div></div>
+)}

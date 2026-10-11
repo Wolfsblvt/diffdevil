@@ -154,8 +154,10 @@ For admitted work, keep the stable code and phase. The following fallback invent
 | `E_APP_REPOSITORY_TARGET` | `repository-target` |
 | `E_APP_PULL_SNAPSHOT` | `pull-snapshot` |
 | `E_APP_REPOSITORY_CONFIGURATION` | `repository-configuration` |
+| `E_APP_ACCOUNT_POLICY` | `account-policy` |
 | `E_APP_POLICY` | `trusted-policy` |
 | `E_CHECK_PUBLICATION` | `check-publication` |
+| `E_APP_FINAL_SUMMARY` | `final-summary` |
 | `E_APP_CHECK_REREQUEST` | `check-rerequest` |
 | `E_APP_POLICY_EXECUTION` | `policy-execution` |
 <!-- /manual:generated app-execution-stages -->

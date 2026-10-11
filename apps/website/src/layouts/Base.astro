@@ -11,7 +11,7 @@ import { themeScript } from '../lib/theme-script.mjs';
 interface Props {
   title: string; description: string;
   /** The short top-level section label shown beside the lockup; never an article title. */
-  surface?: 'Playground' | 'Docs' | 'Examples' | 'GitHub App' | 'Extension' | 'FAQ' | undefined; current?: string | undefined;
+  surface?: 'Playground' | 'Docs' | 'Examples' | 'GitHub App' | 'Extension' | 'FAQ' | 'App' | undefined; current?: string | undefined;
   /** Legal routes stay public and fetchable but out of search engines, snippets and the site's own search. */
   noindex?: boolean | undefined;
   /** False when the page supplies finer-grained global search records instead. */
