@@ -70,6 +70,20 @@ document.querySelector('[data-testid="progressive-diffs-list"]').insertAdjacentH
       { id: 'file', end: true, scope: '[data-diff-header-wrapper]', native: '.Diffstat-module__count__fixture, .Diffstat-module__squares__fixture', root: '[data-ddx=file]' },
     ],
   },
+  // Shape measured on the real signed-in React header (wolf-leitsatz#434 Files): a block `prc-PageHeader-Navigation` whose
+  // `rightContentWrapper` holds the churn and is `float: right`, beside a `.flex-auto` block. An auto margin cannot move an
+  // inline-level box in a block container; only the float holds the seat at the page header's right edge.
+  float: {
+    css: `.prc-PageHeader-Navigation{display:block}.PullRequestHeader-module__rightContentWrapper{float:right}.prc-PageHeader-Navigation>.flex-auto{min-height:26px}`,
+    prepare: `const meta = document.querySelector('.fixture-header-meta'); const churn = meta.querySelector('.Diffstat-module__container__fixture');
+meta.className = 'prc-PageHeader-Navigation';
+const wrapper = Object.assign(document.createElement('div'), { className: 'PullRequestHeader-module__rightContentWrapper' }); wrapper.append(churn);
+const tabs = Object.assign(document.createElement('div'), { className: 'flex-auto', textContent: 'Conversation  Commits  Checks  Files changed' });
+meta.replaceChildren(wrapper, tabs);`,
+    seats: [
+      { id: 'aggregate', end: true, scope: '.prc-PageHeader-Navigation', native: '.PullRequestHeader-module__rightContentWrapper', root: '[data-ddx=aggregate], [data-ddx=reading], [data-ddx=failure], [data-ddx=paused]' },
+    ],
+  },
   classic: {
     css: `.float-right{float:right}.fixture-tabnav{overflow:hidden;min-height:24px}`,
     prepare: `document.querySelector('.gh-header-meta').replaceWith(Object.assign(document.createElement('div'), { className: 'fixture-tabnav', innerHTML: '<div class="tabnav-extra float-right"><span class="diffstat"><span class="color-fg-success">+160</span> <span class="color-fg-danger">−118</span> <span class="diffstat-block-added"></span><span class="diffstat-block-added"></span><span class="diffstat-block-deleted"></span></span></div>' }));`,

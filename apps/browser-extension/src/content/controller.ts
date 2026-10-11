@@ -146,7 +146,9 @@ export function startContent(dependencies: ContentDependencies = {}): { refresh:
     if (end.kind) item.root.setAttribute('data-ddx-end', end.kind);
     for (const element of end.pushing) { natives.add(element); claim(element); }
     if (!reduced()) { item.root.classList.add('ddx-entering'); requestAnimationFrame(() => item.root.classList.remove('ddx-entering')); }
-    native.anchor.insertAdjacentElement('beforebegin', item.root);
+    // A floated native seat keeps the outer edge only while it is the first end float, so our floated group follows it and extends inward.
+    if (end.float) { item.root.style.float = end.float; native.nodes[native.nodes.length - 1]!.insertAdjacentElement('afterend', item.root); }
+    else native.anchor.insertAdjacentElement('beforebegin', item.root);
     if (replace) demote(native); else for (const element of native.nodes) { natives.add(element); element.classList.remove('ddx-native-hidden', 'ddx-native-faint', 'ddx-native-leaving'); }
   }
   function schedule(): void { if (stopped || renderQueued) return; renderQueued = true; queueMicrotask(() => { renderQueued = false; render(); }); }

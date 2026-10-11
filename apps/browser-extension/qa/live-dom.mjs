@@ -210,6 +210,8 @@ try {
       const seat = wanted.get(item.id); const found = after.find(other => other.id === item.id && other.index === item.index);
       assert.ok(item.native && found?.group, `${name}: ${item.id}#${item.index} was not measured (${JSON.stringify({ item, found })})`);
       if (seat.end) near(found.group.right, item.native.right, `${name} ${item.id}#${item.index} right edge`); else near(found.group.left, item.native.left, `${name} ${item.id}#${item.index} left edge`);
+      // Counts GitHub keeps (faint, reading, paused, failure) must stay the outer edge: the group extends inward from them, not the other way round.
+      if (seat.end && found.native) near(found.native.right, item.native.right, `${name} ${item.id}#${item.index} retained native right edge`);
       if (markers) assert.ok(found.group.right - found.group.left < 400, `${name}: ${item.id} marker must sit beside GitHub's counts, not across the row (${JSON.stringify(found.group)})`);
       checked.push(`${item.id}#${item.index}:${seat.end ? 'end' : 'start'}`);
     }
@@ -220,14 +222,14 @@ try {
     await page.locator('[data-ddx="file"]').nth(1).waitFor();
     if (host === 'react') await page.locator('[data-ddx="toolbar"]').waitFor();
   };
-  for (const host of ['react', 'classic']) {
-    const summary = host === 'react' ? 'changes' : 'legacy';
+  for (const host of ['react', 'float', 'classic']) {
+    const summary = host === 'classic' ? 'legacy' : 'changes';
     for (const mode of ['hidden', 'faint']) {
       const run = await scene(summary, { host, settings: mode === 'faint' ? { 'display.nativeChurn': 'faint' } : {} });
       await settled(run.page, host);
       if (mode === 'hidden') assert.equal(await run.page.locator('.ddx-native-leaving').count(), 0);
       const checked = compare(`${host}/${mode}`, run.seats, run.before, await run.page.evaluate(measureSeats, run.seats));
-      assert.ok(checked.length >= (host === 'react' ? 4 : 3), `${host}/${mode} measured ${checked.length} seats`);
+      assert.ok(checked.length >= { react: 4, float: 1, classic: 3 }[host], `${host}/${mode} measured ${checked.length} seats`);
       if (mode === 'faint') assert.ok(await run.page.locator('.ddx-native-faint').count() > 0);
       if (host === 'react') {
         // The retained native node no longer carries its own auto margin, so no gap opens between our group and it.

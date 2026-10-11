@@ -12,11 +12,12 @@
  */
 import type { NativeStat } from './github.js';
 
-/** `push`: a native node's own auto start margin keeps it at the end. `flush`: it ends where its row ends. */
-export type EndSeat = 'push' | 'flush';
+/** `push`: a native node's own auto start margin keeps it at the end. `flush`: it ends where its row ends. `float`: the node floats to the end. */
+export type EndSeat = 'push' | 'flush' | 'float';
 /** Marks a retained native node whose pushing margin the group in front of it carries instead. */
 export const NATIVE_END = 'ddx-native-end';
-export interface EndReading { readonly kind: EndSeat | undefined; readonly pushing: readonly HTMLElement[] }
+/** `float` is the computed end float the group copies; it then follows its native node, because among end floats the first in document order takes the outer edge. */
+export interface EndReading { readonly kind: EndSeat | undefined; readonly pushing: readonly HTMLElement[]; readonly float?: string }
 /** Past a pixel or two, layout is not rounding. */
 const TOLERANCE = 1;
 /** A native node display:none cannot be measured; what it was when it last could stands in. */
@@ -43,6 +44,11 @@ function layoutParent(element: HTMLElement): HTMLElement | undefined {
   for (let parent = element.parentElement; parent; parent = parent.parentElement) if (getComputedStyle(parent).display !== 'contents') return parent;
   return undefined;
 }
+/** The end float of a native node, as computed (`right`, or `left` when the inline direction is reversed, or `inline-end`). A start float is GitHub starting its seat. */
+function endFloat(node: HTMLElement): string | undefined {
+  const style = getComputedStyle(node); const value = style.float;
+  return value === 'inline-end' || value === (style.direction === 'rtl' ? 'left' : 'right') ? value : undefined;
+}
 /** Does this node's own auto start margin hold it at the end? Auto absorbs free space, so forcing auto changes nothing; a fixed margin would move. */
 function pushedByMargin(node: HTMLElement): boolean {
   const style = getComputedStyle(node); const backwards = style.direction === 'rtl';
@@ -68,12 +74,13 @@ export function readEnd(native: NativeStat): EndReading {
   const marked = nodes.filter(node => claimed.has(node)); for (const node of marked) release(node);
   try {
     const last = nodes[nodes.length - 1]!;
+    const float = nodes.map(endFloat).find(value => value !== undefined);
     if (!nodes.every(rendered)) {
       const before = remembered.get(anchor); if (before) return before;
-      const pushing = nodes.filter(pushedByMargin); return { kind: pushing.length ? 'push' : undefined, pushing };
+      const pushing = nodes.filter(pushedByMargin); return float ? { kind: 'float', pushing: [], float } : { kind: pushing.length ? 'push' : undefined, pushing };
     }
     const pushing = nodes.filter(pushedByMargin);
-    const reading: EndReading = { kind: pushing.length ? 'push' : endsRow(last) ? 'flush' : undefined, pushing };
+    const reading: EndReading = float ? { kind: 'float', pushing: [], float } : { kind: pushing.length ? 'push' : endsRow(last) ? 'flush' : undefined, pushing };
     remembered.set(anchor, reading); return reading;
   } finally { for (const node of marked) claim(node); }
 }
