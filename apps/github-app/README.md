@@ -98,6 +98,15 @@ unused commercial credential. The [staging packet](../../docs/integration/app-st
 has a complete PowerShell invocation; production uses the same options with its
 own exact config, Worker, custody files or named child inputs, and recovery reference.
 
+For a joined App, select `--base-version-id <qualified-version>` and either
+`--seal-key-initial` for a confirmed new/empty target or
+`--seal-key-previous-receipt <durable-receipt>` for an established target. The
+latest uploaded version must equal that qualified bootstrap/base before input
+and again before the write. The base's actual source, included engine and
+Community/private composition are qualified separately by the activation operator.
+The exact configuration selects `GITHUB_APP_BOT_LOGIN` (the standalone runtime's
+existing default is `diffdevil[bot]`); configure the actual registered bot.
+
 Ordinary interactive use requests the webhook secret through a hidden TTY
 checkpoint after preflight and the durable receipt commit. Alternatively,
 `--webhook-secret-file` consumes an opaque operator-controlled file;
@@ -118,6 +127,45 @@ stdin. The helper leaves operator-owned input files intact. Their access control
 and retention remain the custodian's responsibility; Node's Unix file mode is not
 a Windows custody/ACL guarantee.
 
+Install privately mints the existing short-lived App JWT and uses GitHub's
+[authenticated `GET /app`](https://docs.github.com/en/rest/apps/apps#get-the-authenticated-app)
+to match the App ID and OAuth client ID, then reads the public bot identity and
+compares it with the exact configuration. Redirects refuse; no JWT, raw provider
+body or protected value reaches the receipt. This qualifies identity and the
+PEM's authentication, not the webhook/OAuth secret's eventual use. `check` reports
+identity as unverified and does not perform these protected-content reads.
+
+The successful receipt retains a domain-separated SHA-256 seal continuity check
+with its custody reference and Worker/account/database identity. An established
+target compares the same key with its previous successful receipt before another
+write. Another key, target or custody reference refuses. Keep the original seal:
+a new key cannot open existing protected authorization or file locators. The
+check proves equality against the retained record, not off-workstation custody
+or independent retrieval.
+
+Retain the seal and Wirt signing material through their admitted recovery route.
+GitHub's PEM, webhook and OAuth-secret files are transient installer inputs, not
+a requirement to keep seven plaintext files. Their custodian may remove them
+after the provider result and recovery handback are established; the helper never
+deletes operator-owned inputs. Full-set installation remains supported. The first
+real GitHub rotation or enforced Wirt rollover must scope the exact subset and
+previous-key operation before use. This helper prepares the initial full set;
+it is not a general rotation service.
+
+After a custodian has established an appropriate protected recovery destination,
+the contained file-generation specimen is:
+
+```sh
+node apps/github-app/operator-helper.mjs generate-seal --seal-key-file path/to/new-custody-owned-seal.txt --seal-key-recovery-ref admitted-custody-reference
+```
+
+It generates 32 random bytes once, exclusively creates and flushes the selected
+file, and prints only a non-secret check/reference. It refuses an existing file.
+No typed phrase or console key is a default. Use this only when the custody route
+already selected that file destination; generation does not establish ACLs,
+off-workstation recovery or a store binding. An environment-only custodian keeps
+generation/admission inside its existing contained route.
+
 The non-secret receipt is created exclusively and flushed before protected input.
 A durable `attempted-unknown` marker precedes the provider write. Command acceptance,
 the single newly observed version, its secret-binding names/database, and the latest
@@ -130,6 +178,14 @@ provider reads, and never rereads inputs or repeats installation. Missing or
 foreign receipts refuse. A lost write acknowledgement remains partial even when
 the new version is seen. Reconcile that exact result before admitting any new
 operation; use a fresh receipt only for a deliberately selected new operation.
+
+A proven private-input, identity, continuity or pre-write target failure persists
+terminal `state: not-attempted` and `command: not-attempted`. Correct its cause
+and use a new receipt for a deliberately selected new operation. After the
+attempt marker, use read-only `resume` before considering another effect.
+Select a durable operation-receipt path outside disposable worktrees from the
+start, or preserve the non-secret receipt in the operation's durable handback
+before retiring the checkout. Repository `artifacts/` is only a working copy.
 
 Wrangler's secret operation inherits the latest uploaded version, which can differ
 from the active deployment. Keep one operator as this Worker's writer until the

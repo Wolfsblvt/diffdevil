@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
 
 import { spawn } from 'node:child_process';
-import { createHash, randomUUID } from 'node:crypto';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { once } from 'node:events';
 import { open, readFile, rename, rm, stat } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { parse } from 'jsonc-parser';
-import { validateGitHubAppPrivateKey } from './crypto.mjs';
+import { createAppJwt, validateGitHubAppPrivateKey } from './crypto.mjs';
 import { readSigningKeys } from './commercial-wirt.mjs';
 
 const GITHUB_REGISTRATION_URL = 'https://github.com/settings/apps/new';
@@ -37,6 +37,12 @@ function identifier(value, name) {
 export function validateAppId(appId) {
   const value = requireValue(appId, 'GitHub App ID');
   if (!/^[1-9]\d*$/u.test(value)) fail('GitHub App ID must be a positive numeric ID.');
+  return value;
+}
+
+export function validateOAuthClientId(clientId) {
+  const value = requireValue(clientId, 'GitHub OAuth client ID');
+  if (!/^[A-Za-z0-9_.-]+$/u.test(value)) fail('GitHub OAuth client ID has an invalid format.');
   return value;
 }
 
@@ -91,11 +97,16 @@ export function createProcessRunner({ executable = process.execPath } = {}) {
 }
 
 function environment(accountId, options) {
-  const env = { ...process.env, CLOUDFLARE_ACCOUNT_ID: accountId, WRANGLER_SEND_METRICS: 'false', WRANGLER_WRITE_LOGS: 'false', WRANGLER_LOG: 'error' };
-  // A caller's named environment must not silently retarget the exact configuration.
-  delete env.CLOUDFLARE_ENV;
-  for (const name of [options.sealKeyEnv, options.wirtSigningKeyEnv].filter(Boolean)) delete env[name];
-  return env;
+  const env = { ...process.env };
+  const controls = { CLOUDFLARE_ACCOUNT_ID: accountId, WRANGLER_SEND_METRICS: 'false', WRANGLER_WRITE_LOGS: 'false', WRANGLER_LOG: 'error' };
+  const withheld = new Set([...Object.keys(controls), 'CLOUDFLARE_ENV', options.sealKeyEnv, options.wirtSigningKeyEnv].filter(Boolean).map(environmentName));
+  // Match only selected names. Windows process.env is case-insensitive; this copied object is not.
+  for (const key of Object.keys(env)) if (withheld.has(environmentName(key))) delete env[key];
+  return { ...env, ...controls };
+}
+
+function environmentName(name) {
+  return process.platform === 'win32' ? name.toUpperCase() : name;
 }
 
 function selectedEnvironmentInputs(options) {
@@ -108,7 +119,8 @@ function selectedEnvironmentInputs(options) {
     if (!name) continue;
     const variable = requireValue(name, `${label} environment variable name`);
     if (!/^[A-Za-z_][A-Za-z0-9_]*$/u.test(variable)) fail(`${label} environment variable name has an invalid format.`);
-    const normalized = process.platform === 'win32' ? variable.toUpperCase() : variable;
+    const normalized = environmentName(variable);
+    if (['CLOUDFLARE_ACCOUNT_ID', 'CLOUDFLARE_ENV', 'WRANGLER_SEND_METRICS', 'WRANGLER_WRITE_LOGS', 'WRANGLER_LOG'].includes(normalized)) fail('A protected input name must not replace the helper\'s provider controls.');
     if (selected.has(normalized)) fail('Each protected input must use a distinct named environment variable.');
     selected.add(normalized);
   }
@@ -130,7 +142,9 @@ async function qualificationConfig({ config, worker, accountId }) {
   if (!Array.isArray(databases) || databases.length !== 1 || databases[0]?.binding !== 'APP_DB') fail('The target must select exactly one APP_DB database.', 'E_OPERATOR_CONFIG');
   const databaseId = databases[0].database_id;
   if (typeof databaseId !== 'string' || !/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/iu.test(databaseId) || INERT_DATABASE_IDS.has(databaseId.toLowerCase())) fail('Replace the inert APP_DB database coordinate before protected input.', 'E_OPERATOR_CONFIG');
-  return { worker: selectedWorker, accountId: selectedAccount, databaseId, config: resolve(config), configHash: createHash('sha256').update(source).digest('hex'), joinedApp: typeof data.vars?.APP_ORIGIN === 'string', wirtConfigured: typeof data.vars?.WIRT_ORIGIN === 'string' };
+  const botLogin = data.vars?.GITHUB_APP_BOT_LOGIN ?? 'diffdevil[bot]';
+  if (typeof botLogin !== 'string' || !/^[A-Za-z0-9_-]+\[bot\]$/u.test(botLogin) || botLogin === 'staging-bot-login-required[bot]') fail('Configure the selected GitHub App bot login before protected input.', 'E_OPERATOR_CONFIG');
+  return { worker: selectedWorker, accountId: selectedAccount, databaseId, botLogin, configuredAppId: data.vars?.GITHUB_APP_ID, configuredClientId: data.vars?.GITHUB_OAUTH_CLIENT_ID, config: resolve(config), configHash: createHash('sha256').update(source).digest('hex'), joinedApp: typeof data.vars?.APP_ORIGIN === 'string', wirtConfigured: typeof data.vars?.WIRT_ORIGIN === 'string' };
 }
 
 async function nativeJson({ runner, args, env }) {
@@ -173,9 +187,11 @@ async function requireTarget(options) {
   return target;
 }
 
-function hasDatabase(bindings, target) {
+function hasVersionTarget(bindings, target) {
   const database = Array.isArray(bindings) ? bindings.filter(binding => binding?.name === 'APP_DB') : [];
-  return database.length === 1 && database[0].type === 'd1' && database[0].id === target.databaseId;
+  const bots = Array.isArray(bindings) ? bindings.filter(binding => binding?.name === 'GITHUB_APP_BOT_LOGIN') : [];
+  const botMatches = bots.length === 0 ? target.botLogin === 'diffdevil[bot]' : bots.length === 1 && bots[0].type === 'plain_text' && typeof bots[0].text === 'string' && bots[0].text.toLowerCase() === target.botLogin.toLowerCase();
+  return database.length === 1 && database[0].type === 'd1' && database[0].id === target.databaseId && botMatches;
 }
 
 async function requireVersionTarget(options, target) {
@@ -183,17 +199,22 @@ async function requireVersionTarget(options, target) {
   // The pinned Wrangler versions list is ordered by created_on ascending.
   const latest = target.versions.versions.at(-1);
   if (!latest) fail('The selected Worker has no uploaded version to receive credentials.', 'E_OPERATOR_TARGET');
+  if (target.joinedApp || options.baseVersionId !== undefined) {
+    if (latest.id !== identifier(options.baseVersionId, 'Qualified base version ID')) fail('The latest Worker version differs from the qualified bootstrap/base; no provider write was attempted.', 'E_OPERATOR_TARGET');
+  }
   const viewed = await nativeJson({ runner: options.runner, args: buildWranglerCommand(options.wrangler, ['versions', 'view', latest.id, '--json'], target), env: target.env });
-  if (viewed?.id !== latest.id || !hasDatabase(viewed.resources?.bindings, target)) fail('The latest Worker version does not read back the configured APP_DB binding.', 'E_OPERATOR_TARGET');
+  if (viewed?.id !== latest.id || !hasVersionTarget(viewed.resources?.bindings, target)) fail('The latest Worker version does not read back the configured APP_DB and bot identity.', 'E_OPERATOR_TARGET');
+  target.baseVersionId = latest.id;
 }
 
 async function inputFiles(options, target) {
-  const paths = [requireValue(options.privateKeyPath, 'Private key path')];
-  if (options.webhookSecretPath) paths.push(options.webhookSecretPath);
-  if (!options.webhookSecretPath && typeof options.readWebhookSecret !== 'function') fail('Supply a webhook secret file or the hidden/redirected input route.');
+  const captured = typeof options.readGitHubInputs === 'function';
+  const paths = captured ? [] : [requireValue(options.privateKeyPath, 'Private key path')];
+  if (!captured && options.webhookSecretPath) paths.push(options.webhookSecretPath);
+  if (!captured && !options.webhookSecretPath && typeof options.readWebhookSecret !== 'function') fail('Supply a webhook secret file or the hidden/redirected input route.');
   if (target.joinedApp) {
-    identifier(options.oauthClientId, 'GitHub OAuth client ID');
-    paths.push(requireValue(options.oauthClientSecretPath, 'OAuth client secret path'));
+    validateOAuthClientId(options.oauthClientId);
+    if (!captured) paths.push(requireValue(options.oauthClientSecretPath, 'OAuth client secret path'));
     const sealKey = protectedInputSource(options.sealKeyPath, options.sealKeyEnv, 'Retained seal key');
     if (sealKey.path) paths.push(sealKey.path);
     if (target.wirtConfigured || options.wirtSigningKeyPath || options.wirtSigningKeyEnv) {
@@ -201,7 +222,9 @@ async function inputFiles(options, target) {
       if (wirtKey.path) paths.push(wirtKey.path);
     }
     identifier(options.sealKeyRecoveryRef, 'Seal key recovery reference');
-  } else if (options.oauthClientId || options.oauthClientSecretPath || options.sealKeyPath || options.sealKeyEnv || options.wirtSigningKeyPath || options.wirtSigningKeyEnv || options.sealKeyRecoveryRef) {
+    if (Boolean(options.sealKeyInitial) === Boolean(options.sealKeyPreviousReceiptPath)) fail('Choose an initial seal for a new/empty target, or an established target\'s previous seal receipt.');
+    if (options.sealKeyPreviousReceiptPath) paths.push(options.sealKeyPreviousReceiptPath);
+  } else if (options.oauthClientId || options.oauthClientSecretPath || options.sealKeyPath || options.sealKeyEnv || options.wirtSigningKeyPath || options.wirtSigningKeyEnv || options.sealKeyRecoveryRef || options.sealKeyInitial || options.sealKeyPreviousReceiptPath) {
     fail('Joined-App inputs require a joined-App configuration.', 'E_OPERATOR_CONFIG');
   }
   for (const path of paths) {
@@ -211,7 +234,7 @@ async function inputFiles(options, target) {
 }
 
 function initialReceipt(target, options) {
-  return { format: 'diffdevil-credential-version-v1', mode: target.fixture ? 'fixture' : 'provider', state: 'prepared', accountId: target.accountId, worker: target.worker, databaseId: target.databaseId, configHash: target.configHash, inputs: inputNames(target, options), ...(target.joinedApp ? { sealKeyRecoveryRef: options.sealKeyRecoveryRef } : {}), command: 'not-attempted', version: { state: 'unknown' }, deployment: { state: 'unknown' }, carrier: { state: 'not-created' }, before: { deployment: target.deployment, versions: target.versions } };
+  return { format: 'diffdevil-credential-version-v1', mode: target.fixture ? 'fixture' : 'provider', state: 'prepared', accountId: target.accountId, worker: target.worker, databaseId: target.databaseId, configHash: target.configHash, baseVersionId: target.baseVersionId, inputs: inputNames(target, options), identity: { state: 'unobserved' }, ...(target.joinedApp ? { sealKeyRecoveryRef: options.sealKeyRecoveryRef, sealKeyContinuity: { state: 'unobserved' } } : {}), command: 'not-attempted', version: { state: 'unknown' }, deployment: { state: 'unknown' }, carrier: { state: 'not-created' }, before: { deployment: target.deployment, versions: target.versions } };
 }
 
 async function unchangedConfiguration(target) {
@@ -252,7 +275,7 @@ export async function checkCredentials(options) {
   await requireVersionTarget(selected, target);
   await receiptDestination(selected.receiptPath);
   await inputFiles(selected, target);
-  return { state: 'ready-for-input', mode: target.fixture ? 'fixture' : 'provider', accountId: target.accountId, worker: target.worker, databaseId: target.databaseId, inputs: inputNames(target, selected), protectedValues: 'unread', providerWrite: 'not-attempted' };
+  return { state: 'ready-for-input', mode: target.fixture ? 'fixture' : 'provider', accountId: target.accountId, worker: target.worker, databaseId: target.databaseId, baseVersionId: target.baseVersionId, inputs: inputNames(target, selected), protectedValues: 'unread', identity: 'unverified', providerWrite: 'not-attempted' };
 }
 
 async function readSecretFile(path) {
@@ -271,14 +294,63 @@ async function readProtectedInput(source, label) {
   return readSecretFile(source.path);
 }
 
+async function qualifiedIdentity(options, target, values) {
+  try {
+    const githubFetch = options.githubFetch ?? fetch;
+    const headers = { Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' };
+    const jwt = await createAppJwt({ appId: values.GITHUB_APP_ID, privateKey: values.GITHUB_APP_PRIVATE_KEY });
+    const response = await githubFetch('https://api.github.com/app', { method: 'GET', redirect: 'error', headers: { ...headers, Authorization: `Bearer ${jwt}` } });
+    if (!response.ok) throw new Error();
+    const app = await response.json();
+    const appId = validateAppId(String(app.id));
+    const clientId = validateOAuthClientId(app.client_id);
+    const slug = identifier(app.slug, 'GitHub App slug');
+    if (appId !== values.GITHUB_APP_ID || (target.configuredAppId !== undefined && String(target.configuredAppId) !== appId) || (target.joinedApp && clientId !== values.GITHUB_OAUTH_CLIENT_ID) || (target.configuredClientId !== undefined && target.configuredClientId !== clientId) || `${slug}[bot]`.toLowerCase() !== target.botLogin.toLowerCase()) throw new Error();
+    // This public read needs no bearer. Never forward the App JWT to another endpoint.
+    const botResponse = await githubFetch(`https://api.github.com/users/${encodeURIComponent(`${slug}[bot]`)}`, { method: 'GET', redirect: 'error', headers });
+    if (!botResponse.ok) throw new Error();
+    const bot = await botResponse.json();
+    if (bot.type !== 'Bot' || typeof bot.login !== 'string' || bot.login.toLowerCase() !== target.botLogin.toLowerCase()) throw new Error();
+    return { state: 'verified', appId, clientId, botLogin: target.botLogin, botId: validateAppId(String(bot.id)) };
+  } catch { fail('GitHub App identity could not be verified against the selected App ID, OAuth client and configured bot. No provider write was attempted.', 'E_OPERATOR_IDENTITY'); }
+}
+
+function sealFingerprint(value) {
+  return createHash('sha256').update('diffdevil-seal-continuity-v1\0').update(value).digest('hex');
+}
+
+async function sealContinuity(options, target, value) {
+  const sha256 = sealFingerprint(value);
+  if (options.sealKeyInitial) return { state: 'initial', sha256 };
+  try {
+    const previous = JSON.parse(await readFile(options.sealKeyPreviousReceiptPath, 'utf8'));
+    if (previous.format !== 'diffdevil-credential-version-v1' || previous.mode !== (target.fixture ? 'fixture' : 'provider') || previous.accountId !== target.accountId || previous.worker !== target.worker || previous.databaseId !== target.databaseId || previous.state !== 'version-created' || previous.command !== 'accepted' || previous.version?.state !== 'read-back' || previous.sealKeyRecoveryRef !== options.sealKeyRecoveryRef || !['initial', 'matched'].includes(previous.sealKeyContinuity?.state) || previous.sealKeyContinuity.sha256 !== sha256) throw new Error();
+    return { state: 'matched', sha256, previousVersionId: identifier(previous.version.id, 'Previous seal version ID') };
+  } catch { fail('Retained seal continuity could not be matched to the established target and custody reference. Keep the original seal; no provider write was attempted.', 'E_OPERATOR_SEAL'); }
+}
+
+/** Generate only into an already-admitted custody destination. Returns no protected value. */
+export async function generateSealKey({ sealKeyPath, sealKeyRecoveryRef }) {
+  requireValue(sealKeyPath, 'New custody-owned seal key path');
+  const recoveryRef = identifier(sealKeyRecoveryRef, 'Established seal key recovery reference');
+  const value = randomBytes(32).toString('base64url');
+  try {
+    const file = await open(sealKeyPath, 'wx', 0o600);
+    try { await file.writeFile(`${value}\n`, 'utf8'); await file.sync(); } finally { await file.close(); }
+  } catch { fail('Seal generation did not finish. Inspect the selected custody destination before retrying; no existing file was overwritten.', 'E_OPERATOR_SEAL'); }
+  return { state: 'seal-created', recoveryRef, sha256: sealFingerprint(value), custody: 'externally-established-not-proved-by-generation' };
+}
+
 async function credentialValues(options, target) {
-  const privateKey = await readSecretFile(options.privateKeyPath);
+  const captured = options.readGitHubInputs ? await options.readGitHubInputs() : undefined;
+  if (captured && (captured.GITHUB_APP_ID !== options.appId || (target.joinedApp && captured.GITHUB_OAUTH_CLIENT_ID !== options.oauthClientId))) fail('Captured GitHub identity differs from the selected installation.');
+  const privateKey = captured ? captured.GITHUB_APP_PRIVATE_KEY : await readSecretFile(options.privateKeyPath);
   validateGitHubAppPrivateKey(privateKey);
-  const webhook = options.webhookSecretPath ? await readSecretFile(options.webhookSecretPath) : await options.readWebhookSecret();
+  const webhook = captured ? captured.GITHUB_WEBHOOK_SECRET : options.webhookSecretPath ? await readSecretFile(options.webhookSecretPath) : await options.readWebhookSecret();
   const values = { GITHUB_APP_ID: validateAppId(options.appId), GITHUB_WEBHOOK_SECRET: validateWebhookSecret(webhook), GITHUB_APP_PRIVATE_KEY: privateKey };
   if (!target.joinedApp) return values;
-  values.GITHUB_OAUTH_CLIENT_ID = identifier(options.oauthClientId, 'GitHub OAuth client ID');
-  values.GITHUB_OAUTH_CLIENT_SECRET = validateWebhookSecret(await readSecretFile(options.oauthClientSecretPath));
+  values.GITHUB_OAUTH_CLIENT_ID = validateOAuthClientId(options.oauthClientId);
+  values.GITHUB_OAUTH_CLIENT_SECRET = validateWebhookSecret(captured ? captured.GITHUB_OAUTH_CLIENT_SECRET : await readSecretFile(options.oauthClientSecretPath));
   values.APP_SEAL_KEY = await readProtectedInput(protectedInputSource(options.sealKeyPath, options.sealKeyEnv, 'Retained seal key'), 'Retained seal key');
   if (values.APP_SEAL_KEY.length < 16 || /\r|\n/u.test(values.APP_SEAL_KEY)) fail('Retained seal key must be a single line of at least 16 characters.');
   if (target.wirtConfigured || options.wirtSigningKeyPath || options.wirtSigningKeyEnv) {
@@ -307,7 +379,7 @@ async function reconcileReceipt({ runner, wrangler, target, report }) {
   if (candidate.state === 'observed') {
     const viewed = await nativeJson({ runner, args: buildWranglerCommand(wrangler, ['versions', 'view', candidate.id, '--json'], target), env: target.env });
     const bindings = viewed?.resources?.bindings;
-    const hasInputs = hasDatabase(bindings, target) && report.inputs.every(name => bindings.some(binding => binding?.type === 'secret_text' && binding.name === name));
+    const hasInputs = hasVersionTarget(bindings, target) && report.inputs.every(name => bindings.some(binding => binding?.type === 'secret_text' && binding.name === name));
     report.version = { state: viewed?.id === candidate.id && hasInputs ? 'read-back' : 'unknown', id: candidate.id };
   }
   const after = await readDeployment({ runner, wrangler, ...target });
@@ -330,9 +402,27 @@ export async function installCredentials(options) {
   const report = initialReceipt(target, selected);
   await writeReceipt(selected.receiptPath, report, { exclusive: true });
   let values;
-  try { values = await credentialValues(selected, target); }
-  catch { fail('Protected inputs could not be validated. The receipt records no provider write.', 'E_OPERATOR_INPUT', report); }
-  await unchangedConfiguration(target);
+  try {
+    try { values = await credentialValues(selected, target); }
+    catch { fail('Protected inputs could not be validated.', 'E_OPERATOR_INPUT'); }
+    report.identity = await qualifiedIdentity(selected, target, values);
+    if (target.joinedApp) report.sealKeyContinuity = await sealContinuity(selected, target, values.APP_SEAL_KEY);
+    await unchangedConfiguration(target);
+    target.versions = await readVersions({ ...selected, ...target });
+    if (target.versions.state !== 'read-back') fail('Worker versions could not be read back before the write.', 'E_OPERATOR_TARGET');
+    await requireVersionTarget({ ...selected, baseVersionId: report.baseVersionId }, target);
+  } catch (error) {
+    values = undefined;
+    report.state = 'not-attempted';
+    await writeReceipt(selected.receiptPath, report);
+    const reason = {
+      E_OPERATOR_IDENTITY: 'GitHub App identity did not qualify.',
+      E_OPERATOR_SEAL: 'Retained seal continuity did not qualify.',
+      E_OPERATOR_TARGET: 'The exact target or qualified base did not remain current.',
+      E_OPERATOR_CONFIG: 'The target configuration did not remain usable.'
+    }[error.code] ?? 'Protected inputs could not be validated.';
+    fail(`${reason} No provider write was attempted. Correct the cause and use a new receipt for a deliberately selected new operation; keep this receipt.`, error.code?.startsWith('E_OPERATOR_') ? error.code : 'E_OPERATOR_INPUT', report);
+  }
   // Durable ambiguity marker precedes the non-idempotent operation, even if the process is interrupted.
   report.command = 'attempted-unknown';
   report.state = 'unknown';
@@ -356,6 +446,19 @@ async function readReceipt(path, target) {
   const correctTarget = report?.format === 'diffdevil-credential-version-v1' && report.mode === (target.fixture ? 'fixture' : 'provider') && report.accountId === target.accountId && report.worker === target.worker && report.databaseId === target.databaseId && report.configHash === target.configHash && JSON.stringify(report.inputs) === JSON.stringify(inputs);
   const correctState = ['not-attempted', 'attempted-unknown', 'accepted', 'failed'].includes(report?.command) && report.before?.versions?.state === 'read-back' && Array.isArray(report.before.versions.versions) && report.before.versions.versions.every(version => typeof version?.id === 'string' && /^[A-Za-z0-9_-]+$/u.test(version.id)) && report.before?.deployment?.state === 'read-back' && typeof report.before.deployment.snapshot === 'string' && (report.version?.id === undefined || (typeof report.version.id === 'string' && /^[A-Za-z0-9_-]+$/u.test(report.version.id)));
   if (!correctTarget || !correctState) fail('Receipt is unusable or belongs to a different exact target/configuration.', 'E_OPERATOR_RECEIPT');
+  const baseVersionId = identifier(report.baseVersionId, 'Receipt base version ID');
+  if (baseVersionId !== report.before.versions.versions.at(-1)?.id) fail('Receipt base version differs from its qualified checkpoint.', 'E_OPERATOR_RECEIPT');
+  let identity = { state: 'unobserved' }, continuity;
+  if (report.identity?.state === 'verified') {
+    if (report.identity.botLogin !== target.botLogin) fail('Receipt GitHub bot identity differs from the target.', 'E_OPERATOR_RECEIPT');
+    identity = { state: 'verified', appId: validateAppId(report.identity.appId), clientId: validateOAuthClientId(report.identity.clientId), botLogin: target.botLogin, botId: validateAppId(report.identity.botId) };
+  } else if (report.command !== 'not-attempted') fail('Receipt has no qualified GitHub App identity.', 'E_OPERATOR_RECEIPT');
+  if (target.joinedApp) {
+    continuity = { state: 'unobserved' };
+    if (['initial', 'matched'].includes(report.sealKeyContinuity?.state) && /^[a-f0-9]{64}$/u.test(report.sealKeyContinuity.sha256 ?? '')) {
+      continuity = { state: report.sealKeyContinuity.state, sha256: report.sealKeyContinuity.sha256, ...(report.sealKeyContinuity.state === 'matched' ? { previousVersionId: identifier(report.sealKeyContinuity.previousVersionId, 'Previous seal version ID') } : {}) };
+    } else if (report.command !== 'not-attempted') fail('Receipt has no retained seal continuity check.', 'E_OPERATOR_RECEIPT');
+  }
   let beforeDeployment;
   try {
     const snapshot = JSON.parse(report.before.deployment.snapshot);
@@ -365,7 +468,7 @@ async function readReceipt(path, target) {
     if (beforeDeployment.versions.some(version => typeof version.percentage !== 'number' || !Number.isFinite(version.percentage))) throw new Error();
   } catch { fail('Receipt deployment checkpoint is unusable.', 'E_OPERATOR_RECEIPT'); }
   // Reconstruct the allowlisted receipt; an edited receipt cannot inject arbitrary data into output.
-  return { ...initialReceipt(target, { sealKeyRecoveryRef: target.joinedApp ? identifier(report.sealKeyRecoveryRef, 'Seal key recovery reference') : undefined }), inputs, command: report.command, before: { deployment: { state: 'read-back', snapshot: JSON.stringify(beforeDeployment) }, versions: { state: 'read-back', versions: report.before.versions.versions.map(version => ({ id: version.id })) } }, version: report.version?.id ? { state: 'unknown', id: report.version.id } : { state: 'unknown' } };
+  return { ...initialReceipt(target, { sealKeyRecoveryRef: target.joinedApp ? identifier(report.sealKeyRecoveryRef, 'Seal key recovery reference') : undefined }), baseVersionId, identity, ...(target.joinedApp ? { sealKeyContinuity: continuity } : {}), inputs, command: report.command, before: { deployment: { state: 'read-back', snapshot: JSON.stringify(beforeDeployment) }, versions: { state: 'read-back', versions: report.before.versions.versions.map(version => ({ id: version.id })) } }, version: report.version?.id ? { state: 'unknown', id: report.version.id } : { state: 'unknown' } };
 }
 
 /** Readback-only recovery. No credential read, secret upload, deployment, or blind retry. */
@@ -410,8 +513,8 @@ async function readRedirectedSecret() {
   return Buffer.concat(chunks).toString('utf8').replace(/\r?\n$/u, '');
 }
 
-const BOOLEAN_OPTIONS = new Set(['fake', 'webhook-secret-stdin', 'policy-refresh']);
-const VALUE_OPTIONS = new Set(['webhook-url', 'visibility', 'app-name', 'oauth-callback-url', 'app-id', 'private-key-file', 'account-id', 'config', 'worker', 'webhook-secret-file', 'oauth-client-id', 'oauth-client-secret-file', 'seal-key-file', 'seal-key-env', 'seal-key-recovery-ref', 'wirt-signing-key-file', 'wirt-signing-key-env', 'receipt-file', 'wrangler']);
+const BOOLEAN_OPTIONS = new Set(['fake', 'webhook-secret-stdin', 'policy-refresh', 'seal-key-initial']);
+const VALUE_OPTIONS = new Set(['webhook-url', 'visibility', 'app-name', 'oauth-callback-url', 'app-id', 'private-key-file', 'account-id', 'config', 'worker', 'base-version-id', 'webhook-secret-file', 'oauth-client-id', 'oauth-client-secret-file', 'seal-key-file', 'seal-key-env', 'seal-key-recovery-ref', 'seal-key-previous-receipt', 'wirt-signing-key-file', 'wirt-signing-key-env', 'receipt-file', 'wrangler']);
 
 function parseArgs(argv) {
   const [command, ...rest] = argv;
@@ -439,25 +542,39 @@ function createFakeRunner() {
     if (args.includes('versions') && args.includes('list')) return { code: 0, stdout: JSON.stringify(versionCreated ? [{ id: 'fixture-before' }, { id: 'fixture-created' }] : [{ id: 'fixture-before' }]) };
     if (args.includes('versions') && args.includes('view')) {
       const config = parse(await readFile(args[args.indexOf('--config') + 1], 'utf8'));
-      return { code: 0, stdout: JSON.stringify({ id: args[args.indexOf('view') + 1], resources: { bindings: [{ name: 'APP_DB', type: 'd1', id: config.d1_databases[0].database_id }, ...inputs.map(name => ({ type: 'secret_text', name }))] } }) };
+      return { code: 0, stdout: JSON.stringify({ id: args[args.indexOf('view') + 1], resources: { bindings: [{ name: 'APP_DB', type: 'd1', id: config.d1_databases[0].database_id }, ...(config.vars?.GITHUB_APP_BOT_LOGIN ? [{ name: 'GITHUB_APP_BOT_LOGIN', type: 'plain_text', text: config.vars.GITHUB_APP_BOT_LOGIN }] : []), ...inputs.map(name => ({ type: 'secret_text', name }))] } }) };
     }
     if (args.includes('bulk')) { inputs = Object.keys(JSON.parse(input)); versionCreated = true; return { code: 0, stdout: '' }; }
     return { code: 2, stdout: '' };
   };
 }
 
+function createFakeGitHubFetch(options) {
+  return async url => {
+    const config = parse(await readFile(options.config, 'utf8'));
+    const botLogin = config.vars?.GITHUB_APP_BOT_LOGIN ?? 'diffdevil[bot]';
+    const data = url.endsWith('/app') ? { id: Number(options.appId), client_id: options.oauthClientId ?? 'fixture-client', slug: botLogin.replace(/\[bot\]$/u, '') } : { id: 456, login: botLogin, type: 'Bot' };
+    return { ok: true, json: async () => data };
+  };
+}
+
 function help() {
   return `Usage:
   node apps/github-app/operator-helper.mjs registration --webhook-url <https-url> [--visibility private|public] [--app-name <name>] [--oauth-callback-url <https-url>] [--policy-refresh]
-  node apps/github-app/operator-helper.mjs check|install --app-id <numeric-id> --private-key-file <retained-pem> --account-id <account-id> --config <exact-json-or-jsonc> --receipt-file <new-receipt> [--worker <matching-name>] [--webhook-secret-file <protected-file> | --webhook-secret-stdin] [--fake]
-    Joined-App configs also require --oauth-client-id <id> --oauth-client-secret-file <protected-file> (--seal-key-file <retained-file> | --seal-key-env <variable-name>) --seal-key-recovery-ref <opaque-custody-id>. With Wirt configured, add --wirt-signing-key-file <protected-file> or --wirt-signing-key-env <variable-name>.
+  node apps/github-app/operator-helper.mjs check|install --app-id <numeric-id> --private-key-file <app-pem> --account-id <account-id> --config <exact-json-or-jsonc> --receipt-file <new-durable-receipt> [--worker <matching-name>] [--webhook-secret-file <protected-file> | --webhook-secret-stdin] [--fake]
+    Joined-App configs also require --base-version-id <qualified-bootstrap-version> --oauth-client-id <id> --oauth-client-secret-file <protected-file> (--seal-key-file <retained-file> | --seal-key-env <variable-name>) --seal-key-recovery-ref <opaque-custody-id> (--seal-key-initial | --seal-key-previous-receipt <established-target-receipt>). With Wirt configured, add --wirt-signing-key-file <protected-file> or --wirt-signing-key-env <variable-name>.
+  node apps/github-app/operator-helper.mjs generate-seal --seal-key-file <new-admitted-custody-file> --seal-key-recovery-ref <established-custody-id>
   node apps/github-app/operator-helper.mjs resume --account-id <account-id> --config <same-exact-config> --receipt-file <existing-receipt> [--worker <matching-name>]
 
-Omit webhook input flags for the hidden TTY checkpoint. --webhook-secret-stdin requires an already-safe redirected channel. The config selects the Worker; --worker verifies it, never overrides it. No command deploys.`;
+Omit webhook input flags for the hidden TTY checkpoint. --webhook-secret-stdin requires an already-safe redirected channel. Generation requires externally established custody and never prints the key. The config selects the Worker; --worker verifies it, never overrides it. No command deploys.`;
 }
 
 export async function main(argv = process.argv.slice(2)) {
   const { command, options } = parseArgs(argv);
+  if (command === 'generate-seal') {
+    process.stdout.write(`${JSON.stringify(await generateSealKey({ sealKeyPath: options['seal-key-file'], sealKeyRecoveryRef: options['seal-key-recovery-ref'] }), null, 2)}\n`);
+    return;
+  }
   if (command === 'registration') {
     process.stdout.write(`${JSON.stringify(registrationInputs({ webhookUrl: options['webhook-url'], visibility: options.visibility, appName: options['app-name'], oauthCallbackUrl: options['oauth-callback-url'], policyRefresh: options['policy-refresh'] }), null, 2)}\n`);
     return;
@@ -465,7 +582,7 @@ export async function main(argv = process.argv.slice(2)) {
   if (['check', 'install', 'resume'].includes(command)) {
     if (options['webhook-secret-file'] && options['webhook-secret-stdin']) fail('Choose one webhook input route.');
     if (options['webhook-secret-stdin'] && process.stdin.isTTY) fail('Refusing TTY stdin; omit the flag for hidden entry.', 'E_OPERATOR_TTY');
-    const selected = { appId: options['app-id'], privateKeyPath: options['private-key-file'], accountId: options['account-id'], config: options.config, worker: options.worker, receiptPath: options['receipt-file'], webhookSecretPath: options['webhook-secret-file'], oauthClientId: options['oauth-client-id'], oauthClientSecretPath: options['oauth-client-secret-file'], sealKeyPath: options['seal-key-file'], sealKeyEnv: options['seal-key-env'], sealKeyRecoveryRef: options['seal-key-recovery-ref'], wirtSigningKeyPath: options['wirt-signing-key-file'], wirtSigningKeyEnv: options['wirt-signing-key-env'], readWebhookSecret: options['webhook-secret-stdin'] ? readRedirectedSecret : readHiddenTerminalSecret, ...(options.wrangler ? { wrangler: options.wrangler } : {}), ...(options.fake ? { fixture: true, runner: createFakeRunner() } : {}) };
+    const selected = { appId: options['app-id'], privateKeyPath: options['private-key-file'], accountId: options['account-id'], config: options.config, worker: options.worker, baseVersionId: options['base-version-id'], receiptPath: options['receipt-file'], webhookSecretPath: options['webhook-secret-file'], oauthClientId: options['oauth-client-id'], oauthClientSecretPath: options['oauth-client-secret-file'], sealKeyPath: options['seal-key-file'], sealKeyEnv: options['seal-key-env'], sealKeyRecoveryRef: options['seal-key-recovery-ref'], sealKeyInitial: options['seal-key-initial'], sealKeyPreviousReceiptPath: options['seal-key-previous-receipt'], wirtSigningKeyPath: options['wirt-signing-key-file'], wirtSigningKeyEnv: options['wirt-signing-key-env'], readWebhookSecret: options['webhook-secret-stdin'] ? readRedirectedSecret : readHiddenTerminalSecret, ...(options.wrangler ? { wrangler: options.wrangler } : {}), ...(options.fake ? { fixture: true, runner: createFakeRunner(), githubFetch: createFakeGitHubFetch({ config: options.config, appId: options['app-id'], oauthClientId: options['oauth-client-id'] }) } : {}) };
     const result = await (command === 'check' ? checkCredentials(selected) : command === 'resume' ? resumeCredentials(selected) : installCredentials(selected));
     process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
     return;

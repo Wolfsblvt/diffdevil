@@ -94,6 +94,12 @@ then probes the receipt directory without reading protected contents or writing
 a Worker version. The receipt directory must already exist and the new receipt
 must not exist.
 
+`install` privately verifies the PEM/App ID with GitHub, matches the OAuth client
+ID for the signed-in App, and reads the bot identity against the exact config's
+`GITHUB_APP_BOT_LOGIN`. `check` leaves this identity unverified because it does
+not read protected contents. Actual webhook/OAuth-secret use is qualified through
+the live consumer journey.
+
 The helper accepts the downloaded unencrypted RSA PKCS#1 App key and obtains the
 webhook secret through a hidden interactive prompt after creating its non-secret
 checkpoint. `--webhook-secret-file` accepts an operator-controlled protected file.
@@ -114,6 +120,22 @@ owns those options and the complete [seven-input specimen](../../../integration/
 Use your own production config, Worker and custody paths. Keep the original seal
 key recoverable with the database: generating another key cannot open existing
 protected authorizations or reproduce opaque file locators.
+
+Select `--base-version-id <qualified-bootstrap-version>` for the joined App.
+That exact version must still be latest immediately before the secret write.
+For a confirmed new/empty target, use `--seal-key-initial`; an established target
+uses `--seal-key-previous-receipt <durable-successful-receipt>` and the same
+retained key/custody reference. A foreign target or different seal refuses.
+The receipt's non-secret check proves key equality against that record; it does
+not establish off-workstation custody or retrieval.
+
+Retain seal/Wirt material through the admitted recovery route. GitHub credential
+files are transient inputs, not seven plaintext files to retain forever. The
+operator source provides a random `generate-seal` file specimen for a custody
+destination already established; it never prints the key or overwrites an existing
+file. First actual rotation/rollover separately scopes subset and previous-key
+support. Keep operation receipts outside disposable checkouts, with the qualified
+source/configuration/composition evidence, before retiring those carriers.
 
 This helper creates an **undeployed Worker version** using versioned secret
 installation. It does not deploy that version, register the App, install it on a

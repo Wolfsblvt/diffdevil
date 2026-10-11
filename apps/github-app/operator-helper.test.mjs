@@ -2,10 +2,11 @@
 
 import assert from 'node:assert/strict';
 import { mkdtemp, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises';
-import { createHash, generateKeyPairSync, randomUUID } from 'node:crypto';
+import { createHash, generateKeyPairSync, randomUUID, verify } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { PassThrough } from 'node:stream';
 import { test } from 'node:test';
 import { createProtector } from '../app/src/lib/protector.mjs';
@@ -15,7 +16,22 @@ const databaseId = '12345678-1234-1234-1234-123456789abc';
 const keyPair = generateKeyPairSync('rsa', { modulusLength: 2048 });
 const fixtureKey = keyPair.privateKey.export({ type: 'pkcs1', format: 'pem' });
 const deployment = id => ({ id, versions: [{ version_id: 'version-before', percentage: 100 }] });
-const installCredentials = options => install({ receiptPath: join(dirname(options.config), 'receipt.json'), ...options });
+const installCredentials = options => install({ receiptPath: join(dirname(options.config), 'receipt.json'), githubFetch: fixtureGitHubFetch(options.oauthClientId), ...options });
+
+function fixtureGitHubFetch(clientId = 'fixture-client', overrides = {}) {
+  return async (url, request) => {
+    assert.equal(request.redirect, 'error');
+    if (url.endsWith('/app')) {
+      const jwt = request.headers.Authorization.slice('Bearer '.length);
+      const [header, body, signature] = jwt.split('.');
+      if (!verify('RSA-SHA256', Buffer.from(`${header}.${body}`), keyPair.publicKey, Buffer.from(signature, 'base64url'))) return { ok: false };
+      return { ok: true, json: async () => ({ id: 123, client_id: clientId, slug: 'diffdevil', ...overrides }) };
+    }
+    assert.equal(url, 'https://api.github.com/users/diffdevil%5Bbot%5D');
+    assert.equal(request.headers.Authorization, undefined);
+    return { ok: true, json: async () => ({ id: 456, login: 'diffdevil[bot]', type: 'Bot' }) };
+  };
+}
 
 const appInputs = ['GITHUB_APP_ID', 'GITHUB_WEBHOOK_SECRET', 'GITHUB_APP_PRIVATE_KEY', 'GITHUB_OAUTH_CLIENT_ID', 'GITHUB_OAUTH_CLIENT_SECRET', 'APP_SEAL_KEY', 'WIRT_SIGNING_KEY_CURRENT'];
 
@@ -30,13 +46,15 @@ async function appFixture(worker = 'diffdevil-app-staging') {
   }
   await writeFile(setup.config, JSON.stringify({ name: worker, account_id: 'account-1', vars: { APP_ORIGIN: 'https://staging.example', WIRT_ORIGIN: 'https://wirt.example' }, d1_databases: [{ binding: 'APP_DB', database_id: databaseId }] }));
   await writeFile(join(setup.directory, 'fixture-options.json'), '{}');
-  return { ...setup, values, options: { appId: '123', privateKeyPath: setup.privateKeyPath, config: setup.config, receiptPath: join(setup.directory, 'receipt.json'), accountId: 'account-1', oauthClientId: values.GITHUB_OAUTH_CLIENT_ID, sealKeyRecoveryRef: 'fixture-recovery-copy', ...files } };
+  await writeFile(join(setup.directory, 'fixture-public-key.pem'), keyPair.publicKey.export({ type: 'spki', format: 'pem' }));
+  return { ...setup, values, options: { appId: '123', privateKeyPath: setup.privateKeyPath, config: setup.config, receiptPath: join(setup.directory, 'receipt.json'), accountId: 'account-1', baseVersionId: 'version-before', sealKeyInitial: true, oauthClientId: values.GITHUB_OAUTH_CLIENT_ID, sealKeyRecoveryRef: 'fixture-recovery-copy', ...files } };
 }
 
 function cli(setup, command = 'install', extra = [], { inputArgs, environment = {} } = {}) {
-  const target = ['--config', setup.config, '--account-id', 'account-1', '--receipt-file', setup.options.receiptPath, '--wrangler', 'apps/github-app/fixtures/operator-provider.mjs'];
-  const inputs = command === 'resume' ? [] : inputArgs ?? ['--app-id', '123', '--private-key-file', setup.privateKeyPath, '--webhook-secret-file', setup.options.webhookSecretPath, '--oauth-client-id', setup.options.oauthClientId, '--oauth-client-secret-file', setup.options.oauthClientSecretPath, '--seal-key-file', setup.options.sealKeyPath, '--seal-key-recovery-ref', setup.options.sealKeyRecoveryRef, '--wirt-signing-key-file', setup.options.wirtSigningKeyPath];
-  return spawnSync(process.execPath, ['apps/github-app/operator-helper.mjs', command, ...target, ...inputs, ...extra], { cwd: process.cwd(), encoding: 'utf8', windowsHide: true, env: { ...process.env, ...environment, CLOUDFLARE_ENV: 'must-not-inherit' } });
+  const target = ['--config', setup.config, '--account-id', 'account-1', '--receipt-file', setup.options.receiptPath, '--wrangler', 'apps/github-app/fixtures/operator-provider.mjs', '--base-version-id', setup.options.baseVersionId];
+  const inputs = command === 'resume' ? [] : inputArgs ?? ['--app-id', '123', '--private-key-file', setup.privateKeyPath, '--webhook-secret-file', setup.options.webhookSecretPath, '--oauth-client-id', setup.options.oauthClientId, '--oauth-client-secret-file', setup.options.oauthClientSecretPath, '--seal-key-file', setup.options.sealKeyPath, '--seal-key-initial', '--seal-key-recovery-ref', setup.options.sealKeyRecoveryRef, '--wirt-signing-key-file', setup.options.wirtSigningKeyPath];
+  const preload = pathToFileURL(resolve('apps/github-app/fixtures/operator-github.mjs')).href;
+  return spawnSync(process.execPath, ['apps/github-app/operator-helper.mjs', command, ...target, ...inputs, ...extra], { cwd: process.cwd(), encoding: 'utf8', windowsHide: true, env: { ...process.env, NODE_OPTIONS: `--import=${preload}`, DIFFDEVIL_OPERATOR_FIXTURE_DIRECTORY: setup.directory, ...environment, [process.platform === 'win32' ? 'cloudflare_env' : 'CLOUDFLARE_ENV']: 'must-not-inherit' } });
 }
 
 function containsProtectedValues(text, setup) {
@@ -243,14 +261,14 @@ test('the disposable CLI path reads redirected stdin and emits only a bounded re
 
 test('explicit seal and Wirt environment inputs stay in the helper and native stdin', async () => {
   const setup = await appFixture();
-  const sealName = 'DIFFDEVIL_TEST_SEAL_KEY';
+  const sealName = process.platform === 'win32' ? 'diffdevil_test_seal_key' : 'DIFFDEVIL_TEST_SEAL_KEY';
   const wirtName = 'DIFFDEVIL_TEST_WIRT_KEY';
   const optionsPath = join(setup.directory, 'fixture-options.json');
   const valuesPath = join(setup.directory, 'fixture-state.json');
-  const inputArgs = ['--app-id', '123', '--private-key-file', setup.privateKeyPath, '--webhook-secret-file', setup.options.webhookSecretPath, '--oauth-client-id', setup.options.oauthClientId, '--oauth-client-secret-file', setup.options.oauthClientSecretPath, '--seal-key-env', sealName, '--seal-key-recovery-ref', setup.options.sealKeyRecoveryRef, '--wirt-signing-key-env', wirtName];
+  const inputArgs = ['--app-id', '123', '--private-key-file', setup.privateKeyPath, '--webhook-secret-file', setup.options.webhookSecretPath, '--oauth-client-id', setup.options.oauthClientId, '--oauth-client-secret-file', setup.options.oauthClientSecretPath, '--seal-key-env', sealName, '--seal-key-initial', '--seal-key-recovery-ref', setup.options.sealKeyRecoveryRef, '--wirt-signing-key-env', wirtName];
   try {
     await writeFile(optionsPath, JSON.stringify({ absentEnvironmentNames: [sealName, wirtName] }));
-    const result = cli(setup, 'install', [], { inputArgs, environment: { [sealName]: setup.values.APP_SEAL_KEY, [wirtName]: setup.values.WIRT_SIGNING_KEY_CURRENT } });
+    const result = cli(setup, 'install', [], { inputArgs, environment: { [sealName.toUpperCase()]: setup.values.APP_SEAL_KEY, [wirtName]: setup.values.WIRT_SIGNING_KEY_CURRENT } });
     assert.equal(result.status, 0, result.stderr);
     assert.equal(containsProtectedValues(result.stdout + result.stderr, setup), false);
     const receipt = JSON.parse(await readFile(setup.options.receiptPath, 'utf8'));
@@ -273,6 +291,9 @@ test('conflicting file and environment sources refuse before provider reads or w
     assert.equal(containsProtectedValues(result.stdout + result.stderr, setup), false);
     assert.equal(await readFile(statePath).then(() => true, () => false), false);
     assert.equal(await readFile(setup.options.receiptPath).then(() => true, () => false), false);
+    let providerRead = false;
+    await assert.rejects(checkCredentials({ ...setup.options, sealKeyPath: undefined, sealKeyEnv: 'CLOUDFLARE_ACCOUNT_ID', runner: async () => { providerRead = true; } }), { code: 'E_OPERATOR_INPUT' });
+    assert.equal(providerRead, false);
   } finally { await rm(setup.directory, { recursive: true, force: true }); }
 });
 
@@ -313,6 +334,7 @@ test('joined-App check requires the full input and seal recovery contract before
     assert.deepEqual(result.inputs, appInputs);
     assert.equal(result.protectedValues, 'unread');
     assert.equal(result.providerWrite, 'not-attempted');
+    assert.equal(result.identity, 'unverified');
     assert.equal(calls.some(call => call.args.includes('bulk')), false);
     await assert.rejects(checkCredentials({ ...setup.options, sealKeyRecoveryRef: undefined, runner }), { code: 'E_OPERATOR_INPUT' });
     await assert.rejects(checkCredentials({ ...setup.options, oauthClientSecretPath: undefined, runner }), { code: 'E_OPERATOR_INPUT' });
@@ -528,4 +550,143 @@ test('a receipt commit failure after the write retains the ambiguity marker and 
     if (moved) await rename(retainedDirectory, receiptDirectory);
     await rm(setup.directory, { recursive: true, force: true });
   }
+});
+
+test('App ID, OAuth client and bot mismatches persist terminal no-write receipts', async () => {
+  const setup = await appFixture();
+  try {
+    for (const [index, mismatch] of [{ id: 999 }, { client_id: 'other-client' }, { slug: 'other-app' }].entries()) {
+      const fake = versionRunner();
+      const receiptPath = join(setup.directory, `identity-refused-${index}.json`);
+      await assert.rejects(installCredentials({ ...setup.options, receiptPath, runner: fake.runner, githubFetch: fixtureGitHubFetch(setup.options.oauthClientId, mismatch) }), error => error.code === 'E_OPERATOR_IDENTITY' && error.receipt.state === 'not-attempted' && /new receipt/u.test(error.message));
+      const receipt = JSON.parse(await readFile(receiptPath, 'utf8'));
+      assert.equal(receipt.state, 'not-attempted');
+      assert.equal(receipt.command, 'not-attempted');
+      assert.equal(fake.calls.some(call => call.args.includes('bulk')), false);
+      assert.equal(containsProtectedValues(JSON.stringify(receipt), setup), false);
+    }
+    const privateKey = generateKeyPairSync('rsa', { modulusLength: 2048 }).privateKey.export({ type: 'pkcs1', format: 'pem' });
+    await writeFile(setup.privateKeyPath, privateKey);
+    const fake = versionRunner();
+    await assert.rejects(installCredentials({ ...setup.options, runner: fake.runner }), { code: 'E_OPERATOR_IDENTITY' });
+    assert.equal(fake.calls.some(call => call.args.includes('bulk')), false);
+  } finally { await rm(setup.directory, { recursive: true, force: true }); }
+});
+
+test('the hidden CLI refuses an unverified bot and contains arbitrary identity response fields', async () => {
+  const setup = await appFixture();
+  try {
+    await writeFile(join(setup.directory, 'fixture-options.json'), JSON.stringify({ githubIdentity: { client_secret: setup.values.GITHUB_OAUTH_CLIENT_SECRET }, githubBot: { type: 'User', private_key: fixtureKey } }));
+    const result = cli(setup);
+    assert.equal(result.status, 2);
+    assert.equal(JSON.parse(result.stdout).state, 'not-attempted');
+    assert.equal(containsProtectedValues(result.stdout + result.stderr, setup), false);
+    assert.equal(JSON.parse(await readFile(join(setup.directory, 'fixture-state.json'), 'utf8')).writes, 0);
+  } finally { await rm(setup.directory, { recursive: true, force: true }); }
+});
+
+test('manifest-captured GitHub inputs qualify identity without plaintext credential files', async () => {
+  const setup = await appFixture();
+  const fake = versionRunner();
+  try {
+    for (const path of [setup.privateKeyPath, setup.options.webhookSecretPath, setup.options.oauthClientSecretPath]) await rm(path);
+    const clientId = 'Iv1.synthetic-client';
+    const values = { ...setup.values, GITHUB_OAUTH_CLIENT_ID: clientId };
+    const result = await installCredentials({ ...setup.options, oauthClientId: clientId, runner: fake.runner, githubFetch: fixtureGitHubFetch(clientId), readGitHubInputs: async () => {
+      assert.equal(JSON.parse(await readFile(setup.options.receiptPath, 'utf8')).command, 'not-attempted');
+      return values;
+    } });
+    assert.deepEqual(result.identity, { state: 'verified', appId: '123', clientId, botLogin: 'diffdevil[bot]', botId: '456' });
+    assert.deepEqual(JSON.parse(fake.calls.find(call => call.args.includes('bulk')).input), values);
+    assert.equal(containsProtectedValues(JSON.stringify(result), setup), false);
+  } finally { await rm(setup.directory, { recursive: true, force: true }); }
+});
+
+test('the qualified bootstrap version refuses early mismatch and drift during private input', async () => {
+  const setup = await appFixture();
+  const fake = versionRunner();
+  let inputRead = false;
+  try {
+    await assert.rejects(installCredentials({ ...setup.options, baseVersionId: 'foreign-build', runner: fake.runner }), { code: 'E_OPERATOR_TARGET' });
+    assert.equal(await readFile(setup.options.receiptPath).then(() => true, () => false), false);
+    const runner = async call => inputRead && call.args.includes('list') && call.args.includes('versions') ? { code: 0, stdout: JSON.stringify([{ id: 'foreign-build' }]) } : fake.runner(call);
+    await assert.rejects(installCredentials({ ...setup.options, runner, readGitHubInputs: async () => { inputRead = true; return setup.values; } }), error => error.code === 'E_OPERATOR_TARGET' && error.receipt.state === 'not-attempted');
+    assert.equal(JSON.parse(await readFile(setup.options.receiptPath, 'utf8')).state, 'not-attempted');
+    assert.equal(fake.calls.some(call => call.args.includes('bulk')), false);
+  } finally { await rm(setup.directory, { recursive: true, force: true }); }
+});
+
+test('the uploaded bootstrap must carry the configured bot before protected input', async () => {
+  const setup = await appFixture();
+  let inputRead = false;
+  try {
+    const config = JSON.parse(await readFile(setup.config, 'utf8'));
+    config.vars.GITHUB_APP_BOT_LOGIN = 'diffdevil-staging[bot]';
+    await writeFile(setup.config, JSON.stringify(config));
+    await assert.rejects(installCredentials({ ...setup.options, runner: versionRunner().runner, readGitHubInputs: async () => { inputRead = true; return setup.values; } }), { code: 'E_OPERATOR_TARGET' });
+    assert.equal(inputRead, false);
+    assert.equal(await readFile(setup.options.receiptPath).then(() => true, () => false), false);
+  } finally { await rm(setup.directory, { recursive: true, force: true }); }
+});
+
+test('the real CLI qualifies a distinct staging bot through App, user and uploaded-version readback', async () => {
+  const setup = await appFixture();
+  try {
+    const config = JSON.parse(await readFile(setup.config, 'utf8'));
+    config.vars.GITHUB_APP_BOT_LOGIN = 'diffdevil-staging[bot]';
+    await writeFile(setup.config, JSON.stringify(config));
+    await writeFile(join(setup.directory, 'fixture-options.json'), JSON.stringify({ githubIdentity: { slug: 'diffdevil-staging' } }));
+    const result = cli(setup);
+    assert.equal(result.status, 0, result.stderr);
+    const receipt = JSON.parse(result.stdout);
+    assert.equal(receipt.identity.botLogin, config.vars.GITHUB_APP_BOT_LOGIN);
+    assert.equal(receipt.baseVersionId, setup.options.baseVersionId);
+    assert.equal(containsProtectedValues(result.stdout + result.stderr, setup), false);
+  } finally { await rm(setup.directory, { recursive: true, force: true }); }
+});
+
+test('a durable seal receipt survives the original carrier and refuses another key, target or custody reference', async () => {
+  const original = await appFixture();
+  const replacement = await appFixture();
+  const handback = await mkdtemp(join(tmpdir(), 'diffdevil-retained-operation-'));
+  const previousPath = join(handback, 'credential-receipt.json');
+  try {
+    const first = await installCredentials({ ...original.options, runner: versionRunner().runner });
+    await writeFile(previousPath, JSON.stringify(first));
+    const retainedKey = original.values.APP_SEAL_KEY;
+    await rm(original.directory, { recursive: true, force: true });
+    await writeFile(replacement.options.sealKeyPath, retainedKey);
+    const options = { ...replacement.options, sealKeyInitial: false, sealKeyPreviousReceiptPath: previousPath };
+    const matched = await installCredentials({ ...options, runner: versionRunner().runner });
+    assert.deepEqual(matched.sealKeyContinuity, { state: 'matched', sha256: first.sealKeyContinuity.sha256, previousVersionId: first.version.id });
+    assert.equal(matched.sealKeyRecoveryRef, first.sealKeyRecoveryRef);
+    assert.equal(JSON.stringify(matched).includes(retainedKey), false);
+    for (const [index, change] of [{ receipt: { ...first, databaseId: 'abcdefab-abcd-abcd-abcd-abcdefabcdef' } }, { recoveryRef: 'foreign-custody' }, { key: replacement.values.APP_SEAL_KEY }].entries()) {
+      await writeFile(previousPath, JSON.stringify(change.receipt ?? first));
+      await writeFile(replacement.options.sealKeyPath, change.key ?? retainedKey);
+      const fake = versionRunner();
+      await assert.rejects(installCredentials({ ...options, receiptPath: join(replacement.directory, `continuity-refused-${index}.json`), sealKeyRecoveryRef: change.recoveryRef ?? options.sealKeyRecoveryRef, runner: fake.runner }), error => error.code === 'E_OPERATOR_SEAL' && error.receipt.state === 'not-attempted');
+      assert.equal(fake.calls.some(call => call.args.includes('bulk')), false);
+    }
+  } finally { await Promise.all([original.directory, replacement.directory, handback].map(path => rm(path, { recursive: true, force: true }))); }
+});
+
+test('seal generation writes one exclusive random custody input and prints only its non-secret check', async () => {
+  const setup = await fixture();
+  const path = join(setup.directory, 'synthetic-custody-seal.txt');
+  const args = ['apps/github-app/operator-helper.mjs', 'generate-seal', '--seal-key-file', path, '--seal-key-recovery-ref', 'fixture-custody'];
+  try {
+    const result = spawnSync(process.execPath, args, { encoding: 'utf8', windowsHide: true });
+    assert.equal(result.status, 0, result.stderr);
+    const key = (await readFile(path, 'utf8')).trimEnd();
+    assert.match(key, /^[A-Za-z0-9_-]{43}$/u);
+    const receipt = JSON.parse(result.stdout);
+    assert.equal(receipt.recoveryRef, 'fixture-custody');
+    assert.equal(receipt.sha256, createHash('sha256').update('diffdevil-seal-continuity-v1\0').update(key).digest('hex'));
+    assert.equal((result.stdout + result.stderr).includes(key), false);
+    const repeated = spawnSync(process.execPath, args, { encoding: 'utf8', windowsHide: true });
+    assert.equal(repeated.status, 2);
+    assert.equal((await readFile(path, 'utf8')).trimEnd(), key);
+    assert.equal((repeated.stdout + repeated.stderr).includes(key), false);
+  } finally { await rm(setup.directory, { recursive: true, force: true }); }
 });

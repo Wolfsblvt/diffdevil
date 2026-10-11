@@ -123,12 +123,20 @@ its actual credential/data assignment. Source acceptance is not activation.
    `node tools/run-wrangler.mjs deploy --config artifacts/app-staging/dist/server/wrangler.json`.
    Inspect that generated configuration before the command and read back the
    actual lack of exposure using the contract below. A bootstrapped Worker with
-   missing credentials is not an operational App.
+   missing credentials is not an operational App. Lack of an HTTP route does
+   not make it idle: configured cron and Queue handlers can run before the
+   credentials/schema are ready. The bootstrap grant includes that background
+   consequence on the admitted staging resources; read back its actual behavior.
+   Record the returned bootstrap version ID with its qualified source, included
+   engine and Community/private composition. This becomes the installer's explicit
+   `--base-version-id`, not an implicit latest-version selection.
 4. Supply staging-only protected inputs through the maintained
    [protected-input operation](#protected-input-operation):
    `GITHUB_WEBHOOK_SECRET`, `GITHUB_APP_ID`, `GITHUB_APP_PRIVATE_KEY`,
    `GITHUB_OAUTH_CLIENT_ID`, `GITHUB_OAUTH_CLIENT_SECRET`, `APP_SEAL_KEY` and
-   `WIRT_SIGNING_KEY_CURRENT` (plus a previous key only for an actual rotation).
+   `WIRT_SIGNING_KEY_CURRENT`. The full-set helper prepares the current key;
+   the first actual rotation/rollover separately scopes subset and previous-key
+   support before operating that change.
    The staging App's exact bot login is a required non-secret registration input:
    a separate GitHub App has a different bot, and owned brief comments match that
    author. GitHub's webhook targets `<staging origin>/webhooks/github`; its OAuth
@@ -156,7 +164,10 @@ its actual credential/data assignment. Source acceptance is not activation.
    `node tools/run-wrangler.mjs deploy --dry-run --config artifacts/app-staging/dist/server/wrangler.json`.
    Under the separate activation grant, activate the exact credential version
    returned by the protected operation, which inherits the qualified bootstrap
-   build. Use the version activation invocation below. Do not select an implicit
+   build. Require the receipt's `baseVersionId` to equal the exact bootstrap
+   version in step 3 and its `version.id` to equal the credential version being
+   activated. The bootstrap's source/engine/composition evidence belongs to those
+   exact IDs. Use the version activation invocation below. Do not select an implicit
    latest version or substitute an older production artifact. Attach only the
    admitted staging Home through its qualified provider route after the protected
    version/schema are ready, preserving the source exposure settings and the
@@ -204,13 +215,15 @@ if ($LASTEXITCODE -ne 0) { throw 'Staging registration preparation refused.' }
 
 ```powershell
 $stagingConfig = 'artifacts/app-staging/dist/server/wrangler.json'
-$credentialReceipt = 'artifacts/verification/staging-credential-install.json'
-New-Item -ItemType Directory -Path 'artifacts/verification' -Force | Out-Null
+$credentialReceipt = 'D:\custody\diffdevil-staging\operations\credential-install.json'
+$qualifiedBootstrapVersion = 'qualified-bootstrap-version-id'
+New-Item -ItemType Directory -Path (Split-Path -Parent $credentialReceipt) -Force | Out-Null
 $credentialArguments = @(
     '--worker', 'diffdevil-app-staging',
     '--account-id', 'admitted-account-id',
     '--config', $stagingConfig,
     '--receipt-file', $credentialReceipt,
+    '--base-version-id', $qualifiedBootstrapVersion,
     '--app-id', '123',
     '--private-key-file', 'C:\operator-custody\staging-app.pem',
     '--webhook-secret-file', 'C:\operator-custody\staging-webhook.txt',
@@ -218,12 +231,13 @@ $credentialArguments = @(
     '--oauth-client-secret-file', 'C:\operator-custody\staging-github-oauth.txt',
     '--seal-key-file', 'C:\operator-custody\staging-seal.txt',
     '--seal-key-recovery-ref', 'admitted-staging-seal-custody',
+    '--seal-key-initial',
     '--wirt-signing-key-file', 'C:\operator-custody\staging-wirt-current.txt'
 )
 node apps/github-app/operator-helper.mjs check @credentialArguments
 if ($LASTEXITCODE -ne 0) { throw 'Staging credential preflight refused.' }
 node apps/github-app/operator-helper.mjs install @credentialArguments
-if ($LASTEXITCODE -ne 0) { throw 'Retain the receipt and reconcile; do not repeat installation.' }
+if ($LASTEXITCODE -ne 0) { throw 'Retain the receipt. A proven not-attempted result permits correction and a new receipt; otherwise resume read-only before another effect.' }
 ```
 
 `check` uses the install parser, exact-target provider readback, protected-file
@@ -231,6 +245,10 @@ metadata and same-directory receipt commit probe, but does not read protected
 contents. Install exclusively creates and flushes the non-secret receipt before
 reading contents. It validates the RSA key, single-line webhook/OAuth secret,
 seal key of at least 16 characters and the existing Wirt UTF-8 signing contract.
+It then privately authenticates the PEM/App ID through GitHub's `GET /app`,
+matches the OAuth client ID, and reads the bot identity against the configuration's
+`GITHUB_APP_BOT_LOGIN`. Raw responses and JWTs are withheld. `check` leaves that
+identity unverified. Actual OAuth/webhook-secret use remains a live consumer seam.
 All seven values go to one contained native stdin bulk write. For a managed
 consumer that already supplies values to a hidden child environment, the seal
 and Wirt inputs may instead use explicit names such as
@@ -250,6 +268,18 @@ custody until reconciliation, and qualify the returned version's actual source,
 engine and composition before activation. Do not upload another build between
 the qualified bootstrap and this operation.
 
+The specimen's `--seal-key-initial` is only for a confirmed new/empty staging
+database. For an established target, replace that flag with
+`--seal-key-previous-receipt <durable-successful-receipt>`. Install compares the
+domain-separated seal check, custody reference and exact account/Worker/database
+before its write. A different key or foreign receipt refuses. The receipt records
+the check and `initial`/`matched` result; this is equality evidence, not external
+custody proof. Preserve both that receipt and its configuration/source/edition
+interpretation in the admitted non-secret operation handback. The path above is
+a replaceable custody specimen outside the disposable checkout. If a receipt was
+first written under repository `artifacts/`, that copy must move into the durable
+handback before the worktree is retired.
+
 The seal key must be **generated once and retained before installation**, not
 generated in a transient install process. The opaque recovery reference names
 the operator's admitted recoverable custody record for that exact key; record
@@ -262,11 +292,24 @@ reusing the original key can open restored authorizations and preserve opaque
 file locators; replacing it with a new key cannot. Local tests reconstruct the
 protector from a retained synthetic copy, not a real external key store.
 
-For an interrupted or incomplete install, reuse the exact unchanged config and
-existing receipt, with no credential input flags:
+Use random key material, not a typed phrase. The helper's contained
+[`generate-seal` specimen](../../apps/github-app/README.md#registration-and-credential-helper)
+writes 32 random bytes into one exclusively created custody-owned file and prints
+only its non-secret check/reference. Run it only after that destination's durable
+custody and retrieval route have been established. It does not admit a vault row,
+establish recovery coverage or replace an environment-only custodian's contained
+generation/admission route. Durable seal/Wirt material and transient, regenerable
+GitHub credential inputs are distinct; initial installation creates no policy to
+retain seven plaintext files. The first actual rotation/enforced Wirt rollover
+resurfaces the exact subset/previous-key support before that operation.
+
+A proven failure before the write persists terminal `state: not-attempted` and
+`command: not-attempted`. Keep it, correct the cause, and select a new receipt for
+the new operation. After an attempted/ambiguous write, reconcile read-only using
+the exact unchanged config and existing receipt, with no credential input flags:
 
 ```powershell
-node apps/github-app/operator-helper.mjs resume --worker diffdevil-app-staging --account-id admitted-account-id --config artifacts/app-staging/dist/server/wrangler.json --receipt-file artifacts/verification/staging-credential-install.json
+node apps/github-app/operator-helper.mjs resume --worker diffdevil-app-staging --account-id admitted-account-id --config artifacts/app-staging/dist/server/wrangler.json --receipt-file D:\custody\diffdevil-staging\operations\credential-install.json
 if ($LASTEXITCODE -ne 0) { throw 'The receipt remains unresolved; retain it for exact-target reconciliation.' }
 ```
 
@@ -288,6 +331,7 @@ never runs it:
 ```powershell
 $prepared = Get-Content -LiteralPath $credentialReceipt -Raw | ConvertFrom-Json
 if ($prepared.mode -ne 'provider' -or $prepared.state -ne 'version-created' -or $prepared.worker -ne 'diffdevil-app-staging') { throw 'No qualified staging credential version.' }
+if ($prepared.baseVersionId -ne $qualifiedBootstrapVersion -or $prepared.identity.state -ne 'verified') { throw 'Credential version is not tied to the exact qualified bootstrap and App identity.' }
 node node_modules/wrangler/bin/wrangler.js versions deploy "$($prepared.version.id)@100%" --name diffdevil-app-staging --config $stagingConfig --yes
 if ($LASTEXITCODE -ne 0) { throw 'Read back actual deployment before another activation attempt.' }
 ```
