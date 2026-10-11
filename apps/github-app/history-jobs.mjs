@@ -269,7 +269,8 @@ async function recalculateStep({ client, store, job, progress, currentPolicy, re
     proceed: (paths, reading) => {
       if (reading && rateReserveReached(client.rateBudget)) { rated = true; return false; }
       return !budget?.capture || budget.capture(paths);
-    }
+    },
+    afterChunk: paths => budget?.captured?.(paths)
   });
   if (sizes.status === 'disabled') return { status: 'disabled' };
   progress.sizes = (progress.sizes ?? 0) + (sizes.files ?? 0);

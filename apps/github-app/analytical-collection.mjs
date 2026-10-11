@@ -127,7 +127,7 @@ export async function defaultBranch(client, repositoryId) {
 
 /** The text paths a repository's retained analytical records know: the files whose current size history follows. */
 function knownTextPaths(records) {
-  return [...new Set(records.flatMap(record => [record.final, ...record.revisions].flatMap(revision => revision?.report?.files.filter(file => file.kind === 'text').map(file => file.path) ?? [])))];
+  return [...new Set(records.flatMap(record => [record.final, ...record.revisions].flatMap(revision => revision?.report?.files.filter(file => file.kind === 'text').map(file => file.path) ?? [])))].sort();
 }
 
 /** Paths whose sizes are read, bracketed by a branch read and published together. */
@@ -150,7 +150,7 @@ export async function captureDefaultBranchSizes({ client, store, repositoryId, r
   // A later part follows only the revision its chain pinned: the branch moved on, so what remains cannot be observed there.
   if (pinned !== undefined && revision !== pinned) throw Object.assign(new Error('E_APP_DATA_STALE'), { code: 'E_APP_DATA_STALE' });
   const known = knownTextPaths(await store.analyticalRecords(repositoryId));
-  const retained = await store.analyticalSizesAt(repositoryId, revision);
+  const retained = await store.analyticalSizesAt(repositoryId, revision, { latest: true });
   const observed = new Set(retained.filter(row => row.observedAt >= started).map(row => row.path));
   const sizeAt = new Map(retained.map(row => [row.path, row.size]));
   const due = known.filter(path => !observed.has(path));
@@ -168,7 +168,7 @@ export async function captureDefaultBranchSizes({ client, store, repositoryId, r
     const written = await store.recordAnalyticalSizes(chunk.map(({ path, size }) => ({ repositoryId, path, revision, size, observedAt })));
     if (written.status === 'disabled') return { status: 'disabled' };
     files += chunk.length;
-    await afterChunk?.();
+    await afterChunk?.(chunk.length);
   }
   return { status: next < due.length ? 'continued' : 'observed', revision, since: started, observedAt, files, remaining: due.length - next, read, reused };
 }

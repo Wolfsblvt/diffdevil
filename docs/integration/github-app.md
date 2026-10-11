@@ -100,6 +100,12 @@ A refresh message names the PRs (at most 500) or `open`, never paths. A named re
 
 Closing stops every report write. With `finalSummary` on, a merged PR receives one terminal summary per final comparison through `reconcileHostComment`, deduplicated by occasion; a failure keeps its request/readback observations and terminal identity in the repair record. The check link targets the PR's checks tab; the App link appears only when `APP_ORIGIN` declares a served App. The admission service projects the brief route and expected writer. `previewBrief` (App route `POST /api/brief/preview`) resolves the effective trusted policy with a Contents-read installation credential (stored configuration, then `.diffdevil.yml` at the default branch head) and evaluates the synthetic fixture evidence through it, so bands, thresholds, exclusions and their explanation are that policy's own; without an observed policy it is labelled a design specimen and borrows no policy identity. It performs no write (`effects: 'none'`).
 
+The per-path capture counts above describe the original bounded-capture
+qualification. [D087](../DECISIONS.md#d087-share-unchanged-size-facts-while-retaining-every-observation)
+shares the physical size facts while keeping every observation and the existing
+per-path processing allowance. The [analytical storage contract](app-analytical-data.md)
+owns its current representation, window reads, expiry and migration boundary.
+
 ## Shared commercial integration
 
 The source consumer of this interface is [the Wirt commercial link contract](app-commercial-link.md): the customer-authorized link, signed projection receiver, ordered reports, unlink, organisation bindings and the entitlement adapter the analytical read service consumes.
