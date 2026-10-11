@@ -51,6 +51,9 @@
 .ddx-link{border:0;background:transparent;padding:0;margin:0;color:var(--ddx-lnk);cursor:pointer;font:inherit;text-decoration:none}.ddx-link:hover{text-decoration:underline}
 .ddx-error{border:1px solid var(--ddx-fg);border-radius:8px;padding:12px 14px;display:flex;flex-direction:column;gap:4px;font:12px/1.5 var(--ddx-host)}.ddx-error p{margin:0}.ddx-error-claim{font-weight:600}
 .ddx-actions{display:flex;gap:14px;flex-wrap:wrap;font:12px/1.5 var(--ddx-host)}
+.ddx-coverage-counts{display:flex;flex-wrap:wrap;gap:2px 14px;color:var(--ddx-mu)}.ddx-coverage-item b{color:var(--ddx-fg);font-family:var(--ddx-sans);font-weight:600;font-variant-numeric:tabular-nums}
+.ddx-coverage-progress{color:var(--ddx-fg)}
+.ddx-file-coverage{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px}
 .ddx-close:focus-visible,.ddx-link:focus-visible,.ddx-secondary:focus-visible{outline:2px solid var(--ddx-focus);outline-offset:2px}
 @media (prefers-reduced-motion:reduce){.ddx-popover{transition:none;transform:none}}
 @media (forced-colors:active){.ddx-machine{border:1px solid CanvasText}.ddx-cell{border-color:CanvasText}.ddx-cell.ddx-selected{background:Highlight;border-color:Highlight}.ddx-brand-mono{background:CanvasText}}

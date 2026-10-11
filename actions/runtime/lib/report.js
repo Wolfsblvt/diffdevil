@@ -220,6 +220,18 @@ export function analyzeDiff(text, options = {}) {
         return result.value;
     });
 }
+/**
+ * Replace file records that gained evidence (a bounded file whose patch was later measured) and
+ * recompute every aggregate from the same facts. Identity, source and file-set standing are kept;
+ * the report is for a comparison with no path policy, which is how acquisition reports are made.
+ */
+export function withMeasuredFiles(report, replacements) {
+    const files = orderedFiles(report.files.map(file => replacements.get(file.id) ?? file));
+    const totals = aggregateFiles(files, report.fileSet, { allIncluded: true, noneIncluded: false });
+    const base = { kind: report.kind, schemaVersion: report.schemaVersion, semantics: report.semantics, source: report.source, fileSet: report.fileSet, files, totals,
+        measurement: summarizeMeasurements([...Object.values(totals.raw), ...Object.values(totals.lines), ...Object.values(totals.files)], mergeReasons(...files.filter(file => file.included).map(file => file.measurement.reasons), report.fileSet.complete ? [] : [INCOMPLETE])) };
+    return deepFreeze({ ...base, reportId: contentId('report', base) });
+}
 export function attachScopes(report, definitions) {
     const scopes = Object.create(null);
     for (const [name, definition] of Object.entries(definitions)) {

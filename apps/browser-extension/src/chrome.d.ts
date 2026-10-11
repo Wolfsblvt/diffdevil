@@ -9,13 +9,14 @@ declare namespace chrome {
     function sendMessage(input: unknown): Promise<unknown>;
     interface Sender { id?: string; url?: string; frameId?: number; tab?: { id?: number; url?: string; incognito?: boolean } }
     const onMessage: { addListener(listener: (input: unknown, sender: Sender, reply: (value: unknown) => void) => boolean | void): void };
-    const onInstalled: { addListener(listener: () => void): void };
+    const onInstalled: { addListener(listener: (details: { reason: string; previousVersion?: string }) => void): void };
   }
   namespace storage {
     interface Area { get(keys?: string | string[] | null): Promise<Record<string, unknown>>; set(items: Record<string, unknown>): Promise<void>; remove(keys: string | string[]): Promise<void>; clear(): Promise<void>; getBytesInUse(keys?: string | string[] | null): Promise<number>; setAccessLevel(options: { accessLevel: 'TRUSTED_CONTEXTS' }): Promise<void> }
     const sync: Area; const local: Area; const session: Area;
     const onChanged: { addListener(listener: (changes: Record<string, { oldValue?: unknown; newValue?: unknown }>, area: string) => void): void; removeListener(listener: (changes: Record<string, { oldValue?: unknown; newValue?: unknown }>, area: string) => void): void };
   }
+  namespace tabs { function create(properties: { url: string }): Promise<unknown> }
   namespace action { const onClicked: { addListener(listener: () => void): void } }
 }
 
