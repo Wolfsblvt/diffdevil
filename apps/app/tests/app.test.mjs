@@ -12,7 +12,7 @@ import assert from 'node:assert/strict';
 import { after, test } from 'node:test';
 import { createGitHubAppWorker } from '../../github-app/app.mjs';
 import { authSession, authLogout, briefPreview, openSession, cookieValue, SESSION_COOKIE } from '../src/lib/routes.mjs';
-import { scopeRepositories, loadTitles } from '../src/lib/viewer.mjs';
+import { scopeRepositories, loadTitles, resolveViewer } from '../src/lib/viewer.mjs';
 import { loadView, entitlementFor } from '../src/lib/view.mjs';
 import { describeScope } from '../src/lib/scope.mjs';
 import { REPOSITORIES, ENTITLEMENT_FIXTURE, CODE } from '../qa/fixture.mjs';
@@ -65,6 +65,33 @@ test('the viewer sees GitHub-reachable repositories with their App standing and 
   assert.equal(paid.plan, 'Pro');
   assert.equal(paid.entitlementSource, 'local-fixture');
   assert.deepEqual(Object.fromEntries(paid.namespaces.map(namespace => [namespace.login, namespace.plan])), { 'ada-sample': 'Pro', 'parser-guild': 'Pro', 'northwind-tools': 'Business', 'kai-sample': 'Free' });
+});
+
+test('the signed-in authority and viewer keep pending membership and failed provider reads distinct without Members-read', async () => {
+  const { app: compose, github } = await fixture();
+  const app = compose();
+  const { cookie } = await signIn(app);
+  const callStart = github.calls.length;
+  try {
+    assert.deepEqual(await app.auth.organisationAuthority({ session: cookie, organisationId: 7001 }), { userId: 123, authority: 'present', display: 'parser-guild' });
+    github.state.membershipStates.set('parser-guild', 'pending');
+    assert.deepEqual(await app.auth.organisationAuthority({ session: cookie, organisationId: 7001 }), { userId: 123, authority: 'absent', display: null });
+    const opened = await openSession(new Request(`${ORIGIN}/`, { headers: { cookie: `${SESSION_COOKIE}=${cookie}` } }), app);
+    assert.equal(await opened.reads.organizationRole('parser-guild'), 'none');
+    // Only the membership endpoint is unavailable; the same stored grant still verifies.
+    github.state.membershipStatus = 404;
+    assert.deepEqual(await app.auth.organisationAuthority({ session: cookie, organisationId: 7001 }), { userId: 123, authority: 'unknown', display: null });
+    await assert.rejects(opened.reads.organizationRole('parser-guild'), { code: 'E_PROVIDER_NOT_FOUND' });
+    app.cache.clear();
+    const viewer = await resolveViewer({ reads: opened.reads, actor: opened.actor, store: app.store, entitlement: app.entitlement, cache: app.cache });
+    assert.equal(viewer.namespaces.find(namespace => namespace.login === 'parser-guild').role, 'unknown');
+    assert.equal(viewer.namespaces.find(namespace => namespace.login === 'parser-guild').yours, false);
+    const paths = github.calls.slice(callStart).map(call => call.path);
+    assert.ok(paths.includes('/user/memberships/orgs'));
+    assert.equal(paths.some(path => /^\/user\/memberships\/orgs\//u.test(path)), false);
+  } finally {
+    github.state.membershipStates.clear(); github.state.membershipStatus = 200; app.cache.clear();
+  }
 });
 
 test('the page loader drives populations from the retained analytical records and falls back to pathless analyses where none are retained', async () => {
