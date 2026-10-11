@@ -172,7 +172,11 @@ size observations. Migration `0009_analytical_app.sql` introduced the separate
 numerical history; `0016_shared_size_observations.sql` shares identical bounded
 sets of path/size facts while retaining a marker for **every** original observation
 time, immutable revision and expiry. The sharing applies across unchanged captures
-and across revisions with the same facts. It is physical normalization, not
+and across revisions with the same facts. A compact path dictionary and immutable
+set-membership index let D1 find boundary anchors without sending old snapshots
+to the Worker. Dictionary IDs encode path spellings, not historical file identity.
+Boundary selection seeks once per shared set inside D1, then joins the set's
+nearest time to path membership. It is physical normalization, not
 coalescing observations or inferring file continuity. All remain under current
 opt-in consent, expiry, deletion tombstones and offboarding cleanup.
 This new analytical path keeps collection independent of execution consent while
@@ -200,35 +204,54 @@ Creation or deletion in the period is unavailable with that reason. The collecto
 supplies before/after merge sizes; each published record then enqueues a capture of the
 default branch's known text files through `captureDefaultBranchSizes`, which runs in
 queue parts after basic operation. The first part pins the branch revision and its start;
-each part reads, in chunks of 100, the known paths still lacking an observation at that
-revision since the start, checks the branch again before publishing each chunk and
+each part reads, in groups of at most 100, the known paths still lacking an observation at that
+revision for this capture, checks the branch again before publishing each chunk and
 refuses a moved revision, and continues the rest in the next part. A size already
 retained at the same immutable revision is reused rather than read again. A moved branch
 or an unavailable read ends the capture with the PR's analytical repair; sizes already
 published remain true observations. Retained snapshots before, inside or after a selected
 period can anchor it; continuity comes from observed transitions, never interpolation
-from churn. Known paths have deterministic ordering so ordinary repeated chunks
-share their facts. The invocation retains its previous per-path processing allowance
+from churn. Sorted groups end at deterministic path-hash boundaries (about one in
+50 paths) or the 100-path cap. An added path changes nearby groups without shifting
+every later group; changes before a cap can propagate until the next path boundary.
+Resume uses boundaries from the full inventory before removing completed paths.
+The invocation retains its previous per-path processing allowance
 alongside actual D1 accounting: fewer writes do not silently increase one part's
 provider or CPU work. Parts still continue without truncation.
 
 `analyticalSizesAt` preserves its complete logical observation result by default.
 Capture requests `{ latest: true }`, which uses a revision-led index and supplies
 the latest retained marker per path for both immutable-size reuse and continuation.
+Capture also supplies its `captureSince` pin: physical marker metadata identifies
+the paths completed by that capture, so an overlapping capture cannot silently
+complete its neighbour. This metadata does not change the path/time/revision
+first-writer identity or the version-1 numerical export. Actual observation times
+still reflect publication, rather than being backdated to the pin.
 `analyticalSizes` returns every observation in the window and the nearest retained
 anchors before/after it, including equal-time observations at distinct revisions.
-It pages indexed markers, fetches each shared fact set once, and reconstructs the
+It pages indexed window markers, fetches each of their shared fact sets once, and
+asks D1 for scalar nearest-anchor rows through the membership index. Older
+snapshots are not decoded in the Worker to select these anchors. It reconstructs the
 same array consumed by Turnover and the premium `sizeHistory`; no intermediate
 timestamp is discarded. Its logical response and Worker memory still grow with
-the requested full history. Sharing reduces D1 storage, row reads and repeated
-transfer of facts, not the size of the selected analytical response.
+requested logical window plus its anchors. D1 still examines retained membership
+versions to choose those anchors; database work is not bounded by window length.
+The membership index adds physical rows and can cost more space or D1 reads than
+the unindexed shared-set representation on small histories. Sharing reduces
+repeated facts and their transfer, not the size of the selected analytical response
+or every individual database operation. Arbitrarily large responses are not
+claimed to fit a Worker.
 
 Writes retain the first observation at a path/time/revision identity, including
 overlapping captures; an atomic batch refuses an overlap that raced its initial
-read and retries the remaining paths. Consent and tombstones guard the fact set
-and its marker in the same batch. Expiry is immediate on reads. Physical expiry
+read and retries the remaining paths with a refreshed clock. Overlap checks use
+indexed membership rather than decoding all captures at that timestamp. Consent
+and tombstones guard facts, membership and the marker in the same batch. Expiry is immediate on reads. Physical expiry
 drains indexed queries of at most 1,000 markers each, removing a fact set only
-after its last marker is gone. Deletion/offboarding remove both representations.
+after its last marker is gone, then removing unused membership and dictionary
+entries. Deletion/offboarding remove every physical representation. The browser-QA
+seed dumps and clears these physical tables, preserving marker order and compact IDs;
+it never writes the logical view.
 
 A window ending now always outlives the latest capture. The premium extension's
 server-owned current-size observer closes that tail at the read encounter, with no scheduler.

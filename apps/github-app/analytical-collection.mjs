@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
+import { CAPTURE_CHUNK, sizeCaptureGroups } from './size-capture-groups.mjs';
 import { analyzeDiff, unwrap } from '@wolfsblvt/diffdevil';
 import { analyzeGitHub } from '@wolfsblvt/diffdevil/github';
 import { normalizeAnalyticalRecord } from './analytical-data.mjs';
@@ -131,13 +132,13 @@ function knownTextPaths(records) {
 }
 
 /** Paths whose sizes are read, bracketed by a branch read and published together. */
-export const CAPTURE_CHUNK = 100;
+export { CAPTURE_CHUNK } from './size-capture-groups.mjs';
 
 /**
  * Capture actual current default-branch sizes for known files; refuse a moved branch before publishing.
  *
  * A capture can be larger than one invocation may spend, so it runs in parts. The first pins the branch `revision`
- * and the time `since`; each part captures the known paths still lacking an observation at that revision since then,
+ * and the time `since`; each part captures the known paths still lacking a marker for that capture at the revision,
  * in chunks of `CAPTURE_CHUNK`, each read between two branch reads and published as one batch. A size already retained
  * at the immutable revision is reused instead of read again. `proceed(n, reading)` says whether a chunk of `n` paths
  * still fits what the caller may spend, `reading` whether its last path needs a provider read; when it stops the
@@ -150,22 +151,25 @@ export async function captureDefaultBranchSizes({ client, store, repositoryId, r
   // A later part follows only the revision its chain pinned: the branch moved on, so what remains cannot be observed there.
   if (pinned !== undefined && revision !== pinned) throw Object.assign(new Error('E_APP_DATA_STALE'), { code: 'E_APP_DATA_STALE' });
   const known = knownTextPaths(await store.analyticalRecords(repositoryId));
-  const retained = await store.analyticalSizesAt(repositoryId, revision, { latest: true });
-  const observed = new Set(retained.filter(row => row.observedAt >= started).map(row => row.path));
+  const retained = await store.analyticalSizesAt(repositoryId, revision, { latest: true, captureSince: started });
+  // A neighbouring capture may have newer observations at this revision; only this capture's own markers resume it.
+  const observed = new Set(retained.filter(row => row.captured).map(row => row.path));
   const sizeAt = new Map(retained.map(row => [row.path, row.size]));
-  const due = known.filter(path => !observed.has(path));
+  const groups = sizeCaptureGroups(known).map(group => group.filter(path => !observed.has(path))).filter(group => group.length);
+  const due = groups.flat(), ends = new Set(groups.map(group => group.at(-1)));
   let next = 0, files = 0, read = 0, reused = 0, observedAt;
   while (next < due.length) {
     const chunk = [];
-    for (; next < due.length && chunk.length < CAPTURE_CHUNK && proceed(chunk.length + 1, !sizeAt.has(due[next])); next++) {
-      const path = due[next];
+    for (; next < due.length && chunk.length < CAPTURE_CHUNK && proceed(chunk.length + 1, !sizeAt.has(due[next]));) {
+      const path = due[next++];
       if (sizeAt.has(path)) { chunk.push({ path, size: sizeAt.get(path) }); reused++; }
       else { chunk.push({ path, size: await observeFileSize(client, repository.full_name, path, revision) }); read++; }
+      if (ends.has(path)) break;
     }
     if (!chunk.length) break;
     observedAt = now();
     if ((await client.json(route)).commit?.sha !== revision) throw Object.assign(new Error('E_APP_DATA_STALE'), { code: 'E_APP_DATA_STALE' });
-    const written = await store.recordAnalyticalSizes(chunk.map(({ path, size }) => ({ repositoryId, path, revision, size, observedAt })));
+    const written = await store.recordAnalyticalSizes(chunk.map(({ path, size }) => ({ repositoryId, path, revision, size, observedAt, captureSince: started })));
     if (written.status === 'disabled') return { status: 'disabled' };
     files += chunk.length;
     await afterChunk?.(chunk.length);

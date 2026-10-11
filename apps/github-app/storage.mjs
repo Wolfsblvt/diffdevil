@@ -2,6 +2,7 @@
 import { normalizeHistoryLens } from './history-analytics.mjs';
 import { normalizeAnalyticalRecord } from './analytical-data.mjs';
 import { expireSizes, publishSizeSet, sizesAt, sizesIn } from './analytical-size-storage.mjs';
+import { sizeCaptureGroups } from './size-capture-groups.mjs';
 
 const DAY = 86_400_000;
 const leaseExpiry = (now, durationMs) => new Date(Date.parse(now) + durationMs).toISOString();
@@ -342,6 +343,8 @@ export class D1AppStore {
     await this.database.batch([
       this.statement('DELETE FROM analytical_pull_requests WHERE repository_id=?', repositoryId),
       this.statement('DELETE FROM analytical_size_observations WHERE repository_id=?', repositoryId),
+      this.statement('DELETE FROM analytical_size_members WHERE repository_id=?', repositoryId),
+      this.statement('DELETE FROM analytical_size_paths WHERE repository_id=?', repositoryId),
       this.statement('DELETE FROM analytical_size_facts WHERE repository_id=?', repositoryId)
     ]);
     const records = await this.statement('SELECT id FROM history_records WHERE repository_id=?', repositoryId).all();
@@ -453,6 +456,8 @@ export class D1AppStore {
       this.statement('DELETE FROM repairs WHERE repository_id=?', repositoryId),
       this.statement('DELETE FROM analytical_pull_requests WHERE repository_id=?', repositoryId),
       this.statement('DELETE FROM analytical_size_observations WHERE repository_id=?', repositoryId),
+      this.statement('DELETE FROM analytical_size_members WHERE repository_id=?', repositoryId),
+      this.statement('DELETE FROM analytical_size_paths WHERE repository_id=?', repositoryId),
       this.statement('DELETE FROM analytical_size_facts WHERE repository_id=?', repositoryId),
       // Open imports and recalculation stop with the history they were filling; the deletion record keeps them from reviving it.
       this.statement("UPDATE history_jobs SET state='stopped', reason='history-deleted', lease_until=NULL, wake_at=NULL, updated_at=?, finished_at=? WHERE repository_id=? AND state IN ('queued', 'running', 'paused')", now, now, repositoryId)
@@ -518,10 +523,12 @@ export class D1AppStore {
    */
   async recordAnalyticalSizes(observations) {
     const repositoryId = observations[0]?.repositoryId;
-    for (const { repositoryId: owner, path, observedAt, revision, size } of observations) {
+    for (const { repositoryId: owner, path, observedAt, revision, size, captureSince } of observations) {
       if (owner !== repositoryId || !Number.isSafeInteger(owner) || owner < 1 || typeof path !== 'string' || !path || path.includes('\0')
         || typeof revision !== 'string' || !/^[0-9a-f]{40,64}$/u.test(revision)
         || typeof observedAt !== 'string' || !Number.isFinite(Date.parse(observedAt)) || new Date(observedAt).toISOString() !== observedAt
+        || (captureSince !== undefined && (typeof captureSince !== 'string' || !Number.isFinite(Date.parse(captureSince))
+          || new Date(captureSince).toISOString() !== captureSince))
         || (size !== null && (!Number.isSafeInteger(size) || size < 0))) throw new TypeError('Invalid analytical file-size observation.');
     }
     if (!observations.length) return { status: 'published', published: 0 };
@@ -535,23 +542,23 @@ export class D1AppStore {
     if (!rows.length) return { status: 'expired' };
     const groups = new Map();
     for (const row of rows) {
-      const key = JSON.stringify([row.observedAt, row.revision, row.expires]);
+      const key = JSON.stringify([row.observedAt, row.revision, row.expires, row.captureSince]);
       if (!groups.has(key)) groups.set(key, new Map());
       if (!groups.get(key).has(row.path)) groups.get(key).set(row.path, row);
     }
     let published = 0;
-    for (const group of groups.values()) for (const part of batches([...group.values()])) {
-      const result = await publishSizeSet(this, repositoryId, part, now);
-      if (result.status === 'disabled') return result;
+    for (const group of groups.values()) for (const paths of sizeCaptureGroups([...group.keys()])) {
+      const result = await publishSizeSet(this, repositoryId, paths.map(path => group.get(path)));
+      if (result.status !== 'published') return result;
       published += result.published;
     }
     return { status: 'published', published };
   }
 
   /** The retained observations at one immutable default-branch revision, for capture to resume and reuse. */
-  async analyticalSizesAt(repositoryId, revision, { latest = false } = {}) {
+  async analyticalSizesAt(repositoryId, revision, { latest = false, captureSince } = {}) {
     if (!(await this.historySettings(repositoryId, { independentExecution: true })).enabled) return [];
-    const result = await sizesAt(this, repositoryId, revision, this.now(), latest);
+    const result = await sizesAt(this, repositoryId, revision, this.now(), latest, captureSince);
     return (await this.historySettings(repositoryId, { independentExecution: true })).enabled ? result : [];
   }
 

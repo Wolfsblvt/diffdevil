@@ -177,7 +177,8 @@ function captureStore({ paths, enabled = () => true }) {
     finishLifecycle: async (envelope, _, state) => { finished.push([envelope.part, state]); }, releaseDelivery: async (envelope, _, code) => { released.push([envelope.part, code]); },
     recordAnalyticalRepair: async (envelope, code) => { repairs.push([envelope.pullRequest, code]); },
     historySettings: async () => ({ enabled: enabled() }), analyticalRecords: async () => [record],
-    analyticalSizesAt: async (_, revision) => rows.filter(row => row.revision === revision),
+    analyticalSizesAt: async (_, revision, { captureSince } = {}) => rows.filter(row => row.revision === revision)
+      .map(row => ({ ...row, captured: row.captureSince === captureSince })),
     recordAnalyticalSizes: async values => enabled() ? (rows.push(...values), { status: 'published', published: values.length }) : { status: 'disabled' } };
 }
 /** The history client: branch head, sizes, and the hourly budget GitHub reports on each response. */

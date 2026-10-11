@@ -184,7 +184,7 @@ const clock = dependencies => dependencies.now ?? (() => new Date().toISOString(
  * its chunk's consent read and claim renewal, and the part's finish still fit (`perCaptureChunk` beside the paths).
  * What does not fit continues in the next invocation.
  */
-export const INVOCATION_BUDGET = Object.freeze({ d1Queries: 1000, perEvaluation: 80, perPart: 12, perCapturePart: 20, perCaptureChunk: 7 });
+export const INVOCATION_BUDGET = Object.freeze({ d1Queries: 1000, perEvaluation: 80, perPart: 12, perCapturePart: 20, perCaptureChunk: 14 });
 
 const SPENT = Symbol('diffdevil.d1-spent');
 /** Count every D1 statement this invocation issues, batches statement by statement, without changing what runs. */

@@ -7,6 +7,7 @@ import { Miniflare } from 'miniflare';
 import { D1AppStore } from './storage.mjs';
 import { turnoverEvidence, fileContinuity } from './turnover-v1.mjs';
 import { record, base, head, at } from './analytical-data.fixtures.mjs';
+import { sizeCaptureGroups } from './size-capture-groups.mjs';
 
 const order = rows => rows.toSorted((a, b) => JSON.stringify([a.path, a.observedAt, a.revision, a.size])
   .localeCompare(JSON.stringify([b.path, b.observedAt, b.revision, b.size])));
@@ -90,15 +91,16 @@ test('shared snapshots preserve migration, every window row, turnover, first-wri
           revision: day < 6 ? base : head, size: 100 })));
       }
       const written = tally.written;
-      assert.ok(written < 120, `actual rows written ${written}; original per-path law would write 3,600`);
-      assert.equal((await database.prepare('SELECT COUNT(*) AS n FROM analytical_size_facts WHERE repository_id=18').first()).n, 1);
-      assert.equal((await database.prepare('SELECT COUNT(*) AS n FROM analytical_size_observations WHERE repository_id=18').first()).n, 12);
+      assert.ok(written < 1200, `actual rows written ${written}; original per-path law would write 3,600`);
+      const groups = sizeCaptureGroups(paths).length;
+      assert.equal((await database.prepare('SELECT COUNT(*) AS n FROM analytical_size_facts WHERE repository_id=18').first()).n, groups);
+      assert.equal((await database.prepare('SELECT COUNT(*) AS n FROM analytical_size_observations WHERE repository_id=18').first()).n, 12 * groups);
       assert.equal((await store.exportAnalytical(18)).sizes.length, 1200, 'every intermediate timestamp is retained');
       assert.equal((await store.analyticalSizes(18, stamp(2), stamp(11))).length, 1000);
       assert.equal((await store.analyticalSizesAt(18, head)).length, 700, 'the ordinary method retains its full logical contract');
       assert.ok((await store.analyticalSizesAt(18, head, { latest: true })).every(row => row.observedAt === stamp(12)));
       assert.equal((await store.analyticalSizesAt(18, head, { latest: true })).length, 100);
-      t.diagnostic(`100 paths × 12 captures across two revisions: ${written} actual D1 rows written; 1 shared fact set, 12 markers, 1,200 exact logical observations.`);
+      t.diagnostic(`100 paths × 12 captures across two revisions: ${written} actual D1 rows written; ${groups} shared fact sets, ${12 * groups} markers, 1,200 exact logical observations.`);
       const original = await store.exportAnalytical(18);
       const duplicate = paths.map(path => ({ repositoryId: 18, path, observedAt: stamp(12), revision: head, size: 999 }));
       assert.equal((await store.recordAnalyticalSizes(duplicate)).published, 0, 'an existing per-path/time/revision wins even under different grouping/values');
@@ -130,6 +132,22 @@ test('shared snapshots preserve migration, every window row, turnover, first-wri
       await store.setRepositoryConsent(17, { enabled: true, retentionDays: 30, origin: 'fixture' });
     });
 
+    await t.test('a tombstone that expires between a refused batch and the consent read does not hold the retry on its old clock', async () => {
+      const instant = '2026-09-12T00:00:00.000Z';
+      clock.value = instant;
+      let attempts = 0;
+      const guarded = new D1AppStore({ prepare: sql => database.prepare(sql), batch: async statements => {
+        if (++attempts > 3) throw new Error('retry made no progress');
+        if (attempts === 1) await database.prepare('INSERT INTO deletion_tombstones(scope,deleted_at,reapply_until) VALUES (?,?,?)')
+          .bind('history:17', instant, '2026-09-12T00:00:00.001Z').run();
+        const result = await database.batch(statements);
+        clock.value = '2026-09-12T00:00:00.002Z';
+        return result;
+      } }, { now: () => clock.value });
+      assert.equal((await guarded.recordAnalyticalSize({ repositoryId: 17, path: 'clock.txt', revision: head, observedAt: instant, size: 7 })).status, 'published');
+      assert.equal(attempts, 2);
+    });
+
     await t.test('expiry drains more than one indexed batch and retains facts shared by an unexpired marker', async () => {
       await database.prepare(`WITH RECURSIVE n(x) AS (SELECT 1 UNION ALL SELECT x+1 FROM n WHERE x<1001)
         INSERT INTO analytical_size_observations(repository_id,fact_key,observed_at,revision,expires_at)
@@ -138,7 +156,7 @@ test('shared snapshots preserve migration, every window row, turnover, first-wri
       clock.value = stamp(15);
       await store.maintain();
       assert.equal((await database.prepare('SELECT COUNT(*) AS n FROM analytical_size_observations WHERE expires_at<=?').bind(clock.value).first()).n, 0);
-      assert.equal((await database.prepare('SELECT COUNT(*) AS n FROM analytical_file_sizes WHERE repository_id=17').first()).n, 11);
+      assert.equal((await database.prepare('SELECT COUNT(*) AS n FROM analytical_file_sizes WHERE repository_id=17').first()).n, 12);
       assert.ok((await store.exportAnalytical(17)).sizes.some(row => row.size === 100));
       const plans = (await database.prepare('EXPLAIN QUERY PLAN SELECT rowid FROM analytical_size_observations WHERE expires_at IS NOT NULL AND expires_at<=? ORDER BY expires_at LIMIT 1000').bind(clock.value).all()).results;
       assert.ok(plans.some(row => row.detail.includes('analytical_size_expiry')));

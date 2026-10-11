@@ -406,8 +406,15 @@ separate observation markers carrying every exact time, revision and original
 expiry. Identical numerical sets can share across revisions without establishing
 continuity: Turnover still requires the actual complete comparison chain. Keep
 the full logical window and version-1 export, including intermediate observations.
-Use indexed markers and fetch shared facts once per read. Keep capture's existing
-processing allowance even though fewer D1 statements are issued. Drain indexed
+Use indexed window markers, fetch their shared facts once, and select nearest
+anchors as scalar rows through compact path/set membership, seeking once per
+shared set within D1; all intermediate markers remain authoritative.
+Partition sorted captures at path-hash boundaries with a 100-path maximum, so an
+ordinary added file does not shift every later group. Keep capture's existing
+per-path processing allowance and account for the new atomic statements. Markers
+also record the capture's start for continuation: overlapping captures cannot
+silently complete each other's paths, while immutable numerical sizes are reused.
+That operational metadata does not change observation or export identity. Drain indexed
 physical expiry in bounded queries, with facts kept until their last marker ends.
 
 **Why and alternatives.** Repeating unchanged path/size facts per event multiplies
@@ -416,8 +423,16 @@ would lose the premium file consumer's complete `sizeHistory`. Shorter retention
 smaller tiers and a new database estate are product choices rather than equivalent
 storage repair. Sharing leaves those choices untouched and preserves exact
 observation identity, unknowns, consent, deletion and restore semantics. Window
-responses still cost memory proportional to the complete requested logical history;
-this is not a claim that arbitrarily large file responses fit a Worker.
+responses still cost memory proportional to the complete requested logical history
+plus scalar anchors; this is not a claim that arbitrarily large file responses fit
+a Worker. The original positional partition and per-set anchor selection failed
+on long histories with added files: partitions shifted broadly, and selecting
+nearest anchors after decoding old sets materialised nearly all retained facts.
+The membership index avoids that transfer, at the cost of extra physical rows and
+database work over retained versions. A compact integer dictionary avoids copying
+long paths and hashes into that index; it adds no file-identity inference. Small
+histories can use more space and more D1 reads than the original shared-set
+candidate. This is a measured operating tradeoff, not universal cost reduction.
 
 **Transition.** Migration 0016 carries retained rows into the shared representation.
 Its logical SQL view serves diagnostics and export, not old writers. Schema and
