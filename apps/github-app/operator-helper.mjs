@@ -2,7 +2,6 @@
 
 import { spawn } from 'node:child_process';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
-import { once } from 'node:events';
 import { open, readFile, rename, rm, stat } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -81,16 +80,21 @@ export function buildWranglerCommand(command, args, { worker, config }) {
 
 /** Drain native output privately. Neither stderr nor a raw native exception reaches the caller. */
 export function createProcessRunner({ executable = process.execPath } = {}) {
-  return async ({ args, input, env }) => {
-    const child = spawn(executable, args, { env, stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true });
+  return async ({ args, input, env, signal }) => {
+    const child = spawn(executable, args, { env, signal, stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true });
     const stdout = [];
     child.stdout.on('data', chunk => stdout.push(chunk));
     child.stderr.resume();
     child.stdin.on('error', () => {}); // A refused command can close stdin before consuming it.
-    const completion = once(child, 'close');
+    let failed = false;
+    const completion = new Promise(resolveExit => {
+      child.once('error', () => { failed = true; });
+      child.once('close', resolveExit);
+    });
     child.stdin.end(input);
     try {
-      const [code] = await completion;
+      const code = await completion; // Cancellation/error alone is not evidence the native child stopped.
+      if (failed) fail('The native provider process could not complete.', 'E_OPERATOR_PROCESS');
       return { code, stdout: Buffer.concat(stdout).toString('utf8') };
     } catch { fail('The native provider process could not complete.', 'E_OPERATOR_PROCESS'); }
   };
