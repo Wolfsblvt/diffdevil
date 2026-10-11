@@ -16,7 +16,7 @@ const message = (MESSAGES as Record<string, { tone: string; text: string }>)[cod
   <div class="a-head">
     <div class="ttl">
       <nav class="crumb" aria-label="Breadcrumb">{trail.map((part, index) => <>{index > 0 && <span class="a-sep" aria-hidden="true">/</span>}{part.href ? <a href={part.href}>{part.label}</a> : <span>{part.label}</span>}</>)}</nav>
-      <h1><slot name="title">{title}</slot>{import.meta.env.DIFFDEVIL_APP_TARGET === 'staging' && <span class="a-staging" data-staging-mark>Staging</span>}</h1>
+      <h1><slot name="title">{title}</slot>{import.meta.env.DIFFDEVIL_APP_TARGET === 'staging' && <>{' '}<span class="a-staging" data-staging-mark>Staging</span></>}</h1>
       {sub !== undefined && <div class="a-scope"><slot name="sub">{sub}</slot></div>}
     </div>
     <div class="tools"><slot name="tools" /></div>

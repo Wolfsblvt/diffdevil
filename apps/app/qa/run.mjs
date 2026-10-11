@@ -317,9 +317,12 @@ try {
       await settled();
       const facts = await pageFacts();
       const staging = target.name === 'staging';
+      const title = name === 'overview' ? 'Overview' : 'Manage';
+      const headingName = staging ? `${title} Staging` : title;
       check(`${name}: the browser title identifies only the staging build`, (await page.title()).startsWith('Staging · ') === staging, await page.title());
       const marks = page.locator('[data-staging-mark]');
       check(`${name}: the heading carries only the staging build's mark`, await marks.count() === (staging ? 1 : 0));
+      check(`${name}: the accessible heading keeps the page title separate from its environment mark`, await page.getByRole('heading', { level: 1, name: headingName, exact: true }).count() === 1, await page.locator('h1').innerText());
       if (staging) {
         check(`${name}: the neutral mark is readable beside the existing heading`, await marks.isVisible() && await marks.textContent() === 'Staging' && await marks.evaluate(mark => mark.closest('h1') !== null && mark.tabIndex === -1));
         check(`${name}: the mark fits inside its heading without clipping`, await marks.evaluate(mark => { const box = mark.getBoundingClientRect(), head = mark.closest('h1').getBoundingClientRect(); return box.left >= head.left && box.right <= head.right && box.top >= head.top && box.bottom <= head.bottom && mark.scrollWidth <= mark.clientWidth + 1; }));
