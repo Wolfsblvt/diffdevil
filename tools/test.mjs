@@ -22,7 +22,9 @@ if (files.length === 0) {
 const observed = new Set();
 let failed = false;
 async function* inspectEvents() {
-  for await (const event of run({ files })) {
+  // D1 fixtures are process-isolated. Bound parallelism instead of serializing every
+  // file or scaling local work to every available core. Serial Windows CI timed out.
+  for await (const event of run({ files, concurrency: 2 })) {
     if (event.type === 'test:fail') failed = true;
     if (event.type === 'test:summary') {
       const { file, counts, success } = event.data;

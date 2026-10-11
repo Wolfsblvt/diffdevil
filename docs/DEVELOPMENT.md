@@ -107,7 +107,9 @@ the local offline qualification keeps using the single supplied npm cache. The
 package result records `installMode`, so hosted success cannot be mistaken for
 portable-cache proof.
 
-The ordinary runner rejects zero discovery and test files with no registered
+The ordinary runner runs at most two isolated test-file processes concurrently,
+keeping local host use bounded after serial execution exceeded the Windows CI timeout.
+It rejects zero discovery and test files with no registered
 tests. Skips, expected fixtures and a wrapper file that Node happens to load are
 not counted as executed behavioral proof. Current counts and limitations belong
 in [Qualification](qualification.md), not a numerical quota in the runner.
