@@ -36,6 +36,15 @@ try {
   await page.goto(files, { waitUntil: 'domcontentloaded' });
   await page.locator('[data-ddx="aggregate"] .ddx-value').waitFor({ timeout: 45_000 });
   receipt.checks.push('direct aggregate Changed');
+  // GitHub's classic seat ends where its tab row ends (grammar §4); the seat that replaced it must end there too, not 8 px short and not at the start.
+  receipt.aggregateEdge = await page.evaluate(() => {
+    const seat = document.querySelector('[data-ddx="aggregate"]'); const row = seat?.closest('.tabnav'); if (!seat || !row) return undefined;
+    const style = getComputedStyle(row);
+    return { seatRight: seat.getBoundingClientRect().right, rowContentRight: row.getBoundingClientRect().right - parseFloat(style.paddingRight) - parseFloat(style.borderRightWidth) };
+  });
+  assert.ok(receipt.aggregateEdge, 'The classic aggregate seat must sit in the tab row.');
+  assert.ok(Math.abs(receipt.aggregateEdge.seatRight - receipt.aggregateEdge.rowContentRight) <= 1, `aggregate seat is not right-aligned: ${JSON.stringify(receipt.aggregateEdge)}`);
+  receipt.checks.push('aggregate seat keeps GitHub’s right edge');
   await page.locator('[data-ddx="file"] .ddx-value').first().waitFor({ timeout: 20_000 });
   receipt.checks.push('direct per-file Changed');
   // The anonymous classic page shows a file tree without counters; record what
