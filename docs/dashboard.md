@@ -4,7 +4,7 @@
 
 This document owns the selected analytical and operating experience of the developing diffdevil App. It is not a claim that the dashboard, imports, premium capabilities, billing or public views are already available. [Direction](DIRECTION.md) owns current evidence; [plans and editions](app-plans.md) owns the accepted commercial boundary; [access](dashboard-access.md), [management](app-management.md), [privacy/data](PRIVACY-AND-DATA.md) and [App integration](integration/github-app.md) own their respective contracts.
 
-The complete destination is independent of the first delivery order. The analytical page structure and semantic presentation below are ratified; exact chart/cloud rendering, Manage/subscription UI and other undesigned surfaces remain open. This contract adopts no renderer dependency or new commercial choice.
+The complete destination is independent of the first delivery order. The analytical page structure, semantic presentation, [Chart Grammar v1.1](../packages/design/chart-grammar-v1.1.md) and Manage/subscription console are ratified and implemented in source. Their local qualification is distinct from live delivery and ordinary use. Whole-App light, phone, public/operator and other undesigned surfaces remain open as described in [Direction](DIRECTION.md#implemented-app-source-and-remaining-delivery). This status account adopts no new renderer dependency or commercial choice.
 
 ## Product purpose
 
@@ -142,7 +142,7 @@ Brief settings are App-only and may travel with its configured policy; they do n
 
 ### Ratified message and source standing
 
-The message is the Wolf-ratified [`pr-brief-r4.1`](../packages/design/pr-brief/README.md): an optional native `NOTE` lead for concrete same-file open PRs, the selected file-history table with Turnover, one evidenced historical companion, the current-change core and one details fold. Source composes it: the Community standard composer in `apps/shared/pr-brief/`, the premium context provider in `premium/pr-brief/`, and the managed App join described in [the App integration](integration/github-app.md#selective-brief). Its selection gates and control vocabulary are qualified engineering defaults recorded in the [errata](../packages/design/pr-brief/ERRATA.md), not owner-ratified settings. Native rendering in a real PR, a live writer and the Account/Manage controls remain unobserved.
+The message is the Wolf-ratified [`pr-brief-r4.1`](../packages/design/pr-brief/README.md): an optional native `NOTE` lead for concrete same-file open PRs, the selected file-history table with Turnover, one evidenced historical companion, the current-change core and one details fold. Source composes it: the Community standard composer in `apps/shared/pr-brief/`, the premium context provider in `premium/pr-brief/`, and the managed App join described in [the App integration](integration/github-app.md#selective-brief). Its selection gates and control vocabulary are qualified engineering defaults recorded in the [errata](../packages/design/pr-brief/ERRATA.md), not owner-ratified settings. The Manage controls and preview are implemented and locally qualified. Native rendering in a real PR and a live writer remain unobserved.
 
 ## Co-change calculation boundary
 

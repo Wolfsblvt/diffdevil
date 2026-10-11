@@ -50,7 +50,7 @@ The expanded product is now [an activity-first App](dashboard.md), not an admini
 
 PR lifecycle/development and file-level activity receive equal treatment. General file/repository history uses one final recoverable comparison per merged PR. Open-PR development and current overlap are separate populations. No general all-branch/direct-commit throughput system is selected for the starting scope.
 
-Prominent file and repository clouds default to distinct merged-PR change frequency. Explicit alternate measures include Changed volume, raw churn, growth/shrinkage, concentration and **Turnover**, displayed as a multiple with a brief explanation. File turnover-v1 is adopted as period Changed divided by time-weighted average file size, with bounded ranges and created/deleted-file `n/a`. Co-change/brief relevance algorithms and qualified acquisition remain concrete implementation work.
+Prominent file and repository clouds default to distinct merged-PR change frequency. Explicit alternate measures include Changed volume, raw churn, growth/shrinkage, concentration and **Turnover**, displayed as a multiple with a brief explanation. File turnover-v1 is adopted as period Changed divided by time-weighted average file size, with bounded ranges and created/deleted-file `n/a`. Deterministic co-change and selective-brief selection are implemented; their real-repository usefulness and acquisition remain live qualification work.
 
 Selected named history retains repository names, relative paths, filenames, numerical file measurements, comparison identities and lifecycle facts after explicit history enablement. Permitted observations include analytically excluded files so current-policy recalculation can change the view without losing its measured foundation. File/source contents and patches remain transient and must not be stored in secondary logs or queues. No people-throughput or performance analytics is selected. [Privacy and data](PRIVACY-AND-DATA.md) replaces the former product-wide pathless-only restriction while distinguishing old implementation evidence.
 
@@ -72,21 +72,22 @@ The one-time premium snapshot is tied to a stable GitHub account and frozen afte
 
 Live eligible checks/labels/size replies stay the priority; enrichment and imports can lag honestly. Customer management and the separate scoped operator/agent view must expose useful standing. Optional product-news consent remains independent of necessary service messages.
 
-## Work still required for that direction
+## Implemented App source and remaining delivery
 
-The documentation candidate does not implement the expanded model. Remaining outcomes include:
+The joined App source carries the six analytical destinations and accepted chart/cloud system, lifecycle and named-file history, final merged comparisons, excluded observations, current-policy recalculation, resumable imports and open-PR indexing, and deterministic co-change and selective briefs. Manage carries repository selection, linked-policy publication, delegation and Audit, automatic setup, history processing, allowances and plan reduction, funding/subscription presentation, export and offboarding. Participation carries private survey answers, explicit quote creation and replay-safe completion delivery to Wirt. These are implemented outcomes, locally qualified against disposable storage and provider doubles; they are not merely a documentation proposal.
 
-- joined storage/acquisition/consent for lifecycle and named file measurements, final merged comparisons, excluded observations, administrative audit and current-policy recalculation;
-- qualified imports/open-PR indexing and adaptive provider pacing, without replaying historical effects or resurrecting deleted gaps;
-- deterministic co-change and selective-brief algorithm research followed by implementation;
-- the Manage console's remainder (queued linked-policy publishing; delegated administration and the full audit; imports, recalculation, the applied choice of what stays and runtime allowance enforcement are in source per D082 but unexercised against real GitHub and Works) and the chart system's and console's real-data qualification (real repository distributions, a real Works link, screen readers, narrow and light occasions) as those surfaces arrive;
-- full account/delegation/public projection journeys and live authorisation, deletion and publication qualification;
-- linked configuration and automatic repository adoption/open-PR refresh;
-- Community/premium composition without replacing public source files, customer processing and subscription views, preview/OSS grants, and an internal service-usage/cash view;
-- shared billing integration for tax-inclusive quotes, new-period upgrades, same-anchor add-ons, price protection and term-end changes; and
-- realistic operating measurements and monthly import configuration without revisiting settled prices or importing the old pathless specimen as a new workload forecast.
+The useful Community edition and composed Pro/Business source have been exercised separately. Community works without private modules; rich file exploration and Business coordination remain independent private modules through the declared interfaces, without replacing public source files. The namespace administrator's automatic-setup choice belongs to the namespace and persists after that administrator leaves or is demoted. An Account administrator's choice stays person-bound, with current delegation and repository write checks ([D086](DECISIONS.md#d086-an-administrators-automatic-setup-choice-belongs-to-the-namespace-an-account-administrators-stays-person-bound)). Source qualification does not establish real GitHub authority or authorise activation.
 
-Existing backend work can contribute its compatible statistical and query contracts, but its older projection is not the new product ceiling. Exact implementation placement and review remain in the current workplace. Do not declare active worker/provider status merely from an old launch record.
+Remaining delivery and adoption outcomes include:
+
+- final common-source and maintained private-composition reconciliation and acceptance, including the matching source lock, joined notices and affected authority transitions, followed by separate App release and deployment;
+- production migration and persistent staging with real OAuth, session/cookie behavior, current GitHub access and delegation, repository selection, automatic setup, policy publication, export/deletion and provider effects;
+- real lifecycle/history acquisition, imports, indexing, adaptive provider pacing, recalculation and brief rendering, with retention, representative growth, provider cost/latency and monthly import configuration measured on the selected workload; historical imports must still avoid retroactive effects and preserve deleted gaps;
+- Wirt producer acceptance and installed commercial interoperability: authoritative beta-access/calendar facts, completion delivery, campaign rewards, tax-inclusive quotes, credited upgrades, same-anchor add-ons, price protection and term-end changes; source consumers and subscription views do not prove real payments or mail;
+- ordinary use of the complete analytical and Manage experience with real repository distributions and a real Works link, plus screen-reader qualification; and
+- the still-undesigned whole-App light, phone, public-analytics and operator/service-usage/cash views, with their design and live publication boundaries retained.
+
+The older pathless backend remains narrower historical evidence, not the implemented model's ceiling. Exact delivery placement and judgment remain in the current workplace; this document does not infer active worker/provider status from a launch record.
 
 ## Preserved architecture and operating boundaries
 
