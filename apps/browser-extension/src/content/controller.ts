@@ -13,6 +13,7 @@ import { projection, failureMarker, readingMarker, pausedMarker, type Projection
 import { errorPanel, type Attempt, type Progress, type Provenance, type ReportActions } from './report.js';
 import { labelHandoff, pickerAvailable } from './labels.js';
 import { Popover } from './popover.js';
+import { readEnd, claim, release } from './edge.js';
 /** Dependencies are explicit so lifecycle tests never need to impersonate a browser origin. */
 export interface ContentDependencies { readonly href?: () => string; readonly acquire?: typeof defaultAcquire; readonly request?: typeof defaultRequest; readonly measure?: typeof defaultMeasure }
 interface Failure { code: string; message: string }
@@ -114,7 +115,7 @@ export function startContent(dependencies: ContentDependencies = {}): { refresh:
       setTimeout(() => { stopLabelObservation?.(); stopLabelObservation = undefined; }, 20_000);
     } catch { /* Malformed intent is dropped. */ }
   }
-  function restoreNatives(): void { for (const native of natives) native.classList.remove('ddx-native-hidden', 'ddx-native-faint', 'ddx-native-leaving'); natives.clear(); }
+  function restoreNatives(): void { for (const native of natives) { native.classList.remove('ddx-native-hidden', 'ddx-native-faint', 'ddx-native-leaving'); release(native); } natives.clear(); }
   function clear(): void {
     for (const item of mounted.values()) item.cleanup(); mounted.clear(); fileSeats.clear(); popover.close(false); status?.remove(); status = undefined; restoreNatives();
   }
@@ -132,13 +133,18 @@ export function startContent(dependencies: ContentDependencies = {}): { refresh:
       natives.add(element);
       if (faint) { element.classList.remove('ddx-native-hidden', 'ddx-native-leaving'); element.classList.add('ddx-native-faint'); continue; }
       if (element.classList.contains('ddx-native-hidden')) continue;
-      if (reduced()) { element.classList.add('ddx-native-hidden'); continue; }
+      // An end-seated group cannot fade in the native node's place: it would sit before the node until the node collapses, then jump to the end.
+      if (reduced() || mounted.get(native.anchor)?.root.hasAttribute('data-ddx-end')) { element.classList.add('ddx-native-hidden'); continue; }
       element.classList.add('ddx-native-leaving');
       setTimeout(() => { if (element.classList.contains('ddx-native-leaving')) { element.classList.remove('ddx-native-leaving'); element.classList.add('ddx-native-hidden'); } }, 100);
     }
   }
   function seat(native: NativeStat, item: MountedView, replace: boolean): void {
     mounted.set(native.anchor, item);
+    // Read GitHub's alignment before our group enters the row; the group then carries it (grammar §4) and a retained native node stops claiming the free space.
+    const end = readEnd(native);
+    if (end.kind) item.root.setAttribute('data-ddx-end', end.kind);
+    for (const element of end.pushing) { natives.add(element); claim(element); }
     if (!reduced()) { item.root.classList.add('ddx-entering'); requestAnimationFrame(() => item.root.classList.remove('ddx-entering')); }
     native.anchor.insertAdjacentElement('beforebegin', item.root);
     if (replace) demote(native); else for (const element of native.nodes) { natives.add(element); element.classList.remove('ddx-native-hidden', 'ddx-native-faint', 'ddx-native-leaving'); }
