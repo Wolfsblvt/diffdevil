@@ -13,3 +13,4 @@ export { ROLES, WRITE_CEILING, presentDelegations } from '../../lib/manage/peopl
 export { PUBLICATION_WORDS, pathsSetBy, summarizePublication } from '../../lib/manage/linked-policies.mjs';
 export { fromRetained } from '../../lib/derive.mjs';
 export { pullRequestPath } from '../../lib/scope.mjs';
+export { SETUP_ROLES } from '../../lib/manage/setup.mjs';

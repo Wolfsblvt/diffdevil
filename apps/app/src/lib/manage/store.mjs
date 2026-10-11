@@ -224,10 +224,19 @@ export class D1ManageStore {
   /** What a newly granted repository of this namespace gets (Business), or null when nothing was chosen. */
   async automaticSetup(accountId) {
     const row = await this.statement('SELECT * FROM automatic_setup WHERE account_id=?', accountId).first();
-    return row ? { accountId, policyId: row.policy_id ?? null, enableExecution: row.enable_execution === 1, writerDeclared: row.writer_declared === 1, savedAt: row.saved_at, actorId: row.actor_id ?? null, actorLogin: row.actor_login ?? null } : null;
+    return row ? { accountId, policyId: row.policy_id ?? null, enableExecution: row.enable_execution === 1, writerDeclared: row.writer_declared === 1, savedAt: row.saved_at, actorId: row.actor_id ?? null, actorLogin: row.actor_login ?? null, actorRole: row.actor_role ?? null } : null;
   }
-  async saveAutomaticSetup(accountId, { policyId = null, enableExecution = false, writerDeclared = false, actorId = null, actorLogin = null }) {
-    await this.statement('INSERT INTO automatic_setup (account_id, policy_id, enable_execution, writer_declared, saved_at, actor_id, actor_login) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(account_id) DO UPDATE SET policy_id=excluded.policy_id, enable_execution=excluded.enable_execution, writer_declared=excluded.writer_declared, saved_at=excluded.saved_at, actor_id=excluded.actor_id, actor_login=excluded.actor_login', accountId, policyId, enableExecution ? 1 : 0, writerDeclared ? 1 : 0, this.now(), actorId, actorLogin).run();
+  async saveAutomaticSetup(accountId, { policyId = null, enableExecution = false, writerDeclared = false, actorId = null, actorLogin = null, actorRole = null }) {
+    await this.statement('INSERT INTO automatic_setup (account_id, policy_id, enable_execution, writer_declared, saved_at, actor_id, actor_login, actor_role) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(account_id) DO UPDATE SET policy_id=excluded.policy_id, enable_execution=excluded.enable_execution, writer_declared=excluded.writer_declared, saved_at=excluded.saved_at, actor_id=excluded.actor_id, actor_login=excluded.actor_login, actor_role=excluded.actor_role', accountId, policyId, enableExecution ? 1 : 0, writerDeclared ? 1 : 0, this.now(), actorId, actorLogin, actorRole).run();
+  }
+  /** Keep the chooser's shown login current when GitHub reports a rename for the same account id. */
+  async renameSetupChooser(accountId, actorId, login) { await this.statement('UPDATE automatic_setup SET actor_login=? WHERE account_id=? AND actor_id=?', login, accountId, actorId).run(); }
+  /** The repositories the saved choice held since it was saved (the chooser's authority did not reach them): the count and the newest reason. */
+  async setupHeld(accountId, since) {
+    const row = await this.statement("SELECT COUNT(*) AS held, MAX(at) AS latest FROM administrative_events WHERE account_id=? AND at>=? AND json_extract(detail_json, '$.held')='chooser-authority'", accountId, since).first();
+    if (!row?.held) return { count: 0, latestAt: null, reason: null };
+    const latest = await this.statement("SELECT reason FROM administrative_events WHERE account_id=? AND at=? AND json_extract(detail_json, '$.held')='chooser-authority' ORDER BY event_id DESC LIMIT 1", accountId, row.latest).first();
+    return { count: row.held, latestAt: row.latest, reason: latest?.reason ?? null };
   }
   async removeAutomaticSetup(accountId) { await this.statement('DELETE FROM automatic_setup WHERE account_id=?', accountId).run(); }
 

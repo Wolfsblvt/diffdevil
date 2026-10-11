@@ -116,6 +116,12 @@ export async function loadManage({ viewer, session, runtime, fresh = true }) {
   if (runtime.jobs) { try { jobs = await runtime.jobs.openFor(namespaces.flatMap(namespace => namespace.repositories.filter(repository => repository.standing?.historyEnabled).map(repository => repository.repositoryId))); } catch { jobs = new Map(); } }
   // Business coordination (Policies, People, Audit) is shown for every namespace this person coordinates: their own Business namespaces, and those where they are an Account administrator.
   const businessScopes = namespaces.filter(namespace => namespace.plan === 'Business' && (namespace.administration.kind === 'owner' || namespace.administration.role === 'account-admin'));
+  // What each coordinated namespace's automatic setup acts as, and what it held since it was chosen, so a coordinator
+  // sees when it stopped reaching new repositories and can choose it again for themselves.
+  for (const namespace of businessScopes) {
+    const setup = namespace.accountId === null ? null : await Promise.resolve().then(() => manage.automaticSetup?.(namespace.accountId)).catch(() => null);
+    namespace.automaticSetup = setup ? { ...setup, held: (await Promise.resolve().then(() => manage.setupHeld?.(namespace.accountId, setup.savedAt)).catch(() => null)) ?? { count: 0, latestAt: null, reason: null } } : null;
+  }
   const model = { userId, login: viewer.login, jobs, viewerPlan, hosted: runtime.commercial !== undefined, commercialSource: runtime.commercialSource, commercial, serviceConnection, freeConnection, freeConnected, departure, planChoice,
     namespaces, readers, businessScopes, coordinates: viewerPlan === 'Business' || businessScopes.length > 0, allowances: runtime.allowances, worksOrigin: runtime.config.worksOrigin, firstRun: viewerPlan === 'Free' && !status?.linked && !anySelected, attention: [] };
   model.attention = attentionItems(model);

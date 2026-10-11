@@ -16,9 +16,10 @@ import { holdsSlot, isRemoved } from './states.mjs';
 import { worksDestinations } from './works.mjs';
 import { recordAction, resultOfMessage } from './audit.mjs';
 import { readLinkedPolicy, POLICY_NAME, publishPolicy, retryPublication, summarizePublication, applyRevision } from './linked-policies.mjs';
-import { ROLE_KEYS, LOGIN, WRITE_CEILING } from './people.mjs';
+import { ROLE_KEYS, LOGIN, WRITE_CEILING, coordinates } from './people.mjs';
 import { adoptedConfiguration } from './defaults.mjs';
 import { sendJobStep } from '../../../../github-app/history-jobs.mjs';
+import { SETUP_ROLES } from './setup.mjs';
 
 /** Plain words for the message codes a redirect carries in `m`. */
 export const MESSAGES = Object.freeze({
@@ -103,6 +104,7 @@ export const MESSAGES = Object.freeze({
   'setup-off': { tone: 'ok', text: 'Automatic setup is off. Newly granted repositories wait for you.' },
   'delegate-added': { tone: 'ok', text: 'Named. They manage diffdevil only on repositories they can write to on GitHub; where GitHub gives them read access only, they are refused. Funding and invoices are never theirs.' },
   'delegate-removed': { tone: 'ok', text: 'Removed. They no longer manage diffdevil here; what GitHub itself grants them is unchanged.' },
+  'delegate-removed-setup': { tone: 'warn', text: 'Removed. They chose this namespace\'s automatic setup, so new repositories now wait until someone chooses it again in Policies.' },
   'delegate-unknown': { tone: 'err', text: 'GitHub knows no user with that login. Nothing was changed.' },
   'delegate-self': { tone: 'err', text: 'You already administer this namespace.' },
   'delegate-no-repositories': { tone: 'err', text: 'A Repository administrator needs at least one repository named.' },
@@ -554,8 +556,15 @@ export async function handleManageAction(request, { runtime, session, viewer }) 
         const enableExecution = form.get('enable') === 'on', writerDeclared = form.get('writer') === 'declared';
         if (enableExecution && !writerDeclared) return done('writer-undeclared', place, home);
         if (!policy && !enableExecution) { await runtime.manage.removeAutomaticSetup(accountId); return done('setup-off', place, home); }
-        await runtime.manage.saveAutomaticSetup(accountId, { policyId: policy?.policyId ?? null, enableExecution, writerDeclared, actorId: viewer.userId, actorLogin: viewer.login });
-        return done('setup-saved', { ...place, what: `Chose automatic setup: ${[policy ? `link to ${policy.name}` : 'no policy', enableExecution ? 'enable labels and the check' : 'leave disabled'].join(', ')}; history and the pull-request message stay off` }, home);
+        // The choice acts for this person under the authority they hold now: an organisation's administration is read
+        // from GitHub again; otherwise it is their Account-administrator delegation, which the setup re-checks later.
+        let actorRole = namespace.administration?.kind === 'owner' ? 'owner' : 'account-admin';
+        if (actorRole === 'owner' && namespace.kind === 'org' && await session.reads.organizationRole(namespace.login).catch(() => 'unknown') !== 'admin') {
+          if (!coordinates(await runtime.manage.delegation(accountId, viewer.userId).catch(() => null))) return done('not-coordinator', place, home);
+          actorRole = 'account-admin';
+        }
+        await runtime.manage.saveAutomaticSetup(accountId, { policyId: policy?.policyId ?? null, enableExecution, writerDeclared, actorId: viewer.userId, actorLogin: viewer.login, actorRole });
+        return done('setup-saved', { ...place, what: `Chose automatic setup as ${SETUP_ROLES[actorRole]}: ${[policy ? `link to ${policy.name}` : 'no policy', enableExecution ? 'enable labels and the check' : 'leave disabled'].join(', ')}; history and the pull-request message stay off`, result: 'applied', reason: 'It acts for whoever chose it, on each new repository only where GitHub still gives them the access their role needs.' }, home);
       }
       case 'delegate-add': case 'delegate-remove': {
         const accountId = integer(form.get('namespace'));
@@ -568,7 +577,10 @@ export async function handleManageAction(request, { runtime, session, viewer }) 
           const existing = userId ? await runtime.manage.delegation(accountId, userId) : null;
           if (!existing) return done('invalid', place, home);
           await runtime.manage.revokeDelegation(accountId, userId);
-          return done('delegate-removed', { ...place, what: `Removed ${existing.login} as ${existing.role === 'account-admin' ? 'Account administrator' : 'Repository administrator'}` }, home);
+          // Automatic setup they chose as Account administrator stops acting with the delegation; say so where it happened.
+          const setup = await runtime.manage.automaticSetup(accountId);
+          const setupStops = setup?.actorId === userId && setup.actorRole === 'account-admin';
+          return done(setupStops ? 'delegate-removed-setup' : 'delegate-removed', { ...place, what: `Removed ${existing.login} as ${existing.role === 'account-admin' ? 'Account administrator' : 'Repository administrator'}`, ...(setupStops ? { result: 'applied', reason: `Automatic setup was chosen by ${existing.login}; new repositories now wait until someone chooses it again.` } : {}) }, home);
         }
         const login = String(form.get('login') ?? '').trim(), role = String(form.get('role') ?? '');
         if (!LOGIN.test(login) || !ROLE_KEYS.includes(role)) return done('invalid', place, home);

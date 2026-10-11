@@ -11,7 +11,7 @@ CREATE INDEX policy_links_policy ON policy_links(policy_id);
 CREATE TABLE policy_publications (publication_id TEXT PRIMARY KEY, policy_id TEXT NOT NULL, revision INTEGER NOT NULL, requested_at TEXT NOT NULL, actor_id INTEGER);
 CREATE INDEX policy_publications_policy ON policy_publications(policy_id, requested_at);
 CREATE TABLE policy_publication_results (publication_id TEXT NOT NULL, repository_id INTEGER NOT NULL, state TEXT NOT NULL, reason TEXT, detail_json TEXT, attempts INTEGER NOT NULL DEFAULT 0, updated_at TEXT NOT NULL, PRIMARY KEY (publication_id, repository_id));
-CREATE TABLE automatic_setup (account_id INTEGER PRIMARY KEY, policy_id TEXT, enable_execution INTEGER NOT NULL DEFAULT 0, writer_declared INTEGER NOT NULL DEFAULT 0, saved_at TEXT NOT NULL, actor_id INTEGER, actor_login TEXT);
+CREATE TABLE automatic_setup (account_id INTEGER PRIMARY KEY, policy_id TEXT, enable_execution INTEGER NOT NULL DEFAULT 0, writer_declared INTEGER NOT NULL DEFAULT 0, saved_at TEXT NOT NULL, actor_id INTEGER, actor_login TEXT, actor_role TEXT);
 CREATE TABLE delegations (account_id INTEGER NOT NULL, user_id INTEGER NOT NULL, login TEXT NOT NULL, role TEXT NOT NULL, repositories_json TEXT, granted_at TEXT NOT NULL, granted_by INTEGER, PRIMARY KEY (account_id, user_id));
 CREATE INDEX delegations_user ON delegations(user_id);
 CREATE TABLE administrative_events (event_id INTEGER PRIMARY KEY AUTOINCREMENT, at TEXT NOT NULL, account_id INTEGER, repository_id INTEGER, where_text TEXT NOT NULL, actor_kind TEXT NOT NULL, actor_id INTEGER, actor_login TEXT, what TEXT NOT NULL, result TEXT NOT NULL, reason TEXT, detail_json TEXT);

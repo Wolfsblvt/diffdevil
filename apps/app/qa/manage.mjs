@@ -337,7 +337,7 @@ export async function businessManage(ctx) {
   check('an empty filter state says nothing matches rather than showing nothing', await page.evaluate(() => /Nothing matches this filter|Nothing is recorded yet/u.test(document.querySelector('[data-audit-empty]')?.textContent ?? '')));
   const exported = await page.context().request.get(`${ctx.ORIGIN}/manage/export`);
   const body = await exported.json();
-  check('the export carries the Business policies, setup, people and record per coordinated namespace', exported.status() === 200 && Array.isArray(body.business) && body.business.some(scope => scope.namespace === 'parser-guild' && scope.policies.some(policy => policy.name === 'Default' && policy.revision === 2) && scope.automaticSetup?.enableExecution === true && Array.isArray(scope.record) && scope.record.length > 0), JSON.stringify(Object.keys(body)));
+  check('the export carries the Business policies, the setup with its linked policy and who chose it as what, people and record per coordinated namespace', exported.status() === 200 && Array.isArray(body.business) && body.business.some(scope => scope.namespace === 'parser-guild' && scope.policies.some(policy => policy.name === 'Default' && policy.revision === 2) && scope.automaticSetup?.enableExecution === true && scope.automaticSetup.policy === 'Default' && scope.automaticSetup.chosenBy?.login === 'ada-sample' && scope.automaticSetup.chosenBy?.as === 'owner' && Array.isArray(scope.record) && scope.record.length > 0), JSON.stringify(Object.keys(body)));
   // Leave the fixture as the next pass expects: setup off, grammar-fuzz released.
   await go('/manage/policies?ns=parser-guild&setup=parser-guild');
   await page.click('[data-setup-form="parser-guild"] input[value="setup-off"] ~ button');
@@ -414,6 +414,39 @@ export async function delegateManage(ctx) {
   await shot('delegate-write-people');
   const opened = await go('/manage/repositories/northwind-tools/ci-recipes');
   check('with write on GitHub, the delegate opens ci-recipes\' settings', opened.status() === 200);
+}
+
+/**
+ * Recovering automatic setup that stopped acting: the runner seeds parser-guild's setup as chosen by kai-sample as
+ * Account administrator (no longer one) and one new repository it held. ada-sample, parser-guild's GitHub
+ * administrator, finds it in Needs you, sees who it acts for and why in Policies, and chooses it again for herself.
+ */
+export async function setupRecovery(ctx) {
+  const { check, go, page, shot } = ctx;
+  const attention = () => page.evaluate(() => [...document.querySelectorAll('[data-attention] .m-att')].map(node => node.textContent ?? '').join(' | '));
+  await go('/manage');
+  const needs = await attention();
+  check('Needs you names automatic setup that left a new repository waiting, who it acts for, why, and the way out', /Automatic setup in parser-guild left a new repository waiting/u.test(needs) && /It acts for kai-sample/u.test(needs) && /no longer one here/u.test(needs) && /Choose it again so it acts for you/u.test(needs), needs);
+  await go('/manage/policies?ns=parser-guild');
+  const row = () => page.evaluate(() => ({ text: document.querySelector('[data-setup="parser-guild"]')?.textContent ?? '', held: document.querySelector('[data-setup="parser-guild"] [data-setup-held]')?.textContent ?? '', button: document.querySelector('[data-setup="parser-guild"] a[href*="setup="]')?.textContent ?? '', overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth }));
+  const before = await row();
+  check('the setup row names who it acts for and as what, what waited and why, and offers to choose it again for you', /Chosen by kai-sample as Account administrator/u.test(before.text) && /1 new repository waited since/u.test(before.held) && /no longer one here/u.test(before.held) && before.button === 'Choose it again (acts for you)' && before.overflow <= 0, JSON.stringify(before));
+  await shot('setup-recovery-held');
+  await page.click('[data-setup="parser-guild"] a[href*="setup="]');
+  await page.waitForLoadState('networkidle');
+  check('choosing it again says it will act for you', /Saving makes this choice yours/u.test(await page.evaluate(() => document.querySelector('[data-setup-form="parser-guild"] [data-setup-yours]')?.textContent ?? '')));
+  await page.check('[data-setup-form="parser-guild"] input[name="enable"]');
+  await page.check('[data-setup-form="parser-guild"] input[name="writer"]');
+  await page.click('[data-setup-form="parser-guild"] button[type="submit"]');
+  await page.waitForLoadState('networkidle');
+  const after = await row();
+  check('after choosing it again the row says it acts for you, and nothing is shown as waiting', /Chosen by you as administrator on GitHub/u.test(after.text) && after.held === '' && after.button === 'Change', JSON.stringify(after));
+  await shot('setup-recovery-chosen');
+  await go('/manage');
+  check('Needs you no longer lists the held setup', !/Automatic setup in parser-guild/u.test(await attention()));
+  await go('/manage/policies?ns=parser-guild&setup=parser-guild');
+  await page.click('[data-setup-form="parser-guild"] input[value="setup-off"] ~ button');
+  await page.waitForLoadState('networkidle');
 }
 
 /** Leave parser-guild/grammar-fuzz not enabled (stopped or released), whatever an earlier journey left it as. */

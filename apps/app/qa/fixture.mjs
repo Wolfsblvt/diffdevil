@@ -242,7 +242,7 @@ export function createFakeGitHub({ user = USER, token = TOKEN, code = CODE, clie
   const calls = [];
   // Narrow the signed-in person's GitHub access for a case: `push` and `admin` per repository (repositoryId → boolean,
   // default write and the fixture's admin flag), `roles` per organisation login (default ROLES).
-  const state = { rateLimited: false, tokenValid: true, push: new Map(), admin: new Map(), roles: new Map(), collaborators: new Map(), installationTokens: [], extraRepositories: [] };
+  const state = { rateLimited: false, tokenValid: true, push: new Map(), admin: new Map(), roles: new Map(), collaborators: new Map(), installationTokens: [], extraRepositories: [], logins: new Map() };
   async function fetch(input, init = {}) {
     const url = new URL(String(input)), method = init.method ?? 'GET', path = url.pathname;
     const authorization = new Headers(init.headers).get('authorization') ?? '';
@@ -255,8 +255,9 @@ export function createFakeGitHub({ user = USER, token = TOKEN, code = CODE, clie
     }
     if (method === 'POST' && path === `/applications/${clientId}/token`) return state.tokenValid && JSON.parse(String(init.body)).access_token === token ? json({ user: { id: user.id } }) : json({ message: 'invalid' }, 404);
     // The App's own installation route: an App JWT mints a token scoped to the requested repositories, and that token
-    // reads the installation's repositories (with `extraRepositories` a case grants later) and a user's calculated
-    // repository permission (`collaborators`, keyed `repositoryId:login`; a missing entry is GitHub's 404).
+    // reads an account by id, the installation's repositories (with `extraRepositories` a case grants later) and a
+    // user's calculated repository permission (`collaborators`, keyed `repositoryId:login`; a missing entry is GitHub's
+    // 404, `{ status }` another HTTP answer).
     let installation = /^\/app\/installations\/(\d+)\/access_tokens$/u.exec(path);
     if (method === 'POST' && installation && /^Bearer [^.\s]+\.[^.\s]+\.[^.\s]+$/u.test(authorization)) {
       const scope = JSON.parse(String(init.body ?? '{}')).repository_ids ?? [];
@@ -267,13 +268,20 @@ export function createFakeGitHub({ user = USER, token = TOKEN, code = CODE, clie
     if (installation) {
       const scope = installation[2] ? installation[2].split('_').map(Number) : null;
       const reachable = [...REPOSITORIES, ...state.extraRepositories].filter(repository => repository.installationId === Number(installation[1]) && (!scope || scope.includes(repository.repositoryId)));
+      const account = /^\/user\/(\d+)$/u.exec(path);
+      if (account) {
+        // `logins` renames (id → login) or deletes (id → null) an account; otherwise the fixture's own login answers.
+        const id = Number(account[1]);
+        const login = state.logins.has(id) ? state.logins.get(id) : Object.keys(ACCOUNTS).find(name => ACCOUNTS[name] === id);
+        return login ? json({ login, id, type: ['ada-sample', 'kai-sample'].includes(login) || state.logins.has(id) ? 'User' : 'Organization' }) : json({ message: 'Not Found' }, 404);
+      }
       if (path === '/installation/repositories') return json({ total_count: reachable.length, repositories: reachable.map(repository => ({ id: repository.repositoryId, full_name: repository.fullName, name: repository.fullName.split('/')[1], private: repository.private })) });
       const permission = /^\/repos\/([^/]+)\/([^/]+)\/collaborators\/([^/]+)\/permission$/u.exec(path);
       const repository = permission && reachable.find(candidate => candidate.fullName === `${decodeURIComponent(permission[1])}/${decodeURIComponent(permission[2])}`);
       const login = permission && decodeURIComponent(permission[3]);
       const answer = repository && state.collaborators.get(`${repository.repositoryId}:${login}`);
       if (answer?.status) return json({ message: 'unavailable' }, answer.status);
-      if (answer) return json({ permission: answer.permission, role_name: answer.role ?? answer.permission, user: { login: answer.login ?? login, id: answer.id ?? ACCOUNTS[login], type: 'User' } });
+      if (answer) return json({ permission: answer.permission, role_name: answer.role ?? answer.permission, user: { login: answer.login ?? login, id: answer.id ?? [...state.logins].find(([, renamed]) => renamed === login)?.[0] ?? ACCOUNTS[login], type: 'User' } });
       return json({ message: 'Not Found' }, 404);
     }
     if (authorization !== `Bearer ${token}`) return json({ message: 'Requires authentication' }, 401);

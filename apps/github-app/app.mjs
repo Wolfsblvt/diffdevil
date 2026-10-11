@@ -292,18 +292,27 @@ export function createPolicyResolver(env, options = {}) {
 }
 
 /**
- * GitHub's calculated permission for one user on one repository (repository, team and organisation grants together),
+ * GitHub's calculated permission for one account on one repository (repository, team and organisation grants together),
  * read through the App's own installation with a credential scoped to that repository and Metadata read only. No
- * personal user token is involved. Answers `{ answer: 'present', permission, user: { id, login } }`, `{ answer:
- * 'absent' }` when GitHub reports the repository or the user's access as not found, and `{ answer: 'unknown', code }`
- * when GitHub could not be asked. Never throws.
+ * personal user token is involved. The account is named by its stable numeric id: its current login is read first
+ * (`GET /user/{account_id}`), so a rename follows the person and a recycled login cannot stand in for them. Answers
+ * `{ answer: 'present', permission, user: { id, login } }` (GitHub may report `permission: 'none'`), `{ answer:
+ * 'no-user' }` when GitHub knows no account with that id, `{ answer: 'absent' }` when the repository or the account's
+ * access is reported as not found, and `{ answer: 'unknown', code }` when GitHub could not be asked. Never throws.
  */
 export function createRepositoryPermissionReader(env, options = {}) {
-  return async ({ installationId, repositoryId, login }) => {
-    if (!Number.isSafeInteger(installationId) || installationId < 1 || !Number.isSafeInteger(repositoryId) || repositoryId < 1
-      || typeof login !== 'string' || !/^[A-Za-z0-9-]{1,39}$/u.test(login)) return { answer: 'unknown', code: 'E_APP_PERMISSION_INPUT' };
+  return async ({ installationId, repositoryId, userId }) => {
+    if (![installationId, repositoryId, userId].every(value => Number.isSafeInteger(value) && value > 0)) return { answer: 'unknown', code: 'E_APP_PERMISSION_INPUT' };
+    let client;
+    try { client = await mintInstallationClient(env, installationId, { repository_ids: [repositoryId], permissions: { metadata: 'read' } }, options); }
+    catch (error) { return { answer: 'unknown', code: stable(errorCode(error), 'E_APP_PERMISSION') }; }
+    let login;
     try {
-      const client = await mintInstallationClient(env, installationId, { repository_ids: [repositoryId], permissions: { metadata: 'read' } }, options);
+      const account = await client.json(`/user/${userId}`);
+      if (account?.id !== userId || typeof account.login !== 'string' || !/^[A-Za-z0-9-]{1,39}$/u.test(account.login)) return { answer: 'unknown', code: 'E_APP_PERMISSION_ACCOUNT' };
+      login = account.login;
+    } catch (error) { return error?.status === 404 ? { answer: 'no-user' } : { answer: 'unknown', code: stable(errorCode(error), 'E_APP_PERMISSION') }; }
+    try {
       const listed = await client.json('/installation/repositories?per_page=100');
       const repository = Array.isArray(listed?.repositories) ? listed.repositories.find(value => value?.id === repositoryId) : undefined;
       const [owner, name] = typeof repository?.full_name === 'string' ? repository.full_name.split('/') : [];
