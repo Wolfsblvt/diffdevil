@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
 /** Two real local D1 consumers, with independent GitHub/Wirt wire doubles. No provider or customer effects. */
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import { createHash, createHmac, randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -15,6 +16,7 @@ import { createGitHubAppWorker, COMMERCIAL_ROUTES } from '../../github-app/app.m
 import { D1ParticipationStore } from '../src/lib/participation/store.mjs';
 import { migrationNames } from '../qa/seed.mjs';
 import { createFakeGitHub, CODE, NOW } from '../qa/fixture.mjs';
+import { readOwnedComments } from '../../../dist/lib/github/comments.js';
 
 const stagingConfig = readConfig({ config: 'apps/app/staging/wrangler.json' });
 const productionConfig = readConfig({ config: 'apps/app/wrangler.jsonc' });
@@ -33,12 +35,45 @@ test('the selected staging build has distinct Worker, D1, queues, artifacts and 
   assert.notEqual(stagingConfig.queues.consumers[0].dead_letter_queue, productionConfig.queues.consumers[0].dead_letter_queue);
   assert.equal(resolve('apps/app/staging', stagingConfig.d1_databases[0].migrations_dir), resolve('apps/app', productionConfig.d1_databases[0].migrations_dir));
   assert.equal(stagingConfig.main, productionConfig.main);
+  assert.equal(stagingConfig.compatibility_date, productionConfig.compatibility_date);
+  assert.deepEqual(stagingConfig.compatibility_flags, productionConfig.compatibility_flags);
+  assert.deepEqual(stagingConfig.triggers, productionConfig.triggers);
+  assert.deepEqual(stagingConfig.d1_databases.map(database => database.binding), productionConfig.d1_databases.map(database => database.binding));
+  assert.deepEqual(stagingConfig.queues.producers.map(queue => queue.binding), productionConfig.queues.producers.map(queue => queue.binding));
+  const consumerSettings = ({ queue, dead_letter_queue, ...settings }) => settings;
+  assert.deepEqual(stagingConfig.queues.consumers.map(consumerSettings), productionConfig.queues.consumers.map(consumerSettings));
+  assert.ok(stagingConfig.vars.GITHUB_APP_BOT_LOGIN);
+  assert.notEqual(stagingConfig.vars.GITHUB_APP_BOT_LOGIN, productionConfig.vars.GITHUB_APP_BOT_LOGIN ?? 'diffdevil[bot]');
   assert.equal(stagingConfig.workers_dev, false);
   assert.equal(stagingConfig.vars.WIRT_LINK_CALLBACK_URL, `${staging.origin}${COMMERCIAL_ROUTES.callback}`);
   assert.equal(stagingConfig.vars.WIRT_LINK_CONTINUATION_URL, `${staging.origin}/manage/plan`);
   assert.equal(staging.configPath, 'staging/wrangler.json');
   assert.throws(() => appBuildTarget({ DIFFDEVIL_APP_TARGET: 'staging', DIFFDEVIL_APP_ORIGIN: production.origin }), /must match/u);
   assert.throws(() => appBuildTarget({ DIFFDEVIL_APP_TARGET: 'typo' }), /production or staging/u);
+});
+
+test('the production check refuses an inherited staging target before building or dry-running stale production output', async () => {
+  const { scripts } = JSON.parse(await readFile(resolve('package.json'), 'utf8'));
+  const buildCommand = scripts['check:app'].split(' && ').find(command => command.startsWith('node tools/app-command.mjs '));
+  assert.ok(buildCommand, 'check:app uses the existing target-aware build command');
+  const result = spawnSync(process.execPath, buildCommand.slice('node '.length).split(' '), {
+    cwd: resolve('.'), windowsHide: true, encoding: 'utf8',
+    env: { ...process.env, DIFFDEVIL_APP_TARGET: 'staging', DIFFDEVIL_APP_ORIGIN: '' }
+  });
+  assert.ifError(result.error);
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /expected target production, but selected staging/u);
+});
+
+test('the configured staging bot recognises its own brief without adopting the production brief', async () => {
+  const plan = { target: { repository: 'fixture/repo', pullRequest: 1 }, policyId: 'fixture-policy', rules: { brief: {} } };
+  const marker = Buffer.from(JSON.stringify({ v: 1, ...plan.target, policyId: plan.policyId, rule: 'brief', sequence: 1, transition: 0 })).toString('base64url');
+  const body = `Brief\n<!-- diffdevil:state=${marker} -->`;
+  const client = { list: async () => ({ items: [
+    { id: 1, body, user: { login: productionConfig.vars.GITHUB_APP_BOT_LOGIN ?? 'diffdevil[bot]' } },
+    { id: 2, body, user: { login: stagingConfig.vars.GITHUB_APP_BOT_LOGIN } }
+  ] }) };
+  assert.deepEqual((await readOwnedComments(client, plan, { login: stagingConfig.vars.GITHUB_APP_BOT_LOGIN })).map(comment => comment.id), [2]);
 });
 
 function projection(link, version = 1) {

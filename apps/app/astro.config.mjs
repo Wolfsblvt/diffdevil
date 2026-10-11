@@ -38,6 +38,8 @@ export default defineConfig({
   // request URL, which a local proxy may rewrite; one explicit origin rule is enough.
   security: { checkOrigin: false },
   vite: {
+    // The visible environment label and browser title project this same selected build target.
+    define: { 'import.meta.env.DIFFDEVIL_APP_TARGET': JSON.stringify(target.name) },
     // The managed App's runtime imports the reusable engine by its package name; the App bundles the built engine.
     resolve: { alias: { '@diffdevil/premium-app': premium.entry, '@diffdevil/premium-styles': premium.styles, '@diffdevil-app': appSource, '@wolfsblvt/diffdevil/github': fileURLToPath(new URL('../../dist/lib/github/index.js', import.meta.url)), '@wolfsblvt/diffdevil': fileURLToPath(new URL('../../dist/lib/index.js', import.meta.url)) } },
     server: { fs: { allow: [repositoryRoot] } },

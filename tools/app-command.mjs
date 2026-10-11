@@ -18,8 +18,14 @@ const [command, ...rest] = process.argv.slice(2);
 if (!['build', 'dev', 'preview'].includes(command)) { console.error('Expected build, dev or preview.'); process.exit(2); }
 const targetEnv = { ...process.env, ...(rest.includes('--staging') ? { DIFFDEVIL_APP_TARGET: 'staging' } : {}) };
 const target = appBuildTarget(targetEnv);
+// A fixed-path check must not build one target and qualify another target's old artifact.
+const expectedTarget = rest.find(argument => argument.startsWith('--expect-target='))?.slice('--expect-target='.length);
+if (expectedTarget !== undefined && target.name !== expectedTarget) {
+  console.error(`App check expected target ${expectedTarget}, but selected ${target.name}. Use check:app:staging for staging, or restore DIFFDEVIL_APP_TARGET before check:app.`);
+  process.exit(2);
+}
 const appOrigin = target.origin;
-const astroArgs = rest.filter(argument => argument !== '--staging');
+const astroArgs = rest.filter(argument => argument !== '--staging' && !argument.startsWith('--expect-target='));
 const extra = command === 'dev' ? ['--host', '127.0.0.1', '--port', '4411'] : command === 'preview' ? ['--host', '127.0.0.1', '--port', '4412'] : [];
 const result = spawnSync(process.execPath, [resolve('node_modules/astro/bin/astro.mjs'), command, '--root', 'apps/app', ...extra, ...astroArgs], {
   stdio: 'inherit', windowsHide: true,

@@ -34,7 +34,8 @@ import { participationJourney, COMMERCIAL_BETA, QA_CAMPAIGN } from './participat
 import { appBuildTarget } from '../build-target.mjs';
 
 const target = appBuildTarget();
-const OUT = join(target.artifacts, 'qa');
+const IDENTITY_ONLY = process.argv.includes('--identity');
+const OUT = join(target.artifacts, 'qa', ...(IDENTITY_ONLY ? ['identity'] : []));
 const APP_PORT = Number(process.env.DIFFDEVIL_APP_QA_PORT ?? (target.name === 'staging' ? 4512 : 4412));
 const GITHUB_PORT = Number(process.env.DIFFDEVIL_APP_QA_GITHUB_PORT ?? (target.name === 'staging' ? 4533 : 4433));
 // Chromium accepts Secure (__Host-) cookies from http://localhost, not from a loopback IP, so the browser origin is localhost; the Worker still binds 127.0.0.1.
@@ -65,6 +66,9 @@ await mkdir(OUT, { recursive: true });
 
 const results = [], failures = [];
 const check = (name, condition, detail = '') => { results.push({ name, ok: Boolean(condition), detail }); if (!condition) failures.push(`${name}${detail ? ` — ${detail}` : ''}`); console.log(`${condition ? '✓' : '✗'} ${name}${condition ? '' : ` — ${detail}`}`); };
+
+// Refuse another actor's listener before seeding D1 or starting any owned server/browser.
+await freePort(APP_PORT);
 
 // ── the GitHub double, over HTTP so workerd can reach it ──
 let github = createFakeGitHub();
@@ -116,12 +120,13 @@ function killTree(pid) {
   else { try { process.kill(Number(pid), 'SIGKILL'); } catch { /* already gone */ } }
 }
 async function freePort(port) {
+  let pids = [];
   for (let attempt = 0; attempt < 30; attempt++) {
-    const pids = listenersOn(port);
+    pids = listenersOn(port);
     if (pids.length === 0) return;
     await new Promise(resolve => setTimeout(resolve, 500));
   }
-  throw new Error(`Port ${port} is still held by another process; choose a different DIFFDEVIL_APP_QA_PORT.`);
+  throw new Error(`Port ${port} is still held by PID(s) ${pids.join(', ')}; choose a different DIFFDEVIL_APP_QA_PORT or stop the listener only if you own it.`);
 }
 async function stopWorker() {
   if (worker && worker.exitCode === null) {
@@ -304,6 +309,29 @@ async function qualifyPages(label, { pro }) {
 }
 
 try {
+  if (IDENTITY_ONLY) {
+    await startWorker(undefined, STATE, { commercial: COMMERCIAL_PRO });
+    await signIn();
+    for (const [name, path] of [['overview', '/'], ['manage', '/manage']]) {
+      await go(path);
+      await settled();
+      const facts = await pageFacts();
+      const staging = target.name === 'staging';
+      check(`${name}: the browser title identifies only the staging build`, (await page.title()).startsWith('Staging · ') === staging, await page.title());
+      const marks = page.locator('[data-staging-mark]');
+      check(`${name}: the heading carries only the staging build's mark`, await marks.count() === (staging ? 1 : 0));
+      if (staging) {
+        check(`${name}: the neutral mark is readable beside the existing heading`, await marks.isVisible() && await marks.textContent() === 'Staging' && await marks.evaluate(mark => mark.closest('h1') !== null && mark.tabIndex === -1));
+        check(`${name}: the mark fits inside its heading without clipping`, await marks.evaluate(mark => { const box = mark.getBoundingClientRect(), head = mark.closest('h1').getBoundingClientRect(); return box.left >= head.left && box.right <= head.right && box.top >= head.top && box.bottom <= head.bottom && mark.scrollWidth <= mark.clientWidth + 1; }));
+      }
+      check(`${name}: the Works header retains both App labels`, facts.label === 'App' && facts.trailingText === 'App' && facts.trailing === 'page');
+      check(`${name}: the selected desktop composition has no horizontal overflow`, await overflow() <= 0, await offenders());
+      await page.focus('.app-route > a[href="#main"]');
+      await page.keyboard.press('Tab');
+      check(`${name}: keyboard navigation reaches the unchanged Works header`, await page.locator('.site-header :focus').count() === 1);
+      await shot(`identity-${name}`);
+    }
+  } else {
   if (!PARTICIPATION_ONLY) {
   // ── Pro pass: the viewer and their organisation are Pro through the Works stand-in, one shared namespace is Business ──
   await startWorker(undefined, STATE, { commercial: COMMERCIAL_PRO });
@@ -548,6 +576,7 @@ try {
     setScale(1);
   }
 
+  }
   check('no console errors', consoleErrors.length === 0, consoleErrors.slice(0, 5).join(' | '));
   check('no page errors', pageErrors.length === 0, pageErrors.slice(0, 5).join(' | '));
   check('no external requests left the loopback', external.length === 0, external.slice(0, 5).join(' | '));
@@ -559,7 +588,7 @@ try {
   githubServer.closeAllConnections?.();
   githubServer.close();
 }
-await writeFile(join(OUT, 'results.json'), JSON.stringify({ origin: ORIGIN, scope: PARTICIPATION_ONLY ? 'participation' : 'full', seeded: seeded.written, dense: DENSE && !PARTICIPATION_ONLY, charts: chartTelemetry, results, failures, consoleErrors, pageErrors, external }, null, 2));
+await writeFile(join(OUT, 'results.json'), JSON.stringify({ origin: ORIGIN, scope: IDENTITY_ONLY ? 'identity' : PARTICIPATION_ONLY ? 'participation' : 'full', target: target.name, seeded: seeded.written, dense: DENSE && !PARTICIPATION_ONLY && !IDENTITY_ONLY, charts: chartTelemetry, results, failures, consoleErrors, pageErrors, external }, null, 2));
 await writeFile(join(OUT, 'worker.log'), workerLog);
 console.log(`${PARTICIPATION_ONLY ? 'Participation: ' : ''}${results.filter(result => result.ok).length} of ${results.length} checks passed; screenshots and results in ${OUT}`);
 if (failures.length) { console.error(failures.map(failure => ` ✗ ${failure}`).join('\n')); process.exit(1); }

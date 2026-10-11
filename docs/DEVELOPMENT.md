@@ -74,6 +74,11 @@ selects its local state for the existing App seed and browser QA commands. See
 [persistent App staging](integration/app-staging.md) for the configuration,
 focused two-database qualification and activation handoff. These commands have
 no provider mutation or deployment effect.
+`check:app` refuses an inherited staging target; use `check:app:staging` for that
+target. `npm run qa:app -- --identity` uses the existing signed-in fixture and
+built Worker to qualify Overview/Manage headings, browser titles, the unchanged
+Works header, desktop layout and keyboard navigation. It records its focused scope
+under the selected target's `qa/identity/`, separately from full journey evidence.
 
 | Command | What it proves |
 | --- | --- |

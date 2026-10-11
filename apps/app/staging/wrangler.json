@@ -10,6 +10,7 @@
     "APP_ORIGIN": "https://diffdevil-app-staging.invalid",
     "SITE_ORIGIN": "https://diffdevil.dev",
     "APP_SESSION_DAYS": "30",
+    "GITHUB_APP_BOT_LOGIN": "staging-bot-login-required[bot]",
     "WIRT_ORIGIN": "https://wirt-staging.invalid",
     "WIRT_OAUTH_CLIENT_ID": "staging-client-registration-required",
     "WIRT_LINK_CALLBACK_URL": "https://diffdevil-app-staging.invalid/integrations/wirt/link/callback",
