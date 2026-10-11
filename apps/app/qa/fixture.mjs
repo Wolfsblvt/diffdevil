@@ -242,7 +242,7 @@ export function createFakeGitHub({ user = USER, token = TOKEN, code = CODE, clie
   const calls = [];
   // Narrow the signed-in person's GitHub access for a case: `push` and `admin` per repository (repositoryId → boolean,
   // default write and the fixture's admin flag), `roles` per organisation login (default ROLES).
-  const state = { rateLimited: false, tokenValid: true, push: new Map(), admin: new Map(), roles: new Map(), collaborators: new Map(), installationTokens: [], extraRepositories: [], logins: new Map() };
+  const state = { rateLimited: false, tokenValid: true, membershipStatus: 200, push: new Map(), admin: new Map(), roles: new Map(), membershipStates: new Map(), collaborators: new Map(), installationTokens: [], extraRepositories: [], logins: new Map() };
   async function fetch(input, init = {}) {
     const url = new URL(String(input)), method = init.method ?? 'GET', path = url.pathname;
     const authorization = new Headers(init.headers).get('authorization') ?? '';
@@ -287,13 +287,22 @@ export function createFakeGitHub({ user = USER, token = TOKEN, code = CODE, clie
     if (authorization !== `Bearer ${token}`) return json({ message: 'Requires authentication' }, 401);
     if (path === '/user') return json({ id: user.id, login: user.login, type: user.type, avatar_url: user.avatar_url });
     if (path === '/user/installations') return json({ total_count: INSTALLATIONS.length, installations: INSTALLATIONS });
-    if (path === '/user/orgs') return json(INSTALLATIONS.filter(installation => installation.account.type === 'Organization').map(installation => ({ id: installation.account.id, login: installation.account.login })));
+    if (path === '/user/memberships/orgs') {
+      if (state.membershipStatus !== 200) return json({ message: 'membership read unavailable' }, state.membershipStatus);
+      const memberships = INSTALLATIONS.filter(installation => installation.account.type === 'Organization').flatMap(installation => {
+        const organization = installation.account, role = state.roles.get(organization.login) ?? ROLES[organization.login];
+        return role ? [{ organization: { id: organization.id, login: organization.login }, role, state: state.membershipStates.get(organization.login) ?? 'active' }] : [];
+      });
+      const page = Number(url.searchParams.get('page') ?? 1), perPage = Number(url.searchParams.get('per_page') ?? 30);
+      return json(memberships.slice((page - 1) * perPage, page * perPage));
+    }
     let match = /^\/user\/installations\/(\d+)\/repositories$/u.exec(path);
     if (match) { const list = REPOSITORIES.filter(repository => repository.installationId === Number(match[1])).map(repository => ({ id: repository.repositoryId, full_name: repository.fullName, name: repository.fullName.split('/')[1], owner: { login: repository.fullName.split('/')[0], id: ACCOUNTS[repository.fullName.split('/')[0]] }, private: repository.private, permissions: { admin: state.admin.get(repository.repositoryId) ?? repository.admin, push: state.push.get(repository.repositoryId) ?? true, pull: true } })); return json({ total_count: list.length, repositories: list }); }
     match = /^\/users\/([^/]+)$/u.exec(path);
     if (match) { const login = decodeURIComponent(match[1]); const id = ACCOUNTS[login]; return Number.isSafeInteger(id) ? json({ id, login, type: ['ada-sample', 'kai-sample'].includes(login) ? 'User' : 'Organization' }) : json({ message: 'Not Found' }, 404); }
     match = /^\/user\/memberships\/orgs\/([^/]+)$/u.exec(path);
-    if (match) { const role = state.roles.get(match[1]) ?? ROLES[match[1]]; return role ? json({ role, state: 'active' }) : json({ message: 'Not Found' }, 404); }
+    // The maintained registration has no Members-read permission; qualify the same refusal in local App journeys.
+    if (match) return json({ message: 'Resource not accessible by integration' }, 403);
     match = /^\/repos\/([^/]+\/[^/]+)\/pulls$/u.exec(path);
     if (match) return json(pulls.filter(pull => pull.repository.fullName === match[1]).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).slice(0, 100).map(wire));
     match = /^\/repos\/([^/]+\/[^/]+)\/pulls\/(\d+)$/u.exec(path);

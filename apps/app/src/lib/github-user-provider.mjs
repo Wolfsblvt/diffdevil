@@ -47,6 +47,19 @@ export function createGitHubUserProvider({ clientId, clientSecret, callbackUrl, 
     }
     return out;
   }
+  // The current-user list needs no Members-read permission. A per-organisation membership read does.
+  // Stop on the requested membership or a complete list, never infer absence from a truncated collection.
+  async function organisationMembership(token, matches) {
+    for (let page = 1; ; page++) {
+      const memberships = await json(`${api}/user/memberships/orgs?per_page=${PAGE}&page=${page}`, { token });
+      if (!Array.isArray(memberships) || memberships.some(value => !Number.isSafeInteger(value?.organization?.id)
+        || value.organization.id <= 0 || typeof value.organization.login !== 'string' || !value.organization.login
+        || !['active', 'pending'].includes(value.state) || !['admin', 'member'].includes(value.role))) throw providerError('E_PROVIDER_RESPONSE');
+      const membership = memberships.find(matches);
+      if (membership) return membership;
+      if (memberships.length < PAGE) return null;
+    }
+  }
   function grantFrom(payload) {
     if (!payload || typeof payload.access_token !== 'string' || payload.access_token.length === 0) throw providerError('E_PROVIDER_TOKEN');
     const at = now();
@@ -122,21 +135,17 @@ export function createGitHubUserProvider({ clientId, clientSecret, callbackUrl, 
       return list.map(value => ({ repositoryId: value.id, installationId, fullName: value.full_name, owner: value.owner?.login, name: value.name, private: value.private === true, canAdminister: value.permissions?.admin === true, canWrite: canWrite(value) }));
     },
     /**
-     * Whether the person currently administers the organisation with this numeric account: the organisations they
-     * belong to (with their IDs) name the login, and their membership says the role. Never a guess from visibility.
+     * Whether the person currently administers this numeric organisation: their own membership names its ID,
+     * login, role and state together. Provider failure remains unknown to the authorization service.
      */
     async checkOrganisationAdministration({ material, organisationId }) {
-      const organisations = await pages(`${api}/user/orgs`, material.accessToken, value => (Array.isArray(value) ? value : []));
-      const organisation = organisations.find(value => value?.id === organisationId);
-      if (!organisation || typeof organisation.login !== 'string') return { administer: false, login: null };
-      try {
-        const membership = await json(`${api}/user/memberships/orgs/${encodeURIComponent(organisation.login)}`, { token: material.accessToken });
-        return { administer: membership?.role === 'admin' && membership?.state === 'active', login: organisation.login };
-      } catch (error) { if (error.code === 'E_PROVIDER_NOT_FOUND') return { administer: false, login: organisation.login }; throw error; }
+      const membership = await organisationMembership(material.accessToken, value => value.organization.id === organisationId);
+      return { administer: membership?.role === 'admin' && membership?.state === 'active', login: membership?.organization.login ?? null };
     },
+    /** Active membership role for this login (GitHub logins are case insensitive), or none after a complete read. */
     async organizationRole({ material, organization }) {
-      try { const membership = await json(`${api}/user/memberships/orgs/${encodeURIComponent(organization)}`, { token: material.accessToken }); return membership.role === 'admin' ? 'admin' : 'member'; }
-      catch (error) { if (error.code === 'E_PROVIDER_NOT_FOUND') return 'none'; throw error; }
+      const membership = await organisationMembership(material.accessToken, value => value.organization.login.toLowerCase() === organization.toLowerCase());
+      return membership?.state === 'active' ? membership.role : 'none';
     },
     /** GitHub's 100 most recently updated pull requests of one repository: lifecycle facts, transiently. */
     async recentPullRequests({ material, fullName }) {
