@@ -127,7 +127,9 @@ export function createAppRuntime(env, { fetch = globalThis.fetch, now, premium =
   const participationStore = new D1ParticipationStore(env.APP_DB, { now: clock });
   let participation;
   if (commercial) {
-    try { const campaign = readCampaign(env.APP_PARTICIPATION_CAMPAIGN); if (campaign) participation = createParticipation({ store: participationStore, commercial, campaign, now: clock }); }
+    // The actual producer has not Returned its timezone field yet. No operator fallback:
+    // only the loopback fixture can supply a date basis for local qualification meanwhile.
+    try { const campaign = readCampaign(env.APP_PARTICIPATION_CAMPAIGN); if (campaign) participation = createParticipation({ store: participationStore, commercial, campaign, betaTimeZone: commercialSource === 'fixture' ? commercial.betaTimeZone : null, now: clock }); }
     catch { participation = undefined; }
   }
   // History retention is service configuration: the admission contract needs a bounded number of days and the terms are not published yet.

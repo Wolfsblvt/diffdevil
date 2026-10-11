@@ -355,7 +355,9 @@ try {
   await page.waitForLoadState('networkidle');
   check('search narrows the list by number', /q=%23452/u.test(page.url()));
   await shot('pro-prs-filtered');
-  await go('/prs?s=parser-guild%2Fparser-lab&per=90d&f=merged');
+  // The Free Manage pass explicitly disconnected parser-guild; use the retained
+  // owner-funded namespace here rather than treating an empty disconnected scope as a PR.
+  await go('/prs?s=northwind-tools%2Fci-recipes&per=90d');
   const firstRow = page.locator('.a-prs2 .a-pr').first();
   const href = await firstRow.getAttribute('href');
   const detailResponse = await go(href);

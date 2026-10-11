@@ -72,6 +72,7 @@ export function createCommercialFixture(spec, { authorization, namespaceOf, allo
 
   return {
     source: 'fixture',
+    betaTimeZone: spec.betaTimeZone ?? null,
     async status({ session }) { await actor(session); return { body: body(), headers: protectedHeaders() }; },
     async entitlement({ repositoryId, actor: viewer }) {
       const account = repositoryId === null ? viewer?.userId : await namespaceOf({ repositoryId });

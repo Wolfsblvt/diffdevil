@@ -10,6 +10,7 @@
 /** A beta participant: thirty days of Pro by grant, no card, nothing renewing automatically. */
 export const COMMERCIAL_BETA = Object.freeze({ account: 123, linked: true, since: '2026-09-20', commercial: { standing: 'funded', tier: 'pro', cadence: 'monthly', period: { started_on: '2026-09-20', ends_on: '2026-10-20' }, renewal_preference: 'manual', cancellation_intent: 'none', grace: null, ended: null, next_renewal: null },
   // Native beta-grant contract of producer candidate 271c33f; actual delivery/application remains separate.
+  betaTimeZone: 'UTC', // Explicit fixture calendar, not a field claimed for native producer 271c33f.
   betaGrants: [{ id: 265, kind: 'beta', product: 'diffdevil', tier: 'pro', promised_units: 30,
     original_window: { started_on: '2026-09-20', until: '2026-10-20' }, access_windows: [{ started_on: '2026-09-20', until: '2026-10-20' }],
     current_access: { started_on: '2026-09-20', until: '2026-10-20' }, remaining_units: 9 }],

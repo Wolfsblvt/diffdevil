@@ -19,7 +19,8 @@ import { createWirtClient, readSigningKeys, readWirtMessage, readProjectionBetaG
 import { migrationNames } from '../qa/seed.mjs';
 import { readCampaign } from '../src/lib/participation/campaign.mjs';
 import { D1ParticipationStore } from '../src/lib/participation/store.mjs';
-import { createParticipation, eligibilityOf, rewardFor, betaAccessWindows, operationDate } from '../src/lib/participation/service.mjs';
+import { createParticipation, eligibilityOf, rewardFor, betaAccessWindows } from '../src/lib/participation/service.mjs';
+import { operationDate } from '../src/lib/participation/calendar.mjs';
 import { loadParticipation } from '../src/lib/participation/page.mjs';
 import { handleManageAction } from '../src/lib/manage/actions.mjs';
 import { presentReward, receiptOf, standingOf } from '../src/lib/participation/present.mjs';
@@ -185,7 +186,7 @@ before(async () => {
   commercial = createCommercialService({ store: commercialStore, signing, authorization, protector, allowedOrigins: [APP], linkContinuationUrl: `${APP}/manage/plan`, now,
     wirt: createWirtClient({ origin: WIRT, oauthClientId: 'diffdevil-public-client', callbackUrl: `${APP}/integrations/wirt/link/callback`, signing, fetch: double.fetch, now: () => Date.parse(clock.value) }) });
   store = new D1ParticipationStore(db, { now });
-  participation = createParticipation({ store, commercial, campaign: CAMPAIGN, now });
+  participation = createParticipation({ store, commercial, campaign: CAMPAIGN, betaTimeZone: 'UTC', now });
 });
 after(async () => { await mf?.dispose(); });
 
@@ -495,11 +496,16 @@ test('native beta facts preserve actual disjoint access and ignore promise, queu
   const grants = readProjectionBetaGrants({ beta_grants: [fact] });
   assert.equal('private_basis' in grants[0], false);
   const status = { linked: true, commercial: { tier: 'pro', standing: 'funded', period: { started_on: '2027-01-01', ends_on: '2027-12-31' } }, betaGrants: grants };
-  assert.deepEqual(betaAccessWindows(status), [{ from: '2027-03-01', until: '2027-03-03' }, { from: '2027-03-10', until: '2027-03-12' }]);
-  assert.deepEqual(betaAccessWindows({ ...status, betaGrants: [{ ...grants[0], access_windows: [] }] }), [], 'queued/unbegun time is not access');
-  assert.equal(betaAccessWindows({ ...status, betaGrants: null, grants: [{ kind: 'beta', started_on: '2027-01-01', until: '2027-12-31' }], linkedSince: '2020-01-01' }), null, 'legacy/generic data remain unknown');
-  assert.equal(betaAccessWindows({ ...status, reconciling: true }), null);
-  assert.equal(operationDate('2027-03-03T00:30:00+02:00'), '2027-03-02', 'retain the managed event UTC-date conversion');
+  assert.deepEqual(betaAccessWindows(status, 'UTC'), [{ from: '2027-03-01', until: '2027-03-03' }, { from: '2027-03-10', until: '2027-03-12' }]);
+  assert.deepEqual(betaAccessWindows({ ...status, betaGrants: [{ ...grants[0], access_windows: [] }] }, 'UTC'), [], 'queued/unbegun time is not access');
+  assert.equal(betaAccessWindows({ ...status, betaGrants: null, grants: [{ kind: 'beta', started_on: '2027-01-01', until: '2027-12-31' }], linkedSince: '2020-01-01' }, 'UTC'), null, 'legacy/generic data remain unknown');
+  assert.equal(betaAccessWindows({ ...status, reconciling: true }, 'UTC'), null);
+  assert.equal(betaAccessWindows(status), null, 'native windows without an authoritative timezone remain unknown');
+  assert.equal(operationDate('2027-03-03T00:30:00+02:00', 'UTC'), '2027-03-02');
+  assert.equal(operationDate('2027-03-02T23:30:00Z', 'Europe/Berlin'), '2027-03-03');
+  assert.equal(operationDate('2027-03-28T22:30:00Z', 'Europe/Berlin'), '2027-03-29', 'the DST offset comes from the named timezone');
+  assert.equal(operationDate('2027-03-03T00:30:00Z'), null);
+  assert.equal(operationDate('2027-03-03T00:30:00Z', 'invalid-fixture-zone'), null);
   assert.throws(() => readProjectionBetaGrants({ beta_grants: [{ ...fact, remaining_units: -1 }] }));
   assert.throws(() => readProjectionBetaGrants({ beta_grants: [{ ...fact, access_windows: [{ started_on: '2027-03-12', until: '2027-03-10' }] }] }));
   assert.throws(() => readProjectionBetaGrants({ beta_grants: [fact, fact] }));
@@ -521,6 +527,9 @@ test('maintenance preserves any qualifying finished operation before pruning wit
   const unknown = await standing(account); unknown.status.betaGrants = null; unknown.status.linkedSince = '2020-01-01';
   const view = await participation.view({ userId: account, commercial: unknown });
   assert.equal(view.proactiveEligibility, 'unknown'); assert.equal(view.invitation, null); assert.equal(view.canAnswer, true);
+  const withoutCalendar = createParticipation({ store, commercial, campaign: CAMPAIGN, now: () => clock.value });
+  const nativePending = await withoutCalendar.view({ userId: account, commercial: await standing(account) });
+  assert.equal(nativePending.proactiveEligibility, 'unknown'); assert.equal(nativePending.invitation, null); assert.equal(nativePending.canAnswer, true);
 });
 
 test('qualifying operation dates use any actual segment, with exclusive end and no original-promise or paid/grace shortcut', async () => {
@@ -539,6 +548,13 @@ test('qualifying operation dates use any actual segment, with exclusive end and 
   const at='2027-03-10T23:59:59Z';
   await db.prepare("INSERT INTO deliveries(delivery_id,installation_id,repository_id,state,received_at,completed_at) VALUES ('beta-resumed',703,703,'rejected',?,?)").bind(at,at).run();
   await participation.preserveUse(); assert.equal((await store.prompt(user,CAMPAIGN)).useObservedAt,at);
+  const dstWindow = [{ from: '2027-03-28', until: '2027-03-29' }];
+  const end = '2027-03-28T22:30:00Z';
+  await db.prepare("INSERT INTO deliveries(delivery_id,installation_id,repository_id,state,received_at,completed_at) VALUES ('beta-local-end',703,703,'complete',?,?)").bind(end,end).run();
+  assert.equal(await store.qualifyingUse(user, dstWindow, 'Europe/Berlin'), null, 'the local exclusive end is already the next date after DST');
+  const start = '2027-03-27T23:30:00Z';
+  await db.prepare("INSERT INTO deliveries(delivery_id,installation_id,repository_id,state,received_at,completed_at) VALUES ('beta-local-start',703,703,'complete',?,?)").bind(start,start).run();
+  assert.equal(await store.qualifyingUse(user, dstWindow, 'Europe/Berlin'), start, 'a UTC timestamp on the preceding date can be inside the actual commercial window');
 });
 
 test('the invitation waits for observed use (failed included), keeps that observation past ledger pruning, appears once, reminds once, then never', async () => {

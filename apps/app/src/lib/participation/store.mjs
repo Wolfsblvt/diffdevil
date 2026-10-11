@@ -6,6 +6,8 @@
  * its time, because the reward they earned is Wirt's commercial fact; closing the account forgets every row.
  */
 
+import { operationDate } from './calendar.mjs';
+
 const parse = text => { try { return JSON.parse(text); } catch { return undefined; } };
 
 function response(row) {
@@ -112,15 +114,22 @@ export class D1ParticipationStore {
     }
   }
   /** Any finished managed operation in the account's funded namespaces, including one hidden by a newer retry. */
-  async qualifyingUse(userId, windows) {
+  async qualifyingUse(userId, windows, timeZone) {
     let first = null;
     for (const { from, until } of windows) {
-      const row = await this.statement(`SELECT MIN(d.completed_at) AS at FROM deliveries d JOIN repositories r ON r.repository_id=d.repository_id
+      // One day on either side includes every IANA offset. Match the actual date in JS;
+      // SQLite's UTC date or a fixed offset would be wrong near midnight and DST.
+      const lower = new Date(Date.parse(from) - 86_400_000).toISOString();
+      const upper = new Date(Date.parse(until) + 86_400_000).toISOString();
+      const rows = await this.statement(`SELECT d.completed_at AS at FROM deliveries d JOIN repositories r ON r.repository_id=d.repository_id
         JOIN installations i ON i.installation_id=r.installation_id WHERE d.state IN ('complete','rejected','terminal','repair')
-        AND substr(d.completed_at,1,10) >= ? AND substr(d.completed_at,1,10) < ? AND (i.account_id=? OR EXISTS
+        AND d.completed_at >= ? AND d.completed_at < ? AND (i.account_id=? OR EXISTS
           (SELECT 1 FROM commercial_bindings b JOIN commercial_links l ON l.link_id=b.link_id
-           WHERE b.organisation_id=i.account_id AND l.product_account=? AND l.state='active' AND b.authority_observed='present'))`, from, until, userId, userId).first();
-      if (row?.at && (!first || row.at < first)) first = row.at;
+           WHERE b.organisation_id=i.account_id AND l.product_account=? AND l.state='active' AND b.authority_observed='present'))`, lower, upper, userId, userId).all();
+      for (const row of rows.results ?? []) {
+        const day = operationDate(row.at, timeZone);
+        if (day && day >= from && day < until && (!first || row.at < first)) first = row.at;
+      }
     }
     return first;
   }
