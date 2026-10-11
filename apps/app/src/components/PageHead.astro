@@ -17,7 +17,7 @@ trail.push(...crumbs);
     <nav class="crumb" aria-label="Breadcrumb">
       {trail.map((part, index) => (<>{index > 0 && <span class="a-sep" aria-hidden="true">/</span>}{part.href ? <a href={part.href}>{part.label}</a> : <span>{part.label}</span>}</>))}
     </nav>
-    <h1><slot name="title">{title}</slot>{import.meta.env.DIFFDEVIL_APP_TARGET === 'staging' && <span class="a-staging" data-staging-mark>Staging</span>}</h1>
+    <h1><slot name="title">{title}</slot>{import.meta.env.DIFFDEVIL_APP_TARGET === 'staging' && <>{' '}<span class="a-staging" data-staging-mark>Staging</span></>}</h1>
     {scope ? <div class="a-scope">{line.repositories}<span class="a-dot">·</span>{line.withHistory}<span class="a-dot">·</span>{line.period}<span class="a-dot">·</span>{line.latest ? `updated ${ago(line.latest, view.nowIso)}` : 'no analysis retained yet'}</div> : <slot name="scope" />}
   </div>
   <div class="tools">
