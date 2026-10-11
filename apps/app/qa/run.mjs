@@ -209,9 +209,15 @@ async function qualifyCloud(label, selector) {
   check(`${label}: focusing a file lights its co-change partners with meter chips`, keyed.partners > 0 && keyed.chips === keyed.partners, JSON.stringify({ partners: keyed.partners, chips: keyed.chips }));
   await page.keyboard.press('Escape');
   await page.click(`${selector} [data-top]`);
-  await page.waitForFunction(selector => document.querySelector(`${selector} .cl`)?.classList.contains('drawer-on') && !document.querySelector(`${selector} .cl`)?.classList.contains('is-busy'), selector, { timeout: 10_000 }).catch(() => {});
+  // Cloud packing can finish before the drawer's 360 ms CSS transition. Sample
+  // the settled visible column rather than racing that independent animation.
+  await page.waitForFunction(selector => {
+    const host = document.querySelector(selector), cloud = host?.querySelector('.cl');
+    return cloud?.classList.contains('drawer-on') && !cloud.classList.contains('is-busy')
+      && host.querySelector('.cl-drawer').getBoundingClientRect().width >= 299;
+  }, selector, { timeout: 10_000 });
   const top = await page.evaluate(selector => { const host = document.querySelector(selector); const drawer = host.querySelector('.cl-drawer'); return { on: host.querySelector('.cl').classList.contains('drawer-on'), width: Math.round(drawer.getBoundingClientRect().width), rows: drawer.querySelectorAll('a[data-key]').length, stageWidth: Math.round(host.querySelector('.cl-stage').getBoundingClientRect().width), wrapWidth: Math.round(host.querySelector('.cl-wrap').getBoundingClientRect().width) }; }, selector);
-  check(`${label}: Top opens as a real 300 px column and the cloud re-packs beside it`, top.on && top.width >= 290 && top.rows > 0 && top.stageWidth < top.wrapWidth - 250, JSON.stringify(top));
+  check(`${label}: Top opens as a real 300 px column and the cloud re-packs beside it`, top.on && top.width >= 299 && top.rows > 0 && top.stageWidth < top.wrapWidth - 250, JSON.stringify(top));
   await page.click(`${selector} [data-top]`);
   await page.click(`${selector} [data-concept="groups"]`);
   await page.waitForFunction(selector => document.querySelectorAll(`${selector} .cl-island`).length > 0 && !document.querySelector(`${selector} .cl`)?.classList.contains('is-busy'), selector, { timeout: 10_000 }).catch(() => {});
