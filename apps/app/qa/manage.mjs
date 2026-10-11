@@ -56,7 +56,11 @@ export async function proManage(ctx) {
   check('selecting a repository lands it as Pending enable in the enabled group, holding a slot as a hatched cell', /Selected/u.test(selected.message) && selected.state === 'Pending enable' && selected.open === 1 && selected.pending === 1 && /Enabled with Pro/u.test(selected.group), JSON.stringify(selected));
   await shot('pro-manage-repositories-pending');
   await go('/manage/repositories/parser-guild/grammar-fuzz');
-  const panel = await page.evaluate(() => ({ h1: document.querySelector('h1')?.textContent?.trim(), crumb: document.querySelector('.a-head .crumb')?.textContent?.replace(/\s+/gu, ' ').trim(), enable: Boolean(document.querySelector('[data-enable-panel]')), writer: Boolean(document.querySelector('[data-enable-panel] input[name="writer"]')), chain: [...document.querySelectorAll('[data-configuration] .m-chain .m-from')].map(node => node.textContent), rows: document.querySelectorAll('[data-configuration] .m-cfg tbody tr').length, ops: document.querySelectorAll('[data-operation] .m-eff > div').length }));
+  const panel = await page.evaluate(() => {
+    const heading = document.querySelector('h1')?.cloneNode(true);
+    heading?.querySelector('[data-staging-mark]')?.remove();
+    return { h1: heading?.textContent?.trim(), crumb: document.querySelector('.a-head .crumb')?.textContent?.replace(/\s+/gu, ' ').trim(), enable: Boolean(document.querySelector('[data-enable-panel]')), writer: Boolean(document.querySelector('[data-enable-panel] input[name="writer"]')), chain: [...document.querySelectorAll('[data-configuration] .m-chain .m-from')].map(node => node.textContent), rows: document.querySelectorAll('[data-configuration] .m-cfg tbody tr').length, ops: document.querySelectorAll('[data-operation] .m-eff > div').length };
+  });
   check('the pending repository page shows the breadcrumb, the enable panel with the one-writer declaration, the policy chain and the effective rows', panel.h1 === 'grammar-fuzz' && /Manage\s*\/\s*parser-guild/u.test(panel.crumb) && panel.enable && panel.writer && panel.chain.length >= 2 && panel.rows >= 4 && panel.ops === 3, JSON.stringify(panel));
   await page.click('[data-enable-panel] form button');
   await page.waitForLoadState('networkidle');
