@@ -9,8 +9,11 @@
 
 /** A beta participant: thirty days of Pro by grant, no card, nothing renewing automatically. */
 export const COMMERCIAL_BETA = Object.freeze({ account: 123, linked: true, since: '2026-09-20', commercial: { standing: 'funded', tier: 'pro', cadence: 'monthly', period: { started_on: '2026-09-20', ends_on: '2026-10-20' }, renewal_preference: 'manual', cancellation_intent: 'none', grace: null, ended: null, next_renewal: null },
-  // Explicit consumer-window fixture. Accepted Wirt does not yet emit the beta grant's effective start.
-  grants: [{ kind: 'beta', started_on: '2026-09-20', until: '2026-10-20' }], protection: { kind: 'beta' }, capacity: [{ slot: 'slot-included', funding: 'included', binding: null }],
+  // Native beta-grant contract of producer candidate 271c33f; actual delivery/application remains separate.
+  betaGrants: [{ id: 265, kind: 'beta', product: 'diffdevil', tier: 'pro', promised_units: 30,
+    original_window: { started_on: '2026-09-20', until: '2026-10-20' }, access_windows: [{ started_on: '2026-09-20', until: '2026-10-20' }],
+    current_access: { started_on: '2026-09-20', until: '2026-10-20' }, remaining_units: 9 }],
+  grants: [{ kind: 'beta', until: '2026-10-20' }], protection: { kind: 'beta' }, capacity: [{ slot: 'slot-included', funding: 'included', binding: null }],
   participation: { campaign: { key: 'qa-beta-survey', version: 1, name: 'DiffDevil beta survey', reason: 'Participation reward · DiffDevil beta survey', claim_closes_at: '2030-01-01T00:00:00Z', valid_until: '2030-06-01T00:00:00Z',
     rewards: [{ key: 'monthly', kind: 'discount', tier: 'Pro', cadence: 'monthly', unit: 'percent', value: 50, uses: 3, charge_classes: ['first-purchase', 'renewal'], combinable: false }, { key: 'annual', kind: 'discount', tier: 'Pro', cadence: 'annual', unit: 'percent', value: 20, uses: 1, charge_classes: ['first-purchase', 'renewal'], combinable: false }] } } });
 /** QA's campaign configuration: an open window around the run, no invitation delay, a one-day reminder. Not a launch default. */

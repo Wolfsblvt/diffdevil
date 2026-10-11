@@ -28,7 +28,7 @@ export function readCommercialFixture(value) {
 export function createCommercialFixture(spec, { authorization, namespaceOf, allowedOrigins = [], origin, now = () => new Date().toISOString() }) {
   const key = JSON.stringify(spec);
   if (!states.has(key)) {
-    states.set(key, { linked: spec.linked === true, since: spec.since ?? now().slice(0, 10), commercial: spec.commercial ? structuredClone(spec.commercial) : null, pending: structuredClone(spec.pending ?? []), grants: structuredClone(spec.grants ?? []),
+    states.set(key, { linked: spec.linked === true, since: spec.since ?? now().slice(0, 10), commercial: spec.commercial ? structuredClone(spec.commercial) : null, pending: structuredClone(spec.pending ?? []), grants: structuredClone(spec.grants ?? []), betaGrants: spec.betaGrants ? structuredClone(spec.betaGrants) : null,
       protection: spec.protection ? structuredClone(spec.protection) : null, capacity: structuredClone(spec.capacity ?? []).map(slot => ({ slot: slot.slot, funding: slot.funding ?? 'paid', pendingEndOn: slot.pending_end_on ?? slot.pendingEndOn ?? null, binding: slot.binding ? { organisationId: slot.binding.organisationId, authority: slot.binding.authority ?? 'present', authorityCheckedAt: now(), display: slot.binding.display ?? null } : null })),
       others: { ...(spec.others ?? {}) }, order: 1,
       participation: spec.participation ? { campaign: structuredClone(spec.participation.campaign), answer: spec.participation.answer ?? 'recorded', paid: spec.participation.paid === true, earned: null, completions: [] } : null });
@@ -68,7 +68,7 @@ export function createCommercialFixture(spec, { authorization, namespaceOf, allo
   const readLine = line => ({ amountCents: line.amount_cents, reason: line.promise.campaign.reason, campaignKey: line.promise.campaign.key, campaignVersion: line.promise.campaign.version, rewardKey: line.promise.key,
     cadence: line.promise.cadence, unit: line.promise.unit, value: line.promise.value, remainingUsesAfter: line.remaining_uses_after, postRewardBaseCents: line.post_reward_base_cents });
   const body = () => ({ linked: state.linked, plan: ownPlan(), reconciling: false, commercial: state.commercial ? { standing: state.commercial.standing, tier: state.commercial.tier, cadence: state.commercial.cadence, period: state.commercial.period, renewalPreference: state.commercial.renewal_preference, cancellationIntent: state.commercial.cancellation_intent, grace: state.commercial.grace ?? null, ended: state.commercial.ended ?? null, nextRenewal: state.commercial.next_renewal ?? null } : null,
-    pending: state.pending, grants: state.grants, protection: state.protection, capacity: state.capacity.map(slot => ({ ...slot, binding: slot.binding ? { ...slot.binding, display: slot.binding.authority === 'present' ? slot.binding.display : null } : null })), order: state.order, linkedSince: state.since, participationRewards: state.participation ? rewardFacts() : null, fixture: true });
+    pending: state.pending, grants: state.grants, betaGrants: state.betaGrants, protection: state.protection, capacity: state.capacity.map(slot => ({ ...slot, binding: slot.binding ? { ...slot.binding, display: slot.binding.authority === 'present' ? slot.binding.display : null } : null })), order: state.order, linkedSince: state.since, participationRewards: state.participation ? rewardFacts() : null, fixture: true });
 
   return {
     source: 'fixture',

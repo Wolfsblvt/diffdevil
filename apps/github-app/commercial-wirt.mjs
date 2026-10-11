@@ -3,7 +3,8 @@
 /**
  * Wirt projection protocol: exact-byte request signing, the bounded server-to-server client,
  * and the payload shapes diffdevil consumes. Wirt's adopted producer contract owns the grammar:
- * docs/commercial-projection-runtime.md and docs/commercial-projection.md at Wirt 04e253a8.
+ * docs/commercial-projection-runtime.md and docs/commercial-projection.md at Wirt 04e253a8;
+ * native beta_grants are the source candidate at 271c33f, pending producer/consumer acceptance.
  */
 
 export const WIRT_CLIENT = 'diffdevil';
@@ -138,6 +139,29 @@ function readBenefits(value) {
     slots.add(slot.slot);
   }
   for (const grant of value.grants) shape(object(grant) && typeof grant.kind === 'string' && date(grant.until));
+  const betaGrants = readProjectionBetaGrants(value);
+  return betaGrants === null ? value : { ...value, beta_grants: betaGrants };
+}
+
+/** Native beta facts: null is a legacy unknown; an empty array is an explicit absence. Private basis stays in Wirt. */
+export function readProjectionBetaGrants(benefits) {
+  if (benefits?.beta_grants === undefined) return null;
+  shape(Array.isArray(benefits.beta_grants));
+  const ids = new Set();
+  const window = value => {
+    shape(object(value) && date(value.started_on) && date(value.until) && value.started_on < value.until);
+    return { started_on: value.started_on, until: value.until };
+  };
+  return benefits.beta_grants.map(value => {
+    shape(object(value) && positive(value.id) && !ids.has(value.id) && value.kind === 'beta' && value.product === 'diffdevil'
+      && value.tier === 'pro' && value.promised_units === 30 && Number.isSafeInteger(value.remaining_units)
+      && value.remaining_units >= 0 && value.remaining_units <= 30 && Array.isArray(value.access_windows)
+      && (value.original_window === null || object(value.original_window)) && (value.current_access === null || object(value.current_access)));
+    ids.add(value.id);
+    return { id: value.id, kind: value.kind, product: value.product, tier: value.tier, promised_units: value.promised_units,
+      original_window: value.original_window === null ? null : window(value.original_window), access_windows: value.access_windows.map(window),
+      current_access: value.current_access === null ? null : window(value.current_access), remaining_units: value.remaining_units };
+  });
 }
 
 /** Read a pushed or pulled body into one of the two accepted message kinds. */
@@ -153,8 +177,8 @@ export function readWirtMessage(value) {
     && timestamp(value.generated_at) && (value.source_operation === null || (typeof value.source_operation === 'string' && value.source_operation.length <= 128))
     && Array.isArray(value.pending) && Array.isArray(value.bindings_seen));
   readCommercial(value.commercial);
-  readBenefits(value.benefits);
-  return { kind: 'projection', stream: readStream(value.stream), order: readOrder(value.order), lineage: value.account_lineage, projection: value };
+  const benefits = readBenefits(value.benefits);
+  return { kind: 'projection', stream: readStream(value.stream), order: readOrder(value.order), lineage: value.account_lineage, projection: { ...value, benefits } };
 }
 
 // Participation reward facts (Wirt `RewardFacts::visible`, its rewards route and its reward-quote route). The reader keeps

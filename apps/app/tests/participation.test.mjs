@@ -15,11 +15,11 @@ import { D1AppStore } from '../../github-app/storage.mjs';
 import { createGitHubAppWorker } from '../../github-app/app.mjs';
 import { D1CommercialStore } from '../../github-app/commercial-storage.mjs';
 import { createCommercialService } from '../../github-app/commercial.mjs';
-import { createWirtClient, readSigningKeys, readWirtMessage } from '../../github-app/commercial-wirt.mjs';
+import { createWirtClient, readSigningKeys, readWirtMessage, readProjectionBetaGrants } from '../../github-app/commercial-wirt.mjs';
 import { migrationNames } from '../qa/seed.mjs';
 import { readCampaign } from '../src/lib/participation/campaign.mjs';
 import { D1ParticipationStore } from '../src/lib/participation/store.mjs';
-import { createParticipation, eligibilityOf, rewardFor, betaAccessWindow } from '../src/lib/participation/service.mjs';
+import { createParticipation, eligibilityOf, rewardFor, betaAccessWindows, operationDate } from '../src/lib/participation/service.mjs';
 import { loadParticipation } from '../src/lib/participation/page.mjs';
 import { handleManageAction } from '../src/lib/manage/actions.mjs';
 import { presentReward, receiptOf, standingOf } from '../src/lib/participation/present.mjs';
@@ -148,11 +148,16 @@ const session = id => `session-${id}`;
 const authorization = { authenticate: async value => ({ userId: Number(String(value).replace('session-', '')) }), observeOrganisationAuthority: async () => ({ authority: 'present', display: null }) };
 const protector = { seal: async value => JSON.stringify(value), open: async value => JSON.parse(value) };
 
+// Wire-shaped fixture of native producer 271c33f; no PHP or installed delivery is executed here.
+function nativeBeta(started_on = '2027-02-20', until = '2027-03-20') {
+  return { id: 265, kind: 'beta', product: 'diffdevil', tier: 'pro', promised_units: 30,
+    original_window: { started_on, until }, access_windows: [{ started_on, until }], current_access: { started_on, until }, remaining_units: 9 };
+}
 function projection({ linkId, works, account, version, tier = 'pro', standing = 'funded', rewards }) {
   return readWirtMessage({ schema: 'wirt.benefit-projection/v1', client: 'diffdevil', stream: { works_account: works, link: { id: linkId, product_account: { github_user_id: account } } },
     account_lineage: [], order: { epoch: 1, version }, generated_at: clock.value, source_operation: null,
     commercial: { standing, tier, cadence: 'monthly', period: { started_on: '2027-02-20', ends_on: '2027-03-20' }, renewal_preference: 'manual', cancellation_intent: 'none', grace: null, ended: null, next_renewal: null },
-    benefits: { organisation_capacity: [], grants: [{ kind: 'beta', until: '2027-03-20' }], protection: { kind: 'beta' }, ...(rewards === undefined ? {} : { participation_rewards: rewards }) }, pending: [], bindings_seen: [] });
+    benefits: { organisation_capacity: [], grants: [{ kind: 'beta', until: '2027-03-20' }], beta_grants: [nativeBeta()], protection: { kind: 'beta' }, ...(rewards === undefined ? {} : { participation_rewards: rewards }) }, pending: [], bindings_seen: [] });
 }
 async function link(account, works, { tier = 'pro' } = {}) {
   const linkId = `link-${account}`;
@@ -485,20 +490,24 @@ test('an accepted delivery whose standing Works cannot answer is unknown, not in
   double.state.down = false;
 });
 
-test('beta invitation timing needs the grant start itself; the current producer shape is unknown', () => {
-  // Consumer seam fixture: the accepted native producer does not yet project this started_on fact.
-  const status = { linked: true, commercial: { tier: 'pro', standing: 'funded', period: { started_on: '2027-03-08', ends_on: '2027-04-08' } }, grants: [{ kind: 'beta', started_on: '2027-03-08', until: '2027-04-01' }] };
-  assert.deepEqual(betaAccessWindow(status), { from: '2027-03-08T00:00:00.000Z', until: '2027-04-01T00:00:00.000Z' });
-  assert.equal(betaAccessWindow({ ...status, grants: [], linkedSince: '2026-01-01', protection: { kind: 'diffdevil-beta-price/v1' } }), null);
-  assert.equal(betaAccessWindow({ ...status, reconciling: true }), null);
-  assert.equal(betaAccessWindow({ ...status, grants: [{ kind: 'beta', until: '2027-04-01' }] }), null, 'even a beta kind and commercial period do not prove the grant start');
+test('native beta facts preserve actual disjoint access and ignore promise, queued, paid/grace and link clocks', () => {
+  const fact = { ...nativeBeta('2027-03-01', '2027-03-31'), access_windows: [{ started_on: '2027-03-01', until: '2027-03-03' }, { started_on: '2027-03-10', until: '2027-03-12' }], current_access: null, remaining_units: 0, private_basis: { actor: 999 } };
+  const grants = readProjectionBetaGrants({ beta_grants: [fact] });
+  assert.equal('private_basis' in grants[0], false);
+  const status = { linked: true, commercial: { tier: 'pro', standing: 'funded', period: { started_on: '2027-01-01', ends_on: '2027-12-31' } }, betaGrants: grants };
+  assert.deepEqual(betaAccessWindows(status), [{ from: '2027-03-01', until: '2027-03-03' }, { from: '2027-03-10', until: '2027-03-12' }]);
+  assert.deepEqual(betaAccessWindows({ ...status, betaGrants: [{ ...grants[0], access_windows: [] }] }), [], 'queued/unbegun time is not access');
+  assert.equal(betaAccessWindows({ ...status, betaGrants: null, grants: [{ kind: 'beta', started_on: '2027-01-01', until: '2027-12-31' }], linkedSince: '2020-01-01' }), null, 'legacy/generic data remain unknown');
+  assert.equal(betaAccessWindows({ ...status, reconciling: true }), null);
+  assert.equal(operationDate('2027-03-03T00:30:00+02:00'), '2027-03-02', 'retain the managed event UTC-date conversion');
+  assert.throws(() => readProjectionBetaGrants({ beta_grants: [{ ...fact, remaining_units: -1 }] }));
+  assert.throws(() => readProjectionBetaGrants({ beta_grants: [{ ...fact, access_windows: [{ started_on: '2027-03-12', until: '2027-03-10' }] }] }));
+  assert.throws(() => readProjectionBetaGrants({ beta_grants: [fact, fact] }));
 });
 
 test('maintenance preserves any qualifying finished operation before pruning without a product visit', async () => {
   const account = 702;
   await link(account, 'works-72');
-  // A typed consumer fixture with the missing effective-start fact; not the accepted producer's wire shape.
-  await db.prepare("UPDATE commercial_links SET projection_json=json_set(projection_json, '$.benefits.grants[0].started_on', '2027-02-20') WHERE product_account=?").bind(account).run();
   await db.prepare("INSERT INTO installations (installation_id, state, updated_at, account_id) VALUES (702, 'active', ?, ?)").bind(clock.value, account).run();
   await db.prepare("INSERT INTO repositories (repository_id, installation_id, full_name, state, updated_at) VALUES (702, 702, 'fixture/use', 'enabled', ?)").bind(clock.value).run();
   for (const [id, state, at] of [['before', 'complete', '2027-02-19T00:00:00Z'], ['use', 'repair', '2027-03-01T00:00:00Z'], ['newer', 'retryable', '2027-03-12T00:00:00Z']]) {
@@ -509,16 +518,34 @@ test('maintenance preserves any qualifying finished operation before pruning wit
   await new D1AppStore(db, { now: () => clock.value }).maintain();
   assert.equal((await rows('deliveries', 'delivery_id=?', 'use')).length, 0, 'the seven-day recovery ledger was pruned');
   assert.equal((await participation.view({ userId: account, commercial: await standing(account) })).invitation, 'invite', 'a later first visit still qualifies');
-  const unknown = await standing(account); unknown.status.grants = []; unknown.status.linkedSince = '2020-01-01';
+  const unknown = await standing(account); unknown.status.betaGrants = null; unknown.status.linkedSince = '2020-01-01';
   const view = await participation.view({ userId: account, commercial: unknown });
   assert.equal(view.proactiveEligibility, 'unknown'); assert.equal(view.invitation, null); assert.equal(view.canAnswer, true);
+});
+
+test('qualifying operation dates use any actual segment, with exclusive end and no original-promise or paid/grace shortcut', async () => {
+  const user = 703;
+  await link(user, 'works-73');
+  const linkId = 'link-' + user;
+  const message = projection({ linkId, works: 'works-73', account: user, version: 2 });
+  message.projection.benefits.beta_grants = [{ ...nativeBeta('2027-03-01', '2027-03-31'), access_windows: [{ started_on: '2027-03-01', until: '2027-03-03' }, { started_on: '2027-03-10', until: '2027-03-12' }], current_access: null, remaining_units: 0 }];
+  await commercial.applyMessage(message);
+  await db.prepare("INSERT INTO installations (installation_id,state,updated_at,account_id) VALUES (703,'active',?,?)").bind(clock.value,user).run();
+  await db.prepare("INSERT INTO repositories (repository_id,installation_id,state,updated_at) VALUES (703,703,'enabled',?)").bind(clock.value).run();
+  for (const [id,at] of [['beta-gap','2027-03-05T10:00:00Z'],['beta-end','2027-03-12T00:00:00Z'],['beta-paid','2027-03-20T10:00:00Z']]) {
+    await db.prepare("INSERT INTO deliveries(delivery_id,installation_id,repository_id,state,received_at,completed_at) VALUES (?,703,703,'complete',?,?)").bind(id,at,at).run();
+  }
+  await participation.preserveUse(); assert.equal(await store.prompt(user,CAMPAIGN), null);
+  const at='2027-03-10T23:59:59Z';
+  await db.prepare("INSERT INTO deliveries(delivery_id,installation_id,repository_id,state,received_at,completed_at) VALUES ('beta-resumed',703,703,'rejected',?,?)").bind(at,at).run();
+  await participation.preserveUse(); assert.equal((await store.prompt(user,CAMPAIGN)).useObservedAt,at);
 });
 
 test('the invitation waits for observed use (failed included), keeps that observation past ledger pruning, appears once, reminds once, then never', async () => {
   const fresh = 700;
   await link(fresh, 'works-70');
   const status = await standing(fresh);
-  status.status.grants[0].started_on = '2027-03-08'; // explicit consumer fixture, not inferred from period or link
+  status.status.betaGrants = [nativeBeta('2027-03-08', '2027-03-20')];
   const failed = [{ standing: { executionActive: true, selected: true, lastDelivery: { state: 'terminal', code: 'E_GITHUB_FORBIDDEN', at: '2027-03-09T00:00:00Z' } } }];
   const enabledOnly = [{ standing: { executionActive: true, selected: true, lastDelivery: null } }];
   const view = repositories => participation.view({ userId: fresh, commercial: status, repositories });

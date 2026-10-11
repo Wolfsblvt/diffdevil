@@ -4,7 +4,7 @@ import { test } from 'node:test';
 import { readFile, readdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { Miniflare } from 'miniflare';
-import { analyzeDiff, unwrap } from '@wolfsblvt/diffdevil';
+import { analyzeChanges, analyzeDiff, unwrap } from '@wolfsblvt/diffdevil';
 import { createAnalyticalDataService, normalizeAnalyticalRecord, median, turnover, fileContinuity } from './analytical-data.mjs';
 import { collectAnalyticalPullRequest, observeFileSize, captureDefaultBranchSizes, recoverFinalComparison } from './analytical-collection.mjs';
 import { D1AppStore } from './storage.mjs';

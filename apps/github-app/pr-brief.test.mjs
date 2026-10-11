@@ -391,14 +391,14 @@ const budgeted = repository => ({ clientFactory: async () => budgetedClient({ fe
 const fileReads = reads => reads.filter(path => /^\/repos\/example\/repository\/pulls\/\d+\/files$/u.test(path)).length;
 const settingsRefresh = (targets = 'open', part = 0) => briefRefreshEnvelope({ installationId: 9, repositoryId: 17, targets, cause: 'settings', causeId: 'revision-3', part, receivedAt: NOW });
 
-test('a settings refresh reads the open PRs’ files once per part, not once per refreshed brief, and continues every remaining brief', async () => {
+test('a settings refresh shares its optional file index and continues every remaining brief in either edition', async () => {
   const repository = new FakeRepository();
   for (let number = 1; number <= 45; number++) repository.add(number);
   const reads = instrument(repository);
   // Part 0: 20 briefs share one read of all 45 open PRs' files; each brief's own analysis reads its own files once.
   const first = await deliverEnvelope(repository, settingsRefresh(), standard);
   assert.equal(first.calls.filter(row => row[0] === 'finish' && row[1] === 'complete').length, REFRESH_PACING.perPart);
-  assert.equal(fileReads(reads), 45 + 20, 'one shared index read (45 PRs) plus 20 subject analyses; a per-brief index would read 20 × 45');
+  assert.equal(fileReads(reads), (HAS_PREMIUM ? 45 : 0) + 20, 'a provided context shares one index; Community reads only its subjects');
   assert.deepEqual(first.queue.sent.map(item => [item.part, item.targets, item.after, item.carried]), [[1, 'open', 20, undefined]], 'the walk continues above the last PR it reached');
   assert.deepEqual(first.queue.delays, [REFRESH_PACING.unobservedDelaySeconds], 'an unobserved budget spaces the parts');
   assert.deepEqual(readQueueEnvelope(first.queue.sent[0]), first.queue.sent[0]);
@@ -407,23 +407,26 @@ test('a settings refresh reads the open PRs’ files once per part, not once per
   assert.deepEqual(second.queue.sent.map(item => [item.part, item.targets, item.after]), [[2, 'open', 40]]);
   const third = await deliverEnvelope(repository, second.queue.sent[0], standard);
   assert.equal(third.queue.sent.length, 0);
-  assert.equal(fileReads(reads), 3 * 45 + 45, 'three shared index reads for 45 refreshed briefs');
+  assert.equal(fileReads(reads), (HAS_PREMIUM ? 3 * 45 : 0) + 45, 'every subject is refreshed, with only the provided context index');
   for (let number = 1; number <= 45; number++) assert.equal(repository.owned(number).length, 1, `PR ${number} has its one refreshed brief`);
-  assert.match(repository.owned(45)[0].body, /open PRs touch the same files/u, 'the shared read still yields each brief its current neighbours');
+  if (HAS_PREMIUM) assert.match(repository.owned(45)[0].body, /open PRs touch the same files/u, 'the shared read still yields each brief its current neighbours');
 });
 
-test('within one queue invocation, ordinary PR events of a repository share one current index read', async () => {
+test('within one queue invocation, ordinary PR events share one optional current index read', async () => {
   const repository = new FakeRepository();
   for (let number = 1; number <= 6; number++) repository.add(number);
   const reads = instrument(repository);
   const calls = [], queue = captureQueue();
   const messages = [1, 2, 3].map(number => ({ id: `m${number}`, body: pullEvent(number), ack() { calls.push('ack'); }, retry() { calls.push('retry'); } }));
   await createGitHubAppWorker({ store: repoStore(calls, standard, {}), clientFactory: async () => new GitHubClient({ fetch: repository.fetch, readRetries: 0 }),
-    collectAnalytics: async () => ({ status: 'disabled' }), briefProvider: (await import('../../premium/pr-brief/index.mjs')).premiumBrief, briefPlan: async () => 'pro', now: () => NOW })
+    collectAnalytics: async () => ({ status: 'disabled' }), briefProvider: premiumProvider, briefPlan: async () => 'pro', now: () => NOW })
     .queue({ messages }, { GITHUB_APP_ID: '1', GITHUB_APP_BOT_LOGIN: repository.author.login, APP_QUEUE: queue });
   assert.deepEqual(calls.filter(call => call === 'ack').length, 3);
-  assert.equal(fileReads(reads), 6 + 3, 'one index read of the six open PRs, plus each subject’s own analysis');
-  for (const number of [1, 2, 3]) assert.match(repository.owned(number)[0].body, /open PRs touch the same files/u);
+  assert.equal(fileReads(reads), (HAS_PREMIUM ? 6 : 0) + 3, 'only a provided context reads the shared index, and every subject is analyzed');
+  for (const number of [1, 2, 3]) {
+    assert.equal(repository.owned(number).length, 1);
+    if (HAS_PREMIUM) assert.match(repository.owned(number)[0].body, /open PRs touch the same files/u);
+  }
 });
 
 test('inside the rate reserve a refresh waits for the reset and an ordinary event skips the optional index; labels still land', async () => {

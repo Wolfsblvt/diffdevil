@@ -3,6 +3,7 @@
 // request and queue send counted against Cloudflare's per-invocation limits (Workers Paid: 1,000 D1 queries and 10,000
 // subrequests). The provider is the in-memory fake; nothing leaves the process.
 import assert from 'node:assert/strict';
+import { existsSync } from 'node:fs';
 import { readFile, readdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { test } from 'node:test';
@@ -13,6 +14,8 @@ import { D1AppStore } from './storage.mjs';
 import { FakeRepository, captureQueue } from './fake-repository.mjs';
 
 const WORKERS_PAID = Object.freeze({ d1Queries: 1000, subrequests: 10_000 });
+const premiumEntry = new URL('../../premium/pr-brief/index.mjs', import.meta.url);
+const briefProvider = existsSync(premiumEntry) ? (await import(premiumEntry.href)).premiumBrief : null;
 
 /** The test's own count of what reaches D1, independent of the App's: each statement of a batch counts. */
 function countingDatabase(database, tally) {
@@ -59,7 +62,7 @@ test('one queue invocation of refresh parts and ordinary events stays inside the
     const bodies = [refresh('settings', 'revision-3'), refresh('policy', `policy-${'c'.repeat(40)}`), event(1), event(2), event(3)];
     const messages = bodies.map(body => ({ body, ack() { outcome.set(body.deliveryId, 'ack'); }, retry() { outcome.set(body.deliveryId, 'retry'); } }));
     await createGitHubAppWorker({ execute, clientFactory: async () => budgetedClient({ fetch: repository.fetch, readRetries: 0 }),
-      briefProvider: (await import('../../premium/pr-brief/index.mjs')).premiumBrief, briefPlan: async () => 'pro', collectAnalytics: async () => ({ status: 'disabled' }) })
+      briefProvider, briefPlan: async () => 'pro', collectAnalytics: async () => ({ status: 'disabled' }) })
       .queue({ messages }, { GITHUB_APP_ID: '1', GITHUB_APP_BOT_LOGIN: repository.author.login, APP_QUEUE: queue, APP_DB: countingDatabase(database, tally) });
 
     assert.ok(tally.d1 <= WORKERS_PAID.d1Queries, `D1 queries in one invocation: ${tally.d1}`);
@@ -74,9 +77,9 @@ test('one queue invocation of refresh parts and ordinary events stays inside the
     assert.ok(Math.max(...costs) < INVOCATION_BUDGET.perEvaluation, `largest measured evaluation: ${Math.max(...costs)} D1 queries`);
     // What did not fit continues at once in the next invocation; nothing is dropped.
     const refreshed = order.filter(type => type === 'brief-refresh').length;
-    assert.ok(refreshed >= 20 && refreshed < 40, `refresh evaluations that fit: ${refreshed}`);
+    assert.ok(refreshed >= 20 && refreshed <= 40, `refresh evaluations that fit: ${refreshed}`);
     // (Each ordinary event also enqueues its own neighbour refresh.)
     const continued = queue.sent.flatMap((item, index) => item.action === 'neighbour' ? [] : [[item.action, item.targets, queue.delays[index]]]);
-    assert.deepEqual(continued, [['policy', 'open', 0]], 'the next invocation has a fresh allowance');
+    assert.deepEqual(continued, refreshed < 40 ? [['policy', 'open', 0]] : [], 'only work that did not fit continues with a fresh allowance');
   } finally { await runtime.dispose(); }
 });
