@@ -289,6 +289,128 @@ uses the same input/receipt route with its own exact config, Worker and custody.
 The standalone backend still accepts its three inputs; Community sign-in without
 Wirt requires six and does not acquire an unused commercial credential.
 
+## Native manifest registration and capture
+
+The preferred initial registration route is the local
+`apps/github-app/manifest-helper.mjs` CLI. It prepares GitHub's native manifest
+form for a **personal** or **organisation** namespace and requires an explicit
+`public` or `private` visibility. Private personal Apps cannot supply organisation
+installation; choose the namespace and visibility for the complete admitted actor
+estate before actual creation. This source route authorizes no provider effect.
+The older full-set file installer remains available for existing registrations
+and recovery; it is not necessary to transcribe five new GitHub inputs manually.
+
+The helper binds one IPv4 loopback listener, checks the callback's unguessable
+state, and converts the one-use code in a contained native child. It preserves
+the response encrypted with the existing App protector before interpreting it.
+App ID, client ID, owner/type/name, slug, requested permissions and events must
+match before the capture becomes usable. The response does not prove actual
+visibility, webhook/callback settings, provider redirect acceptance or installation:
+those remain distinct live readbacks. The manifest sends the exact selected values.
+
+Establish recoverable custody of the seal **before** registration. For a joined
+App the same retained seal opens the capture and later protects App state; Wirt's
+signing key has separate custody. An opaque custody reference or an encrypted
+capture is not an off-workstation key backup. The current bridge uses a mediated
+seal input file; joining a vault's contained environment consumer is a separate
+operating interface. Keep the encrypted capture and its non-secret receipt in an
+admitted operation handoff directory outside a disposable worktree. Do not export
+the GitHub response, PEM, code or secrets into console output, screenshots, logs,
+source or five plaintext files. Retire the transient encrypted capture only after
+the accepted installation/recovery handback preserves what the operator needs.
+
+This PowerShell specimen uses non-secret placeholders. Its directory must already
+exist and the seal file must come from the admitted custody route. Registration
+creates a real GitHub App only when an authorized operator follows the displayed
+local URL and submits the provider form; the helper never opens a browser itself.
+
+```powershell
+$captureArguments = @(
+    '--capture-file', 'C:\operator-handoff\diffdevil-staging\github-capture.enc',
+    '--receipt-file', 'C:\operator-handoff\diffdevil-staging\github-capture.json',
+    '--seal-key-file', 'C:\operator-input\staging-seal.txt',
+    '--seal-key-recovery-ref', 'admitted-staging-seal-custody'
+)
+$registrationArguments = @(
+    '--owner', 'admitted-owner', '--owner-type', 'organisation',
+    '--visibility', 'public', '--app-name', 'diffdevil-staging',
+    '--webhook-url', 'https://admitted-staging.example/webhooks/github',
+    '--oauth-callback-url', 'https://admitted-staging.example/auth/callback',
+    '--policy-refresh', '--port', '43871'
+)
+node apps/github-app/manifest-helper.mjs check @captureArguments @registrationArguments
+if ($LASTEXITCODE -ne 0) { throw 'Registration destinations or selection are not ready.' }
+node apps/github-app/manifest-helper.mjs register @captureArguments @registrationArguments
+if ($LASTEXITCODE -ne 0) { throw 'Retain the capture; inspect status and recovery before another registration.' }
+node apps/github-app/manifest-helper.mjs status @captureArguments
+if ($LASTEXITCODE -ne 0) { throw 'The protected capture is unavailable or unusable.' }
+```
+
+`check` reads file metadata and exercises the same-directory atomic output commit,
+without reading protected contents or contacting GitHub. `register` privately
+validates the seal, flushes the empty encrypted checkpoint, and serves a native
+form with the namespace, visibility and callbacks visible before submission.
+GitHub's [manifest handshake](https://docs.github.com/en/apps/sharing-github-apps/registering-a-github-app-from-a-manifest)
+must finish within one hour. This is the provider's handshake boundary, not a
+recurring consent lifetime. The exact live GitHub loopback-redirect seam remains
+unobserved; local qualification uses a synthetic GitHub server and isolated
+headless Chromium. No tunnel or permanent registration service is introduced.
+
+Before **separately admitted protected installation**, set the exact operational
+config's `GITHUB_APP_BOT_LOGIN` to the returned non-secret `identity.botLogin`,
+retain the correct `APP_ORIGIN`, and qualify the built bootstrap/account/Worker/D1
+through the existing installer route. For a joined App, the capture's webhook
+and OAuth callback must equal that config's `/webhooks/github` and `/auth/callback`.
+The following consumes the five GitHub inputs privately in memory and reuses
+the exact-target undeployed-version installer. Community needs the seal as its
+sixth input; add Wirt's separately retained signing input only when configured.
+
+```powershell
+node apps/github-app/manifest-helper.mjs install @captureArguments --config $stagingConfig --worker diffdevil-app-staging --account-id admitted-account-id --install-receipt-file 'C:\operator-handoff\diffdevil-staging\credential-install.json' --wirt-signing-key-file 'C:\operator-input\staging-wirt-current.txt'
+if ($LASTEXITCODE -ne 0) { throw 'Retain the installation receipt and capture; reconcile before another write.' }
+```
+
+For standalone operation omit the OAuth callback and use its exact backend config;
+the installer still delivers only three inputs. Community without Wirt omits
+`--wirt-signing-key-file`. No manifest command deploys, admits a repository,
+enables history, creates resources, or activates Wirt.
+
+Recover the condition left by an interruption rather than beginning again:
+
+| Retained condition | Next sound move |
+| --- | --- |
+| `prepared` | `resume` reopens the same local flow within the handshake interval. Reconcile an App already created before submitting another form. |
+| `callback-received` | `resume` converts the retained code only when conversion has never been attempted and the interval remains valid. |
+| `conversion-attempted` | Outcome is unknown. `resume` refuses another conversion. Inspect the existing registration through the authorized provider route; recover its regenerable inputs through the full-set installer rather than creating a duplicate App. |
+| `captured` | The raw response is encrypted and retained even if interpretation or the safe receipt commit failed. `resume` validates that response without contacting GitHub again. |
+| `ready` | `resume` revalidates the preserved response; `install` uses a separate new installation receipt. |
+| Installation attempted, receipt incomplete | Use `operator-helper.mjs resume` with the same exact config/account and **installation** receipt. It reads provider state and never repeats the upload. A capture alone does not reconcile a Worker write. |
+
+```powershell
+node apps/github-app/manifest-helper.mjs resume @captureArguments
+if ($LASTEXITCODE -ne 0) { throw 'Retain this capture and its exact unknown/refused condition for reconciliation.' }
+node apps/github-app/operator-helper.mjs resume --config $stagingConfig --worker diffdevil-app-staging --account-id admitted-account-id --receipt-file 'C:\operator-handoff\diffdevil-staging\credential-install.json'
+if ($LASTEXITCODE -ne 0) { throw 'The exact Worker write remains unresolved; do not repeat installation.' }
+```
+
+Only run the latter command when that installation receipt exists. A missing,
+wrong-key or malformed capture refuses even if its non-secret receipt says ready.
+There is no way to recover a conversion response lost before its encrypted commit
+from an acknowledgement alone. The helper records that unavoidable gap as unknown.
+After a hard process interruption, the exact `<capture-file>.lock` names its PID;
+the operator must establish that writer stopped before removing only that lock.
+Ordinary cancellation closes the listener and releases its lock. Another occupied
+port is refused without taking over its listener.
+
+`node --test apps/github-app/manifest-helper.test.mjs` exercises the real CLI,
+encrypted capture/recovery, unsafe native stdout/stderr positive control, and
+standalone/Community/Wirt installation through the synthetic native provider.
+`npm run qa:app:manifest` exercises the real form, keyboard submission, state
+callback and contained native conversion for both namespace types and visibility
+choices. Its non-secret result/screenshots go under
+`artifacts/verification/manifest/`. This proves local synthetic operation, not
+real registration, off-workstation custody, Cloudflare installation or App use.
+
 ## Exposure configuration and readback
 
 Both source and generated staging config must retain `workers_dev:false` and

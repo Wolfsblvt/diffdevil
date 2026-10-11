@@ -2,7 +2,6 @@
 
 import { spawn } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
-import { once } from 'node:events';
 import { open, readFile, rename, rm, stat } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -37,6 +36,12 @@ function identifier(value, name) {
 export function validateAppId(appId) {
   const value = requireValue(appId, 'GitHub App ID');
   if (!/^[1-9]\d*$/u.test(value)) fail('GitHub App ID must be a positive numeric ID.');
+  return value;
+}
+
+/** GitHub App OAuth client IDs include the ordinary Iv1. prefix. */
+export function validateOAuthClientId(value) {
+  if (typeof value !== 'string' || !/^[A-Za-z0-9_.-]+$/u.test(value)) fail('GitHub OAuth client ID has an invalid format.');
   return value;
 }
 
@@ -75,16 +80,21 @@ export function buildWranglerCommand(command, args, { worker, config }) {
 
 /** Drain native output privately. Neither stderr nor a raw native exception reaches the caller. */
 export function createProcessRunner({ executable = process.execPath } = {}) {
-  return async ({ args, input, env }) => {
-    const child = spawn(executable, args, { env, stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true });
+  return async ({ args, input, env, signal }) => {
+    const child = spawn(executable, args, { env, signal, stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true });
     const stdout = [];
     child.stdout.on('data', chunk => stdout.push(chunk));
     child.stderr.resume();
     child.stdin.on('error', () => {}); // A refused command can close stdin before consuming it.
-    const completion = once(child, 'close');
+    let failed = false;
+    const completion = new Promise(resolveExit => {
+      child.once('error', () => { failed = true; });
+      child.once('close', resolveExit);
+    });
     child.stdin.end(input);
     try {
-      const [code] = await completion;
+      const code = await completion; // Cancellation/error alone is not evidence the native child stopped.
+      if (failed) fail('The native provider process could not complete.', 'E_OPERATOR_PROCESS');
       return { code, stdout: Buffer.concat(stdout).toString('utf8') };
     } catch { fail('The native provider process could not complete.', 'E_OPERATOR_PROCESS'); }
   };
@@ -170,12 +180,14 @@ async function requireVersionTarget(options, target) {
 }
 
 async function inputFiles(options, target) {
-  const paths = [requireValue(options.privateKeyPath, 'Private key path')];
-  if (options.webhookSecretPath) paths.push(options.webhookSecretPath);
-  if (!options.webhookSecretPath && typeof options.readWebhookSecret !== 'function') fail('Supply a webhook secret file or the hidden/redirected input route.');
+  const captured = typeof options.readGitHubInputs === 'function';
+  const paths = captured ? [] : [requireValue(options.privateKeyPath, 'Private key path')];
+  if (!captured && options.webhookSecretPath) paths.push(options.webhookSecretPath);
+  if (!captured && !options.webhookSecretPath && typeof options.readWebhookSecret !== 'function') fail('Supply a webhook secret file or the hidden/redirected input route.');
   if (target.joinedApp) {
-    identifier(options.oauthClientId, 'GitHub OAuth client ID');
-    paths.push(requireValue(options.oauthClientSecretPath, 'OAuth client secret path'), requireValue(options.sealKeyPath, 'Retained seal key path'));
+    validateOAuthClientId(options.oauthClientId);
+    if (!captured) paths.push(requireValue(options.oauthClientSecretPath, 'OAuth client secret path'));
+    paths.push(requireValue(options.sealKeyPath, 'Retained seal key path'));
     if (target.wirtConfigured || options.wirtSigningKeyPath) paths.push(requireValue(options.wirtSigningKeyPath, 'Wirt signing key path'));
     identifier(options.sealKeyRecoveryRef, 'Seal key recovery reference');
   } else if (options.oauthClientId || options.oauthClientSecretPath || options.sealKeyPath || options.wirtSigningKeyPath || options.sealKeyRecoveryRef) {
@@ -238,13 +250,15 @@ async function readSecretFile(path) {
 }
 
 async function credentialValues(options, target) {
-  const privateKey = await readSecretFile(options.privateKeyPath);
+  const captured = options.readGitHubInputs ? await options.readGitHubInputs() : undefined;
+  if (captured && (captured.GITHUB_APP_ID !== options.appId || (target.joinedApp && captured.GITHUB_OAUTH_CLIENT_ID !== options.oauthClientId))) fail('Captured GitHub identity differs from the selected installation.');
+  const privateKey = captured ? captured.GITHUB_APP_PRIVATE_KEY : await readSecretFile(options.privateKeyPath);
   validateGitHubAppPrivateKey(privateKey);
-  const webhook = options.webhookSecretPath ? await readSecretFile(options.webhookSecretPath) : await options.readWebhookSecret();
+  const webhook = captured ? captured.GITHUB_WEBHOOK_SECRET : options.webhookSecretPath ? await readSecretFile(options.webhookSecretPath) : await options.readWebhookSecret();
   const values = { GITHUB_APP_ID: validateAppId(options.appId), GITHUB_WEBHOOK_SECRET: validateWebhookSecret(webhook), GITHUB_APP_PRIVATE_KEY: privateKey };
   if (!target.joinedApp) return values;
-  values.GITHUB_OAUTH_CLIENT_ID = identifier(options.oauthClientId, 'GitHub OAuth client ID');
-  values.GITHUB_OAUTH_CLIENT_SECRET = validateWebhookSecret(await readSecretFile(options.oauthClientSecretPath));
+  values.GITHUB_OAUTH_CLIENT_ID = validateOAuthClientId(options.oauthClientId);
+  values.GITHUB_OAUTH_CLIENT_SECRET = validateWebhookSecret(captured ? captured.GITHUB_OAUTH_CLIENT_SECRET : await readSecretFile(options.oauthClientSecretPath));
   values.APP_SEAL_KEY = await readSecretFile(options.sealKeyPath);
   if (values.APP_SEAL_KEY.length < 16 || /\r|\n/u.test(values.APP_SEAL_KEY)) fail('Retained seal key must be a single line of at least 16 characters.');
   if (target.wirtConfigured || options.wirtSigningKeyPath) {

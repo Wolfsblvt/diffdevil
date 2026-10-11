@@ -61,6 +61,16 @@ The scheduled Worker maintenance path performs recovery pruning, expiry-derived 
 
 ## Registration and credential helper
 
+The preferred initial setup is `manifest-helper.mjs`: a local native manifest
+form for personal/organisation registration and explicit visibility, with
+state-checked callback, contained conversion, encrypted capture and a direct
+in-memory handoff to the existing installer. It opens no browser and deploys
+nothing. [The maintained invocation and recovery route](../../docs/integration/app-staging.md#native-manifest-registration-and-capture)
+explain retained seal custody, the one-hour handshake, interruption checkpoints,
+the separate installation receipt, and the unobserved real GitHub redirect seam.
+Use `node apps/github-app/manifest-helper.mjs --help` for its CLI options and
+`npm run qa:app:manifest` for isolated local-browser/synthetic-provider proof.
+
 `operator-helper.mjs` prepares non-secret registration inputs and creates one
 **undeployed** credential-bearing Worker version after reading back the selected
 Cloudflare account, existing Worker deployment and version list. It creates no
