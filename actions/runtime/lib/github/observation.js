@@ -11,7 +11,7 @@ export class EffectSession {
         this.observations.push({ kind, subject, outcome: 'unchanged', request: 'not-needed', readback: 'verified' });
     }
     async write(operation) {
-        await this.beforeWrite();
+        await this.beforeWrite({ kind: operation.kind, subject: operation.subject });
         const observation = { kind: operation.kind, subject: operation.subject, outcome: 'unresolved', request: 'ambiguous', readback: 'unobserved' };
         this.observations.push(observation);
         let error;

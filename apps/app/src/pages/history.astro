@@ -1,0 +1,134 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
+// History in the accepted chart composition: Change volume picks the bucket (its selection is
+// kept and drives the panels below), Merged PRs by size on Pro and Free with the selected bucket
+// as a band, the selected bucket read as its pull requests and files, then Pro's file growth and
+// shrinkage and concentration over time (linked to the same buckets) or Free's period comparison,
+// and the period comparison in full on Pro. Where named history is not retained yet, the older
+// pathless analyses bucket by analysis time, and the page says so. The file panels and the
+// selected bucket's files come from the premium extension for an entitled reader.
+import AppShell from '../layouts/AppShell.astro';
+import PageHead from '../components/PageHead.astro';
+import Panel from '../components/Panel.astro';
+import ChartFrame from '../components/ChartFrame.astro';
+import Unavailable from '../components/Unavailable.astro';
+import SeePro from '../components/SeePro.astro';
+import Icon from '../components/Icon.astro';
+import { loadView, navModel } from '../lib/view.mjs';
+import { describeBound, n0 } from '../lib/intervals.mjs';
+import { bucketsFor, changeVolume, fromRetained } from '../lib/derive.mjs';
+import { mosaicModel, lanesModel } from '../lib/charts/models.mjs';
+import { rangeText, compositionBar } from '../lib/charts/format.mjs';
+import { sgn, fmtDate, fmtMonth, fmtMonthLong } from '../lib/format.mjs';
+import { pullRequestPath } from '../lib/scope.mjs';
+
+const view = await loadView({ url: Astro.url, viewer: Astro.locals.viewer, session: Astro.locals.session, runtime: Astro.locals.app, surface: 'history' });
+const { current: cur, previous: prev, lifecycle, entitlement, state } = view;
+const life = lifecycle.standing === 'available';
+const premiumPage = Astro.locals.app.premium.pages.history;
+const { Panels, BucketFiles } = premiumPage ?? ({} as any);
+const pro = view.premiumHere && Boolean(Panels);
+const multi = view.scope.kind !== 'repository';
+const period = view.period.label;
+const DAY = 86_400_000;
+const serviceBuckets = life ? (view.data?.result?.buckets ?? []) : [];
+const unitOf = (bucket: any) => { const days = Math.round((Date.parse(bucket.to) - Date.parse(bucket.from)) / DAY); return days <= 1 ? 'day' : days === 2 ? '2 days' : days <= 7 ? 'week' : 'month'; };
+const repositoryName = (pr: any) => view.viewer.repositories.find((repository: any) => repository.repositoryId === pr.repositoryId)?.fullName ?? '';
+const prHref = (pr: any) => view.href(pullRequestPath(repositoryName(pr), pr.number));
+// Buckets on the retained basis come from the service (merged pull requests by merge time, current-policy composition); otherwise calendar buckets over the pathless analyses.
+const retainedList = serviceBuckets.map((bucket: any, index: number) => {
+  const members = (bucket.pullRequests ?? []).map((row: any) => view.pullRequests.get(`${row.repositoryId}#${row.pullRequest}`) ?? fromRetained(row));
+  const recovered = members.filter((pr: any) => !pr.unrecovered);
+  const boundedOnes = recovered.filter((pr: any) => pr.latest.changed.status !== 'exact');
+  return { index, start: bucket.from, end: bucket.to, unit: unitOf(bucket), count: members.length, recovered: recovered.length, coverage: members.length > recovered.length ? 'partial' : 'complete',
+    added: bucket.composition?.addedOnly?.lower ?? 0, deleted: bucket.composition?.deletedOnly?.lower ?? 0, modified: bucket.composition?.modified?.lower ?? 0,
+    boundedLow: boundedOnes.reduce((total: number, pr: any) => total + (pr.latest.changed.lower ?? 0), 0), boundedHigh: boundedOnes.every((pr: any) => pr.latest.changed.upper !== null) ? boundedOnes.reduce((total: number, pr: any) => total + pr.latest.changed.upper, 0) : null, boundedCount: boundedOnes.length,
+    rawChurn: bucket.rawChurn?.lower ?? 0, members };
+});
+const pathless = life ? null : changeVolume({ buckets: bucketsFor(view.period.key, view.nowIso, view.bounds.first).list, pullRequests: view.pullRequests, lifecycle });
+const list = life ? retainedList : pathless!.list;
+const unit = list[0]?.unit ?? 'bucket';
+const note = !life ? bucketsFor(view.period.key, view.nowIso, view.bounds.first).note : undefined;
+const lastWithContent = list.map((bucket: any, index: number) => bucket.count ? index : -1).filter((index: number) => index >= 0).pop();
+const selected = list.length ? (state.w !== '' ? Math.max(0, Math.min(list.length - 1, Number(state.w))) : (lastWithContent ?? list.length - 1)) : null;
+const bucket = selected === null ? null : list[selected];
+const labelOf = (item: any) => item.unit === 'month' ? fmtMonth(item.start) : fmtDate(item.start);
+const nameOf = (item: any) => item.unit === 'week' ? `Week of ${fmtDate(item.start)}` : item.unit === 'month' ? fmtMonthLong(item.start) : item.unit === '2 days' ? `${fmtDate(item.start)} – ${fmtDate(new Date(Date.parse(item.start) + DAY).toISOString())}` : fmtDate(item.start);
+const unitWord = unit === '2 days' ? 'bucket' : unit;
+const population = life ? 'merged' : 'analysed';
+const scopeLabel = view.scope.kind === 'all' ? 'all repositories' : view.scope.kind === 'namespace' ? view.scope.namespace : view.scope.name;
+const mosaic = mosaicModel({ buckets: list, unit, period, population, scopeLabel, labelOf, nameOf, hrefOf: (_: any, index: number) => view.href('/history', { w: String(index) }), sel: selected });
+const totals = mosaic.totals;
+const lanes = lanesModel({ prs: life ? cur.analysed.concat((cur.mergedPullRequests ?? []).filter((pr: any) => pr.unrecovered)) : [], period, from: view.window.from, to: view.window.to, range: bucket ? [Date.parse(bucket.start), Date.parse(bucket.end)] : null, hrefOf: prHref, repoOf: multi ? (pr: any) => repositoryName(pr).split('/')[1] : undefined, rowH: 42 });
+// The selected bucket, read as its pull requests: ranked by Changed, composition inside the bar; files touched; not recovered listed apart.
+const members = bucket ? bucket.members.filter((pr: any) => !pr.unrecovered).sort((a: any, b: any) => (b.latest.changed.lower ?? 0) - (a.latest.changed.lower ?? 0)) : [];
+const missing = bucket ? bucket.members.filter((pr: any) => pr.unrecovered) : [];
+const maxChanged = Math.max(1, ...members.map((pr: any) => pr.latest.changed.upper ?? pr.latest.changed.lower ?? 0));
+const bucketCoverage = bucket ? (bucket.count > 0 && bucket.recovered === 0 ? 'none' : bucket.recovered < bucket.count ? 'partial' : 'complete') : 'complete';
+const q = (value: string) => (bucketCoverage === 'none' ? 'unknown' : `${bucketCoverage === 'partial' ? '≥ ' : ''}${value}`);
+const bucketExact = bucket ? bucket.added + bucket.deleted + bucket.modified : 0;
+const repoShort = (repositoryId: number) => view.viewer.repositories.find((repository: any) => repository.repositoryId === repositoryId)?.name ?? '';
+// Period comparison rows: selected period against the previous one, with coverage visible.
+const comparable = cur.windowCovered && prev.windowCovered && (!life || cur.merged === 0 || prev.merged === 0 || (cur.mergedRecovered === cur.merged) === (prev.mergedRecovered === prev.merged));
+const incomplete = totals.recovered < totals.count;
+const coverageOf = (stats: any) => life ? `${stats.mergedRecovered}/${stats.merged}${stats.windowCovered ? '' : ' · partial window'}` : `${stats.analysedCount}/${stats.analysedCount}`;
+const rows = [
+  [life ? 'merged PRs' : 'analysed PRs', life ? cur.merged : cur.analysedCount, life ? prev.merged : prev.analysedCount, true],
+  ['coverage', coverageOf(cur), coverageOf(prev), null],
+  ['Changed', cur.changedTotal.lower, prev.changedTotal.lower, false],
+  ['~ modified', cur.decomposition.modified.lower, prev.decomposition.modified.lower, false],
+  ['+ added-only', cur.decomposition.added.lower, prev.decomposition.added.lower, false],
+  ['− deleted-only', cur.decomposition.deleted.lower, prev.decomposition.deleted.lower, false],
+  ['raw churn', cur.rawTotal.lower, prev.rawTotal.lower, false],
+  // A median of an empty population is n/a, never 0; its change is n/a too.
+  ['median Changed', cur.medianChanged.status === 'empty' ? null : cur.medianChanged.lower ?? 0, prev.medianChanged.status === 'empty' ? null : prev.medianChanged.lower ?? 0, true],
+  ...(life ? [['median days to merge', cur.timeToMerge.status === 'empty' ? null : Math.round((cur.timeToMerge.lower ?? 0) * 10) / 10, prev.timeToMerge.status === 'empty' ? null : Math.round((prev.timeToMerge.lower ?? 0) * 10) / 10, true]] : [])
+];
+const comp = (parts: { k: string; v: number }[], height = 8) => compositionBar(parts, height);
+---
+<AppShell title="History" nav={navModel(view, 'history')} view={view}>
+  <PageHead view={view} title="History" />
+  {life && lifecycle.coverageFrom && !cur.windowCovered && <p class="a-note"><Icon name="circle-dashed" size={14} /><span>Retained lifecycle begins {fmtDate(lifecycle.coverageFrom)}; earlier buckets in this period hold only what was retained.</span></p>}
+  {note && <p class="a-note"><Icon name="circle-dashed" size={14} /><span>{note}</span></p>}
+  {!life && <p class="a-note"><Icon name="circle-dashed" size={13} /><span>Merge times are not retained for this scope ({lifecycle.reason}); buckets use each pull request's latest analysis time instead.</span></p>}
+  <div class="a-grid">
+    <ChartFrame id="volume" kind="mosaic" model={mosaic} title="Change volume" span={12} h={320} group="hist" keepSel sel={selected} pickBucket={view.href('/history', { w: '__W__' })} meta={`${population} PRs in ${period} · by ${unit === '2 days' ? '2 days' : unit} · ${scopeLabel} · ${life ? 'one final merged comparison per PR, under current policy' : 'one retained analysis per PR, by analysis time'} · click a bucket to read it below`}>
+      <span class:list={['a-cov', { inc: incomplete }]} slot="tools" title={`${population} PRs whose ${population === 'merged' ? 'final comparison' : 'analysis'} was recovered`}><Icon name={incomplete ? 'circle-dashed' : 'check'} size={13} /> {totals.recovered} of {totals.count} recovered{totals.partial ? ` · ${totals.partial} partial` : ''}</span>
+      <Fragment slot="foot"><span>nothing interpolated · raw churn counts each modified line twice: once removed, once added</span><nav class="a-bucketnav" aria-label="Buckets">{list.map((item: any, index: number) => <a href={view.href('/history', { w: String(index) })} aria-current={index === selected ? 'true' : undefined} title={nameOf(item)}>{labelOf(item)}</a>)}</nav></Fragment>
+    </ChartFrame>
+
+    {life
+      ? <ChartFrame id="lanes" kind="lanes" model={lanes} title="Merged PRs by size" span={12} h={34 + Math.max(1, lanes.bands.length) * 42} meta={`one dot per merged PR at its merge time · ${period} · hollow = bounded or not recovered${bucket ? ' · band = the selected bucket' : ''}`} />
+      : <Panel id="lanes" span={12} title="Merged PRs by size"><Unavailable what="Needs retained merge times" why={lifecycle.reason} compact /></Panel>}
+
+    <div class="s5 a-col">
+      {bucket && <Panel id="bucket" span={12} class="a-fill hb-panel" title={nameOf(bucket)} meta={`${bucketCoverage === 'partial' ? 'partial acquisition · ' : ''}selected ${unitWord} · pick another in Change volume`}>
+        <div class="fr-readout hb-sum"><div class="fr-when"><b>{bucket.count} {population} PR{bucket.count === 1 ? '' : 's'}</b>{missing.length > 0 && <span class="fr-tag warn">{members.length} of {bucket.count} recovered</span>}{bucket.boundedCount > 0 && <span class="fr-tag">{bucket.boundedCount} bounded</span>}</div>
+          <dl class="fr-vals"><div class="sum"><dt>Changed</dt><dd class={bucketCoverage === 'none' ? 'unk' : ''}>{bucketCoverage === 'none' ? 'unknown' : bucketCoverage === 'partial' ? `≥ ${n0(bucketExact + bucket.boundedLow)}` : bucket.boundedLow ? (bucket.boundedHigh !== null ? rangeText(bucketExact + bucket.boundedLow, bucketExact + bucket.boundedHigh) : `≥ ${n0(bucketExact + bucket.boundedLow)}`) : n0(bucketExact)}</dd></div><div><dt><i class="sw mod"></i>~ modified</dt><dd class={bucketCoverage === 'none' ? 'unk' : ''}>{q(n0(bucket.modified))}</dd></div><div><dt><i class="sw add"></i>+ added-only</dt><dd class={bucketCoverage === 'none' ? 'unk' : ''}>{q(n0(bucket.added))}</dd></div><div><dt><i class="sw del"></i>− deleted-only</dt><dd class={bucketCoverage === 'none' ? 'unk' : ''}>{q(n0(bucket.deleted))}</dd></div><div><dt>raw churn</dt><dd class={bucketCoverage === 'none' ? 'unk' : ''}>{q(n0(bucket.rawChurn))}</dd></div></dl></div>
+        <div class="hb-k">Changed per {population} PR <span>ranked · bar = Changed, colour = composition, hatch = bounded</span></div>
+        <div class="hb-rows">{members.map((pr: any) => { const changed = pr.latest.changed, lo = changed.lower ?? 0, hi = changed.upper, exact = changed.status === 'exact'; return <a class="hb-row" href={prHref(pr)}><span class="hb-t"><span class="hb-n">{multi && <b>{repoShort(pr.repositoryId)} · </b>}#{pr.number}</span>{pr.title ?? ''}</span><span class="fr-chip" style={`--c:${pr.latest.band.color}`}>{pr.latest.band.short}</span><span class="hb-bar"><span class="hb-fill" style={`width:${(lo / maxChanged) * 100}%`}><Fragment set:html={exact ? comp([{ k: 'mod', v: pr.latest.modified.lower }, { k: 'add', v: pr.latest.added.lower }, { k: 'del', v: pr.latest.deleted.lower }]) : comp([{ k: 'unres', v: 1 }])} /></span>{hi !== null && hi > lo && <span class="hb-range" style={`width:${((hi - lo) / maxChanged) * 100}%`}></span>}</span><span class="hb-v">{describeBound(changed)}</span></a>; })}{members.length === 0 && <p class="a-mini">{bucketCoverage === 'none' ? `No recovered comparison in this ${unitWord}; its ${population} PRs are listed below as not recovered.` : `No ${population} PRs in this ${unitWord}.`}</p>}</div>
+        {pro && BucketFiles && <BucketFiles view={view} bucket={bucket} unitWord={unitWord} />}
+        {missing.length > 0 && <><div class="hb-k">Not recovered · {missing.length} <span>counted, not measured · nothing interpolated</span></div><div class="hb-rows">{missing.map((pr: any) => <a class="hb-row miss" href={prHref(pr)}><span class="hb-t"><span class="hb-n">{multi && <b>{repoShort(pr.repositoryId)} · </b>}#{pr.number}</span>{pr.title ?? ''}</span><span class="hb-bar"><span class="hb-range" style="width:100%"></span></span><span class="hb-v">unknown</span></a>)}</div></>}
+      </Panel>}
+      {!bucket && <Panel id="bucket" span={12} class="a-fill" title="Selected bucket"><Unavailable what="No buckets for this period" compact /></Panel>}
+    </div>
+    <div class="s7 a-col">
+      {pro ? <Panels view={view} list={list} unit={unit} unitWord={unitWord} life={life} labelOf={labelOf} nameOf={nameOf} selected={selected} />
+ : <>
+        <Panel id="cmp" span={12} class="a-fill" title="Period comparison" meta={`selected ${period} vs previous ${period}`}>
+          <table class="a-tbl a-cmp"><thead><tr><th></th><th class="r">selected {period}</th><th class="r">previous {period}</th><th class="r">change</th><th style="width:28%"></th></tr></thead><tbody>
+            {rows.map(([key, x, y, always]: any) => { if (always === null) return <tr class="covrow"><td>{key}</td><td class="r num">{x}</td><td class="r num" style="color:var(--fg-3)">{y}</td><td class="r a-mini">{comparable ? 'same coverage' : 'differs'}</td><td></td></tr>; const ok = (always && cur.windowCovered && prev.windowCovered) || comparable; const fmt = (value: number | null) => (value === null ? 'n/a' : value % 1 ? value.toFixed(1) : n0(value)); const none = x === null || y === null; return <tr><td>{key}</td><td class="r num" style="font-weight:600">{!always && incomplete && x !== null ? '≥ ' : ''}{fmt(x)}</td><td class="r num" style="color:var(--fg-3)">{!prev.windowCovered && y !== null ? '≥ ' : ''}{fmt(y)}</td><td class="r a-mini">{none ? 'n/a' : ok ? `${sgn(x - y)}${y ? ` · ${sgn(Math.round(((x - y) / y) * 100), '%')}` : ''}` : <span title={`Observed difference ${sgn(x - y)}; coverage differs, so the change is not comparable`}>incomplete coverage</span>}</td><td><div class:list={['a-pair', { inc: !ok }]}><i style={`width:${((x ?? 0) / Math.max(1, x ?? 0, y ?? 0)) * 100}%`}></i><i style={`width:${((y ?? 0) / Math.max(1, x ?? 0, y ?? 0)) * 100}%`}></i></div></td></tr>; })}
+          </tbody></table>
+          <p class="a-mini" style="margin:8px 0 0">Line totals cover recovered comparisons; bounded results count at their proven minimum. Upper bar: selected period · lower bar: previous.</p>
+        </Panel>
+        {entitlement.premium && !view.premiumProvided ? <section class="a-pn s12"><div class="a-pn-b"><Unavailable what="File growth and concentration are not part of this build" why="the plan includes them, but this build carries only the Community application" compact /></div></section> : <SeePro text="File growth and shrinkage, and concentration over time" span={12} />}
+      </>}
+    </div>
+    {pro && <Panel id="cmp" span={12} title="Period comparison" meta={`selected ${period} vs previous ${period}`}>
+      <table class="a-tbl a-cmp"><thead><tr><th></th><th class="r">selected {period}</th><th class="r">previous {period}</th><th class="r">change</th><th style="width:28%"></th></tr></thead><tbody>
+        {rows.map(([key, x, y, always]: any) => { if (always === null) return <tr class="covrow"><td>{key}</td><td class="r num">{x}</td><td class="r num" style="color:var(--fg-3)">{y}</td><td class="r a-mini">{comparable ? 'same coverage' : 'differs'}</td><td></td></tr>; const ok = (always && cur.windowCovered && prev.windowCovered) || comparable; const fmt = (value: number | null) => (value === null ? 'n/a' : value % 1 ? value.toFixed(1) : n0(value)); const none = x === null || y === null; return <tr><td>{key}</td><td class="r num" style="font-weight:600">{!always && incomplete && x !== null ? '≥ ' : ''}{fmt(x)}</td><td class="r num" style="color:var(--fg-3)">{!prev.windowCovered && y !== null ? '≥ ' : ''}{fmt(y)}</td><td class="r a-mini">{none ? 'n/a' : ok ? `${sgn(x - y)}${y ? ` · ${sgn(Math.round(((x - y) / y) * 100), '%')}` : ''}` : <span title={`Observed difference ${sgn(x - y)}; coverage differs, so the change is not comparable`}>incomplete coverage</span>}</td><td><div class:list={['a-pair', { inc: !ok }]}><i style={`width:${((x ?? 0) / Math.max(1, x ?? 0, y ?? 0)) * 100}%`}></i><i style={`width:${((y ?? 0) / Math.max(1, x ?? 0, y ?? 0)) * 100}%`}></i></div></td></tr>; })}
+      </tbody></table>
+      <p class="a-mini" style="margin:8px 0 0">Line totals cover recovered comparisons; bounded results count at their proven minimum. Upper bar: selected period · lower bar: previous.</p>
+    </Panel>}
+  </div>
+</AppShell>

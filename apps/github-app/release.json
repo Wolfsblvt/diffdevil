@@ -1,5 +1,21 @@
 {
   "family": "app",
   "version": null,
-  "premiumSeam": null
+  "premiumSeam": {
+    "version": 1,
+    "interfaces": {
+      "service": [
+        "apps/github-app/analytical-data.mjs",
+        "apps/github-app/app.mjs"
+      ],
+      "application": [
+        "apps/app/src/premium/registry.mjs",
+        "apps/app/src/premium/bridge/components.mjs",
+        "apps/app/src/premium/bridge/helpers.mjs",
+        "apps/app/src/premium/bridge/charts.mjs",
+        "apps/app/src/premium/bridge/client.ts",
+        "apps/shared/pr-brief/contract.mjs"
+      ]
+    }
+  }
 }

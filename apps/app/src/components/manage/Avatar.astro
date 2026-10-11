@@ -1,0 +1,7 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
+// The navigation's namespace mark, reused in the console: two letters, round for a person.
+interface Props { login: string; kind: 'user' | 'org' | string }
+const { login, kind } = Astro.props;
+---
+<span class:list={['a-av', { user: kind === 'user' }]} aria-hidden="true">{login.slice(0, 2)}</span>

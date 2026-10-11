@@ -20,7 +20,7 @@ the [complete manual](manual/README.md); its canonical standalone
 | Which tools share versions, and how do updates work? | [Release families and versioning](RELEASING.md), including the [App-family release manifest](RELEASING.md#app-family-release-manifest-and-its-consumers), and [reader release guidance](manual/help/releases.md) |
 | How are authorized releases published and read back? | [Publication boundary](publication-boundary.md) |
 | What owns the manual's prose, routes, examples and migration? | [Documentation design](documentation.md) and [manual application](../apps/manual/README.md) |
-| What owns wording and presentation? | [Branding](branding.md), [shared presenters](presentation.md) and [design source](../packages/design/README.md) |
+| What owns wording and presentation? | [Branding](branding.md), [shared presenters](presentation.md) and [design source](../packages/design/README.md); the App's charts follow [Chart Grammar v1.1](../packages/design/chart-grammar-v1.1.md) |
 | What owns the FAQ's stable identifiers and behavior? | [FAQ authoring contract](faq-authoring.md) |
 
 The [implementation horizon](implementation-horizon.md) preserves selected product
@@ -35,6 +35,7 @@ capability does not become historical merely because it is not released.
 | What do Community, Free, Pro and Business include? | [App editions and planned plans](app-plans.md) |
 | How do repository selection, organisation funding, processing and plan changes work? | [App management](app-management.md) |
 | Who may read, configure, delegate or publish a view? | [Dashboard accounts and access](dashboard-access.md) |
+| How does an administrator operate the App: Manage, repository settings, Plan & funding, Account, and on Business the linked policies, people and record? | [The App experience](../apps/app/README.md), [D078](DECISIONS.md#d078-manage-is-one-console-with-sub-tabs-capacity-first-and-the-first-works-link-lands-on-the-plan-page) and [D079](DECISIONS.md#d079-business-coordination-is-published-into-repository-settings-delegated-within-githubs-ceiling-and-recorded-as-it-happened) |
 | What is retained, what remains transient, and what does import mean? | [Privacy and data](PRIVACY-AND-DATA.md) |
 | How does that product join authentication, execution and recovery? | [Managed App architecture](integration/github-app.md) |
 | Why did named history and merged-PR metrics replace the earlier boundary? | [Analytical decisions D064–D073](DECISIONS.md#d064-make-the-app-activity-first-for-collaborators-as-well-as-administrators) |
@@ -77,6 +78,7 @@ supplement authored explanation; none is a second hand-maintained API.
 | Manual | [Manual](../apps/manual/README.md): explicit source/route selection, generation, migration, joined search and two-host qualification |
 | Public-PR acquisition | [Playground adapter](../apps/playground/README.md): local/Worker API, throttling and transport |
 | Managed App | [App operator source](../apps/github-app/README.md) and [architecture](integration/github-app.md): supported backend, storage, recovery and provider boundaries |
+| Signed-in App | [App experience](../apps/app/README.md) (Community application and the [premium seam](../apps/app/src/premium/README.md)): the six analytical destinations as one Worker over the managed runtime, sign-in, the analytical data contract, entitlement, opaque file locators, the accepted chart system and local qualification; [analytical data contract](integration/app-analytical-data.md) |
 | Wirt commercial link, benefit projection and entitlement | [Commercial link consumer](integration/app-commercial-link.md) |
 | Browser extension | [Extension component](../apps/browser-extension/README.md): build, permissions, settings and qualification; [privacy source](../apps/browser-extension/privacy.md) |
 | Agent Skill and setup | [Canonical Skill](../skills/diffdevil/SKILL.md), its complete references, and [rendered setup payloads](setup/) |

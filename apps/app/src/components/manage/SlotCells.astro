@@ -1,0 +1,25 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
+// Capacity made visible: one cell per private slot, named by the repository holding it (dashed = open, hatched =
+// pending enable, red edge = held or stopped), with the over-the-limit callout; unlimited scopes show no cells. A scope
+// over its limit after a reduction names only what was chosen to stay; the other places say Choose what stays.
+import Icon from '../Icon.astro';
+import { repositoryPath } from '../../lib/manage/states.mjs';
+interface Props { capacity: any; size?: 'lg' | 'md'; namespace?: any }
+const { capacity, size = 'lg', namespace } = Astro.props;
+const cells = capacity.kind === 'slots' ? Array.from({ length: capacity.of }, (_, index) => capacity.inSlot[index] ?? null) : [];
+const label = capacity.kind === 'slots' ? `${capacity.inSlot.length} of ${capacity.of} private slots used${capacity.waiting.length ? `, ${capacity.waiting.length} over the limit` : ''}` : '';
+---
+<div class:list={['m-cap', size]}>
+  {capacity.kind === 'none' && <span class="m-capnote">{capacity.plan === 'Unfunded' ? 'No plan: no slot funds it' : capacity.plan === 'Unknown' ? 'Plan not established' : 'Not connected to a plan'}</span>}
+  {capacity.kind === 'unlimited' && <span class="m-unl"><Icon name="lock" size={13} />No private limit<span>{capacity.running.filter((repository: any) => repository.private).length} private running</span></span>}
+  {capacity.kind === 'slots' && <span class="m-cells" role="img" aria-label={label}>
+    {cells.map(repository => repository
+      ? <a class:list={['m-cell', { pend: ['pending', 'reconsent'].includes(repository.state?.kind), bad: ['held', 'stopped'].includes(repository.state?.kind) }]} href={repositoryPath(repository)} title={`${repository.fullName} · ${repository.state?.label ?? ''}`}>
+          <b>{repository.name}</b>{size === 'lg' && <span>{capacity.pooled && namespace?.login !== repository.owner ? `${repository.owner}${repository.state?.kind === 'active' ? '' : ` · ${(repository.state?.label ?? '').toLowerCase()}`}` : repository.state?.kind === 'active' ? (repository.standing?.historyEnabled ? 'running · history' : 'running') : (repository.state?.label ?? '').toLowerCase()}</span>}
+        </a>
+      : capacity.over ? <a class="m-cell open" href="/manage/plan#choose">{size === 'lg' ? <><Icon name="lock" size={12} />Choose what stays</> : 'choose'}</a>
+      : <span class="m-cell open">{size === 'lg' ? <><Icon name="lock" size={12} />Open slot</> : 'open'}</span>)}
+  </span>}
+  {capacity.kind === 'slots' && capacity.waiting.length > 0 && <span class="m-over"><Icon name="alert-triangle" size={13} />{capacity.waiting.length} over the limit{size === 'lg' && <>: {capacity.waiting.map((repository: any) => repository.name).join(', ')}{capacity.over && !capacity.chosen ? '. None of them runs until you choose what stays' : ''}</>}</span>}
+</div>

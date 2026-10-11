@@ -1,0 +1,43 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
+// The F1 chart frame of Chart Grammar v1.1 (packages/design/chart-grammar-v1.1.md): the panel
+// header with the chart/table switch, the fixed-geometry readout, the plot (a skeleton in the
+// chart's own shape until the browser mounts it), the equivalent table and the teach line.
+// Everything a reader needs is rendered on the server from the model: the default readout and
+// the table are the no-script view; the client reads the same JSON to draw and to explain every
+// focused state. Nothing here is a chart-library default.
+import Icon from './Icon.astro';
+import PlanChip from './PlanChip.astro';
+import { readoutOf, readoutHtml, tableOf, tableHtml, teachOf, skeletonHtml } from '../lib/charts/readout.mjs';
+interface Props { id: string; kind: string; model: any; title: string; span?: 4 | 5 | 6 | 7 | 8 | 12; plan?: string | undefined; meta: string; h: number; open?: string | undefined; class?: string | undefined; group?: string | undefined; keepSel?: boolean; sel?: number | null; teach?: string | undefined; labelled?: string | undefined; fill?: boolean; pickBucket?: string | undefined }
+const { id, kind, model, title, span = 12, plan, meta, h, open, class: extra, group, keepSel = false, sel = null, teach, labelled, fill = false, pickBucket } = Astro.props;
+const readout = readoutHtml(readoutOf(model, null), { hint: true });
+const table = tableHtml(tableOf(model));
+const teachText = teach ?? teachOf(model);
+const unit = model.unit ?? 'mark';
+const instructions = `${labelled ?? title}: left and right arrows move between ${unit}s, Enter pins, Enter again opens, Escape clears`;
+---
+<article class:list={['a-pn', 'fr', `s${span}`, { 'a-fill': fill }, extra]} aria-labelledby={`h-${id}`} data-chart={kind} data-chart-id={id} data-chart-group={group} data-keep-sel={keepSel ? 'true' : undefined} data-sel={sel === null ? undefined : String(sel)} data-pick-bucket={pickBucket}>
+  <header class="a-pn-h">
+    <div class="a-pn-t">
+      <h2 id={`h-${id}`}>{open ? <a href={open}>{title}</a> : title}</h2>
+      {plan && <PlanChip plan={plan} />}
+      <span class="r">
+        <slot name="tools" />
+        <span class="sk-note" data-drawing>drawing</span>
+        <span class="a-seg sm fr-view" role="group" aria-label="View"><button type="button" aria-pressed="true" data-view="chart" title="Chart"><Icon name="chart" size={14} /><span class="visually-hidden">Chart</span></button><button type="button" aria-pressed="false" data-view="table" title="Table"><Icon name="table" size={14} /><span class="visually-hidden">Table</span></button></span>
+        {open && <a class="a-open" href={open} title="Open" aria-label={`Open ${title}`}><Icon name="open" size={14} /></a>}
+      </span>
+    </div>
+    <div class="d" data-meta>{meta}<slot name="meta" /></div>
+  </header>
+  <div class="a-pn-b">
+    <div class="fr-readout" data-readout set:html={readout} />
+    <div class="fr-plot" tabindex="0" role="application" aria-label={instructions} aria-describedby={`t-${id}`} style={`height:${h}px`} data-plot set:html={skeletonHtml(kind)} />
+    <div class="fr-table" data-table hidden set:html={table} />
+    <p class="fr-teach" id={`t-${id}`} data-teach>{teachText}</p>
+    <p class="visually-hidden" aria-live="polite" data-announce></p>
+    <script type="application/json" data-chart-model set:html={JSON.stringify(model)} />
+  </div>
+  {Astro.slots.has('foot') && <footer class="a-pn-f"><slot name="foot" /></footer>}
+</article>

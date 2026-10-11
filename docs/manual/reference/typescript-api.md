@@ -373,12 +373,19 @@ and examples outside the markers remain authored.
 | `GitHubClientOptions` | `GitHubClientOptions` | [Declaration](#api-github-client-githubclientoptions) |
 | `GitHubPolicySource` | `GitHubPolicySource` | [Declaration](#api-github-policy-githubpolicysource) |
 | `GitHubRequestError` | `GitHubRequestError` | [Declaration](#api-github-client-githubrequesterror) |
+| `HostCommentRequest` | `HostCommentRequest` | [Declaration](#api-github-comments-hostcommentrequest) |
+| `HostCommentResult` | `HostCommentResult` | [Declaration](#api-github-comments-hostcommentresult) |
+| `HostComposedComment` | `HostComposedComment` | [Declaration](#api-github-apply-hostcomposedcomment) |
+| `HostLifecycles` | `HostLifecycles` | [Declaration](#api-github-comments-hostlifecycles) |
+| `PendingWrite` | `PendingWrite` | [Declaration](#api-github-observation-pendingwrite) |
 | `analyzeGitHub` | `analyzeGitHub` | [Declaration](#api-github-source-analyzegithub) |
 | `analyzeGitHubGit` | `analyzeGitHubGit` | [Declaration](#api-github-source-analyzegithubgit) |
 | `applyGitHubPolicy` | `applyGitHubPolicy` | [Declaration](#api-github-apply-applygithubpolicy) |
 | `loadGitHubPolicy` | `loadGitHubPolicy` | [Declaration](#api-github-policy-loadgithubpolicy) |
 | `readGitHubPolicy` | `readGitHubPolicy` | [Declaration](#api-github-policy-readgithubpolicy) |
+| `readHostCommentContext` | `readHostCommentContext` | [Declaration](#api-github-comments-readhostcommentcontext) |
 | `readPullSnapshot` | `readPullSnapshot` | [Declaration](#api-github-source-readpullsnapshot) |
+| `reconcileHostComment` | `reconcileHostComment` | [Declaration](#api-github-comments-reconcilehostcomment) |
 | `syncGitHubLabels` | `syncGitHubLabels` | [Declaration](#api-github-labels-syncgithublabels) |
 
 ### @wolfsblvt/diffdevil/browser
@@ -866,7 +873,8 @@ export interface GitHubApplyOptions extends Pick<PolicyEvaluateOptions, 'paramet
     readonly localGit?: {
         readonly cwd?: string;
     };
-    readonly beforeWrite?: () => Promise<void>;
+    readonly beforeWrite?: (write: PendingWrite) => Promise<void>;
+    readonly composeComments?: Readonly<Record<string, HostComposedComment>>;
 }
 ```
 
@@ -886,6 +894,29 @@ export interface GitHubApplyResult {
     readonly plan: EffectPlan;
     readonly observations: readonly EffectObservation[];
     readonly diagnostics: readonly Diagnostic[];
+}
+```
+
+<a id="api-github-apply-hostcomposedcomment"></a>
+
+#### `HostComposedComment`
+
+[Canonical source](../../../src/diffdevil/github/apply.ts)
+
+```typescript
+export interface HostComposedComment {
+    readonly lifecycle: string;
+    readonly compose: (input: {
+        readonly report: Report;
+        readonly plan: EffectPlan;
+        readonly previous: {
+            readonly found: boolean;
+            readonly context?: string;
+        };
+    }) => string | {
+        readonly body: string;
+        readonly context?: string;
+    };
 }
 ```
 
@@ -962,6 +993,77 @@ export interface CommentAuthor {
 }
 ```
 
+<a id="api-github-comments-hostcommentrequest"></a>
+
+#### `HostCommentRequest`
+
+[Canonical source](../../../src/diffdevil/github/comments.ts)
+
+```typescript
+export interface HostCommentRequest {
+    readonly target: {
+        readonly repository: string;
+        readonly pullRequest: number;
+    };
+    readonly policyId: string;
+    readonly rule: string;
+    readonly host: string;
+    readonly occasionId: string;
+    readonly body: string;
+}
+```
+
+<a id="api-github-comments-hostcommentresult"></a>
+
+#### `HostCommentResult`
+
+[Canonical source](../../../src/diffdevil/github/comments.ts)
+
+```typescript
+export interface HostCommentResult {
+    readonly status: 'created' | 'unchanged';
+    readonly observations: readonly EffectObservation[];
+}
+```
+
+<a id="api-github-comments-hostlifecycles"></a>
+
+#### `HostLifecycles`
+
+[Canonical source](../../../src/diffdevil/github/comments.ts)
+
+```typescript
+export type HostLifecycles = Readonly<Record<string, string>>;
+```
+
+<a id="api-github-comments-readhostcommentcontext"></a>
+
+#### `readHostCommentContext`
+
+[Canonical source](../../../src/diffdevil/github/comments.ts)
+
+```typescript
+export declare function readHostCommentContext(client: GitHubClient, target: HostCommentRequest['target'], request: {
+    readonly rule: string;
+    readonly host: string;
+}, author: CommentAuthor): Promise<{
+    readonly found: boolean;
+    readonly context?: string;
+}>;
+```
+
+<a id="api-github-comments-reconcilehostcomment"></a>
+
+#### `reconcileHostComment`
+
+[Canonical source](../../../src/diffdevil/github/comments.ts)
+
+```typescript
+export declare function reconcileHostComment(client: GitHubClient, request: HostCommentRequest, author: CommentAuthor, options?: {
+    readonly beforeWrite?: (write: PendingWrite) => Promise<void>;
+}): Promise<HostCommentResult>;
+```
+
 <a id="api-github-labels-definitionresult"></a>
 
 #### `DefinitionResult`
@@ -1004,6 +1106,19 @@ export interface EffectObservation {
     outcome: 'changed' | 'unchanged' | 'unresolved';
     request: 'not-needed' | 'acknowledged' | 'ambiguous' | 'rejected';
     readback: 'verified' | 'failed' | 'unobserved';
+}
+```
+
+<a id="api-github-observation-pendingwrite"></a>
+
+#### `PendingWrite`
+
+[Canonical source](../../../src/diffdevil/github/observation.ts)
+
+```typescript
+export interface PendingWrite {
+    readonly kind: string;
+    readonly subject: string;
 }
 ```
 

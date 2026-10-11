@@ -1,0 +1,49 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
+// Choose what stays on the lower plan (D078): the one connected organisation, the private repositories within the
+// lower allowance, public history fit and how defaults or linked policies become plain repository settings. Before
+// the effective date it is saved and applied when the reduction takes effect; after it, saving applies at once. If
+// nobody chooses, diffdevil doesn't pick: what is over the lower limits stays inactive (the runtime holds it too).
+// Once applied, the section says what the choice did.
+import Icon from '../Icon.astro';
+import { holdsSlot } from '../../lib/manage/states.mjs';
+import { fmtDay, tierLabel } from '../../lib/manage/works.mjs';
+interface Props { model: any; choosing: { target: string; on: string | null; applied?: boolean } | null; tier: string }
+const { model, choosing, tier } = Astro.props;
+const choice = model.planChoice;
+const seen = new Set();
+const overScopes = model.namespaces.filter((namespace: any) => namespace.capacity?.over && !seen.has(namespace.capacity) && seen.add(namespace.capacity));
+const unchosen = overScopes.filter((namespace: any) => !namespace.capacity.chosen);
+// A reduction that already took effect without a choice: the same form, applied as soon as it is saved.
+const past = !choosing || choosing.applied === true;
+// After the plan ended the organisation connection is a choice too, so the form stays until a choice is applied.
+const reducedNow = past && (unchosen.length > 0 || (choosing?.applied === true && !choice?.appliedAt));
+const appliedOutcome = choice?.appliedAt ? choice.outcome : null;
+const showApplied = Boolean(appliedOutcome) && !reducedNow;
+const target = choosing?.target ?? (model.viewerPlan === 'Free' ? 'free' : 'pro');
+const from = choice?.from ?? (choosing ? String(tier).toLowerCase() : model.viewerPlan === 'Free' ? 'pro' : 'business');
+const show = Boolean(choosing && !past) || reducedNow || showApplied;
+// The organisations this plan funds or funded (its slots, even after it ended), the connected one, and any that still hold places.
+const bound = new Set((model.commercial?.status?.capacity ?? []).map((slot: any) => slot.binding?.organisationId).filter(Boolean));
+const organisations = model.namespaces.filter((namespace: any) => namespace.kind === 'org' && (['own-slot', 'paused', 'free-connected'].includes(namespace.funding.kind) || (namespace.funding.kind === 'unconnected' && (bound.has(namespace.accountId) || namespace.repositories.some(holdsSlot)))));
+const privateHeld = model.namespaces.filter((namespace: any) => namespace.kind === 'user' || organisations.includes(namespace)).flatMap((namespace: any) => namespace.repositories.filter((repository: any) => repository.private && holdsSlot(repository)));
+const publicHistory = model.namespaces.flatMap((namespace: any) => namespace.repositories.filter((repository: any) => repository.standing?.historyEnabled && !repository.private));
+const freePrivate = target === 'free' ? model.allowances.free.private : model.allowances.proOrganisation.private;
+const freePublic = target === 'free' ? model.allowances.free.publicHistory : null;
+const name = (id: number) => model.namespaces.flatMap((namespace: any) => namespace.repositories).find((repository: any) => repository.repositoryId === id)?.fullName ?? `repository ${id}`;
+const login = (id: number | null) => model.namespaces.find((namespace: any) => namespace.accountId === id)?.login ?? null;
+const applying = !past;
+---
+{show && <section class="m-sec" data-choose-stays={showApplied ? 'applied' : reducedNow ? 'due' : 'before'} id="choose">
+  <header><h2>{showApplied ? `On ${tierLabel(appliedOutcome.plan)} now` : reducedNow ? `Choose what stays on ${tierLabel(target)}` : `Choose what stays on ${tierLabel(target)}`}</h2>
+    <span class="d">{showApplied ? `Your choice applied on ${fmtDay(choice.appliedAt) ?? 'the effective date'}` : reducedNow ? `${tierLabel(target)} is in effect · nothing over its limits runs until you choose` : `Applies on ${fmtDay(choosing!.on) ?? 'the effective date'} · change it any time before then`}</span></header>
+  {showApplied && <div class="b" data-choice-outcome><div class="m-eff">
+    {appliedOutcome.connected && <div><Icon name="building-2" /><span><b>{login(appliedOutcome.connected) ?? 'Your organisation'} stays connected</b><span class="d">It shares your Free allowance.</span></span><span></span></div>}
+    <div><Icon name="lock" /><span><b>{appliedOutcome.kept.length ? `Kept: ${appliedOutcome.kept.map(name).join(', ')}` : appliedOutcome.released.length ? 'No private repository was kept' : 'Every private repository fits the lower plan and keeps running'}</b><span class="d">{appliedOutcome.released.length ? `Stopped and released: ${appliedOutcome.released.map(name).join(', ')}. Their history and settings stay; swap one in when a place is free.` : 'Nothing needed to stop.'}</span></span><span></span></div>
+  </div><p class="m-note">To choose differently, swap repositories in Repositories. A new choice is saved for the next change of plan.</p></div>}
+  {!showApplied && <div class="b"><form method="post" action="/manage/do"><input type="hidden" name="action" value="plan-choice" /><input type="hidden" name="back" value="/manage/plan" /><input type="hidden" name="target" value={target} /><input type="hidden" name="from" value={from} />{choosing?.on && <input type="hidden" name="on" value={choosing.on} />}<div class="m-stay">
+    {target === 'free' && <div><span class="m-k">One connected organisation</span><div class="m-swapopts" style="margin-top:8px">{organisations.length ? organisations.map((namespace: any) => <label><input type="radio" name="organisation" value={namespace.accountId} checked={choice?.organisation ? choice.organisation === namespace.accountId : false} /><span><b>{namespace.login}</b><span>{namespace.funding.kind === 'own-slot' ? `runs on slot ${String(namespace.funding.slot).replace(/^slot-/u, '')} today` : namespace.funding.kind === 'paused' ? 'paused today' : namespace.funding.kind === 'unconnected' ? 'not connected now' : 'connected today'}</span></span></label>) : <span class="m-note" style="margin:0">No organisation is funded by your plan today.</span>}</div><p class="m-note">{organisations.length > 1 ? 'The other organisation stops running. Its history and settings stay with it.' : ''}</p></div>}
+    <div><span class="m-k">{freePrivate === null ? 'Private repositories' : target === 'free' ? `${freePrivate} private repositories` : `${freePrivate} private repositories per organisation`} · <span style="color:var(--fg)">{choice ? `${choice.keep.filter((id: number) => privateHeld.some((repository: any) => repository.repositoryId === id)).length} chosen` : 'none chosen yet'}</span></span><div class="m-checks">{privateHeld.map((repository: any) => <label><input type="checkbox" name="keep" value={repository.repositoryId} checked={choice ? choice.keep.includes(repository.repositoryId) : false} /><span><Icon name="lock" size={12} /><b>{repository.name}</b><i>{repository.owner}</i></span></label>)}{privateHeld.length === 0 && <span class="m-note" style="margin:0">No private repository holds a slot today.</span>}</div><p class="m-note">Where the lower plan is exceeded, unchosen ones stop and give up their place, with history and settings kept. Where everything fits, nothing stops.</p></div>
+    <div><span class="m-k">Public with history · <span style="color:var(--fg)">{publicHistory.length}{freePublic === null ? '' : ` of ${freePublic}`}</span></span><p class="m-note" style="margin-top:8px">{freePublic === null || publicHistory.length <= freePublic ? 'Everything fits. Public labels keep running without a limit.' : `${publicHistory.length - freePublic} public ${publicHistory.length - freePublic === 1 ? 'repository' : 'repositories'} with history would be over the limit: collection pauses for all of them until you switch some to Labels only in Repositories.`}</p><span class="m-k" style="display:block;margin-top:14px">Defaults</span><p class="m-note" style="margin-top:6px">{from === 'business' ? 'Each linked policy becomes plain repository settings, so nothing changes in how pull requests are labelled.' : 'A Pro default lives in each repository\'s own settings once applied, so nothing changes in how pull requests are labelled.'}</p></div>
+  </div><div class="m-acts" style="margin-top:14px"><button class="m-btn sm pri" type="submit">{reducedNow ? 'Apply choice' : 'Save choice'}</button><span class="m-note" style="margin:0">{reducedNow ? (unchosen.length ? `${unchosen.flatMap((namespace: any) => namespace.capacity.waiting).length} private repositories don't run until you choose. diffdevil doesn't pick for you.` : 'Organisations without a plan don\'t run until you connect one. diffdevil doesn\'t pick for you.') : 'If you don\'t choose, diffdevil doesn\'t pick: everything over the lower limits becomes inactive until you do.'}{choice && applying ? ` Saved ${fmtDay(choice.savedAt)}.` : ''}</span></div></form></div>}
+</section>}

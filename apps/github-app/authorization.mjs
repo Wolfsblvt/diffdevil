@@ -31,21 +31,23 @@ function cookie(name, value, maxAge) {
 }
 
 /** These headers belong on every protected result, including its refusal response. */
-export function protectedHeaders() { return { 'Cache-Control': 'private, no-store', 'Vary': 'Cookie' }; }
+export function protectedHeaders() { return { 'Cache-Control': 'private, no-store', 'Vary': 'Cookie', 'Referrer-Policy': 'no-referrer' }; }
 
 /** Route-neutral GitHub-user authorization; the router chooses paths and visible language later. */
-export function createAuthorizationService({ store, admission, history, provider, protector, returnContexts, allowedOrigins, allowedCallbackUrls, sessionLifetimeMs, now = () => new Date().toISOString() }) {
+export function createAuthorizationService({ store, admission, history, analytics, provider, protector, returnContexts, allowedOrigins, allowedCallbackUrls, sessionLifetimeMs, delegatedAdministration, now = () => new Date().toISOString() }) {
   if (!store || !admission || !provider || !protector || !returnContexts || !allowedOrigins || !allowedCallbackUrls) throw new TypeError('Authorization adapters and allowlists are required.');
   if (!Number.isSafeInteger(sessionLifetimeMs) || sessionLifetimeMs <= 0 || sessionLifetimeMs % 1000 !== 0
     || !Number.isFinite(new Date(Date.parse(now()) + sessionLifetimeMs).getTime())) throw new TypeError('A selected session lifetime is required.');
   const contexts = new Set(returnContexts);
   const origins = new Set(allowedOrigins);
   const callbacks = new Set(allowedCallbackUrls);
+  // HTTPS everywhere; plain HTTP only on a loopback host, which browsers treat as a secure context, so a local qualification run can exercise the real cookie route.
+  const secureEnough = url => url.protocol === 'https:' || (url.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname));
   if (contexts.size === 0 || origins.size === 0 || callbacks.size === 0 || [...origins].some(origin => {
-    try { const url = new URL(origin); return url.origin !== origin || url.protocol !== 'https:'; } catch { return true; }
+    try { const url = new URL(origin); return url.origin !== origin || !secureEnough(url); } catch { return true; }
   }) || [...callbacks].some(callback => {
-    try { const url = new URL(callback); return url.protocol !== 'https:' || url.toString() !== callback || url.search !== '' || url.hash !== ''; } catch { return true; }
-  })) throw new TypeError('Authorization requires finite return contexts and HTTPS origins/callbacks.');
+    try { const url = new URL(callback); return !secureEnough(url) || url.toString() !== callback || url.search !== '' || url.hash !== ''; } catch { return true; }
+  })) throw new TypeError('Authorization requires finite return contexts and HTTPS (or loopback) origins/callbacks.');
 
   function requireContext(value) {
     if (typeof value !== 'string' || !contexts.has(value) || value.includes('://') || value.startsWith('/')) throw refusal('E_AUTH_RETURN_CONTEXT');
@@ -115,8 +117,16 @@ export function createAuthorizationService({ store, admission, history, provider
     try {
       access = await provider.checkRepositoryAccess({ material, userId: actor.userId, installationId: repository.installation_id, repositoryId, kind });
     } catch { throw refusal('E_ADMISSION_UNAUTHORIZED'); }
-    if (access?.installation !== 'active' || access?.repository !== 'available' || access?.canAdminister !== true) throw refusal('E_ADMISSION_UNAUTHORIZED');
-    return { ...actor, role: 'repository-admin' };
+    if (access?.installation !== 'active' || access?.repository !== 'available') throw refusal('E_ADMISSION_UNAUTHORIZED');
+    if (access.canAdminister === true) return { ...actor, role: 'repository-admin' };
+    // Delegated administration (Business) reaches a repository only while the delegate's own current GitHub access to it
+    // includes write (push), for reading settings as for changing them: visibility alone is not enough, and a delegate
+    // narrowed to read is refused with its own code rather than inheriting the App's authority.
+    let delegated = false;
+    if (typeof delegatedAdministration === 'function') { try { delegated = await delegatedAdministration({ userId: actor.userId, repositoryId, kind }) === true; } catch { delegated = false; } }
+    if (!delegated) throw refusal('E_ADMISSION_UNAUTHORIZED');
+    if (access.canWrite !== true) throw refusal('E_ADMISSION_WRITE_REQUIRED');
+    return { ...actor, role: 'delegated-admin' };
   }
 
   async function admissionCall(call) {
@@ -125,6 +135,27 @@ export function createAuthorizationService({ store, admission, history, provider
   }
 
   return {
+    async analyticalQuery({ session, query }) {
+      if (!analytics) throw refusal('E_APP_DATA_UNAVAILABLE');
+      const actor = await principal(session);
+      const material = await currentAuthorization(actor.userId);
+      if (!Array.isArray(query?.repositoryIds) || query.repositoryIds.some(id => !Number.isSafeInteger(id) || id < 1)) throw refusal('E_APP_DATA_QUERY');
+      const authorizedRepositoryIds = [];
+      const repositoryIdentities = [];
+      for (const repositoryId of new Set(query.repositoryIds)) {
+        const repository = await store.repositoryIdentity(repositoryId);
+        if (!repository) continue;
+        let access;
+        try { access = await provider.checkRepositoryAccess({ material, userId: actor.userId, installationId: repository.installation_id, repositoryId, kind: 'read' }); }
+        catch { throw refusal('E_APP_DATA_AUTH_UNAVAILABLE'); }
+        if (access?.installation === 'active' && access?.repository === 'available' && (access?.canRead === true || access?.canAdminister === true)) {
+          authorizedRepositoryIds.push(repositoryId);
+          if (typeof access.fullName === 'string' && /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/u.test(access.fullName)) repositoryIdentities.push({ repositoryId, fullName: access.fullName });
+        }
+      }
+      const body = await analytics.query(query, { ...actor, authorizedRepositoryIds });
+      return { body: { ...body, repositoryIdentities }, headers: protectedHeaders() };
+    },
     async begin(returnContext) {
       requireContext(returnContext);
       const state = opaqueValue();
@@ -237,6 +268,26 @@ export function createAuthorizationService({ store, admission, history, provider
       return { body: { serviceConnection: await store.serviceConnection(actor.userId) }, headers: protectedHeaders() };
     },
 
+    /**
+     * Provider reads for the signed-in experience. The grant material never leaves this
+     * service: the operation receives bound read functions and the authenticated actor.
+     */
+    async read({ session }, operation) {
+      const actor = await principal(session);
+      const material = await currentAuthorization(actor.userId);
+      const reads = {
+        profile: () => provider.profile({ material, userId: actor.userId }),
+        installations: () => provider.installations({ material, userId: actor.userId }),
+        installationRepositories: installationId => provider.installationRepositories({ material, userId: actor.userId, installationId }),
+        organizationRole: organization => provider.organizationRole({ material, userId: actor.userId, organization }),
+        recentPullRequests: fullName => provider.recentPullRequests({ material, userId: actor.userId, fullName }),
+        pullRequest: (fullName, number) => provider.pullRequest({ material, userId: actor.userId, fullName, number }),
+        // The numeric account behind a GitHub login, for naming a delegate; null when GitHub knows no such user.
+        userByLogin: typeof provider.userByLogin === 'function' ? login => provider.userByLogin({ material, userId: actor.userId, login }) : async () => null
+      };
+      return operation(reads, actor);
+    },
+
     async readAdmission({ session, repositoryId }) {
       const actor = await authorizedAdmission(session, repositoryId, 'read');
       return { body: await admissionCall(() => admission.read(repositoryId, actor)), headers: protectedHeaders() };
@@ -260,6 +311,13 @@ export function createAuthorizationService({ store, admission, history, provider
       return { userId, ...await checkOrganisation(material, userId, organisationId) };
     },
 
+    /** Read-only: a repository administrator previews stored or proposed brief settings; nothing is written. */
+    async previewBrief({ session, repositoryId, settings }) {
+      const actor = await authorizedAdmission(session, repositoryId, 'read');
+      if (typeof admission.previewBrief !== 'function') throw refusal('E_ADMISSION_UNAVAILABLE');
+      return { body: await admissionCall(() => admission.previewBrief(repositoryId, actor, settings)), headers: protectedHeaders() };
+    },
+
     async updateAdmission({ session, repositoryId, method, origin, settings }) {
       validOrigin(origin, origins, method);
       const actor = await authorizedAdmission(session, repositoryId, 'update');
@@ -278,7 +336,7 @@ export function createAuthorizationService({ store, admission, history, provider
       for (const repositoryId of new Set([left?.repositoryId, right?.repositoryId])) {
         if (!Number.isSafeInteger(repositoryId) || repositoryId < 1) throw refusal('E_ADMISSION_UNAUTHORIZED');
         try { await authorizedAdmission(session, repositoryId, 'read'); authorizedRepositoryIds.push(repositoryId); }
-        catch (error) { if (error?.code !== 'E_ADMISSION_UNAUTHORIZED') throw error; }
+        catch (error) { if (error?.code !== 'E_ADMISSION_UNAUTHORIZED' && error?.code !== 'E_ADMISSION_WRITE_REQUIRED') throw error; }
       }
       return { body: await history.compare(left, right, { ...actor, authorizedRepositoryIds }), headers: protectedHeaders() };
     },

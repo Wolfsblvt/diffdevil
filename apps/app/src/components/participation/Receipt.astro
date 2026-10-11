@@ -1,0 +1,15 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
+// One receipt built from Wirt's lines: the underlying price, each reward under its public reason, the amount due and
+// what follows the reward. A definition list, so each label is read with its amount.
+interface Props { receipt: any; title: string }
+const { receipt, title } = Astro.props;
+---
+<div class="p-receipt" role="group" aria-label={title} data-receipt>
+  <span class="m-k">{title}</span>
+  <dl>
+    {receipt.lines.map((line: any) => <><dt class:list={[{ reward: line.reward }]}>{line.label}</dt><dd class:list={[{ reward: line.reward }]}>{line.amount}</dd></>)}
+    <dt class="total">{receipt.total.label}</dt><dd class="total" data-due>{receipt.total.amount}</dd>
+  </dl>
+  {receipt.notes.map((note: string) => <p class="p-rnote">{note}</p>)}
+</div>

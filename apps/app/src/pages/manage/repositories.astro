@@ -1,0 +1,130 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
+// Manage · Repositories: a namespace filter, Free's allowance panel, then per namespace the enabled repositories above
+// the not-enabled ones, with the state and reason on every row, in-place switching (Swap in… opens a picker in the
+// row, the incoming repository lands as Pending enable), the History | Labels only switch on Free public repositories,
+// the Free connected organisation's replace/disconnect panel and an organisation funded by someone else.
+import ManagePage from '../../components/manage/ManagePage.astro';
+import Icon from '../../components/Icon.astro';
+import PlanChip from '../../components/PlanChip.astro';
+import Avatar from '../../components/manage/Avatar.astro';
+import StatePill from '../../components/manage/StatePill.astro';
+import SlotCells from '../../components/manage/SlotCells.astro';
+import AllowanceGroups from '../../components/manage/AllowanceGroups.astro';
+import ActionForm from '../../components/manage/ActionForm.astro';
+import Banner from '../../components/manage/Banner.astro';
+import { loadManage } from '../../lib/manage/model.mjs';
+import { isEnabledGroup, repositoryPath, namespacePath } from '../../lib/manage/states.mjs';
+import { jobBrief } from '../../lib/manage/jobs.mjs';
+
+const runtime = Astro.locals.app;
+const model = await loadManage({ viewer: Astro.locals.viewer, session: Astro.locals.session, runtime });
+const selected = Astro.url.searchParams.get('ns') ?? '';
+const swapping = Astro.url.searchParams.get('swap') ?? '';
+const panel = Astro.url.searchParams.get('panel') ?? '';
+const shown = selected ? model.namespaces.filter((namespace: any) => namespace.login === selected) : model.namespaces;
+const free = model.viewerPlan === 'Free';
+const personal = model.namespaces.find((namespace: any) => namespace.kind === 'user');
+const here = (patch: Record<string, string>) => { const url = new URL(Astro.url); for (const [key, value] of Object.entries(patch)) { if (value) url.searchParams.set(key, value); else url.searchParams.delete(key); } url.searchParams.delete('m'); return `${url.pathname}${url.search}`; };
+const subOf = (namespace: any) => ({ 'free-connected': 'Free · your connected organisation', 'free-connected-elsewhere': 'Free · connected on another administrator\'s account', unconnected: 'Not connected · Free connects one organisation', unfunded: 'No slot funds it · a paid plan doesn\'t add Free organisations', unknown: 'Plan not established right now', 'other-funder': `${namespace.plan} · funded by another subscriber`, 'own-slot': `${namespace.plan} · funded by you, slot ${String(namespace.funding.slot ?? '').replace(/^slot-/u, '')}`, delegated: `Business · you manage diffdevil here as ${namespace.administration?.role === 'account-admin' ? 'Account administrator' : 'Repository administrator'}, where you can write on GitHub`, paused: `${namespace.plan} · paused: funding is yours, administration can't be confirmed`, personal: `Your personal repositories · ${namespace.plan}` } as Record<string, string>)[namespace.funding.kind] ?? namespace.plan;
+const openSlot = (model.commercial?.status?.capacity ?? []).find((slot: any) => !slot.binding);
+const runLabel = (namespace: any) => (['Pro', 'Business'].includes(namespace.plan) ? `Enabled with ${namespace.plan} features` : namespace.plan === 'Free' ? 'Enabled on Free' : 'Enabled');
+const capLine = (namespace: any) => { const c = namespace.capacity; return c.kind === 'slots' ? `${c.inSlot.length} of ${c.of} private slots${c.pooled ? `, pooled with ${namespace.kind === 'user' ? (model.freeConnected?.login ?? 'one organisation') : model.login}` : ''}${c.publicHistory.of !== null ? ` · ${c.publicHistory.used} of ${c.publicHistory.of} public with history` : ' · public: no limit'}` : c.kind === 'unlimited' ? `No private limit${c.publicHistory.of !== null ? ` · ${c.publicHistory.used} of ${c.publicHistory.of} public with history` : ' · public: no limit'}` : ''; };
+const historyLine = (repository: any) => (repository.standing?.historyEnabled ? `History on${jobBrief(model.jobs.get(repository.repositoryId)) ? ` · ${jobBrief(model.jobs.get(repository.repositoryId))}` : ''}` : repository.standing?.historyConsented ? 'History kept · collection paused with the repository' : repository.standing?.historyReason === 're-consent-required' ? 'History interrupted' : 'History off');
+---
+<ManagePage model={model} tab="repositories">
+  <div class="m-picker" role="group" aria-label="Show"><a href="/manage/repositories" aria-current={!selected ? 'page' : undefined}>All you manage</a>{model.namespaces.map((namespace: any) => <a href={namespacePath(namespace.login)} aria-current={selected === namespace.login ? 'page' : undefined}>{namespace.login}</a>)}</div>
+  <div class="m-stack">
+    {free && personal && <section class="m-sec" data-free-allowance><header><h2>Free allowance</h2><span class="d">Pooled across your personal repositories{model.freeConnected ? ` and ${model.freeConnected.login}` : ''}. Everything else is unlimited.</span></header><div class="b"><AllowanceGroups capacity={personal.capacity} model={model} /></div></section>}
+    {shown.map((namespace: any) => {
+      const repositories = namespace.repositories.filter((repository: any) => repository.standing);
+      const unrecorded = namespace.repositories.filter((repository: any) => !repository.standing);
+      const running = repositories.filter((repository: any) => isEnabledGroup(repository.state));
+      const notRunning = repositories.filter((repository: any) => !isEnabledGroup(repository.state));
+      const capacity = namespace.capacity;
+      const full = capacity.kind === 'slots' && capacity.inSlot.length + capacity.waiting.length >= capacity.of;
+      const featured = ['Pro', 'Business'].includes(namespace.plan);
+      const pooledHere = capacity.pooled;
+      return <section class="m-sec" id={`ns-${namespace.login}`} data-namespace-block={namespace.login}>
+        <header><h2><Avatar login={namespace.login} kind={namespace.kind} />{namespace.login} {featured ? <PlanChip plan={namespace.plan} /> : <span class="m-none">{({ Unconnected: 'not connected', Unfunded: 'no plan', Unknown: 'plan not established' } as Record<string, string>)[namespace.plan] ?? 'free'}</span>}</h2><span class="d">{subOf(namespace)}</span>
+          <span class="r">
+            {namespace.funding.kind === 'other-funder' && <a class="m-btn sm" href={here({ panel: panel === `funder:${namespace.login}` ? '' : `funder:${namespace.login}` })}>Funding…</a>}
+            {free && namespace.kind === 'org' && namespace.funding.kind === 'unconnected' && (model.freeConnected ? <a class="m-btn sm" href={here({ panel: panel === `connect:${namespace.login}` ? '' : `connect:${namespace.login}` })}>Connect instead of {model.freeConnected.login}…</a> : <ActionForm action="free-connect" fields={{ organisation: namespace.accountId }} label="Connect as your Free organisation" class="sm pri" disabled={namespace.accountId === null} title={namespace.accountId === null ? 'This organisation\'s account is not recorded by the App yet' : undefined} />)}
+            {free && namespace.funding.kind === 'free-connected' && <a class="m-btn sm ghost" href={here({ panel: panel === `disconnect:${namespace.login}` ? '' : `disconnect:${namespace.login}` })}>Disconnect…</a>}
+            {namespace.funding.kind === 'unfunded' && openSlot && <a class="m-btn sm pri" href="/manage/plan">Fund with your open slot</a>}
+            {namespace.funding.kind === 'paused' && <a class="m-btn sm pri" href="/manage/account">Reconnect</a>}
+            {namespace.plan === 'Business' ? (namespace.administration?.kind === 'owner' || namespace.administration?.role === 'account-admin') && <a class="m-btn sm ghost" href={`/manage/policies?ns=${encodeURIComponent(namespace.login)}`}><Icon name="link" size={14} />Policies</a> : <a class="m-btn sm ghost" href={`/manage/defaults?ns=${encodeURIComponent(namespace.login)}`}><Icon name="file-code" size={14} />Defaults</a>}
+          </span></header>
+        {panel === `connect:${namespace.login}` && model.freeConnected && <div class="m-swap inset" data-panel="connect"><b>Connect {namespace.login} instead of {model.freeConnected.login}?</b>
+          <div class="m-eff"><div><Icon name="pause" /><span><b>{model.freeConnected.login} stops running</b><span class="d">{model.freeConnected.repositories.filter((repository: any) => repository.standing?.executionActive).length} running {model.freeConnected.repositories.filter((repository: any) => repository.standing?.executionActive).length === 1 ? 'repository' : 'repositories'}: {model.freeConnected.repositories.filter((repository: any) => repository.standing?.executionActive).map((repository: any) => repository.name).join(', ') || 'none'}. No labels, no check, no new history. Their history and settings stay with {model.freeConnected.login}.</span></span><span></span></div>
+            <div><Icon name="lock" /><span><b>{namespace.login} shares your Free allowance</b><span class="d">Still {model.allowances.free.private ?? 'unlimited'} private and {model.allowances.free.publicHistory ?? 'unlimited'} public with history, pooled with your personal repositories. You choose which of its repositories take free slots; nothing runs until you do.</span></span><span></span></div>
+            <div><Icon name="users" /><span><b>Either organisation's owner can undo this</b><span class="d">An organisation owner can disconnect it from their side at any time.</span></span><span></span></div></div>
+          <div class="m-acts"><ActionForm action="free-connect" fields={{ organisation: namespace.accountId }} label={`Connect ${namespace.login}`} class="pri sm" back={namespacePath(namespace.login)} /><a class="m-btn ghost sm" href={here({ panel: '' })}>Cancel</a><span class="m-note">Derived from the funding-connection rules; not separately settled.</span></div></div>}
+        {panel === `disconnect:${namespace.login}` && <div class="m-swap inset" data-panel="disconnect"><b>Disconnect {namespace.login} from your Free account?</b>
+          <div class="m-eff"><div><Icon name="pause" /><span><b>Its repositories stop running</b><span class="d">No labels, no check, no new history. History and settings stay with {namespace.login}; selections wait for a connection.</span></span><span></span></div></div>
+          <div class="m-acts"><ActionForm action="free-disconnect" label="Disconnect" class="sm dng" back="/manage/repositories" /><a class="m-btn ghost sm" href={here({ panel: '' })}>Cancel</a></div></div>}
+        {panel === `funder:${namespace.login}` && <div class="m-swap inset" data-panel="funder"><b>{namespace.login} is funded by another subscriber</b>
+          <div class="m-eff"><div><Icon name="refresh" /><span><b>Replace with your open slot</b><span class="d">{openSlot ? 'Your open slot takes over; the current funder gets their slot back. Nothing stops running.' : 'You have no open slot. Add one at Works first.'}</span></span>{openSlot ? <ActionForm action="fund" fields={{ slot: openSlot.slot, organisation: namespace.accountId }} label="Replace" class="sm" /> : model.worksOrigin ? <a class="m-btn sm ghost" href={`/manage/depart?to=experience&purpose=add-slot&from=${encodeURIComponent(namespacePath(namespace.login))}`}>Add a slot <Icon name="arrow-up-right" size={13} /></a> : <span></span>}</div>
+            <div><Icon name="unlink" /><span><b>Disconnect the funder</b><span class="d">{namespace.login} has no plan until someone funds it: repositories stop running, history and settings stay. The funder isn't charged less; their slot becomes open.</span></span><ActionForm action="release-slot" fields={{ organisation: namespace.accountId }} label="Disconnect…" class="sm ghost dng" /></div></div>
+          <div class="m-acts"><a class="m-btn ghost sm" href={here({ panel: '' })}>Close</a><span class="m-note">A funder never gains access or ownership by paying; you never see their invoices.</span></div></div>}
+        <div class="b tight">{pooledHere ? <span class="m-capnote"><Icon name="lock" size={13} /> Counts toward the Free allowance above: {capacity.inSlot.filter((repository: any) => repository.owner === namespace.login).length} of its private slots and {capacity.publicHistory.repositories.filter((repository: any) => repository.owner === namespace.login).length} of its public history places are used here.</span> : <SlotCells capacity={capacity} size="lg" namespace={namespace} />}</div>
+        {namespace.installation.state === 'suspended' && <Banner tone="err" icon="circle-alert" title={`The GitHub App installation on ${namespace.login} is suspended`} text="Nothing runs here. Retained history is kept and exportable. Settings return when the installation is active; history collection doesn't restart by itself." inset />}
+        {namespace.funding.kind === 'paused' && <Banner tone="warn" icon="alert-triangle" title={`${namespace.plan} is paused in ${namespace.login}`} text={`${model.serviceConnection === 'disconnected' ? 'Your GitHub funding connection is disconnected, so we' : 'We'} can't confirm you still administer ${namespace.login}. Funding and slot are unchanged; readers get Free features until it's confirmed.`} inset><a class="m-btn sm pri" href="/manage/account">Reconnect</a></Banner>}
+        {(running.length > 0 || !['Unconnected', 'Unfunded', 'Unknown'].includes(namespace.plan)) && <>
+          <div class="m-group"><span class="m-k">{runLabel(namespace)}</span><span class="m-gd">{capLine(namespace)}</span></div>
+          <table class="m-tbl"><caption class="visually-hidden">{runLabel(namespace)} in {namespace.login}: repository, state, history, actions</caption><colgroup><col style="width:220px" /><col /><col style="width:230px" /><col style="width:190px" /></colgroup><tbody>
+            {running.map((repository: any) => {
+              const state = repository.state;
+              const publicChoice = capacity.publicHistory.of !== null && !repository.private && ['active', 'labels'].includes(state.kind);
+              const full10 = capacity.publicHistory.used >= capacity.publicHistory.of;
+              return <tr class:list={[{ atte: ['held', 'stopped'].includes(state.kind), att: ['pending', 'reconsent'].includes(state.kind) }]} data-repository-row={repository.fullName}>
+                <td><a class="rn" href={repositoryPath(repository)}><Icon name={repository.private ? 'lock' : 'book'} size={14} /><span>{repository.name}</span></a><span class="why">{repository.private ? 'private' : 'public'}{state.holdsSlot && capacity.kind === 'slots' && ' · holds a slot'}{publicChoice && repository.standing.historyEnabled && ` · 1 of the ${capacity.publicHistory.of} with history`}</span></td>
+                <td><StatePill tone={state.tone} icon={state.icon} label={state.label} />{state.why && <span class="why">{state.why}</span>}</td>
+                <td><span class="why" style="margin:0">{historyLine(repository)}{repository.standing.historyEnabled && repository.standing.historyOrigin !== 'unknown' ? '' : ''}</span></td>
+                <td>{state.readOnlyForYou ? <span class="why" style="margin:0" data-read-only-for-you>Read only for you on GitHub</span> : publicChoice
+                  ? <div class="m-acts"><div class="a-seg sm" role="group" aria-label={`History for ${repository.name}`}>
+                      {repository.standing.historyEnabled ? <span aria-current="true">History</span> : <ActionForm action="history" fields={{ repository: repository.fullName, enabled: 'on' }} label="History" class="ghost sm" disabled={full10} title={full10 ? `All ${capacity.publicHistory.of} public history places are in use` : undefined} />}
+                      {repository.standing.historyEnabled ? <ActionForm action="history" fields={{ repository: repository.fullName }} label="Labels only" class="ghost sm" /> : <span aria-current="true">Labels only</span>}
+                    </div></div>
+                  : <div class="m-acts">
+                      {['active', 'labels'].includes(state.kind) && <ActionForm action="stop" fields={{ repository: repository.fullName }} label="Stop" class="sm ghost" title="Stop operating: frees its slot, keeps history" />}
+                      {state.kind === 'overAllowance' && <><a class="m-btn sm" href="/manage/plan#choose">Choose what stays</a><ActionForm action="stop" fields={{ repository: repository.fullName }} label="Stop" class="sm ghost" title="Stop operating: gives up its place, keeps history" /></>}
+                      {['pending', 'reconsent'].includes(state.kind) && <><a class="m-btn sm" href={repositoryPath(repository)}>Review &amp; enable</a>{state.kind === 'pending' && <ActionForm action="release" fields={{ repository: repository.fullName }} label="Release slot" class="sm ghost" />}</>}
+                      {state.kind === 'held' && <a class="m-btn sm" href={repositoryPath(repository)}>Fix</a>}
+                    </div>}</td>
+              </tr>;
+            })}
+            {running.length === 0 && <tr><td colspan="4" style="color:var(--fg-3);text-align:left">Nothing runs here yet.</td></tr>}
+          </tbody></table></>}
+        {(notRunning.length > 0 || unrecorded.length > 0) && <>
+          <div class="m-group below"><span class="m-k">Not enabled</span><span class="m-gd">{['Unconnected', 'Unfunded'].includes(namespace.plan) ? subOf(namespace) : full ? 'Every private slot is taken: swap one in to enable it' : 'Select one to enable it'}</span></div>
+          <table class="m-tbl"><caption class="visually-hidden">Not enabled in {namespace.login}: repository, state, history, actions</caption><colgroup><col style="width:220px" /><col /><col style="width:230px" /><col style="width:190px" /></colgroup><tbody>
+            {notRunning.map((repository: any) => {
+              const state = repository.state;
+              const swapHere = swapping === repository.fullName;
+              const canSwap = repository.private && capacity.kind === 'slots' && (state.kind === 'inactive' || (state.kind === 'available' && full) || (state.kind === 'stoppedByYou' && full));
+              return <><tr class:list={[{ att: state.kind === 'inactive', sel: swapHere }]} data-repository-row={repository.fullName}>
+                <td><a class="rn" href={repositoryPath(repository)}><Icon name={repository.private ? 'lock' : 'book'} size={14} /><span>{repository.name}</span></a><span class="why">{repository.private ? 'private' : 'public'}{state.holdsSlot && ' · holds a slot'}</span></td>
+                <td><StatePill tone={state.tone} icon={state.icon} label={state.label} />{state.why && <span class="why">{state.why}</span>}</td>
+                <td><span class="why" style="margin:0">{historyLine(repository)}</span></td>
+                <td>{state.readOnlyForYou ? <span class="why" style="margin:0" data-read-only-for-you>Read only for you on GitHub</span> : <div class="m-acts">
+                  {canSwap && <a class="m-btn sm" href={here({ swap: swapHere ? '' : repository.fullName })} aria-expanded={swapHere ? 'true' : 'false'}>Swap in…</a>}
+                  {!canSwap && ['available', 'stoppedByYou'].includes(state.kind) && !['Unconnected', 'Unfunded', 'Unknown'].includes(namespace.plan) && <ActionForm action="select" fields={{ repository: repository.fullName }} label="Select" class="sm" />}
+                  {state.kind === 'removed' && <a class="m-btn sm ghost" href={repositoryPath(repository)}>Export or delete</a>}
+                </div>}</td>
+              </tr>
+              {swapHere && <tr class="m-swaprow" data-swap-panel><td colspan="4"><div class="m-swap"><b>Run {repository.name} instead of</b>
+                <ActionForm action="swap" fields={{ repository: repository.fullName }} label="Swap" class="pri sm" back={namespacePath(namespace.login)}>
+                  <div class="m-swapopts">{capacity.inSlot.map((held: any, index: number) => <label><input type="radio" name="outgoing" value={held.fullName} checked={index === capacity.inSlot.length - 1} /><span><b>{held.name}</b><span>{held.state?.label}{held.standing?.historyEnabled ? ' · history on' : ''}</span></span></label>)}</div>
+                  <p class="m-note">The repository you pick stops: no labels, no check, no new history. Its history and settings stay. {repository.name} takes the slot as <b>Pending enable</b>, so you review its policy before anything is written.</p>
+                </ActionForm>
+                <div class="m-acts"><a class="m-btn ghost sm" href={here({ swap: '' })}>Cancel</a>{free && <span class="m-note">Or upgrade: Pro removes the personal limit.</span>}</div></div></td></tr>}</>;
+            })}
+            {unrecorded.map((repository: any) => <tr data-repository-row={repository.fullName}><td><span class="rn"><Icon name={repository.private ? 'lock' : 'book'} size={14} /><span>{repository.name}</span></span><span class="why">{repository.private ? 'private' : 'public'}</span></td><td><StatePill tone="off" icon="circle-dashed" label="Not recorded" /><span class="why">GitHub grants this repository, but the App has not recorded it yet. Its next delivery records it.</span></td><td></td><td></td></tr>)}
+          </tbody></table></>}
+        <footer><Icon name="git-fork" size={13} /><span>The GitHub App on {namespace.login} reaches {namespace.repositories.length} {namespace.repositories.length === 1 ? 'repository' : 'repositories'}. Only these appear here.</span><a class="push" href={`https://github.com/settings/installations`}>Change repository access on GitHub <Icon name="arrow-up-right" size={12} /></a></footer>
+      </section>;
+    })}
+    {shown.length === 0 && <section class="m-sec"><div class="b"><p class="m-lede">{selected ? `You don't administer ${selected} here.` : 'No namespace reaches this account through an App installation yet.'}</p></div></section>}
+  </div>
+</ManagePage>

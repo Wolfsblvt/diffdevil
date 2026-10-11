@@ -1,0 +1,195 @@
+// SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
+/**
+ * The Community App against a real local D1 (Miniflare) carrying every managed-App migration, seeded through the managed
+ * App's own write paths, with GitHub replaced by the fixture's wire double and no premium extension joined. Exercises
+ * the sign-in journey end to end, the viewer and scope model with server-selected plans, the page loader on the retained
+ * and pathless bases, the Free and All-repositories entitlement answers, an entitled reader's truthful
+ * `premium-not-provided` standing, the installed `/api/analytics` adapter and the document header reconciliation.
+ * The premium behaviour of the same fixture is tested in premium/tests. One seeded database serves the file; the
+ * consent-withdrawal case runs last.
+ */
+import assert from 'node:assert/strict';
+import { after, test } from 'node:test';
+import { createGitHubAppWorker } from '../../github-app/app.mjs';
+import { authSession, authLogout, briefPreview, openSession, cookieValue, SESSION_COOKIE } from '../src/lib/routes.mjs';
+import { scopeRepositories, loadTitles } from '../src/lib/viewer.mjs';
+import { loadView, entitlementFor } from '../src/lib/view.mjs';
+import { describeScope } from '../src/lib/scope.mjs';
+import { REPOSITORIES, ENTITLEMENT_FIXTURE, CODE } from '../qa/fixture.mjs';
+import { fixture, disposeFixture, signIn, viewerFor, ORIGIN, NOW } from './support.mjs';
+
+after(disposeFixture);
+
+test('the sign-in journey issues an opaque session, refuses foreign posts and signs out cleanly', async () => {
+  const { app: compose, github } = await fixture();
+  const app = compose();
+  const { cookie, html } = await signIn(app);
+  assert.ok(html.includes('action="/auth/session"'), 'the continuation page posts the one-time artifact');
+  assert.equal(html.includes(CODE), false, 'the provider code is not echoed');
+  const request = new Request(`${ORIGIN}/`, { headers: { cookie: `${SESSION_COOKIE}=${cookie}` } });
+  assert.equal(cookieValue(request, SESSION_COOKIE), cookie);
+  const opened = await openSession(request, app);
+  assert.equal(opened.actor.userId, 123);
+  assert.equal(github.calls.some(call => call.path === '/login/oauth/access_token'), true);
+  const foreign = await authSession(new Request(`${ORIGIN}/auth/session`, { method: 'POST', body: new URLSearchParams({ artifact: 'x'.repeat(43), return: 'app' }), headers: { origin: 'https://evil.example' } }), app);
+  assert.equal(new URL(foreign.headers.get('location'), ORIGIN).searchParams.get('reason'), 'E_AUTH_ORIGIN');
+  assert.equal((await openSession(new Request(`${ORIGIN}/`), app)).refusal, 'E_SESSION_UNAVAILABLE');
+  const out = await authLogout(new Request(`${ORIGIN}/auth/logout`, { method: 'POST', headers: { origin: ORIGIN, cookie: `${SESSION_COOKIE}=${cookie}` } }), app);
+  // Sign-out discloses the account's local funding-connection standing to the sign-in page; this account funds nothing.
+  assert.equal(out.headers.get('location'), '/sign-in?signed-out=not-retained');
+  assert.equal((await openSession(request, app)).refusal, 'E_SESSION_UNAVAILABLE');
+});
+
+test('the viewer sees GitHub-reachable repositories with their App standing and server-selected namespace plans', async () => {
+  const { app: compose } = await fixture();
+  const free = compose();
+  const { viewer, opened } = await viewerFor(free);
+  assert.equal(viewer.login, 'ada-sample');
+  assert.equal(viewer.repositories.length, REPOSITORIES.length);
+  assert.deepEqual(viewer.namespaces.filter(namespace => namespace.yours).map(namespace => namespace.login), ['ada-sample', 'parser-guild']);
+  assert.deepEqual(viewer.namespaces.filter(namespace => !namespace.yours).map(namespace => namespace.login).sort(), ['kai-sample', 'northwind-tools']);
+  const standing = Object.fromEntries(viewer.repositories.map(repository => [repository.fullName, repository.status]));
+  assert.equal(standing['parser-guild/parser-lab'], 'history');
+  assert.equal(standing['parser-guild/grammar-fuzz'], 'history-off');
+  assert.equal(standing['ada-sample/notes-site'], 'labels-only');
+  assert.equal(viewer.plan, 'Free');
+  assert.equal(viewer.entitlementSource, 'none-connected');
+  assert.equal(scopeRepositories(viewer, describeScope('@parser-guild')).length, 3);
+  assert.equal(scopeRepositories(viewer, describeScope('someone/else')).length, 0);
+  const titles = await loadTitles({ reads: opened.reads, repositories: scopeRepositories(viewer, describeScope('parser-guild/parser-lab')), cache: free.cache, userId: viewer.userId });
+  assert.equal(titles.standing, 'available');
+  assert.ok(titles.byRepository.get(1001).size > 0, 'display titles come from the person\'s own read');
+  // The loopback fixture keys plans by numeric account: the viewer and parser-guild are Pro, northwind-tools is Business.
+  const funded = compose(ENTITLEMENT_FIXTURE);
+  const { viewer: paid } = await viewerFor(funded);
+  assert.equal(paid.plan, 'Pro');
+  assert.equal(paid.entitlementSource, 'local-fixture');
+  assert.deepEqual(Object.fromEntries(paid.namespaces.map(namespace => [namespace.login, namespace.plan])), { 'ada-sample': 'Pro', 'parser-guild': 'Pro', 'northwind-tools': 'Business', 'kai-sample': 'Free' });
+});
+
+test('the page loader drives populations from the retained analytical records and falls back to pathless analyses where none are retained', async () => {
+  const { app: compose, written } = await fixture();
+  const app = compose(ENTITLEMENT_FIXTURE);
+  assert.ok(written.written > 20, `fixture wrote ${written.written} pathless analyses`);
+  assert.ok(written.retained > 20, `fixture retained ${written.retained} analytical records`);
+  const ids = REPOSITORIES.map(repository => repository.repositoryId);
+  const coverage = await app.store.analyticalCoverage(ids);
+  assert.ok(coverage.counts.get(1001) > 0);
+  assert.equal(coverage.counts.get(1007), undefined, 'the pathless-only repository has no retained record');
+  assert.equal(coverage.counts.get(1003), undefined, 'history-off repositories are not read');
+  const { viewer, opened } = await viewerFor(app);
+  const view = await loadView({ url: new URL(`${ORIGIN}/?s=parser-guild%2Fparser-lab&per=90d`), viewer, session: opened, runtime: app, surface: 'prs' });
+  assert.equal(view.scope.kind, 'repository');
+  assert.equal(view.lifecycle.standing, 'available');
+  assert.equal(view.lifecycle.source, 'retained-analytical-records');
+  assert.equal(view.current.basis, 'retained');
+  assert.ok(view.current.merged > 0, 'merged pull requests come from retained lifecycle');
+  assert.ok(view.current.mergedRecovered < view.current.merged, 'a merged PR without a recovered final comparison stays in the population unmeasured');
+  assert.ok([...view.pullRequests.values()].some(pr => pr.title), 'titles attach from the transient read');
+  assert.ok([...view.pullRequests.values()].every(pr => pr.basis === 'retained'));
+  assert.equal(view.entitlement.premium, true, 'your own namespace follows the viewer plan');
+  assert.equal(view.entitlement.source, 'service', 'the service answered the entitlement');
+  assert.ok([...view.pullRequests.values()].some(pr => pr.latest.band.standing === 'current'), 'bands are judged by the current policy');
+  // The pathless-only repository keeps its older analyses, by analysis time, and says so.
+  const pathless = await loadView({ url: new URL(`${ORIGIN}/?s=kai-sample%2Ftree-sitter-dd&per=90d`), viewer, session: opened, runtime: app, surface: 'prs' });
+  assert.equal(pathless.lifecycle.standing, 'unavailable');
+  assert.equal(pathless.current.basis, 'pathless');
+  assert.ok(pathless.current.analysedCount > 0);
+  assert.equal(pathless.current.opened, undefined, 'no lifecycle count is invented from analysis times');
+  assert.ok([...pathless.pullRequests.values()].some(pr => pr.latest.band.standing === 'derived'), 'older analyses without a recorded band derive it and say so');
+  // Files on an entitled scope without the premium extension: the plan stands, the implementation is absent, and nothing is invented.
+  const files = await loadView({ url: new URL(`${ORIGIN}/files?s=parser-guild%2Flexer-kit&per=90d`), viewer, session: opened, runtime: app, surface: 'files' });
+  assert.equal(files.entitlement.premium, true, 'the plan still includes file history');
+  assert.equal(files.premiumProvided, false);
+  assert.equal(files.premiumHere, false, 'no premium slot renders in a Community build');
+  assert.equal(files.dataStanding, 'premium-not-provided', 'the service says the result was not computed rather than answering empty');
+  assert.deepEqual(files.files, []);
+  assert.equal(files.data.entitlements.premium.provided, false);
+});
+
+test('a Free reader keeps a funded namespace\'s plan inside it, and All repositories follows the reader with pointers to funded namespaces', async () => {
+  const { app: compose } = await fixture();
+  // A Free viewer (account 123 unfunded) in a world where parser-guild is Pro and northwind-tools is Business.
+  const app = compose({ 7001: 'Pro', 7002: 'Business' });
+  const { viewer, opened } = await viewerFor(app);
+  assert.equal(viewer.plan, 'Free');
+  const inside = await loadView({ url: new URL(`${ORIGIN}/files?s=%40northwind-tools&per=90d`), viewer, session: opened, runtime: app, surface: 'files' });
+  assert.equal(inside.entitlement.premium, true, 'the funded namespace keeps its plan for a Free collaborator');
+  assert.equal(inside.entitlement.plan, 'Business');
+  assert.equal(inside.entitlement.scope, 'namespace');
+  const all = await loadView({ url: new URL(`${ORIGIN}/files?s=all&per=90d`), viewer, session: opened, runtime: app, surface: 'files' });
+  assert.equal(all.entitlement.premium, false, 'All repositories follows the Free viewer');
+  assert.equal(all.dataStanding, 'plan-required');
+  assert.deepEqual(all.entitlement.fundedNamespaces.sort(), ['northwind-tools', 'parser-guild'], 'the Free page can point to the funded namespaces');
+  assert.deepEqual(all.entitlement.sharedPaid, ['northwind-tools'], 'only a namespace the viewer does not own is a shared paid pointer');
+  assert.equal(all.files.length, 0);
+  const allPrs = await loadView({ url: new URL(`${ORIGIN}/prs?s=all&per=90d`), viewer, session: opened, runtime: app, surface: 'prs' });
+  assert.equal(allPrs.entitlement.premium, false);
+  assert.ok(allPrs.current.merged > 0, 'Free keeps the useful merged populations on the other destinations');
+  // A paid viewer across namespaces aggregates only premium-funded repositories and names the excluded count.
+  const paid = compose({ 123: 'Pro', 7001: 'Pro' });
+  const { viewer: payer, opened: payerSession } = await viewerFor(paid);
+  const across = await loadView({ url: new URL(`${ORIGIN}/files?s=all&per=90d`), viewer: payer, session: payerSession, runtime: paid, surface: 'files' });
+  assert.equal(across.entitlement.premium, true);
+  assert.equal(across.entitlement.scope, 'all');
+  assert.ok(across.entitlement.excluded >= 1, 'a Free-funded history repository is named as excluded');
+  // The shell's expectation before data agrees with the rule.
+  assert.equal(entitlementFor(viewer, describeScope('all'), viewer.repositories).premium, false);
+  assert.equal(entitlementFor(viewer, describeScope('@northwind-tools'), scopeRepositories(viewer, describeScope('@northwind-tools'))).plan, 'Business');
+});
+
+test('the protected analytics route serves the same contract behind the App\'s installed authorization adapter', async () => {
+  const { app: compose, env } = await fixture();
+  const app = compose(ENTITLEMENT_FIXTURE);
+  const { cookie } = await viewerFor(app);
+  const worker = createGitHubAppWorker({ authorization: app.auth, commercial: app.commercial });
+  const query = { version: 1, surface: 'overview', repositoryIds: [1001, 1002, 1003, 9999], from: '2026-07-11T14:00:00.000Z', to: NOW };
+  const response = await worker.fetch(new Request(`${ORIGIN}/api/analytics`, { method: 'POST', headers: { cookie: `${SESSION_COOKIE}=${cookie}`, origin: ORIGIN, 'content-type': 'application/json' }, body: JSON.stringify(query) }), env);
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get('referrer-policy'), 'no-referrer', 'the JSON route keeps the managed App policy');
+  const body = await response.json();
+  assert.equal(body.surface, 'overview');
+  assert.equal(body.coverage.requestedRepositories, 4);
+  assert.equal(body.coverage.authorizedRepositories, 3, 'an unknown repository is dropped by the server, never granted');
+  assert.deepEqual(body.repositoryIdentities.map(entry => entry.fullName).sort(), ['parser-guild/grammar-fuzz', 'parser-guild/lexer-kit', 'parser-guild/parser-lab']);
+  assert.equal(body.scope.kind, 'all', 'an aggregate request without a declared scope reads as All repositories');
+  assert.equal(body.entitlements.premium.enabled, true);
+  const denied = await worker.fetch(new Request(`${ORIGIN}/api/analytics`, { method: 'POST', headers: { origin: ORIGIN, 'content-type': 'application/json' }, body: JSON.stringify(query) }), env);
+  assert.equal(denied.status, 401);
+});
+
+test('the brief preview route serves an administrator an effect-free synthetic preview and refuses everyone else', async () => {
+  const { app: compose } = await fixture();
+  const app = compose(ENTITLEMENT_FIXTURE);
+  const { cookie } = await signIn(app);
+  const post = (body, headers = {}) => briefPreview(new Request(`${ORIGIN}/api/brief/preview`, { method: 'POST', headers: { cookie: `${SESSION_COOKIE}=${cookie}`, origin: ORIGIN, 'content-type': 'application/json', ...headers }, body: JSON.stringify(body) }), app);
+  const writesBefore = JSON.stringify(await app.appStore.repositoryAdmission(1001));
+  const response = await post({ repositoryId: 1001, settings: { mode: 'standard', finalSummary: true } });
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get('cache-control'), 'private, no-store');
+  const preview = await response.json();
+  assert.equal(preview.synthetic, true); assert.equal(preview.effects, 'none');
+  assert.deepEqual(Object.keys(preview.states), ['exact', 'bounded', 'partial', 'unknown', 'context-unavailable', 'file-population-unavailable']);
+  assert.equal(preview.writer.login, 'diffdevil[bot]');
+  assert.ok(['standing', 'kind'].some(key => key in preview.source));
+  // A Community build joins no provider: the basic brief is complete and the premium modules say they are not provided.
+  assert.ok(preview.modules.some(module => module.tier === 'premium' && module.standing === 'not-provided'), 'premium modules are reported not provided');
+  assert.equal(JSON.stringify(await app.appStore.repositoryAdmission(1001)), writesBefore, 'preview stores nothing');
+  assert.equal((await post({ repositoryId: 1006 })).status, 403, 'a non-administrator cannot preview');
+  assert.equal((await post({ repositoryId: 1001 }, { origin: 'https://evil.example' })).status, 403);
+  assert.equal((await post({ repositoryId: 1001, settings: { mode: 'llm' } })).status, 400);
+});
+
+test('a withdrawn consent stops serving that repository on both bases', async () => {
+  const { app: compose } = await fixture();
+  const app = compose();
+  const before = await app.store.analyses([1002], '2026-01-01T00:00:00.000Z', NOW);
+  assert.ok(before.records.length > 0);
+  assert.ok((await app.store.analyticalCoverage([1002])).counts.get(1002) > 0);
+  await app.appStore.setRepositoryConsent(1002, { enabled: false, origin: 'fixture' });
+  const after = await app.store.analyses([1002], '2026-01-01T00:00:00.000Z', NOW);
+  assert.equal(after.records.length, 0);
+  assert.deepEqual(await app.store.observationBounds([1002]), { first: null, latest: null });
+  assert.equal((await app.store.analyticalCoverage([1002])).counts.get(1002), undefined);
+  assert.deepEqual(await app.appStore.analyticalRecords(1002), []);
+});

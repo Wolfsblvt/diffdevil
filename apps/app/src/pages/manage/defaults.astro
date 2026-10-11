@@ -1,0 +1,36 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
+// Manage · Defaults: one reusable default per personal account and per funded organisation (Pro), edited as YAML in a
+// machine panel and validated by the same engine and schema as the CLI and Actions; a repository adopts it from its
+// own settings, and Pro doesn't track which repositories differ. Free shows the bounded See Pro placeholder; an
+// entitled namespace in a Community build is told the editor is not part of the build. The editor body is the
+// premium extension's (src/premium/README.md); the stored default and its join to the effective policy are Community.
+import ManagePage from '../../components/manage/ManagePage.astro';
+import SeePro from '../../components/SeePro.astro';
+import Unavailable from '../../components/Unavailable.astro';
+import { loadManage } from '../../lib/manage/model.mjs';
+
+const runtime = Astro.locals.app;
+const model = await loadManage({ viewer: Astro.locals.viewer, session: Astro.locals.session, runtime });
+const wanted = Astro.url.searchParams.get('ns') ?? '';
+const namespace = model.namespaces.find((candidate: any) => candidate.login === wanted) ?? model.namespaces.find((candidate: any) => ['Pro', 'Business'].includes(candidate.plan)) ?? model.namespaces[0];
+const pro = namespace && ['Pro', 'Business'].includes(namespace.plan);
+const Editor = runtime.premium.pages.manage?.Defaults;
+const namespaceDefault = namespace && namespace.accountId !== null ? await runtime.manage.namespaceDefault(namespace.accountId) : null;
+---
+<ManagePage model={model} tab="defaults">
+  <div class="m-picker" role="group" aria-label="Namespace">{model.namespaces.map((candidate: any) => <a href={`/manage/defaults?ns=${encodeURIComponent(candidate.login)}`} aria-current={namespace?.login === candidate.login ? 'page' : undefined}>{candidate.login}{['Pro', 'Business'].includes(candidate.plan) && <span class="a-plan">{candidate.plan}</span>}</a>)}</div>
+  <div class="m-stack">
+    {!namespace && <section class="m-sec"><div class="b"><p class="m-lede">No namespace reaches this account through an App installation yet.</p></div></section>}
+    {namespace && !pro && <section class="m-sec" data-defaults="free"><header><h2>Defaults</h2><span class="a-plan">Pro</span></header><div class="b"><p class="m-lede">A reusable default for {namespace.login} comes with Pro. On Free, each repository keeps its own policy, from the preset or its <code>.diffdevil.yml</code>.</p><div style="margin-top:12px"><SeePro text="One default for your personal repositories and one per organisation" /></div></div></section>}
+    {namespace && namespace.plan === 'Business' && namespace.accountId !== null && <section class="m-sec" data-defaults="business"><header><h2>{namespace.login} policies</h2><span class="a-plan biz">Business</span></header><div class="b"><p class="m-lede">On Business, {namespace.login} coordinates named policies that are linked to repositories and published as revisions. <a class="link-quiet" href={`/manage/policies?ns=${encodeURIComponent(namespace.login)}`}>Open Policies</a></p></div></section>}
+    {namespace && pro && namespace.accountId === null && <section class="m-sec" data-defaults="unrecorded"><header><h2>{namespace.login} default</h2></header><div class="b"><Unavailable what="This namespace's account is not recorded by the App yet" why="its next delivery records it; a default needs the account to attach to" /></div></section>}
+    {namespace && pro && namespace.plan !== 'Business' && namespace.accountId !== null && (Editor
+      ? <Editor model={model} namespace={namespace} namespaceDefault={namespaceDefault} />
+      : <section class="m-sec" data-defaults="not-provided"><header><h2>{namespace.login} default</h2><span class="d">{namespaceDefault ? (namespace.plan === 'Business' ? `Revision ${namespaceDefault.revision} is linked beneath each repository's own settings` : `Revision ${namespaceDefault.revision} · each repository adopts it from its own settings`) : 'No default yet'}</span></header><div class="b"><Unavailable what="The default editor is not part of this build" why={`${namespace.plan} includes a reusable default; this Community build carries the stored default, its adoption from repository settings and its join to the effective policy, not the editor`} /></div></section>)}
+    <section class="m-sec" data-take-anywhere><header><h2>Take it to the CLI or Actions</h2><span class="d">The same policy runs anywhere diffdevil runs</span></header><div class="b"><div class="m-grid2" style="gap:14px"><pre class="m-code"><span class="c"># .diffdevil.yml in the repository</span>
+<span class="k">version</span>: 1
+<span class="k">presets</span>: [<span class="s">size@1</span>]</pre><pre class="m-code"><span class="c"># CLI</span>
+npx @wolfsblvt/diffdevil analyze --policy .diffdevil.yml</pre></div><p class="m-note">Export writes the resolved policy, not a link to this App. Nothing here locks a repository to the managed service. <a class="link-quiet" href="/manage/export">Export</a></p></div></section>
+  </div>
+</ManagePage>

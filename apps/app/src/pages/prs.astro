@@ -1,0 +1,83 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
+// Pull requests in the accepted chart composition: analytics first (Pull-request flow beside
+// analysed heads, PR lifecycle by size beside the size mix), then the record browser with its
+// own controls. Filters, sort, search and paging are URL state. Populations are named; a merged
+// pull request whose final comparison was not recovered shows as not measured.
+import AppShell from '../layouts/AppShell.astro';
+import PageHead from '../components/PageHead.astro';
+import Panel from '../components/Panel.astro';
+import ChartFrame from '../components/ChartFrame.astro';
+import PrRow from '../components/PrRow.astro';
+import Unavailable from '../components/Unavailable.astro';
+import Icon from '../components/Icon.astro';
+import { loadView, navModel } from '../lib/view.mjs';
+import { describeBound } from '../lib/intervals.mjs';
+import { weeklyFlow, headsPerPullRequest, BANDS, UNKNOWN_BAND } from '../lib/derive.mjs';
+import { flowModel, lifecycleModel, mixModel } from '../lib/charts/models.mjs';
+import { sgn, pct, fmtDate } from '../lib/format.mjs';
+
+const view = await loadView({ url: Astro.url, viewer: Astro.locals.viewer, session: Astro.locals.session, runtime: Astro.locals.app, surface: 'prs' });
+const { current: cur, lifecycle, state } = view;
+const life = lifecycle.standing === 'available';
+const basis = life ? 'retained' : 'pathless';
+const multi = view.scope.kind !== 'repository';
+const period = view.period.label;
+const scopeLabel = view.scope.kind === 'all' ? 'all repositories' : view.scope.kind === 'namespace' ? view.scope.namespace : view.scope.name;
+const flowWeeks = weeklyFlow({ pullRequests: view.pullRequests, lifecycle, nowIso: view.nowIso });
+const all = [...view.pullRequests.values()];
+// The browsable population: with retained lifecycle, every pull request active in the period; otherwise every analysed one.
+const population = life
+  ? all.filter((pr: any) => pr.state === 'open' || pr.state === 'draft' || (pr.lifecycle.mergedAt && pr.lifecycle.mergedAt >= view.window.from) || (pr.lifecycle.closedAt && pr.lifecycle.closedAt >= view.window.from) || pr.lifecycle.openedAt >= view.window.from)
+  : cur.analysed;
+const repositoryName = (pr: any) => view.viewer.repositories.find((repository: any) => repository.repositoryId === pr.repositoryId)?.fullName ?? '';
+const matchesQuery = (pr: any) => { const q = state.q.trim().toLowerCase(); if (!q) return true; return `#${pr.number}`.includes(q) || String(pr.number) === q.replace('#', '') || (pr.title ?? '').toLowerCase().includes(q) || repositoryName(pr).toLowerCase().includes(q); };
+const statusKinds = [['', 'All'], ['open', 'Ready for review'], ['draft', 'Draft'], ['merged', 'Merged'], ['closed', 'Closed unmerged']];
+const count = (kind: string) => population.filter((pr: any) => !kind || pr.state === kind).length;
+const measurementOf = (pr: any) => pr.unrecovered ? 'none' : pr.latest.changed.status === 'exact' ? 'exact' : pr.latest.changed.upper !== null ? 'bounded' : 'unknown';
+const filtered = population.filter((pr: any) => (!state.f || pr.state === state.f) && (!state.band || (pr.latest?.band.id === state.band)) && (!state.ev || measurementOf(pr) === state.ev) && matchesQuery(pr));
+const sortKey = state.sort || 'newest';
+const openFor = (pr: any) => pr.lifecycle ? (Date.parse(pr.lifecycle.mergedAt ?? pr.lifecycle.closedAt ?? view.nowIso) - Date.parse(pr.lifecycle.openedAt)) : 0;
+const sorted = filtered.slice().sort((a: any, b: any) => sortKey === 'largest' ? ((b.latest?.changed.lower ?? -1) - (a.latest?.changed.lower ?? -1)) : sortKey === 'longest' ? openFor(b) - openFor(a) : (b.lifecycle?.updatedAt ?? b.observedAt).localeCompare(a.lifecycle?.updatedAt ?? a.observedAt));
+const page = Number(state.page || 1), size = 12;
+const shown = sorted.slice(0, page * size);
+const heads = headsPerPullRequest(cur.analysed, basis);
+const flow = flowModel({ weeks: flowWeeks, period, scopeLabel, lifecycle: life, labelOf: (week: any) => fmtDate(week.start), hrefOf: (_: any, index: number) => view.href('/history', { per: '90d', w: String(index) }) });
+const mergedPrs = life ? (cur.mergedPullRequests ?? []) : [];
+const lifecycleBySize = lifecycleModel({ prs: mergedPrs, period, hrefOf: (band: string | null) => view.href('/prs', { f: 'merged', band: band ?? '' }) });
+const mix = mixModel({ prs: cur.analysed, period, basis: life ? 'retained' : 'pathless', lost: life ? cur.merged - cur.mergedRecovered : 0, hrefOf: (band: string | null) => view.href('/prs', { f: life ? 'merged' : '', band: band ?? '' }) });
+---
+<AppShell title="Pull requests" nav={navModel(view, 'prs')} view={view}>
+  <PageHead view={view} title="Pull requests" />
+  {life && lifecycle.coverageFrom && !cur.windowCovered && <p class="a-note"><Icon name="circle-dashed" size={14} /><span>Retained lifecycle begins {fmtDate(lifecycle.coverageFrom)}; earlier activity in this period is not retained, so counts are lower bounds.</span></p>}
+  <div class="a-grid">
+    <ChartFrame id="flow" kind="flow" model={flow} title="Pull-request flow" span={8} h={290} meta={life ? `opened against merged + closed unmerged, per week · 13-week context · ${scopeLabel} · retained lifecycle` : 'analysed pull requests per week, by analysis time · 13-week context'}>
+      <Fragment slot="foot"><span>{life ? `backlog = opened − merged − closed unmerged · selected ${period}: ${cur.merged} merged · ${cur.opened} opened · ${cur.closedUnmerged} closed unmerged · ${sgn(cur.backlog)}` : 'state needs retained lifecycle'}</span></Fragment>
+    </ChartFrame>
+    <Panel id="rev" span={4} title="Analysed heads per PR" meta={`${heads.total} PRs ${life ? 'merged' : 'analysed'} in ${period}`}>
+      <div class="a-bands">{heads.counts.map((n: number, index: number) => <div class="a-bandrow" style="grid-template-columns:70px 1fr 32px 40px"><span class="a-mini">{index + 1}{index === 3 ? '+' : ''} head{index ? 's' : ''}</span><span class="a-bar"><i style={`width:${(n / Math.max(1, ...heads.counts)) * 100}%`}></i></span><span class="num">{n}</span><span class="a-mini">{pct(n, heads.total)}%</span></div>)}</div>
+      <div class="a-sumrow" style="margin:16px 0 0"><div><div class="k">heads per PR</div><div class="v">{describeBound(heads.medianHeads)} <span class="a-mini">median</span></div></div><div><div class="k">median growth</div><div class="v">{heads.medianGrowthPct.status === 'empty' ? 'n/a' : sgn(heads.medianGrowthPct.lower ?? 0, '%')}</div></div><div><div class="k">first → final</div><div class="v">{heads.medianGrowth.status === 'empty' ? 'n/a' : sgn(heads.medianGrowth.lower ?? 0)} <span class="a-mini">lines</span></div></div></div>
+      <p class="a-mini" style="margin:6px 0 0">Among the {heads.multi} PRs with more than one exact analysed head. Unique PRs, not summed snapshots.</p>
+    </Panel>
+    {life
+      ? <ChartFrame id="life" kind="lifecycle" model={lifecycleBySize} title="PR lifecycle by size" span={6} h={40 + Math.max(1, lifecycleBySize.rows.length) * 34 + 10} meta={`merged PRs in ${period} · opened → ready for review → merged, elapsed time · n=${lifecycleBySize.n}`} />
+      : <Panel id="life" span={6} title="PR lifecycle by size"><Unavailable what="Lifecycle facts are not retained yet" why={lifecycle.reason} /></Panel>}
+    <ChartFrame id="mix" kind="mix" model={mix} title="PR size mix" span={6} h={40 + Math.max(1, mix.rows.length) * 34 + 10} meta={`${mix.n} ${life ? 'merged PRs with a recovered final comparison' : 'analysed PRs'} in ${period} · size-v1 ${life ? 'under current policy' : 'as recorded'}`} />
+  </div>
+
+  <h2 class="a-sect" id="list">All pull requests <span class="a-mini">{filtered.length} {life ? 'active' : 'analysed'} in {period}</span></h2>
+  <form class="a-toolbar" method="get" action="/prs" data-filter-form>
+    {Object.entries({ s: state.s, per: state.per, f: state.f, band: state.band, ev: state.ev, sort: state.sort }).map(([key, value]) => value && !(key === 'per' && value === '30d') && !(key === 's' && value === 'all') && <input type="hidden" name={key} value={value} />)}
+    <label class="a-search"><Icon name="search" size={14} /><input type="search" name="q" value={state.q} placeholder="Search title, repository or #number" aria-label="Search pull requests" /></label>
+    {life ? <div class="a-fgroup" role="group" aria-label="Status">{statusKinds.map(([kind, label]) => <a class="a-fchip" href={view.href('/prs', { f: kind, page: '' })} aria-current={state.f === kind ? 'true' : undefined}>{kind && <span class={`st-${kind}`}><Icon name={({ open: 'pull-request', draft: 'pull-request-draft', merged: 'merged', closed: 'pull-request-closed' } as any)[kind]} size={13} /></span>}{label} <span class="c">{count(kind)}</span></a>)}</div>
+      : <span class="a-mini">Status chips need retained lifecycle facts ({lifecycle.reason}).</span>}
+    <div class="a-fgroup" role="group" aria-label="Size"><span class="a-fl">size</span>{[{ id: '', short: 'any', color: undefined }, ...BANDS, UNKNOWN_BAND].map((band: any) => <a class="a-fchip sm" href={view.href('/prs', { band: band.id, page: '' })} aria-current={state.band === band.id ? 'true' : undefined}>{band.color && <i class="sw" style={`background:${band.color}`}></i>}{band.short}</a>)}</div>
+    <div class="a-fgroup" role="group" aria-label="Measurement"><span class="a-fl">measurement</span>{[['', 'any'], ['exact', 'exact'], ['bounded', 'bounded'], ['unknown', 'unknown'], ['none', 'not measured']].map(([kind, label]) => <a class="a-fchip sm" href={view.href('/prs', { ev: kind, page: '' })} aria-current={state.ev === kind ? 'true' : undefined}>{label}</a>)}</div>
+    <div class="a-fgroup"><div class="a-seg sm" role="group" aria-label="Sort">{[['newest', 'newest'], ['largest', 'largest Changed'], ...(life ? [['longest', 'longest open']] : [])].map(([kind, label]) => <a href={view.href('/prs', { sort: kind === 'newest' ? '' : kind, page: '' })} aria-current={sortKey === kind ? 'true' : undefined}>{label}</a>)}</div></div>
+    <button class="btn btn-quiet a-apply" type="submit">Search</button>
+  </form>
+  <div class="a-pn a-listpn">
+    <div class="a-pn-b"><div class="a-prs a-prs2">{shown.map((pr: any) => <PrRow pr={pr} view={view} showRepository={multi} />)}{shown.length === 0 && <p class="a-mini" style="padding:10px 0">No pull request matches these filters.</p>}</div></div>
+    <footer class="a-pn-f"><span>Showing {shown.length} of {filtered.length}</span>{shown.length < filtered.length && <a href={view.href('/prs', { page: String(page + 1) }) + '#list'}>Show more</a>}</footer>
+  </div>
+</AppShell>

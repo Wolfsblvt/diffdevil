@@ -7,7 +7,7 @@
  */
 export const copy = {
   nav: {
-    docs: 'Docs', faq: 'FAQ', playground: 'Playground', examples: 'Examples', menu: 'Menu', install: 'Install', dashboard: 'Dashboard',
+    docs: 'Docs', faq: 'FAQ', playground: 'Playground', examples: 'Examples', menu: 'Menu', install: 'Install', app: 'App',
     command: 'npm i -D @wolfsblvt/diffdevil', copied: 'Copied ✓', source: 'Source on GitHub',
   },
   /** Install⌄: a menu of the site's own pages. Every entry is [title, short description]. */

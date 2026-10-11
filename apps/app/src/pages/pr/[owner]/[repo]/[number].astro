@@ -1,0 +1,119 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
+// Pull-request detail from the service's `pr` surface in the accepted chart composition: comparison identity and freshness,
+// retained lifecycle, measured facts under current policy, the recorded original policy result,
+// desired and observed labels, named files with their policy scope, head-by-head development,
+// and the premium context (other active work on the same files, recent file activity,
+// co-change). Where only pathless analyses exist, the page shows them and says so.
+import AppShell from '../../../../layouts/AppShell.astro';
+import PageHead from '../../../../components/PageHead.astro';
+import Panel from '../../../../components/Panel.astro';
+import ChartFrame from '../../../../components/ChartFrame.astro';
+import Unavailable from '../../../../components/Unavailable.astro';
+import SeePro from '../../../../components/SeePro.astro';
+import LabelChip from '../../../../components/LabelChip.astro';
+import FilePath from '../../../../components/FilePath.astro';
+import Icon from '../../../../components/Icon.astro';
+import { loadView, navModel, repositoryByFullName } from '../../../../lib/view.mjs';
+import { describeBound, n0, bound } from '../../../../lib/intervals.mjs';
+import { groupPullRequests, fromRetained, lastTransition, BANDS } from '../../../../lib/derive.mjs';
+import { developmentModel } from '../../../../lib/charts/models.mjs';
+import { ago, fmtDate, shortSha } from '../../../../lib/format.mjs';
+
+const runtime = Astro.locals.app;
+const { owner, repo, number } = Astro.params;
+const fullName = `${owner}/${repo}`;
+const prNumber = Number(number);
+const repository = Number.isSafeInteger(prNumber) && prNumber > 0 ? repositoryByFullName(Astro.locals.viewer, fullName) : undefined;
+const view = await loadView({ url: new URL(Astro.url.pathname + (Astro.url.search || `?s=${repository ? fullName : 'all'}`), Astro.url), viewer: Astro.locals.viewer, session: Astro.locals.session, runtime, surface: 'pr', detail: { pullRequest: prNumber } });
+if (!repository) Astro.response.status = 404;
+const pages = runtime.premium.pages.pr;
+const Context = pages?.Context;
+const Cochange = pages?.Cochange;
+const pro = view.premiumHere && Boolean(Context);
+const retainedRow = view.dataStanding === 'available' ? view.data.result : null;
+const pathlessRecords = repository ? await runtime.store.pullRequestAnalyses(repository.repositoryId, prNumber) : [];
+const pathless = pathlessRecords.length ? [...groupPullRequests(pathlessRecords).values()][0] : undefined;
+const pr = retainedRow ? fromRetained(retainedRow) : pathless;
+const basis = retainedRow ? 'retained' : pathless ? 'pathless' : 'none';
+const title = view.titles.byRepository.get(repository?.repositoryId)?.get(prNumber);
+if (pr && title) { pr.title = title.title; pr.url = title.url; pr.currentHead = title.headSha; }
+const latest = pr?.latest;
+// Development across analysed heads: the service's revisions under current policy, with the original recorded band per head.
+const heads = retainedRow ? (retainedRow.development ?? []).map((revision: any, index: number) => ({ index, head: revision.head, base: revision.base, observedAt: revision.observedAt, changed: { status: revision.changed.status === 'unavailable' ? 'unknown' : revision.changed.status, lower: revision.changed.lower ?? 0, upper: revision.changed.upper ?? null }, band: revision.originalBand ? { ...(BANDS.find(band => band.id === revision.originalBand) ?? { id: revision.originalBand, label: `size/${revision.originalBand}`, short: revision.originalBand, color: '#D1D5DB' }), standing: 'recorded' } : null, originalPolicyId: revision.originalPolicyId, evidence: revision.changed.status })) : pathless ? pathless.revisions.map((revision: any, index: number) => ({ index, head: revision.head, observedAt: revision.observedAt, changed: revision.changed, band: revision.band, evidence: revision.evidence })) : [];
+const transition = heads.length ? lastTransition({ revisions: heads }) : undefined;
+const development = developmentModel({ heads, now: view.nowIso });
+const fresh = retainedRow ? retainedRow.freshness.standing : latest && pr?.currentHead ? (latest.head === pr.currentHead ? 'current' : 'stale') : 'unknown';
+const state = pr?.state ?? 'unknown';
+const icon = ({ open: 'pull-request', draft: 'pull-request-draft', merged: 'merged', closed: 'pull-request-closed' } as const)[state as 'open' | 'draft' | 'merged' | 'closed'] ?? 'circle-dashed';
+const pageTitle = pr?.title ?? `#${prNumber}`;
+const bandIndex = latest ? BANDS.findIndex(band => band.id === latest.band.id) : -1;
+// Named file rows: the service names files (base PR facts on every plan); the pathless fallback keeps its ordinals.
+const fileLinks = pro && retainedRow ? await pages.fileHrefs({ view, runtime, repository, fullName, paths: (retainedRow.files ?? []).map((file: any) => file.path) }) : undefined;
+const retainedFiles = retainedRow ? await Promise.all((retainedRow.files ?? []).map(async (file: any) => ({ path: file.path, included: file.included, changed: { status: file.changed.status === 'unavailable' ? 'unknown' : file.changed.status, lower: file.changed.lower ?? 0, upper: file.changed.upper ?? null }, rawChurn: { status: file.rawChurn.status === 'unavailable' ? 'unknown' : file.rawChurn.status, lower: file.rawChurn.lower ?? 0, upper: file.rawChurn.upper ?? null }, href: fileLinks?.get(file.path) }))) : [];
+const pathlessRows = !retainedRow && latest ? latest.fileRows.map((row: any) => ({ ...row, changed: bound(row.lines?.changed), rawAdded: bound(row.raw?.added), rawDeleted: bound(row.raw?.deleted), added: bound(row.lines?.added), deleted: bound(row.lines?.deleted), modified: bound(row.lines?.modified) })) : [];
+const included = retainedRow ? retainedFiles.filter((file: any) => file.included).length : pathlessRows.filter((row: any) => row.inclusion === 'included').length;
+const excluded = retainedRow ? retainedFiles.filter((file: any) => !file.included).length : pathlessRows.filter((row: any) => row.inclusion === 'excluded').length;
+const inclusionUnknown = retainedRow ? 0 : pathlessRows.filter((row: any) => !['included', 'excluded'].includes(row.inclusion)).length;
+const original = retainedRow?.original ?? null;
+const originalDiffers = original?.band && latest && original.band !== latest.band.id;
+const policyBasis = retainedRow?.policy?.basis;
+---
+<AppShell title={`#${prNumber} · ${repo}`} nav={navModel(view, 'pr')} view={view}>
+  {!repository ? <div class="a-focus a-pn"><div class="a-pn-b" style="padding:28px 32px"><h1 style="font-size:22px;margin:0 0 8px">Not in your repositories</h1><p class="lede">{fullName} is not among the repositories your GitHub account currently reaches through an App installation, or the pull-request number is not valid. <a class="link-quiet" href="/">Back to the overview</a>.</p></div></div>
+  : <>
+  <PageHead view={view} title={pageTitle} crumbs={[{ label: 'Pull requests', href: view.href('/prs') }, { label: `#${prNumber}` }]} period={false} scope={false}>
+    <Fragment slot="title"><span class:list={['si', `st-${state}`]} title={state}><Icon name={icon} size={22} /></span> {pageTitle}</Fragment>
+    <div class="a-scope" slot="scope"><b>#{prNumber}</b>{pr?.lifecycle && <><span class="a-dot">·</span>opened {ago(pr.lifecycle.openedAt, view.nowIso)}{pr.lifecycle.readyAt && <><span class="a-dot">·</span>ready for review {ago(pr.lifecycle.readyAt, view.nowIso)}</>}{pr.lifecycle.mergedAt && <><span class="a-dot">·</span>merged {ago(pr.lifecycle.mergedAt, view.nowIso)}</>}{pr.lifecycle.closedAt && !pr.lifecycle.mergedAt && <><span class="a-dot">·</span>closed {ago(pr.lifecycle.closedAt, view.nowIso)}</>}</>}{pr && <><span class="a-dot">·</span>{pr.heads} analysed {pr.heads === 1 ? 'head' : 'heads'}{latest?.base && latest?.head && <><span class="a-dot">·</span><span class="mono">{shortSha(latest.base)} → {shortSha(latest.head)}</span></>}{retainedRow && <><span class="a-dot">·</span>{retainedRow.measurement.basis === 'final-merged-comparison' ? 'final merged comparison' : 'pull-request revision'}</>}</>}{basis === 'pathless' && <><span class="a-dot">·</span>lifecycle not retained for this repository</>}</div>
+    <Fragment slot="tools">
+      {latest && <span class:list={['a-snap', fresh === 'current' ? 'current' : fresh === 'stale' || fresh === 'behind' ? 'behind' : 'unknown']} title={fresh === 'current' ? `The displayed analysis covers the current head · analysed ${ago(latest.observedAt, view.nowIso)}` : fresh === 'stale' || fresh === 'behind' ? `The latest analysed head ${shortSha(latest.head)} is behind the current head${retainedRow?.freshness?.currentHead ? ` ${shortSha(retainedRow.freshness.currentHead)}` : ''}` : 'The current head is not available'}>analysed head {shortSha(latest.head)} · {fresh === 'stale' ? 'behind' : fresh}</span>}
+      {pr?.url && <a class="btn btn-quiet" href={pr.url} rel="noopener"><Icon name="external" size={14} /> GitHub</a>}
+    </Fragment>
+  </PageHead>
+  {!pr ? <div class="a-focus a-pn"><div class="a-pn-b" style="padding:28px 32px"><h2 style="font-size:19px;margin:0 0 8px">No retained analysis</h2><p class="lede">The App has no retained analysis for this pull request{repository.standing?.historyEnabled ? '' : ' because history is not enabled for this repository'}.{view.dataStanding === 'unavailable' ? ' The analytical read did not answer.' : ''}</p></div></div>
+  : <div class="a-grid">
+    <section class="a-pn s5"><div class="a-pn-b a-result">
+      <div class="label">replacement-aware Changed · what a size policy counts{retainedRow && pr.unrecovered ? ' · final comparison not recovered' : ''}</div>
+      <div class="big"><span class="n">{describeBound(latest.changed)}</span><span class="u">changed</span></div>
+      <div class="pills"><span class:list={['a-ev', { bounded: latest.changed.status === 'bounded', unknown: latest.changed.status === 'unknown' }]}>{latest.changed.status === 'exact' ? '= exact' : latest.changed.status === 'bounded' ? 'bounded' : 'unknown'}</span><span class="a-mini">metric lines.changed · {retainedRow ? `${included} included files${excluded ? ` · ${excluded} excluded` : ''}` : `${describeBound(latest.files.included)} included files${latest.files.excluded.lower ? ` · ${describeBound(latest.files.excluded)} excluded` : ''}`}{latest.files.complete ? '' : ' · file set incomplete'}</span></div>
+      {latest.changed.status === 'exact' && <div class="a-split" style="height:10px;margin:16px 0 6px"><i style={`flex:${latest.modified.lower};background:var(--a-mod)`}></i><i style={`flex:${latest.added.lower};background:var(--a-add)`}></i><i style={`flex:${latest.deleted.lower};background:var(--a-del)`}></i></div>}
+      <div class="a-dec">
+        <div><div class="label">■ decomposition</div><dl><dt style="color:var(--a-mod)">~ modified</dt><dd>{describeBound(latest.modified)}</dd><dt style="color:var(--a-add)">+ added-only</dt><dd>{describeBound(latest.added)}</dd><dt style="color:var(--a-del)">− deleted-only</dt><dd>{describeBound(latest.deleted)}</dd><dt class="tot">= Changed</dt><dd class="tot">{describeBound(latest.changed)}</dd></dl></div>
+        <div><div class="label">■ raw · contrast</div><dl><dt>+ additions</dt><dd>{describeBound(latest.rawAdded)}</dd><dt>− deletions</dt><dd>{describeBound(latest.rawDeleted)}</dd><dt>&nbsp;</dt><dd>&nbsp;</dd><dt class="tot">= raw churn</dt><dd class="tot">{describeBound(latest.raw)}</dd></dl></div>
+      </div>
+    </div></section>
+
+    <section class="a-pn s7" aria-labelledby="h-policy"><header class="a-pn-h"><div class="a-pn-t"><h2 id="h-policy">Policy and effects</h2></div><div class="d">{retainedRow ? <><span class="mono">policy {latest.policyId ?? 'unfiltered base facts'}</span> · {policyBasis === 'current-policy' ? 'current App policy over the retained measurements' : policyBasis === 'unfiltered-base-facts' ? 'no current policy compiled; base facts shown unfiltered' : 'comparison not recovered'} · measured {ago(latest.observedAt, view.nowIso)}</> : <><span class="mono">policy {latest.policyId}</span> · analysed {ago(latest.observedAt, view.nowIso)} · the trusted base policy of that analysis</>}</div></header><div class="a-pn-b">
+      <div class="a-lanes">
+        <div class="lane"><span class="lk">§ Policy result</span><div><div class="lv"><span class="a-val">{describeBound(latest.changed)}</span> Changed <span class="a-arrow"><Icon name="arrow-right" size={12} /></span> band <b class="a-bandid">{latest.band.id}</b>{latest.band.standing === 'derived' && <span class="a-mini">derived from Changed with size-v1 thresholds; this analysis recorded no band</span>}{latest.band.standing === 'unknown' && <span class="a-mini">evidence cannot establish one band</span>}{latest.band.standing === 'current' && <span class="a-mini">judged by the current policy</span>}</div><div class="a-mini">metric review = lines.changed · size-v1 bands XS &lt;20 · S &lt;100 · M &lt;500 · L &lt;1000 · XL</div></div><div class="a-railwrap"><div class="a-rail">{BANDS.map((band, index) => <i class={index === bandIndex ? 'on' : ''} style={index === bandIndex ? `background:${band.color}` : ''} title={band.label}></i>)}</div><div class="a-raillab"><span>XS</span><span>S</span><span>M</span><span>L</span><span>XL</span></div></div></div>
+        {retainedRow && original && <div class="lane sub"><span class="lk">recorded at the time</span><div><div class="lv">{original.band ? <><span class="a-lbl"><i style={`background:${BANDS.find(band => band.id === original.band)?.color ?? '#D1D5DB'}`}></i>size/{original.band.toUpperCase()}</span><span class="a-mini">policy {original.policyId ?? 'unknown'} at the analysed head{originalDiffers ? ' · differs from the current interpretation' : ''}</span></> : <span class="a-mini">no original policy result recorded for this head</span>}</div></div></div>}
+        <div class="lane"><span class="lk">→ Desired state</span><div><div class="lv">{retainedRow ? (latest.labels.desired ? <>label <span class="a-lbl desired"><i style={`background:${latest.band.color}`}></i>{latest.labels.desired}</span> in managed group <b>size</b></> : <span class="a-mini">no desired label retained for this head</span>) : <>label <LabelChip band={latest.band} /> in managed group <b>size</b></>}</div><div class="a-mini">remove other managed size labels{!retainedRow && (latest.effects.some((effect: any) => String(effect.kind).startsWith('comment')) ? ' · comment effect recorded' : ' · no comment configured')}</div></div></div>
+        <div class="lane"><span class="lk">⟲ Observed state</span><div><div class="lv">{retainedRow ? (latest.labels.observed ? <><span class="a-lbl applied"><i style={`background:${BANDS.find(band => `size/${band.short}` === latest.labels.observed)?.color ?? '#D1D5DB'}`}></i>{latest.labels.observed}</span> present on GitHub at the analysed head</> : 'observed state not retained for this head') : (latest.labels.standing === 'observed' ? <><LabelChip band={latest.band} labels={latest.labels} /> present on GitHub</> : latest.labels.standing === 'unverified' ? 'label write not read back' : latest.labels.standing === 'refused' ? 'GitHub refused the label write' : 'no label effect recorded for this analysis')}</div><div class="a-mini">{latest.labels.standing === 'observed' && <Icon name="check" size={11} />} {latest.labels.detail}{!retainedRow && latest.effects.length ? ` · ${latest.effects.length} effect${latest.effects.length === 1 ? '' : 's'} recorded` : ''}</div></div></div>
+        {transition && <div class="lane sub"><span class="lk">last transition</span><div><div class="lv"><span class="a-lbl"><i style={`background:${transition.from.color}`}></i>{transition.from.label}</span><Icon name="arrow-right" size={12} /><span class="a-lbl"><i style={`background:${transition.to.color}`}></i>{transition.to.label}</span><span class="a-mini">at head {transition.head} · {ago(transition.at, view.nowIso)}</span></div></div></div>}
+      </div>
+      <p class="a-mini" style="margin:12px 0 0">{retainedRow ? (retainedRow.measurement.basis === 'final-merged-comparison' ? 'The displayed measurement is the final merged comparison; the recorded original result above is what ran at that head.' : pr.lifecycle?.mergedAt ? 'Merged, but the final merged comparison was not recovered; the latest development revision is shown.' : 'Open work: the latest analysed revision. The merge-time result is recorded when this PR merges.') : (pr.lifecycle?.mergedAt ? 'This is the latest retained pathless analysis; lifecycle and the final comparison are not retained for this repository yet.' : 'Pathless analysis; the merge-time result is recorded once named history is retained for this repository.')}</p>
+    </div></section>
+
+    {pro ? <Context view={view} repository={repository} fullName={fullName} prNumber={prNumber} retainedRow={retainedRow} retainedFiles={retainedFiles} />
+    : view.entitlement.premium ? <section class="a-pn s12"><div class="a-pn-b"><Unavailable what="File context is not part of this build" why="the plan includes other active work, recent file activity and co-change, but this build carries only the Community application" compact /></div></section>
+    : <SeePro text="Other active work on these files, recent file activity and co-change history" span={12} />}
+
+    <Panel id="pf" span={7} title="Files" meta={retainedRow ? `${retainedFiles.length} observed · ${included} included · ${excluded} excluded by policy · base file facts of this comparison` : `${pathlessRows.length} observed · ${inclusionUnknown === pathlessRows.length ? 'policy scope not recorded by this analysis version' : `${included} included · ${excluded} excluded by policy${inclusionUnknown ? ` · ${inclusionUnknown} scope not recorded` : ''}`} · paths are not retained in pathless history`}>
+      {retainedRow ? (retainedFiles.length === 0 ? <p class="a-mini">This comparison retained no per-file rows.</p> : <table class="a-tbl"><thead><tr><th>File</th><th>Policy scope</th><th class="r">Changed</th><th class="r">Raw churn</th></tr></thead><tbody>
+        {retainedFiles.map((file: any) => <tr class={file.included ? '' : 'excl'}><td>{file.href ? <a href={file.href}><FilePath path={file.path} /></a> : <FilePath path={file.path} />}</td><td class="a-mini">{file.included ? 'included' : 'excluded'}</td><td class="r"><span class="a-chg"><span class="n">{describeBound(file.changed)}</span></span></td><td class="r a-mini">{describeBound(file.rawChurn)}</td></tr>)}
+      </tbody></table>)
+      : (pathlessRows.length === 0 ? <p class="a-mini">This analysis retained no per-file rows.</p> : <table class="a-tbl"><thead><tr><th>File</th><th>Policy scope</th><th>Change</th><th class="r">Changed</th><th style="width:90px"></th><th class="r">Raw</th></tr></thead><tbody>
+        {pathlessRows.map((row: any) => <tr class={row.inclusion === 'excluded' ? 'excl' : ''}><td><span class="a-path"><span class="dir">file </span>{row.ordinal + 1}</span><span class="a-mini"> · path not retained</span></td><td class="a-mini">{['included', 'excluded'].includes(row.inclusion) ? row.inclusion : 'not recorded'}</td><td class="a-mini">{row.changeType}{row.material === 'binary' ? ' · binary' : ''}</td><td class="r">{row.changed.status === 'unknown' && (row.changed.lower ?? 0) === 0 ? <span class="a-mini">{row.evidence === 'unmeasurable' ? 'not measurable' : 'unknown'}</span> : <span class="a-chg"><span class="n">{describeBound(row.changed)}</span>{row.changed.status === 'exact' && <span class="d"><span class="p">+{n0(row.added.lower)}</span><span class="x">−{n0(row.deleted.lower)}</span><span class="t">~{n0(row.modified.lower)}</span></span>}</span>}</td><td>{row.changed.status === 'exact' && row.changed.lower > 0 && <div class="a-split" style="height:6px"><i style={`flex:${row.modified.lower};background:var(--a-mod)`}></i><i style={`flex:${row.added.lower};background:var(--a-add)`}></i><i style={`flex:${row.deleted.lower};background:var(--a-del)`}></i></div>}</td><td class="r a-mini" style="white-space:nowrap">+{describeBound(row.rawAdded)} −{describeBound(row.rawDeleted)}</td></tr>)}
+      </tbody></table>)}
+      <p class="a-mini" style="margin:10px 0 0">{retainedRow ? (pro ? 'Each file links to its history; a file-detail address is an opaque handle, never the path.' : 'File names are base facts of this comparison; file history, sizes and co-change are Pro.') : 'Per-file rows keep an ordinal local to this analysis, never a path, name or author. Named files arrive as the App retains final merged comparisons for this repository.'}</p>
+    </Panel>
+    {heads.length
+      ? <ChartFrame id="dev" kind="development" model={development} title="Development" span={5} h={230} meta={`Changed at each analysed head · ${heads.length} head${heads.length === 1 ? '' : 's'} · zones = size-v1 bands`}>
+          <Fragment slot="foot"><div class="a-steps" style="border-top:0;margin:0;width:100%">{pr.lifecycle && <div><span>opened</span><span class="a-mini">{fmtDate(pr.lifecycle.openedAt)}</span></div>}{pr.lifecycle?.readyAt && <div><span>ready for review</span><span class="a-mini">{fmtDate(pr.lifecycle.readyAt)}</span></div>}{pr.lifecycle?.mergedAt && <div><span>merged</span><span class="a-mini">{fmtDate(pr.lifecycle.mergedAt)}{retainedRow && retainedRow.measurement.basis !== 'final-merged-comparison' ? ' · final comparison not recovered' : ''}</span></div>}</div></Fragment>
+        </ChartFrame>
+      : <Panel id="dev" span={5} title="Development" meta="Changed per analysed head"><Unavailable what="No analysed revision retained" compact /></Panel>}
+
+    {pro && Cochange && <Cochange view={view} repository={repository} fullName={fullName} retainedRow={retainedRow} retainedFiles={retainedFiles} />}
+  </div>}
+  </>}
+</AppShell>

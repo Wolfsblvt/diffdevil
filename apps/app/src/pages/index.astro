@@ -1,0 +1,179 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
+// Overview: the signed-in home in the accepted chart composition. The hero leads with merged
+// pull requests in the period (or analysed ones where lifecycle is not retained yet, and says
+// so) with the live cumulative line; then, on Pro, the full-width cloud, the compact Change
+// volume, Pull-request flow beside current activity, Time to merge by size beside the size mix,
+// and the Turnover map beside the repository or label context. Free keeps Change volume in the
+// cloud's place and the same rows with its panels. The cloud, Concentration and Turnover slots come
+// from the premium extension for an entitled reader (src/premium/README.md); a Community build says
+// file history is not part of the build instead.
+import AppShell from '../layouts/AppShell.astro';
+import PageHead from '../components/PageHead.astro';
+import Panel from '../components/Panel.astro';
+import ChartFrame from '../components/ChartFrame.astro';
+import Tile from '../components/Tile.astro';
+import PrRow from '../components/PrRow.astro';
+import Unavailable from '../components/Unavailable.astro';
+import LabelChip from '../components/LabelChip.astro';
+import Icon from '../components/Icon.astro';
+import { loadView, navModel } from '../lib/view.mjs';
+import { describeBound, n0 } from '../lib/intervals.mjs';
+import { weeklyFlow, changeVolume, bucketsFor, headsPerPullRequest, DAY } from '../lib/derive.mjs';
+import { mosaicModel, flowModel, ttmModel, mixModel, heroModel } from '../lib/charts/models.mjs';
+import { skeletonHtml } from '../lib/charts/readout.mjs';
+import * as charts from '../lib/charts.mjs';
+import { sgn, pct, ago, fmtDate, fmtMonth } from '../lib/format.mjs';
+import { pullRequestPath } from '../lib/scope.mjs';
+
+const runtime = Astro.locals.app;
+const view = await loadView({ url: Astro.url, viewer: Astro.locals.viewer, session: Astro.locals.session, runtime, surface: 'prs' });
+const { current: cur, previous: prev, lifecycle, entitlement, state } = view;
+const life = lifecycle.standing === 'available';
+const pro = view.premiumHere;
+const multi = view.scope.kind !== 'repository';
+const basis = life ? 'retained' : 'pathless';
+const fromMs = Date.parse(view.window.from), prevFromMs = Date.parse(view.window.previousFrom);
+const comparable = cur.windowCovered && prev.windowCovered;
+const vs = `vs previous ${view.period.label}`;
+const period = view.period.label;
+const scopeLabel = view.scope.kind === 'all' ? 'all repositories' : view.scope.kind === 'namespace' ? view.scope.namespace : view.scope.name;
+const repositoryName = (pr: any) => view.viewer.repositories.find((repository: any) => repository.repositoryId === pr.repositoryId)?.fullName ?? '';
+const prHref = (pr: any) => view.href(pullRequestPath(repositoryName(pr), pr.number));
+
+// The premium slots (Concentration tile, Where change lands, Turnover) come from the premium extension for an entitled
+// reader; their shared data is loaded once. A Community build, or a Free reader, gets the common panels instead.
+const premiumPage = runtime.premium.pages.overview;
+const { Concentration, Cloud, Turnover } = premiumPage ?? ({} as any);
+const premium = pro && premiumPage ? await premiumPage.load({ view, runtime }) : null;
+
+// Hero population: merged pull requests in the window on the retained basis, analysed ones otherwise.
+const leadKind = life ? 'merged' : 'analysed';
+const leadNow = life ? cur.merged : cur.analysedCount;
+const leadPrev = life ? prev.merged : prev.analysedCount;
+const slots = Math.min(view.period.days, 60), span = (view.period.days * DAY) / slots;
+const times = [...view.pullRequests.values()].map((pr: any) => (life ? pr.lifecycle?.mergedAt : pr.observedAt)).filter(Boolean).map((iso: string) => Date.parse(iso));
+const daily = (start: number) => Array.from({ length: slots }, (_, index) => times.filter(t => t >= start + index * span && t < start + (index + 1) * span).length);
+const hero = heroModel({ current: daily(fromMs), previous: daily(prevFromMs), from: view.window.from, days: view.period.days, comparable, kindWord: leadKind });
+const flowWeeks = weeklyFlow({ pullRequests: view.pullRequests, lifecycle, nowIso: view.nowIso });
+const decomposition = cur.decomposition;
+const decoTotal = (decomposition.added.lower + decomposition.deleted.lower + decomposition.modified.lower) || 1;
+const medianRawLower = cur.medianRaw.lower ?? 0, medianChangedLower = cur.medianChanged.lower ?? 0;
+const activeRepositories = new Set(cur.analysed.map((pr: any) => pr.repositoryId)).size;
+const perRepositoryCounts = view.historyRepositories.map((repository: any) => cur.analysed.filter((pr: any) => pr.repositoryId === repository.repositoryId).length);
+const deltaChanged = comparable && cur.medianChanged.status === 'exact' && prev.medianChanged.status === 'exact' ? sgn(cur.medianChanged.lower - prev.medianChanged.lower) : undefined;
+
+// Activity list: active first on the retained basis, otherwise newest analysed.
+const activity = state.f || 'active';
+const all = [...view.pullRequests.values()];
+const listed = life ? all.filter((pr: any) => pr.state === 'open' || pr.state === 'draft' || (pr.lifecycle.mergedAt && pr.lifecycle.mergedAt >= view.window.from) || (pr.lifecycle.closedAt && pr.lifecycle.closedAt >= view.window.from) || pr.lifecycle.openedAt >= view.window.from) : cur.analysed;
+const pick = (kind: string) => listed.filter((pr: any) => kind === 'all' || (kind === 'active' ? pr.state === 'open' || pr.state === 'draft' : pr.state === kind))
+  .sort((a: any, b: any) => (b.lifecycle?.updatedAt ?? b.observedAt).localeCompare(a.lifecycle?.updatedAt ?? a.observedAt));
+const shown = life ? pick(activity).slice(0, 7) : cur.analysed.slice().sort((a: any, b: any) => b.observedAt.localeCompare(a.observedAt)).slice(0, 7);
+
+// Chart models.
+const buckets = bucketsFor(view.period.key, view.nowIso, view.bounds.first);
+const volume = changeVolume({ buckets: buckets.list, pullRequests: view.pullRequests, lifecycle });
+const unit = volume.list[0]?.unit ?? 'bucket';
+const labelOf = (item: any) => item.unit === 'month' ? fmtMonth(item.start) : fmtDate(item.start);
+const nameOf = (item: any) => item.unit === 'week' ? `Week of ${fmtDate(item.start)}` : item.unit === 'month' ? new Date(item.start).toLocaleDateString('en-GB', { month: 'long', year: 'numeric', timeZone: 'UTC' }) : item.unit === '2 days' ? `${fmtDate(item.start)} – ${fmtDate(new Date(Date.parse(item.start) + DAY).toISOString())}` : fmtDate(item.start);
+const mosaic = mosaicModel({ buckets: volume.list, unit, period, population: volume.basis === 'merged' ? 'merged' : 'analysed', scopeLabel, labelOf, nameOf, hrefOf: (_: any, index: number) => view.href('/history', { w: String(index) }), compact: pro });
+const flow = flowModel({ weeks: flowWeeks, period, scopeLabel, lifecycle: life, labelOf: (week: any) => fmtDate(week.start), hrefOf: (_: any, index: number) => view.href('/history', { per: '90d', w: String(index) }) });
+const mergedPrs = life ? (cur.mergedPullRequests ?? []) : [];
+const ttm = ttmModel({ prs: mergedPrs, period, hrefOf: (band: string | null) => view.href('/prs', { f: 'merged', band: band ?? '' }) });
+const mix = mixModel({ prs: cur.analysed, period, basis, lost: life ? cur.merged - cur.mergedRecovered : 0, hrefOf: (band: string | null) => view.href('/prs', { f: life ? 'merged' : '', band: band ?? '' }) });
+const heads = headsPerPullRequest(cur.analysed, basis);
+const repositoryRows = view.historyRepositories.map((repository: any) => ({ repository, prs: cur.analysed.filter((pr: any) => pr.repositoryId === repository.repositoryId).length, changed: cur.analysed.filter((pr: any) => pr.repositoryId === repository.repositoryId).reduce((total: number, pr: any) => total + (pr.latest.changed.lower ?? 0), 0) })).sort((a: any, b: any) => (state.rm === 'changed' ? b.changed - a.changed : b.prs - a.prs));
+const repositoryMax = Math.max(1, ...repositoryRows.map((row: any) => state.rm === 'changed' ? row.changed : row.prs));
+const many = multi && view.historyRepositories.length >= 5;
+const populationWord = life ? 'merged' : 'analysed';
+---
+<AppShell title="Overview" nav={navModel(view, 'overview')} view={view}>
+  <PageHead view={view} title="Overview" />
+  {view.truncated && <p class="a-note"><Icon name="circle-dashed" size={14} /><span>This window holds more analyses than one page reads; totals cover the newest {n0(4000)}. Narrow the scope or period for complete numbers.</span></p>}
+  {life && lifecycle.pathlessOnly.length > 0 && <p class="a-note"><Icon name="circle-dashed" size={14} /><span>{lifecycle.pathlessOnly.length} of {view.historyRepositories.length} repositories with history have no retained lifecycle yet; their older pathless analyses are not in these populations.</span></p>}
+  {view.dataStanding === 'unavailable' && <p class="a-note" role="alert"><Icon name="circle-dashed" size={14} /><span>The analytical read did not answer; populations below are empty, not zero.</span></p>}
+  <div class="a-grid">
+    <section class="a-pn s12 a-hero" aria-label="Period summary">
+      <div class="a-hero-l" data-chart="hero" data-chart-id="hero">
+        <div class="eb">{leadKind === 'merged' ? 'Merged pull requests' : 'Analysed pull requests'} · last {period}</div>
+        <div class="val"><span class="n">{!cur.windowCovered ? '≥ ' : ''}{leadNow}</span><span class="u">{leadKind}</span></div>
+        <div class="dl" data-hero-dl>{comparable ? <span><b>{sgn(leadNow - leadPrev)}</b> {vs}</span> : <span title="The previous period begins before the first retained observation, so the comparison is withheld">previous period not fully retained</span>}<span>previous <b>{!prev.windowCovered ? '≥ ' : ''}{leadPrev}</b></span></div>
+        <div class="chart hero-chart" data-hero-plot set:html={skeletonHtml('hero')} />
+        <script type="application/json" data-chart-model set:html={JSON.stringify(hero)} />
+        <div class="a-legend"><span><i class="line" style="background:var(--fg)"></i>this period</span>{comparable && <span><i class="dash"></i>previous period</span>}<span>cumulative · hover or ← → for a day</span></div>
+        {!life && <p class="a-basis"><Icon name="circle-dashed" size={13} /><span>Opened, merged and closed facts are not retained for this scope ({lifecycle.reason}). Counts here are pull requests the App analysed in the period, by analysis time.</span></p>}
+        {life && lifecycle.coverageFrom && !cur.windowCovered && <p class="a-basis"><span>Retained lifecycle begins {fmtDate(lifecycle.coverageFrom)}; earlier activity in this period is not retained, so counts are lower bounds.</span></p>}
+      </div>
+      <div class="a-tiles">
+        {life
+          ? <Tile label="Opened" value={`${!cur.windowCovered ? '≥ ' : ''}${cur.opened}`} delta={`backlog ${sgn(cur.backlog)}`} deltaTitle={`${cur.opened} opened − ${cur.merged} merged − ${cur.closedUnmerged} closed unmerged`} caption={`in period · ${cur.merged} merged · ${cur.closedUnmerged} closed unmerged`} href={view.href('/prs')}><Fragment set:html={charts.minibars(flowWeeks.slice(-6).map((week: any) => week.opened))} /></Tile>
+          : <Tile label="Opened"><Unavailable compact what="not retained yet" why={lifecycle.reason} /></Tile>}
+        {life
+          ? <Tile label="Open now" value={String(cur.openNow + cur.draftNow)} delta={`${cur.draftNow} draft`} caption={`${cur.openNow} ready for review · ${cur.draftNow} draft`} href={view.href('/prs', { f: 'open' })}><div class="a-split"><i style={`flex:${cur.openNow};background:var(--a-open)`}></i><i style={`flex:${cur.draftNow || 0.0001};background:var(--fg-3)`}></i></div></Tile>
+          : <Tile label="Open now"><Unavailable compact what="not retained yet" why="needs retained pull-request state" /></Tile>}
+        {life && cur.timeToMerge.status !== 'empty'
+          ? <Tile label="Time to merge" value={describeBound(cur.timeToMerge, { decimals: 1 })} unit="days" delta={comparable && prev.timeToMerge?.status !== 'empty' && prev.timeToMerge ? sgn((cur.timeToMerge.lower ?? 0) - (prev.timeToMerge.lower ?? 0), ' d', 1) : undefined} deltaTitle={vs} caption={`median · ${cur.merged} merged · not effort`} />
+          : <Tile label="Time to merge"><Unavailable compact what={life ? 'no merged PRs in period' : 'not retained yet'} why={life ? undefined : 'needs retained opened and merged times'} /></Tile>}
+        <Tile label="Median Changed" value={describeBound(cur.medianChanged)} unit={cur.medianChanged.status === 'empty' ? undefined : 'lines'} delta={deltaChanged} deltaTitle={vs} caption={cur.analysedCount ? `per ${populationWord} PR · n=${cur.analysedCount} · ~${pct(decomposition.modified.lower, decoTotal)}% +${pct(decomposition.added.lower, decoTotal)}% −${pct(decomposition.deleted.lower, decoTotal)}%${decomposition.boundedCount ? ` · ${decomposition.boundedCount} bounded` : ''}` : `no ${life ? 'recovered merged' : 'analysed'} PRs in period`}>
+          {cur.analysedCount > 0 && <div class="a-split"><i style={`flex:${decomposition.modified.lower};background:var(--a-mod)`}></i><i style={`flex:${decomposition.added.lower};background:var(--a-add)`}></i><i style={`flex:${decomposition.deleted.lower};background:var(--a-del)`}></i></div>}
+        </Tile>
+        <Tile label="Median raw churn" value={describeBound(cur.medianRaw)} unit={cur.medianRaw.status === 'empty' ? undefined : 'lines'} caption={cur.analysedCount ? `per ${populationWord} PR · Changed is ${medianRawLower ? pct(medianChangedLower, medianRawLower) : 0}% of it` : `no ${life ? 'recovered merged' : 'analysed'} PRs in period`}>
+          {cur.analysedCount > 0 && <div class="a-contrast"><span style={`width:${medianRawLower ? Math.min(100, (medianChangedLower / medianRawLower) * 100) : 0}%`}></span><span style="width:100%"></span></div>}
+        </Tile>
+        {pro && Concentration
+          ? <Concentration view={view} data={premium} />
+          : <Tile label="Repositories active" value={String(activeRepositories)} unit={`of ${view.historyRepositories.length}`} caption={`with ${populationWord} PRs in period`} href={view.href('/')}><Fragment set:html={charts.minibars(perRepositoryCounts.length ? perRepositoryCounts : [0])} /></Tile>}
+      </div>
+    </section>
+
+    {pro && Cloud && <Cloud view={view} data={premium} />}
+
+    <ChartFrame id="volume" kind="mosaic" model={mosaic} title="Change volume" span={12} h={pro ? 220 : 300} open={view.href('/history')} meta={`${populationWord} PRs in ${period} · by ${unit === '2 days' ? '2 days' : unit} · ${scopeLabel} · ${volume.basis === 'merged' ? 'one final merged comparison per PR, under current policy' : 'one retained analysis per PR, by analysis time'}`}>
+      <Fragment slot="foot">{!pro && entitlement.sharedPaid.length ? <span>File history is available inside {entitlement.sharedPaid.map((namespace: string, index: number) => <>{index > 0 && ', '}<a class="link-quiet" href={view.href('/files', { s: `@${namespace}` })}>{namespace}</a></>)}, funded by its owner.</span> : !pro && entitlement.premium && !view.premiumProvided ? <span>File history is part of this scope's plan, and not part of this build</span> : !pro ? <span><span class="a-plan">Pro</span> adds where this change lands, file by file</span> : <span>{volume.totals.recovered} of {volume.totals.count} {populationWord} PRs recovered · nothing interpolated</span>}<a href={view.href('/history')}>History →</a></Fragment>
+    </ChartFrame>
+
+    <ChartFrame id="flow" kind="flow" model={flow} title="Pull-request flow" span={8} h={360} open={view.href('/prs')} meta={life ? `opened against merged + closed unmerged, per week · 13-week context · ${scopeLabel} · retained lifecycle` : 'analysed pull requests per week, by analysis time · 13-week context'}>
+      <Fragment slot="foot">{life && flowWeeks.some((week: any) => !week.covered) ? <span>Weeks before {fmtDate(lifecycle.coverageFrom)} precede the first retained observation; their counts are lower bounds.</span> : <span>{life ? `backlog = opened − merged − closed unmerged` : 'state needs retained lifecycle'}</span>}<a href={view.href('/prs')}>Pull requests →</a></Fragment>
+    </ChartFrame>
+
+    <Panel id="act" span={4} title="Pull requests" open={view.href('/prs', { f: activity === 'active' ? '' : activity })} meta={life ? undefined : 'newest analysed · state needs retained lifecycle'}>
+      {life && <div class="a-seg sm" slot="tools" role="group" aria-label="Activity">{['active', 'merged', 'all'].map(kind => <a href={view.href('/', { f: kind === 'active' ? '' : kind })} aria-current={activity === kind ? 'true' : undefined}>{kind} <span class="c">{pick(kind).length}</span></a>)}</div>}
+      <div class="a-prs">{shown.map((pr: any) => <PrRow pr={pr} view={view} showRepository={multi} compact />)}{shown.length === 0 && <p class="a-mini">No pull requests in this scope and period.</p>}</div>
+      <Fragment slot="foot"><span>{life ? (activity === 'active' ? 'ready for review and draft, now' : activity === 'merged' ? `merged in ${period}` : `active in ${period}`) : `analysed in ${period}`} · solid label = on GitHub</span><a href={view.href('/prs', { f: activity === 'active' ? '' : activity })}>All {life ? pick(activity).length : cur.analysedCount} →</a></Fragment>
+    </Panel>
+
+    {life
+      ? <ChartFrame id="ttm" kind="ttm" model={ttm} title="Time to merge by size" span={6} h={40 + Math.max(1, ttm.rows.length) * 34 + 10} open={view.href('/prs')} meta={`merged PRs in ${period} · opened → merged, by the size label the current policy judges · n=${ttm.n}`} />
+      : <Panel id="ttm" span={6} title="Time to merge by size"><Unavailable what="Needs retained opened and merged times" why={lifecycle.reason} /></Panel>}
+
+    <ChartFrame id="mix" kind="mix" model={mix} title="PR size mix" span={6} h={40 + Math.max(1, mix.rows.length) * 34 + 10} open={view.href('/prs')} meta={`${mix.n} ${life ? 'merged PRs with a recovered final comparison' : 'analysed PRs'} in ${period} · size-v1 ${life ? 'under current policy' : 'as recorded'}`} />
+
+    {pro && Turnover && <Turnover view={view} data={premium} />}
+
+    {(pro || many) && (many
+      ? <Panel id="repos" span={6} title={`Repositories by ${state.rm === 'changed' ? 'Changed' : `${populationWord} PRs`}`} meta={period}>
+          <div class="a-seg sm" slot="tools" role="group" aria-label="Repositories by"><a href={view.href('/', { rm: '' })} aria-current={state.rm !== 'changed' ? 'true' : undefined}>PRs</a><a href={view.href('/', { rm: 'changed' })} aria-current={state.rm === 'changed' ? 'true' : undefined}>Changed</a></div>
+          <div class="a-rrows">{repositoryRows.map((row: any) => <a href={view.href('/', { s: row.repository.fullName })}><span class="rn" title={row.repository.fullName}>{row.repository.name}</span><span class="a-bar"><i style={`width:${((state.rm === 'changed' ? row.changed : row.prs) / repositoryMax) * 100}%`}></i></span><span class="rv"><b>{n0(state.rm === 'changed' ? row.changed : row.prs)}</b> {state.rm === 'changed' ? 'Changed' : 'PRs'}</span><span class="rx"></span></a>)}</div>
+          {view.repositories.length > view.historyRepositories.length && <p class="a-norepos">{view.repositories.length - view.historyRepositories.length} without history: {view.repositories.filter((repository: any) => !repository.standing?.historyEnabled).map((repository: any) => `${repository.name} (${repository.status === 'labels-only' ? 'labels only' : repository.status === 'not-recorded' ? 'not recorded' : 'history off'})`).join(' · ')}</p>}
+        </Panel>
+      : <Panel id="labels" span={6} title="Size labels on GitHub" open={view.href('/prs')} meta={`${cur.analysedCount} ${populationWord} PRs · managed group size`}>
+          <div class="a-lblstate"><div><span class="a-lbl applied"><i style="background:var(--fg-2)"></i>observed</span><b>{cur.labels.observed}</b></div><div><span class="a-lbl desired"><i style="background:var(--fg-3)"></i>{life ? 'desired, not observed' : 'not read back'}</span><b>{cur.labels.unverified}</b></div><div><span class="a-lbl desired"><i style="background:var(--fg-3)"></i>no label effect</span><b>{cur.labels.none}</b></div></div>
+          <div class="a-k2">Latest {populationWord} pull requests · label standing</div>
+          <div class="a-lblchg">{cur.analysed.slice().sort((a: any, b: any) => (b.lifecycle?.mergedAt ?? b.observedAt).localeCompare(a.lifecycle?.mergedAt ?? a.observedAt)).slice(0, 4).map((pr: any) => <a href={prHref(pr)}><span class="a-mini">#{pr.number}</span><span class="tr"><LabelChip band={pr.latest.band} labels={pr.latest.labels} /></span><span class="a-mini">{ago(pr.lifecycle?.mergedAt ?? pr.observedAt, view.nowIso)}</span></a>)}{cur.analysed.length === 0 && <p class="a-mini">No {populationWord} pull request in this period.</p>}</div>
+          <p class="a-mini" style="margin:12px 0 0">Readback of the labels diffdevil manages. Other labels are never touched.</p>
+        </Panel>)}
+
+    {!pro && (many
+      ? <Panel id="labels" span={6} title="Size labels on GitHub" open={view.href('/prs')} meta={`${cur.analysedCount} ${populationWord} PRs · managed group size`}>
+          <div class="a-lblstate"><div><span class="a-lbl applied"><i style="background:var(--fg-2)"></i>observed</span><b>{cur.labels.observed}</b></div><div><span class="a-lbl desired"><i style="background:var(--fg-3)"></i>{life ? 'desired, not observed' : 'not read back'}</span><b>{cur.labels.unverified}</b></div><div><span class="a-lbl desired"><i style="background:var(--fg-3)"></i>no label effect</span><b>{cur.labels.none}</b></div></div>
+          <p class="a-mini" style="margin:12px 0 0">Readback of the labels diffdevil manages. Other labels are never touched.</p>
+        </Panel>
+      : <Panel id="labels" span={12} title="Size labels on GitHub" open={view.href('/prs')} meta={`${cur.analysedCount} ${populationWord} PRs · managed group size`}>
+          <div class="a-lblstate"><div><span class="a-lbl applied"><i style="background:var(--fg-2)"></i>observed</span><b>{cur.labels.observed}</b></div><div><span class="a-lbl desired"><i style="background:var(--fg-3)"></i>{life ? 'desired, not observed' : 'not read back'}</span><b>{cur.labels.unverified}</b></div><div><span class="a-lbl desired"><i style="background:var(--fg-3)"></i>no label effect</span><b>{cur.labels.none}</b></div></div>
+          <div class="a-k2">Latest {populationWord} pull requests · label standing</div>
+          <div class="a-lblchg">{cur.analysed.slice().sort((a: any, b: any) => (b.lifecycle?.mergedAt ?? b.observedAt).localeCompare(a.lifecycle?.mergedAt ?? a.observedAt)).slice(0, 4).map((pr: any) => <a href={prHref(pr)}><span class="a-mini">#{pr.number}</span><span class="tr"><LabelChip band={pr.latest.band} labels={pr.latest.labels} /></span><span class="a-mini">{ago(pr.lifecycle?.mergedAt ?? pr.observedAt, view.nowIso)}</span></a>)}{cur.analysed.length === 0 && <p class="a-mini">No {populationWord} pull request in this period.</p>}</div>
+          <p class="a-mini" style="margin:12px 0 0">Readback of the labels diffdevil manages. Other labels are never touched. {!life && `Analysed heads per PR: median ${describeBound(heads.medianHeads)}.`}</p>
+        </Panel>)}
+  </div>
+</AppShell>

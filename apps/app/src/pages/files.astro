@@ -1,0 +1,40 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
+// Files: where change lands, file by file. The rich body (cloud, ranked table, selected file card) is the premium
+// extension's; this page owns the route, the scope and period, and the truthful states around it: a Free scope shows
+// the bounded Pro state with pointers to the funded namespaces the reader may already use, and a build without the
+// premium extension says so for a reader whose plan includes file history.
+import AppShell from '../layouts/AppShell.astro';
+import PageHead from '../components/PageHead.astro';
+import PlanChip from '../components/PlanChip.astro';
+import Icon from '../components/Icon.astro';
+import { loadView, navModel } from '../lib/view.mjs';
+
+const runtime = Astro.locals.app;
+const files = runtime.premium.pages.files;
+const view = await loadView({ url: Astro.url, viewer: Astro.locals.viewer, session: Astro.locals.session, runtime, surface: 'files', detail: files?.query?.(Astro.url) ?? {} });
+const { entitlement, state } = view;
+const Body = files?.Body;
+const siteOrigin = Astro.locals.app.config.siteOrigin;
+const pointers = (entitlement.fundedNamespaces ?? entitlement.sharedPaid ?? []).filter((namespace: string) => `@${namespace}` !== state.s);
+---
+<AppShell title="Files" nav={navModel(view, 'files')} view={view}>
+  <PageHead view={view} title="Files" period={view.premiumHere} />
+  {view.premiumHere && Body ? <Body view={view} />
+  : entitlement.premium ? <div class="a-focus a-pn">
+    <div class="a-pn-b" style="padding:28px 32px">
+      <div style="display:flex;gap:10px;align-items:center"><PlanChip plan="Pro" /><h2 style="margin:0;font-size:19px">File history is not part of this build</h2></div>
+      <p class="lede" style="margin:10px 0 18px">This scope's plan includes file history, but this build of the App carries only the Community application: file history, clouds, Turnover and co-change need the premium extension, which is not installed here. Nothing was computed, so nothing is shown as zero.</p>
+      <div style="display:flex;gap:10px"><a class="btn btn-quiet" href={view.href('/history')}>History <Icon name="arrow-right" size={14} /></a></div>
+    </div>
+  </div>
+  : <div class="a-focus a-pn">
+    <div class="a-pn-b" style="padding:28px 32px">
+      <div style="display:flex;gap:10px;align-items:center"><PlanChip plan="Pro" /><h2 style="margin:0;font-size:19px">File history</h2></div>
+      <p class="lede" style="margin:10px 0 18px">Which files change most often, how much, and with which other files. Repositories with history already keep the base numbers; Pro turns them into file history, clouds, Turnover and co-change.</p>
+      {pointers.length > 0 && <><p class="a-mini" style="margin:0 0 8px">File history is available inside these namespaces, funded by their owners:</p><div class="a-pointers">{pointers.map((namespace: string) => <a href={view.href('/files', { s: `@${namespace}` })}><PlanChip plan={view.viewer.namespaces.find((candidate: any) => candidate.login === namespace)?.plan ?? 'Pro'} />{namespace}</a>)}</div></>}
+      <div style="display:flex;gap:10px"><a class="btn btn-quiet" href={view.href('/history')}>History <Icon name="arrow-right" size={14} /></a><a class="btn btn-quiet" href={`${siteOrigin}/app/`}>What Pro adds <Icon name="arrow-right" size={14} /></a></div>
+      <p class="a-mini" style="margin:16px 0 0">Plans, the preview sample and the Open Source programme are not purchasable here yet; the public App page explains the planned offer.</p>
+    </div>
+  </div>}
+</AppShell>

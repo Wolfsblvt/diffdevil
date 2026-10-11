@@ -1,0 +1,89 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
+// Manage · Plan & funding: diffdevil's product-facing Wirt seam. The return strip when coming back from Works, the
+// standing card with the six Works exits, choose what stays before a reduction, what the plan funds (slots with
+// Fund / Release / Reconnect), the product-only comparison before a plan change (Pro leads with Business), and the
+// Works account. On Free: the two allowances, the upgrade exits that link Works first, and what Pro would change here.
+// The amount always comes from Works' quote; diffdevil never calculates what is paid.
+import ManagePage from '../../components/manage/ManagePage.astro';
+import Icon from '../../components/Icon.astro';
+import OrgSlots from '../../components/manage/OrgSlots.astro';
+import AllowanceGroups from '../../components/manage/AllowanceGroups.astro';
+import ReturnStrip from '../../components/manage/ReturnStrip.astro';
+import Banner from '../../components/manage/Banner.astro';
+import ActionForm from '../../components/manage/ActionForm.astro';
+import ChooseStays from '../../components/manage/ChooseStays.astro';
+import { loadManage } from '../../lib/manage/model.mjs';
+import { presentProjection, worksDestinations, WORKS_EXITS, fmtDay, tierLabel } from '../../lib/manage/works.mjs';
+import { holdsSlot, namespacePath } from '../../lib/manage/states.mjs';
+import RewardCard from '../../components/participation/RewardCard.astro';
+import { loadParticipation } from '../../lib/participation/page.mjs';
+
+const runtime = Astro.locals.app;
+const model = await loadManage({ viewer: Astro.locals.viewer, session: Astro.locals.session, runtime });
+const status = model.commercial?.status ?? null;
+const works = worksDestinations(model.worksOrigin);
+const outcome = Astro.url.searchParams.get('works-link');
+const presented = presentProjection(status, { works });
+const linked = status?.linked === true;
+const personal = model.namespaces.find((namespace: any) => namespace.kind === 'user');
+const compare = Astro.url.searchParams.get('compare') ?? '';
+const tier = presented.tier;
+const other = tier === 'Business' ? 'Pro' : 'Business';
+const comparing = compare === 'free' ? 'Free' : other;
+const depart = (to: string, purpose: string) => `/manage/depart?to=${to}&purpose=${purpose}&from=${encodeURIComponent('/manage/plan')}`;
+const choosing = presented.choosing;
+const freePrivate = model.allowances.free.private, freePublic = model.allowances.free.publicHistory;
+const personalPrivate = personal?.repositories.filter((repository: any) => repository.private && repository.standing && repository.state.kind !== 'removed') ?? [];
+const unavailableNote = model.commercial?.standing === 'unavailable';
+const orgWord = (count: number) => `${count} ${count === 1 ? 'organisation' : 'organisations'}`;
+// The participation reward joins the plan it discounts: its card, the next charge Wirt will make, or a requested preview.
+const participation = linked ? await loadParticipation({ runtime, viewer: Astro.locals.viewer, session: Astro.locals.session, model, preview: Astro.url.searchParams.get('preview') }) : null;
+// When Wirt's next charge carries the reward, the standing card names that amount rather than the undiscounted total.
+if (participation?.nextCharge) for (const row of presented.rows) if (row.term === 'Next renewal') { row.value = `${participation.next.total.amount} on ${participation.next.on ?? '—'}`; row.sub = `${row.sub ?? ''}${row.sub ? ' · ' : ''}with your participation reward`; }
+---
+<ManagePage model={model} tab="plan">
+  <div class="m-stack">
+    <ReturnStrip model={model} outcome={outcome} />
+    {unavailableNote && <Banner tone="warn" icon="alert-triangle" title="Works could not be read right now" text="The plan shown is the last one diffdevil applied; nothing is changed by a failed read." />}
+    {!linked
+      ? <>
+          <section class="m-sec" id="upgrade" data-standing="free"><div class="m-standing"><div class="main"><div class="plan"><b>{model.viewerPlan === 'Unknown' ? 'Not established' : 'Free'}</b><span>Managed labels, checks and basic history</span></div>
+            {personal && <AllowanceGroups capacity={personal.capacity} model={model} />}</div>
+            <div class="m-exits"><span class="m-k">Upgrade</span>
+              {model.hosted
+                ? <><ActionForm action="link" label="Pro · €9 a month or €90 a year" class="ghost" external back="/manage/plan" /><ActionForm action="link" label="Business · €42 a month or €400 a year" class="ghost" external back="/manage/plan" /><span class="cap">Prices include tax. The first time, you link a Wolfsblvt Works account and land straight on its plan page. Works handles billing, invoices and payment; diffdevil never sees your card.</span></>
+                : <><span class="off"><Icon name="credit-card" size={16} /><span>Pro and Business</span></span><span class="cap">No subscription source is connected to this deployment, so there is nothing to buy here. {model.allowances.source === 'none' ? 'Allowances are not limited.' : 'Allowances follow the operator\'s configuration.'}</span></>}
+            </div></div></section>
+          <ChooseStays model={model} choosing={null} tier={tier} />
+          {model.hosted && <section class="m-sec" data-what-pro><header><h2>What Pro would change here</h2><span class="d">From your current repositories, before any payment</span></header><div class="b"><div class="m-eff">
+            <div><Icon name="lock" /><span><b>Your personal private repositories stop counting</b><span class="d">No limit on personal repositories.{personalPrivate.filter((repository: any) => ['inactive', 'available', 'stoppedByYou'].includes(repository.state.kind)).length ? ` ${personalPrivate.filter((repository: any) => ['inactive', 'available', 'stoppedByYou'].includes(repository.state.kind)).map((repository: any) => repository.name).join(', ')} could run.` : ''}</span></span><span></span></div>
+            {model.namespaces.filter((namespace: any) => namespace.kind === 'org').slice(0, 1).map((namespace: any) => <div><Icon name="building-2" /><span><b>{namespace.login} gets its own three private slots</b><span class="d">Through the organisation slot included with Pro.{namespace.repositories.filter((repository: any) => repository.private && ['inactive', 'available', 'unconnected', 'stoppedByYou'].includes(repository.state.kind)).length ? ` ${namespace.repositories.filter((repository: any) => repository.private && ['inactive', 'available', 'unconnected', 'stoppedByYou'].includes(repository.state.kind)).map((repository: any) => repository.name).join(', ')} could run.` : ''}</span></span><span></span></div>)}
+            <div><Icon name="files" /><span><b>File history, the cloud, Turnover and co-change</b><span class="d">On the repositories you fund, for everyone who can read them.</span></span><span></span></div>
+          </div><p class="m-note">The exact amount comes from Works' quote. diffdevil never calculates what you pay.</p></div></section>}
+        </>
+      : <>
+          {presented.banner && <Banner tone={presented.banner.tone as any} icon={presented.banner.icon} title={presented.banner.title} text={presented.banner.text} data-standing-banner={presented.key}>{presented.banner.action && <a class:list={['m-btn', { pri: presented.banner.action.primary }]} href={depart('experience', presented.banner.action.purpose)}>{presented.banner.action.label} <Icon name="arrow-up-right" size={13} /></a>}</Banner>}
+          {presented.slotBanners.map((banner: any) => <Banner tone="warn" icon="info" title={banner.title} text={banner.text}>{banner.action && <a class="m-btn" href={depart('experience', 'renewal')}>{banner.action.label} <Icon name="arrow-up-right" size={13} /></a>}</Banner>)}
+          <section class="m-sec" data-standing={presented.key}><div class="m-standing"><div class="main"><div class="plan"><b>{presented.planName}</b><span>{presented.ended ? `${tier} has ended` : presented.planSub}</span></div>
+            <dl class="m-dl">{presented.rows.map((row: any) => <><dt>{row.term}</dt><dd class:list={[row.tone]}>{row.value}{row.sub && <span class="sub">{row.sub}</span>}</dd></>)}</dl></div>
+            <div class="m-exits"><span class="m-k"><Icon name="arrow-up-right" size={12} />At Wolfsblvt Works</span>
+              {WORKS_EXITS.map((exit: any) => (works as any)[exit.key] ? <a href={depart(exit.key, exit.purpose)}><Icon name={exit.icon} size={16} /><span>{exit.label}</span><Icon name="arrow-up-right" size={13} class="go" /></a> : <span class="off"><Icon name={exit.icon} size={16} /><span>{exit.label}</span></span>)}
+              <span class="cap">{model.worksOrigin ? <>Opens at {model.commercialSource === 'fixture' ? 'a local stand-in for' : ''} account.wolfsblvt.works in a diffdevil frame. <b>Return to DiffDevil</b> brings you back to this page.</> : 'Works is not configured on this deployment, so its pages cannot be opened from here.'}</span></div></div></section>
+
+          {participation?.card && <RewardCard card={participation.card} next={participation.next} quote={participation.quote} depart={depart('experience', 'change-plan')} />}
+
+          <ChooseStays model={model} choosing={choosing} tier={tier} />
+
+          {!presented.ended && <section class="m-sec" data-funds><header><h2>What your plan funds</h2><span class="d">Your personal repositories, plus one organisation per slot</span></header><div class="b"><OrgSlots model={model} actions now={runtime.now()} /></div>
+            <footer><Icon name="info" size={13} /><span>Funding never grants GitHub access. A slot can be released, and an organisation's owner can disconnect or replace its funder. Organisations without a slot have no plan. Funding an organisation keeps your GitHub funding connection; sign-out keeps it too, and Account lets you disconnect it.</span></footer></section>}
+
+          {presented.compareable && <section class="m-sec" data-compare><header><h2>Before you change plan</h2><span class="d">What would change in diffdevil, from your repositories today</span><span class="r"><div class="a-seg sm" role="group" aria-label="Compare with"><a href="/manage/plan?compare=" aria-current={compare !== 'free' ? 'true' : undefined}>{other}</a><a href="/manage/plan?compare=free" aria-current={compare === 'free' ? 'true' : undefined}>Free</a></div></span></header>
+            <div class="b">{comparing === 'Pro' ? <div class="m-eff"><div><Icon name="clock" /><span><b>Nothing changes until the end of the paid term</b><span class="d">A lower plan starts at the end of the paid term.</span></span><span></span></div><div><Icon name="link" /><span><b>Linked policies become plain repository settings</b><span class="d">Each repository keeps exactly what it runs today. Publishing and automatic setup stop.</span></span><span></span></div><div><Icon name="users" /><span><b>Administration goes back to one person per scope</b><span class="d">Delegated administrators lose their delegated access.</span></span><span></span></div><div><Icon name="building-2" /><span><b>Organisations get three private slots each</b><span class="d">{model.namespaces.filter((namespace: any) => namespace.kind === 'org' && namespace.repositories.filter(holdsSlot).length > 3).map((namespace: any) => `${namespace.login} runs ${namespace.repositories.filter(holdsSlot).length} private repositories today, so you'd choose 3.`).join(' ') || 'Every funded organisation fits today.'}</span></span><span></span></div></div>
+              : comparing === 'Business' ? <><div class="m-eff"><div><Icon name="link" /><span><b>Linked policies across your repositories</b><span class="d">A namespace default could become a named policy linked to repositories, with coordinated refresh.</span></span><span></span></div><div><Icon name="users" /><span><b>Delegated administration and audit</b><span class="d">Others can manage selected repositories; changes are recorded.</span></span><span></span></div><div><Icon name="building-2" /><span><b>No private-repository limit in organisations</b><span class="d">{model.namespaces.filter((namespace: any) => namespace.kind === 'org' && namespace.capacity.waiting.length).map((namespace: any) => `${namespace.capacity.waiting.map((repository: any) => repository.name).join(', ')} could run in ${namespace.login}.`).join(' ') || 'Every organisation fits today.'}</span></span><span></span></div></div><p class="m-note">An upgrade starts a new full period with unused value credited. Works shows the exact quote before you pay.</p></>
+              : <div class="m-eff"><div><Icon name="clock" /><span><b>{presented.key === 'overdue' ? 'The overdue renewal comes first' : 'Nothing changes until the end of the paid term'}</b><span class="d">{presented.key === 'overdue' ? 'Works settles the renewal before a plan change. A lower plan always starts at the end of a paid term.' : 'You keep everything you paid for until the end of the term.'}</span></span><span></span></div><div><Icon name="building-2" /><span><b>One connected organisation, pooled with your own repositories</b><span class="d">You'd choose which organisation stays and which {freePrivate ?? ''} private repositories keep running. diffdevil won't pick for you.</span></span><span></span></div><div><Icon name="files" /><span><b>File history views stop</b><span class="d">Retained history stays, exportable and deletable. A namespace default becomes plain repository settings.</span></span><span></span></div></div>}</div></section>}
+
+          <section class="m-sec" data-works-account><header><h2>Wolfsblvt Works account</h2></header><div class="b"><div class="m-eff"><div><Icon name="link" /><span><b>Linked{status.linkedSince ? ` since ${fmtDay(status.linkedSince)}` : ''}</b><span class="d">Works handles sign-in for billing, invoices, payment and your plan. It never sees your repositories.</span></span><ActionForm action="unlink" label="Unlink…" class="sm ghost dng" back="/manage/plan" /></div></div><p class="m-note">Unlinking ends Works-funded benefits here at once. It doesn't cancel the subscription or delete anything in diffdevil.</p></div></section>
+        </>}
+  </div>
+</ManagePage>

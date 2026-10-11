@@ -1,0 +1,87 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
+// Manage · Overview, capacity first: the plan band with the organisation slots, the private repository slots per
+// namespace you administer (Free: its two pooled allowances), the namespaces you only read, and Needs you: only
+// decisions. A first run replaces the slots with the three setup steps.
+import ManagePage from '../../components/manage/ManagePage.astro';
+import Icon from '../../components/Icon.astro';
+import PlanChip from '../../components/PlanChip.astro';
+import Avatar from '../../components/manage/Avatar.astro';
+import StatePill from '../../components/manage/StatePill.astro';
+import SlotCells from '../../components/manage/SlotCells.astro';
+import OrgSlots from '../../components/manage/OrgSlots.astro';
+import AllowanceGroups from '../../components/manage/AllowanceGroups.astro';
+import { loadManage } from '../../lib/manage/model.mjs';
+import { capacityWord, capacityTone, namespacePath } from '../../lib/manage/states.mjs';
+import { projectionKey, presentProjection, worksDestinations, formatMoney, fmtDay } from '../../lib/manage/works.mjs';
+
+const runtime = Astro.locals.app;
+const model = await loadManage({ viewer: Astro.locals.viewer, session: Astro.locals.session, runtime });
+const status = model.commercial?.status ?? null;
+const works = worksDestinations(model.worksOrigin);
+const key = projectionKey(status);
+const presented = status?.linked ? presentProjection(status, { works }) : null;
+const overdue = key === 'overdue';
+const free = model.viewerPlan === 'Free';
+const personal = model.namespaces.find((namespace: any) => namespace.kind === 'user');
+const pool = free && personal ? [personal, ...(model.freeConnected ? [model.freeConnected] : [])] : [];
+const rows = free ? model.namespaces.filter((namespace: any) => !pool.includes(namespace)) : model.namespaces;
+const reachable = model.namespaces.flatMap((namespace: any) => namespace.repositories).filter((repository: any) => repository.standing && repository.state.kind !== 'removed').length;
+const depart = (purpose: string) => `/manage/depart?to=experience&purpose=${purpose}&from=${encodeURIComponent('/manage')}`;
+const planLine = status?.linked && status.commercial ? `${status.commercial.cadence === 'annual' ? 'Annual' : 'Monthly'}${formatMoney(status.commercial.nextRenewal) ? ` · ${formatMoney(status.commercial.nextRenewal)} ${status.commercial.cadence === 'annual' ? 'a year' : 'a month'}` : ''}${(status.capacity ?? []).filter((slot: any) => slot.funding === 'paid').length ? ` with ${(status.capacity ?? []).filter((slot: any) => slot.funding === 'paid').length} additional ${(status.capacity ?? []).filter((slot: any) => slot.funding === 'paid').length === 1 ? 'organisation' : 'organisations'}` : ''}` : null;
+const renewsOn = fmtDay(status?.commercial?.nextRenewal?.on);
+---
+<ManagePage model={model} tab="overview">
+  <div class="m-stack">
+    {model.firstRun && <section class="m-sec" data-first-run>
+      <header><h2>Set up diffdevil on your repositories</h2><span class="d">Three steps. Nothing runs or is collected until the last one.</span></header>
+      <div class="b"><div class="m-steps">
+        <div class="m-step done"><span class="n"><Icon name="check" size={14} /></span><span><b>Install the GitHub App</b><span class="d">Installed on {model.namespaces.map((namespace: any) => namespace.login).join(', ')}, with access to {reachable} {reachable === 1 ? 'repository' : 'repositories'}. Organisations you administer can install it too.</span></span><span class="m-acts"><a class="m-btn sm ghost" href={`${runtime.config.siteOrigin}/app/`}>Add on GitHub <Icon name="arrow-up-right" size={13} /></a></span></div>
+        <div class="m-step now"><span class="n">2</span><span><b>Choose repositories</b><span class="d">{model.allowances.free.private === null ? 'Pick the repositories to operate; this deployment sets no repository limit.' : `Pick up to ${model.allowances.free.private} private and ${model.allowances.free.publicHistory} public repositories with history. Public repositories can also run labels only, without a limit.`}</span></span><span class="m-acts"><a class="m-btn sm pri" href="/manage/repositories">Choose repositories</a></span></div>
+        <div class="m-step"><span class="n">3</span><span><b>Review the policy, then enable</b><span class="d">See the effective policy and preview the pull-request message on synthetic evidence, then enable it. History is a separate choice.</span></span><span></span></div>
+      </div><p class="m-note">Here to read, not to set up? Repositories shared with you already appear under Overview in the activity view, with no setup.</p></div>
+    </section>}
+
+    <section class="m-sec m-band" data-plan-band>
+      <div class="m-bandh">
+        <div><span class="m-k">Your plan</span>
+          {status?.linked
+            ? <div class="m-planname"><b>{presented!.planName}</b>{planLine && <span>{planLine}</span>}{overdue ? <StatePill tone="err" icon="circle-alert" label="Renewal overdue" /> : presented!.key === 'funded' && renewsOn ? <StatePill icon="refresh" label={`Renews ${renewsOn}`} /> : presented!.key !== 'funded' ? <StatePill tone={['first-payment', 'checking', 'renewing', 'preparing', 'linking', 'reconciling'].includes(presented!.key) ? 'info' : 'warn'} icon="clock" label={{ 'first-payment': 'First payment pending', checking: 'Renewal being checked', renewing: 'Renewing', preparing: 'Renewal being prepared', cancelling: 'Ends at term end', downgrade: 'Change scheduled', ended: 'Ended', 'ended-unresolved': 'Ended · payment unresolved', linking: 'Waiting for Works', reconciling: 'Being checked with Works' }[presented!.key] ?? presented!.key} /> : null}</div>
+            : <div class="m-planname"><b>{model.viewerPlan}</b><span>{model.viewerPlan === 'Unknown' ? 'The plan could not be established right now; nothing changes until it is.' : model.allowances.free.private === null ? `Managed labels, checks and basic history${model.hosted ? '' : ' · no repository limit on this deployment'}` : `${model.allowances.free.private} private and ${model.allowances.free.publicHistory} public-with-history repositories, pooled across ${model.login}${model.freeConnected ? ` and ${model.freeConnected.login}` : ' and one organisation'}`}</span></div>}
+        </div>
+        <div class="m-acts">
+          {status?.linked
+            ? <><a class="m-btn" href="/manage/plan">Plan &amp; funding</a>{works.experience ? <a class:list={['m-btn', { pri: overdue }]} href={depart(overdue ? 'pay' : 'change-plan')}>{overdue ? 'Pay at Works' : 'Manage plan at Works'} <Icon name="arrow-up-right" size={13} /></a> : null}</>
+            : <><a class="m-btn" href="/manage/plan">See Pro and Business</a>{model.hosted && <a class="m-btn pri" href="/manage/plan#upgrade">Upgrade at Works <Icon name="arrow-up-right" size={13} /></a>}</>}
+        </div>
+      </div>
+      <OrgSlots model={model} now={runtime.now()} />
+    </section>
+
+    {!model.firstRun && <section class="m-sec" data-slots>
+      <header><h2>{free ? 'Free allowance' : 'Private repository slots'}</h2><span class="d">{free ? (model.allowances.free.private === null ? 'This deployment sets no limit.' : 'Two pooled limits. Everything else is unlimited.') : 'Each cell is one slot. Public repositories have no limit.'}</span></header>
+      <div class="b flush">
+        {free && personal && <div style="padding:4px 20px 18px"><AllowanceGroups capacity={personal.capacity} model={model} /></div>}
+        {rows.map((namespace: any) => <div class="m-nsrow" data-namespace-row={namespace.login}>
+          <a class="m-nsname" href={namespacePath(namespace.login)}><Avatar login={namespace.login} kind={namespace.kind} /><b>{namespace.login}</b>{namespace.login === model.login && <span class="a-you">you</span>}{['Pro', 'Business'].includes(namespace.plan) ? <PlanChip plan={namespace.plan} /> : <span class="m-none">{({ Unconnected: 'not connected', Unfunded: 'no plan', Unknown: 'plan not established' } as Record<string, string>)[namespace.plan] ?? 'free'}</span>}{namespace.funding.kind === 'other-funder' && <span class="m-none">by another subscriber</span>}{namespace.funding.kind === 'free-connected-elsewhere' && <span class="m-none">on another Free account</span>}</a>
+          <SlotCells capacity={namespace.capacity} size="md" namespace={namespace} />
+          <span class:list={['m-capw', capacityTone(namespace.capacity)]}>{capacityWord(namespace.capacity)}</span>
+          <a class="m-go" href={namespacePath(namespace.login)}>Repositories <Icon name="arrow-right" size={13} /></a>
+        </div>)}
+        {rows.length === 0 && !free && <p class="m-empty">No namespace reaches this account through an App installation yet.</p>}
+      </div>
+    </section>}
+
+    {model.readers.length > 0 && <section class="m-sec" data-readers>
+      <header><h2>Read-only for you</h2><span class="d">You read these with their own plan. Someone else manages them.</span></header>
+      <div class="b flush">{model.readers.map((namespace: any) => <div class="m-nsrow"><span class="m-nsname"><Avatar login={namespace.login} kind={namespace.kind} /><b>{namespace.login}</b><PlanChip plan={namespace.plan} /></span><span class="m-capnote">{namespace.delegation ? `You are named ${namespace.delegation.role === 'account-admin' ? 'Account administrator' : 'Repository administrator'} here, but ${namespace.login} is not on Business right now, so the delegation waits.` : namespace.plan !== 'Free' ? `Funded by its owner. You get its ${namespace.plan} features without paying.` : 'Free. Managed by its own administrator.'}</span><span></span><a class="m-go" href={`/?s=${encodeURIComponent(`@${namespace.login}`)}`}>Activity <Icon name="arrow-right" size={13} /></a></div>)}</div>
+    </section>}
+
+    <section class="m-sec" data-attention>
+      <header><h2>Needs you</h2><span class="d">Only decisions. Imports and ordinary waiting stay on their repository.</span></header>
+      <div class="b flush"><div class="m-att">
+        {model.attention.length ? model.attention.map((item: any) => <a href={item.href}><Icon name={item.tone === 'err' ? 'circle-alert' : 'alert-triangle'} size={16} class={item.tone} /><span><b>{item.title}</b><span class="d">{item.detail}</span></span><span class="go">{item.go} <Icon name="arrow-right" size={13} /></span></a>) : <div class="m-empty">Nothing needs you. Everything you administer runs as configured.</div>}
+      </div></div>
+    </section>
+  </div>
+</ManagePage>

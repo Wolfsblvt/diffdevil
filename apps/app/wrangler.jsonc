@@ -1,0 +1,39 @@
+{
+  // Source configuration for the one App Worker: Astro pages plus the managed App's runtime
+  // routes (webhook ingress, Queue consumer, scheduled maintenance, analytics read, Wirt
+  // commercial routes) on the same host and bindings. The adapter supplies the assets binding
+  // at build time. The D1 database is the managed App's own database; its real identifier,
+  // the webhook secret, the GitHub App credentials, the OAuth client secret, the seal key and
+  // the Wirt keys are operator inputs supplied outside source (`wrangler secret` / `.dev.vars`),
+  // never committed here. The standalone webhook Worker in apps/github-app/ remains buildable
+  // as the operator-boundary runtime; which unit is deployed is a deployment decision.
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "diffdevil-app",
+  "main": "src/worker.mjs",
+  "compatibility_date": "2026-09-17",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": false,
+  "triggers": { "crons": ["17 3 * * *"] },
+  "vars": {
+    "APP_ORIGIN": "https://app.diffdevil.dev",
+    "SITE_ORIGIN": "https://diffdevil.dev",
+    "APP_SESSION_DAYS": "30"
+  },
+  "d1_databases": [{
+    "binding": "APP_DB",
+    "database_name": "diffdevil-github-app",
+    "database_id": "00000000-0000-0000-0000-000000000000",
+    "migrations_dir": "../github-app/migrations"
+  }],
+  "queues": {
+    "producers": [{ "binding": "APP_QUEUE", "queue": "diffdevil-github-app-work" }],
+    "consumers": [{
+      "queue": "diffdevil-github-app-work",
+      "max_batch_size": 10,
+      "max_batch_timeout": 30,
+      "max_retries": 5,
+      "retry_delay": 60,
+      "dead_letter_queue": "diffdevil-github-app-dlq"
+    }]
+  }
+}

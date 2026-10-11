@@ -14,9 +14,11 @@ The older pathless backend is narrower evidence, not the product ceiling. Named 
 | Enabled analytical history | Repository/PR measurements and lifecycle; entitled file enrichment and relationships | Explicit enablement, disclosed service/operator retention, deletion and export |
 | Account, installation, funding, configuration and entitlement | Requested service and its authority | Active service and explicit lifecycle, not recovery TTL |
 | Works link and benefit projection | Apply the customer-authorized commercial standing: pseudonymous Works account ID, latest projection (tier, standing, period, capacity and display-only renewal amount), sealed owner grant, organisation bindings with the funder's observed GitHub authority and its time, and a display label only while that authority was last observed present | While the link is active. A label is dropped when a check records absent or unknown authority; report evidence never keeps one, and an unsent report holds it only until it is sent, superseded or failed. Report evidence ages out after thirty days except each active link's latest report. Ending the link removes the projection, grant, bindings and every label at once; its report evidence ages out on the same thirty days, leaving only the ended link identity. No payment instrument, invoice or other account is received |
+| Participation survey response | Improve diffdevil from the participant's own account of using it, and let Wirt issue the campaign reward | The answers stay in diffdevil until the person deletes them or closes the account; Wirt receives only the completion fact. See [participation survey responses](#participation-survey-responses) |
 | Administrative audit | Explain settings, permissions and operating changes | Protected purpose-specific retention, not contributor analytics |
 | Preview/OSS benefit record | Honour one-time preview and repository grant eligibility | Minimum justified identity/state, separate from the analytical dataset |
 | Frozen selected-state archive | Recover an ended premium service without keeping it running | Disclosed shared recovery policy and deadline, current access and earlier deletion |
+| Works link and benefit projection | Apply the customer-authorized commercial standing: pseudonymous Works account ID, latest projection (tier, standing, period, capacity and display-only renewal amount), sealed owner grant, organisation bindings with a display label only while authority is present | While the link is active; ending the link removes the projection, grant and bindings and keeps only the ended link identity. No payment instrument, invoice or other account is received |
 
 The old thirty-day rolling Free-history and financial-entitlement deletion assumptions do not define the new offer. Hosted history and inactive archives must follow the published selected service policy, not an incidental storage TTL. Community's operator chooses its retention and resource limits.
 
@@ -64,6 +66,10 @@ Names and paths are protected repository metadata. They and immutable IDs/refere
 
 The source-only history query contract derives charts and Policy Lab decisions from retained rows. Shared saved lenses are protected configuration: an allowlisted query can name a metric, scope, band or rule reference and may carry a user-visible name or description there. They retain no numeric snapshot or personal identity and travel only in configuration export. History deletion or expiry removes the source records and leaves a lens with missing historical coverage; repository offboarding removes the protected lens configuration. The seven-day operational ledger separately records execution attempts and duplicate delivery receipts without promoting them to long-term product history.
 
+Per-file records have at most an ordinal local to one analysis. It is not derived from a path, not a cross-revision identity, and not a way to track an individual file over time. Duplicate numeric rows remain distinct observations so a distribution still counts all observed files.
+
+### Excluded files are measured, not silently discarded
+
 ### Excluded observations
 
 Retain the permitted measured paths and numerical facts of policy-excluded files. Ordinary analytics filters them under the effective policy. This supports changed exclusions and a possible include-excluded view without fetching facts already known.
@@ -100,6 +106,14 @@ Business provides an administrative audit of meaningful settings, policy, permis
 
 Administrator identities support operational accountability, not author/reviewer performance rankings.
 
+## Participation survey responses
+
+A participation campaign's survey is product feedback, owned by diffdevil. It stores, per GitHub account and campaign version, the selected answers, the optional free text, a draft or completed state and the times. Completing it writes one outbound completion fact in the same transaction: the campaign key and version, the completion time, an opaque response identity and a durable event identity created with it. That fact, sent through the account's signed Works link, is all Wirt receives; it never carries answers, free text, repository names or product context, and Wirt issues the commercial reward from it. diffdevil keeps the delivery evidence (attempts, Wirt's typed answer and the reward facts Wirt returned) to show the standing and to reconcile after a restore.
+
+Positive, negative and mixed answers qualify the same; nothing is reviewed or scored before the reward. The invitation appears only in the App, once and then once more as a reminder; no mail is sent.
+
+The person sees what they sent and can delete their answers at any time. Deleting removes every answer and keeps the completion identity and time, because the reward it earned is Wirt's commercial fact: a privacy action is not a commercial correction, and a correction is Wirt's own typed action. The account export includes the answers and delivery facts; closing the account deletes every participation row. Wirt keeps its own commercial record of any reward under its own terms.
+
 ## Current authorised context
 
 Check current signed-in GitHub repository access and App reach before protected reads or reacquisition. A subscription, former funding relationship, membership or previously working link is not permanent authority.
@@ -110,11 +124,11 @@ On-demand source or PR context stays transient and belongs to the recorded immut
 
 ### Named paths in requests and navigation
 
-Authenticated analytical queries and file drill-down may carry repository-relative paths in request URLs, query parameters and navigation links. A no-source-retention claim does not make those names anonymous or remove them from local browser history. Disclose that local-history consequence; a copied or bookmarked protected link still re-authorises when opened.
+Authenticated analytical queries carry repository-relative paths in request bodies, not in URLs. The signed-in App addresses a file by an opaque locator (an HMAC of repository and path under the operator's seal key, resolved server-side against the reader's entitled files), so a file-detail address and its document title carry no path and local browser history retains a handle, not a name. A copied or bookmarked protected link still re-authorises when opened; possession of a link is not access.
 
-The selected App boundary is an explicit `same-origin` referrer policy on App documents and responses: it preserves same-origin consumers while excluding path/query metadata from outbound cross-origin requests, including GitHub links. Application diagnostics omit full private request URLs, query strings and full referrers, retaining useful bounded operation/status/failure facts. Do not treat a URL as a safe diagnostic payload merely because it contains no source body.
+App documents carry an explicit `same-origin` referrer policy: it preserves same-origin consumers, including the sign-in exchange's form post, while excluding path/query metadata from outbound cross-origin requests such as GitHub links. The protected JSON routes answer with `no-referrer`. Application diagnostics omit full private request URLs, query strings, bodies and full referrers, retaining useful bounded operation/status/failure facts. Do not treat a URL as a safe diagnostic payload merely because it contains no source body.
 
-Qualify the real joined document/navigation route and outbound links; endpoint response headers alone do not prove browser navigation behaviour. This is the selected implementation/disclosure boundary, not evidence that a live leak occurred or that App/browser/provider logging is already qualified. The existing GET seam remains provisional; an alternative must preserve useful queries, authenticated links and file drill-down.
+Qualify the real joined document/navigation route and outbound links; endpoint response headers alone do not prove browser navigation behaviour. This is the selected implementation/disclosure boundary, not evidence that a live leak occurred or that App/browser/provider logging is already qualified.
 
 ## Populations and statistical honesty
 
@@ -176,7 +190,7 @@ Serve only the repository's eligible analytical projection, excluding configurat
 
 A preview is a frozen permitted sample with current access and deletion controls, not continuing premium collection. Its eligibility record remains distinct from sample retention. An OSS grant is repository-scoped; privatisation revokes it and public publication, but is not itself a deletion request. Ordinary sufficient entitlement can continue.
 
-Public PR briefs obey their actual audience independently of a protected link. Private contextual facts must not escape through the comment.
+Public PR briefs obey their actual audience independently of a protected link. Private contextual facts must not escape through the comment. The implemented brief reads context only from the subject PR's own repository, so no other repository's titles, paths, counts or existence enter a comment. Current same-file neighbours are read live (open-PR titles, draft state and current paths) and never retained, so they need no history consent; one such read is held in memory for at most two minutes of one queue invocation and shared by that invocation's evaluations of the same repository, while refresh messages carry PR numbers only; the only trace is the list of neighbouring open PR numbers the publication described, kept in that brief's own hidden comment marker to refresh those PRs later. History-backed context needs history consent at the moment the brief is written: a withdrawal after the inputs were read prevents that publication and the brief is recomposed without history. A write request already sent when the withdrawal lands cannot be recalled; the withdrawal's own refresh then recomposes that brief without history. Rendered bodies are not stored as analytical history, and preview grants no consent or entitlement.
 
 The versioned query and export code selects only currently retained, published records at read time. An exported file already delivered to an authorized administrator is outside server-side deletion reach; the service does not preserve a second pending export or cached chart projection. Analysis rows alone cannot prove that an entire requested period was collected, so a query reports observed-sample coverage and known record gaps rather than inventing complete opt-in coverage.
 

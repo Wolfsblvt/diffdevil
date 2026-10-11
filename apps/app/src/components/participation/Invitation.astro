@@ -1,0 +1,39 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
+// The survey invitation, at the top of signed-in pages once the participant has used diffdevil enough to answer (a
+// managed operation finished during beta access, successfully, held or failed; setup alone is not use): one
+// appearance until dismissed, then one reminder after the campaign's reminder delay, then nothing. The survey itself
+// stays reachable from Plan & funding throughout. No mail; the App is the only place it appears.
+import Banner from '../manage/Banner.astro';
+import Icon from '../Icon.astro';
+import { MESSAGES } from '../../lib/manage/actions.mjs';
+import { commercialStatus } from '../../lib/manage/model.mjs';
+import { fmtDay } from '../../lib/manage/works.mjs';
+
+const runtime = Astro.locals.app, viewer = Astro.locals.viewer, session = Astro.locals.session;
+let view = null;
+if (runtime?.participation && viewer && session && !Astro.url.pathname.startsWith('/manage/plan/survey')) {
+  try {
+    const commercial = await commercialStatus({ session, runtime });
+    view = await runtime.participation.view({ userId: viewer.userId, commercial, repositories: viewer.repositories });
+    if (view.invitation === 'invite' && !view.prompt?.invitedAt) await runtime.participation.noteShown(viewer.userId, 'invite');
+    if (view.invitation === 'remind' && !view.prompt?.remindedAt) await runtime.participation.noteShown(viewer.userId, 'remind');
+  } catch (error) {
+    // The invitation never breaks a page, but its failure is reported rather than silently read as "nothing to show".
+    console.error('participation invitation unavailable', error);
+    view = null;
+  }
+}
+const stage = view?.invitation ?? null;
+const back = `${Astro.url.pathname}${Astro.url.search}`.replace(/([?&])m=[^&]*(&|$)/u, (_, lead, tail) => (tail ? lead : '')).replace(/[?&]$/u, '');
+const draft = view?.response?.state === 'draft';
+// Manage pages show a redirect's message themselves; elsewhere the dismissal is acknowledged here, where it was made.
+const acknowledged = Astro.url.searchParams.get('m') === 'survey-dismissed' && !Astro.url.pathname.startsWith('/manage');
+---
+{acknowledged && <div class="m-banner m-msg ok p-invite" role="status"><Icon name="circle-check" size={18} /><div><b>{MESSAGES['survey-dismissed'].text}</b></div><div></div></div>}
+{stage && <Banner tone="info" icon="gift" class="p-invite" data-invitation={stage}
+  title={stage === 'remind' ? `A reminder: the ${view.campaign.name.toLowerCase()} closes on ${fmtDay(view.campaign.closesAt)}` : `How is the beta going? Tell us in about ${view.survey.minutes} minutes`}
+  text={`${stage === 'remind' ? 'This is the only reminder. ' : ''}Completing the ${view.campaign.name.toLowerCase()} earns a discount on continuing with Pro. Honest answers count, critical ones included.`}>
+  <a class="m-btn pri sm" href="/manage/plan/survey">{draft ? 'Finish the survey' : 'Take the survey'}</a>
+  <form class="m-form" method="post" action="/manage/do"><input type="hidden" name="action" value="survey-dismiss" /><input type="hidden" name="back" value={back || '/'} /><button class="m-btn ghost sm" type="submit">Not now</button></form>
+</Banner>}

@@ -1,0 +1,8 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
+// A status pill: a glyph and a word, never colour alone.
+import Icon from '../Icon.astro';
+interface Props { tone?: string | undefined; icon?: any; label: string; title?: string | undefined }
+const { tone = '', icon, label, title } = Astro.props;
+---
+<span class:list={['m-st', tone]} title={title}>{icon && <Icon name={icon} size={12} />}{label}</span>
