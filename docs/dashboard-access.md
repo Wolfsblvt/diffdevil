@@ -50,14 +50,15 @@ Namespace analytical features follow that namespace's funded plan. A Free collab
 | Free/Pro administering person | Configure the managed scope, select repositories, manually import/recalculate, manage history and eligible publication. |
 | Other collaborator on Free/Pro | Read-only inside diffdevil, even when GitHub independently grants additional powers. |
 | Business delegated repository administrator | Perform expressly delegated operations for selected repositories the person can currently write to on GitHub. |
-| Business account administrator | Manage linked policies and their publication, and the namespace's repositories, on each repository the person can currently write to on GitHub. Automatic setup they choose acts for them as Account administrator: a new repository is set up only while that delegation still stands and GitHub gives them write there, checked at that repository. Naming or removing delegates stays with the namespace's current GitHub administrators. |
+| Business namespace administrator on GitHub | Coordinate linked policies, publication and automatic setup, and name or remove delegates, while GitHub currently makes them the namespace's administrator, read again for each such change. Automatic setup they choose is the namespace's setting: it keeps applying after they leave or are demoted, until a current administrator or Account administrator changes it or turns it off, and each new repository is set up under the App's own installation access ([D086](DECISIONS.md#d086-an-administrators-automatic-setup-choice-belongs-to-the-namespace-an-account-administrators-stays-person-bound)). |
+| Business account administrator | Manage linked policies and their publication, and the namespace's repositories, on each repository the person can currently write to on GitHub. Automatic setup they choose acts for them as Account administrator: a new repository is set up only while that delegation still stands and GitHub gives them write there, checked at that repository. Changing the namespace's setting makes it theirs in the same way. Naming or removing delegates stays with the namespace's current GitHub administrators. |
 | Subscriber/billing owner | Manage the purchase and organisation connection benefits through authorised shared billing, without acquiring repository authority merely by paying. |
 
 Keep the role model understandable. Viewing, configuration, provider effects, imports, history export/deletion, publication, delegation and billing are different consequences; granting one must not grant all implicitly.
 
 Native GitHub powers remain native powers. A plan cannot prevent a sufficiently authorised GitHub user from uninstalling the App or changing the trusted repository configuration file.
 
-Check current authority when an action occurs. A role captured at login is not forever valid. Background work rechecks installation, selection, history consent, entitlement and applicable configuration before committing data or effects.
+Check current authority when an action occurs. A role captured at login is not forever valid. Background work rechecks installation, selection, history consent, entitlement and applicable configuration before committing data or effects. A namespace's automatic-setup setting is configuration rather than a captured personal role: its administrator's authority is checked when it is chosen, changed or turned off, while a delegate's choice is checked at each repository.
 
 ## Repository admission and defaults
 

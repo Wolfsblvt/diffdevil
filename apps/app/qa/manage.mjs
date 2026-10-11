@@ -281,7 +281,7 @@ export async function businessManage(ctx) {
   await page.click('[data-setup-form="parser-guild"] button[type="submit"]');
   await page.waitForLoadState('networkidle');
   const setup = await page.evaluate(() => ({ message: document.querySelector('.m-msg')?.textContent ?? '', row: document.querySelector('[data-setup="parser-guild"] .d')?.textContent ?? '', pill: document.querySelector('[data-policy="Default"] header .m-st')?.textContent ?? '' }));
-  check('automatic setup saves and reads back what new repositories get, with history and publication named as separate choices, and the policy card says new repositories get it', /Automatic setup saved/u.test(setup.message) && /Link to Default and enable labels and the check\. History: off, chosen separately\. Publication: off\./u.test(setup.row) && setup.pill === 'New repositories get it', JSON.stringify(setup));
+  check('automatic setup saves and reads back what new repositories get, with history and publication named as separate choices, as the namespace\'s setting chosen by you, and the policy card says new repositories get it', /Automatic setup saved as the namespace's setting/u.test(setup.message) && /Link to Default and enable labels and the check\. History: off, chosen separately\. Publication: off\. Chosen by you as administrator on GitHub on .+\. It is the namespace's setting: it stays until a current administrator or Account administrator changes it\./u.test(setup.row) && setup.pill === 'New repositories get it', JSON.stringify(setup));
   await shot('business-manage-automatic-setup');
   // Long content: a sixty-character name and a long document still lay out without overflow.
   await go('/manage/policies?ns=parser-guild&new=1');
@@ -337,7 +337,7 @@ export async function businessManage(ctx) {
   check('an empty filter state says nothing matches rather than showing nothing', await page.evaluate(() => /Nothing matches this filter|Nothing is recorded yet/u.test(document.querySelector('[data-audit-empty]')?.textContent ?? '')));
   const exported = await page.context().request.get(`${ctx.ORIGIN}/manage/export`);
   const body = await exported.json();
-  check('the export carries the Business policies, the setup with its linked policy and who chose it as what, people and record per coordinated namespace', exported.status() === 200 && Array.isArray(body.business) && body.business.some(scope => scope.namespace === 'parser-guild' && scope.policies.some(policy => policy.name === 'Default' && policy.revision === 2) && scope.automaticSetup?.enableExecution === true && scope.automaticSetup.policy === 'Default' && scope.automaticSetup.chosenBy?.login === 'ada-sample' && scope.automaticSetup.chosenBy?.as === 'owner' && Array.isArray(scope.record) && scope.record.length > 0), JSON.stringify(Object.keys(body)));
+  check('the export carries the Business policies, the setup with its linked policy and who chose it as what, people and record per coordinated namespace', exported.status() === 200 && Array.isArray(body.business) && body.business.some(scope => scope.namespace === 'parser-guild' && scope.policies.some(policy => policy.name === 'Default' && policy.revision === 2) && scope.automaticSetup?.enableExecution === true && scope.automaticSetup.policy === 'Default' && scope.automaticSetup.chosenBy?.login === 'ada-sample' && scope.automaticSetup.chosenBy?.as === 'owner' && scope.automaticSetup.belongsTo === 'namespace' && Array.isArray(scope.record) && scope.record.length > 0), JSON.stringify(Object.keys(body)));
   // Leave the fixture as the next pass expects: setup off, grammar-fuzz released.
   await go('/manage/policies?ns=parser-guild&setup=parser-guild');
   await page.click('[data-setup-form="parser-guild"] input[value="setup-off"] ~ button');
@@ -387,18 +387,27 @@ export async function delegateManage(ctx) {
   if (ctx.premium) check('People tells a read-only delegate they can manage nothing here and why, with no naming or removing', /GitHub gives you read access only here/u.test(people.you) && /stays with the GitHub administrators of northwind-tools/u.test(people.you) && !people.add && !people.remove && /GitHub administrator/u.test(people.owner) && people.ceiling && people.rule && /Account administrator/u.test(people.ada) && /GitHub gave them read access only to northwind-tools\/ci-recipes/u.test(people.ada), JSON.stringify(people));
   else check('Community names the absent People body and offers no delegation actions', !people.add && !people.remove && /not part of this build/u.test(await page.locator('body').innerText()));
   await shot('delegate-read-only-people');
-  // An Account administrator chooses automatic setup for the namespace; it acts later only where GitHub still gives them write.
+  // northwind-tools keeps the setting a former administrator chose on GitHub. An Account administrator sees whose it is,
+  // changes it, and it then acts for her, only where GitHub still gives her write.
   await go('/manage/policies?ns=northwind-tools');
   if (ctx.premium) {
+  const kept = await page.evaluate(() => ({ row: document.querySelector('[data-setup="northwind-tools"] .d')?.textContent ?? '', button: document.querySelector('[data-setup="northwind-tools"] a[href*="setup="]')?.textContent ?? '', held: Boolean(document.querySelector('[data-setup="northwind-tools"] [data-setup-held]')) }));
+  check('a former administrator\'s setting stays the namespace\'s, names who chose it as what and when, waits on nobody, and changing it is offered as acting for the Account administrator', /Chosen by old-owner as administrator on GitHub on 1 Oct 2026\. It is the namespace's setting/u.test(kept.row) && kept.button === 'Change (acts for you)' && !kept.held, JSON.stringify(kept));
+  await shot('delegate-namespace-setting-kept');
   await page.click('[data-setup="northwind-tools"] a[href*="setup="]');
   await page.waitForLoadState('networkidle');
+  check('before saving, the Account administrator is told the choice becomes hers and person-bound', /Saving makes this choice yours as Account administrator/u.test(await page.evaluate(() => document.querySelector('[data-setup-form="northwind-tools"] [data-setup-yours]')?.textContent ?? '')));
   await page.check('[data-setup-form="northwind-tools"] input[name="enable"]');
   await page.check('[data-setup-form="northwind-tools"] input[name="writer"]');
   await page.click('[data-setup-form="northwind-tools"] button[type="submit"]');
   await page.waitForLoadState('networkidle');
-  const delegateSetup = await page.evaluate(() => ({ message: document.querySelector('.m-msg')?.textContent ?? '', row: document.querySelector('[data-setup="northwind-tools"] .d')?.textContent ?? '', rule: /acts for whoever chose it/u.test(document.querySelector('[data-automatic-setup]')?.textContent ?? ''), overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth }));
-  check('an Account administrator chooses automatic setup through Policies, is told it acts for them only where they can still write, and it reads back as theirs', /Automatic setup saved/u.test(delegateSetup.message) && /enable labels and the check/u.test(delegateSetup.row) && /Chosen by you/u.test(delegateSetup.row) && delegateSetup.rule && delegateSetup.overflow <= 0, JSON.stringify(delegateSetup));
+  const delegateSetup = await page.evaluate(() => ({ message: document.querySelector('.m-msg')?.textContent ?? '', row: document.querySelector('[data-setup="northwind-tools"] .d')?.textContent ?? '', rule: /namespace's setting: it keeps applying after they leave.*A choice made by an Account administrator acts for them, only while they are one and only where GitHub gives them write/u.test(document.querySelector('[data-setup-rule]')?.textContent ?? ''), overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth }));
+  check('an Account administrator chooses automatic setup through Policies, is told it acts for them only where they can still write, and it reads back as theirs', /Automatic setup saved\. It acts for you as Account administrator/u.test(delegateSetup.message) && /enable labels and the check/u.test(delegateSetup.row) && /Chosen by you as Account administrator on .+\. It acts for you, only while you are Account administrator/u.test(delegateSetup.row) && delegateSetup.rule && delegateSetup.overflow <= 0, JSON.stringify(delegateSetup));
   await shot('delegate-automatic-setup');
+  await go('/manage/audit?ns=northwind-tools&show=policies');
+  const replaced = await page.evaluate(() => [...document.querySelectorAll('[data-audit="record"] tbody tr')].map(row => row.textContent ?? '').find(text => /Chose automatic setup as Account administrator/u.test(text)) ?? '');
+  check('Audit records the change with what it replaced', /It replaces the setting chosen by old-owner as administrator on GitHub on 1 Oct 2026/u.test(replaced), replaced);
+  await shot('delegate-setup-audit');
   await go('/manage/policies?ns=northwind-tools&setup=northwind-tools');
   await page.click('[data-setup-form="northwind-tools"] input[value="setup-off"] ~ button');
   await page.waitForLoadState('networkidle');
@@ -426,22 +435,25 @@ export async function setupRecovery(ctx) {
   const attention = () => page.evaluate(() => [...document.querySelectorAll('[data-attention] .m-att')].map(node => node.textContent ?? '').join(' | '));
   await go('/manage');
   const needs = await attention();
-  check('Needs you names automatic setup that left a new repository waiting, who it acts for, why, and the way out', /Automatic setup in parser-guild left a new repository waiting/u.test(needs) && /It acts for kai-sample/u.test(needs) && /no longer one here/u.test(needs) && /Choose it again so it acts for you/u.test(needs), needs);
+  check('Needs you names automatic setup that left a new repository waiting, who it acts for, why, and the way out', /Automatic setup in parser-guild left a new repository waiting/u.test(needs) && /It acts for kai-sample/u.test(needs) && /no longer one here/u.test(needs) && /Choose it again to make it the namespace's setting/u.test(needs), needs);
   await go('/manage/policies?ns=parser-guild');
   const row = () => page.evaluate(() => ({ text: document.querySelector('[data-setup="parser-guild"]')?.textContent ?? '', held: document.querySelector('[data-setup="parser-guild"] [data-setup-held]')?.textContent ?? '', button: document.querySelector('[data-setup="parser-guild"] a[href*="setup="]')?.textContent ?? '', overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth }));
   const before = await row();
-  check('the setup row names who it acts for and as what, what waited and why, and offers to choose it again for you', /Chosen by kai-sample as Account administrator/u.test(before.text) && /1 new repository waited since/u.test(before.held) && /no longer one here/u.test(before.held) && before.button === 'Choose it again (acts for you)' && before.overflow <= 0, JSON.stringify(before));
+  check('the setup row names who it acts for and as what, what waited and why, and offers to choose it again for the namespace', /Chosen by kai-sample as Account administrator on .+\. It acts for them, only while they are Account administrator/u.test(before.text) && /1 new repository waited since/u.test(before.held) && /no longer one here/u.test(before.held) && before.button === 'Choose it again for the namespace' && before.overflow <= 0, JSON.stringify(before));
   await shot('setup-recovery-held');
   await page.click('[data-setup="parser-guild"] a[href*="setup="]');
   await page.waitForLoadState('networkidle');
-  check('choosing it again says it will act for you', /Saving makes this choice yours/u.test(await page.evaluate(() => document.querySelector('[data-setup-form="parser-guild"] [data-setup-yours]')?.textContent ?? '')));
+  check('choosing it again says it becomes the namespace\'s setting and outlasts its chooser', /Saving makes this the namespace's setting, shown as chosen by you\. It keeps applying if you later leave or stop administering/u.test(await page.evaluate(() => document.querySelector('[data-setup-form="parser-guild"] [data-setup-yours]')?.textContent ?? '')));
   await page.check('[data-setup-form="parser-guild"] input[name="enable"]');
   await page.check('[data-setup-form="parser-guild"] input[name="writer"]');
   await page.click('[data-setup-form="parser-guild"] button[type="submit"]');
   await page.waitForLoadState('networkidle');
   const after = await row();
-  check('after choosing it again the row says it acts for you, and nothing is shown as waiting', /Chosen by you as administrator on GitHub/u.test(after.text) && after.held === '' && after.button === 'Change', JSON.stringify(after));
+  check('after choosing it again the row says it is the namespace\'s setting chosen by you, and nothing is shown as waiting', /Chosen by you as administrator on GitHub on .+\. It is the namespace's setting/u.test(after.text) && after.held === '' && after.button === 'Change', JSON.stringify(after));
   await shot('setup-recovery-chosen');
+  await go('/manage/audit?ns=parser-guild&show=policies');
+  const chose = await page.evaluate(() => [...document.querySelectorAll('[data-audit="record"] tbody tr')].map(row => row.textContent ?? '').find(text => /Chose automatic setup as administrator on GitHub/u.test(text)) ?? '');
+  check('Audit keeps the choice as the namespace\'s setting with the person-bound choice it replaced', /It is parser-guild's setting: it keeps applying after ada-sample leaves or stops administering/u.test(chose) && /It replaces the setting chosen by kai-sample as Account administrator on 9 Oct 2026/u.test(chose), chose);
   await go('/manage');
   check('Needs you no longer lists the held setup', !/Automatic setup in parser-guild/u.test(await attention()));
   await go('/manage/policies?ns=parser-guild&setup=parser-guild');

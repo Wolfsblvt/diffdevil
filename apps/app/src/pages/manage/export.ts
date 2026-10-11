@@ -9,6 +9,7 @@ import type { APIRoute } from 'astro';
 import { protectedHeaders } from '../../../../github-app/authorization.mjs';
 import { DEFAULT_SIZE_POLICY, resolveEffectivePolicy } from '../../../../github-app/configuration.mjs';
 import { loadManage } from '../../lib/manage/model.mjs';
+import { SETUP_BELONGS } from '../../lib/manage/setup.mjs';
 import { SURVEYS, describeAnswers, surveyOf } from '../../lib/participation/survey.mjs';
 
 export const GET: APIRoute = async ({ url, locals }) => {
@@ -42,7 +43,7 @@ export const GET: APIRoute = async ({ url, locals }) => {
     const setup = await runtime.manage.automaticSetup(namespace.accountId);
     const people = (await runtime.manage.delegations(namespace.accountId)).map((delegation: any) => ({ login: delegation.login, role: delegation.role, repositories: delegation.repositories, grantedAt: delegation.grantedAt }));
     const record = only ? [] : await runtime.manage.events({ accountIds: [namespace.accountId], limit: 1000 });
-    business.push({ namespace: namespace.login, policies, automaticSetup: setup ? { policy: policies.find((policy: any) => policy.policyId === setup.policyId)?.name ?? null, policyId: setup.policyId, enableExecution: setup.enableExecution, writerDeclared: setup.writerDeclared, savedAt: setup.savedAt, chosenBy: { userId: setup.actorId, login: setup.actorLogin, as: setup.actorRole } } : null, people, record });
+    business.push({ namespace: namespace.login, policies, automaticSetup: setup ? { policy: policies.find((policy: any) => policy.policyId === setup.policyId)?.name ?? null, policyId: setup.policyId, enableExecution: setup.enableExecution, writerDeclared: setup.writerDeclared, savedAt: setup.savedAt, chosenBy: { userId: setup.actorId, login: setup.actorLogin, as: setup.actorRole }, belongsTo: SETUP_BELONGS[setup.actorRole as keyof typeof SETUP_BELONGS] ?? null } : null, people, record });
   }
   // The whole-account export also carries the person's own survey answers and the completion facts diffdevil sent.
   const participation = only ? undefined : (await runtime.participationStore.exportAccount(viewer.userId)).map((entry: any) => ({ ...entry,

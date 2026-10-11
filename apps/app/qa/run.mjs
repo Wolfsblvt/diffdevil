@@ -492,6 +492,8 @@ try {
   executeLocal("INSERT INTO delegations (account_id, user_id, login, role, repositories_json, granted_at, granted_by) VALUES (7002, 123, 'ada-sample', 'account-admin', NULL, '2026-10-10T09:00:00.000Z', 999)", STATE);
   // parser-guild's automatic setup was chosen by kai-sample as Account administrator, who no longer is one; it held a new repository.
   executeLocal("INSERT INTO automatic_setup (account_id, policy_id, enable_execution, writer_declared, saved_at, actor_id, actor_login, actor_role) VALUES (7001, NULL, 1, 1, '2026-10-09T09:00:00.000Z', 456, 'kai-sample', 'account-admin')", STATE);
+  // northwind-tools keeps the setting old-owner chose as its administrator on GitHub before leaving: the namespace's, not theirs.
+  executeLocal("INSERT INTO automatic_setup (account_id, policy_id, enable_execution, writer_declared, saved_at, actor_id, actor_login, actor_role) VALUES (7002, NULL, 1, 1, '2026-10-01T09:00:00.000Z', 999, 'old-owner', 'owner')", STATE);
   executeLocal(`INSERT INTO administrative_events (at, account_id, repository_id, where_text, actor_kind, actor_id, actor_login, what, result, reason, detail_json) VALUES ('2026-10-09T10:00:00.000Z', 7001, 1003, 'repository 1003', 'automation', 456, 'kai-sample', 'Automatic setup of a newly granted repository', 'failed', 'kai-sample chose automatic setup as Account administrator and is no longer one here. Choose it again. The repository waits for a person; nothing was set up.', '{"installationId":10,"held":"chooser-authority"}')`, STATE);
   github.state.push.set(1006, false);
   await startWorker(undefined, STATE, { commercial: COMMERCIAL_BUSINESS });

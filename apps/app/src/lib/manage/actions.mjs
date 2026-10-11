@@ -13,13 +13,13 @@ import { documentHeaders } from '../routes.mjs';
 import { commercialStatus, loadManage, coordinatesNamespace } from './model.mjs';
 import { readAnswers } from '../participation/survey.mjs';
 import { holdsSlot, isRemoved } from './states.mjs';
-import { worksDestinations } from './works.mjs';
+import { worksDestinations, fmtDay } from './works.mjs';
 import { recordAction, resultOfMessage } from './audit.mjs';
 import { readLinkedPolicy, POLICY_NAME, publishPolicy, retryPublication, summarizePublication, applyRevision } from './linked-policies.mjs';
 import { ROLE_KEYS, LOGIN, WRITE_CEILING, coordinates } from './people.mjs';
 import { adoptedConfiguration } from './defaults.mjs';
 import { sendJobStep } from '../../../../github-app/history-jobs.mjs';
-import { SETUP_ROLES } from './setup.mjs';
+import { SETUP_ROLES, SETUP_BELONGS } from './setup.mjs';
 
 /** Plain words for the message codes a redirect carries in `m`. */
 export const MESSAGES = Object.freeze({
@@ -100,7 +100,8 @@ export const MESSAGES = Object.freeze({
   'policy-published-partly': { tone: 'warn', text: 'Published. Some repositories are queued or failed; the result names each one, with Retry.' },
   'policy-published-none': { tone: 'warn', text: 'No repository is linked to this policy, so there was nothing to publish.' },
   'policy-retried': { tone: 'ok', text: 'Retried. The result below is what happened this time.' },
-  'setup-saved': { tone: 'ok', text: 'Automatic setup saved. History and the pull-request message stay separate choices per repository.' },
+  'setup-saved': { tone: 'ok', text: 'Automatic setup saved as the namespace\'s setting. It keeps applying until a current administrator or Account administrator changes it or turns it off. History and the pull-request message stay separate choices per repository.' },
+  'setup-saved-yours': { tone: 'ok', text: 'Automatic setup saved. It acts for you as Account administrator, only while you are one and only where GitHub gives you write. History and the pull-request message stay separate choices per repository.' },
   'setup-off': { tone: 'ok', text: 'Automatic setup is off. Newly granted repositories wait for you.' },
   'delegate-added': { tone: 'ok', text: 'Named. They manage diffdevil only on repositories they can write to on GitHub; where GitHub gives them read access only, they are refused. Funding and invoices are never theirs.' },
   'delegate-removed': { tone: 'ok', text: 'Removed. They no longer manage diffdevil here; what GitHub itself grants them is unchanged.' },
@@ -209,6 +210,15 @@ export async function handleManageAction(request, { runtime, session, viewer }) 
     if (namespace.plan !== 'Business') return { refusal: 'not-business' };
     if (!coordinatesNamespace(namespace)) return { refusal: 'not-coordinator' };
     return { namespace, model };
+  };
+  /**
+   * The role a person chooses, changes or turns off automatic setup under, established for this action: the namespace's
+   * administrator on GitHub (an organisation's administration read from GitHub again; a personal account is its own),
+   * otherwise a current Account administrator. Null when neither holds now.
+   */
+  const setupRole = async namespace => {
+    if (namespace.administration?.kind === 'owner' && (namespace.kind !== 'org' || await session.reads.organizationRole(namespace.login).catch(() => 'unknown') === 'admin')) return 'owner';
+    return coordinates(await runtime.manage.delegation(namespace.accountId, viewer.userId).catch(() => null)) ? 'account-admin' : null;
   };
   /**
    * Naming or removing people belongs to the namespace's current GitHub administration, read from GitHub again for this
@@ -549,22 +559,25 @@ export async function handleManageAction(request, { runtime, session, viewer }) 
         if (refusal) return done(refusal, { accountId, where: viewer.login });
         const place = { accountId, where: namespace.login };
         const home = `/manage/policies?ns=${encodeURIComponent(namespace.login)}#automatic-setup`;
-        if (action === 'setup-off') { await runtime.manage.removeAutomaticSetup(accountId); return done('setup-off', place, home); }
+        // Choosing, changing or turning off automatic setup needs authority over the namespace now, not when the page loaded.
+        const role = await setupRole(namespace);
+        if (!role) return done('not-coordinator', place, home);
+        const previous = await runtime.manage.automaticSetup(accountId);
+        const before = previous ? `the setting chosen by ${previous.actorLogin ?? `GitHub user ${previous.actorId}`}${SETUP_ROLES[previous.actorRole] ? ` as ${SETUP_ROLES[previous.actorRole]}` : ''} on ${fmtDay(previous.savedAt) ?? 'an unrecorded date'}` : null;
+        const off = () => done('setup-off', { ...place, ...(before ? { result: 'applied', reason: `Turned off ${before}. Newly granted repositories wait for a person.` } : {}) }, home);
+        if (action === 'setup-off') { await runtime.manage.removeAutomaticSetup(accountId); return off(); }
         const policyId = String(form.get('policy') ?? '') || null;
         const policy = policyId ? await runtime.manage.linkedPolicy(policyId) : null;
         if (policyId && (!policy || policy.accountId !== accountId)) return done('policy-unknown', place, home);
         const enableExecution = form.get('enable') === 'on', writerDeclared = form.get('writer') === 'declared';
         if (enableExecution && !writerDeclared) return done('writer-undeclared', place, home);
-        if (!policy && !enableExecution) { await runtime.manage.removeAutomaticSetup(accountId); return done('setup-off', place, home); }
-        // The choice acts for this person under the authority they hold now: an organisation's administration is read
-        // from GitHub again; otherwise it is their Account-administrator delegation, which the setup re-checks later.
-        let actorRole = namespace.administration?.kind === 'owner' ? 'owner' : 'account-admin';
-        if (actorRole === 'owner' && namespace.kind === 'org' && await session.reads.organizationRole(namespace.login).catch(() => 'unknown') !== 'admin') {
-          if (!coordinates(await runtime.manage.delegation(accountId, viewer.userId).catch(() => null))) return done('not-coordinator', place, home);
-          actorRole = 'account-admin';
-        }
-        await runtime.manage.saveAutomaticSetup(accountId, { policyId: policy?.policyId ?? null, enableExecution, writerDeclared, actorId: viewer.userId, actorLogin: viewer.login, actorRole });
-        return done('setup-saved', { ...place, what: `Chose automatic setup as ${SETUP_ROLES[actorRole]}: ${[policy ? `link to ${policy.name}` : 'no policy', enableExecution ? 'enable labels and the check' : 'leave disabled'].join(', ')}; history and the pull-request message stay off`, result: 'applied', reason: 'It acts for whoever chose it, on each new repository only where GitHub still gives them the access their role needs.' }, home);
+        if (!policy && !enableExecution) { await runtime.manage.removeAutomaticSetup(accountId); return off(); }
+        await runtime.manage.saveAutomaticSetup(accountId, { policyId: policy?.policyId ?? null, enableExecution, writerDeclared, actorId: viewer.userId, actorLogin: viewer.login, actorRole: role });
+        const standing = SETUP_BELONGS[role] === 'namespace'
+          ? `It is ${namespace.login}'s setting: it keeps applying after ${viewer.login} leaves or stops administering, until a current administrator or Account administrator changes it or turns it off.`
+          : `It acts for ${viewer.login} as Account administrator, on each new repository only while they are one and GitHub gives them write there.`;
+        const replaced = before && !(previous.actorId === viewer.userId && previous.actorRole === role) ? ` It replaces ${before}.` : '';
+        return done(role === 'owner' ? 'setup-saved' : 'setup-saved-yours', { ...place, what: `Chose automatic setup as ${SETUP_ROLES[role]}: ${[policy ? `link to ${policy.name}` : 'no policy', enableExecution ? 'enable labels and the check' : 'leave disabled'].join(', ')}; history and the pull-request message stay off`, result: 'applied', reason: `${standing}${replaced}` }, home);
       }
       case 'delegate-add': case 'delegate-remove': {
         const accountId = integer(form.get('namespace'));

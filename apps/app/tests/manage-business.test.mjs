@@ -17,6 +17,7 @@ import { effectiveConfiguration } from '../src/lib/manage/configuration.mjs';
 import { pathsSetBy, summarizePublication, readLinkedPolicy, applyRevision } from '../src/lib/manage/linked-policies.mjs';
 import { presentEvent, resultOfMessage, fmtWhen } from '../src/lib/manage/audit.mjs';
 import { delegationReaches, presentDelegations, LOGIN } from '../src/lib/manage/people.mjs';
+import { presentAutomaticSetup, SETUP_RULE } from '../src/lib/manage/setup.mjs';
 import { SESSION_COOKIE, openSession } from '../src/lib/routes.mjs';
 import { resolveViewer } from '../src/lib/viewer.mjs';
 import { ACCOUNTS } from '../qa/fixture.mjs';
@@ -67,6 +68,23 @@ test('the pure parts: a policy document is read with the engine, paths it sets a
   assert.equal(shown.when, '10 Oct 2026 14:02'); assert.equal(shown.who, 'automatic setup (chosen by ada-sample)'); assert.equal(shown.result, 'Applied');
   assert.equal(presentEvent({ at: 'x', actor: { kind: 'unknown' }, where: 'w', what: 'y', result: 'observed' }).who, 'unknown');
   assert.equal(fmtWhen(undefined), 'unknown');
+  // Whose a saved automatic setup is: an administrator's choice is the namespace's; an Account administrator's acts for them.
+  const owned = { policyId: null, enableExecution: true, writerDeclared: true, savedAt: '2026-10-01T09:00:00.000Z', actorId: 999, actorLogin: 'old-owner', actorRole: 'owner' };
+  let seen = presentAutomaticSetup(owned, { viewerId: 123, viewerRole: 'owner' });
+  assert.deepEqual([seen.belongs, seen.chosen, seen.change], ['namespace', 'Chosen by old-owner as administrator on GitHub', 'Change']);
+  assert.match(seen.standing, /the namespace's setting: it stays until a current administrator or Account administrator changes it/u);
+  assert.match(seen.saving, /^Saving makes this the namespace's setting/u);
+  seen = presentAutomaticSetup(owned, { viewerId: 123, viewerRole: 'account-admin' });
+  assert.equal(seen.change, 'Change (acts for you)', 'an Account administrator changing the namespace\'s setting makes it theirs, and the button says so');
+  assert.match(seen.saving, /^Saving makes this choice yours as Account administrator/u);
+  seen = presentAutomaticSetup({ ...owned, actorId: 456, actorLogin: 'kai-sample', actorRole: 'account-admin' }, { viewerId: 123, viewerRole: 'owner' });
+  assert.deepEqual([seen.belongs, seen.change], ['chooser', 'Choose it again for the namespace']);
+  assert.equal(presentAutomaticSetup({ ...owned, actorId: 456, actorLogin: 'kai-sample', actorRole: 'account-admin' }, { viewerId: 123, viewerRole: 'account-admin' }).change, 'Choose it again (acts for you)');
+  assert.equal(presentAutomaticSetup({ ...owned, actorId: 123, actorRole: 'account-admin' }, { viewerId: 123, viewerRole: 'account-admin' }).change, 'Change');
+  assert.match(seen.standing, /^It acts for them, only while they are Account administrator/u);
+  assert.equal(presentAutomaticSetup({ ...owned, actorId: 123 }, { viewerId: 123, viewerRole: 'owner' }).chosen, 'Chosen by you as administrator on GitHub');
+  assert.deepEqual([presentAutomaticSetup(null).on, presentAutomaticSetup(null).change], [false, 'Set up']);
+  assert.match(SETUP_RULE, /keeps applying after they leave or stop administering/u);
 });
 
 test('on Business a named policy is created by revision, linking applies it as the repository\'s App settings, and publishing keeps a result per repository that Retry attempts again', async () => {
@@ -158,17 +176,25 @@ test('on Business a named policy is created by revision, linking applies it as t
   await act(app, cookie, { action: 'policy-remove', policy: personal.params.get('policy'), back: '/manage/policies' });
 });
 
-test('automatic setup links the chosen policy, selects and enables a newly granted repository through the lifecycle path, never turns on history, and acts for its chooser only under the role they chose it as and the access GitHub gives that account now', async () => {
+test('automatic setup chosen by an administrator on GitHub is the namespace\'s setting: it outlives its chooser\'s departure, only a current coordinator changes it, and an Account administrator\'s choice acts for them only while delegated and able to write', async () => {
   const { app: compose, github } = await fixture();
-  // The App's own installation credential (a generated key; the GitHub double accepts any App JWT) reads the chooser's account and permission.
+  // The App's own installation credential (a generated key; the GitHub double accepts any App JWT) reads an Account administrator's account and permission.
   const app = compose(undefined, { env: { APP_COMMERCIAL_FIXTURE: BUSINESS, GITHUB_APP_ID: '4242', GITHUB_APP_PRIVATE_KEY: APP_KEY } });
   const { cookie } = await signIn(app);
-  const setupEvent = async repositoryId => (await app.manage.events({ accountIds: [7001], limit: 80 })).find(event => event.what === 'Automatic setup of a newly granted repository' && event.repositoryId === repositoryId);
+  const setupEvent = async repositoryId => (await app.manage.events({ accountIds: [7001], limit: 120 })).find(event => event.what === 'Automatic setup of a newly granted repository' && event.repositoryId === repositoryId);
+  const latest = async what => (await app.manage.events({ accountIds: [7001], limit: 120 })).find(event => what.test(event.what));
   const grant = async (...repositories) => {
     for (const [repositoryId, name] of repositories) github.state.extraRepositories.push({ repositoryId, installationId: 10, fullName: `parser-guild/${name}`, private: true, admin: false });
     await app.appStore.recordLifecycle({ installationId: 10, action: 'added', addedRepositories: repositories.map(([repositoryId]) => repositoryId), removedRepositories: [] });
   };
   const answer = (repositoryId, value, login = 'ada-sample') => github.state.collaborators.set(`${repositoryId}:${login}`, value);
+  const applied = async repositoryId => {
+    const [outcome] = await app.automaticSetup({ installationId: 10, repositoryIds: [repositoryId] });
+    assert.equal(outcome.state, 'applied', JSON.stringify(outcome));
+    const after = await app.appStore.repositoryAdmission(repositoryId);
+    assert.equal(after.state, 'active'); assert.equal(after.execution.origin, 'automatic-setup'); assert.equal(after.history.enabled, false, 'history is never turned on by setup');
+    return setupEvent(repositoryId);
+  };
   const held = async (repositoryId, pattern) => {
     const [outcome] = await app.automaticSetup({ installationId: 10, repositoryIds: [repositoryId] });
     assert.equal(outcome.state, 'held');
@@ -183,78 +209,102 @@ test('automatic setup links the chosen policy, selects and enables a newly grant
     const policyId = created.params.get('policy');
     assert.equal((await act(app, cookie, { action: 'setup-save', namespace: guild, policy: policyId, enable: 'on', back: '/manage/policies' })).message, 'writer-undeclared');
     assert.equal((await act(app, cookie, { action: 'setup-save', namespace: guild, policy: policyId, enable: 'on', writer: 'declared', back: '/manage/policies' })).message, 'setup-saved');
+    assert.match(MESSAGES['setup-saved'].text, /saved as the namespace's setting/u);
     let setup = await app.manage.automaticSetup(7001);
     assert.equal(setup.policyId, policyId); assert.equal(setup.enableExecution, true); assert.equal(setup.writerDeclared, true);
     assert.deepEqual([setup.actorId, setup.actorLogin, setup.actorRole], [123, 'ada-sample', 'owner'], 'the choice keeps who made it and as what');
-    // As the namespace's administrator on GitHub: GitHub's administration of grammar-fuzz sets it up. parser-lab runs already: it waits.
-    answer(1003, { permission: 'admin' });
+    assert.match((await latest(/^Chose automatic setup as administrator on GitHub/u)).reason, /It is parser-guild's setting: it keeps applying after ada-sample leaves or stops administering/u);
+    // The namespace's setting is applied under the App's own access, without asking GitHub about its chooser: no person's permission is read.
+    const tokens = github.state.installationTokens.length;
+    answer(1003, { permission: 'none' });
     let outcomes = await app.automaticSetup({ installationId: 10, repositoryIds: [1003, 1001] });
-    assert.deepEqual(outcomes.map(outcome => [outcome.repositoryId, outcome.state]), [[1003, 'applied'], [1001, 'skipped']]);
-    assert.deepEqual(github.state.installationTokens.at(-1), { installationId: 10, repositoryIds: [1003], permissions: { metadata: 'read' } }, 'the permission read uses a Metadata-read credential scoped to that repository');
+    assert.deepEqual(outcomes.map(outcome => [outcome.repositoryId, outcome.state]), [[1003, 'applied'], [1001, 'skipped']], 'parser-lab runs already: it waits');
+    assert.equal(github.state.installationTokens.length, tokens, 'no credential was minted to read the chooser');
     const after = await app.appStore.repositoryAdmission(1003);
-    assert.equal(after.state, 'active'); assert.equal(after.execution.reason, null); assert.equal(after.execution.origin, 'automatic-setup'); assert.equal(after.execution.actorId, 123);
-    assert.equal(after.writer.confidence, 'administrator-declared');
-    assert.equal(after.history.enabled, false, 'history is never turned on by setup');
+    assert.equal(after.execution.reason, null); assert.equal(after.execution.actorId, 123); assert.equal(after.writer.confidence, 'administrator-declared');
     assert.deepEqual(after.configuration.value.repository.scopes.generated.exclude, ['**/*.snap']);
     assert.equal((await app.manage.policyLink(1003)).policyId, policyId);
     assert.ok(await app.manage.selection(1003));
-    assert.match((await setupEvent(1003)).reason, /linked to Quarry \(revision 1\), selected, labels and the check enabled\. History and the pull-request message stay off/u);
+    let event = await setupEvent(1003);
+    assert.match(event.reason, /linked to Quarry \(revision 1\), selected, labels and the check enabled\. History and the pull-request message stay off until chosen\. It is the namespace's setting, chosen by ada-sample as administrator on GitHub on \d+ \w+ 2026\./u);
+    assert.deepEqual([event.actor.kind, event.actor.id, event.actor.login, event.detail.belongs, event.detail.chosenAs], ['automation', 123, 'ada-sample', 'namespace', 'owner']);
     assert.equal((await setupEvent(1001)).result, 'failed');
-    // Every answer short of the chooser's current authority holds the one repository, with its reason.
-    await grant([1101, 'quarry-a'], [1102, 'quarry-b']);
-    await held(1101, /GitHub does not confirm that ada-sample, who chose automatic setup, has access to this repository/u);
-    answer(1101, { status: 502 });
-    await held(1101, /GitHub could not be asked whether ada-sample, who chose automatic setup, may act on this repository \(E_GITHUB_REQUEST\)/u);
-    answer(1101, { permission: 'admin', id: 999 });
-    await held(1101, /names a different account than the one that chose automatic setup/u);
-    answer(1101, { permission: 'none' });
-    await held(1101, /GitHub gives them no access on this repository, not administration/u);
-    answer(1101, { permission: 'write' });
-    await held(1101, /chose automatic setup as an administrator of this namespace on GitHub, and GitHub gives them write on this repository, not administration/u);
-    // Renamed: the stable id finds the person under their new login, and the name people see follows.
-    github.state.logins.set(123, 'ada-renamed');
-    answer(1101, { permission: 'admin' }, 'ada-renamed');
-    // Recycled: someone else now holds the old login with administration; it is never asked about.
-    answer(1102, { permission: 'admin', id: 777 }, 'ada-sample');
-    outcomes = await app.automaticSetup({ installationId: 10, repositoryIds: [1101, 1102] });
-    assert.deepEqual(outcomes.map(outcome => [outcome.repositoryId, outcome.state]), [[1101, 'applied'], [1102, 'held']]);
-    assert.match((await setupEvent(1102)).reason, /GitHub does not confirm that ada-renamed, who chose automatic setup/u);
-    assert.equal((await app.manage.automaticSetup(7001)).actorLogin, 'ada-renamed');
-    // Gone: GitHub knows no account with that id.
-    github.state.logins.set(123, null);
-    await held(1102, /GitHub no longer knows the account of ada-renamed, who chose automatic setup\. Choose it again\./u);
-    github.state.logins.delete(123);
-    // The administration lapses on GitHub: chosen again as a named Account administrator, it needs the delegation and write.
+    // Its chooser leaves: demoted to member, without access to the new repository, even unknown to GitHub. The setting stays and still applies.
     github.state.roles.set('parser-guild', 'member');
     for (const repositoryId of [1001, 1002, 1003]) github.state.admin.set(repositoryId, false);
+    github.state.logins.set(123, null);
+    await grant([1101, 'quarry-a']);
+    event = await applied(1101);
+    assert.match(event.reason, /It is the namespace's setting, chosen by ada-sample/u);
+    github.state.logins.delete(123);
+    setup = await app.manage.automaticSetup(7001);
+    assert.deepEqual([setup.actorId, setup.actorLogin, setup.actorRole], [123, 'ada-sample', 'owner'], 'the departure leaves the setting and its provenance as they were');
+    // She can no longer change or turn it off: refused before the page notices (GitHub is asked again) and after, each refusal kept.
+    assert.equal((await act(app, cookie, { action: 'setup-save', namespace: guild, enable: 'on', writer: 'declared', back: '/manage/policies' })).message, 'not-coordinator');
+    assert.equal((await act(app, cookie, { action: 'setup-off', namespace: guild, back: '/manage/policies' })).message, 'not-coordinator');
+    app.cache.clear();
+    assert.equal((await act(app, cookie, { action: 'setup-off', namespace: guild, back: '/manage/policies' })).message, 'not-coordinator');
+    assert.deepEqual(await app.manage.automaticSetup(7001), setup, 'the refused changes left the namespace\'s setting untouched');
+    const refusals = (await app.manage.events({ accountIds: [7001], limit: 120 })).filter(entry => /^(Chose|Turned) automatic setup/u.test(entry.what) && entry.result === 'failed');
+    assert.ok(refusals.length >= 2 && refusals.every(entry => entry.actor.kind === 'person' && entry.actor.id === 123), 'each refused change is in the record');
+    // A current Account administrator may change it: it then acts for that person, and the record says what it replaced.
     await app.manage.grantDelegation({ accountId: 7001, userId: 123, login: 'ada-sample', role: 'account-admin', repositories: null, grantedBy: 999 });
     app.cache.clear();
-    assert.equal((await act(app, cookie, { action: 'setup-save', namespace: guild, policy: policyId, enable: 'on', writer: 'declared', back: '/manage/policies' })).message, 'setup-saved');
+    assert.equal((await act(app, cookie, { action: 'setup-save', namespace: guild, policy: policyId, enable: 'on', writer: 'declared', back: '/manage/policies' })).message, 'setup-saved-yours');
     setup = await app.manage.automaticSetup(7001);
     assert.deepEqual([setup.actorLogin, setup.actorRole], ['ada-sample', 'account-admin']);
-    await grant([1103, 'quarry-c'], [1104, 'quarry-d']);
-    answer(1103, { permission: 'write' }); answer(1104, { permission: 'read' });
-    outcomes = await app.automaticSetup({ installationId: 10, repositoryIds: [1103, 1104, 1001] });
-    assert.deepEqual(outcomes.map(outcome => [outcome.repositoryId, outcome.state]), [[1103, 'applied'], [1104, 'held'], [1001, 'skipped']], 'mixed: write applies, read holds, an operated repository waits');
-    assert.match((await setupEvent(1104)).reason, /GitHub gives ada-sample, who chose automatic setup as Account administrator, read access only on this repository, not write/u);
-    // Removed as Account administrator: the choice stops even where GitHub makes them administrator of the repository.
-    await app.manage.revokeDelegation(7001, 123);
-    answer(1104, { permission: 'admin' });
+    assert.match((await latest(/^Chose automatic setup as Account administrator/u)).reason, /It acts for ada-sample as Account administrator, on each new repository only while they are one and GitHub gives them write there\. It replaces the setting chosen by ada-sample as administrator on GitHub on/u);
+    // Person-bound: every answer short of the Account administrator's current write holds the one repository, with its reason.
+    await grant([1102, 'quarry-b'], [1103, 'quarry-c']);
+    github.state.collaborators.clear();
+    await held(1102, /GitHub does not confirm that ada-sample, who chose automatic setup, has access to this repository/u);
+    answer(1102, { status: 502 });
+    await held(1102, /GitHub could not be asked whether ada-sample, who chose automatic setup, may act on this repository \(E_GITHUB_REQUEST\)/u);
+    answer(1102, { permission: 'write', id: 999 });
+    await held(1102, /names a different account than the one that chose automatic setup/u);
+    answer(1102, { permission: 'read' });
+    event = await held(1102, /GitHub gives ada-sample, who chose automatic setup as Account administrator, read access only on this repository, not write/u);
+    assert.deepEqual([event.detail.held, event.detail.belongs], ['chooser-authority', 'chooser']);
+    // Renamed: the stable id finds the person under their new login, and the name people see follows. Recycled: the old login is never asked about.
+    github.state.logins.set(123, 'ada-renamed');
+    answer(1102, { permission: 'write' }, 'ada-renamed');
+    answer(1103, { permission: 'admin', id: 777 }, 'ada-sample');
+    outcomes = await app.automaticSetup({ installationId: 10, repositoryIds: [1102, 1103, 1001] });
+    assert.deepEqual(outcomes.map(outcome => [outcome.repositoryId, outcome.state]), [[1102, 'applied'], [1103, 'held'], [1001, 'skipped']], 'mixed: write applies, a recycled login holds, an operated repository waits');
+    assert.match((await setupEvent(1102)).reason, /It acts for ada-renamed as Account administrator, who can write here on GitHub\./u);
+    assert.equal((await app.manage.automaticSetup(7001)).actorLogin, 'ada-renamed');
+    github.state.logins.set(123, null);
+    await held(1103, /GitHub no longer knows the account of ada-renamed, who chose automatic setup\. Choose it again\./u);
+    github.state.logins.delete(123);
+    // Narrowed to Repository administrator, then removed: the choice stops even where GitHub makes them administrator of the repository.
+    answer(1103, { permission: 'admin' }, 'ada-renamed');
+    await app.manage.grantDelegation({ accountId: 7001, userId: 123, login: 'ada-sample', role: 'repository-admin', repositories: [1103], grantedBy: 999 });
     const before = github.state.installationTokens.length;
-    await held(1104, /ada-sample chose automatic setup as Account administrator and is no longer one here\. Choose it again\./u);
-    assert.equal(github.state.installationTokens.length, before, 'a removed Account administrator is held before GitHub is asked');
-    // A deployment without App credentials cannot ask GitHub, and holds rather than acting.
+    await held(1103, /chose automatic setup as Account administrator and is no longer one here\. Choose it again\./u);
+    await app.manage.revokeDelegation(7001, 123);
+    await held(1103, /chose automatic setup as Account administrator and is no longer one here\. Choose it again\./u);
+    assert.equal(github.state.installationTokens.length, before, 'a narrowed or removed Account administrator is held before GitHub is asked');
+    // A deployment without App credentials cannot ask GitHub, and holds the Account administrator's choice rather than acting.
     await app.manage.grantDelegation({ accountId: 7001, userId: 123, login: 'ada-sample', role: 'account-admin', repositories: null, grantedBy: 999 });
     const bare = compose(undefined, { env: { APP_COMMERCIAL_FIXTURE: BUSINESS } });
-    assert.equal((await bare.automaticSetup({ installationId: 10, repositoryIds: [1104] }))[0].state, 'held');
-    assert.match((await setupEvent(1104)).reason, /This deployment cannot ask GitHub whether ada-sample, who chose automatic setup, may act on this repository/u);
-    const events = (await app.manage.events({ accountIds: [7001], limit: 80 })).filter(event => event.what === 'Automatic setup of a newly granted repository');
-    assert.ok(events.every(event => event.actor.kind === 'automation' && event.actor.id === 123));
+    assert.equal((await bare.automaticSetup({ installationId: 10, repositoryIds: [1103] }))[0].state, 'held');
+    assert.match((await setupEvent(1103)).reason, /This deployment cannot ask GitHub whether ada-renamed, who chose automatic setup, may act on this repository/u);
+    await app.manage.revokeDelegation(7001, 123);
+    // Administration restored on GitHub: another administrator's earlier setting is changed by her, and turned off, each with what it replaced.
+    github.state.roles.delete('parser-guild'); github.state.admin.clear(); app.cache.clear();
+    await app.manage.saveAutomaticSetup(7001, { enableExecution: true, writerDeclared: true, actorId: 999, actorLogin: 'old-owner', actorRole: 'owner' });
+    assert.equal((await act(app, cookie, { action: 'setup-save', namespace: guild, policy: policyId, enable: 'on', writer: 'declared', back: '/manage/policies' })).message, 'setup-saved');
+    assert.match((await latest(/^Chose automatic setup as administrator on GitHub/u)).reason, /It replaces the setting chosen by old-owner as administrator on GitHub on/u);
+    assert.deepEqual([(await app.manage.automaticSetup(7001)).actorId, (await app.manage.automaticSetup(7001)).actorRole], [123, 'owner']);
     assert.equal((await act(app, cookie, { action: 'setup-off', namespace: guild, back: '/manage/policies' })).message, 'setup-off');
+    assert.match((await latest(/^Turned automatic setup off/u)).reason, /Turned off the setting chosen by ada-sample as administrator on GitHub on .*Newly granted repositories wait for a person\./u);
     assert.equal(await app.manage.automaticSetup(7001), null);
+    const events = (await app.manage.events({ accountIds: [7001], limit: 120 })).filter(entry => entry.what === 'Automatic setup of a newly granted repository');
+    assert.ok(events.every(entry => entry.actor.kind === 'automation' && entry.actor.id === 123));
     await act(app, cookie, { action: 'policy-remove', policy: policyId, back: '/manage/policies' });
   } finally {
     await app.manage.revokeDelegation(7001, 123);
+    await app.manage.removeAutomaticSetup(7001);
     github.state.collaborators.clear(); github.state.extraRepositories.length = 0; github.state.installationTokens.length = 0; github.state.logins.clear();
     github.state.roles.clear(); github.state.admin.clear(); app.cache.clear();
     // Restore the fixture's standing for the other cases.
@@ -286,7 +336,7 @@ test('a coordinator sees who automatic setup acts for and what it left waiting, 
     assert.deepEqual([scope.automaticSetup.actorLogin, scope.automaticSetup.actorRole, scope.automaticSetup.held.count], ['kai-sample', 'account-admin', 1]);
     assert.match(scope.automaticSetup.held.reason, /kai-sample chose automatic setup as Account administrator and is no longer one here/u);
     const item = loaded.attention.find(candidate => candidate.title === 'Automatic setup in parser-guild left a new repository waiting');
-    assert.ok(item && /It acts for kai-sample, and couldn't here/u.test(item.detail) && /Choose it again so it acts for you/u.test(item.detail) && item.href === '/manage/policies?ns=parser-guild#automatic-setup', JSON.stringify(item));
+    assert.ok(item && /It acts for kai-sample, and couldn't here/u.test(item.detail) && /Choose it again to make it the namespace's setting\./u.test(item.detail) && item.href === '/manage/policies?ns=parser-guild#automatic-setup', JSON.stringify(item));
     // ada-sample chooses it again: it acts for her, and what the earlier choice held no longer counts against it.
     clock.value = new Date(Date.parse(saved) + 120_000).toISOString();
     assert.equal((await act(app, cookie, { action: 'setup-save', namespace: guild, enable: 'on', writer: 'declared', back: '/manage/policies' })).message, 'setup-saved');
@@ -301,7 +351,7 @@ test('a coordinator sees who automatic setup acts for and what it left waiting, 
     await app.manage.grantDelegation({ accountId: 7002, userId: 123, login: 'ada-sample', role: 'account-admin', repositories: null, grantedBy: 999 });
     app.cache.clear();
     const northwindId = String(ACCOUNTS['northwind-tools']);
-    assert.equal((await act(app, cookie, { action: 'setup-save', namespace: northwindId, enable: 'on', writer: 'declared', back: '/manage/policies' })).message, 'setup-saved');
+    assert.equal((await act(app, cookie, { action: 'setup-save', namespace: northwindId, enable: 'on', writer: 'declared', back: '/manage/policies' })).message, 'setup-saved-yours');
     assert.equal((await app.manage.automaticSetup(7002)).actorRole, 'account-admin');
     assert.equal((await act(app, cookie, { action: 'delegate-add', namespace: northwindId, login: 'kai-sample', role: 'account-admin', back: '/manage/people' })).message, 'not-github-administrator');
   } finally {

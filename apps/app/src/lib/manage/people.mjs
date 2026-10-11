@@ -4,8 +4,9 @@
  * diffdevil administrators here. An Account administrator manages diffdevil across the namespace; a Repository
  * administrator manages the repositories named for them. Either one acts on a repository only while their own current
  * GitHub access to it includes write: the authorization service proves it at every action, and a delegate GitHub has
- * narrowed to read is refused there, never carried by the App's own access. Automatic setup acts for whoever chose it
- * and checks that same ceiling at each repository it sets up. Naming and removing people stay with the namespace's
+ * narrowed to read is refused there, never carried by the App's own access. Automatic setup an Account administrator
+ * chose acts for them and checks that same ceiling at each repository it sets up; one an administrator on GitHub chose
+ * is the namespace's setting. Naming and removing people stay with the namespace's
  * GitHub administrators. Funding a plan makes nobody an administrator, and a delegate never funds, changes the plan or
  * sees invoices.
  */
