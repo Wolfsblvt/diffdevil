@@ -384,10 +384,12 @@ export async function delegateManage(ctx) {
   check('a read-only delegate\'s change is refused with the write reason', /read access to this repository, not write/u.test(await page.evaluate(() => document.querySelector('.m-msg')?.textContent ?? '')));
   await go('/manage/people?ns=northwind-tools');
   const people = await page.evaluate(() => ({ you: document.querySelector('[data-people-you]')?.textContent ?? '', add: Boolean(document.querySelector('[data-people="administrators"] a[href*="add=1"]')), remove: Boolean(document.querySelector('input[value="delegate-remove"]')), owner: document.querySelector('[data-person="owner"]')?.textContent ?? '', ceiling: /Write access on GitHub is the ceiling/u.test(document.body.innerText), rule: /only while they can write to it on GitHub/u.test(document.body.innerText), ada: document.querySelector('[data-person="ada-sample"]')?.textContent ?? '' }));
-  check('People tells a read-only delegate they can manage nothing here and why, with no naming or removing', /GitHub gives you read access only here/u.test(people.you) && /stays with the GitHub administrators of northwind-tools/u.test(people.you) && !people.add && !people.remove && /GitHub administrator/u.test(people.owner) && people.ceiling && people.rule && /Account administrator/u.test(people.ada) && /GitHub gave them read access only to northwind-tools\/ci-recipes/u.test(people.ada), JSON.stringify(people));
+  if (ctx.premium) check('People tells a read-only delegate they can manage nothing here and why, with no naming or removing', /GitHub gives you read access only here/u.test(people.you) && /stays with the GitHub administrators of northwind-tools/u.test(people.you) && !people.add && !people.remove && /GitHub administrator/u.test(people.owner) && people.ceiling && people.rule && /Account administrator/u.test(people.ada) && /GitHub gave them read access only to northwind-tools\/ci-recipes/u.test(people.ada), JSON.stringify(people));
+  else check('Community names the absent People body and offers no delegation actions', !people.add && !people.remove && /not part of this build/u.test(await page.locator('body').innerText()));
   await shot('delegate-read-only-people');
   // An Account administrator chooses automatic setup for the namespace; it acts later only where GitHub still gives them write.
   await go('/manage/policies?ns=northwind-tools');
+  if (ctx.premium) {
   await page.click('[data-setup="northwind-tools"] a[href*="setup="]');
   await page.waitForLoadState('networkidle');
   await page.check('[data-setup-form="northwind-tools"] input[name="enable"]');
@@ -401,12 +403,14 @@ export async function delegateManage(ctx) {
   await page.click('[data-setup-form="northwind-tools"] input[value="setup-off"] ~ button');
   await page.waitForLoadState('networkidle');
   check('the Account administrator turns automatic setup off again', /Automatic setup is off/u.test(await page.evaluate(() => document.querySelector('.m-msg')?.textContent ?? '')));
+  } else check('Community names the absent Policies body and offers no setup form', /not part of this build/u.test(await page.locator('body').innerText()) && await page.locator('[data-setup-form]').count() === 0);
   // GitHub grants write: the same delegation manages ci-recipes, and People says why.
   github.state.push.delete(1006);
   await post({ action: 'dismiss-return', back: '/manage' });
   await go('/manage/people?ns=northwind-tools');
   const writable = await page.evaluate(() => document.querySelector('[data-people-you]')?.textContent ?? '');
-  check('with write on GitHub, People says the delegate can manage ci-recipes because they can write to it', /You can manage diffdevil on ci-recipes because you can write to that repository on GitHub/u.test(writable), writable);
+  if (ctx.premium) check('with write on GitHub, People says the delegate can manage ci-recipes because they can write to it', /You can manage diffdevil on ci-recipes because you can write to that repository on GitHub/u.test(writable), writable);
+  else check('Community keeps the absent People standing when GitHub grants write', /not part of this build/u.test(await page.locator('body').innerText()));
   await shot('delegate-write-people');
   const opened = await go('/manage/repositories/northwind-tools/ci-recipes');
   check('with write on GitHub, the delegate opens ci-recipes\' settings', opened.status() === 200);

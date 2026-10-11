@@ -40,6 +40,7 @@ const ORIGIN = `http://localhost:${APP_PORT}`;
 const PROBE = `http://127.0.0.1:${APP_PORT}`;
 const CONFIG = resolve('artifacts/app/dist/server/wrangler.json');
 const DENSE = process.env.DIFFDEVIL_APP_QA_DENSE === '1';
+const PARTICIPATION_ONLY = process.argv.includes('--participation');
 const STATE = resolve('artifacts/app/state');
 const DENSE_STATE = resolve('artifacts/app/state-dense');
 const chartTelemetry = [];
@@ -296,6 +297,7 @@ async function qualifyPages(label, { pro }) {
 }
 
 try {
+  if (!PARTICIPATION_ONLY) {
   // ── Pro pass: the viewer and their organisation are Pro through the Works stand-in, one shared namespace is Business ──
   await startWorker(undefined, STATE, { commercial: COMMERCIAL_PRO });
   const unauthenticated = await context.request.get(`${ORIGIN}/`, { maxRedirects: 0 });
@@ -487,6 +489,7 @@ try {
   await signIn();
   await delegateManage({ ...ctx, github });
   github.state.push.clear();
+  }
 
   // ── Participation pass: a beta participant, the survey and the reward against the stand-in ──
   await stopWorker();
@@ -504,7 +507,7 @@ try {
   await signIn();
   await participationJourney(ctx);
 
-  if (DENSE) {
+  if (DENSE && !PARTICIPATION_ONLY) {
     // ── dense pass: a scaled fixture, for the cloud's packing time and the dense charts ──
     await stopWorker();
     setScale(4);
@@ -541,8 +544,8 @@ try {
   githubServer.closeAllConnections?.();
   githubServer.close();
 }
-await writeFile(join(OUT, 'results.json'), JSON.stringify({ origin: ORIGIN, seeded: seeded.written, dense: DENSE, charts: chartTelemetry, results, failures, consoleErrors, pageErrors, external }, null, 2));
+await writeFile(join(OUT, 'results.json'), JSON.stringify({ origin: ORIGIN, scope: PARTICIPATION_ONLY ? 'participation' : 'full', seeded: seeded.written, dense: DENSE && !PARTICIPATION_ONLY, charts: chartTelemetry, results, failures, consoleErrors, pageErrors, external }, null, 2));
 await writeFile(join(OUT, 'worker.log'), workerLog);
-console.log(`${results.filter(result => result.ok).length} of ${results.length} checks passed; screenshots and results in ${OUT}`);
+console.log(`${PARTICIPATION_ONLY ? 'Participation: ' : ''}${results.filter(result => result.ok).length} of ${results.length} checks passed; screenshots and results in ${OUT}`);
 if (failures.length) { console.error(failures.map(failure => ` ✗ ${failure}`).join('\n')); process.exit(1); }
 process.exit(0);

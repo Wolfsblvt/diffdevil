@@ -4,7 +4,7 @@
  * Wirt projection protocol: exact-byte request signing, the bounded server-to-server client,
  * and the payload shapes diffdevil consumes. Wirt's adopted producer contract owns the grammar:
  * docs/commercial-projection-runtime.md and docs/commercial-projection.md at Wirt 04e253a8;
- * native beta_grants are the source candidate at 271c33f, pending producer/consumer acceptance.
+ * native beta_grants and commercial_timezone are candidate c33d5d9, pending producer/consumer acceptance.
  */
 
 export const WIRT_CLIENT = 'diffdevil';
@@ -140,7 +140,16 @@ function readBenefits(value) {
   }
   for (const grant of value.grants) shape(object(grant) && typeof grant.kind === 'string' && date(grant.until));
   const betaGrants = readProjectionBetaGrants(value);
-  return betaGrants === null ? value : { ...value, beta_grants: betaGrants };
+  return { ...value, ...(betaGrants === null ? {} : { beta_grants: betaGrants }),
+    ...(value.commercial_timezone === undefined ? {} : { commercial_timezone: readProjectionCommercialTimeZone(value) }) };
+}
+
+/** Native installation calendar; legacy, invalid and numeric-offset values establish no date basis. */
+export function readProjectionCommercialTimeZone(benefits) {
+  const timeZone = benefits?.commercial_timezone;
+  if (typeof timeZone !== 'string' || !timeZone || /^[+-]/u.test(timeZone)) return null;
+  try { new Intl.DateTimeFormat('en-CA', { timeZone }).format(0); return timeZone; }
+  catch { return null; }
 }
 
 /** Native beta facts: null is a legacy unknown; an empty array is an explicit absence. Private basis stays in Wirt. */

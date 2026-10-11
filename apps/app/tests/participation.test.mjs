@@ -15,7 +15,7 @@ import { D1AppStore } from '../../github-app/storage.mjs';
 import { createGitHubAppWorker } from '../../github-app/app.mjs';
 import { D1CommercialStore } from '../../github-app/commercial-storage.mjs';
 import { createCommercialService } from '../../github-app/commercial.mjs';
-import { createWirtClient, readSigningKeys, readWirtMessage, readProjectionBetaGrants } from '../../github-app/commercial-wirt.mjs';
+import { createWirtClient, readSigningKeys, readWirtMessage, readProjectionBetaGrants, readProjectionCommercialTimeZone } from '../../github-app/commercial-wirt.mjs';
 import { migrationNames } from '../qa/seed.mjs';
 import { readCampaign } from '../src/lib/participation/campaign.mjs';
 import { D1ParticipationStore } from '../src/lib/participation/store.mjs';
@@ -149,7 +149,7 @@ const session = id => `session-${id}`;
 const authorization = { authenticate: async value => ({ userId: Number(String(value).replace('session-', '')) }), observeOrganisationAuthority: async () => ({ authority: 'present', display: null }) };
 const protector = { seal: async value => JSON.stringify(value), open: async value => JSON.parse(value) };
 
-// Wire-shaped fixture of native producer 271c33f; no PHP or installed delivery is executed here.
+// Wire-shaped fixture of native producer c33d5d9; no PHP or installed delivery is executed here.
 function nativeBeta(started_on = '2027-02-20', until = '2027-03-20') {
   return { id: 265, kind: 'beta', product: 'diffdevil', tier: 'pro', promised_units: 30,
     original_window: { started_on, until }, access_windows: [{ started_on, until }], current_access: { started_on, until }, remaining_units: 9 };
@@ -158,7 +158,7 @@ function projection({ linkId, works, account, version, tier = 'pro', standing = 
   return readWirtMessage({ schema: 'wirt.benefit-projection/v1', client: 'diffdevil', stream: { works_account: works, link: { id: linkId, product_account: { github_user_id: account } } },
     account_lineage: [], order: { epoch: 1, version }, generated_at: clock.value, source_operation: null,
     commercial: { standing, tier, cadence: 'monthly', period: { started_on: '2027-02-20', ends_on: '2027-03-20' }, renewal_preference: 'manual', cancellation_intent: 'none', grace: null, ended: null, next_renewal: null },
-    benefits: { organisation_capacity: [], grants: [{ kind: 'beta', until: '2027-03-20' }], beta_grants: [nativeBeta()], protection: { kind: 'beta' }, ...(rewards === undefined ? {} : { participation_rewards: rewards }) }, pending: [], bindings_seen: [] });
+    benefits: { organisation_capacity: [], grants: [{ kind: 'beta', until: '2027-03-20' }], commercial_timezone: 'UTC', beta_grants: [nativeBeta()], protection: { kind: 'beta' }, ...(rewards === undefined ? {} : { participation_rewards: rewards }) }, pending: [], bindings_seen: [] });
 }
 async function link(account, works, { tier = 'pro' } = {}) {
   const linkId = `link-${account}`;
@@ -186,7 +186,7 @@ before(async () => {
   commercial = createCommercialService({ store: commercialStore, signing, authorization, protector, allowedOrigins: [APP], linkContinuationUrl: `${APP}/manage/plan`, now,
     wirt: createWirtClient({ origin: WIRT, oauthClientId: 'diffdevil-public-client', callbackUrl: `${APP}/integrations/wirt/link/callback`, signing, fetch: double.fetch, now: () => Date.parse(clock.value) }) });
   store = new D1ParticipationStore(db, { now });
-  participation = createParticipation({ store, commercial, campaign: CAMPAIGN, betaTimeZone: 'UTC', now });
+  participation = createParticipation({ store, commercial, campaign: CAMPAIGN, now });
 });
 after(async () => { await mf?.dispose(); });
 
@@ -495,15 +495,24 @@ test('native beta facts preserve actual disjoint access and ignore promise, queu
   const fact = { ...nativeBeta('2027-03-01', '2027-03-31'), access_windows: [{ started_on: '2027-03-01', until: '2027-03-03' }, { started_on: '2027-03-10', until: '2027-03-12' }], current_access: null, remaining_units: 0, private_basis: { actor: 999 } };
   const grants = readProjectionBetaGrants({ beta_grants: [fact] });
   assert.equal('private_basis' in grants[0], false);
-  const status = { linked: true, commercial: { tier: 'pro', standing: 'funded', period: { started_on: '2027-01-01', ends_on: '2027-12-31' } }, betaGrants: grants };
-  assert.deepEqual(betaAccessWindows(status, 'UTC'), [{ from: '2027-03-01', until: '2027-03-03' }, { from: '2027-03-10', until: '2027-03-12' }]);
-  assert.deepEqual(betaAccessWindows({ ...status, betaGrants: [{ ...grants[0], access_windows: [] }] }, 'UTC'), [], 'queued/unbegun time is not access');
-  assert.equal(betaAccessWindows({ ...status, betaGrants: null, grants: [{ kind: 'beta', started_on: '2027-01-01', until: '2027-12-31' }], linkedSince: '2020-01-01' }, 'UTC'), null, 'legacy/generic data remain unknown');
-  assert.equal(betaAccessWindows({ ...status, reconciling: true }, 'UTC'), null);
-  assert.equal(betaAccessWindows(status), null, 'native windows without an authoritative timezone remain unknown');
+  const status = { linked: true, commercial: { tier: 'pro', standing: 'funded', period: { started_on: '2027-01-01', ends_on: '2027-12-31' } }, betaGrants: grants, betaTimeZone: readProjectionCommercialTimeZone({ commercial_timezone: 'UTC' }) };
+  assert.deepEqual(betaAccessWindows(status), [{ from: '2027-03-01', until: '2027-03-03' }, { from: '2027-03-10', until: '2027-03-12' }]);
+  assert.deepEqual(betaAccessWindows({ ...status, betaGrants: [{ ...grants[0], access_windows: [] }] }), [], 'queued/unbegun time is not access');
+  assert.equal(betaAccessWindows({ ...status, betaGrants: null, grants: [{ kind: 'beta', started_on: '2027-01-01', until: '2027-12-31' }], linkedSince: '2020-01-01' }), null, 'legacy/generic data remain unknown');
+  assert.equal(betaAccessWindows({ ...status, reconciling: true }), null);
+  assert.equal(betaAccessWindows({ ...status, betaTimeZone: null }), null, 'native windows without an authoritative timezone remain unknown');
+  assert.equal(readProjectionCommercialTimeZone({ commercial_timezone: 'Europe/Berlin' }), 'Europe/Berlin');
+  assert.equal(readProjectionCommercialTimeZone({ commercial_timezone: 'America/Los_Angeles' }), 'America/Los_Angeles');
+  assert.equal(readProjectionCommercialTimeZone({ commercial_timezone: 'invalid-fixture-zone' }), null);
+  assert.equal(readProjectionCommercialTimeZone({ commercial_timezone: '+02:00' }), null);
+  assert.equal(readProjectionCommercialTimeZone({}), null);
   assert.equal(operationDate('2027-03-03T00:30:00+02:00', 'UTC'), '2027-03-02');
   assert.equal(operationDate('2027-03-02T23:30:00Z', 'Europe/Berlin'), '2027-03-03');
   assert.equal(operationDate('2027-03-28T22:30:00Z', 'Europe/Berlin'), '2027-03-29', 'the DST offset comes from the named timezone');
+  assert.equal(operationDate('2027-03-01T07:59:59Z', 'America/Los_Angeles'), '2027-02-28');
+  assert.equal(operationDate('2027-03-01T08:00:00Z', 'America/Los_Angeles'), '2027-03-01');
+  assert.equal(operationDate('2027-03-31T06:59:59Z', 'America/Los_Angeles'), '2027-03-30');
+  assert.equal(operationDate('2027-03-31T07:00:00Z', 'America/Los_Angeles'), '2027-03-31');
   assert.equal(operationDate('2027-03-03T00:30:00Z'), null);
   assert.equal(operationDate('2027-03-03T00:30:00Z', 'invalid-fixture-zone'), null);
   assert.throws(() => readProjectionBetaGrants({ beta_grants: [{ ...fact, remaining_units: -1 }] }));
@@ -528,7 +537,8 @@ test('maintenance preserves any qualifying finished operation before pruning wit
   const view = await participation.view({ userId: account, commercial: unknown });
   assert.equal(view.proactiveEligibility, 'unknown'); assert.equal(view.invitation, null); assert.equal(view.canAnswer, true);
   const withoutCalendar = createParticipation({ store, commercial, campaign: CAMPAIGN, now: () => clock.value });
-  const nativePending = await withoutCalendar.view({ userId: account, commercial: await standing(account) });
+  const legacyCalendar = await standing(account); legacyCalendar.status.betaTimeZone = null;
+  const nativePending = await withoutCalendar.view({ userId: account, commercial: legacyCalendar });
   assert.equal(nativePending.proactiveEligibility, 'unknown'); assert.equal(nativePending.invitation, null); assert.equal(nativePending.canAnswer, true);
 });
 
@@ -555,6 +565,34 @@ test('qualifying operation dates use any actual segment, with exclusive end and 
   const start = '2027-03-27T23:30:00Z';
   await db.prepare("INSERT INTO deliveries(delivery_id,installation_id,repository_id,state,received_at,completed_at) VALUES ('beta-local-start',703,703,'complete',?,?)").bind(start,start).run();
   assert.equal(await store.qualifyingUse(user, dstWindow, 'Europe/Berlin'), start, 'a UTC timestamp on the preceding date can be inside the actual commercial window');
+});
+
+test('the applied native calendar drives maintenance and invitations; legacy or invalid companions stay unknown with manual access', async () => {
+  const user = 704;
+  clock.value = '2027-03-12T00:00:00Z';
+  await link(user, 'works-74');
+  const message = projection({ linkId: 'link-704', works: 'works-74', account: user, version: 2 });
+  message.projection.benefits.commercial_timezone = 'Europe/Berlin';
+  message.projection.benefits.beta_grants = [nativeBeta('2027-03-01', '2027-03-31')];
+  await commercial.applyMessage(message);
+  assert.equal((await standing(user)).status.betaTimeZone, 'Europe/Berlin');
+  await db.prepare("INSERT INTO installations (installation_id,state,updated_at,account_id) VALUES (704,'active',?,?)").bind(clock.value,user).run();
+  await db.prepare("INSERT INTO repositories (repository_id,installation_id,state,updated_at) VALUES (704,704,'enabled',?)").bind(clock.value).run();
+  const before = '2027-02-28T22:59:59Z', start = '2027-02-28T23:00:00Z';
+  await db.prepare("INSERT INTO deliveries(delivery_id,installation_id,repository_id,state,received_at,completed_at) VALUES ('calendar-before',704,704,'complete',?,?)").bind(before,before).run();
+  await participation.preserveUse(); assert.equal(await store.prompt(user,CAMPAIGN), null);
+  await db.prepare("INSERT INTO deliveries(delivery_id,installation_id,repository_id,state,received_at,completed_at) VALUES ('calendar-start',704,704,'repair',?,?)").bind(start,start).run();
+  await participation.preserveUse(); assert.equal((await store.prompt(user,CAMPAIGN)).useObservedAt,start);
+  assert.equal((await participation.view({ userId: user, commercial: await standing(user) })).invitation, 'invite');
+  for (const timeZone of [undefined, 'invalid-fixture-zone']) {
+    message.order.version++;
+    message.projection.order.version = message.order.version;
+    if (timeZone === undefined) delete message.projection.benefits.commercial_timezone;
+    else message.projection.benefits.commercial_timezone = timeZone;
+    await commercial.applyMessage(readWirtMessage(message.projection));
+    const view = await participation.view({ userId: user, commercial: await standing(user) });
+    assert.equal(view.proactiveEligibility, 'unknown'); assert.equal(view.invitation, null); assert.equal(view.canAnswer, true);
+  }
 });
 
 test('the invitation waits for observed use (failed included), keeps that observation past ledger pruning, appears once, reminds once, then never', async () => {

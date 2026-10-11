@@ -2,7 +2,7 @@
 
 import { protectedHeaders, validOrigin } from './authorization.mjs';
 import { D1CommercialStore } from './commercial-storage.mjs';
-import { WIRT_CLIENT, WIRT_NONCE_MS, createWirtClient, parseJsonBytes, readBoundedBody, readExactHttpsUrl, readProjectionBetaGrants, readProjectionRewards, readSigningKeys, readWirtMessage, sha256Hex, verifySignedMessage } from './commercial-wirt.mjs';
+import { WIRT_CLIENT, WIRT_NONCE_MS, createWirtClient, parseJsonBytes, readBoundedBody, readExactHttpsUrl, readProjectionBetaGrants, readProjectionCommercialTimeZone, readProjectionRewards, readSigningKeys, readWirtMessage, sha256Hex, verifySignedMessage } from './commercial-wirt.mjs';
 
 export const COMMERCIAL_LINK_COOKIE = '__Host-diffdevil-works-link';
 const ATTEMPT_MS = 10 * 60_000;
@@ -571,6 +571,7 @@ export function createCommercialService({ store, wirt, signing, authorization, p
         // Display-only benefit facts the designed Plan & funding page names: grants and price protection, as Wirt sent them.
         grants: projection?.benefits?.grants ?? [], protection: projection?.benefits?.protection ?? null, linkedSince: link.established_at,
         betaGrants: readProjectionBetaGrants(projection?.benefits),
+        betaTimeZone: readProjectionCommercialTimeZone(projection?.benefits),
         // Wirt's participation reward facts from the applied projection: `null` when this projection carries none.
         participationRewards: readProjectionRewards(projection?.benefits),
         capacity: (projection?.benefits.organisation_capacity ?? []).map(value => {
