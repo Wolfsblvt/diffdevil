@@ -107,6 +107,14 @@ Community/private composition are qualified separately by the activation operato
 The exact configuration selects `GITHUB_APP_BOT_LOGIN` (the standalone runtime's
 existing default is `diffdevil[bot]`); configure the actual registered bot.
 
+A manifest-capture caller can supply the five matching GitHub values through
+`installCredentials({ readGitHubInputs, ... })` instead of creating plaintext
+credential files. The callback runs after the durable checkpoint; its App/client
+IDs must match the selected IDs. That caller also passes `baseVersionId` and
+either `sealKeyInitial` or `sealKeyPreviousReceiptPath`, plus the same retained
+seal/Wirt file or named-environment inputs. Capture and installation receipts
+remain separate recovery artifacts.
+
 Ordinary interactive use requests the webhook secret through a hidden TTY
 checkpoint after preflight and the durable receipt commit. Alternatively,
 `--webhook-secret-file` consumes an opaque operator-controlled file;
