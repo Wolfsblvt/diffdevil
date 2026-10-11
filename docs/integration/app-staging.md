@@ -37,7 +37,9 @@ is not a second staging backend to deploy beside it.
 
 The reserved `.invalid` App/Wirt origins, `staging-client-registration-required`,
 `staging-bot-login-required[bot]` and D1 UUID ending `0001` are unresolved operator
-inputs, not provider IDs. No route is committed and `workers_dev` is disabled.
+inputs, not provider IDs. No route is committed; `workers_dev` and `preview_urls`
+are explicitly disabled. Their source values do not prove the provider's current
+exposure settings.
 Production configuration and its existing TEST client are unchanged. Do not copy production D1 or its protected
 values into staging. Stage GitHub ingress/installation identity, OAuth client,
 seal and Wirt signing material must belong to the staging registrations, rather
@@ -114,8 +116,17 @@ its actual credential/data assignment. Source acceptance is not activation.
    migration inventory as production applies to a fresh staging D1. Applying
    those migrations remotely, copying retained TEST state, or migrating the
    production database is not a build step.
-4. Supply staging-only protected inputs through the existing mediated secret
-   route: `GITHUB_WEBHOOK_SECRET`, `GITHUB_APP_ID`, `GITHUB_APP_PRIVATE_KEY`,
+   The credential helper requires an existing deployment/version to preserve.
+   For a new Worker, bootstrap the exact admitted build under that separate
+   resource/deployment grant, with no route/custom domain, `workers_dev:false`
+   and `preview_urls:false`; do not attach the Home yet. The non-secret command is
+   `node tools/run-wrangler.mjs deploy --config artifacts/app-staging/dist/server/wrangler.json`.
+   Inspect that generated configuration before the command and read back the
+   actual lack of exposure using the contract below. A bootstrapped Worker with
+   missing credentials is not an operational App.
+4. Supply staging-only protected inputs through the maintained
+   [protected-input operation](#protected-input-operation):
+   `GITHUB_WEBHOOK_SECRET`, `GITHUB_APP_ID`, `GITHUB_APP_PRIVATE_KEY`,
    `GITHUB_OAUTH_CLIENT_ID`, `GITHUB_OAUTH_CLIENT_SECRET`, `APP_SEAL_KEY` and
    `WIRT_SIGNING_KEY_CURRENT` (plus a previous key only for an actual rotation).
    The staging App's exact bot login is a required non-secret registration input:
@@ -141,9 +152,15 @@ its actual credential/data assignment. Source acceptance is not activation.
    [campaign shape](../../apps/app/src/lib/participation/campaign.mjs); there is
    no default cohort, launch window or reward. Without the campaign and an
    admitted Wirt consumer, staging has no survey/invitation/reward section.
-6. Dry-run the admitted build with the native route, then deploy only that exact
-   generated configuration under the separate activation grant:
-   `node tools/run-wrangler.mjs deploy --config artifacts/app-staging/dist/server/wrangler.json`.
+6. Dry-run the admitted build with the native route:
+   `node tools/run-wrangler.mjs deploy --dry-run --config artifacts/app-staging/dist/server/wrangler.json`.
+   Under the separate activation grant, activate the exact credential version
+   returned by the protected operation, which inherits the qualified bootstrap
+   build. Use the version activation invocation below. Do not select an implicit
+   latest version or substitute an older production artifact. Attach only the
+   admitted staging Home through its qualified provider route after the protected
+   version/schema are ready, preserving the source exposure settings and the
+   exposure readback below.
    Read back Worker version, origin, D1 ID/schema, both Queues, and non-secret
    registration/callback facts. Exercise a staged reader/admin sign-in, all six
    destinations, Manage, and an admitted signed callback/projection/application
@@ -163,6 +180,133 @@ its actual credential/data assignment. Source acceptance is not activation.
 The activation owner also resolves actual recurring Worker/D1/Queue cost and
 retained TEST-data recovery before admitting those effects. The source adds no
 spend, paid-plan selection, production migration or automatic publication.
+
+## Protected-input operation
+
+Use the pinned root dependencies and a real operational generated configuration
+after step 3. All strings below are non-secret specimens. The operator replaces
+IDs and opaque file/custody references from the admitted registration and custody
+handback; these are not requests for Wolf to paste raw values into a conversation.
+The files remain under their custodian's access controls, outside the repository.
+GitHub's OAuth client ID and client secret belong to the same selected GitHub App.
+Wirt's current signing file comes from the admitted staging counterpart.
+
+For a separately admitted public staging App, registration preparation can use
+the following non-secret specimen after replacing its name and origin. It emits
+inputs and a registration URL; it opens no browser and creates no registration.
+Visibility, organisation/actor reach and installation admission remain the
+operator's separately settled choices.
+
+```powershell
+node apps/github-app/operator-helper.mjs registration --app-name diffdevil-staging --visibility public --webhook-url https://admitted-staging.example/webhooks/github --oauth-callback-url https://admitted-staging.example/auth/callback --policy-refresh
+if ($LASTEXITCODE -ne 0) { throw 'Staging registration preparation refused.' }
+```
+
+```powershell
+$stagingConfig = 'artifacts/app-staging/dist/server/wrangler.json'
+$credentialReceipt = 'artifacts/verification/staging-credential-install.json'
+New-Item -ItemType Directory -Path 'artifacts/verification' -Force | Out-Null
+$credentialArguments = @(
+    '--worker', 'diffdevil-app-staging',
+    '--account-id', 'admitted-account-id',
+    '--config', $stagingConfig,
+    '--receipt-file', $credentialReceipt,
+    '--app-id', '123',
+    '--private-key-file', 'C:\operator-custody\staging-app.pem',
+    '--webhook-secret-file', 'C:\operator-custody\staging-webhook.txt',
+    '--oauth-client-id', 'admitted-staging-github-client-id',
+    '--oauth-client-secret-file', 'C:\operator-custody\staging-github-oauth.txt',
+    '--seal-key-file', 'C:\operator-custody\staging-seal.txt',
+    '--seal-key-recovery-ref', 'admitted-staging-seal-custody',
+    '--wirt-signing-key-file', 'C:\operator-custody\staging-wirt-current.txt'
+)
+node apps/github-app/operator-helper.mjs check @credentialArguments
+if ($LASTEXITCODE -ne 0) { throw 'Staging credential preflight refused.' }
+node apps/github-app/operator-helper.mjs install @credentialArguments
+if ($LASTEXITCODE -ne 0) { throw 'Retain the receipt and reconcile; do not repeat installation.' }
+```
+
+`check` uses the install parser, exact-target provider readback, protected-file
+metadata and same-directory receipt commit probe, but does not read protected
+contents. Install exclusively creates and flushes the non-secret receipt before
+reading contents. It validates the RSA key, single-line webhook/OAuth secret,
+seal key of at least 16 characters and the existing Wirt UTF-8 signing contract.
+All seven values go to one contained native stdin bulk write. Native output is
+not forwarded, disk logs/telemetry are disabled, and no temporary secret carrier
+exists to clean up. Operator-owned input files remain intact. Preflight reads
+back the latest uploaded version's `APP_DB` against the selected configuration;
+the credential version inherits that latest version, rather than necessarily the
+active deployment. Keep this one Worker under the installing operator's writer
+custody until reconciliation, and qualify the returned version's actual source,
+engine and composition before activation. Do not upload another build between
+the qualified bootstrap and this operation.
+
+The seal key must be **generated once and retained before installation**, not
+generated in a transient install process. The opaque recovery reference names
+the operator's admitted recoverable custody record for that exact key; record
+its custodian, retrieval route and relevant failure boundary in the actual
+protected-input handback. A filename or this reference alone does not prove that
+custody exists. The activation operator owes its custody/retrieval qualification
+before admitting protected installation. Cloudflare's write-only secret slot is
+not a recoverable copy. Keep this dependency with the whole-D1 recovery unit:
+reusing the original key can open restored authorizations and preserve opaque
+file locators; replacing it with a new key cannot. Local tests reconstruct the
+protector from a retained synthetic copy, not a real external key store.
+
+For an interrupted or incomplete install, reuse the exact unchanged config and
+existing receipt, with no credential input flags:
+
+```powershell
+node apps/github-app/operator-helper.mjs resume --worker diffdevil-app-staging --account-id admitted-account-id --config artifacts/app-staging/dist/server/wrangler.json --receipt-file artifacts/verification/staging-credential-install.json
+if ($LASTEXITCODE -ne 0) { throw 'The receipt remains unresolved; retain it for exact-target reconciliation.' }
+```
+
+Resume performs provider reads only. It refuses absent/unusable or
+different-config/account/Worker/database receipts and never repeats the write.
+An accepted write with a later readback failure can recover its version identity;
+a lost write acknowledgement remains partial. A final receipt commit failure
+leaves the earlier flushed ambiguity marker recoverable. Only `version-created`
+with `command: accepted`, version identity and required secret-binding-name
+readback, plus an unchanged active deployment, is a source-helper success. That
+receipt is not secret-value verification, a deployed version, external custody
+proof or an active App journey.
+
+After the bootstrap's actual source/engine/composition and the returned version
+are qualified, the **separate admitted activation** can use this non-secret
+version-specific invocation. It is shown for the delivery operator; the helper
+never runs it:
+
+```powershell
+$prepared = Get-Content -LiteralPath $credentialReceipt -Raw | ConvertFrom-Json
+if ($prepared.mode -ne 'provider' -or $prepared.state -ne 'version-created' -or $prepared.worker -ne 'diffdevil-app-staging') { throw 'No qualified staging credential version.' }
+node node_modules/wrangler/bin/wrangler.js versions deploy "$($prepared.version.id)@100%" --name diffdevil-app-staging --config $stagingConfig --yes
+if ($LASTEXITCODE -ne 0) { throw 'Read back actual deployment before another activation attempt.' }
+```
+
+Use current provider deployment readback to establish the actual active version;
+the activation command's exit alone does not establish it. Ordinary production
+uses the same input/receipt route with its own exact config, Worker and custody.
+The standalone backend still accepts its three inputs; Community sign-in without
+Wirt requires six and does not acquire an unused commercial credential.
+
+## Exposure configuration and readback
+
+Both source and generated staging config must retain `workers_dev:false` and
+`preview_urls:false`. [Wrangler's configuration contract](https://developers.cloudflare.com/workers/wrangler/configuration/)
+states that omitting `preview_urls` can preserve an existing provider setting;
+source omission or a successful deploy is not evidence of disabled previews.
+Before credentials, the bootstrap has no custom domain or route. Before and
+after Home activation, the admitted operator uses the existing authenticated
+Cloudflare API route to read
+[`GET /accounts/{account_id}/workers/scripts/{script_name}/subdomain`](https://developers.cloudflare.com/api/resources/workers/subresources/scripts/subresources/subdomain/methods/get/):
+require `enabled:false` and `previews_enabled:false` for this exact staging
+account/script. Separately read back its routes/custom domains: none at bootstrap,
+then exactly the admitted staging Home. Record account/script, response booleans,
+observed domains/routes and the active version as non-secret facts.
+
+Source flags, provider metadata and an actual HTTPS request prove different
+boundaries. The retained live admission still owes that readback and actual
+canonical-host TLS/routing/App behavior; no provider observation is claimed here.
 
 ## Recovery and retained TEST state
 
