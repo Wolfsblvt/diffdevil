@@ -20,8 +20,9 @@ import { appBuildTarget } from '../build-target.mjs';
 
 /** Every migration of the managed App, in order: the App reads the same schema the webhook runtime writes. */
 export async function migrationNames() { return (await readdir(resolve('apps/github-app/migrations'))).filter(name => name.endsWith('.sql')).sort(); }
-const TABLES = ['installations', 'repositories', 'history_records', 'history_file_rows', 'history_effect_rows', 'analytical_pull_requests', 'analytical_file_sizes'];
-const CLEARED = ["participation_previews","history_jobs","repository_default_adoptions","administrative_events","delegations","automatic_setup","policy_publication_results","policy_publications","policy_links","linked_policies","repository_selections","free_connections","works_departures","plan_change_choices","namespace_defaults","user_service_connections","analytical_file_sizes","analytical_pull_requests","commercial_reports","commercial_refusals","commercial_bindings","commercial_links","commercial_link_attempts","commercial_nonces","history_effect_rows","history_file_rows","history_records","browser_sessions","authorization_artifacts","authorization_attempts","user_authorizations","operational_results","execution_leases","deliveries","repairs","repositories","installations","participation_deliveries","participation_responses","participation_prompts"];
+const TABLES = ['installations', 'repositories', 'history_records', 'history_file_rows', 'history_effect_rows', 'analytical_pull_requests',
+  'analytical_size_facts', 'analytical_size_observations'];
+const CLEARED = ["participation_previews","history_jobs","repository_default_adoptions","administrative_events","delegations","automatic_setup","policy_publication_results","policy_publications","policy_links","linked_policies","repository_selections","free_connections","works_departures","plan_change_choices","namespace_defaults","user_service_connections","analytical_size_observations","analytical_size_facts","analytical_pull_requests","commercial_reports","commercial_refusals","commercial_bindings","commercial_links","commercial_link_attempts","commercial_nonces","history_effect_rows","history_file_rows","history_records","browser_sessions","authorization_artifacts","authorization_attempts","user_authorizations","operational_results","execution_leases","deliveries","repairs","repositories","installations","participation_deliveries","participation_responses","participation_prompts"];
 const target = appBuildTarget();
 const CONFIG = resolve('apps/app', target.configPath);
 
@@ -49,7 +50,7 @@ export async function fixtureSql() {
     const written = await seedStore(appStore, clock);
     const statements = CLEARED.map(table => `DELETE FROM ${table};`);
     for (const table of TABLES) {
-      const rows = (await database.prepare(`SELECT * FROM ${table}`).all()).results ?? [];
+      const rows = (await database.prepare(`SELECT ${table === 'analytical_size_observations' ? 'rowid,' : ''}* FROM ${table}`).all()).results ?? [];
       if (rows.length === 0) continue;
       const columns = Object.keys(rows[0]);
       // Analytical records carry whole numeric reports; D1 caps one statement at 100 KB, so chunk by bytes, not rows.

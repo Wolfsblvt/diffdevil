@@ -168,8 +168,17 @@ creation/deletion itself establishes absence. Binary sizes remain unavailable.
 `D1AppStore.recordAnalytical` atomically publishes one allowlisted version-1 PR record.
 Development revisions are keyed by base/head; a separate `final` requires a direct
 `final-merged-comparison`. `recordAnalyticalSize` stores independent default-branch
-size observations. Migration `0009_analytical_app.sql` keeps both in separate tables,
-under current opt-in consent, expiry, deletion tombstones and offboarding cleanup.
+size observations. Migration `0009_analytical_app.sql` introduced the separate
+numerical history; `0016_shared_size_observations.sql` shares identical bounded
+sets of path/size facts while retaining a marker for **every** original observation
+time, immutable revision and expiry. The sharing applies across unchanged captures
+and across revisions with the same facts. Native SQLite JSON queries choose
+nearest per-path boundary anchors inside D1, without transferring older shared
+snapshots to the Worker or keeping a duplicate membership store. They seek the
+nearest marker per shared set, expand candidate paths inside D1 and choose each
+path's nearest time. It is physical normalization, not
+coalescing observations or inferring file continuity. All remain under current
+opt-in consent, expiry, deletion tombstones and offboarding cleanup.
 This new analytical path keeps collection independent of execution consent while
 requiring current history consent and installation/repository access.
 This does not relabel `history_records` or reinterpret pathless rows as named files.
@@ -195,14 +204,53 @@ Creation or deletion in the period is unavailable with that reason. The collecto
 supplies before/after merge sizes; each published record then enqueues a capture of the
 default branch's known text files through `captureDefaultBranchSizes`, which runs in
 queue parts after basic operation. The first part pins the branch revision and its start;
-each part reads, in chunks of 100, the known paths still lacking an observation at that
-revision since the start, checks the branch again before publishing each chunk and
+each part reads, in groups of at most 100, the known paths still lacking an observation at that
+revision for this capture, checks the branch again before publishing each chunk and
 refuses a moved revision, and continues the rest in the next part. A size already
 retained at the same immutable revision is reused rather than read again. A moved branch
 or an unavailable read ends the capture with the PR's analytical repair; sizes already
 published remain true observations. Retained snapshots before, inside or after a selected
 period can anchor it; continuity comes from observed transitions, never interpolation
-from churn.
+from churn. Sorted groups end at deterministic path-hash boundaries (about one in
+50 paths) or the 100-path cap. An added path changes nearby groups without shifting
+every later group; changes before a cap can propagate until the next path boundary.
+Resume uses boundaries from the full inventory before removing completed paths.
+The invocation retains its previous per-path processing allowance
+alongside actual D1 accounting: fewer writes do not silently increase one part's
+provider or CPU work. Parts still continue without truncation.
+
+`analyticalSizesAt` preserves its complete logical observation result by default.
+Capture requests `{ latest: true }`, which uses a revision-led index and supplies
+the latest retained marker per path for both immutable-size reuse and continuation.
+Capture also supplies its `captureSince` pin: physical marker metadata identifies
+the paths completed by that capture, so an overlapping capture cannot silently
+complete its neighbour. This metadata does not change the path/time/revision
+first-writer identity or the version-1 numerical export. Actual observation times
+still reflect the capture, rather than being backdated to the pin.
+`analyticalSizes` returns every observation in the window and the nearest retained
+anchors before/after it, including equal-time observations at distinct revisions.
+It pages indexed window markers, fetches each of their shared fact sets once, and
+asks D1 for scalar nearest-anchor rows through native JSON queries. Older
+snapshots are not decoded in the Worker to select these anchors. It reconstructs the
+same array consumed by Turnover and the premium `sizeHistory`; no intermediate
+timestamp is discarded. Its logical response and Worker memory still grow with
+the requested logical window plus its anchors. D1 still parses retained candidate
+facts to choose those anchors; database work is not bounded by window length and
+reported D1 row reads can be higher than the old Worker-side anchor selection. Sharing reduces
+repeated facts and their transfer, not the size of the selected analytical response
+or every individual database operation. Arbitrarily large responses are not
+claimed to fit a Worker.
+
+Writes retain the first observation at a path/time/revision identity, including
+overlapping captures; an atomic batch refuses an overlap that raced its initial
+read and retries the remaining paths with a refreshed clock. Overlap checks use
+native JSON selection rather than decoding all captures at that timestamp in
+the Worker. Consent and tombstones guard facts and the marker in the same batch. Expiry is immediate on reads. Physical expiry
+drains indexed queries of at most 1,000 markers each, removing a fact set only
+after its last marker is gone. Deletion/offboarding remove both physical
+representations. The browser-QA seed dumps and clears these physical tables,
+preserving marker order;
+it never writes the logical view.
 
 A window ending now always outlives the latest capture. The premium extension's
 server-owned current-size observer closes that tail at the read encounter, with no scheduler.
@@ -252,6 +300,16 @@ coverage exposes a possible count range instead of hiding missing comparisons.
 version-1 named numerical export. Original expiry survives restore, current consent
 and tombstones still govern import, and import triggers no provider effects. These
 are protected operator-store methods; no public export endpoint is opened here.
+The version-1 export still expands every exact observation; import restores shared
+timestamps in bounded sets, obeys the original expiry and retains the first-writer
+identity. The `analytical_file_sizes` SQL view preserves the logical diagnostic
+projection. It is not a writable legacy table.
+
+Migration 0016 preserves already retained rows, including unknown/zero sizes and
+their original expiry, by sharing their bounded fact sets before dropping the old
+physical table. Old collectors cannot write that view. Operator rollout must stop
+old writers and apply the schema together with this runtime; no mixed-writer
+compatibility, deployed migration, reset or accepted data loss is claimed here.
 
 ## Qualification and remaining adoption
 
@@ -260,6 +318,13 @@ read-only collection against a provider double, disposable D1 publication/expiry
 deletion and the Worker HTTP entry. The authorization suite exercises the actual
 session/OAuth service with a provider double and ordinary-reader denial/revocation.
 This is local source/consumer evidence, not live GitHub, deployed D1 or real-user proof.
+
+`node --test apps/github-app/analytical-size-storage.test.mjs` compares the actual
+old/new D1 window queries and Turnover, checks retained-row migration, full export,
+duplicate identity, capture reuse and multi-batch expiry. The existing capture
+invocation suite exercises actual queued collection and recalculation with D1's
+query ceiling. The storage tests use authored numerical populations; they are not
+a forecast of service capacity or charges.
 
 The current base supplies the accepted pathless foundation and revised
 privacy/final-merged contracts. Remaining adoption work is to select the real

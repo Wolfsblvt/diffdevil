@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
 import { normalizeHistoryLens } from './history-analytics.mjs';
 import { normalizeAnalyticalRecord } from './analytical-data.mjs';
+import { expireSizes, publishSizeSet, sizesAt, sizesIn } from './analytical-size-storage.mjs';
+import { sizeCaptureGroups } from './size-capture-groups.mjs';
 
 const DAY = 86_400_000;
 const leaseExpiry = (now, durationMs) => new Date(Date.parse(now) + durationMs).toISOString();
@@ -340,7 +342,8 @@ export class D1AppStore {
   async removeHistoryRecords(repositoryId) {
     await this.database.batch([
       this.statement('DELETE FROM analytical_pull_requests WHERE repository_id=?', repositoryId),
-      this.statement('DELETE FROM analytical_file_sizes WHERE repository_id=?', repositoryId)
+      this.statement('DELETE FROM analytical_size_observations WHERE repository_id=?', repositoryId),
+      this.statement('DELETE FROM analytical_size_facts WHERE repository_id=?', repositoryId)
     ]);
     const records = await this.statement('SELECT id FROM history_records WHERE repository_id=?', repositoryId).all();
     const statements = (records.results ?? []).flatMap(row => [
@@ -406,10 +409,12 @@ export class D1AppStore {
 
   async maintain() {
     const now = this.now(), recoveryCutoff = new Date(Date.parse(now) - 7 * DAY).toISOString(), graceCutoff = new Date(Date.parse(now) - 30 * DAY).toISOString();
-    await this.database.batch([
-      this.statement('DELETE FROM analytical_pull_requests WHERE expires_at IS NOT NULL AND expires_at<=?', now),
-      this.statement('DELETE FROM analytical_file_sizes WHERE expires_at IS NOT NULL AND expires_at<=?', now)
-    ]);
+    let expiredAnalytical;
+    do {
+      expiredAnalytical = await this.statement(`DELETE FROM analytical_pull_requests WHERE rowid IN
+        (SELECT rowid FROM analytical_pull_requests WHERE expires_at IS NOT NULL AND expires_at<=? ORDER BY expires_at LIMIT 1000)`, now).run();
+    } while (expiredAnalytical.meta?.changes === 1000);
+    await expireSizes(this, now);
     const expired = await this.statement('SELECT id FROM history_records WHERE expires_at IS NOT NULL AND expires_at <= ?', now).all();
     const offboarding = await this.statement("SELECT repository_id, execution_consent_reason, history_consent_reason FROM repositories WHERE state='offboarding' AND updated_at <= ?", graceCutoff).all();
     const expiryStatements = (expired.results ?? []).flatMap(row => [this.statement('DELETE FROM history_file_rows WHERE history_id=?', row.id), this.statement('DELETE FROM history_effect_rows WHERE history_id=?', row.id), this.statement('DELETE FROM history_records WHERE id=?', row.id)]);
@@ -448,7 +453,8 @@ export class D1AppStore {
       this.statement('DELETE FROM app_checks WHERE repository_id=?', repositoryId),
       this.statement('DELETE FROM repairs WHERE repository_id=?', repositoryId),
       this.statement('DELETE FROM analytical_pull_requests WHERE repository_id=?', repositoryId),
-      this.statement('DELETE FROM analytical_file_sizes WHERE repository_id=?', repositoryId),
+      this.statement('DELETE FROM analytical_size_observations WHERE repository_id=?', repositoryId),
+      this.statement('DELETE FROM analytical_size_facts WHERE repository_id=?', repositoryId),
       // Open imports and recalculation stop with the history they were filling; the deletion record keeps them from reviving it.
       this.statement("UPDATE history_jobs SET state='stopped', reason='history-deleted', lease_until=NULL, wake_at=NULL, updated_at=?, finished_at=? WHERE repository_id=? AND state IN ('queued', 'running', 'paused')", now, now, repositoryId)
     ]);
@@ -508,15 +514,17 @@ export class D1AppStore {
   }
 
   /**
-   * One repository's observations as one atomic batch under one consent read. Every row is still admitted by the
-   * consent and tombstone guard in its own statement, so a withdrawal that lands before the batch writes nothing.
+   * One repository's observations, grouped by their original time/revision/expiry. Each bounded set is atomic
+   * under the same consent/tombstone guard, so withdrawal before a capture chunk writes no facts or marker.
    */
   async recordAnalyticalSizes(observations) {
     const repositoryId = observations[0]?.repositoryId;
-    for (const { repositoryId: owner, path, observedAt, revision, size } of observations) {
+    for (const { repositoryId: owner, path, observedAt, revision, size, captureSince } of observations) {
       if (owner !== repositoryId || !Number.isSafeInteger(owner) || owner < 1 || typeof path !== 'string' || !path || path.includes('\0')
         || typeof revision !== 'string' || !/^[0-9a-f]{40,64}$/u.test(revision)
         || typeof observedAt !== 'string' || !Number.isFinite(Date.parse(observedAt)) || new Date(observedAt).toISOString() !== observedAt
+        || (captureSince !== undefined && (typeof captureSince !== 'string' || !Number.isFinite(Date.parse(captureSince))
+          || new Date(captureSince).toISOString() !== captureSince))
         || (size !== null && (!Number.isSafeInteger(size) || size < 0))) throw new TypeError('Invalid analytical file-size observation.');
     }
     if (!observations.length) return { status: 'published', published: 0 };
@@ -528,31 +536,33 @@ export class D1AppStore {
       if (expires === null || expires > now) rows.push({ ...row, expires });
     }
     if (!rows.length) return { status: 'expired' };
-    const results = await this.database.batch(rows.map(({ path, observedAt, revision, size, expires }) => this.statement(`INSERT INTO analytical_file_sizes(repository_id,path,observed_at,revision,size,expires_at)
-      SELECT ?,?,?,?,?,? WHERE EXISTS (SELECT 1 FROM repositories r JOIN installations i ON i.installation_id=r.installation_id
-        WHERE r.repository_id=? AND r.history_enabled=1 AND r.history_consent_reason IS NULL AND r.state IN ('active','pending-enable') AND r.access_state='available' AND i.state='active')
-        AND NOT EXISTS (SELECT 1 FROM deletion_tombstones WHERE scope IN (?,?) AND reapply_until>?)
-      ON CONFLICT DO NOTHING`, repositoryId, path, observedAt, revision, size, expires, repositoryId, `history:${repositoryId}`, `repository:${repositoryId}`, now)));
-    return { status: 'published', published: results.filter(result => result.meta?.changes === 1).length };
+    const groups = new Map();
+    for (const row of rows) {
+      const key = JSON.stringify([row.observedAt, row.revision, row.expires, row.captureSince]);
+      if (!groups.has(key)) groups.set(key, new Map());
+      if (!groups.get(key).has(row.path)) groups.get(key).set(row.path, row);
+    }
+    let published = 0;
+    for (const group of groups.values()) for (const paths of sizeCaptureGroups([...group.keys()])) {
+      const result = await publishSizeSet(this, repositoryId, paths.map(path => group.get(path)));
+      if (result.status !== 'published') return result;
+      published += result.published;
+    }
+    return { status: 'published', published };
   }
 
   /** The retained observations at one immutable default-branch revision, for capture to resume and reuse. */
-  async analyticalSizesAt(repositoryId, revision) {
+  async analyticalSizesAt(repositoryId, revision, { latest = false, captureSince } = {}) {
     if (!(await this.historySettings(repositoryId, { independentExecution: true })).enabled) return [];
-    const result = await this.statement(`SELECT path,observed_at,size FROM analytical_file_sizes WHERE repository_id=? AND revision=?
-      AND (expires_at IS NULL OR expires_at>?)`, repositoryId, revision, this.now()).all();
-    return (result.results ?? []).map(row => ({ path: row.path, observedAt: row.observed_at, size: row.size }));
+    const result = await sizesAt(this, repositoryId, revision, this.now(), latest, captureSince);
+    return (await this.historySettings(repositoryId, { independentExecution: true })).enabled ? result : [];
   }
 
   async analyticalSizes(repositoryId, from, to) {
     if (!(await this.historySettings(repositoryId, { independentExecution: true })).enabled) return [];
-    const result = await this.statement(`SELECT s.path,s.observed_at,s.revision,s.size FROM analytical_file_sizes s WHERE s.repository_id=?
-      AND (s.observed_at BETWEEN ? AND ?
-        OR s.observed_at=(SELECT MAX(p.observed_at) FROM analytical_file_sizes p WHERE p.repository_id=s.repository_id AND p.path=s.path AND p.observed_at<=? AND (p.expires_at IS NULL OR p.expires_at>?))
-        OR s.observed_at=(SELECT MIN(p.observed_at) FROM analytical_file_sizes p WHERE p.repository_id=s.repository_id AND p.path=s.path AND p.observed_at>=? AND (p.expires_at IS NULL OR p.expires_at>?)))
-      AND (s.expires_at IS NULL OR s.expires_at>?) ORDER BY s.observed_at`, repositoryId, from, to, from, this.now(), to, this.now(), this.now()).all();
+    const result = await sizesIn(this, repositoryId, from, to, this.now());
     if (!(await this.historySettings(repositoryId, { independentExecution: true })).enabled) return [];
-    return (result.results ?? []).map(row => ({ repositoryId, path: row.path, observedAt: row.observed_at, revision: row.revision, size: row.size }));
+    return result;
   }
 
   async exportAnalytical(repositoryId) {
@@ -573,8 +583,12 @@ export class D1AppStore {
     if (records.some(record => record.repositoryId !== input.repositoryId) || input.sizes.some(row => row.repositoryId !== input.repositoryId)) throw new TypeError('Analytical export crosses repositories.');
     const outcomes = [];
     for (const [index, record] of records.entries()) outcomes.push(await this.recordAnalytical(record, { expiresAt: input.records[index].expiresAt }));
-    for (const row of input.sizes) outcomes.push(await this.recordAnalyticalSize(row));
-    return { published: outcomes.filter(row => row.status === 'published').length, skipped: outcomes.filter(row => row.status !== 'published').length };
+    let sizeCount = 0;
+    // Restore the original shared timestamps as sets, rather than reintroducing a marker per file.
+    const restored = await this.recordAnalyticalSizes(input.sizes);
+    if (restored.status === 'published') sizeCount = restored.published;
+    return { published: outcomes.filter(row => row.status === 'published').length + sizeCount,
+      skipped: outcomes.filter(row => row.status !== 'published').length + input.sizes.length - sizeCount };
   }
 
   async exportState() {

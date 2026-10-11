@@ -224,6 +224,15 @@ function invocationRoom(dependencies, queries) {
   return !Number.isSafeInteger(spent) || spent + queries <= INVOCATION_BUDGET.d1Queries;
 }
 
+// Shared storage no longer spends one D1 statement per path. Keep that existing processing allowance so the
+// cheaper writes do not silently enlarge one invocation's provider/CPU work, or an invocation with many captures.
+function captureRoom(dependencies, paths, reserve = 0) {
+  return invocationRoom(dependencies, paths + (dependencies.invocation?.capturePaths ?? 0) + INVOCATION_BUDGET.perCaptureChunk + reserve);
+}
+function capturedPaths(dependencies, paths) {
+  if (dependencies.invocation) dependencies.invocation.capturePaths = (dependencies.invocation.capturePaths ?? 0) + paths;
+}
+
 /**
  * Enqueue a fresh evaluation of other open PRs' briefs (`targets` names them, or `'open'` for every open PR) through the
  * ordinary delivery path. Refreshes carry identifiers only, are idempotent per cause, never fan out again, and an
@@ -668,12 +677,12 @@ async function capturePart(envelope, delivery, dependencies) {
   // A reused size spends no provider budget, so only a path that must be read waits for the rate reserve.
   const proceed = (paths, reading) => {
     if (reading && rateReserveReached(client.rateBudget)) { rated = true; return false; }
-    return invocationRoom(dependencies, paths + INVOCATION_BUDGET.perCaptureChunk);
+    return captureRoom(dependencies, paths);
   };
   let result;
   try {
     result = await captureDefaultBranchSizes({ client, store, repositoryId: envelope.repositoryId, revision: envelope.revision, since: envelope.since, now: clock(dependencies), proceed,
-      afterChunk: () => store.renewDelivery?.(envelope, delivery) });
+      afterChunk: paths => { capturedPaths(dependencies, paths); return store.renewDelivery?.(envelope, delivery); } });
   } catch (error) {
     const code = errorCode(error);
     if (code === 'E_GITHUB_RATE_LIMIT' || code === 'E_LEASE_LOST') throw error;
@@ -722,7 +731,8 @@ async function consumeMessage(message, dependencies) {
     }
     await runHistoryJob(envelope, { ...dependencies, budget: {
       collect: () => invocationRoom(dependencies, INVOCATION_BUDGET.perEvaluation + INVOCATION_BUDGET.perPart),
-      capture: paths => invocationRoom(dependencies, paths + INVOCATION_BUDGET.perCaptureChunk + INVOCATION_BUDGET.perPart)
+      capture: paths => captureRoom(dependencies, paths, INVOCATION_BUDGET.perPart),
+      captured: paths => capturedPaths(dependencies, paths)
     } });
     return message.ack();
   }

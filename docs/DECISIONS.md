@@ -396,6 +396,54 @@ The complete predecessor record is preserved byte-for-byte as [Decisions through
 
 **Sources.** Wolf's decision and Katja's adoption on #471, Juno's independent challenge, the decision card's alternatives and cost, [D081](#d081-business-coordination-is-published-into-repository-settings-delegated-within-githubs-ceiling-and-recorded-as-it-happened), [account authorisation](dashboard-access.md#administration).
 
+## D087: Share unchanged size facts while retaining every observation
+
+**Status:** Agent-authored storage/query implementation in the 2026-10-11 source
+candidate; not a retention, tier, price, deployment or production-migration choice.
+
+**Decision.** Store bounded canonical sets of paths and measured sizes once, with
+separate observation markers carrying every exact time, revision and original
+expiry. Identical numerical sets can share across revisions without establishing
+continuity: Turnover still requires the actual complete comparison chain. Keep
+the full logical window and version-1 export, including intermediate observations.
+Use indexed window markers, fetch their shared facts once, and select nearest
+anchors as scalar rows through native SQLite JSON, seeking once per shared set
+within D1; all intermediate markers remain authoritative.
+Partition sorted captures at path-hash boundaries with a 100-path maximum, so an
+ordinary added file does not shift every later group. Keep capture's existing
+per-path processing allowance alongside actual statement accounting. Markers
+also record the capture's start for continuation: overlapping captures cannot
+silently complete each other's paths, while immutable numerical sizes are reused.
+That operational metadata does not change observation or export identity. Drain indexed
+physical expiry in bounded queries, with facts kept until their last marker ends.
+
+**Why and alternatives.** Repeating unchanged path/size facts per event multiplies
+storage and indexed writes without adding a numerical fact. Endpoint-only reads
+would lose the premium file consumer's complete `sizeHistory`. Shorter retention,
+smaller tiers and a new database estate are product choices rather than equivalent
+storage repair. Sharing leaves those choices untouched and preserves exact
+observation identity, unknowns, consent, deletion and restore semantics. Window
+responses still cost memory proportional to the complete requested logical history
+plus scalar anchors; this is not a claim that arbitrarily large file responses fit
+a Worker. The original positional partition and per-set anchor selection failed
+on long histories with added files: partitions shifted broadly, and selecting
+nearest anchors after decoding old sets materialised nearly all retained facts.
+D1 now performs that selection directly from the shared JSON. A derived membership
+index was measured and rejected: native JSON selection supplied the same bounded
+Worker transfer with fewer reported reads and no extra stored path/size rows.
+D1 still parses retained candidate sets and can report more row reads than the
+original Worker-side filtering; this is not universal cost reduction or a claim
+that short windows bound database CPU.
+
+**Transition.** Migration 0016 carries retained rows into the shared representation.
+Its logical SQL view serves diagnostics and export, not old writers. Schema and
+runtime roll out together with old writers stopped; the local transition tests do
+not perform or qualify a production migration.
+
+**Sources.** [Analytical storage contract](integration/app-analytical-data.md),
+[shared-size implementation](../apps/github-app/analytical-size-storage.mjs) and
+[actual D1 equivalence tests](../apps/github-app/analytical-size-storage.test.mjs).
+
 ## Earlier decisions and retained fragments
 
 The headings below preserve earlier links. Their full text remains in the exact predecessor record; follow its references for D001–D043. Later decisions above supersede only the stated portions. Historical source is not automatically current implementation.

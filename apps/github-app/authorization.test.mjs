@@ -16,7 +16,7 @@ import { createGitHubAppWorker } from './app.mjs';
 const migrationNames = [
   '0001_initial.sql', '0002_consent-provenance.sql', '0003_preserve-active-consent.sql',
   '0004_admission-settings.sql', '0005_offboarding-consent-tombstones.sql', '0006_user-authorization.sql', '0007_consent-actors.sql', '0008_history_analytics.sql', '0009_analytical_app.sql',
-  '0010_commercial-links.sql', '0011_service-connection.sql', '0012_manage.sql', '0013_business.sql', '0014_operating-continuity.sql', '0015_participation.sql'
+  '0010_commercial-links.sql', '0011_service-connection.sql', '0012_manage.sql', '0013_business.sql', '0014_operating-continuity.sql', '0015_participation.sql', '0016_shared_size_observations.sql'
 ];
 const ORIGIN = 'https://dashboard.example.test';
 const CALLBACK = `${ORIGIN}/oauth/callback`;

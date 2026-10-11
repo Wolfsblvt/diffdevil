@@ -149,7 +149,7 @@ test('default-branch size observation publishes immutable sizes and refuses a mo
   const store = { historySettings: async () => ({ enabled: true }), analyticalRecords: async () => [record()], analyticalSizesAt: async () => [],
     recordAnalyticalSizes: async values => { writes.push(...values); return { status: 'published', published: values.length }; } };
   assert.equal((await captureDefaultBranchSizes({ client, store, repositoryId: 17, now: () => to })).files, 1);
-  assert.deepEqual(writes[0], { repositoryId: 17, path: 'a.txt', revision: head, size: 2, observedAt: to });
+  assert.deepEqual(writes[0], { repositoryId: 17, path: 'a.txt', revision: head, size: 2, observedAt: to, captureSince: to });
   changed = true; branchReads = 0; writes.length = 0;
   await assert.rejects(captureDefaultBranchSizes({ client, store, repositoryId: 17, now: () => to }), { code: 'E_APP_DATA_STALE' });
   assert.equal(writes.length, 0);
@@ -165,7 +165,8 @@ test('a capture larger than its allowance continues in parts that repeat nothing
     request: async route => { reads.push(route); return { text: 'one\ntwo\n' }; } };
   const merged = normalizeAnalyticalRecord({ ...record(), final: { ...record().final, report, sizes: [] } });
   const store = { historySettings: async () => ({ enabled }), analyticalRecords: async () => [merged],
-    analyticalSizesAt: async (_, revision) => rows.filter(row => row.revision === revision),
+    analyticalSizesAt: async (_, revision, { captureSince } = {}) => rows.filter(row => row.revision === revision)
+      .map(row => ({ ...row, captured: row.captureSince === captureSince })),
     recordAnalyticalSizes: async values => enabled ? (rows.push(...values), { status: 'published', published: values.length }) : { status: 'disabled' } };
   // The first part may spend on 120 paths: one full chunk and 20 more.
   let budget = 120;
@@ -176,11 +177,15 @@ test('a capture larger than its allowance continues in parts that repeat nothing
   assert.equal(reads.length, 119);
   assert.equal(rows.filter(row => row.observedAt === now).length, 120);
 
+  // A later complete capture cannot claim this unfinished capture's remaining paths.
+  now = '2026-10-01T00:00:02.000Z';
+  assert.equal((await captureDefaultBranchSizes({ client, store, repositoryId: 17, now: () => now })).files, 250);
+
   // The next part captures exactly what remains at the pinned revision.
   now = '2026-10-01T00:00:05.000Z';
   const second = await captureDefaultBranchSizes({ client, store, repositoryId: 17, revision: first.revision, since: first.since, now: () => now });
   assert.deepEqual([second.status, second.files, second.remaining], ['observed', 130, 0]);
-  const captured = rows.filter(row => row.revision === head && row.observedAt >= first.since);
+  const captured = rows.filter(row => row.revision === head && row.captureSince === first.since);
   assert.deepEqual(captured.map(row => row.path).toSorted(), paths, 'every known path is observed once by the chain');
   // Running a finished part again repeats nothing.
   assert.equal((await captureDefaultBranchSizes({ client, store, repositoryId: 17, revision: head, since: first.since, now: () => now })).files, 0);
