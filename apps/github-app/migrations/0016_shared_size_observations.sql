@@ -2,11 +2,10 @@
 -- Facts are shared; every time/revision/expiry remains an independent observation.
 ALTER TABLE analytical_file_sizes RENAME TO analytical_file_sizes_original;
 CREATE TABLE analytical_size_facts (
-  fact_id INTEGER PRIMARY KEY,
   repository_id INTEGER NOT NULL,
   fact_key TEXT NOT NULL,
   facts_json TEXT NOT NULL,
-  UNIQUE (repository_id, fact_key)
+  PRIMARY KEY (repository_id, fact_key)
 );
 CREATE TABLE analytical_size_observations (
   repository_id INTEGER NOT NULL,
@@ -22,22 +21,6 @@ CREATE INDEX analytical_size_revision ON analytical_size_observations(repository
 CREATE INDEX analytical_size_time ON analytical_size_observations(repository_id,observed_at,fact_key,revision);
 CREATE INDEX analytical_size_expiry ON analytical_size_observations(expires_at) WHERE expires_at IS NOT NULL;
 CREATE INDEX analytical_pr_expiry ON analytical_pull_requests(expires_at) WHERE expires_at IS NOT NULL;
--- A derived index of immutable set membership. Anchor queries return scalar path rows, not historical JSON sets.
-CREATE TABLE analytical_size_members (
-  repository_id INTEGER NOT NULL,
-  path_id INTEGER NOT NULL,
-  fact_id INTEGER NOT NULL,
-  ordinal INTEGER NOT NULL,
-  size INTEGER,
-  PRIMARY KEY (repository_id,path_id,fact_id)
-);
-CREATE INDEX analytical_size_member_fact ON analytical_size_members(repository_id,fact_id,path_id);
-CREATE TABLE analytical_size_paths (
-  path_id INTEGER PRIMARY KEY,
-  repository_id INTEGER NOT NULL,
-  path TEXT NOT NULL,
-  UNIQUE (repository_id,path)
-);
 -- Compact retained captures too. The temporary mapping supplies short keys without requiring a provider hash function.
 CREATE TABLE analytical_size_migration AS
   WITH numbered AS (SELECT *,rowid AS position,(ROW_NUMBER() OVER
@@ -55,12 +38,6 @@ INSERT INTO analytical_size_facts(repository_id,fact_key,facts_json)
 INSERT INTO analytical_size_observations(rowid,repository_id,fact_key,observed_at,revision,expires_at,order_json)
   SELECT m.sequence,m.repository_id,'legacy:' || k.id,m.observed_at,m.revision,m.expires_at,m.order_json
   FROM analytical_size_migration m JOIN analytical_size_migration_keys k USING(repository_id,facts_json);
-INSERT INTO analytical_size_paths(repository_id,path)
-  SELECT DISTINCT f.repository_id,json_extract(j.value,'$.path') FROM analytical_size_facts f,json_each(f.facts_json) j;
-INSERT INTO analytical_size_members(repository_id,path_id,fact_id,ordinal,size)
-  SELECT f.repository_id,p.path_id,f.fact_id,j.key,json_extract(j.value,'$.size')
-  FROM analytical_size_facts f,json_each(f.facts_json) j JOIN analytical_size_paths p
-    ON p.repository_id=f.repository_id AND p.path=json_extract(j.value,'$.path');
 DROP TABLE analytical_size_migration_keys;
 DROP TABLE analytical_size_migration;
 DROP TABLE analytical_file_sizes_original;

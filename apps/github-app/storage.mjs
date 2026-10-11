@@ -343,8 +343,6 @@ export class D1AppStore {
     await this.database.batch([
       this.statement('DELETE FROM analytical_pull_requests WHERE repository_id=?', repositoryId),
       this.statement('DELETE FROM analytical_size_observations WHERE repository_id=?', repositoryId),
-      this.statement('DELETE FROM analytical_size_members WHERE repository_id=?', repositoryId),
-      this.statement('DELETE FROM analytical_size_paths WHERE repository_id=?', repositoryId),
       this.statement('DELETE FROM analytical_size_facts WHERE repository_id=?', repositoryId)
     ]);
     const records = await this.statement('SELECT id FROM history_records WHERE repository_id=?', repositoryId).all();
@@ -456,8 +454,6 @@ export class D1AppStore {
       this.statement('DELETE FROM repairs WHERE repository_id=?', repositoryId),
       this.statement('DELETE FROM analytical_pull_requests WHERE repository_id=?', repositoryId),
       this.statement('DELETE FROM analytical_size_observations WHERE repository_id=?', repositoryId),
-      this.statement('DELETE FROM analytical_size_members WHERE repository_id=?', repositoryId),
-      this.statement('DELETE FROM analytical_size_paths WHERE repository_id=?', repositoryId),
       this.statement('DELETE FROM analytical_size_facts WHERE repository_id=?', repositoryId),
       // Open imports and recalculation stop with the history they were filling; the deletion record keeps them from reviving it.
       this.statement("UPDATE history_jobs SET state='stopped', reason='history-deleted', lease_until=NULL, wake_at=NULL, updated_at=?, finished_at=? WHERE repository_id=? AND state IN ('queued', 'running', 'paused')", now, now, repositoryId)

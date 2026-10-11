@@ -172,11 +172,11 @@ size observations. Migration `0009_analytical_app.sql` introduced the separate
 numerical history; `0016_shared_size_observations.sql` shares identical bounded
 sets of path/size facts while retaining a marker for **every** original observation
 time, immutable revision and expiry. The sharing applies across unchanged captures
-and across revisions with the same facts. A compact path dictionary and immutable
-set-membership index let D1 find boundary anchors without sending old snapshots
-to the Worker. Dictionary IDs encode path spellings, not historical file identity.
-Boundary selection seeks once per shared set inside D1, then joins the set's
-nearest time to path membership. It is physical normalization, not
+and across revisions with the same facts. Native SQLite JSON queries choose
+nearest per-path boundary anchors inside D1, without transferring older shared
+snapshots to the Worker or keeping a duplicate membership store. They seek the
+nearest marker per shared set, expand candidate paths inside D1 and choose each
+path's nearest time. It is physical normalization, not
 coalescing observations or inferring file continuity. All remain under current
 opt-in consent, expiry, deletion tombstones and offboarding cleanup.
 This new analytical path keeps collection independent of execution consent while
@@ -226,18 +226,17 @@ Capture also supplies its `captureSince` pin: physical marker metadata identifie
 the paths completed by that capture, so an overlapping capture cannot silently
 complete its neighbour. This metadata does not change the path/time/revision
 first-writer identity or the version-1 numerical export. Actual observation times
-still reflect publication, rather than being backdated to the pin.
+still reflect the capture, rather than being backdated to the pin.
 `analyticalSizes` returns every observation in the window and the nearest retained
 anchors before/after it, including equal-time observations at distinct revisions.
 It pages indexed window markers, fetches each of their shared fact sets once, and
-asks D1 for scalar nearest-anchor rows through the membership index. Older
+asks D1 for scalar nearest-anchor rows through native JSON queries. Older
 snapshots are not decoded in the Worker to select these anchors. It reconstructs the
 same array consumed by Turnover and the premium `sizeHistory`; no intermediate
 timestamp is discarded. Its logical response and Worker memory still grow with
-requested logical window plus its anchors. D1 still examines retained membership
-versions to choose those anchors; database work is not bounded by window length.
-The membership index adds physical rows and can cost more space or D1 reads than
-the unindexed shared-set representation on small histories. Sharing reduces
+the requested logical window plus its anchors. D1 still parses retained candidate
+facts to choose those anchors; database work is not bounded by window length and
+reported D1 row reads can be higher than the old Worker-side anchor selection. Sharing reduces
 repeated facts and their transfer, not the size of the selected analytical response
 or every individual database operation. Arbitrarily large responses are not
 claimed to fit a Worker.
@@ -245,12 +244,12 @@ claimed to fit a Worker.
 Writes retain the first observation at a path/time/revision identity, including
 overlapping captures; an atomic batch refuses an overlap that raced its initial
 read and retries the remaining paths with a refreshed clock. Overlap checks use
-indexed membership rather than decoding all captures at that timestamp. Consent
-and tombstones guard facts, membership and the marker in the same batch. Expiry is immediate on reads. Physical expiry
+native JSON selection rather than decoding all captures at that timestamp in
+the Worker. Consent and tombstones guard facts and the marker in the same batch. Expiry is immediate on reads. Physical expiry
 drains indexed queries of at most 1,000 markers each, removing a fact set only
-after its last marker is gone, then removing unused membership and dictionary
-entries. Deletion/offboarding remove every physical representation. The browser-QA
-seed dumps and clears these physical tables, preserving marker order and compact IDs;
+after its last marker is gone. Deletion/offboarding remove both physical
+representations. The browser-QA seed dumps and clears these physical tables,
+preserving marker order;
 it never writes the logical view.
 
 A window ending now always outlives the latest capture. The premium extension's

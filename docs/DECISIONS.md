@@ -407,11 +407,11 @@ expiry. Identical numerical sets can share across revisions without establishing
 continuity: Turnover still requires the actual complete comparison chain. Keep
 the full logical window and version-1 export, including intermediate observations.
 Use indexed window markers, fetch their shared facts once, and select nearest
-anchors as scalar rows through compact path/set membership, seeking once per
-shared set within D1; all intermediate markers remain authoritative.
+anchors as scalar rows through native SQLite JSON, seeking once per shared set
+within D1; all intermediate markers remain authoritative.
 Partition sorted captures at path-hash boundaries with a 100-path maximum, so an
 ordinary added file does not shift every later group. Keep capture's existing
-per-path processing allowance and account for the new atomic statements. Markers
+per-path processing allowance alongside actual statement accounting. Markers
 also record the capture's start for continuation: overlapping captures cannot
 silently complete each other's paths, while immutable numerical sizes are reused.
 That operational metadata does not change observation or export identity. Drain indexed
@@ -428,11 +428,12 @@ plus scalar anchors; this is not a claim that arbitrarily large file responses f
 a Worker. The original positional partition and per-set anchor selection failed
 on long histories with added files: partitions shifted broadly, and selecting
 nearest anchors after decoding old sets materialised nearly all retained facts.
-The membership index avoids that transfer, at the cost of extra physical rows and
-database work over retained versions. A compact integer dictionary avoids copying
-long paths and hashes into that index; it adds no file-identity inference. Small
-histories can use more space and more D1 reads than the original shared-set
-candidate. This is a measured operating tradeoff, not universal cost reduction.
+D1 now performs that selection directly from the shared JSON. A derived membership
+index was measured and rejected: native JSON selection supplied the same bounded
+Worker transfer with fewer reported reads and no extra stored path/size rows.
+D1 still parses retained candidate sets and can report more row reads than the
+original Worker-side filtering; this is not universal cost reduction or a claim
+that short windows bound database CPU.
 
 **Transition.** Migration 0016 carries retained rows into the shared representation.
 Its logical SQL view serves diagnostics and export, not old writers. Schema and
