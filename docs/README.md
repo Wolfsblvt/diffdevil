@@ -80,6 +80,7 @@ supplement authored explanation; none is a second hand-maintained API.
 | Managed App | [App operator source](../apps/github-app/README.md) and [architecture](integration/github-app.md): supported backend, storage, recovery and provider boundaries |
 | Signed-in App | [App experience](../apps/app/README.md) (Community application and the [premium seam](../apps/app/src/premium/README.md)): the six analytical destinations as one Worker over the managed runtime, sign-in, the analytical data contract, entitlement, opaque file locators, the accepted chart system and local qualification; [analytical data contract](integration/app-analytical-data.md) |
 | Wirt commercial link, benefit projection and entitlement | [Commercial link consumer](integration/app-commercial-link.md) |
+| Distinct persistent App staging and activation handoff | [App staging](integration/app-staging.md): separate configuration, data/producer boundary, local qualification and retained activation/recovery |
 | Browser extension | [Extension component](../apps/browser-extension/README.md): build, permissions, settings and qualification; [privacy source](../apps/browser-extension/privacy.md) |
 | Agent Skill and setup | [Canonical Skill](../skills/diffdevil/SKILL.md), its complete references, and [rendered setup payloads](setup/) |
 

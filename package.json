@@ -46,9 +46,11 @@
     "extension:store": "node tools/browser-extension-store.mjs",
     "app:icons": "node tools/app-icons.mjs",
     "app:build": "npm run build && node tools/website-docs.mjs && npm run app:icons && node tools/app-command.mjs build",
+    "app:build:staging": "npm run app:build -- --staging",
     "app:dev": "npm run build && node tools/website-docs.mjs && npm run app:icons && node tools/app-command.mjs dev",
     "app:preview": "node tools/app-command.mjs preview",
-    "check:app": "node tools/website-docs.mjs && npm run app:icons && node tools/app-command.mjs build && node tools/run-wrangler.mjs deploy --dry-run --config artifacts/app/dist/server/wrangler.json --outdir ../../wrangler-dry-run-app",
+    "check:app": "node tools/website-docs.mjs && npm run app:icons && node tools/app-command.mjs build --expect-target=production && node tools/run-wrangler.mjs deploy --dry-run --config artifacts/app/dist/server/wrangler.json --outdir ../../wrangler-dry-run-app",
+    "check:app:staging": "node tools/website-docs.mjs && npm run app:icons && node tools/app-command.mjs build --staging && node tools/run-wrangler.mjs deploy --dry-run --config artifacts/app-staging/dist/server/wrangler.json --outdir ../../wrangler-dry-run-app",
     "test:app": "node --test apps/app/tests/*.test.mjs",
     "qa:app": "node apps/app/qa/run.mjs"
   },

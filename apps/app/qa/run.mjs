@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
 /**
- * Local browser qualification of the built signed-in App (artifacts/app/dist).
+ * Local browser qualification of the built signed-in App (artifacts/app/dist, or app-staging with DIFFDEVIL_APP_TARGET=staging).
  *
  *   npm run app:build && npm run qa:app
  *
@@ -16,7 +16,7 @@
  * carries the same rows, the cloud packs (in its Worker), arranges, opens its Top column and
  * walks the rank order, the period switch morphs the live charts in place, and reduced motion
  * still draws. `DIFFDEVIL_APP_QA_DENSE=1` adds a pass over a denser fixture and records the
- * cloud's layout timings. Results and screenshots go to artifacts/app/qa/. This proves local
+ * cloud's layout timings. Results and screenshots go to the selected target's qa/ directory. This proves local
  * behaviour against a fixture; it proves no deployment, no live GitHub and no real data.
  */
 import { chromium } from '@playwright/test';
@@ -26,35 +26,38 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { existsSync, readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { once } from 'node:events';
-import { join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { createFakeGitHub, CODE, ENTITLEMENT_FIXTURE, setScale } from './fixture.mjs';
 import { seedLocalState, executeLocal, recordLocalDelivery } from './seed.mjs';
 import { proManage, freeManage, businessManage, delegateManage, setupRecovery, manageAccess, COMMERCIAL_PRO, COMMERCIAL_FREE, COMMERCIAL_BUSINESS } from './manage.mjs';
 import { participationJourney, COMMERCIAL_BETA, QA_CAMPAIGN } from './participation.mjs';
+import { appBuildTarget } from '../build-target.mjs';
 
-const OUT = resolve('artifacts/app/qa');
-const APP_PORT = Number(process.env.DIFFDEVIL_APP_QA_PORT ?? 4412);
-const GITHUB_PORT = Number(process.env.DIFFDEVIL_APP_QA_GITHUB_PORT ?? 4433);
+const target = appBuildTarget();
+const IDENTITY_ONLY = process.argv.includes('--identity');
+const OUT = join(target.artifacts, 'qa', ...(IDENTITY_ONLY ? ['identity'] : []));
+const APP_PORT = Number(process.env.DIFFDEVIL_APP_QA_PORT ?? (target.name === 'staging' ? 4512 : 4412));
+const GITHUB_PORT = Number(process.env.DIFFDEVIL_APP_QA_GITHUB_PORT ?? (target.name === 'staging' ? 4533 : 4433));
 // Chromium accepts Secure (__Host-) cookies from http://localhost, not from a loopback IP, so the browser origin is localhost; the Worker still binds 127.0.0.1.
 const ORIGIN = `http://localhost:${APP_PORT}`;
 const PROBE = `http://127.0.0.1:${APP_PORT}`;
-const CONFIG = resolve('artifacts/app/dist/server/wrangler.json');
+const CONFIG = join(target.artifacts, 'dist/server/wrangler.json');
 const DENSE = process.env.DIFFDEVIL_APP_QA_DENSE === '1';
 const PARTICIPATION_ONLY = process.argv.includes('--participation');
-const STATE = resolve('artifacts/app/state');
-const DENSE_STATE = resolve('artifacts/app/state-dense');
+const STATE = join(target.artifacts, 'state');
+const DENSE_STATE = join(target.artifacts, 'state-dense');
 const chartTelemetry = [];
 
 if (!existsSync(CONFIG)) { console.error('Build the App first: npm run app:build'); process.exit(2); }
 // The build records which edition it is (tools/app-command.mjs). The Community journeys always run; the premium journeys run only
 // against a build that joined the premium extension, and a Community build asserts the truthful absent states instead.
-const EDITION = resolve('artifacts/app/edition.json');
+const EDITION = join(target.artifacts, 'edition.json');
 if (!existsSync(EDITION)) { console.error('The build carries no edition record; rebuild with npm run app:build.'); process.exit(2); }
 const edition = JSON.parse(readFileSync(EDITION, 'utf8'));
 const premium = edition.premium && edition.qa ? (await import(pathToFileURL(resolve(edition.qa)).href)).default : null;
 console.log(`Qualifying the ${premium ? 'premium-joined' : 'Community'} build (${edition.reason}).`);
 // A local variables file copied into the build output would silently override the pass's --var flags.
-for (const stale of [resolve('apps/app/.dev.vars'), resolve('artifacts/app/dist/server/.dev.vars')]) if (existsSync(stale)) { console.error(`Refusing to run with a local variables file in place: ${stale}`); process.exit(2); }
+for (const stale of [join(dirname(resolve('apps/app', target.configPath)), '.dev.vars'), join(target.artifacts, 'dist/server/.dev.vars')]) if (existsSync(stale)) { console.error(`Refusing to run with a local variables file in place: ${stale}`); process.exit(2); }
 // The dense pass seeds a four-times larger fixture through the real engine, which takes its own minutes.
 const MINUTES = DENSE ? 40 : 15;
 const deadline = setTimeout(() => { console.error(`QA exceeded its ${MINUTES}-minute deadline.`); process.exit(3); }, MINUTES * 60_000);
@@ -63,6 +66,9 @@ await mkdir(OUT, { recursive: true });
 
 const results = [], failures = [];
 const check = (name, condition, detail = '') => { results.push({ name, ok: Boolean(condition), detail }); if (!condition) failures.push(`${name}${detail ? ` — ${detail}` : ''}`); console.log(`${condition ? '✓' : '✗'} ${name}${condition ? '' : ` — ${detail}`}`); };
+
+// Refuse another actor's listener before seeding D1 or starting any owned server/browser.
+await freePort(APP_PORT);
 
 // ── the GitHub double, over HTTP so workerd can reach it ──
 let github = createFakeGitHub();
@@ -103,7 +109,7 @@ async function startWorker(entitlement, state = STATE, extra = {}) {
   throw new Error(`The local Worker did not become ready: ${last}
 ${workerLog.slice(-4000)}`);
 }
-/** Whoever listens on the App port: the spawned tree, or a survivor of an earlier run. */
+/** Observe the App port; an existing listener is never evidence that this pass owns it. */
 function listenersOn(port) {
   if (process.platform !== 'win32') { const out = spawnSync('lsof', ['-ti', `tcp:${port}`, '-sTCP:LISTEN'], { encoding: 'utf8' }).stdout ?? ''; return [...new Set(out.split(/\s+/u).filter(Boolean))]; }
   const out = spawnSync('netstat', ['-ano'], { encoding: 'utf8', windowsHide: true }).stdout ?? '';
@@ -114,13 +120,13 @@ function killTree(pid) {
   else { try { process.kill(Number(pid), 'SIGKILL'); } catch { /* already gone */ } }
 }
 async function freePort(port) {
+  let pids = [];
   for (let attempt = 0; attempt < 30; attempt++) {
-    const pids = listenersOn(port);
+    pids = listenersOn(port);
     if (pids.length === 0) return;
-    for (const pid of pids) killTree(pid);
     await new Promise(resolve => setTimeout(resolve, 500));
   }
-  throw new Error(`Port ${port} is still held by another process.`);
+  throw new Error(`Port ${port} is still held by PID(s) ${pids.join(', ')}; choose a different DIFFDEVIL_APP_QA_PORT or stop the listener only if you own it.`);
 }
 async function stopWorker() {
   if (worker && worker.exitCode === null) {
@@ -303,6 +309,29 @@ async function qualifyPages(label, { pro }) {
 }
 
 try {
+  if (IDENTITY_ONLY) {
+    await startWorker(undefined, STATE, { commercial: COMMERCIAL_PRO });
+    await signIn();
+    for (const [name, path] of [['overview', '/'], ['manage', '/manage']]) {
+      await go(path);
+      await settled();
+      const facts = await pageFacts();
+      const staging = target.name === 'staging';
+      check(`${name}: the browser title identifies only the staging build`, (await page.title()).startsWith('Staging · ') === staging, await page.title());
+      const marks = page.locator('[data-staging-mark]');
+      check(`${name}: the heading carries only the staging build's mark`, await marks.count() === (staging ? 1 : 0));
+      if (staging) {
+        check(`${name}: the neutral mark is readable beside the existing heading`, await marks.isVisible() && await marks.textContent() === 'Staging' && await marks.evaluate(mark => mark.closest('h1') !== null && mark.tabIndex === -1));
+        check(`${name}: the mark fits inside its heading without clipping`, await marks.evaluate(mark => { const box = mark.getBoundingClientRect(), head = mark.closest('h1').getBoundingClientRect(); return box.left >= head.left && box.right <= head.right && box.top >= head.top && box.bottom <= head.bottom && mark.scrollWidth <= mark.clientWidth + 1; }));
+      }
+      check(`${name}: the Works header retains both App labels`, facts.label === 'App' && facts.trailingText === 'App' && facts.trailing === 'page');
+      check(`${name}: the selected desktop composition has no horizontal overflow`, await overflow() <= 0, await offenders());
+      await page.focus('.app-route > a[href="#main"]');
+      await page.keyboard.press('Tab');
+      check(`${name}: keyboard navigation reaches the unchanged Works header`, await page.locator('.site-header :focus').count() === 1);
+      await shot(`identity-${name}`);
+    }
+  } else {
   if (!PARTICIPATION_ONLY) {
   // ── Pro pass: the viewer and their organisation are Pro through the Works stand-in, one shared namespace is Business ──
   await startWorker(undefined, STATE, { commercial: COMMERCIAL_PRO });
@@ -547,6 +576,7 @@ try {
     setScale(1);
   }
 
+  }
   check('no console errors', consoleErrors.length === 0, consoleErrors.slice(0, 5).join(' | '));
   check('no page errors', pageErrors.length === 0, pageErrors.slice(0, 5).join(' | '));
   check('no external requests left the loopback', external.length === 0, external.slice(0, 5).join(' | '));
@@ -558,7 +588,7 @@ try {
   githubServer.closeAllConnections?.();
   githubServer.close();
 }
-await writeFile(join(OUT, 'results.json'), JSON.stringify({ origin: ORIGIN, scope: PARTICIPATION_ONLY ? 'participation' : 'full', seeded: seeded.written, dense: DENSE && !PARTICIPATION_ONLY, charts: chartTelemetry, results, failures, consoleErrors, pageErrors, external }, null, 2));
+await writeFile(join(OUT, 'results.json'), JSON.stringify({ origin: ORIGIN, scope: IDENTITY_ONLY ? 'identity' : PARTICIPATION_ONLY ? 'participation' : 'full', target: target.name, seeded: seeded.written, dense: DENSE && !PARTICIPATION_ONLY && !IDENTITY_ONLY, charts: chartTelemetry, results, failures, consoleErrors, pageErrors, external }, null, 2));
 await writeFile(join(OUT, 'worker.log'), workerLog);
 console.log(`${PARTICIPATION_ONLY ? 'Participation: ' : ''}${results.filter(result => result.ok).length} of ${results.length} checks passed; screenshots and results in ${OUT}`);
 if (failures.length) { console.error(failures.map(failure => ` ✗ ${failure}`).join('\n')); process.exit(1); }

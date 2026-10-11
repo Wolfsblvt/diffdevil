@@ -82,6 +82,7 @@
 .a-head h1 { margin: 0; font-size: 26px; line-height: 1.15; letter-spacing: -.015em; font-weight: 700; display: flex; align-items: center; gap: 8px; min-width: 0; }
 .a-head h1 .si { display: inline-flex; flex: none; }
 .a-head h1 .a-path { font-size: 26px; font-weight: 600; white-space: normal; overflow-wrap: anywhere; }
+.a-staging { flex: none; padding: 3px 6px; border: 1px solid var(--hair-strong); border-radius: 4px; color: var(--fg-2); font: 600 11px/1.2 var(--font-mono); letter-spacing: 0; }
 .a-scope { display: block; margin-top: 6px; line-height: 1.6; font: 500 12px var(--font-mono); color: var(--fg-3); }
 .a-scope b { color: var(--fg-2); font-weight: 600; }
 .a-scope .mono { font-family: var(--font-mono); color: var(--fg-2); }
