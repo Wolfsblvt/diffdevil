@@ -313,6 +313,8 @@ try {
   const notices = await context.request.get(`${ORIGIN}/third-party-notices.txt`);
   const noticeText = await notices.text();
   check('the built application serves retained third-party licence notices', notices.status() === 200 && /echarts 6\.1\.0/u.test(noticeText) && /Apache License/u.test(noticeText), String(notices.status()));
+  // The header's glyphs are prerendered into the page HTML from @wolfsblvt/icons, so its notice, the Lucide ISC and the Simple Icons CC0 text travel with the build; a non-UTF-8 reading would corrupt their © and quotation marks.
+  check('the served notices carry the shared icon package, Lucide ISC and Simple Icons CC0 notices as UTF-8', /charset=utf-8/iu.test(notices.headers()['content-type'] ?? '') && /^@wolfsblvt\/icons 0\.1\.0$/mu.test(noticeText) && /Copyright © 2026 Wolfsblvt Works/u.test(noticeText) && /^ISC License$/mu.test(noticeText) && /^# CC0 1\.0 Universal$/mu.test(noticeText), notices.headers()['content-type']);
   const webhook = await context.request.post(`${PROBE}/webhooks/github`, { data: '{}', headers: { 'content-type': 'application/json' } });
   check('the joined Worker keeps the webhook ingress and refuses an unsigned delivery', webhook.status() === 400 || webhook.status() === 401, String(webhook.status()));
   await go('/sign-in');
