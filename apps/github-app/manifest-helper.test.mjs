@@ -112,6 +112,23 @@ test('wrong namespace is preserved as captured and refuses installation; an abse
   } finally { await cleanup(setup, running); }
 });
 
+test('the native provider form can rename the App while its returned identity remains explicit', { timeout: 30000 }, async () => {
+  const setup = await manifestFixture(); let running;
+  try {
+    setup.body.name = 'diffdevil-renamed-by-operator';
+    setup.body.slug = 'diffdevil-renamed-by-operator';
+    const route = await capture(setup); running = route.process;
+    assert.equal((await fetch(route.callback)).status, 200);
+    const result = await running.completed;
+    assert.equal(result.code, 0); assert.equal(includesSecrets(result.output + result.errors, setup), false);
+    const status = await manifestStatus(setup.options);
+    assert.equal(status.appName, 'diffdevil-synthetic');
+    assert.equal(status.identity.appName, 'diffdevil-renamed-by-operator');
+    assert.equal(status.identity.botLogin, 'diffdevil-renamed-by-operator[bot]');
+    assert.equal(setup.state.conversions, 1);
+  } finally { await cleanup(setup, running); }
+});
+
 for (const [joined, wirt, name] of [[true, false, 'Community six'], [false, false, 'standalone three'], [true, true, 'Wirt seven']]) test(`encrypted handoff delivers matching ${name} inputs through the real native installer`, { timeout: 30000 }, async () => {
   const setup = await manifestFixture({ joined, wirt }); let running;
   try {

@@ -356,8 +356,11 @@ and recovery; it is not necessary to transcribe five new GitHub inputs manually.
 The helper binds one IPv4 loopback listener, checks the callback's unguessable
 state, and converts the one-use code in a contained native child. It preserves
 the response encrypted with the existing App protector before interpreting it.
-App ID, client ID, owner/type/name, slug, requested permissions and events must
-match before the capture becomes usable. The response does not prove actual
+App ID, client ID, owner/type, slug, requested permissions and events must
+validate before the capture becomes usable. GitHub permits editing the proposed
+name during creation; the safe receipt retains the requested `appName` and the
+returned `identity.appName`/slug, and installation uses that returned bot identity.
+The response does not prove actual
 visibility, webhook/callback settings, provider redirect acceptance or installation:
 those remain distinct live readbacks. The manifest sends the exact selected values.
 

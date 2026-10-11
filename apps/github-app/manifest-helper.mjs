@@ -125,7 +125,9 @@ function identityAndInputs(capture) {
   let app;
   try { if (capture.response.status !== 201) throw new Error(); app = JSON.parse(capture.response.body); } catch { fail('Conversion response is retained but unusable. Reconcile the existing GitHub registration; do not reconvert.', 'E_MANIFEST_RESPONSE'); }
   const selected = capture.selection;
-  if (app.owner?.login?.toLowerCase() !== selected.owner.toLowerCase() || app.owner?.type !== (selected.ownerType === 'personal' ? 'User' : 'Organization') || app.name !== selected.appName) fail('Captured App does not match the selected registration owner/type/name. The encrypted response is preserved.', 'E_MANIFEST_IDENTITY');
+  if (app.owner?.login?.toLowerCase() !== selected.owner.toLowerCase() || app.owner?.type !== (selected.ownerType === 'personal' ? 'User' : 'Organization')) fail('Captured App does not match the selected registration owner/type. The encrypted response is preserved.', 'E_MANIFEST_IDENTITY');
+  // GitHub explicitly lets the creating operator edit the proposed name in the native form.
+  if (typeof app.name !== 'string' || !app.name.trim() || /\r|\n/u.test(app.name)) fail('Captured App has no usable provider name.', 'E_MANIFEST_IDENTITY');
   const appId = validateAppId(String(app.id));
   const clientId = validateOAuthClientId(app.client_id);
   const slug = token(app.slug, 'Captured App slug');
@@ -134,7 +136,7 @@ function identityAndInputs(capture) {
   const expectedEvents = manifestFor(capture).default_events;
   if (!Array.isArray(app.events) || expectedEvents.some(event => !app.events.includes(event)) || app.events.some(event => ![...expectedEvents, 'installation', 'installation_repositories'].includes(event))) fail('Captured App events differ from the manifest.', 'E_MANIFEST_IDENTITY');
   validateGitHubAppPrivateKey(app.pem);
-  return { identity: { appId, oauthClientId: clientId, slug, botLogin: `${slug}[bot]`, owner: selected.owner, ownerType: selected.ownerType },
+  return { identity: { appId, oauthClientId: clientId, appName: app.name, slug, botLogin: `${slug}[bot]`, owner: selected.owner, ownerType: selected.ownerType },
     values: { GITHUB_APP_ID: appId, GITHUB_APP_PRIVATE_KEY: app.pem.replace(/\r?\n$/u, ''), GITHUB_WEBHOOK_SECRET: validateWebhookSecret(app.webhook_secret), GITHUB_OAUTH_CLIENT_ID: clientId, GITHUB_OAUTH_CLIENT_SECRET: validateWebhookSecret(app.client_secret) } };
 }
 async function convert(options, capture, seal) {
