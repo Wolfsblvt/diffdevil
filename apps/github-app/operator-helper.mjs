@@ -16,7 +16,7 @@ const BACKEND_INPUTS = ['GITHUB_APP_ID', 'GITHUB_WEBHOOK_SECRET', 'GITHUB_APP_PR
 const APP_INPUTS = [...BACKEND_INPUTS, 'GITHUB_OAUTH_CLIENT_ID', 'GITHUB_OAUTH_CLIENT_SECRET', 'APP_SEAL_KEY'];
 
 function inputNames(target, options) {
-  return target.joinedApp ? [...APP_INPUTS, ...(target.wirtConfigured || options.wirtSigningKeyPath ? ['WIRT_SIGNING_KEY_CURRENT'] : [])] : BACKEND_INPUTS;
+  return target.joinedApp ? [...APP_INPUTS, ...(target.wirtConfigured || options.wirtSigningKeyPath || options.wirtSigningKeyEnv ? ['WIRT_SIGNING_KEY_CURRENT'] : [])] : BACKEND_INPUTS;
 }
 
 function fail(message, code = 'E_OPERATOR_INPUT', receipt) {
@@ -90,11 +90,28 @@ export function createProcessRunner({ executable = process.execPath } = {}) {
   };
 }
 
-function environment(accountId) {
+function environment(accountId, options) {
   const env = { ...process.env, CLOUDFLARE_ACCOUNT_ID: accountId, WRANGLER_SEND_METRICS: 'false', WRANGLER_WRITE_LOGS: 'false', WRANGLER_LOG: 'error' };
   // A caller's named environment must not silently retarget the exact configuration.
   delete env.CLOUDFLARE_ENV;
+  for (const name of [options.sealKeyEnv, options.wirtSigningKeyEnv].filter(Boolean)) delete env[name];
   return env;
+}
+
+function selectedEnvironmentInputs(options) {
+  const selected = new Set();
+  for (const [path, name, label] of [
+    [options.sealKeyPath, options.sealKeyEnv, 'Seal key'],
+    [options.wirtSigningKeyPath, options.wirtSigningKeyEnv, 'Wirt signing key']
+  ]) {
+    if (path && name) fail(`Choose either a ${label} file or named environment input.`);
+    if (!name) continue;
+    const variable = requireValue(name, `${label} environment variable name`);
+    if (!/^[A-Za-z_][A-Za-z0-9_]*$/u.test(variable)) fail(`${label} environment variable name has an invalid format.`);
+    const normalized = process.platform === 'win32' ? variable.toUpperCase() : variable;
+    if (selected.has(normalized)) fail('Each protected input must use a distinct named environment variable.');
+    selected.add(normalized);
+  }
 }
 
 async function qualificationConfig({ config, worker, accountId }) {
@@ -143,9 +160,10 @@ async function readDeployment({ runner, wrangler, ...target }) {
 }
 
 async function requireTarget(options) {
+  selectedEnvironmentInputs(options);
   const target = await qualificationConfig(options);
   target.fixture = options.fixture === true;
-  target.env = environment(target.accountId);
+  target.env = environment(target.accountId, options);
   const account = await nativeJson({ runner: options.runner, args: [options.wrangler, 'whoami', '--account', target.accountId, '--json', '--config', target.config], env: target.env });
   if (!Array.isArray(account?.accounts) || !account.accounts.some(entry => entry?.id === target.accountId)) fail('Wrangler could not read back the requested Cloudflare account.', 'E_OPERATOR_TARGET');
   target.deployment = await readDeployment({ ...options, ...target });
@@ -175,10 +193,15 @@ async function inputFiles(options, target) {
   if (!options.webhookSecretPath && typeof options.readWebhookSecret !== 'function') fail('Supply a webhook secret file or the hidden/redirected input route.');
   if (target.joinedApp) {
     identifier(options.oauthClientId, 'GitHub OAuth client ID');
-    paths.push(requireValue(options.oauthClientSecretPath, 'OAuth client secret path'), requireValue(options.sealKeyPath, 'Retained seal key path'));
-    if (target.wirtConfigured || options.wirtSigningKeyPath) paths.push(requireValue(options.wirtSigningKeyPath, 'Wirt signing key path'));
+    paths.push(requireValue(options.oauthClientSecretPath, 'OAuth client secret path'));
+    const sealKey = protectedInputSource(options.sealKeyPath, options.sealKeyEnv, 'Retained seal key');
+    if (sealKey.path) paths.push(sealKey.path);
+    if (target.wirtConfigured || options.wirtSigningKeyPath || options.wirtSigningKeyEnv) {
+      const wirtKey = protectedInputSource(options.wirtSigningKeyPath, options.wirtSigningKeyEnv, 'Wirt signing key');
+      if (wirtKey.path) paths.push(wirtKey.path);
+    }
     identifier(options.sealKeyRecoveryRef, 'Seal key recovery reference');
-  } else if (options.oauthClientId || options.oauthClientSecretPath || options.sealKeyPath || options.wirtSigningKeyPath || options.sealKeyRecoveryRef) {
+  } else if (options.oauthClientId || options.oauthClientSecretPath || options.sealKeyPath || options.sealKeyEnv || options.wirtSigningKeyPath || options.wirtSigningKeyEnv || options.sealKeyRecoveryRef) {
     fail('Joined-App inputs require a joined-App configuration.', 'E_OPERATOR_CONFIG');
   }
   for (const path of paths) {
@@ -237,6 +260,17 @@ async function readSecretFile(path) {
   catch { fail('A protected input file could not be read.', 'E_OPERATOR_INPUT_FILE'); }
 }
 
+function protectedInputSource(path, environmentName, label) {
+  if (path && environmentName) fail(`Choose either a ${label} file or named environment input.`);
+  if (environmentName) return { environmentName };
+  return { path: requireValue(path, `${label} path`) };
+}
+
+async function readProtectedInput(source, label) {
+  if (source.environmentName) return requireValue(process.env[source.environmentName], `${label} environment input`);
+  return readSecretFile(source.path);
+}
+
 async function credentialValues(options, target) {
   const privateKey = await readSecretFile(options.privateKeyPath);
   validateGitHubAppPrivateKey(privateKey);
@@ -245,10 +279,10 @@ async function credentialValues(options, target) {
   if (!target.joinedApp) return values;
   values.GITHUB_OAUTH_CLIENT_ID = identifier(options.oauthClientId, 'GitHub OAuth client ID');
   values.GITHUB_OAUTH_CLIENT_SECRET = validateWebhookSecret(await readSecretFile(options.oauthClientSecretPath));
-  values.APP_SEAL_KEY = await readSecretFile(options.sealKeyPath);
+  values.APP_SEAL_KEY = await readProtectedInput(protectedInputSource(options.sealKeyPath, options.sealKeyEnv, 'Retained seal key'), 'Retained seal key');
   if (values.APP_SEAL_KEY.length < 16 || /\r|\n/u.test(values.APP_SEAL_KEY)) fail('Retained seal key must be a single line of at least 16 characters.');
-  if (target.wirtConfigured || options.wirtSigningKeyPath) {
-    values.WIRT_SIGNING_KEY_CURRENT = await readSecretFile(options.wirtSigningKeyPath);
+  if (target.wirtConfigured || options.wirtSigningKeyPath || options.wirtSigningKeyEnv) {
+    values.WIRT_SIGNING_KEY_CURRENT = await readProtectedInput(protectedInputSource(options.wirtSigningKeyPath, options.wirtSigningKeyEnv, 'Wirt signing key'), 'Wirt signing key');
     readSigningKeys({ current: values.WIRT_SIGNING_KEY_CURRENT });
   }
   return values;
@@ -377,7 +411,7 @@ async function readRedirectedSecret() {
 }
 
 const BOOLEAN_OPTIONS = new Set(['fake', 'webhook-secret-stdin', 'policy-refresh']);
-const VALUE_OPTIONS = new Set(['webhook-url', 'visibility', 'app-name', 'oauth-callback-url', 'app-id', 'private-key-file', 'account-id', 'config', 'worker', 'webhook-secret-file', 'oauth-client-id', 'oauth-client-secret-file', 'seal-key-file', 'seal-key-recovery-ref', 'wirt-signing-key-file', 'receipt-file', 'wrangler']);
+const VALUE_OPTIONS = new Set(['webhook-url', 'visibility', 'app-name', 'oauth-callback-url', 'app-id', 'private-key-file', 'account-id', 'config', 'worker', 'webhook-secret-file', 'oauth-client-id', 'oauth-client-secret-file', 'seal-key-file', 'seal-key-env', 'seal-key-recovery-ref', 'wirt-signing-key-file', 'wirt-signing-key-env', 'receipt-file', 'wrangler']);
 
 function parseArgs(argv) {
   const [command, ...rest] = argv;
@@ -416,7 +450,7 @@ function help() {
   return `Usage:
   node apps/github-app/operator-helper.mjs registration --webhook-url <https-url> [--visibility private|public] [--app-name <name>] [--oauth-callback-url <https-url>] [--policy-refresh]
   node apps/github-app/operator-helper.mjs check|install --app-id <numeric-id> --private-key-file <retained-pem> --account-id <account-id> --config <exact-json-or-jsonc> --receipt-file <new-receipt> [--worker <matching-name>] [--webhook-secret-file <protected-file> | --webhook-secret-stdin] [--fake]
-    Joined-App configs also require --oauth-client-id <id> --oauth-client-secret-file <protected-file> --seal-key-file <retained-file> --seal-key-recovery-ref <opaque-custody-id>. With Wirt configured, add --wirt-signing-key-file <protected-file>.
+    Joined-App configs also require --oauth-client-id <id> --oauth-client-secret-file <protected-file> (--seal-key-file <retained-file> | --seal-key-env <variable-name>) --seal-key-recovery-ref <opaque-custody-id>. With Wirt configured, add --wirt-signing-key-file <protected-file> or --wirt-signing-key-env <variable-name>.
   node apps/github-app/operator-helper.mjs resume --account-id <account-id> --config <same-exact-config> --receipt-file <existing-receipt> [--worker <matching-name>]
 
 Omit webhook input flags for the hidden TTY checkpoint. --webhook-secret-stdin requires an already-safe redirected channel. The config selects the Worker; --worker verifies it, never overrides it. No command deploys.`;
@@ -431,7 +465,7 @@ export async function main(argv = process.argv.slice(2)) {
   if (['check', 'install', 'resume'].includes(command)) {
     if (options['webhook-secret-file'] && options['webhook-secret-stdin']) fail('Choose one webhook input route.');
     if (options['webhook-secret-stdin'] && process.stdin.isTTY) fail('Refusing TTY stdin; omit the flag for hidden entry.', 'E_OPERATOR_TTY');
-    const selected = { appId: options['app-id'], privateKeyPath: options['private-key-file'], accountId: options['account-id'], config: options.config, worker: options.worker, receiptPath: options['receipt-file'], webhookSecretPath: options['webhook-secret-file'], oauthClientId: options['oauth-client-id'], oauthClientSecretPath: options['oauth-client-secret-file'], sealKeyPath: options['seal-key-file'], sealKeyRecoveryRef: options['seal-key-recovery-ref'], wirtSigningKeyPath: options['wirt-signing-key-file'], readWebhookSecret: options['webhook-secret-stdin'] ? readRedirectedSecret : readHiddenTerminalSecret, ...(options.wrangler ? { wrangler: options.wrangler } : {}), ...(options.fake ? { fixture: true, runner: createFakeRunner() } : {}) };
+    const selected = { appId: options['app-id'], privateKeyPath: options['private-key-file'], accountId: options['account-id'], config: options.config, worker: options.worker, receiptPath: options['receipt-file'], webhookSecretPath: options['webhook-secret-file'], oauthClientId: options['oauth-client-id'], oauthClientSecretPath: options['oauth-client-secret-file'], sealKeyPath: options['seal-key-file'], sealKeyEnv: options['seal-key-env'], sealKeyRecoveryRef: options['seal-key-recovery-ref'], wirtSigningKeyPath: options['wirt-signing-key-file'], wirtSigningKeyEnv: options['wirt-signing-key-env'], readWebhookSecret: options['webhook-secret-stdin'] ? readRedirectedSecret : readHiddenTerminalSecret, ...(options.wrangler ? { wrangler: options.wrangler } : {}), ...(options.fake ? { fixture: true, runner: createFakeRunner() } : {}) };
     const result = await (command === 'check' ? checkCredentials(selected) : command === 'resume' ? resumeCredentials(selected) : installCredentials(selected));
     process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
     return;

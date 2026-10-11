@@ -231,9 +231,18 @@ metadata and same-directory receipt commit probe, but does not read protected
 contents. Install exclusively creates and flushes the non-secret receipt before
 reading contents. It validates the RSA key, single-line webhook/OAuth secret,
 seal key of at least 16 characters and the existing Wirt UTF-8 signing contract.
-All seven values go to one contained native stdin bulk write. Native output is
-not forwarded, disk logs/telemetry are disabled, and no temporary secret carrier
-exists to clean up. Operator-owned input files remain intact. Preflight reads
+All seven values go to one contained native stdin bulk write. For a managed
+consumer that already supplies values to a hidden child environment, the seal
+and Wirt inputs may instead use explicit names such as
+`--seal-key-env DIFFDEVIL_STAGING_APP_SEAL_KEY` and
+`--wirt-signing-key-env DIFFDEVIL_STAGING_WIRT_SIGNING_KEY`. Each is an
+alternative to its corresponding file option; passing both refuses. The helper
+reads only those named values after the receipt is flushed, removes those names
+from the Wrangler child environment, and sends the values through private stdin.
+It does not inspect ambient variables or establish a vault record or recovery
+route. Native output is not forwarded, disk logs/telemetry are disabled, and no
+temporary secret carrier exists to clean up. Operator-owned input files remain
+intact. Preflight reads
 back the latest uploaded version's `APP_DB` against the selected configuration;
 the credential version inherits that latest version, rather than necessarily the
 active deployment. Keep this one Worker under the installing operator's writer

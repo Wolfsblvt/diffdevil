@@ -33,10 +33,10 @@ async function appFixture(worker = 'diffdevil-app-staging') {
   return { ...setup, values, options: { appId: '123', privateKeyPath: setup.privateKeyPath, config: setup.config, receiptPath: join(setup.directory, 'receipt.json'), accountId: 'account-1', oauthClientId: values.GITHUB_OAUTH_CLIENT_ID, sealKeyRecoveryRef: 'fixture-recovery-copy', ...files } };
 }
 
-function cli(setup, command = 'install', extra = []) {
+function cli(setup, command = 'install', extra = [], { inputArgs, environment = {} } = {}) {
   const target = ['--config', setup.config, '--account-id', 'account-1', '--receipt-file', setup.options.receiptPath, '--wrangler', 'apps/github-app/fixtures/operator-provider.mjs'];
-  const inputs = command === 'resume' ? [] : ['--app-id', '123', '--private-key-file', setup.privateKeyPath, '--webhook-secret-file', setup.options.webhookSecretPath, '--oauth-client-id', setup.options.oauthClientId, '--oauth-client-secret-file', setup.options.oauthClientSecretPath, '--seal-key-file', setup.options.sealKeyPath, '--seal-key-recovery-ref', setup.options.sealKeyRecoveryRef, '--wirt-signing-key-file', setup.options.wirtSigningKeyPath];
-  return spawnSync(process.execPath, ['apps/github-app/operator-helper.mjs', command, ...target, ...inputs, ...extra], { cwd: process.cwd(), encoding: 'utf8', windowsHide: true, env: { ...process.env, CLOUDFLARE_ENV: 'must-not-inherit' } });
+  const inputs = command === 'resume' ? [] : inputArgs ?? ['--app-id', '123', '--private-key-file', setup.privateKeyPath, '--webhook-secret-file', setup.options.webhookSecretPath, '--oauth-client-id', setup.options.oauthClientId, '--oauth-client-secret-file', setup.options.oauthClientSecretPath, '--seal-key-file', setup.options.sealKeyPath, '--seal-key-recovery-ref', setup.options.sealKeyRecoveryRef, '--wirt-signing-key-file', setup.options.wirtSigningKeyPath];
+  return spawnSync(process.execPath, ['apps/github-app/operator-helper.mjs', command, ...target, ...inputs, ...extra], { cwd: process.cwd(), encoding: 'utf8', windowsHide: true, env: { ...process.env, ...environment, CLOUDFLARE_ENV: 'must-not-inherit' } });
 }
 
 function containsProtectedValues(text, setup) {
@@ -239,6 +239,41 @@ test('the disposable CLI path reads redirected stdin and emits only a bounded re
   } finally {
     await rm(setup.directory, { recursive: true, force: true });
   }
+});
+
+test('explicit seal and Wirt environment inputs stay in the helper and native stdin', async () => {
+  const setup = await appFixture();
+  const sealName = 'DIFFDEVIL_TEST_SEAL_KEY';
+  const wirtName = 'DIFFDEVIL_TEST_WIRT_KEY';
+  const optionsPath = join(setup.directory, 'fixture-options.json');
+  const valuesPath = join(setup.directory, 'fixture-state.json');
+  const inputArgs = ['--app-id', '123', '--private-key-file', setup.privateKeyPath, '--webhook-secret-file', setup.options.webhookSecretPath, '--oauth-client-id', setup.options.oauthClientId, '--oauth-client-secret-file', setup.options.oauthClientSecretPath, '--seal-key-env', sealName, '--seal-key-recovery-ref', setup.options.sealKeyRecoveryRef, '--wirt-signing-key-env', wirtName];
+  try {
+    await writeFile(optionsPath, JSON.stringify({ absentEnvironmentNames: [sealName, wirtName] }));
+    const result = cli(setup, 'install', [], { inputArgs, environment: { [sealName]: setup.values.APP_SEAL_KEY, [wirtName]: setup.values.WIRT_SIGNING_KEY_CURRENT } });
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(containsProtectedValues(result.stdout + result.stderr, setup), false);
+    const receipt = JSON.parse(await readFile(setup.options.receiptPath, 'utf8'));
+    assert.equal(containsProtectedValues(JSON.stringify(receipt), setup), false);
+    const state = JSON.parse(await readFile(valuesPath, 'utf8'));
+    assert.deepEqual(state.inputs, appInputs);
+    assert.equal(state.deliveryHash, createHash('sha256').update(JSON.stringify(setup.values)).digest('hex'));
+    assert.equal(containsProtectedValues(JSON.stringify(state), setup), false);
+  } finally { await rm(setup.directory, { recursive: true, force: true }); }
+});
+
+test('conflicting file and environment sources refuse before provider reads or writes', async () => {
+  const setup = await appFixture();
+  const secretName = 'DIFFDEVIL_TEST_SEAL_KEY';
+  const statePath = join(setup.directory, 'fixture-state.json');
+  try {
+    const result = cli(setup, 'install', ['--seal-key-env', secretName], { environment: { [secretName]: setup.values.APP_SEAL_KEY } });
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /Choose either a Seal key file or named environment input/u);
+    assert.equal(containsProtectedValues(result.stdout + result.stderr, setup), false);
+    assert.equal(await readFile(statePath).then(() => true, () => false), false);
+    assert.equal(await readFile(setup.options.receiptPath).then(() => true, () => false), false);
+  } finally { await rm(setup.directory, { recursive: true, force: true }); }
 });
 
 test('staging registration preserves organisation reach, OAuth callback and trusted policy refresh', () => {

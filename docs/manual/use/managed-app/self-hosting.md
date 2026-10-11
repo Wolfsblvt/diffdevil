@@ -104,7 +104,12 @@ No secret value belongs in a receipt.
 
 For the signed-in App, also supply its OAuth client ID/secret file and retained
 seal key file/recovery reference; add the current Wirt signing file when Wirt is
-configured. The [operator source](../../../../apps/github-app/README.md#registration-and-credential-helper)
+configured. When an existing hidden-child consumer provides a secret directly in
+its environment, `--seal-key-env APP_SEAL_KEY` and, when needed,
+`--wirt-signing-key-env WIRT_SIGNING_KEY_CURRENT` are explicit alternatives to
+those two files. Pass only the variable names on the command line, select one
+source per key, and establish custody separately; the helper does not search
+ambient variables or make an environment value recoverable. The [operator source](../../../../apps/github-app/README.md#registration-and-credential-helper)
 owns those options and the complete [seven-input specimen](../../../integration/app-staging.md#protected-input-operation).
 Use your own production config, Worker and custody paths. Keep the original seal
 key recoverable with the database: generating another key cannot open existing

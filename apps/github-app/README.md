@@ -88,12 +88,15 @@ an App admission control. The callback uses GitHub's documented
 
 The standalone backend installs three inputs. A joined-App config (`APP_ORIGIN`
 in vars) requires OAuth client ID, OAuth client secret file, retained seal key
-file and its opaque recovery reference as well. When Wirt is configured
-(`WIRT_ORIGIN`), its current signing file is required: the complete operation
-delivers all seven inputs in one version. Community without Wirt needs no unused
-commercial credential. The [staging packet](../../docs/integration/app-staging.md#protected-input-operation)
+file (or the explicitly named `--seal-key-env <variable-name>`) and its opaque
+recovery reference as well. When Wirt is configured (`WIRT_ORIGIN`), its current
+signing input is required as either `--wirt-signing-key-file <path>` or
+`--wirt-signing-key-env <variable-name>`: the complete operation delivers all
+seven inputs in one version. Each key accepts exactly one source; the helper
+does not search or enumerate ambient variables. Community without Wirt needs no
+unused commercial credential. The [staging packet](../../docs/integration/app-staging.md#protected-input-operation)
 has a complete PowerShell invocation; production uses the same options with its
-own exact config, Worker, custody files and recovery reference.
+own exact config, Worker, custody files or named child inputs, and recovery reference.
 
 Ordinary interactive use requests the webhook secret through a hidden TTY
 checkpoint after preflight and the durable receipt commit. Alternatively,
@@ -109,9 +112,11 @@ Bulk installation sends JSON directly to Wrangler's private stdin. No temporary
 secret file is created, including on failure; `carrier: not-created` records that
 fact. Native stdout/stderr are contained, Wrangler disk logs and telemetry are
 disabled for these children, and only allowlisted receipt fields reach output.
-The helper leaves operator-owned input files intact. Their access controls and
-retention remain the custodian's responsibility; Node's Unix file mode is not a
-Windows custody/ACL guarantee.
+Named seal/Wirt environment values are read only after the flushed receipt exists,
+removed from the Wrangler child environment and sent through that same private
+stdin. The helper leaves operator-owned input files intact. Their access controls
+and retention remain the custodian's responsibility; Node's Unix file mode is not
+a Windows custody/ACL guarantee.
 
 The non-secret receipt is created exclusively and flushed before protected input.
 A durable `attempted-unknown` marker precedes the provider write. Command acceptance,

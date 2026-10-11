@@ -18,6 +18,7 @@ assert.equal(process.env.WRANGLER_SEND_METRICS, 'false');
 assert.equal(process.env.WRANGLER_LOG, 'error');
 assert.equal(process.env.CLOUDFLARE_ENV, undefined);
 assert.equal(process.env.CLOUDFLARE_ACCOUNT_ID, config.account_id);
+for (const name of options.absentEnvironmentNames ?? []) assert.equal(process.env[name], undefined);
 let result;
 let exitCode = 0;
 if (args.includes('whoami')) result = { accounts: [{ id: config.account_id }] };
