@@ -6,6 +6,8 @@ This application is the signed-in diffdevil App: the analytical and operating ex
 
 ## What it is made of
 
+The same complete App can be built as a [separate persistent staging consumer](../../docs/integration/app-staging.md), with its own Worker/D1/Queues, build output, local state and Wirt configuration. Its committed activation coordinates are placeholders; production and the existing controlled TEST callback are unchanged.
+
 - **Astro, server-rendered on Cloudflare Workers** through `@astrojs/cloudflare`, with a custom Worker entry (`src/worker.mjs`) that routes the managed runtime's paths to `apps/github-app/app.mjs` and everything else to Astro, and exports the Queue and scheduled handlers. Every view is a URL (scope, period, filters, sort, selected bucket, selected file), so a view can be shared, reloaded and re-authorised when opened.
 - **The website's own header, tokens, styles and fonts**, imported from `apps/website/src/`. The header is prerendered once at build (`src/pages/fragments/header.astro`) and injected into every page, so the shell is the same component rather than a copy. The App adds `src/styles/app.css`: the shell, navigation, panel and seat grammar the ratified design settled.
 - **The managed App's authorization service** (`apps/github-app/authorization.mjs`) with a GitHub App user-authorization provider (`src/lib/github-user-provider.mjs`), an AES-GCM seal for stored grants (`src/lib/protector.mjs`) and opaque browser sessions in the same D1 database. The analytical read service is installed behind it, so `/api/analytics` answers a signed-in browser through the same adapter the pages use.

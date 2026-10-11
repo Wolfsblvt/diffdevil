@@ -4,7 +4,7 @@
  * links back to the product site are absolute, and the header's trailing action points at
  * the App origin. Build only: no deployment, publication, remote preview or account effect.
  *
- *   node tools/app-command.mjs build|dev|preview [extra astro args]
+ *   node tools/app-command.mjs build|dev|preview [--staging] [extra astro args]
  */
 import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
@@ -12,14 +12,18 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join, relative, resolve } from 'node:path';
 import { origins } from '../apps/website/public-origins.mjs';
 import { selectPremium } from '../apps/app/premium-selection.mjs';
+import { appBuildTarget } from '../apps/app/build-target.mjs';
 
 const [command, ...rest] = process.argv.slice(2);
 if (!['build', 'dev', 'preview'].includes(command)) { console.error('Expected build, dev or preview.'); process.exit(2); }
-const appOrigin = process.env.DIFFDEVIL_APP_ORIGIN ?? origins.app;
+const targetEnv = { ...process.env, ...(rest.includes('--staging') ? { DIFFDEVIL_APP_TARGET: 'staging' } : {}) };
+const target = appBuildTarget(targetEnv);
+const appOrigin = target.origin;
+const astroArgs = rest.filter(argument => argument !== '--staging');
 const extra = command === 'dev' ? ['--host', '127.0.0.1', '--port', '4411'] : command === 'preview' ? ['--host', '127.0.0.1', '--port', '4412'] : [];
-const result = spawnSync(process.execPath, [resolve('node_modules/astro/bin/astro.mjs'), command, '--root', 'apps/app', ...extra, ...rest], {
+const result = spawnSync(process.execPath, [resolve('node_modules/astro/bin/astro.mjs'), command, '--root', 'apps/app', ...extra, ...astroArgs], {
   stdio: 'inherit', windowsHide: true,
-  env: { ...process.env, DIFFDEVIL_SURFACE: 'app', DIFFDEVIL_SITE_ORIGIN: origins.site, PUBLIC_DASHBOARD_URL: `${appOrigin}/`, DIFFDEVIL_APP_ORIGIN: appOrigin }
+  env: { ...targetEnv, DIFFDEVIL_SURFACE: 'app', DIFFDEVIL_SITE_ORIGIN: origins.site, PUBLIC_DASHBOARD_URL: `${appOrigin}/`, DIFFDEVIL_APP_ORIGIN: appOrigin }
 });
 if (result.error) console.error(result.error.message);
 // A build records the edition it joined, so qualification asserts the right journeys (Community, or Community plus premium).
@@ -28,10 +32,10 @@ if (command === 'build' && result.status === 0) {
   const notices = [await readFile(resolve('apps/app/THIRD-PARTY-NOTICES.txt'), 'utf8')];
   const privateNotices = selection.provided ? resolve(dirname(selection.entry), '..', 'THIRD-PARTY-NOTICES.txt') : null;
   if (privateNotices && existsSync(privateNotices)) notices.push(await readFile(privateNotices, 'utf8'));
-  await writeFile(resolve('artifacts/app/dist/client/third-party-notices.txt'), notices.join('\n\n'));
+  await writeFile(join(target.artifacts, 'dist/client/third-party-notices.txt'), notices.join('\n\n'));
   const qa = selection.provided ? join(dirname(selection.entry), 'qa', 'journeys.mjs') : null;
-  await mkdir(resolve('artifacts/app'), { recursive: true });
-  await writeFile(resolve('artifacts/app/edition.json'), `${JSON.stringify({ premium: selection.provided, reason: selection.reason, entry: selection.provided ? relative(resolve('.'), selection.entry) : null, qa: qa && existsSync(qa) ? relative(resolve('.'), qa) : null, builtAt: new Date().toISOString() }, null, 2)}
+  await mkdir(target.artifacts, { recursive: true });
+  await writeFile(join(target.artifacts, 'edition.json'), `${JSON.stringify({ target: target.name, origin: target.origin, premium: selection.provided, reason: selection.reason, entry: selection.provided ? relative(resolve('.'), selection.entry) : null, qa: qa && existsSync(qa) ? relative(resolve('.'), qa) : null, builtAt: new Date().toISOString() }, null, 2)}
 `);
 }
 process.exit(result.status ?? 2);

@@ -66,6 +66,8 @@ Callback outcomes are `linked`, `pending`, `denied`, `expired`, `conflict`, `end
 
 ## Configuration
 
+Each deployment consumes one Wirt producer. The [persistent staging configuration and activation handoff](app-staging.md) separate its callbacks, signing set, sessions and retained application state from production. The existing controlled TEST callback into production remains valid until a separately qualified replacement is activated.
+
 | Binding | Meaning |
 | --- | --- |
 | `WIRT_SIGNING_KEY_CURRENT` | Shared HMAC key, at least 32 bytes, mediated by Ops; enables the receiver |

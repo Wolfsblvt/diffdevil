@@ -16,12 +16,14 @@ import { fileURLToPath } from 'node:url';
 import { Miniflare } from 'miniflare';
 import { D1AppStore } from '../../github-app/storage.mjs';
 import { seedStore, setScale, NOW } from './fixture.mjs';
+import { appBuildTarget } from '../build-target.mjs';
 
 /** Every migration of the managed App, in order: the App reads the same schema the webhook runtime writes. */
 export async function migrationNames() { return (await readdir(resolve('apps/github-app/migrations'))).filter(name => name.endsWith('.sql')).sort(); }
 const TABLES = ['installations', 'repositories', 'history_records', 'history_file_rows', 'history_effect_rows', 'analytical_pull_requests', 'analytical_file_sizes'];
 const CLEARED = ["participation_previews","history_jobs","repository_default_adoptions","administrative_events","delegations","automatic_setup","policy_publication_results","policy_publications","policy_links","linked_policies","repository_selections","free_connections","works_departures","plan_change_choices","namespace_defaults","user_service_connections","analytical_file_sizes","analytical_pull_requests","commercial_reports","commercial_refusals","commercial_bindings","commercial_links","commercial_link_attempts","commercial_nonces","history_effect_rows","history_file_rows","history_records","browser_sessions","authorization_artifacts","authorization_attempts","user_authorizations","operational_results","execution_leases","deliveries","repairs","repositories","installations","participation_deliveries","participation_responses","participation_prompts"];
-const CONFIG = resolve('apps/app/wrangler.jsonc');
+const target = appBuildTarget();
+const CONFIG = resolve('apps/app', target.configPath);
 
 const literal = value => value === null || value === undefined ? 'NULL' : typeof value === 'number' ? String(value) : `'${String(value).replaceAll("'", "''")}'`;
 
@@ -66,10 +68,10 @@ export async function fixtureSql() {
   } finally { await runtime.dispose(); }
 }
 
-export async function seedLocalState(persist = resolve('artifacts/app/state')) {
+export async function seedLocalState(persist = resolve(target.artifacts, 'state')) {
   await mkdir(persist, { recursive: true });
   const { sql, written } = await fixtureSql();
-  const file = resolve('artifacts/app/seed.sql');
+  const file = resolve(target.artifacts, 'seed.sql');
   await writeFile(file, sql);
   wrangler(['d1', 'migrations', 'apply', 'APP_DB'], persist);
   wrangler(['d1', 'execute', 'APP_DB', '--file', file], persist);
@@ -81,7 +83,7 @@ export async function seedLocalState(persist = resolve('artifacts/app/state')) {
  * failed pull-request operation looks like to the App. The participation pass needs one to observe meaningful use.
  */
 export async function recordLocalDelivery(persist, { repositoryId, installationId, state, code, at = new Date().toISOString() }) {
-  const file = resolve('artifacts/app/seed-delivery.sql');
+  const file = resolve(target.artifacts, 'seed-delivery.sql');
   await writeFile(file, `INSERT INTO deliveries (delivery_id, installation_id, repository_id, pull_request, state, received_at, completed_at, code) VALUES (${literal(`qa-${crypto.randomUUID()}`)}, ${literal(installationId)}, ${literal(repositoryId)}, 1, ${literal(state)}, ${literal(at)}, ${literal(at)}, ${literal(code)});\n`);
   wrangler(['d1', 'execute', 'APP_DB', '--file', file], persist);
 }

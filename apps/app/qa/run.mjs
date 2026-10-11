@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
 /**
- * Local browser qualification of the built signed-in App (artifacts/app/dist).
+ * Local browser qualification of the built signed-in App (artifacts/app/dist, or app-staging with DIFFDEVIL_APP_TARGET=staging).
  *
  *   npm run app:build && npm run qa:app
  *
@@ -16,7 +16,7 @@
  * carries the same rows, the cloud packs (in its Worker), arranges, opens its Top column and
  * walks the rank order, the period switch morphs the live charts in place, and reduced motion
  * still draws. `DIFFDEVIL_APP_QA_DENSE=1` adds a pass over a denser fixture and records the
- * cloud's layout timings. Results and screenshots go to artifacts/app/qa/. This proves local
+ * cloud's layout timings. Results and screenshots go to the selected target's qa/ directory. This proves local
  * behaviour against a fixture; it proves no deployment, no live GitHub and no real data.
  */
 import { chromium } from '@playwright/test';
@@ -26,35 +26,37 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { existsSync, readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { once } from 'node:events';
-import { join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { createFakeGitHub, CODE, ENTITLEMENT_FIXTURE, setScale } from './fixture.mjs';
 import { seedLocalState, executeLocal, recordLocalDelivery } from './seed.mjs';
 import { proManage, freeManage, businessManage, delegateManage, setupRecovery, manageAccess, COMMERCIAL_PRO, COMMERCIAL_FREE, COMMERCIAL_BUSINESS } from './manage.mjs';
 import { participationJourney, COMMERCIAL_BETA, QA_CAMPAIGN } from './participation.mjs';
+import { appBuildTarget } from '../build-target.mjs';
 
-const OUT = resolve('artifacts/app/qa');
-const APP_PORT = Number(process.env.DIFFDEVIL_APP_QA_PORT ?? 4412);
-const GITHUB_PORT = Number(process.env.DIFFDEVIL_APP_QA_GITHUB_PORT ?? 4433);
+const target = appBuildTarget();
+const OUT = join(target.artifacts, 'qa');
+const APP_PORT = Number(process.env.DIFFDEVIL_APP_QA_PORT ?? (target.name === 'staging' ? 4512 : 4412));
+const GITHUB_PORT = Number(process.env.DIFFDEVIL_APP_QA_GITHUB_PORT ?? (target.name === 'staging' ? 4533 : 4433));
 // Chromium accepts Secure (__Host-) cookies from http://localhost, not from a loopback IP, so the browser origin is localhost; the Worker still binds 127.0.0.1.
 const ORIGIN = `http://localhost:${APP_PORT}`;
 const PROBE = `http://127.0.0.1:${APP_PORT}`;
-const CONFIG = resolve('artifacts/app/dist/server/wrangler.json');
+const CONFIG = join(target.artifacts, 'dist/server/wrangler.json');
 const DENSE = process.env.DIFFDEVIL_APP_QA_DENSE === '1';
 const PARTICIPATION_ONLY = process.argv.includes('--participation');
-const STATE = resolve('artifacts/app/state');
-const DENSE_STATE = resolve('artifacts/app/state-dense');
+const STATE = join(target.artifacts, 'state');
+const DENSE_STATE = join(target.artifacts, 'state-dense');
 const chartTelemetry = [];
 
 if (!existsSync(CONFIG)) { console.error('Build the App first: npm run app:build'); process.exit(2); }
 // The build records which edition it is (tools/app-command.mjs). The Community journeys always run; the premium journeys run only
 // against a build that joined the premium extension, and a Community build asserts the truthful absent states instead.
-const EDITION = resolve('artifacts/app/edition.json');
+const EDITION = join(target.artifacts, 'edition.json');
 if (!existsSync(EDITION)) { console.error('The build carries no edition record; rebuild with npm run app:build.'); process.exit(2); }
 const edition = JSON.parse(readFileSync(EDITION, 'utf8'));
 const premium = edition.premium && edition.qa ? (await import(pathToFileURL(resolve(edition.qa)).href)).default : null;
 console.log(`Qualifying the ${premium ? 'premium-joined' : 'Community'} build (${edition.reason}).`);
 // A local variables file copied into the build output would silently override the pass's --var flags.
-for (const stale of [resolve('apps/app/.dev.vars'), resolve('artifacts/app/dist/server/.dev.vars')]) if (existsSync(stale)) { console.error(`Refusing to run with a local variables file in place: ${stale}`); process.exit(2); }
+for (const stale of [join(dirname(resolve('apps/app', target.configPath)), '.dev.vars'), join(target.artifacts, 'dist/server/.dev.vars')]) if (existsSync(stale)) { console.error(`Refusing to run with a local variables file in place: ${stale}`); process.exit(2); }
 // The dense pass seeds a four-times larger fixture through the real engine, which takes its own minutes.
 const MINUTES = DENSE ? 40 : 15;
 const deadline = setTimeout(() => { console.error(`QA exceeded its ${MINUTES}-minute deadline.`); process.exit(3); }, MINUTES * 60_000);
@@ -103,7 +105,7 @@ async function startWorker(entitlement, state = STATE, extra = {}) {
   throw new Error(`The local Worker did not become ready: ${last}
 ${workerLog.slice(-4000)}`);
 }
-/** Whoever listens on the App port: the spawned tree, or a survivor of an earlier run. */
+/** Observe the App port; an existing listener is never evidence that this pass owns it. */
 function listenersOn(port) {
   if (process.platform !== 'win32') { const out = spawnSync('lsof', ['-ti', `tcp:${port}`, '-sTCP:LISTEN'], { encoding: 'utf8' }).stdout ?? ''; return [...new Set(out.split(/\s+/u).filter(Boolean))]; }
   const out = spawnSync('netstat', ['-ano'], { encoding: 'utf8', windowsHide: true }).stdout ?? '';
@@ -117,10 +119,9 @@ async function freePort(port) {
   for (let attempt = 0; attempt < 30; attempt++) {
     const pids = listenersOn(port);
     if (pids.length === 0) return;
-    for (const pid of pids) killTree(pid);
     await new Promise(resolve => setTimeout(resolve, 500));
   }
-  throw new Error(`Port ${port} is still held by another process.`);
+  throw new Error(`Port ${port} is still held by another process; choose a different DIFFDEVIL_APP_QA_PORT.`);
 }
 async function stopWorker() {
   if (worker && worker.exitCode === null) {

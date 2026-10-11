@@ -68,6 +68,13 @@ There is no separate reusable compiler installation under `artifacts/toolchain`.
 
 ## Verification commands and boundaries
 
+`npm run app:build:staging` and `npm run check:app:staging` select the separate
+App consumer into `artifacts/app-staging/`. `DIFFDEVIL_APP_TARGET=staging` also
+selects its local state for the existing App seed and browser QA commands. See
+[persistent App staging](integration/app-staging.md) for the configuration,
+focused two-database qualification and activation handoff. These commands have
+no provider mutation or deployment effect.
+
 | Command | What it proves |
 | --- | --- |
 | `npm run check:prep` | Parses machine assets and checks unique, nonempty declared case IDs. It does not execute cases or judge prose. |

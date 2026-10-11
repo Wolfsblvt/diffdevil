@@ -10,25 +10,27 @@ import { defineConfig } from 'astro/config';
 import cloudflare from '@astrojs/cloudflare';
 import { fileURLToPath } from 'node:url';
 import { selectPremium } from './premium-selection.mjs';
+import { appBuildTarget } from './build-target.mjs';
 
 const repositoryRoot = fileURLToPath(new URL('../../', import.meta.url));
 // The Community App is complete on its own; the premium extension joins only when present (premium-selection.mjs).
 const premium = selectPremium();
 const appSource = fileURLToPath(new URL('./src', import.meta.url));
+const target = appBuildTarget();
 
 export default defineConfig({
-  site: process.env.DIFFDEVIL_APP_ORIGIN ?? 'https://app.diffdevil.dev',
+  site: target.origin,
   output: 'server',
   trailingSlash: 'never',
-  outDir: fileURLToPath(new URL('../../artifacts/app/dist', import.meta.url)),
+  outDir: `${target.artifacts}/dist`,
   session: false,
   adapter: cloudflare({
     // No image transforms: nothing on these pages is an optimised image, and no Images binding is wanted.
     imageService: 'passthrough',
     // The header fragment prerenders through the website's build-time icon registry, which needs Node.
     prerenderEnvironment: 'node',
-    configPath: 'wrangler.jsonc',
-    persistState: { path: fileURLToPath(new URL('../../artifacts/app/state', import.meta.url)) }
+    configPath: target.configPath,
+    persistState: { path: `${target.artifacts}/state` }
   }),
   devToolbar: { enabled: false },
   // Cross-origin POSTs are refused by the authorization service against the configured APP_ORIGIN
