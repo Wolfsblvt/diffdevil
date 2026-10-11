@@ -19,7 +19,7 @@ export const repositorySources = Object.freeze([
  'docs/ARCHITECTURE.md','docs/DEVELOPMENT.md','docs/PROJECT-MAP.md','docs/qualification.md',
  'docs/publication-boundary.md','docs/documentation.md','docs/presentation.md',
  'docs/integration/github-api.md','docs/integration/github-app.md','docs/integration/action-distribution.md',
- 'docs/integration/example-catalogue.md','docs/PRIVACY-AND-DATA.md','SECURITY.md','LICENSES/README.md',
+ 'docs/integration/example-catalogue.md','docs/integration/app-staging.md','docs/PRIVACY-AND-DATA.md','SECURITY.md','LICENSES/README.md',
  'apps/manual/README.md','apps/browser-extension/README.md','apps/browser-extension/privacy.md','docs/releases/v1.0.0.md',
  'apps/playground/README.md','apps/github-app/README.md','apps/website/README.md',
  'skills/diffdevil/SKILL.md','skills/diffdevil/references/install-and-update.md',
