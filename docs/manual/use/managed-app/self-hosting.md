@@ -82,12 +82,50 @@ The source-owned credential helper requires an already identified Worker deploym
 For that established target, the operator command has this shape:
 
 ```sh
-node apps/github-app/operator-helper.mjs install --app-id 123 --private-key-file path/to/downloaded-app-key.pem --account-id account-id --config path/to/derived-qualification.jsonc
+node apps/github-app/operator-helper.mjs check --app-id 123 --private-key-file path/to/retained-app-key.pem --account-id account-id --config path/to/derived-qualification.jsonc --receipt-file path/to/new-credential-receipt.json
+node apps/github-app/operator-helper.mjs install --app-id 123 --private-key-file path/to/retained-app-key.pem --account-id account-id --config path/to/derived-qualification.jsonc --receipt-file path/to/new-credential-receipt.json
 ```
 
-The identifiers and file paths are specimens, not values for a real environment. The helper accepts the downloaded unencrypted RSA PKCS#1 App key and obtains the webhook secret through a hidden interactive prompt. Its non-interactive `--webhook-secret-stdin` route is for an already-protected, redirected input, not an instruction to echo a secret into shell history. No secret value belongs in a receipt.
+The identifiers and file paths are specimens, not values for a real environment.
+The config's exact Worker name selects the target; an optional `--worker` must
+match it. Conflicting account/Worker names and inert or missing database IDs refuse
+before protected input. `check` reads provider target facts and file metadata,
+then probes the receipt directory without reading protected contents or writing
+a Worker version. The receipt directory must already exist and the new receipt
+must not exist.
 
-This helper creates an **undeployed Worker version** using versioned secret installation. It does not deploy that version, register the App, install it on a repository, or enable execution. Its receipt separates command acceptance, created-version identity, version readback, unchanged deployment, and partial/unknown results. A failed readback needs reconciliation; rerunning blindly can create another version.
+The helper accepts the downloaded unencrypted RSA PKCS#1 App key and obtains the
+webhook secret through a hidden interactive prompt after creating its non-secret
+checkpoint. `--webhook-secret-file` accepts an operator-controlled protected file.
+The non-interactive `--webhook-secret-stdin` route requires an already-protected,
+redirected channel; do not echo a secret into shell history. Native output stays
+contained, and bulk values go through private stdin rather than a temporary file.
+No secret value belongs in a receipt.
+
+For the signed-in App, also supply its OAuth client ID/secret file and retained
+seal key file/recovery reference; add the current Wirt signing file when Wirt is
+configured. The [operator source](../../../../apps/github-app/README.md#registration-and-credential-helper)
+owns those options and the complete [seven-input specimen](../../../integration/app-staging.md#protected-input-operation).
+Use your own production config, Worker and custody paths. Keep the original seal
+key recoverable with the database: generating another key cannot open existing
+protected authorizations or reproduce opaque file locators.
+
+This helper creates an **undeployed Worker version** using versioned secret
+installation. It does not deploy that version, register the App, install it on a
+repository or enable execution. Its receipt separates command acceptance,
+created-version identity and secret-binding-name readback, unchanged latest
+deployment, and partial/unknown results. Reconcile an interrupted operation with
+the existing receipt and exact unchanged config:
+
+```sh
+node apps/github-app/operator-helper.mjs resume --account-id account-id --config path/to/derived-qualification.jsonc --receipt-file path/to/existing-credential-receipt.json
+```
+
+Resume reads provider state without reading input files or creating another
+version. It refuses missing, unusable or foreign receipts. A provider write with
+an unobserved acknowledgement remains partial even if its version appears;
+resolve that result before another admitted effect. A credential version receipt
+does not establish a working deployment or recoverable external key custody.
 
 Deploying the selected version remains a deliberate provider operation under your own operating authority. Keep credentials out of diagnostics, use the narrow required permissions, and rotate/revoke them through the selected provider route after testing the replacement. Credential rotation and code rollback do not undo database migrations or repository effects.
 

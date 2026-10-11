@@ -1,30 +1,42 @@
 // SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
 
 import { spawn } from 'node:child_process';
+import { createHash, randomUUID } from 'node:crypto';
 import { once } from 'node:events';
-import { readFile, mkdtemp, rm, writeFile } from 'node:fs/promises';
-import { join, resolve } from 'node:path';
-import { tmpdir } from 'node:os';
+import { open, readFile, rename, rm, stat } from 'node:fs/promises';
+import { dirname, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { parse } from 'jsonc-parser';
 import { validateGitHubAppPrivateKey } from './crypto.mjs';
+import { readSigningKeys } from './commercial-wirt.mjs';
 
-const APP_NAME = 'diffdevil';
-const DEFAULT_WORKER = 'diffdevil-github-app';
 const GITHUB_REGISTRATION_URL = 'https://github.com/settings/apps/new';
-const PLACEHOLDER_DATABASE_ID = '00000000-0000-0000-0000-000000000000';
+const INERT_DATABASE_IDS = new Set(['00000000-0000-0000-0000-000000000000', '00000000-0000-0000-0000-000000000001']);
+const BACKEND_INPUTS = ['GITHUB_APP_ID', 'GITHUB_WEBHOOK_SECRET', 'GITHUB_APP_PRIVATE_KEY'];
+const APP_INPUTS = [...BACKEND_INPUTS, 'GITHUB_OAUTH_CLIENT_ID', 'GITHUB_OAUTH_CLIENT_SECRET', 'APP_SEAL_KEY'];
+
+function inputNames(target, options) {
+  return target.joinedApp ? [...APP_INPUTS, ...(target.wirtConfigured || options.wirtSigningKeyPath ? ['WIRT_SIGNING_KEY_CURRENT'] : [])] : BACKEND_INPUTS;
+}
 
 function fail(message, code = 'E_OPERATOR_INPUT', receipt) {
   throw Object.assign(new Error(message), { code, receipt });
 }
 
 function requireValue(value, name) {
-  if (typeof value !== 'string' || value.length === 0) fail(`${name} is required.`);
+  if (typeof value !== 'string' || value.trim().length === 0) fail(`${name} is required.`);
   return value;
 }
 
+function identifier(value, name) {
+  const text = requireValue(value, name);
+  if (!/^[A-Za-z0-9_-]+$/u.test(text)) fail(`${name} has an invalid format.`);
+  return text;
+}
+
 export function validateAppId(appId) {
-  const value = requireValue(String(appId), 'GitHub App ID');
-  if (!/^\d+$/u.test(value)) fail('GitHub App ID must be numeric.');
+  const value = requireValue(appId, 'GitHub App ID');
+  if (!/^[1-9]\d*$/u.test(value)) fail('GitHub App ID must be a positive numeric ID.');
   return value;
 }
 
@@ -34,102 +46,216 @@ export function validateWebhookSecret(secret) {
   return value;
 }
 
-export function registrationInputs({ webhookUrl, visibility = 'private' }) {
-  const parsed = new URL(requireValue(webhookUrl, 'Webhook URL'));
-  if (parsed.protocol !== 'https:' || parsed.username || parsed.password || parsed.hash) fail('Webhook URL must be an HTTPS URL without credentials or a fragment.');
+function httpsUrl(value, name) {
+  let parsed;
+  try { parsed = new URL(requireValue(value, name)); } catch { fail(`${name} must be an HTTPS URL.`); }
+  if (parsed.protocol !== 'https:' || parsed.username || parsed.password || parsed.hash || parsed.search) fail(`${name} must be an HTTPS URL without credentials, query or fragment.`);
+  return parsed;
+}
+
+/** Non-secret registration preparation; push is selected explicitly for trusted policy refresh. */
+export function registrationInputs({ webhookUrl, visibility = 'private', appName = 'diffdevil', oauthCallbackUrl, policyRefresh = false }) {
+  const parsed = httpsUrl(webhookUrl, 'Webhook URL');
   if (visibility !== 'private' && visibility !== 'public') fail('Visibility must be private or public.');
+  requireValue(appName, 'App name');
+  const callback = oauthCallbackUrl ? httpsUrl(oauthCallbackUrl, 'OAuth callback URL') : undefined;
+  if (callback && callback.origin !== parsed.origin) fail('OAuth callback and webhook must belong to the same App origin.');
   const registration = new URL(GITHUB_REGISTRATION_URL);
-  registration.searchParams.set('name', APP_NAME);
-  registration.searchParams.set('description', 'Composable diff analysis and policy for GitHub pull requests.');
-  registration.searchParams.set('url', 'https://github.com/Wolfsblvt/diffdevil');
-  registration.searchParams.set('public', String(visibility === 'public'));
-  registration.searchParams.set('webhook_active', 'true');
-  registration.searchParams.set('webhook_url', parsed.toString());
-  registration.searchParams.set('contents', 'read');
-  registration.searchParams.set('pull_requests', 'write');
-  registration.searchParams.set('checks', 'write');
-  registration.searchParams.append('events[]', 'pull_request');
-  registration.searchParams.append('events[]', 'check_run');
-  return { appName: APP_NAME, visibility, webhookUrl: parsed.toString(), permissions: { contents: 'read', pullRequests: 'write', checks: 'write' }, events: ['pull_request', 'check_run'], providerDefaultEvents: ['installation', 'installation_repositories'], registrationUrl: registration.toString() };
+  const fields = { name: appName, description: 'Composable diff analysis and policy for GitHub pull requests.', url: 'https://github.com/Wolfsblvt/diffdevil', public: String(visibility === 'public'), webhook_active: 'true', webhook_url: parsed.toString(), contents: 'read', pull_requests: 'write', checks: 'write' };
+  if (callback) fields['callback_urls[]'] = callback.toString();
+  for (const [key, value] of Object.entries(fields)) registration.searchParams.set(key, value);
+  const events = ['pull_request', 'check_run', ...(policyRefresh ? ['push'] : [])];
+  for (const event of events) registration.searchParams.append('events[]', event);
+  return { appName, visibility, webhookUrl: parsed.toString(), ...(callback ? { oauthCallbackUrl: callback.toString() } : {}), permissions: { contents: 'read', pullRequests: 'write', checks: 'write' }, events, providerDefaultEvents: ['installation', 'installation_repositories'], registrationUrl: registration.toString() };
 }
 
 export function buildWranglerCommand(command, args, { worker, config }) {
   return [command, ...args, '--name', worker, '--config', config];
 }
 
+/** Drain native output privately. Neither stderr nor a raw native exception reaches the caller. */
 export function createProcessRunner({ executable = process.execPath } = {}) {
   return async ({ args, input, env }) => {
     const child = spawn(executable, args, { env, stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true });
-    const stdout = [], stderr = [];
+    const stdout = [];
     child.stdout.on('data', chunk => stdout.push(chunk));
-    child.stderr.on('data', chunk => stderr.push(chunk));
+    child.stderr.resume();
+    child.stdin.on('error', () => {}); // A refused command can close stdin before consuming it.
+    const completion = once(child, 'close');
     child.stdin.end(input);
-    const [code] = await once(child, 'close');
-    return { code, stdout: Buffer.concat(stdout).toString('utf8'), stderr: Buffer.concat(stderr).toString('utf8') };
+    try {
+      const [code] = await completion;
+      return { code, stdout: Buffer.concat(stdout).toString('utf8') };
+    } catch { fail('The native provider process could not complete.', 'E_OPERATOR_PROCESS'); }
   };
 }
 
-function parseJson(stdout, operation) {
-  try { return JSON.parse(stdout); } catch { fail(`${operation} returned unreadable JSON.`, 'E_OPERATOR_TARGET'); }
-}
-
-function accountMatches(result, accountId) {
-  return Array.isArray(result?.accounts) && result.accounts.some(account => account?.id === accountId);
-}
-
-function versionEntries(result) {
-  const entries = Array.isArray(result) ? result : result?.versions;
-  if (!Array.isArray(entries)) fail('Wrangler version readback has an unknown shape.', 'E_OPERATOR_VERSION_READBACK');
-  const versions = entries.map(entry => ({ id: entry?.id ?? entry?.version_id })).filter(entry => typeof entry.id === 'string');
-  if (versions.length !== entries.length) fail('Wrangler version readback omitted a version identity.', 'E_OPERATOR_VERSION_READBACK');
-  return versions;
-}
-
-function deploymentSnapshot(result) {
-  const deployments = Array.isArray(result) ? result : result?.deployments;
-  if (!Array.isArray(deployments) || deployments.length === 0) fail('Wrangler could not read back a deployment for the requested Worker.', 'E_OPERATOR_TARGET');
-  return JSON.stringify(result);
-}
-
-async function qualificationConfig(config) {
-  const source = await readFile(requireValue(config, 'Qualification configuration path'), 'utf8');
-  if (source.includes(PLACEHOLDER_DATABASE_ID)) fail("Refusing the checked-in placeholder Wrangler configuration; provide Katja's derived qualification config.", 'E_OPERATOR_CONFIG');
-  return config;
-}
-
 function environment(accountId) {
-  return { ...process.env, CLOUDFLARE_ACCOUNT_ID: accountId, WRANGLER_SEND_METRICS: 'false' };
+  const env = { ...process.env, CLOUDFLARE_ACCOUNT_ID: accountId, WRANGLER_SEND_METRICS: 'false', WRANGLER_WRITE_LOGS: 'false', WRANGLER_LOG: 'error' };
+  // A caller's named environment must not silently retarget the exact configuration.
+  delete env.CLOUDFLARE_ENV;
+  return env;
 }
 
-async function readVersions({ runner, wrangler, worker, config, env }) {
-  const result = await runner({ args: buildWranglerCommand(wrangler, ['versions', 'list', '--json'], { worker, config }), input: '', env });
-  if (result.code !== 0) return { state: 'unknown' };
-  try { return { state: 'read-back', versions: versionEntries(parseJson(result.stdout, 'Wrangler version readback')) }; } catch { return { state: 'unknown' }; }
+async function qualificationConfig({ config, worker, accountId }) {
+  let source, data;
+  try {
+    source = await readFile(requireValue(config, 'Configuration path'), 'utf8');
+    const errors = [];
+    data = parse(source, errors, { allowTrailingComma: true });
+    if (errors.length || !data || typeof data !== 'object' || Array.isArray(data)) throw new Error();
+  } catch { fail('Provide a readable, valid JSON/JSONC target configuration.', 'E_OPERATOR_CONFIG'); }
+  const selectedWorker = identifier(data.name, 'Configuration Worker name');
+  if (worker !== undefined && worker !== selectedWorker) fail('Requested Worker differs from the configuration name.', 'E_OPERATOR_TARGET');
+  const selectedAccount = identifier(accountId, 'Cloudflare account ID');
+  if (data.account_id !== undefined && data.account_id !== selectedAccount) fail('Requested account differs from the configuration account.', 'E_OPERATOR_TARGET');
+  const databases = data.d1_databases;
+  if (!Array.isArray(databases) || databases.length !== 1 || databases[0]?.binding !== 'APP_DB') fail('The target must select exactly one APP_DB database.', 'E_OPERATOR_CONFIG');
+  const databaseId = databases[0].database_id;
+  if (typeof databaseId !== 'string' || !/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/iu.test(databaseId) || INERT_DATABASE_IDS.has(databaseId.toLowerCase())) fail('Replace the inert APP_DB database coordinate before protected input.', 'E_OPERATOR_CONFIG');
+  return { worker: selectedWorker, accountId: selectedAccount, databaseId, config: resolve(config), configHash: createHash('sha256').update(source).digest('hex'), joinedApp: typeof data.vars?.APP_ORIGIN === 'string', wirtConfigured: typeof data.vars?.WIRT_ORIGIN === 'string' };
 }
 
-async function readDeployment({ runner, wrangler, worker, config, env }) {
-  const result = await runner({ args: buildWranglerCommand(wrangler, ['deployments', 'list', '--json'], { worker, config }), input: '', env });
-  if (result.code !== 0) return { state: 'unknown' };
-  try { return { state: 'read-back', snapshot: deploymentSnapshot(parseJson(result.stdout, 'Wrangler deployment readback')) }; } catch { return { state: 'unknown' }; }
+async function nativeJson({ runner, args, env }) {
+  try {
+    const result = await runner({ args, input: '', env });
+    if (result.code !== 0) return undefined;
+    return JSON.parse(result.stdout);
+  } catch { return undefined; }
 }
 
-async function requireTarget({ runner, wrangler, worker, config, accountId }) {
-  const env = environment(accountId);
-  const account = await runner({ args: [wrangler, 'whoami', '--account', accountId, '--json'], input: '', env });
-  if (account.code !== 0 || !accountMatches(parseJson(account.stdout, 'Wrangler account readback'), accountId)) fail('Wrangler could not read back the requested Cloudflare account.', 'E_OPERATOR_TARGET');
-  const deployment = await readDeployment({ runner, wrangler, worker, config, env });
-  if (deployment.state !== 'read-back') fail('Wrangler could not read back the requested Worker deployment.', 'E_OPERATOR_TARGET');
-  const versions = await readVersions({ runner, wrangler, worker, config, env });
-  if (versions.state !== 'read-back') fail('Wrangler could not read back the requested Worker versions.', 'E_OPERATOR_TARGET');
-  return { accountId, worker, config, env, deployment, versions };
+async function readVersions({ runner, wrangler, ...target }) {
+  const result = await nativeJson({ runner, args: buildWranglerCommand(wrangler, ['versions', 'list', '--json'], target), env: target.env });
+  const entries = Array.isArray(result) ? result : result?.versions;
+  if (!Array.isArray(entries) || entries.some(entry => typeof entry?.id !== 'string' || !/^[A-Za-z0-9_-]+$/u.test(entry.id))) return { state: 'unknown' };
+  return { state: 'read-back', versions: entries.map(entry => ({ id: entry.id })) };
 }
 
-function initialReceipt(target) {
-  return { state: 'unknown', accountId: target.accountId, worker: target.worker, command: 'not-attempted', version: { state: 'unknown' }, deployment: { state: 'unknown' }, carrier: { state: 'not-attempted' } };
+async function readDeployment({ runner, wrangler, ...target }) {
+  const result = await nativeJson({ runner, args: buildWranglerCommand(wrangler, ['deployments', 'list', '--json'], target), env: target.env });
+  const entries = Array.isArray(result) ? result : result?.deployments;
+  if (!Array.isArray(entries) || entries.length === 0 || entries.some(entry => typeof entry?.id !== 'string')) return { state: 'unknown' };
+  // Do not persist arbitrary provider fields. Order, version identities and traffic are the active deployment facts.
+  // Wrangler 4.135 sorts deployments list --json by created_on ascending.
+  const deployment = entries.at(-1);
+  if (!/^[A-Za-z0-9_-]+$/u.test(deployment.id) || !Array.isArray(deployment.versions) || deployment.versions.some(version => typeof version?.version_id !== 'string' || !/^[A-Za-z0-9_-]+$/u.test(version.version_id) || typeof version.percentage !== 'number' || !Number.isFinite(version.percentage))) return { state: 'unknown' };
+  return { state: 'read-back', snapshot: JSON.stringify({ id: deployment.id, versions: deployment.versions.map(version => ({ version_id: version.version_id, percentage: version.percentage })) }) };
+}
+
+async function requireTarget(options) {
+  const target = await qualificationConfig(options);
+  target.fixture = options.fixture === true;
+  target.env = environment(target.accountId);
+  const account = await nativeJson({ runner: options.runner, args: [options.wrangler, 'whoami', '--account', target.accountId, '--json', '--config', target.config], env: target.env });
+  if (!Array.isArray(account?.accounts) || !account.accounts.some(entry => entry?.id === target.accountId)) fail('Wrangler could not read back the requested Cloudflare account.', 'E_OPERATOR_TARGET');
+  target.deployment = await readDeployment({ ...options, ...target });
+  if (target.deployment.state !== 'read-back') fail('Wrangler could not read back the requested Worker deployment.', 'E_OPERATOR_TARGET');
+  target.versions = await readVersions({ ...options, ...target });
+  if (target.versions.state !== 'read-back') fail('Wrangler could not read back the requested Worker versions.', 'E_OPERATOR_TARGET');
+  return target;
+}
+
+function hasDatabase(bindings, target) {
+  const database = Array.isArray(bindings) ? bindings.filter(binding => binding?.name === 'APP_DB') : [];
+  return database.length === 1 && database[0].type === 'd1' && database[0].id === target.databaseId;
+}
+
+async function requireVersionTarget(options, target) {
+  // Secret bulk patches the latest uploaded version, which need not be the active deployment.
+  // The pinned Wrangler versions list is ordered by created_on ascending.
+  const latest = target.versions.versions.at(-1);
+  if (!latest) fail('The selected Worker has no uploaded version to receive credentials.', 'E_OPERATOR_TARGET');
+  const viewed = await nativeJson({ runner: options.runner, args: buildWranglerCommand(options.wrangler, ['versions', 'view', latest.id, '--json'], target), env: target.env });
+  if (viewed?.id !== latest.id || !hasDatabase(viewed.resources?.bindings, target)) fail('The latest Worker version does not read back the configured APP_DB binding.', 'E_OPERATOR_TARGET');
+}
+
+async function inputFiles(options, target) {
+  const paths = [requireValue(options.privateKeyPath, 'Private key path')];
+  if (options.webhookSecretPath) paths.push(options.webhookSecretPath);
+  if (!options.webhookSecretPath && typeof options.readWebhookSecret !== 'function') fail('Supply a webhook secret file or the hidden/redirected input route.');
+  if (target.joinedApp) {
+    identifier(options.oauthClientId, 'GitHub OAuth client ID');
+    paths.push(requireValue(options.oauthClientSecretPath, 'OAuth client secret path'), requireValue(options.sealKeyPath, 'Retained seal key path'));
+    if (target.wirtConfigured || options.wirtSigningKeyPath) paths.push(requireValue(options.wirtSigningKeyPath, 'Wirt signing key path'));
+    identifier(options.sealKeyRecoveryRef, 'Seal key recovery reference');
+  } else if (options.oauthClientId || options.oauthClientSecretPath || options.sealKeyPath || options.wirtSigningKeyPath || options.sealKeyRecoveryRef) {
+    fail('Joined-App inputs require a joined-App configuration.', 'E_OPERATOR_CONFIG');
+  }
+  for (const path of paths) {
+    try { if (!(await stat(path)).isFile()) throw new Error(); } catch { fail('A required protected input file is unavailable.', 'E_OPERATOR_INPUT_FILE'); }
+    if (resolve(path) === resolve(options.receiptPath)) fail('The receipt must not replace a protected input file.', 'E_OPERATOR_RECEIPT');
+  }
+}
+
+function initialReceipt(target, options) {
+  return { format: 'diffdevil-credential-version-v1', mode: target.fixture ? 'fixture' : 'provider', state: 'prepared', accountId: target.accountId, worker: target.worker, databaseId: target.databaseId, configHash: target.configHash, inputs: inputNames(target, options), ...(target.joinedApp ? { sealKeyRecoveryRef: options.sealKeyRecoveryRef } : {}), command: 'not-attempted', version: { state: 'unknown' }, deployment: { state: 'unknown' }, carrier: { state: 'not-created' }, before: { deployment: target.deployment, versions: target.versions } };
+}
+
+async function unchangedConfiguration(target) {
+  const current = await qualificationConfig(target);
+  if (current.configHash !== target.configHash) fail('Target configuration changed during input; no provider write was attempted.', 'E_OPERATOR_TARGET');
+}
+
+async function writeReceipt(path, receipt, { exclusive = false } = {}) {
+  const temporary = exclusive ? path : join(dirname(path), `.diffdevil-receipt-${randomUUID()}.tmp`);
+  try {
+    const file = await open(temporary, 'wx', 0o600);
+    try { await file.writeFile(`${JSON.stringify(receipt, null, 2)}\n`, 'utf8'); await file.sync(); } finally { await file.close(); }
+    if (!exclusive) await rename(temporary, path);
+  } catch { fail('The non-secret receipt could not be committed; retain the last receipt and reconcile before retrying.', 'E_OPERATOR_RECEIPT', receipt); }
+  finally { if (!exclusive) await rm(temporary, { force: true }).catch(() => {}); }
+}
+
+async function receiptDestination(path) {
+  requireValue(path, 'Non-secret receipt path');
+  try { await stat(path); fail('Receipt already exists; use resume rather than repeating installation.', 'E_OPERATOR_RECEIPT'); }
+  catch (error) { if (error.code !== 'ENOENT') fail('Receipt already exists or is unusable; use resume for an existing receipt.', 'E_OPERATOR_RECEIPT'); }
+  // Exercise replacement in this directory before input, without touching the requested checkpoint.
+  const first = join(dirname(path), `.diffdevil-probe-${randomUUID()}.tmp`);
+  const second = join(dirname(path), `.diffdevil-probe-${randomUUID()}.tmp`);
+  try {
+    await writeReceipt(first, { probe: true }, { exclusive: true });
+    await writeReceipt(second, { probe: true }, { exclusive: true });
+    await rename(first, second);
+  } catch { fail('The receipt directory does not support the required atomic commit.', 'E_OPERATOR_RECEIPT'); }
+  finally { await Promise.all([rm(first, { force: true }), rm(second, { force: true })]); }
+}
+
+/** Same target, file metadata and receipt-commit preflight as install; no protected contents read. */
+export async function checkCredentials(options) {
+  const selected = { wrangler: 'node_modules/wrangler/bin/wrangler.js', runner: createProcessRunner(), ...options };
+  validateAppId(selected.appId);
+  const target = await requireTarget(selected);
+  await requireVersionTarget(selected, target);
+  await receiptDestination(selected.receiptPath);
+  await inputFiles(selected, target);
+  return { state: 'ready-for-input', mode: target.fixture ? 'fixture' : 'provider', accountId: target.accountId, worker: target.worker, databaseId: target.databaseId, inputs: inputNames(target, selected), protectedValues: 'unread', providerWrite: 'not-attempted' };
+}
+
+async function readSecretFile(path) {
+  try { return (await readFile(path, 'utf8')).replace(/\r?\n$/u, ''); }
+  catch { fail('A protected input file could not be read.', 'E_OPERATOR_INPUT_FILE'); }
+}
+
+async function credentialValues(options, target) {
+  const privateKey = await readSecretFile(options.privateKeyPath);
+  validateGitHubAppPrivateKey(privateKey);
+  const webhook = options.webhookSecretPath ? await readSecretFile(options.webhookSecretPath) : await options.readWebhookSecret();
+  const values = { GITHUB_APP_ID: validateAppId(options.appId), GITHUB_WEBHOOK_SECRET: validateWebhookSecret(webhook), GITHUB_APP_PRIVATE_KEY: privateKey };
+  if (!target.joinedApp) return values;
+  values.GITHUB_OAUTH_CLIENT_ID = identifier(options.oauthClientId, 'GitHub OAuth client ID');
+  values.GITHUB_OAUTH_CLIENT_SECRET = validateWebhookSecret(await readSecretFile(options.oauthClientSecretPath));
+  values.APP_SEAL_KEY = await readSecretFile(options.sealKeyPath);
+  if (values.APP_SEAL_KEY.length < 16 || /\r|\n/u.test(values.APP_SEAL_KEY)) fail('Retained seal key must be a single line of at least 16 characters.');
+  if (target.wirtConfigured || options.wirtSigningKeyPath) {
+    values.WIRT_SIGNING_KEY_CURRENT = await readSecretFile(options.wirtSigningKeyPath);
+    readSigningKeys({ current: values.WIRT_SIGNING_KEY_CURRENT });
+  }
+  return values;
 }
 
 function newVersion(before, after) {
-  if (before.state !== 'read-back' || after.state !== 'read-back') return { state: 'unknown' };
+  if (after.state !== 'read-back') return { state: 'unknown' };
   const beforeIds = new Set(before.versions.map(version => version.id));
   const created = after.versions.filter(version => !beforeIds.has(version.id));
   if (created.length === 0) return { state: 'absent' };
@@ -137,21 +263,90 @@ function newVersion(before, after) {
   return { state: 'observed', id: created[0].id };
 }
 
-async function readCreatedVersion({ runner, wrangler, target, version }) {
-  if (version.state !== 'observed') return version;
-  const result = await runner({ args: buildWranglerCommand(wrangler, ['versions', 'view', version.id, '--json'], target), input: '', env: target.env });
-  if (result.code !== 0) return { state: 'unknown', id: version.id };
-  try {
-    const viewed = parseJson(result.stdout, 'Wrangler created-version readback');
-    const viewedId = viewed?.id ?? viewed?.version_id ?? viewed?.version?.id;
-    return viewedId === version.id ? { state: 'read-back', id: version.id } : { state: 'unknown', id: version.id };
-  } catch {
-    return { state: 'unknown', id: version.id };
+async function reconcileReceipt({ runner, wrangler, target, report }) {
+  if (report.command === 'not-attempted') {
+    report.state = 'not-attempted';
+    return report;
   }
+  const candidate = report.version.id ? { state: 'observed', id: report.version.id } : newVersion(report.before.versions, await readVersions({ runner, wrangler, ...target }));
+  report.version = candidate;
+  if (candidate.state === 'observed') {
+    const viewed = await nativeJson({ runner, args: buildWranglerCommand(wrangler, ['versions', 'view', candidate.id, '--json'], target), env: target.env });
+    const bindings = viewed?.resources?.bindings;
+    const hasInputs = hasDatabase(bindings, target) && report.inputs.every(name => bindings.some(binding => binding?.type === 'secret_text' && binding.name === name));
+    report.version = { state: viewed?.id === candidate.id && hasInputs ? 'read-back' : 'unknown', id: candidate.id };
+  }
+  const after = await readDeployment({ runner, wrangler, ...target });
+  report.deployment = after.state === 'read-back' ? { state: after.snapshot === report.before.deployment.snapshot ? 'unchanged' : 'changed' } : { state: 'unknown' };
+  if (report.command === 'accepted' && report.version.state === 'read-back' && report.deployment.state === 'unchanged') report.state = 'version-created';
+  else if (report.command === 'failed' && report.version.state === 'absent' && report.deployment.state === 'unchanged') report.state = 'not-created';
+  else if (report.version.state === 'read-back' || report.deployment.state === 'changed') report.state = 'partial';
+  else report.state = 'unknown';
+  return report;
+}
+
+/** Creates one undeployed version. Protected contents go directly to contained native stdin, never a disk carrier. */
+export async function installCredentials(options) {
+  const selected = { wrangler: 'node_modules/wrangler/bin/wrangler.js', runner: createProcessRunner(), ...options };
+  validateAppId(selected.appId);
+  const target = await requireTarget(selected);
+  await requireVersionTarget(selected, target);
+  await receiptDestination(selected.receiptPath);
+  await inputFiles(selected, target);
+  const report = initialReceipt(target, selected);
+  await writeReceipt(selected.receiptPath, report, { exclusive: true });
+  let values;
+  try { values = await credentialValues(selected, target); }
+  catch { fail('Protected inputs could not be validated. The receipt records no provider write.', 'E_OPERATOR_INPUT', report); }
+  await unchangedConfiguration(target);
+  // Durable ambiguity marker precedes the non-idempotent operation, even if the process is interrupted.
+  report.command = 'attempted-unknown';
+  report.state = 'unknown';
+  await writeReceipt(selected.receiptPath, report);
+  try {
+    const write = await selected.runner({ args: buildWranglerCommand(selected.wrangler, ['versions', 'secret', 'bulk', '--message', 'Prepare App credentials without deployment'], target), input: JSON.stringify(values), env: target.env });
+    report.command = write.code === 0 ? 'accepted' : 'failed';
+  } catch { /* The request may have arrived. Keep the durable attempted-unknown marker. */ }
+  values = undefined;
+  await writeReceipt(selected.receiptPath, report);
+  await reconcileReceipt({ ...selected, target, report });
+  await writeReceipt(selected.receiptPath, report);
+  if (report.state !== 'version-created') fail('Credential version has an incomplete result. Resume this receipt to reconcile; do not repeat installation.', 'E_OPERATOR_VERSION', report);
+  return report;
+}
+
+async function readReceipt(path, target) {
+  let report;
+  try { report = JSON.parse(await readFile(requireValue(path, 'Receipt path'), 'utf8')); } catch { fail('Resume requires a readable existing receipt.', 'E_OPERATOR_RECEIPT'); }
+  const inputs = inputNames(target, { wirtSigningKeyPath: report?.inputs?.includes('WIRT_SIGNING_KEY_CURRENT') });
+  const correctTarget = report?.format === 'diffdevil-credential-version-v1' && report.mode === (target.fixture ? 'fixture' : 'provider') && report.accountId === target.accountId && report.worker === target.worker && report.databaseId === target.databaseId && report.configHash === target.configHash && JSON.stringify(report.inputs) === JSON.stringify(inputs);
+  const correctState = ['not-attempted', 'attempted-unknown', 'accepted', 'failed'].includes(report?.command) && report.before?.versions?.state === 'read-back' && Array.isArray(report.before.versions.versions) && report.before.versions.versions.every(version => typeof version?.id === 'string' && /^[A-Za-z0-9_-]+$/u.test(version.id)) && report.before?.deployment?.state === 'read-back' && typeof report.before.deployment.snapshot === 'string' && (report.version?.id === undefined || (typeof report.version.id === 'string' && /^[A-Za-z0-9_-]+$/u.test(report.version.id)));
+  if (!correctTarget || !correctState) fail('Receipt is unusable or belongs to a different exact target/configuration.', 'E_OPERATOR_RECEIPT');
+  let beforeDeployment;
+  try {
+    const snapshot = JSON.parse(report.before.deployment.snapshot);
+    identifier(snapshot.id, 'Deployment ID');
+    if (!Array.isArray(snapshot.versions)) throw new Error();
+    beforeDeployment = { id: snapshot.id, versions: snapshot.versions.map(version => ({ version_id: identifier(version.version_id, 'Version ID'), percentage: version.percentage })) };
+    if (beforeDeployment.versions.some(version => typeof version.percentage !== 'number' || !Number.isFinite(version.percentage))) throw new Error();
+  } catch { fail('Receipt deployment checkpoint is unusable.', 'E_OPERATOR_RECEIPT'); }
+  // Reconstruct the allowlisted receipt; an edited receipt cannot inject arbitrary data into output.
+  return { ...initialReceipt(target, { sealKeyRecoveryRef: target.joinedApp ? identifier(report.sealKeyRecoveryRef, 'Seal key recovery reference') : undefined }), inputs, command: report.command, before: { deployment: { state: 'read-back', snapshot: JSON.stringify(beforeDeployment) }, versions: { state: 'read-back', versions: report.before.versions.versions.map(version => ({ id: version.id })) } }, version: report.version?.id ? { state: 'unknown', id: report.version.id } : { state: 'unknown' } };
+}
+
+/** Readback-only recovery. No credential read, secret upload, deployment, or blind retry. */
+export async function resumeCredentials(options) {
+  const selected = { wrangler: 'node_modules/wrangler/bin/wrangler.js', runner: createProcessRunner(), ...options };
+  const target = await requireTarget(selected);
+  const report = await readReceipt(selected.receiptPath, target);
+  await reconcileReceipt({ ...selected, target, report });
+  await writeReceipt(selected.receiptPath, report);
+  if (!['version-created', 'not-created', 'not-attempted'].includes(report.state)) fail('Receipt remains partial or unknown; reconcile the exact provider target before another effect.', 'E_OPERATOR_VERSION', report);
+  return report;
 }
 
 export async function readHiddenTerminalSecret({ input = process.stdin, output = process.stdout } = {}) {
-  if (!input.isTTY || !output.isTTY || typeof input.setRawMode !== 'function') fail('Interactive secret entry requires a TTY; use --webhook-secret-stdin only with redirected stdin.', 'E_OPERATOR_TTY');
+  if (!input.isTTY || !output.isTTY || typeof input.setRawMode !== 'function') fail('Interactive entry requires a TTY; use a protected file or redirected --webhook-secret-stdin.', 'E_OPERATOR_TTY');
   output.write('Webhook secret: ');
   input.setRawMode(true);
   input.resume();
@@ -181,58 +376,21 @@ async function readRedirectedSecret() {
   return Buffer.concat(chunks).toString('utf8').replace(/\r?\n$/u, '');
 }
 
-function reconcileState(result) {
-  if (result.command === 'accepted' && result.version.state === 'read-back' && result.deployment.state === 'unchanged' && result.carrier.state === 'removed') return 'version-created';
-  if (result.command === 'failed' && result.version.state === 'absent' && result.deployment.state === 'unchanged' && result.carrier.state === 'removed') return 'not-created';
-  if (result.deployment.state === 'changed' || result.version.state === 'read-back') return 'partial';
-  return 'unknown';
-}
-
-/** Creates one un-deployed Worker version containing all three runtime inputs. */
-export async function installCredentials({ appId, privateKeyPath, readWebhookSecret, accountId, worker = DEFAULT_WORKER, config, wrangler = 'node_modules/wrangler/bin/wrangler.js', runner = createProcessRunner() }) {
-  const validatedAppId = validateAppId(appId);
-  const selectedConfig = await qualificationConfig(config);
-  const privateKey = await readFile(requireValue(privateKeyPath, 'Private key path'), 'utf8');
-  validateGitHubAppPrivateKey(privateKey);
-  const target = await requireTarget({ runner, wrangler: requireValue(wrangler, 'Wrangler path'), worker: requireValue(worker, 'Worker name'), config: selectedConfig, accountId: requireValue(accountId, 'Cloudflare account ID') });
-  const webhookSecret = validateWebhookSecret(await readWebhookSecret());
-  const values = { GITHUB_APP_ID: validatedAppId, GITHUB_WEBHOOK_SECRET: webhookSecret, GITHUB_APP_PRIVATE_KEY: privateKey };
-  const report = initialReceipt(target);
-  let directory;
-  let operationFailed = false;
-  try {
-    directory = await mkdtemp(join(tmpdir(), 'diffdevil-app-version-secrets-'));
-    const carrier = join(directory, 'secrets.json');
-    await writeFile(carrier, JSON.stringify(values), { encoding: 'utf8', mode: 0o600 });
-    const write = await runner({ args: buildWranglerCommand(wrangler, ['versions', 'secret', 'bulk', carrier, '--message', 'Prepare GitHub App credentials without deployment'], target), input: '', env: target.env });
-    report.command = write.code === 0 ? 'accepted' : 'failed';
-    const afterVersions = await readVersions({ runner, wrangler, ...target });
-    report.version = await readCreatedVersion({ runner, wrangler, target, version: newVersion(target.versions, afterVersions) });
-    const afterDeployment = await readDeployment({ runner, wrangler, ...target });
-    report.deployment = afterDeployment.state !== 'read-back' ? { state: 'unknown' } : { state: afterDeployment.snapshot === target.deployment.snapshot ? 'unchanged' : 'changed' };
-  } catch {
-    operationFailed = true;
-  } finally {
-    if (directory) {
-      try { await rm(directory, { recursive: true, force: true }); report.carrier = { state: 'removed' }; } catch { report.carrier = { state: 'cleanup-unknown' }; }
-    }
-  }
-  report.state = reconcileState(report);
-  if (operationFailed || report.state !== 'version-created') fail('Credential version was not established with a complete safe readback.', 'E_OPERATOR_VERSION', report);
-  return report;
-}
+const BOOLEAN_OPTIONS = new Set(['fake', 'webhook-secret-stdin', 'policy-refresh']);
+const VALUE_OPTIONS = new Set(['webhook-url', 'visibility', 'app-name', 'oauth-callback-url', 'app-id', 'private-key-file', 'account-id', 'config', 'worker', 'webhook-secret-file', 'oauth-client-id', 'oauth-client-secret-file', 'seal-key-file', 'seal-key-recovery-ref', 'wirt-signing-key-file', 'receipt-file', 'wrangler']);
 
 function parseArgs(argv) {
   const [command, ...rest] = argv;
   const options = {};
   for (let index = 0; index < rest.length; index += 1) {
     const token = rest[index];
-    if (!token.startsWith('--')) fail(`Unexpected argument: ${token}`);
+    if (!token.startsWith('--')) fail('Unexpected argument. Use named options with non-secret values.');
     const name = token.slice(2);
-    if (name === 'fake' || name === 'webhook-secret-stdin') options[name] = true;
+    if ((!BOOLEAN_OPTIONS.has(name) && !VALUE_OPTIONS.has(name)) || Object.hasOwn(options, name)) fail('Unknown or repeated option.');
+    if (BOOLEAN_OPTIONS.has(name)) options[name] = true;
     else {
       const value = rest[++index];
-      if (value === undefined || value.startsWith('--')) fail(`Missing value for --${name}.`);
+      if (value === undefined || value.startsWith('--')) fail('A named option is missing its value.');
       options[name] = value;
     }
   }
@@ -240,31 +398,41 @@ function parseArgs(argv) {
 }
 
 function createFakeRunner() {
-  let versionCreated = false;
-  return async ({ args }) => {
-    if (args.includes('whoami')) return { code: 0, stdout: JSON.stringify({ accounts: [{ id: 'fixture-account' }] }), stderr: '' };
-    if (args.includes('deployments')) return { code: 0, stdout: JSON.stringify([{ id: 'fixture-deployment' }]), stderr: '' };
-    if (args.includes('versions') && args.includes('list')) return { code: 0, stdout: JSON.stringify(versionCreated ? [{ id: 'fixture-before' }, { id: 'fixture-created' }] : [{ id: 'fixture-before' }]), stderr: '' };
-    if (args.includes('versions') && args.includes('view')) return { code: 0, stdout: JSON.stringify({ id: 'fixture-created' }), stderr: '' };
-    if (args.includes('bulk')) { versionCreated = true; return { code: 0, stdout: '', stderr: '' }; }
-    return { code: 2, stdout: '', stderr: '' };
+  let versionCreated = false, inputs = [];
+  return async ({ args, input }) => {
+    if (args.includes('whoami')) return { code: 0, stdout: JSON.stringify({ accounts: [{ id: 'fixture-account' }] }) };
+    if (args.includes('deployments')) return { code: 0, stdout: JSON.stringify([{ id: 'fixture-deployment', versions: [{ version_id: 'fixture-before', percentage: 100 }] }]) };
+    if (args.includes('versions') && args.includes('list')) return { code: 0, stdout: JSON.stringify(versionCreated ? [{ id: 'fixture-before' }, { id: 'fixture-created' }] : [{ id: 'fixture-before' }]) };
+    if (args.includes('versions') && args.includes('view')) {
+      const config = parse(await readFile(args[args.indexOf('--config') + 1], 'utf8'));
+      return { code: 0, stdout: JSON.stringify({ id: args[args.indexOf('view') + 1], resources: { bindings: [{ name: 'APP_DB', type: 'd1', id: config.d1_databases[0].database_id }, ...inputs.map(name => ({ type: 'secret_text', name }))] } }) };
+    }
+    if (args.includes('bulk')) { inputs = Object.keys(JSON.parse(input)); versionCreated = true; return { code: 0, stdout: '' }; }
+    return { code: 2, stdout: '' };
   };
 }
 
 function help() {
-  return `Usage:\n  node apps/github-app/operator-helper.mjs registration --webhook-url <https-url> [--visibility private|public]\n  node apps/github-app/operator-helper.mjs install --app-id <numeric-id> --private-key-file <downloaded-pem> --account-id <account-id> --config <derived-config> [--worker <name>] [--webhook-secret-stdin] [--fake]\n\nInteractive use asks for the webhook secret through a hidden TTY prompt. --webhook-secret-stdin is only for an already-safe redirected automation channel.`;
+  return `Usage:
+  node apps/github-app/operator-helper.mjs registration --webhook-url <https-url> [--visibility private|public] [--app-name <name>] [--oauth-callback-url <https-url>] [--policy-refresh]
+  node apps/github-app/operator-helper.mjs check|install --app-id <numeric-id> --private-key-file <retained-pem> --account-id <account-id> --config <exact-json-or-jsonc> --receipt-file <new-receipt> [--worker <matching-name>] [--webhook-secret-file <protected-file> | --webhook-secret-stdin] [--fake]
+    Joined-App configs also require --oauth-client-id <id> --oauth-client-secret-file <protected-file> --seal-key-file <retained-file> --seal-key-recovery-ref <opaque-custody-id>. With Wirt configured, add --wirt-signing-key-file <protected-file>.
+  node apps/github-app/operator-helper.mjs resume --account-id <account-id> --config <same-exact-config> --receipt-file <existing-receipt> [--worker <matching-name>]
+
+Omit webhook input flags for the hidden TTY checkpoint. --webhook-secret-stdin requires an already-safe redirected channel. The config selects the Worker; --worker verifies it, never overrides it. No command deploys.`;
 }
 
 export async function main(argv = process.argv.slice(2)) {
   const { command, options } = parseArgs(argv);
   if (command === 'registration') {
-    process.stdout.write(`${JSON.stringify(registrationInputs({ webhookUrl: options['webhook-url'], visibility: options.visibility }), null, 2)}\n`);
+    process.stdout.write(`${JSON.stringify(registrationInputs({ webhookUrl: options['webhook-url'], visibility: options.visibility, appName: options['app-name'], oauthCallbackUrl: options['oauth-callback-url'], policyRefresh: options['policy-refresh'] }), null, 2)}\n`);
     return;
   }
-  if (command === 'install') {
-    if (options['webhook-secret-stdin'] && process.stdin.isTTY) fail('Refusing TTY stdin for --webhook-secret-stdin; omit the flag for the hidden interactive checkpoint.', 'E_OPERATOR_TTY');
-    const readWebhookSecret = options['webhook-secret-stdin'] ? readRedirectedSecret : readHiddenTerminalSecret;
-    const result = await installCredentials({ appId: options['app-id'], privateKeyPath: options['private-key-file'], accountId: options['account-id'], config: options.config, worker: options.worker, readWebhookSecret, runner: options.fake ? createFakeRunner() : undefined });
+  if (['check', 'install', 'resume'].includes(command)) {
+    if (options['webhook-secret-file'] && options['webhook-secret-stdin']) fail('Choose one webhook input route.');
+    if (options['webhook-secret-stdin'] && process.stdin.isTTY) fail('Refusing TTY stdin; omit the flag for hidden entry.', 'E_OPERATOR_TTY');
+    const selected = { appId: options['app-id'], privateKeyPath: options['private-key-file'], accountId: options['account-id'], config: options.config, worker: options.worker, receiptPath: options['receipt-file'], webhookSecretPath: options['webhook-secret-file'], oauthClientId: options['oauth-client-id'], oauthClientSecretPath: options['oauth-client-secret-file'], sealKeyPath: options['seal-key-file'], sealKeyRecoveryRef: options['seal-key-recovery-ref'], wirtSigningKeyPath: options['wirt-signing-key-file'], readWebhookSecret: options['webhook-secret-stdin'] ? readRedirectedSecret : readHiddenTerminalSecret, ...(options.wrangler ? { wrangler: options.wrangler } : {}), ...(options.fake ? { fixture: true, runner: createFakeRunner() } : {}) };
+    const result = await (command === 'check' ? checkCredentials(selected) : command === 'resume' ? resumeCredentials(selected) : installCredentials(selected));
     process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
     return;
   }
@@ -275,7 +443,8 @@ export async function main(argv = process.argv.slice(2)) {
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   main().catch(error => {
     if (error.receipt) process.stdout.write(`${JSON.stringify(error.receipt, null, 2)}\n`);
-    process.stderr.write(`${error.message}\n`);
+    // Unknown filesystem, parser, native and input errors can contain protected bytes.
+    process.stderr.write(`${/^E_OPERATOR_/u.test(error.code ?? '') ? error.message : 'Operator preparation failed; protected input and native details are withheld.'}\n`);
     process.exitCode = 2;
   });
 }

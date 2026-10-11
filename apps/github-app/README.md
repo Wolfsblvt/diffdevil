@@ -61,11 +61,79 @@ The scheduled Worker maintenance path performs recovery pruning, expiry-derived 
 
 ## Registration and credential helper
 
-`operator-helper.mjs` prepares the non-secret GitHub App registration inputs and creates one un-deployed credential-bearing Worker version only after Wrangler reads back the selected Cloudflare account, Worker deployment, and version list. It creates no App, resource, deployment, or installation itself. The checked-in `wrangler.jsonc` is source configuration with deliberately non-operational placeholders; Katja's rollout uses an untracked derived bootstrap/qualification config, which the helper requires and checks before it reaches Wrangler.
+`operator-helper.mjs` prepares non-secret registration inputs and creates one
+**undeployed** credential-bearing Worker version after reading back the selected
+Cloudflare account, existing Worker deployment and version list. It creates no
+App, resource, deployment or repository installation. The exact JSON/JSONC config
+selects the Worker; `--worker` checks that name and cannot override it. A conflicting
+account, absent/invalid `APP_DB` ID, either checked-in D1 placeholder, or a latest
+uploaded version whose `APP_DB` differs from the config refuses
+before reading protected files or prompting for input. Use a derived operational
+config or the admitted built App config, with its relative paths kept valid.
 
 ```sh
 node apps/github-app/operator-helper.mjs registration --webhook-url https://example.invalid/webhooks/github
-node apps/github-app/operator-helper.mjs install --app-id 123 --private-key-file path/to/downloaded-app-key.pem --account-id account-id --config path/to/derived-qualification.jsonc
+node apps/github-app/operator-helper.mjs check --app-id 123 --private-key-file path/to/retained-app-key.pem --account-id account-id --config path/to/derived-qualification.jsonc --receipt-file path/to/new-credential-receipt.json
+node apps/github-app/operator-helper.mjs install --app-id 123 --private-key-file path/to/retained-app-key.pem --account-id account-id --config path/to/derived-qualification.jsonc --receipt-file path/to/new-credential-receipt.json
+node apps/github-app/operator-helper.mjs resume --account-id account-id --config path/to/derived-qualification.jsonc --receipt-file path/to/existing-credential-receipt.json
 ```
 
-The registration output selects Contents read, Pull requests write, Checks write, and only `pull_request` and `check_run`; GitHub supplies installation lifecycle events. The Worker also accepts `push`, which turns a default-branch change to `.diffdevil.yml` into a policy refresh of open briefs, but it receives pushes only after the registration subscribes to them; that subscription is not selected here. Ordinary interactive use asks for the webhook secret through a helper-owned hidden TTY checkpoint after its non-secret preflight. `--webhook-secret-stdin` is reserved for callers with an already-safe redirected automation channel and refuses TTY stdin. The helper validates the downloaded unencrypted RSA PKCS#1 key locally, writes all three values into one temporary private carrier, invokes `wrangler versions secret bulk`, then removes that carrier on both success and failure. Its receipt distinguishes command acceptance, created-version identity/readback, unchanged active deployment, partial state, and unknown state; a created version is not a deployment or an active runtime claim. `--fake` substitutes disposable target/read/write/readback responses, so the same route can be qualified without a GitHub or Cloudflare effect.
+Registration selects Contents read, Pull requests write, Checks write, and
+`pull_request`/`check_run`; GitHub supplies installation lifecycle events. Add
+`--policy-refresh` to subscribe to `push` for trusted default-branch policy refresh.
+`--app-name`, `--visibility` and `--oauth-callback-url` prepare a distinct identity
+and user callback. These are registration inputs, not a provider registration or
+an App admission control. The callback uses GitHub's documented
+[`callback_urls[]` parameter](https://docs.github.com/en/apps/sharing-github-apps/registering-a-github-app-using-url-parameters).
+
+The standalone backend installs three inputs. A joined-App config (`APP_ORIGIN`
+in vars) requires OAuth client ID, OAuth client secret file, retained seal key
+file and its opaque recovery reference as well. When Wirt is configured
+(`WIRT_ORIGIN`), its current signing file is required: the complete operation
+delivers all seven inputs in one version. Community without Wirt needs no unused
+commercial credential. The [staging packet](../../docs/integration/app-staging.md#protected-input-operation)
+has a complete PowerShell invocation; production uses the same options with its
+own exact config, Worker, custody files and recovery reference.
+
+Ordinary interactive use requests the webhook secret through a hidden TTY
+checkpoint after preflight and the durable receipt commit. Alternatively,
+`--webhook-secret-file` consumes an opaque operator-controlled file;
+`--webhook-secret-stdin` requires an already-safe redirected automation channel and
+refuses TTY stdin. No raw value belongs in arguments, shell history or a receipt.
+The downloaded private key remains an unencrypted RSA PKCS#1 PEM. Input file
+contents are validated only after preflight. `check` exercises target readback,
+file metadata and a same-directory atomic receipt probe; it does not read protected
+contents, create the real checkpoint or write a Worker version.
+
+Bulk installation sends JSON directly to Wrangler's private stdin. No temporary
+secret file is created, including on failure; `carrier: not-created` records that
+fact. Native stdout/stderr are contained, Wrangler disk logs and telemetry are
+disabled for these children, and only allowlisted receipt fields reach output.
+The helper leaves operator-owned input files intact. Their access controls and
+retention remain the custodian's responsibility; Node's Unix file mode is not a
+Windows custody/ACL guarantee.
+
+The non-secret receipt is created exclusively and flushed before protected input.
+A durable `attempted-unknown` marker precedes the provider write. Command acceptance,
+the single newly observed version, its secret-binding names/database, and the latest
+deployment comparison are separate facts. `version-created` means a complete
+readback of an undeployed version with an unchanged active deployment; it does not
+prove secret values, registration correctness, exposure, runtime behavior or a
+deployment. `partial`/`unknown` never count as success. `resume` requires the same
+exact config hash/account/Worker/database and a usable receipt, performs only
+provider reads, and never rereads inputs or repeats installation. Missing or
+foreign receipts refuse. A lost write acknowledgement remains partial even when
+the new version is seen. Reconcile that exact result before admitting any new
+operation; use a fresh receipt only for a deliberately selected new operation.
+
+Wrangler's secret operation inherits the latest uploaded version, which can differ
+from the active deployment. Keep one operator as this Worker's writer until the
+receipt is reconciled, and qualify the returned version's source/engine/composition
+before activation. The staging packet separates its unexposed bootstrap from
+credential preparation and version-specific activation.
+
+`--fake` selects disposable in-process provider responses and labels its receipts
+`mode: fixture`; they cannot be resumed as live receipts. The registered
+`operator-helper.test.mjs` also exercises the actual CLI/native-child path against
+an echoing synthetic provider, failures, late receipt/readback recovery and both
+production/staging targets. These tests make no GitHub or Cloudflare request.

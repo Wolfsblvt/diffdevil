@@ -45,6 +45,7 @@ test('the selected staging build has distinct Worker, D1, queues, artifacts and 
   assert.ok(stagingConfig.vars.GITHUB_APP_BOT_LOGIN);
   assert.notEqual(stagingConfig.vars.GITHUB_APP_BOT_LOGIN, productionConfig.vars.GITHUB_APP_BOT_LOGIN ?? 'diffdevil[bot]');
   assert.equal(stagingConfig.workers_dev, false);
+  assert.equal(stagingConfig.preview_urls, false);
   assert.equal(stagingConfig.vars.WIRT_LINK_CALLBACK_URL, `${staging.origin}${COMMERCIAL_ROUTES.callback}`);
   assert.equal(stagingConfig.vars.WIRT_LINK_CONTINUATION_URL, `${staging.origin}/manage/plan`);
   assert.equal(staging.configPath, 'staging/wrangler.json');
