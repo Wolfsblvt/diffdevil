@@ -70,11 +70,21 @@ export function createGitHubUserProvider({ clientId, clientSecret, callbackUrl, 
       : Number.isFinite(payload.expires_in) && !material.refreshToken ? material.accessExpiresAt : iso(at + NON_EXPIRING_GRANT_MS);
     return { material, expiresAt };
   }
+  async function tokenPayload(response) {
+    try { return await response.json(); }
+    catch { throw providerError('E_PROVIDER_RESPONSE', response.status); }
+  }
   async function tokenRequest(body) {
     const response = await send(`${oauth}/login/oauth/access_token`, { method: 'POST', body: { client_id: clientId, client_secret: clientSecret, ...body }, accept: 'application/json' });
-    if (!response.ok) throw providerError('E_PROVIDER_TOKEN', response.status);
-    const payload = await response.json();
-    if (payload.error) throw providerError('E_PROVIDER_TOKEN');
+    if (!response.ok && response.status !== 400) throw providerError('E_PROVIDER_TOKEN', response.status);
+    const payload = await tokenPayload(response);
+    // Only GitHub's explicit invalid/expired refresh-token answer establishes unusable stored material.
+    if (body.grant_type === 'refresh_token' && payload?.error === 'bad_refresh_token') throw providerError('E_PROVIDER_REFRESH_INVALID');
+    if (!response.ok || payload?.error) throw providerError('E_PROVIDER_TOKEN', response.status);
+    // A rotation must supply both new tokens and their lifetimes; an incomplete answer cannot replace the old seal.
+    if (body.grant_type === 'refresh_token' && (typeof payload?.refresh_token !== 'string' || !payload.refresh_token
+      || !Number.isSafeInteger(payload.expires_in) || payload.expires_in <= 0
+      || !Number.isSafeInteger(payload.refresh_token_expires_in) || payload.refresh_token_expires_in <= 0)) throw providerError('E_PROVIDER_TOKEN');
     return grantFrom(payload);
   }
   const pull = value => ({
@@ -100,18 +110,24 @@ export function createGitHubUserProvider({ clientId, clientSecret, callbackUrl, 
       const user = await json(`${api}/user`, { token: material.accessToken });
       return user.id;
     },
-    /** Refresh an expiring token when possible, otherwise ask GitHub whether the grant still stands. */
+    /** Refresh or check a grant. Unavailable evidence throws; only definite invalidation returns false. */
     async verifyUserAuthorization({ userId, material }) {
       if (material.refreshToken && material.accessExpiresAt && Date.parse(material.accessExpiresAt) - 60_000 <= now()) {
         try {
           const rotated = await tokenRequest({ grant_type: 'refresh_token', refresh_token: material.refreshToken });
           return { valid: true, material: rotated.material, expiresAt: rotated.expiresAt };
-        } catch { return { valid: false }; }
+        } catch (error) {
+          if (error.code === 'E_PROVIDER_REFRESH_INVALID') return { valid: false };
+          throw error;
+        }
       }
       const response = await send(`${api}/applications/${encodeURIComponent(clientId)}/token`, { method: 'POST', basic: true, body: { access_token: material.accessToken } });
-      if (!response.ok) return { valid: false };
-      const checked = await response.json();
-      return { valid: checked?.user?.id === userId };
+      // At this Basic-authenticated endpoint, 404 means an invalid user token; 401 concerns the App credentials.
+      if (response.status === 404) return { valid: false };
+      if (!response.ok) throw providerError('E_PROVIDER_REQUEST', response.status);
+      const checked = await tokenPayload(response);
+      if (!Number.isSafeInteger(checked?.user?.id) || checked.user.id <= 0) throw providerError('E_PROVIDER_RESPONSE');
+      return { valid: checked.user.id === userId };
     },
     async checkRepositoryAccess({ material, installationId, repositoryId }) {
       let repositories;
