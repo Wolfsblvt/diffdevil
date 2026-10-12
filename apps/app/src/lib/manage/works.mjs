@@ -121,6 +121,13 @@ export function presentProjection(status, { works, ended = false } = {}) {
   const grantWord = kind => ({ gift: 'A gift', beta: 'Beta access' })[kind] ?? 'Funded access';
   for (const grant of grants) rows.push({ term: 'Funded by', value: `${grantWord(grant.kind)}, through ${dayBefore(grant.until) ?? '—'}`,
     sub: commercial?.renewalPreference === 'manual' ? 'No charge and no card. Nothing renews automatically; continuing with Pro is your choice at Works.' : 'No charge until then. Renewal after it is set at Works.' });
-  const slotBanners = slotEnding.map(slot => ({ tone: 'warn', icon: 'info', title: `Slot ${slot.slot.replace(/^slot-/u, '')} ends on ${fmtDay(slot.pendingEndOn)}`, text: `You removed it at Works. ${slot.binding?.display ?? 'Its organisation'} keeps ${tier} until then, then has no plan: its repositories stop, history and settings stay. Fund it another way, or move it to a slot you keep.`, action: works?.experience ? { label: 'Keep the slot at Works', href: works.experience, purpose: 'renewal' } : null }));
+  const slotBanners = slotEnding.map(slot => {
+    const component = slot.funding === 'grant' ? status?.fundedComponents?.find(value => value.id === slot.slot) : null;
+    if (component) return { tone: 'warn', icon: 'info', title: `${component.name} ends on ${fmtDay(slot.pendingEndOn)}`,
+      text: slot.binding ? 'This reward-funded slot ends with its finite term. Its organisation will need another funded slot after that date; history and settings stay.'
+        : 'This reward-funded slot is open and currently funds no organisation. Its finite term ends on this date.',
+      action: works?.relationship ? { label: 'Manage benefit at Works', href: works.relationship, destination: 'relationship', purpose: 'browse' } : null };
+    return { tone: 'warn', icon: 'info', title: `Slot ${slot.slot.replace(/^slot-/u, '')} ends on ${fmtDay(slot.pendingEndOn)}`, text: `You removed it at Works. ${slot.binding?.display ?? 'Its organisation'} keeps ${tier} until then, then has no plan: its repositories stop, history and settings stay. Fund it another way, or move it to a slot you keep.`, action: works?.experience ? { label: 'Keep the slot at Works', href: works.experience, purpose: 'renewal' } : null };
+  });
   return { key, tier, planName, planSub, banner: head, slotBanners, rows, change, ended: ended || ['ended', 'ended-unresolved'].includes(key), compareable: ['funded', 'overdue', 'renewing', 'preparing', 'checking'].includes(key), choosing: ['cancelling', 'downgrade', 'ended'].includes(key) ? (key === 'downgrade' ? { target: change.target, on: change.effective_on } : key === 'cancelling' ? { target: 'free', on: endsOn } : { target: 'free', on: commercial?.ended?.on ?? null, applied: true }) : null };
 }
