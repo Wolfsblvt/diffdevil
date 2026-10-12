@@ -176,6 +176,27 @@ export async function proManage(ctx) {
   check('at 1024 the repository settings stack without horizontal overflow', (await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)) <= 0);
   await shot('pro-manage-repository-1024');
   await page.setViewportSize({ width: 1440, height: 900 });
+
+}
+
+/** The applied lower-plan choice remains visible after the subscription is funded again. */
+export async function planChoiceReturn(ctx) {
+  const { check, go, page, ORIGIN } = ctx;
+  await go('/manage/works-stand-in?dest=experience');
+  await page.click('form:has(input[value="reduce-to-free"]) button');
+  await page.waitForLoadState('networkidle');
+  await go('/manage/plan');
+  check('after Pro ends, the saved-choice form asks what stays on Free', await page.evaluate(() => document.querySelector('[data-choose-stays]')?.dataset.chooseStays === 'due' && /Choose what stays on Free/u.test(document.querySelector('[data-choose-stays] h2')?.textContent ?? '')));
+  await page.locator('[data-choose-stays] input[name="keep"]').first().check();
+  await page.click('[data-choose-stays] button[type="submit"]');
+  await page.waitForLoadState('networkidle');
+  const freeChoice = await page.evaluate(() => ({ state: document.querySelector('[data-choose-stays]')?.dataset.chooseStays, heading: document.querySelector('[data-choose-stays] h2')?.textContent?.trim() ?? '', outcome: document.querySelector('[data-choice-outcome]')?.textContent ?? '', savedForNextChange: /next change of plan/u.test(document.querySelector('[data-choice-outcome] .m-note')?.textContent ?? '') }));
+  check('the applied Free choice keeps its outcome and says it remains saved for the next plan change', freeChoice.state === 'applied' && /Free choice applied/u.test(freeChoice.heading) && /Kept:|fits the lower plan/u.test(freeChoice.outcome) && freeChoice.savedForNextChange, JSON.stringify(freeChoice));
+  const fundedAgain = await page.request.post(`${ORIGIN}/manage/do`, { form: { action: 'fixture-simulate', kind: 'reduce-to-pro', back: '/manage/plan' }, headers: { origin: ORIGIN }, maxRedirects: 0 });
+  check('the local Works stand-in confirms the returning Pro plan before the Manage read', fundedAgain.status() === 303, String(fundedAgain.status()));
+  await go('/manage/plan');
+  const returnedToPro = await page.evaluate(() => ({ standingPlan: document.querySelector('[data-standing] .plan b')?.textContent?.trim() ?? '', choiceState: document.querySelector('[data-choose-stays]')?.dataset.chooseStays ?? '', heading: document.querySelector('[data-choose-stays] h2')?.textContent?.trim() ?? '', status: document.querySelector('[data-choose-stays] header .d')?.textContent?.trim() ?? '', outcome: document.querySelector('[data-choice-outcome]')?.textContent ?? '', savedForNextChange: /next change of plan/u.test(document.querySelector('[data-choice-outcome] .m-note')?.textContent ?? '') }));
+  check('after funded Pro returns, Manage names Pro as current while retaining the applied Free choice and its future use', returnedToPro.standingPlan === 'Pro' && returnedToPro.choiceState === 'applied' && /Free choice applied/u.test(returnedToPro.heading) && /current plan is Pro/u.test(returnedToPro.status) && /Kept:|fits the lower plan/u.test(returnedToPro.outcome) && returnedToPro.savedForNextChange, JSON.stringify(returnedToPro));
 }
 
 export async function freeManage(ctx) {
