@@ -194,6 +194,10 @@ spend, paid-plan selection, production migration or automatic publication.
 
 ## Protected-input operation
 
+For a new registration, enter the [native manifest route](#native-manifest-registration-and-capture)
+below. The full-set specimen in this section serves an existing registration or
+its recovered inputs; these are alternative installation entrances.
+
 Use the pinned root dependencies and a real operational generated configuration
 after step 3. All strings below are non-secret specimens. The operator replaces
 IDs and opaque file/custody references from the admitted registration and custody
@@ -387,6 +391,9 @@ creates a real GitHub App only when an authorized operator follows the displayed
 local URL and submits the provider form; the helper never opens a browser itself.
 
 ```powershell
+$stagingConfig = 'artifacts/app-staging/dist/server/wrangler.json'
+$credentialReceipt = 'D:\custody\diffdevil-staging\operations\credential-install.json'
+$qualifiedBootstrapVersion = 'qualified-bootstrap-version-id'
 $captureArguments = @(
     '--capture-file', 'D:\custody\diffdevil-staging\operations\github-capture.enc',
     '--receipt-file', 'D:\custody\diffdevil-staging\operations\github-capture.json',
