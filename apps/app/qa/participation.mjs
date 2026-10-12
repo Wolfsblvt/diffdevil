@@ -72,7 +72,7 @@ export async function nullableReceiverJourney({ page, go, check, shot, ORIGIN })
   await go('/manage/plan');
   check('the same stable component can render active beside the funded Pro base', await page.locator('[data-standing="funded"] .plan b').textContent() === 'Pro'
     && /Active reward/u.test(await page.locator('[data-standing="funded"]').innerText()));
-  check('a funded Pro base retains its included personal capacity card', /Personal · included/u.test(await page.locator('[data-funds]').innerText())
+  check('a funded Pro base retains its included personal capacity card', /Personal · included/iu.test(await page.locator('[data-funds]').innerText())
     && !/Pooled Free allowance/u.test(await page.locator('[data-funds]').innerText()));
   check('a reward term end does not claim removal or funding an unbound organisation', !/You removed it at Works/u.test(await page.locator('.m-stack').innerText())
     && /currently funds no organisation/u.test(await page.locator('.m-stack').innerText()));
@@ -89,7 +89,7 @@ export async function rewardOnlyJourney({ page, go, check, shot }, state, { unli
   check(`${state} linked-benefits overview does not present a warning`, await band.locator('.m-planname .m-st.warn, .m-planname .m-st.err').count() === 0);
   const personal = band.locator('.m-org').first();
   check(`${capture} personal capacity follows the actual Free allowance`, (await personal.innerText()).includes(unlimited ? 'No repository limit on this deployment' : 'Pooled Free allowance')
-    && !/Personal · included/u.test(await personal.innerText()) && (unlimited || !/No repository limit/u.test(await personal.innerText())));
+    && !/Personal · included/iu.test(await personal.innerText()) && (unlimited || !/No repository limit/u.test(await personal.innerText())));
   await shot(`reward-only-${capture}-overview`);
   await Promise.all([page.waitForURL('**/manage/plan'), band.getByRole('link', { name: 'Plan & funding', exact: true }).click()]);
   await page.waitForLoadState('networkidle');
