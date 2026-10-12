@@ -101,9 +101,9 @@ export function createProcessRunner({ executable = process.execPath } = {}) {
 }
 
 function environment(accountId, options) {
-  const env = { ...process.env };
+  const env = withoutProtectedInputs(process.env, options);
   const controls = { CLOUDFLARE_ACCOUNT_ID: accountId, WRANGLER_SEND_METRICS: 'false', WRANGLER_WRITE_LOGS: 'false', WRANGLER_LOG: 'error' };
-  const withheld = new Set([...Object.keys(controls), 'CLOUDFLARE_ENV', options.sealKeyEnv, options.wirtSigningKeyEnv].filter(Boolean).map(environmentName));
+  const withheld = new Set([...Object.keys(controls), 'CLOUDFLARE_ENV'].map(environmentName));
   // Match only selected names. Windows process.env is case-insensitive; this copied object is not.
   for (const key of Object.keys(env)) if (withheld.has(environmentName(key))) delete env[key];
   return { ...env, ...controls };
@@ -113,7 +113,8 @@ function environmentName(name) {
   return process.platform === 'win32' ? name.toUpperCase() : name;
 }
 
-function selectedEnvironmentInputs(options) {
+/** Validate the explicitly selected file/environment sources for capture and installation. */
+export function selectedEnvironmentInputs(options) {
   const selected = new Set();
   for (const [path, name, label] of [
     [options.sealKeyPath, options.sealKeyEnv, 'Seal key'],
@@ -128,6 +129,14 @@ function selectedEnvironmentInputs(options) {
     if (selected.has(normalized)) fail('Each protected input must use a distinct named environment variable.');
     selected.add(normalized);
   }
+}
+
+/** Withhold only the selected seal/Wirt names from a contained child's environment. */
+export function withoutProtectedInputs(source, options) {
+  const env = { ...source };
+  const names = new Set([options.sealKeyEnv, options.wirtSigningKeyEnv].filter(Boolean).map(environmentName));
+  for (const name of Object.keys(env)) if (names.has(environmentName(name))) delete env[name];
+  return env;
 }
 
 async function qualificationConfig({ config, worker, accountId }) {
@@ -298,6 +307,13 @@ async function readProtectedInput(source, label) {
   return readSecretFile(source.path);
 }
 
+/** Read the retained seal through the same explicit source and validation used by both callers. */
+export async function readSealKey(options) {
+  const value = await readProtectedInput(protectedInputSource(options.sealKeyPath, options.sealKeyEnv, 'Retained seal key'), 'Retained seal key');
+  if (value.length < 16 || /\r|\n/u.test(value)) fail('Retained seal key must be a single line of at least 16 characters.');
+  return value;
+}
+
 async function qualifiedIdentity(options, target, values) {
   try {
     const githubFetch = options.githubFetch ?? fetch;
@@ -355,8 +371,7 @@ async function credentialValues(options, target) {
   if (!target.joinedApp) return values;
   values.GITHUB_OAUTH_CLIENT_ID = validateOAuthClientId(options.oauthClientId);
   values.GITHUB_OAUTH_CLIENT_SECRET = validateWebhookSecret(captured ? captured.GITHUB_OAUTH_CLIENT_SECRET : await readSecretFile(options.oauthClientSecretPath));
-  values.APP_SEAL_KEY = await readProtectedInput(protectedInputSource(options.sealKeyPath, options.sealKeyEnv, 'Retained seal key'), 'Retained seal key');
-  if (values.APP_SEAL_KEY.length < 16 || /\r|\n/u.test(values.APP_SEAL_KEY)) fail('Retained seal key must be a single line of at least 16 characters.');
+  values.APP_SEAL_KEY = await readSealKey(options);
   if (target.wirtConfigured || options.wirtSigningKeyPath || options.wirtSigningKeyEnv) {
     values.WIRT_SIGNING_KEY_CURRENT = await readProtectedInput(protectedInputSource(options.wirtSigningKeyPath, options.wirtSigningKeyEnv, 'Wirt signing key'), 'Wirt signing key');
     readSigningKeys({ current: values.WIRT_SIGNING_KEY_CURRENT });

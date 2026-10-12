@@ -8,7 +8,7 @@ import { join } from 'node:path';
 globalThis.fetch = async (url, request) => {
   const directory = process.env.DIFFDEVIL_OPERATOR_FIXTURE_DIRECTORY;
   const options = JSON.parse(await readFile(join(directory, 'fixture-options.json'), 'utf8'));
-  const receipt = JSON.parse(await readFile(join(directory, 'receipt.json'), 'utf8'));
+  const receipt = JSON.parse(await readFile(join(directory, process.env.DIFFDEVIL_OPERATOR_FIXTURE_RECEIPT ?? 'receipt.json'), 'utf8'));
   assert.equal(receipt.command, 'not-attempted');
   assert.equal(request.redirect, 'error');
   if (url === 'https://api.github.com/app') {

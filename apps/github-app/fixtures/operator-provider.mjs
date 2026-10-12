@@ -46,7 +46,7 @@ else {
     process.stdout.write(input);
     process.stderr.write(input);
     result = undefined;
-    const receipt = JSON.parse(await readFile(join(directory, 'receipt.json'), 'utf8'));
+    const receipt = JSON.parse(await readFile(join(directory, process.env.DIFFDEVIL_OPERATOR_FIXTURE_RECEIPT ?? 'receipt.json'), 'utf8'));
     assert.equal(receipt.command, 'attempted-unknown');
     assert.equal(receipt.inputs.length, state.inputs.length);
   }

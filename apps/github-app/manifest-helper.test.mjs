@@ -27,6 +27,9 @@ async function cleanup(setup, running) {
   if (running && running.child.exitCode === null) { running.child.kill(); await running.completed; }
   await setup.close(); await rm(setup.directory, { recursive: true, force: true });
 }
+function installOptions(setup, overrides = {}) {
+  return { ...setup.options, config: setup.config, accountId: 'account-1', installReceiptPath: join(setup.directory, 'receipt.json'), fixtureWrangler: 'apps/github-app/fixtures/operator-provider.mjs', baseVersionId: 'version-before', sealKeyInitial: true, ...overrides };
+}
 
 test('contents-aware preflight refuses existing/unusable outputs before registration and retains selection', async () => {
   const setup = await manifestFixture({ ownerType: 'organisation', visibility: 'private' });
@@ -36,6 +39,22 @@ test('contents-aware preflight refuses existing/unusable outputs before registra
     await writeFile(setup.options.capturePath, 'valuable-existing-capture');
     await assert.rejects(checkManifest(setup.options), { code: 'E_MANIFEST_INPUT' });
     assert.equal(await readFile(setup.options.capturePath, 'utf8'), 'valuable-existing-capture');
+    assert.equal(setup.state.conversions, 0);
+  } finally { await cleanup(setup); }
+});
+
+test('named seal preflight leaves values unread and rejects conflicting or reserved input names before capture', async () => {
+  const setup = await manifestFixture();
+  try {
+    const options = { ...setup.options, sealKeyPath: undefined, sealKeyEnv: 'DIFFDEVIL_FIXTURE_UNSUPPLIED_SEAL' };
+    assert.equal((await checkManifest(options)).protectedValues, 'unread');
+    for (const invalid of [
+      { ...options, sealKeyPath: setup.options.sealKeyPath },
+      { ...options, sealKeyEnv: 'WRANGLER_LOG' },
+      { ...options, wirtSigningKeyEnv: options.sealKeyEnv },
+      { ...options, sealKeyEnv: 'INVALID-NAME' }
+    ]) await assert.rejects(checkManifest(invalid), { code: 'E_MANIFEST_INPUT' });
+    await assert.rejects(readFile(setup.options.capturePath), { code: 'ENOENT' });
     assert.equal(setup.state.conversions, 0);
   } finally { await cleanup(setup); }
 });
@@ -134,7 +153,7 @@ for (const [joined, wirt, name] of [[true, false, 'Community six'], [false, fals
   try {
     const route = await capture(setup); running = route.process;
     await fetch(route.callback); assert.equal((await running.completed).code, 0);
-    const options = { ...setup.options, config: setup.config, accountId: 'account-1', installReceiptPath: join(setup.directory, 'receipt.json'), fixtureWrangler: 'apps/github-app/fixtures/operator-provider.mjs', wirtSigningKeyPath: setup.wirtSigningKeyPath };
+    const options = { ...setup.options, config: setup.config, accountId: 'account-1', installReceiptPath: join(setup.directory, 'receipt.json'), fixtureWrangler: 'apps/github-app/fixtures/operator-provider.mjs', wirtSigningKeyPath: setup.wirtSigningKeyPath, baseVersionId: 'version-before', ...(joined ? { sealKeyInitial: true } : {}) };
     const result = await manifestCli('install', options).completed;
     assert.equal(result.code, 0); assert.equal(includesSecrets(result.output + result.errors, setup), false);
     assert.equal(JSON.parse(result.output).state, 'version-created');
@@ -160,6 +179,62 @@ test('unsafe native positive control emits synthetic secrets on both streams; th
   } finally { await cleanup(setup); }
 });
 
+test('the real environment-only capture and Wirt installer retain the seal, qualify the base and resume continuity without plaintext key files', { timeout: 30000 }, async () => {
+  const setup = await manifestFixture({ wirt: true }); let running;
+  try {
+    const fixtureOptionsPath = join(setup.directory, 'fixture-options.json');
+    const fixtureOptions = JSON.parse(await readFile(fixtureOptionsPath, 'utf8'));
+    fixtureOptions.absentEnvironmentNames = ['DIFFDEVIL_FIXTURE_SEAL', 'DIFFDEVIL_FIXTURE_WIRT'];
+    await writeFile(fixtureOptionsPath, JSON.stringify(fixtureOptions));
+    await rm(setup.options.sealKeyPath); await rm(setup.wirtSigningKeyPath);
+    setup.options = { ...setup.options, sealKeyPath: undefined, sealKeyEnv: process.platform === 'win32' ? 'diffdevil_fixture_seal' : 'DIFFDEVIL_FIXTURE_SEAL', wirtSigningKeyEnv: 'DIFFDEVIL_FIXTURE_WIRT', environmentValues: { DIFFDEVIL_FIXTURE_SEAL: setup.seal, DIFFDEVIL_FIXTURE_WIRT: setup.values.WIRT_SIGNING_KEY_CURRENT } };
+    const route = await capture(setup); running = route.process;
+    await fetch(route.callback);
+    const captured = await running.completed;
+    assert.equal(captured.code, 0);
+    assert.equal(includesSecrets(captured.output + captured.errors, setup), false);
+    assert.equal((await createProtector({ secret: setup.seal }).open(await readFile(setup.options.capturePath, 'utf8'))).stage, 'ready');
+    const options = installOptions(setup);
+    const result = await manifestCli('install', options).completed;
+    assert.equal(result.code, 0); assert.equal(includesSecrets(result.output + result.errors, setup), false);
+    const first = JSON.parse(result.output);
+    assert.equal(first.baseVersionId, 'version-before'); assert.equal(first.identity.state, 'verified');
+    assert.equal(first.sealKeyContinuity.state, 'initial');
+    assert.equal((await nativeState(setup)).deliveryHash, createHash('sha256').update(JSON.stringify(setup.values)).digest('hex'));
+    const resumed = await manifestCli('resume', setup.options).completed;
+    assert.equal(resumed.code, 0); assert.equal(setup.state.conversions, 1);
+    assert.equal(includesSecrets(resumed.output + resumed.errors, setup), false);
+    // An explicit next full-set operation uses the same capture/key and previous trusted receipt.
+    await rm(join(setup.directory, 'fixture-state.json'));
+    const next = await manifestCli('install', { ...options, sealKeyInitial: false, sealKeyPreviousReceiptPath: options.installReceiptPath, installReceiptPath: join(setup.directory, 'next-receipt.json') }).completed;
+    assert.equal(includesSecrets(next.output + next.errors, setup), false);
+    const nextReceipt = await readFile(join(setup.directory, 'next-receipt.json'), 'utf8').then(JSON.parse, () => undefined);
+    assert.equal(next.code, 0, JSON.stringify({ error: next.errors, receiptState: nextReceipt?.state, command: nextReceipt?.command, identity: nextReceipt?.identity?.state, continuity: nextReceipt?.sealKeyContinuity?.state }));
+    assert.equal(JSON.parse(next.output).sealKeyContinuity.state, 'matched');
+    assert.equal(setup.state.conversions, 1);
+  } finally { await cleanup(setup, running); }
+});
+
+test('manifest installation refuses an unqualified base or conflicting seal declaration before a native write', { timeout: 30000 }, async () => {
+  const setup = await manifestFixture(); let running;
+  try {
+    const route = await capture(setup); running = route.process;
+    await fetch(route.callback); assert.equal((await running.completed).code, 0);
+    for (const invalid of [
+      { baseVersionId: undefined }, { baseVersionId: 'foreign-bootstrap' },
+      { sealKeyInitial: false }, { sealKeyPreviousReceiptPath: join(setup.directory, 'foreign-receipt.json') },
+      { sealKeyEnv: 'DIFFDEVIL_FIXTURE_SEAL' }
+    ]) {
+      const result = await manifestCli('install', installOptions(setup, invalid)).completed;
+      assert.equal(result.code, 2); assert.equal(includesSecrets(result.output + result.errors, setup), false);
+      const native = await nativeState(setup).catch(() => ({ writes: 0 }));
+      assert.equal(native.writes, 0);
+      await assert.rejects(readFile(join(setup.directory, 'receipt.json')), { code: 'ENOENT' });
+    }
+    assert.equal(setup.state.conversions, 1);
+  } finally { await cleanup(setup, running); }
+});
+
 test('a mismatched App target refuses before upload and an interrupted installation resumes without the capture or another write', { timeout: 30000 }, async () => {
   const setup = await manifestFixture(); let running;
   try {
@@ -168,14 +243,15 @@ test('a mismatched App target refuses before upload and an interrupted installat
     const config = JSON.parse(await readFile(setup.config, 'utf8'));
     config.vars.GITHUB_APP_BOT_LOGIN = 'other-app[bot]';
     await writeFile(setup.config, JSON.stringify(config));
-    const options = { ...setup.options, config: setup.config, accountId: 'account-1', installReceiptPath: join(setup.directory, 'receipt.json'), fixtureWrangler: 'apps/github-app/fixtures/operator-provider.mjs' };
+    const options = installOptions(setup);
     const refused = await manifestCli('install', options).completed;
     assert.equal(refused.code, 2);
     assert.equal(includesSecrets(refused.output + refused.errors, setup), false);
     await assert.rejects(readFile(join(setup.directory, 'fixture-state.json')), { code: 'ENOENT' });
     config.vars.GITHUB_APP_BOT_LOGIN = 'diffdevil-synthetic[bot]';
     await writeFile(setup.config, JSON.stringify(config));
-    await writeFile(join(setup.directory, 'fixture-options.json'), JSON.stringify({ omitReadback: true }));
+    const fixtureOptions = JSON.parse(await readFile(join(setup.directory, 'fixture-options.json'), 'utf8'));
+    await writeFile(join(setup.directory, 'fixture-options.json'), JSON.stringify({ ...fixtureOptions, omitReadback: true }));
     const incomplete = await manifestCli('install', options).completed;
     assert.equal(incomplete.code, 2); assert.equal(includesSecrets(incomplete.output + incomplete.errors, setup), false);
     assert.equal((await nativeState(setup)).writes, 1);

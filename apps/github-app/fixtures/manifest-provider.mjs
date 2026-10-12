@@ -2,11 +2,11 @@
 /** Synthetic GitHub server and process harness. No real accounts, credentials, or provider writes. */
 import { createServer } from 'node:http';
 import { spawn } from 'node:child_process';
-import { generateKeyPairSync, randomUUID } from 'node:crypto';
+import { createPublicKey, generateKeyPairSync, randomUUID } from 'node:crypto';
 import { once } from 'node:events';
 import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 
 const pem = generateKeyPairSync('rsa', { modulusLength: 2048 }).privateKey.export({ type: 'pkcs1', format: 'pem' });
 export async function manifestFixture({ ownerType = 'personal', visibility = 'public', joined = true, wirt = false } = {}) {
@@ -18,10 +18,11 @@ export async function manifestFixture({ ownerType = 'personal', visibility = 'pu
   const wirtKey = wirt ? randomUUID() : undefined;
   if (wirt) await writeFile(wirtSigningKeyPath, wirtKey);
   const values = { GITHUB_APP_ID: '123', GITHUB_WEBHOOK_SECRET: body.webhook_secret, GITHUB_APP_PRIVATE_KEY: pem.replace(/\r?\n$/u, ''), ...(joined ? { GITHUB_OAUTH_CLIENT_ID: body.client_id, GITHUB_OAUTH_CLIENT_SECRET: body.client_secret, APP_SEAL_KEY: seal } : {}), ...(wirt ? { WIRT_SIGNING_KEY_CURRENT: wirtKey } : {}) };
-  await writeFile(config, JSON.stringify({ name: joined ? 'diffdevil-app-staging' : 'diffdevil-github-app', account_id: 'account-1', ...(joined ? { vars: { APP_ORIGIN: 'https://staging.example', GITHUB_APP_BOT_LOGIN: 'diffdevil-synthetic[bot]', ...(wirt ? { WIRT_ORIGIN: 'https://wirt.example' } : {}) } } : {}), d1_databases: [{ binding: 'APP_DB', database_id: '12345678-1234-1234-1234-123456789abc' }] }));
+  await writeFile(config, JSON.stringify({ name: joined ? 'diffdevil-app-staging' : 'diffdevil-github-app', account_id: 'account-1', vars: { GITHUB_APP_BOT_LOGIN: 'diffdevil-synthetic[bot]', ...(joined ? { APP_ORIGIN: 'https://staging.example' } : {}), ...(wirt ? { WIRT_ORIGIN: 'https://wirt.example' } : {}) }, d1_databases: [{ binding: 'APP_DB', database_id: '12345678-1234-1234-1234-123456789abc' }] }));
   const sealKeyPath = join(directory, 'seal.txt');
   await writeFile(sealKeyPath, seal);
-  await writeFile(join(directory, 'fixture-options.json'), '{}');
+  await writeFile(join(directory, 'fixture-public-key.pem'), createPublicKey(pem).export({ type: 'spki', format: 'pem' }));
+  await writeFile(join(directory, 'fixture-options.json'), JSON.stringify({ githubIdentity: { client_id: body.client_id, slug: body.slug } }));
   const state = { conversions: 0, posts: [], failConversion: false, beforeResponse: undefined };
   const server = createServer(async (request, response) => {
     try {
@@ -51,14 +52,16 @@ export async function manifestFixture({ ownerType = 'personal', visibility = 'pu
   const options = { capturePath: join(directory, 'capture.enc'), receiptPath: join(directory, 'capture-receipt.json'), sealKeyPath, sealKeyRecoveryRef: 'fixture-retained-custody', owner: 'fixture-owner', ownerType, visibility, appName: body.name, webhookUrl: 'https://staging.example/webhooks/github', ...(joined ? { oauthCallbackUrl: 'https://staging.example/auth/callback' } : {}), policyRefresh: true, port, fixtureOrigin: `http://127.0.0.1:${server.address().port}` };
   return { directory, seal, body, values, config, options, state, wirtSigningKeyPath, close: () => new Promise(resolveClose => { server.close(resolveClose); server.closeAllConnections(); }) };
 }
-const flags = { capturePath: 'capture-file', receiptPath: 'receipt-file', sealKeyPath: 'seal-key-file', sealKeyRecoveryRef: 'seal-key-recovery-ref', owner: 'owner', ownerType: 'owner-type', visibility: 'visibility', appName: 'app-name', webhookUrl: 'webhook-url', oauthCallbackUrl: 'oauth-callback-url', port: 'port', fixtureOrigin: 'fixture-provider', config: 'config', accountId: 'account-id', installReceiptPath: 'install-receipt-file', fixtureWrangler: 'fixture-wrangler', wirtSigningKeyPath: 'wirt-signing-key-file' };
+const flags = { capturePath: 'capture-file', receiptPath: 'receipt-file', sealKeyPath: 'seal-key-file', sealKeyEnv: 'seal-key-env', sealKeyRecoveryRef: 'seal-key-recovery-ref', owner: 'owner', ownerType: 'owner-type', visibility: 'visibility', appName: 'app-name', webhookUrl: 'webhook-url', oauthCallbackUrl: 'oauth-callback-url', port: 'port', fixtureOrigin: 'fixture-provider', config: 'config', accountId: 'account-id', installReceiptPath: 'install-receipt-file', fixtureWrangler: 'fixture-wrangler', wirtSigningKeyPath: 'wirt-signing-key-file', wirtSigningKeyEnv: 'wirt-signing-key-env', baseVersionId: 'base-version-id', sealKeyPreviousReceiptPath: 'seal-key-previous-receipt' };
 export function manifestCli(command, options) {
   const args = ['apps/github-app/manifest-helper.mjs', command];
   for (const [key, value] of Object.entries(options)) {
     if (key === 'policyRefresh' && value) args.push('--policy-refresh');
+    else if (key === 'sealKeyInitial' && value) args.push('--seal-key-initial');
     else if (flags[key] && value !== undefined) args.push(`--${flags[key]}`, String(value));
   }
-  const child = spawn(process.execPath, args, { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true });
+  const env = { ...process.env, ...options.environmentValues, DIFFDEVIL_OPERATOR_FIXTURE_DIRECTORY: dirname(options.capturePath), DIFFDEVIL_OPERATOR_FIXTURE_RECEIPT: options.installReceiptPath ? basename(options.installReceiptPath) : 'receipt.json', NODE_OPTIONS: '--import ./apps/github-app/fixtures/manifest-environment.mjs' };
+  const child = spawn(process.execPath, args, { env, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true });
   let output = '', errors = '', resolveListening;
   const listening = new Promise(resolveUrl => { resolveListening = resolveUrl; });
   child.stdout.on('data', chunk => {

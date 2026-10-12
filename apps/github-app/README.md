@@ -70,6 +70,11 @@ explain retained seal custody, the one-hour handshake, interruption checkpoints,
 the separate installation receipt, and the unobserved real GitHub redirect seam.
 Use `node apps/github-app/manifest-helper.mjs --help` for its CLI options and
 `npm run qa:app:manifest` for isolated local-browser/synthetic-provider proof.
+The explicit seal file or named-environment input is shared by capture, resume
+and installation. A managed environment consumer needs no plaintext seal file.
+The install command carries the qualified base version and initial-or-previous
+seal receipt selection into the same installer described below. Capture does not
+prove an empty target or replace the separate credential-version receipt.
 
 `operator-helper.mjs` prepares non-secret registration inputs and creates one
 **undeployed** credential-bearing Worker version after reading back the selected

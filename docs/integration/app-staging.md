@@ -367,24 +367,30 @@ those remain distinct live readbacks. The manifest sends the exact selected valu
 Establish recoverable custody of the seal **before** registration. For a joined
 App the same retained seal opens the capture and later protects App state; Wirt's
 signing key has separate custody. An opaque custody reference or an encrypted
-capture is not an off-workstation key backup. The current bridge uses a mediated
-seal input file; joining a vault's contained environment consumer is a separate
-operating interface. Keep the encrypted capture and its non-secret receipt in an
+capture is not an off-workstation key backup. Capture and installation accept the
+same explicitly selected `--seal-key-env <variable-name>` alternative to
+`--seal-key-file <path>`. Select exactly one source; conflicts, invalid names and
+names reserved for provider controls refuse. An admitted managed consumer can
+inject that named value into the hidden helper child without a plaintext key
+file. The helper does not discover a store, read ambient values or establish that
+consumer binding. Keep the encrypted capture and its non-secret receipt in an
 admitted operation handoff directory outside a disposable worktree. Do not export
 the GitHub response, PEM, code or secrets into console output, screenshots, logs,
 source or five plaintext files. Retire the transient encrypted capture only after
 the accepted installation/recovery handback preserves what the operator needs.
 
 This PowerShell specimen uses non-secret placeholders. Its directory must already
-exist and the seal file must come from the admitted custody route. Registration
+exist and the named seal must already reach the hidden helper through the admitted
+custody consumer. The source specimen does not populate that environment value.
+Registration
 creates a real GitHub App only when an authorized operator follows the displayed
 local URL and submits the provider form; the helper never opens a browser itself.
 
 ```powershell
 $captureArguments = @(
-    '--capture-file', 'C:\operator-handoff\diffdevil-staging\github-capture.enc',
-    '--receipt-file', 'C:\operator-handoff\diffdevil-staging\github-capture.json',
-    '--seal-key-file', 'C:\operator-input\staging-seal.txt',
+    '--capture-file', 'D:\custody\diffdevil-staging\operations\github-capture.enc',
+    '--receipt-file', 'D:\custody\diffdevil-staging\operations\github-capture.json',
+    '--seal-key-env', 'DIFFDEVIL_STAGING_APP_SEAL_KEY',
     '--seal-key-recovery-ref', 'admitted-staging-seal-custody'
 )
 $registrationArguments = @(
@@ -402,10 +408,15 @@ node apps/github-app/manifest-helper.mjs status @captureArguments
 if ($LASTEXITCODE -ne 0) { throw 'The protected capture is unavailable or unusable.' }
 ```
 
-`check` reads file metadata and exercises the same-directory atomic output commit,
-without reading protected contents or contacting GitHub. `register` privately
+The explicit file alternative replaces `--seal-key-env` with `--seal-key-file`
+and an admitted retained-file path; it is not a required transfer for a managed
+consumer. `check` reads file metadata where applicable and exercises the
+same-directory atomic output commit, without reading protected contents or
+contacting GitHub. `register` privately
 validates the seal, flushes the empty encrypted checkpoint, and serves a native
 form with the namespace, visibility and callbacks visible before submission.
+Selected seal/Wirt environment names are withheld from the contained conversion
+child; the installer sends their values only through its private native stdin.
 GitHub's [manifest handshake](https://docs.github.com/en/apps/sharing-github-apps/registering-a-github-app-from-a-manifest)
 must finish within one hour. This is the provider's handshake boundary, not a
 recurring consent lifetime. The exact live GitHub loopback-redirect seam remains
@@ -420,15 +431,21 @@ and OAuth callback must equal that config's `/webhooks/github` and `/auth/callba
 The following consumes the five GitHub inputs privately in memory and reuses
 the exact-target undeployed-version installer. Community needs the seal as its
 sixth input; add Wirt's separately retained signing input only when configured.
+Pass the exact qualified bootstrap version and explicitly choose initial mode
+only for a confirmed new/empty target. For an established target, replace
+`--seal-key-initial` with `--seal-key-previous-receipt <previous-successful-receipt>`.
+The existing installer checks both identity and the retained seal comparison;
+neither capture success nor possession of a new seal establishes an empty target.
 
 ```powershell
-node apps/github-app/manifest-helper.mjs install @captureArguments --config $stagingConfig --worker diffdevil-app-staging --account-id admitted-account-id --install-receipt-file 'C:\operator-handoff\diffdevil-staging\credential-install.json' --wirt-signing-key-file 'C:\operator-input\staging-wirt-current.txt'
-if ($LASTEXITCODE -ne 0) { throw 'Retain the installation receipt and capture; reconcile before another write.' }
+node apps/github-app/manifest-helper.mjs install @captureArguments --config $stagingConfig --worker diffdevil-app-staging --account-id admitted-account-id --base-version-id $qualifiedBootstrapVersion --seal-key-initial --install-receipt-file $credentialReceipt --wirt-signing-key-env DIFFDEVIL_STAGING_WIRT_SIGNING_KEY
+if ($LASTEXITCODE -ne 0) { throw 'Retain the installation receipt and capture. Correct a proven not-attempted refusal with a new receipt; reconcile an attempted/ambiguous write read-only.' }
 ```
 
 For standalone operation omit the OAuth callback and use its exact backend config;
 the installer still delivers only three inputs. Community without Wirt omits
-`--wirt-signing-key-file`. No manifest command deploys, admits a repository,
+the Wirt input. An admitted file consumer may instead select
+`--wirt-signing-key-file`; never pass both Wirt sources. No manifest command deploys, admits a repository,
 enables history, creates resources, or activates Wirt.
 
 Recover the condition left by an interruption rather than beginning again:
@@ -445,7 +462,7 @@ Recover the condition left by an interruption rather than beginning again:
 ```powershell
 node apps/github-app/manifest-helper.mjs resume @captureArguments
 if ($LASTEXITCODE -ne 0) { throw 'Retain this capture and its exact unknown/refused condition for reconciliation.' }
-node apps/github-app/operator-helper.mjs resume --config $stagingConfig --worker diffdevil-app-staging --account-id admitted-account-id --receipt-file 'C:\operator-handoff\diffdevil-staging\credential-install.json'
+node apps/github-app/operator-helper.mjs resume --config $stagingConfig --worker diffdevil-app-staging --account-id admitted-account-id --receipt-file $credentialReceipt
 if ($LASTEXITCODE -ne 0) { throw 'The exact Worker write remains unresolved; do not repeat installation.' }
 ```
 
@@ -462,8 +479,10 @@ port is refused without taking over its listener.
 encrypted capture/recovery, unsafe native stdout/stderr positive control, and
 standalone/Community/Wirt installation through the synthetic native provider.
 `npm run qa:app:manifest` exercises the real form, keyboard submission, state
-callback and contained native conversion for both namespace types and visibility
-choices. Its non-secret result/screenshots go under
+callback, contained native conversion and exact-base installation for both namespace
+types and visibility choices, using the named-environment seal throughout. Personal
+fixtures deliver Community's six inputs; organisation fixtures deliver Wirt's seven.
+Its non-secret result/screenshots go under
 `artifacts/verification/manifest/`. This proves local synthetic operation, not
 real registration, off-workstation custody, Cloudflare installation or App use.
 

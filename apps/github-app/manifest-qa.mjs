@@ -2,9 +2,9 @@
 /** Isolated headless browser + real local CLI/native-child qualification against synthetic GitHub. */
 import assert from 'node:assert/strict';
 import { chromium } from '@playwright/test';
-import { mkdir, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { manifestFixture, manifestCli, includesSecrets } from './fixtures/manifest-provider.mjs';
+import { manifestFixture, manifestCli, includesSecrets, nativeState } from './fixtures/manifest-provider.mjs';
 
 const out = 'artifacts/verification/manifest';
 await mkdir(out, { recursive: true });
@@ -12,7 +12,14 @@ const browser = await chromium.launch({ headless: true });
 const results = [];
 try {
   for (const ownerType of ['personal', 'organisation']) for (const visibility of ['public', 'private']) {
-    const setup = await manifestFixture({ ownerType, visibility });
+    const wirt = ownerType === 'organisation';
+    const setup = await manifestFixture({ ownerType, visibility, wirt });
+    const fixtureOptionsPath = join(setup.directory, 'fixture-options.json');
+    const fixtureOptions = JSON.parse(await readFile(fixtureOptionsPath, 'utf8'));
+    await writeFile(fixtureOptionsPath, JSON.stringify({ ...fixtureOptions, absentEnvironmentNames: ['DIFFDEVIL_FIXTURE_SEAL', 'DIFFDEVIL_FIXTURE_WIRT'] }));
+    await rm(setup.options.sealKeyPath);
+    if (wirt) await rm(setup.wirtSigningKeyPath);
+    setup.options = { ...setup.options, sealKeyPath: undefined, sealKeyEnv: process.platform === 'win32' ? 'diffdevil_fixture_seal' : 'DIFFDEVIL_FIXTURE_SEAL', ...(wirt ? { wirtSigningKeyEnv: 'DIFFDEVIL_FIXTURE_WIRT' } : {}), environmentValues: { DIFFDEVIL_FIXTURE_SEAL: setup.seal, ...(wirt ? { DIFFDEVIL_FIXTURE_WIRT: setup.values.WIRT_SIGNING_KEY_CURRENT } : {}) } };
     const context = await browser.newContext({ viewport: { width: 1100, height: 850 } });
     const page = await context.newPage();
     const errors = [];
@@ -39,7 +46,15 @@ try {
       assert.deepEqual(post.manifest.default_permissions, { contents: 'read', pull_requests: 'write', checks: 'write' });
       assert.deepEqual(post.manifest.default_events, ['pull_request', 'check_run', 'push']);
       if (ownerType === 'personal' && visibility === 'public') await page.screenshot({ path: join(out, 'registration-captured.png') });
-      results.push({ ownerType, visibility, state: 'captured', browser: 'isolated-headless-chromium', nativeConversion: 'contained', provider: 'synthetic' });
+      const installed = await manifestCli('install', { ...setup.options, config: setup.config, accountId: 'account-1', installReceiptPath: join(setup.directory, 'receipt.json'), fixtureWrangler: 'apps/github-app/fixtures/operator-provider.mjs', baseVersionId: 'version-before', sealKeyInitial: true }).completed;
+      assert.equal(includesSecrets(installed.output + installed.errors, setup), false);
+      assert.equal(installed.code, 0, installed.errors);
+      const receipt = JSON.parse(installed.output);
+      assert.equal(receipt.state, 'version-created'); assert.equal(receipt.baseVersionId, 'version-before');
+      assert.equal(receipt.identity.state, 'verified'); assert.equal(receipt.sealKeyContinuity.state, 'initial');
+      assert.equal(receipt.inputs.length, wirt ? 7 : 6); assert.equal((await nativeState(setup)).writes, 1);
+      assert.equal(setup.state.conversions, 1);
+      results.push({ ownerType, visibility, state: 'version-created', inputs: receipt.inputs.length, sealInput: 'explicit-environment', baseVersionId: receipt.baseVersionId, browser: 'isolated-headless-chromium', nativeConversion: 'contained', provider: 'synthetic' });
     } catch (error) {
       console.error(JSON.stringify({ ownerType, visibility, failure: error.name, providerPosts: setup.state.posts.length, conversions: setup.state.conversions, pageStage: new URL(page.url()).pathname.startsWith('/start/') ? 'start' : 'return' }));
       await page.screenshot({ path: join(out, 'registration-failure.png') });
@@ -50,5 +65,5 @@ try {
     }
   }
   await writeFile(join(out, 'result.json'), `${JSON.stringify({ state: 'passed', results, liveGitHub: 'unobserved', realCustody: 'unobserved' }, null, 2)}\n`);
-  console.log('Manifest browser qualification passed: personal/organisation × public/private; real local CLI/native conversion; synthetic GitHub only.');
+  console.log('Manifest browser qualification passed: personal/organisation × public/private; environment-only capture and exact-base Community/Wirt installation; synthetic GitHub only.');
 } finally { await browser.close(); }

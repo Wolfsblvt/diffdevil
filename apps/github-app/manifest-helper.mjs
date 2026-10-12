@@ -8,7 +8,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { parse } from 'jsonc-parser';
 import { createProtector } from '../app/src/lib/protector.mjs';
 import { validateGitHubAppPrivateKey } from './crypto.mjs';
-import { createProcessRunner, installCredentials, registrationInputs, validateAppId, validateOAuthClientId, validateWebhookSecret } from './operator-helper.mjs';
+import { createProcessRunner, installCredentials, readSealKey, registrationInputs, selectedEnvironmentInputs, validateAppId, validateOAuthClientId, validateWebhookSecret, withoutProtectedInputs } from './operator-helper.mjs';
 
 const FORMAT = 'diffdevil-manifest-capture-v1';
 const HANDSHAKE_MS = 60 * 60 * 1000; // GitHub's documented manifest handshake, not an authorization lifetime.
@@ -25,14 +25,16 @@ function same(left, right) {
   return a.length === b.length && timingSafeEqual(a, b);
 }
 function paths(options) {
-  for (const name of ['capturePath', 'receiptPath', 'sealKeyPath']) if (!options[name]) fail(`${name} is required.`);
-  if (new Set(['capturePath', 'receiptPath', 'sealKeyPath'].map(name => resolve(options[name]))).size !== 3) fail('Capture, receipt and retained seal must have separate paths.');
+  for (const name of ['capturePath', 'receiptPath']) if (!options[name]) fail(`${name} is required.`);
+  try { selectedEnvironmentInputs(options); } catch { fail('Choose one explicit file or named environment source per key, with distinct valid input names.'); }
+  if (!options.sealKeyPath && !options.sealKeyEnv) fail('Select a retained seal file or named environment input.');
+  const files = [options.capturePath, options.receiptPath, options.sealKeyPath].filter(Boolean).map(path => resolve(path));
+  if (new Set(files).size !== files.length) fail('Capture, receipt and retained seal must have separate paths.');
   token(options.sealKeyRecoveryRef, 'Seal custody reference');
 }
 async function protector(options) {
   let secret;
-  try { secret = (await readFile(options.sealKeyPath, 'utf8')).replace(/\r?\n$/u, ''); } catch { fail('The retained seal is unavailable.'); }
-  if (!secret || /\r|\n/u.test(secret) || secret.length < 16) fail('The retained seal must contain one valid key.');
+  try { secret = await readSealKey(options); } catch { fail('The selected retained seal is unavailable or invalid.'); }
   return createProtector({ secret });
 }
 async function writeAtomic(path, contents, exclusive = false) {
@@ -56,7 +58,9 @@ async function destination(path) {
 export async function checkManifest(options) {
   paths(options);
   const selection = registrationSelection(options);
-  try { if (!(await stat(options.sealKeyPath)).isFile()) throw new Error(); } catch { fail('The retained seal input file is unavailable.'); }
+  if (options.sealKeyPath) {
+    try { if (!(await stat(options.sealKeyPath)).isFile()) throw new Error(); } catch { fail('The retained seal input file is unavailable.'); }
+  }
   await destination(options.capturePath);
   await destination(options.receiptPath);
   return { state: 'ready-for-registration', ...selection, conversion: 'not-attempted', protectedValues: 'unread', liveRedirect: 'unobserved' };
@@ -146,7 +150,7 @@ async function convert(options, capture, seal) {
     capture.stage = 'conversion-attempted';
     await save(options, capture, seal);
     const runner = createProcessRunner();
-    const response = await runner({ args: [CHILD], input: JSON.stringify({ code: capture.code, fixtureOrigin: capture.selection.fixtureOrigin }), env: process.env, signal: options.signal });
+    const response = await runner({ args: [CHILD], input: JSON.stringify({ code: capture.code, fixtureOrigin: capture.selection.fixtureOrigin }), env: withoutProtectedInputs(process.env, options), signal: options.signal });
     if (response.code !== 0) fail('Conversion outcome is unknown; resume will refuse a second conversion.', 'E_MANIFEST_UNKNOWN');
     try { capture.response = JSON.parse(response.stdout); } catch { fail('Conversion outcome is unknown; its child response was unusable.', 'E_MANIFEST_UNKNOWN'); }
     capture.stage = 'captured';
@@ -259,24 +263,25 @@ export async function installManifest(options) {
     }
     if (capture.selection.mode === 'fixture' && !options.fixtureWrangler) fail('Synthetic capture requires an explicit synthetic native provider.');
     if (capture.selection.mode === 'provider' && options.fixtureWrangler) fail('Provider capture cannot install through a synthetic provider.');
-    if (!options.installReceiptPath || [options.capturePath, options.receiptPath, options.sealKeyPath].some(path => resolve(path) === resolve(options.installReceiptPath))) fail('Use a separate new installation receipt.');
-    return installCredentials({ config: options.config, accountId: options.accountId, worker: options.worker, appId: identity.appId,
-      ...(config.vars?.APP_ORIGIN ? { oauthClientId: identity.oauthClientId, sealKeyPath: options.sealKeyPath, sealKeyRecoveryRef: options.sealKeyRecoveryRef, wirtSigningKeyPath: options.wirtSigningKeyPath } : {}),
+    if (!options.installReceiptPath || [options.capturePath, options.receiptPath, options.sealKeyPath, options.wirtSigningKeyPath, options.sealKeyPreviousReceiptPath].filter(Boolean).some(path => resolve(path) === resolve(options.installReceiptPath))) fail('Use a separate new installation receipt.');
+    return installCredentials({ config: options.config, accountId: options.accountId, worker: options.worker, appId: identity.appId, baseVersionId: options.baseVersionId,
+      ...(config.vars?.APP_ORIGIN ? { oauthClientId: identity.oauthClientId, sealKeyPath: options.sealKeyPath, sealKeyEnv: options.sealKeyEnv, sealKeyRecoveryRef: options.sealKeyRecoveryRef, sealKeyInitial: options.sealKeyInitial, sealKeyPreviousReceiptPath: options.sealKeyPreviousReceiptPath, wirtSigningKeyPath: options.wirtSigningKeyPath, wirtSigningKeyEnv: options.wirtSigningKeyEnv } : {}),
       readGitHubInputs: async () => identityAndInputs((await load(options)).capture).values, receiptPath: options.installReceiptPath,
       ...(capture.selection.mode === 'fixture' ? { fixture: true, wrangler: options.fixtureWrangler } : {}) });
   });
 }
 
-const NAMES = { 'capture-file': 'capturePath', 'receipt-file': 'receiptPath', 'seal-key-file': 'sealKeyPath', 'seal-key-recovery-ref': 'sealKeyRecoveryRef', 'owner': 'owner', 'owner-type': 'ownerType', 'visibility': 'visibility', 'app-name': 'appName', 'webhook-url': 'webhookUrl', 'oauth-callback-url': 'oauthCallbackUrl', 'port': 'port', 'fixture-provider': 'fixtureOrigin', 'config': 'config', 'worker': 'worker', 'account-id': 'accountId', 'install-receipt-file': 'installReceiptPath', 'wirt-signing-key-file': 'wirtSigningKeyPath', 'fixture-wrangler': 'fixtureWrangler' };
+const NAMES = { 'capture-file': 'capturePath', 'receipt-file': 'receiptPath', 'seal-key-file': 'sealKeyPath', 'seal-key-env': 'sealKeyEnv', 'seal-key-recovery-ref': 'sealKeyRecoveryRef', 'seal-key-initial': 'sealKeyInitial', 'seal-key-previous-receipt': 'sealKeyPreviousReceiptPath', 'base-version-id': 'baseVersionId', 'owner': 'owner', 'owner-type': 'ownerType', 'visibility': 'visibility', 'app-name': 'appName', 'webhook-url': 'webhookUrl', 'oauth-callback-url': 'oauthCallbackUrl', 'port': 'port', 'fixture-provider': 'fixtureOrigin', 'config': 'config', 'worker': 'worker', 'account-id': 'accountId', 'install-receipt-file': 'installReceiptPath', 'wirt-signing-key-file': 'wirtSigningKeyPath', 'wirt-signing-key-env': 'wirtSigningKeyEnv', 'fixture-wrangler': 'fixtureWrangler' };
+const FLAGS = new Set(['policy-refresh', 'seal-key-initial']);
 export async function main(argv = process.argv.slice(2)) {
   const [command, ...args] = argv;
-  if (command === '--help') { process.stdout.write('Usage: node apps/github-app/manifest-helper.mjs check|register|resume|status|install --capture-file <encrypted-file> --receipt-file <non-secret-file> --seal-key-file <retained-file> --seal-key-recovery-ref <custody-id>\nRegistration: --owner <login> --owner-type personal|organisation --visibility public|private --app-name <name> --webhook-url <https-url> [--oauth-callback-url <https-url>] [--policy-refresh] [--port <loopback-port>]\nInstall: --config <exact-config> --account-id <id> --install-receipt-file <new-receipt> [--worker <matching-name>] [--wirt-signing-key-file <retained-file>]\nSee docs/integration/app-staging.md for the capture, interruption and separate installation handoff. No command deploys or opens a browser.\n'); return; }
+  if (command === '--help') { process.stdout.write('Usage: node apps/github-app/manifest-helper.mjs check|register|resume|status|install --capture-file <encrypted-file> --receipt-file <non-secret-file> (--seal-key-file <retained-file> | --seal-key-env <explicit-name>) --seal-key-recovery-ref <custody-id>\nRegistration: --owner <login> --owner-type personal|organisation --visibility public|private --app-name <name> --webhook-url <https-url> [--oauth-callback-url <https-url>] [--policy-refresh] [--port <loopback-port>]\nInstall: --config <exact-config> --account-id <id> --install-receipt-file <new-receipt> [--worker <matching-name>]; joined App: --base-version-id <qualified-bootstrap> (--seal-key-initial | --seal-key-previous-receipt <previous-successful-receipt>); Wirt: (--wirt-signing-key-file <retained-file> | --wirt-signing-key-env <explicit-name>)\nSee docs/integration/app-staging.md for the capture, interruption and separate installation handoff. No command deploys or opens a browser.\n'); return; }
   const options = {};
   for (let index = 0; index < args.length; index++) {
     const name = args[index].replace(/^--/u, '');
     const key = name === 'policy-refresh' ? 'policyRefresh' : NAMES[name];
     if (!args[index].startsWith('--') || !key || Object.hasOwn(options, key)) fail('Unknown or repeated named option.');
-    options[key] = name === 'policy-refresh' ? true : args[++index];
+    options[key] = FLAGS.has(name) ? true : args[++index];
     if (options[key] === undefined || String(options[key]).startsWith('--')) fail('A named option is missing its value.');
   }
   const actions = { check: checkManifest, register: registerManifest, resume: resumeManifest, status: manifestStatus, install: installManifest };
