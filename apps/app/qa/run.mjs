@@ -87,7 +87,7 @@ console.log(`Seeded ${seeded.written.written} analyses, ${seeded.written.retaine
 /** Local Worker variables as --var flags: fixture values only, never real credentials. `commercial` is the loopback Works stand-in's spec. */
 function workerVars(entitlement, { commercial, allowances, participation, signingKey } = {}) {
   const vars = { APP_ORIGIN: ORIGIN, GITHUB_API_BASE: `http://127.0.0.1:${GITHUB_PORT}`, GITHUB_OAUTH_BASE: `http://127.0.0.1:${GITHUB_PORT}`, GITHUB_OAUTH_CLIENT_ID: 'fixture-client', GITHUB_OAUTH_CLIENT_SECRET: 'fixture-secret-private', APP_SEAL_KEY: 'fixture-seal-key-with-enough-length', APP_SESSION_DAYS: '30', GITHUB_WEBHOOK_SECRET: 'fixture-webhook-secret',
-    ...(entitlement ? { APP_ENTITLEMENT_FIXTURE: JSON.stringify(entitlement) } : {}), ...(commercial ? { APP_COMMERCIAL_FIXTURE: JSON.stringify(commercial) } : {}), ...(allowances ? { APP_PLAN_ALLOWANCES: JSON.stringify(allowances) } : {}), ...(participation ? { APP_PARTICIPATION_CAMPAIGN: JSON.stringify(participation) } : {}), ...(signingKey ? { WIRT_SIGNING_KEY_CURRENT: signingKey } : {}) };
+    ...(entitlement ? { APP_ENTITLEMENT_FIXTURE: JSON.stringify(entitlement) } : {}), ...(commercial ? { APP_COMMERCIAL_FIXTURE: JSON.stringify(commercial) } : {}), ...(allowances ? { APP_PLAN_ALLOWANCES: JSON.stringify(allowances) } : {}), ...(participation ? { APP_PARTICIPATION_CAMPAIGN: JSON.stringify(participation) } : {}), ...(signingKey ? { WIRT_SIGNING_KEY_CURRENT: signingKey, WIRT_LINK_CONTINUATION_URL: 'https://app.example.test/manage/plan' } : {}) };
   return Object.entries(vars).flatMap(([key, value]) => ['--var', `${key}:${value}`]);
 }
 
@@ -563,6 +563,7 @@ try {
 
   await stopWorker();
   executeLocal(`INSERT INTO commercial_links (link_id, product_account, works_account, state, established_at, updated_at) VALUES ('${NULLABLE_LINK}', 123, '77', 'active', '2026-10-02T00:00:00Z', '2026-10-02T00:00:00Z')`, STATE);
+  // The native page consumer requires an HTTPS continuation even on loopback. This fixture is never opened: no client/callback is configured.
   await startWorker(undefined, STATE, { signingKey: NULLABLE_SIGNING_KEY });
   await signIn();
   await nullableReceiverJourney(ctx);
