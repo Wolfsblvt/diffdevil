@@ -61,11 +61,166 @@ The scheduled Worker maintenance path performs recovery pruning, expiry-derived 
 
 ## Registration and credential helper
 
-`operator-helper.mjs` prepares the non-secret GitHub App registration inputs and creates one un-deployed credential-bearing Worker version only after Wrangler reads back the selected Cloudflare account, Worker deployment, and version list. It creates no App, resource, deployment, or installation itself. The checked-in `wrangler.jsonc` is source configuration with deliberately non-operational placeholders; Katja's rollout uses an untracked derived bootstrap/qualification config, which the helper requires and checks before it reaches Wrangler.
+The preferred initial setup is `manifest-helper.mjs`: a local native manifest
+form for personal/organisation registration and explicit visibility, with
+state-checked callback, contained conversion, encrypted capture and a direct
+in-memory handoff to the existing installer. It opens no browser and deploys
+nothing. [The maintained invocation and recovery route](../../docs/integration/app-staging.md#native-manifest-registration-and-capture)
+explain retained seal custody, the one-hour handshake, interruption checkpoints,
+the separate installation receipt, and the unobserved real GitHub redirect seam.
+Use `node apps/github-app/manifest-helper.mjs --help` for its CLI options and
+`npm run qa:app:manifest` for isolated local-browser/synthetic-provider proof.
+The explicit seal file or named-environment input is shared by capture, resume
+and installation. A managed environment consumer needs no plaintext seal file.
+The install command carries the qualified base version and initial-or-previous
+seal receipt selection into the same installer described below. Capture does not
+prove an empty target or replace the separate credential-version receipt.
+
+`operator-helper.mjs` prepares non-secret registration inputs and creates one
+**undeployed** credential-bearing Worker version after reading back the selected
+Cloudflare account, existing Worker deployment and version list. It creates no
+App, resource, deployment or repository installation. The exact JSON/JSONC config
+selects the Worker; `--worker` checks that name and cannot override it. A conflicting
+account, absent/invalid `APP_DB` ID, either checked-in D1 placeholder, or a latest
+uploaded version whose `APP_DB` differs from the config refuses
+before reading protected files or prompting for input. Use a derived operational
+config or the admitted built App config, with its relative paths kept valid.
 
 ```sh
 node apps/github-app/operator-helper.mjs registration --webhook-url https://example.invalid/webhooks/github
-node apps/github-app/operator-helper.mjs install --app-id 123 --private-key-file path/to/downloaded-app-key.pem --account-id account-id --config path/to/derived-qualification.jsonc
+node apps/github-app/operator-helper.mjs check --app-id 123 --private-key-file path/to/retained-app-key.pem --account-id account-id --config path/to/derived-qualification.jsonc --receipt-file path/to/new-credential-receipt.json
+node apps/github-app/operator-helper.mjs install --app-id 123 --private-key-file path/to/retained-app-key.pem --account-id account-id --config path/to/derived-qualification.jsonc --receipt-file path/to/new-credential-receipt.json
+node apps/github-app/operator-helper.mjs resume --account-id account-id --config path/to/derived-qualification.jsonc --receipt-file path/to/existing-credential-receipt.json
 ```
 
-The registration output selects Contents read, Pull requests write, Checks write, and only `pull_request` and `check_run`; GitHub supplies installation lifecycle events. The Worker also accepts `push`, which turns a default-branch change to `.diffdevil.yml` into a policy refresh of open briefs, but it receives pushes only after the registration subscribes to them; that subscription is not selected here. Ordinary interactive use asks for the webhook secret through a helper-owned hidden TTY checkpoint after its non-secret preflight. `--webhook-secret-stdin` is reserved for callers with an already-safe redirected automation channel and refuses TTY stdin. The helper validates the downloaded unencrypted RSA PKCS#1 key locally, writes all three values into one temporary private carrier, invokes `wrangler versions secret bulk`, then removes that carrier on both success and failure. Its receipt distinguishes command acceptance, created-version identity/readback, unchanged active deployment, partial state, and unknown state; a created version is not a deployment or an active runtime claim. `--fake` substitutes disposable target/read/write/readback responses, so the same route can be qualified without a GitHub or Cloudflare effect.
+Registration selects Contents read, Pull requests write, Checks write, and
+`pull_request`/`check_run`; GitHub supplies installation lifecycle events. Add
+`--policy-refresh` to subscribe to `push` for trusted default-branch policy refresh.
+`--app-name`, `--visibility` and `--oauth-callback-url` prepare a distinct identity
+and user callback. These are registration inputs, not a provider registration or
+an App admission control. The callback uses GitHub's documented
+[`callback_urls[]` parameter](https://docs.github.com/en/apps/sharing-github-apps/registering-a-github-app-using-url-parameters).
+
+The standalone backend installs three inputs. A joined-App config (`APP_ORIGIN`
+in vars) requires OAuth client ID, OAuth client secret file, retained seal key
+file (or the explicitly named `--seal-key-env <variable-name>`) and its opaque
+recovery reference as well. When Wirt is configured (`WIRT_ORIGIN`), its current
+signing input is required as either `--wirt-signing-key-file <path>` or
+`--wirt-signing-key-env <variable-name>`: the complete operation delivers all
+seven inputs in one version. Each key accepts exactly one source; the helper
+does not search or enumerate ambient variables. Community without Wirt needs no
+unused commercial credential. The [staging packet](../../docs/integration/app-staging.md#protected-input-operation)
+has a complete PowerShell invocation; production uses the same options with its
+own exact config, Worker, custody files or named child inputs, and recovery reference.
+
+For a joined App, select `--base-version-id <qualified-version>` and either
+`--seal-key-initial` for a confirmed new/empty target or
+`--seal-key-previous-receipt <durable-receipt>` for an established target. The
+initial mode refuses an existing `APP_SEAL_KEY` secret binding in the qualified
+version's metadata without reading its value; absence is not empty-D1 or custody
+evidence. The
+latest uploaded version must equal that qualified bootstrap/base before input
+and again before the write. The base's actual source, included engine and
+Community/private composition are qualified separately by the activation operator.
+The exact configuration selects `GITHUB_APP_BOT_LOGIN` (the standalone runtime's
+existing default is `diffdevil[bot]`); configure the actual registered bot.
+
+A manifest-capture caller can supply the five matching GitHub values through
+`installCredentials({ readGitHubInputs, ... })` instead of creating plaintext
+credential files. The callback runs after the durable checkpoint; its App/client
+IDs must match the selected IDs. That caller also passes `baseVersionId` and
+either `sealKeyInitial` or `sealKeyPreviousReceiptPath`, plus the same retained
+seal/Wirt file or named-environment inputs. Capture and installation receipts
+remain separate recovery artifacts.
+
+Ordinary interactive use requests the webhook secret through a hidden TTY
+checkpoint after preflight and the durable receipt commit. Alternatively,
+`--webhook-secret-file` consumes an opaque operator-controlled file;
+`--webhook-secret-stdin` requires an already-safe redirected automation channel and
+refuses TTY stdin. No raw value belongs in arguments, shell history or a receipt.
+The downloaded private key remains an unencrypted RSA PKCS#1 PEM. Input file
+contents are validated only after preflight. `check` exercises target readback,
+file metadata and a same-directory atomic receipt probe; it does not read protected
+contents, create the real checkpoint or write a Worker version.
+
+Bulk installation sends JSON directly to Wrangler's private stdin. No temporary
+secret file is created, including on failure; `carrier: not-created` records that
+fact. Native stdout/stderr are contained, Wrangler disk logs and telemetry are
+disabled for these children, and only allowlisted receipt fields reach output.
+Named seal/Wirt environment values are read only after the flushed receipt exists,
+removed from the Wrangler child environment and sent through that same private
+stdin. The helper leaves operator-owned input files intact. Their access controls
+and retention remain the custodian's responsibility; Node's Unix file mode is not
+a Windows custody/ACL guarantee.
+
+Install privately mints the existing short-lived App JWT and uses GitHub's
+[authenticated `GET /app`](https://docs.github.com/en/rest/apps/apps#get-the-authenticated-app)
+to match the App ID and OAuth client ID, then reads the public bot identity and
+compares it with the exact configuration. Redirects refuse; no JWT, raw provider
+body or protected value reaches the receipt. This qualifies identity and the
+PEM's authentication, not the webhook/OAuth secret's eventual use. `check` reports
+identity as unverified and does not perform these protected-content reads.
+
+The successful receipt retains a domain-separated SHA-256 seal continuity check
+with its custody reference and Worker/account/database identity. An established
+target compares the same key with its previous successful receipt before another
+write. Another key, target or custody reference refuses. Keep the original seal:
+a new key cannot open existing protected authorization or file locators. The
+check proves equality against the retained record, not off-workstation custody
+or independent retrieval.
+
+Retain the seal and Wirt signing material through their admitted recovery route.
+GitHub's PEM, webhook and OAuth-secret files are transient installer inputs, not
+a requirement to keep seven plaintext files. Their custodian may remove them
+after the provider result and recovery handback are established; the helper never
+deletes operator-owned inputs. Full-set installation remains supported. The first
+real GitHub rotation or enforced Wirt rollover must scope the exact subset and
+previous-key operation before use. This helper prepares the initial full set;
+it is not a general rotation service.
+
+After a custodian has established an appropriate protected recovery destination,
+the contained file-generation specimen is:
+
+```sh
+node apps/github-app/operator-helper.mjs generate-seal --seal-key-file path/to/new-custody-owned-seal.txt --seal-key-recovery-ref admitted-custody-reference
+```
+
+It generates 32 random bytes once, exclusively creates and flushes the selected
+file, and prints only a non-secret check/reference. It refuses an existing file.
+No typed phrase or console key is a default. Use this only when the custody route
+already selected that file destination; generation does not establish ACLs,
+off-workstation recovery or a store binding. An environment-only custodian keeps
+generation/admission inside its existing contained route.
+
+The non-secret receipt is created exclusively and flushed before protected input.
+A durable `attempted-unknown` marker precedes the provider write. Command acceptance,
+the single newly observed version, its secret-binding names/database, and the latest
+deployment comparison are separate facts. `version-created` means a complete
+readback of an undeployed version with an unchanged active deployment; it does not
+prove secret values, registration correctness, exposure, runtime behavior or a
+deployment. `partial`/`unknown` never count as success. `resume` requires the same
+exact config hash/account/Worker/database and a usable receipt, performs only
+provider reads, and never rereads inputs or repeats installation. Missing or
+foreign receipts refuse. A lost write acknowledgement remains partial even when
+the new version is seen. Reconcile that exact result before admitting any new
+operation; use a fresh receipt only for a deliberately selected new operation.
+
+A proven private-input, identity, continuity or pre-write target failure persists
+terminal `state: not-attempted` and `command: not-attempted`. Correct its cause
+and use a new receipt for a deliberately selected new operation. After the
+attempt marker, use read-only `resume` before considering another effect.
+Select a durable operation-receipt path outside disposable worktrees from the
+start, or preserve the non-secret receipt in the operation's durable handback
+before retiring the checkout. Repository `artifacts/` is only a working copy.
+
+Wrangler's secret operation inherits the latest uploaded version, which can differ
+from the active deployment. Keep one operator as this Worker's writer until the
+receipt is reconciled, and qualify the returned version's source/engine/composition
+before activation. The staging packet separates its unexposed bootstrap from
+credential preparation and version-specific activation.
+
+`--fake` selects disposable in-process provider responses and labels its receipts
+`mode: fixture`; they cannot be resumed as live receipts. The registered
+`operator-helper.test.mjs` also exercises the actual CLI/native-child path against
+an echoing synthetic provider, failures, late receipt/readback recovery and both
+production/staging targets. These tests make no GitHub or Cloudflare request.

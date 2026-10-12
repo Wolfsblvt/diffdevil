@@ -29,7 +29,17 @@ Run the ordinary application tests before selecting an upgrade. They exercise si
 
 You need authority over the account or organization that will own the registration, an actual HTTPS webhook destination, and the ability to review the installation's repository access. Keep the App registration, a repository installation, and execution enablement distinct.
 
-This complete, read-only specimen prints registration inputs and a provider registration link:
+For a new registration, start with the [native manifest registration and capture
+guide](../../../integration/app-staging.md#native-manifest-registration-and-capture).
+The local helper prepares GitHub's personal or organisation form, captures its
+response encrypted, and hands the validated inputs to the installer. Select your
+own namespace, visibility, callbacks and deployment; the guide's staging values
+are specimens. Registration, protected installation and deployment remain
+separate operator actions.
+
+For an existing registration or file-based recovery, the supported file-input
+installer below remains available. This complete, read-only specimen prints
+registration inputs and a provider registration link:
 
 ```sh
 node apps/github-app/operator-helper.mjs registration --webhook-url https://example.invalid/webhooks/github
@@ -82,12 +92,80 @@ The source-owned credential helper requires an already identified Worker deploym
 For that established target, the operator command has this shape:
 
 ```sh
-node apps/github-app/operator-helper.mjs install --app-id 123 --private-key-file path/to/downloaded-app-key.pem --account-id account-id --config path/to/derived-qualification.jsonc
+node apps/github-app/operator-helper.mjs check --app-id 123 --private-key-file path/to/retained-app-key.pem --account-id account-id --config path/to/derived-qualification.jsonc --receipt-file path/to/new-credential-receipt.json
+node apps/github-app/operator-helper.mjs install --app-id 123 --private-key-file path/to/retained-app-key.pem --account-id account-id --config path/to/derived-qualification.jsonc --receipt-file path/to/new-credential-receipt.json
 ```
 
-The identifiers and file paths are specimens, not values for a real environment. The helper accepts the downloaded unencrypted RSA PKCS#1 App key and obtains the webhook secret through a hidden interactive prompt. Its non-interactive `--webhook-secret-stdin` route is for an already-protected, redirected input, not an instruction to echo a secret into shell history. No secret value belongs in a receipt.
+The identifiers and file paths are specimens, not values for a real environment.
+The config's exact Worker name selects the target; an optional `--worker` must
+match it. Conflicting account/Worker names and inert or missing database IDs refuse
+before protected input. `check` reads provider target facts and file metadata,
+then probes the receipt directory without reading protected contents or writing
+a Worker version. The receipt directory must already exist and the new receipt
+must not exist.
 
-This helper creates an **undeployed Worker version** using versioned secret installation. It does not deploy that version, register the App, install it on a repository, or enable execution. Its receipt separates command acceptance, created-version identity, version readback, unchanged deployment, and partial/unknown results. A failed readback needs reconciliation; rerunning blindly can create another version.
+`install` privately verifies the PEM/App ID with GitHub, matches the OAuth client
+ID for the signed-in App, and reads the bot identity against the exact config's
+`GITHUB_APP_BOT_LOGIN`. `check` leaves this identity unverified because it does
+not read protected contents. Actual webhook/OAuth-secret use is qualified through
+the live consumer journey.
+
+The helper accepts the downloaded unencrypted RSA PKCS#1 App key and obtains the
+webhook secret through a hidden interactive prompt after creating its non-secret
+checkpoint. `--webhook-secret-file` accepts an operator-controlled protected file.
+The non-interactive `--webhook-secret-stdin` route requires an already-protected,
+redirected channel; do not echo a secret into shell history. Native output stays
+contained, and bulk values go through private stdin rather than a temporary file.
+No secret value belongs in a receipt.
+
+For the signed-in App, also supply its OAuth client ID/secret file and retained
+seal key file/recovery reference; add the current Wirt signing file when Wirt is
+configured. When an existing hidden-child consumer provides a secret directly in
+its environment, `--seal-key-env APP_SEAL_KEY` and, when needed,
+`--wirt-signing-key-env WIRT_SIGNING_KEY_CURRENT` are explicit alternatives to
+those two files. Pass only the variable names on the command line, select one
+source per key, and establish custody separately; the helper does not search
+ambient variables or make an environment value recoverable. The [operator source](../../../../apps/github-app/README.md#registration-and-credential-helper)
+owns those options and the complete [seven-input specimen](../../../integration/app-staging.md#protected-input-operation).
+Use your own production config, Worker and custody paths. Keep the original seal
+key recoverable with the database: generating another key cannot open existing
+protected authorizations or reproduce opaque file locators.
+
+Select `--base-version-id <qualified-bootstrap-version>` for the joined App.
+That exact version must still be latest immediately before the secret write.
+For a confirmed new/empty target, use `--seal-key-initial`; an established target
+uses `--seal-key-previous-receipt <durable-successful-receipt>` and the same
+retained key/custody reference. A foreign target or different seal refuses.
+Initial mode also refuses when the qualified uploaded version already names an
+`APP_SEAL_KEY` secret binding. Absence of that name does not prove an empty database
+or recoverable key custody.
+The receipt's non-secret check proves key equality against that record; it does
+not establish off-workstation custody or retrieval.
+
+Retain seal/Wirt material through the admitted recovery route. GitHub credential
+files are transient inputs, not seven plaintext files to retain forever. The
+operator source provides a random `generate-seal` file specimen for a custody
+destination already established; it never prints the key or overwrites an existing
+file. First actual rotation/rollover separately scopes subset and previous-key
+support. Keep operation receipts outside disposable checkouts, with the qualified
+source/configuration/composition evidence, before retiring those carriers.
+
+This helper creates an **undeployed Worker version** using versioned secret
+installation. It does not deploy that version, register the App, install it on a
+repository or enable execution. Its receipt separates command acceptance,
+created-version identity and secret-binding-name readback, unchanged latest
+deployment, and partial/unknown results. Reconcile an interrupted operation with
+the existing receipt and exact unchanged config:
+
+```sh
+node apps/github-app/operator-helper.mjs resume --account-id account-id --config path/to/derived-qualification.jsonc --receipt-file path/to/existing-credential-receipt.json
+```
+
+Resume reads provider state without reading input files or creating another
+version. It refuses missing, unusable or foreign receipts. A provider write with
+an unobserved acknowledgement remains partial even if its version appears;
+resolve that result before another admitted effect. A credential version receipt
+does not establish a working deployment or recoverable external key custody.
 
 Deploying the selected version remains a deliberate provider operation under your own operating authority. Keep credentials out of diagnostics, use the narrow required permissions, and rotate/revoke them through the selected provider route after testing the replacement. Credential rotation and code rollback do not undo database migrations or repository effects.
 

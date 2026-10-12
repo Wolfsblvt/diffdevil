@@ -19,7 +19,7 @@ const PAGE = 100;
 function providerError(code, status) { return Object.assign(new Error(code), { code, status }); }
 function iso(ms) { return new Date(ms).toISOString(); }
 
-export function createGitHubUserProvider({ clientId, clientSecret, callbackUrl, apiBase = DEFAULT_API_BASE, oauthBase = DEFAULT_OAUTH_BASE, fetch: fetchImpl = globalThis.fetch, now = () => Date.now(), userAgent = 'diffdevil-app' }) {
+export function createGitHubUserProvider({ clientId, clientSecret, callbackUrl, apiBase = DEFAULT_API_BASE, oauthBase = DEFAULT_OAUTH_BASE, fetch: fetchImpl = globalThis.fetch, now = () => Date.now(), userAgent = 'diffdevil-app', installationAccounts = null, installationAdmitted = async () => true }) {
   if (!clientId || !clientSecret || !callbackUrl) throw new TypeError('GitHub user authorization needs a client ID, client secret and callback URL.');
   const api = apiBase.replace(/\/$/u, ''), oauth = oauthBase.replace(/\/$/u, '');
 
@@ -47,6 +47,19 @@ export function createGitHubUserProvider({ clientId, clientSecret, callbackUrl, 
     }
     return out;
   }
+  // The current-user list needs no Members-read permission. A per-organisation membership read does.
+  // Stop on the requested membership or a complete list, never infer absence from a truncated collection.
+  async function organisationMembership(token, matches) {
+    for (let page = 1; ; page++) {
+      const memberships = await json(`${api}/user/memberships/orgs?per_page=${PAGE}&page=${page}`, { token });
+      if (!Array.isArray(memberships) || memberships.some(value => !Number.isSafeInteger(value?.organization?.id)
+        || value.organization.id <= 0 || typeof value.organization.login !== 'string' || !value.organization.login
+        || !['active', 'pending'].includes(value.state))) throw providerError('E_PROVIDER_RESPONSE');
+      const membership = memberships.find(matches);
+      if (membership) return membership;
+      if (memberships.length < PAGE) return null;
+    }
+  }
   function grantFrom(payload) {
     if (!payload || typeof payload.access_token !== 'string' || payload.access_token.length === 0) throw providerError('E_PROVIDER_TOKEN');
     const at = now();
@@ -57,11 +70,21 @@ export function createGitHubUserProvider({ clientId, clientSecret, callbackUrl, 
       : Number.isFinite(payload.expires_in) && !material.refreshToken ? material.accessExpiresAt : iso(at + NON_EXPIRING_GRANT_MS);
     return { material, expiresAt };
   }
+  async function tokenPayload(response) {
+    try { return await response.json(); }
+    catch { throw providerError('E_PROVIDER_RESPONSE', response.status); }
+  }
   async function tokenRequest(body) {
     const response = await send(`${oauth}/login/oauth/access_token`, { method: 'POST', body: { client_id: clientId, client_secret: clientSecret, ...body }, accept: 'application/json' });
-    if (!response.ok) throw providerError('E_PROVIDER_TOKEN', response.status);
-    const payload = await response.json();
-    if (payload.error) throw providerError('E_PROVIDER_TOKEN');
+    if (!response.ok && response.status !== 400) throw providerError('E_PROVIDER_TOKEN', response.status);
+    const payload = await tokenPayload(response);
+    // Only GitHub's explicit invalid/expired refresh-token answer establishes unusable stored material.
+    if (body.grant_type === 'refresh_token' && payload?.error === 'bad_refresh_token') throw providerError('E_PROVIDER_REFRESH_INVALID');
+    if (!response.ok || payload?.error) throw providerError('E_PROVIDER_TOKEN', response.status);
+    // A rotation must supply both new tokens and their lifetimes; an incomplete answer cannot replace the old seal.
+    if (body.grant_type === 'refresh_token' && (typeof payload?.refresh_token !== 'string' || !payload.refresh_token
+      || !Number.isSafeInteger(payload.expires_in) || payload.expires_in <= 0
+      || !Number.isSafeInteger(payload.refresh_token_expires_in) || payload.refresh_token_expires_in <= 0)) throw providerError('E_PROVIDER_TOKEN');
     return grantFrom(payload);
   }
   const pull = value => ({
@@ -87,20 +110,27 @@ export function createGitHubUserProvider({ clientId, clientSecret, callbackUrl, 
       const user = await json(`${api}/user`, { token: material.accessToken });
       return user.id;
     },
-    /** Refresh an expiring token when possible, otherwise ask GitHub whether the grant still stands. */
+    /** Refresh or check a grant. Unavailable evidence throws; only definite invalidation returns false. */
     async verifyUserAuthorization({ userId, material }) {
       if (material.refreshToken && material.accessExpiresAt && Date.parse(material.accessExpiresAt) - 60_000 <= now()) {
         try {
           const rotated = await tokenRequest({ grant_type: 'refresh_token', refresh_token: material.refreshToken });
           return { valid: true, material: rotated.material, expiresAt: rotated.expiresAt };
-        } catch { return { valid: false }; }
+        } catch (error) {
+          if (error.code === 'E_PROVIDER_REFRESH_INVALID') return { valid: false };
+          throw error;
+        }
       }
       const response = await send(`${api}/applications/${encodeURIComponent(clientId)}/token`, { method: 'POST', basic: true, body: { access_token: material.accessToken } });
-      if (!response.ok) return { valid: false };
-      const checked = await response.json();
-      return { valid: checked?.user?.id === userId };
+      // At this Basic-authenticated endpoint, 404 means an invalid user token; 401 concerns the App credentials.
+      if (response.status === 404) return { valid: false };
+      if (!response.ok) throw providerError('E_PROVIDER_REQUEST', response.status);
+      const checked = await tokenPayload(response);
+      if (!Number.isSafeInteger(checked?.user?.id) || checked.user.id <= 0) throw providerError('E_PROVIDER_RESPONSE');
+      return { valid: checked.user.id === userId };
     },
     async checkRepositoryAccess({ material, installationId, repositoryId }) {
+      if (!await installationAdmitted(installationId)) return { installation: 'unavailable', repository: 'unavailable', canAdminister: false };
       let repositories;
       try { repositories = await pages(`${api}/user/installations/${installationId}/repositories`, material.accessToken, value => value.repositories ?? []); }
       catch (error) { if (error.code === 'E_PROVIDER_NOT_FOUND') return { installation: 'unavailable', repository: 'unavailable', canAdminister: false }; throw error; }
@@ -115,28 +145,26 @@ export function createGitHubUserProvider({ clientId, clientSecret, callbackUrl, 
       return { id: user.id, login: user.login, avatarUrl: user.avatar_url, type: user.type };
     },
     async installations({ material }) {
-      return pages(`${api}/user/installations`, material.accessToken, value => value.installations ?? []).then(list => list.map(value => ({ id: value.id, account: { login: value.account?.login, type: value.account?.type } })));
+      return pages(`${api}/user/installations`, material.accessToken, value => value.installations ?? []).then(list => list.filter(value => installationAccounts === null || installationAccounts.has(value.account?.id)).map(value => ({ id: value.id, account: { login: value.account?.login, type: value.account?.type } })));
     },
     async installationRepositories({ material, installationId }) {
+      if (!await installationAdmitted(installationId)) return [];
       const list = await pages(`${api}/user/installations/${installationId}/repositories`, material.accessToken, value => value.repositories ?? []);
       return list.map(value => ({ repositoryId: value.id, installationId, fullName: value.full_name, owner: value.owner?.login, name: value.name, private: value.private === true, canAdminister: value.permissions?.admin === true, canWrite: canWrite(value) }));
     },
     /**
-     * Whether the person currently administers the organisation with this numeric account: the organisations they
-     * belong to (with their IDs) name the login, and their membership says the role. Never a guess from visibility.
+     * Whether the person currently administers this numeric organisation: their own membership names its ID,
+     * login, role and state together. Provider failure remains unknown to the authorization service.
      */
     async checkOrganisationAdministration({ material, organisationId }) {
-      const organisations = await pages(`${api}/user/orgs`, material.accessToken, value => (Array.isArray(value) ? value : []));
-      const organisation = organisations.find(value => value?.id === organisationId);
-      if (!organisation || typeof organisation.login !== 'string') return { administer: false, login: null };
-      try {
-        const membership = await json(`${api}/user/memberships/orgs/${encodeURIComponent(organisation.login)}`, { token: material.accessToken });
-        return { administer: membership?.role === 'admin' && membership?.state === 'active', login: organisation.login };
-      } catch (error) { if (error.code === 'E_PROVIDER_NOT_FOUND') return { administer: false, login: organisation.login }; throw error; }
+      const membership = await organisationMembership(material.accessToken, value => value.organization.id === organisationId);
+      return { administer: membership?.role === 'admin' && membership?.state === 'active', login: membership?.organization.login ?? null };
     },
+    /** Active admin or non-admin member for this login, or none. Provider roles never expand App administration. */
     async organizationRole({ material, organization }) {
-      try { const membership = await json(`${api}/user/memberships/orgs/${encodeURIComponent(organization)}`, { token: material.accessToken }); return membership.role === 'admin' ? 'admin' : 'member'; }
-      catch (error) { if (error.code === 'E_PROVIDER_NOT_FOUND') return 'none'; throw error; }
+      const membership = await organisationMembership(material.accessToken, value => value.organization.login.toLowerCase() === organization.toLowerCase());
+      if (membership?.state !== 'active') return 'none';
+      return membership.role === 'admin' ? 'admin' : 'member';
     },
     /** GitHub's 100 most recently updated pull requests of one repository: lifecycle facts, transiently. */
     async recentPullRequests({ material, fullName }) {

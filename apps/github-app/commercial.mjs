@@ -2,7 +2,7 @@
 
 import { protectedHeaders, validOrigin } from './authorization.mjs';
 import { D1CommercialStore } from './commercial-storage.mjs';
-import { WIRT_CLIENT, WIRT_NONCE_MS, createWirtClient, parseJsonBytes, readBoundedBody, readExactHttpsUrl, readProjectionBetaGrants, readProjectionCommercialTimeZone, readProjectionRewards, readSigningKeys, readWirtMessage, sha256Hex, verifySignedMessage } from './commercial-wirt.mjs';
+import { WIRT_CLIENT, WIRT_NONCE_MS, createWirtClient, parseJsonBytes, readBoundedBody, readExactHttpsUrl, readProjectionBetaGrants, readProjectionCommercialTimeZone, readProjectionFundedComponents, readProjectionRewards, readSigningKeys, readWirtMessage, sha256Hex, verifySignedMessage } from './commercial-wirt.mjs';
 
 export const COMMERCIAL_LINK_COOKIE = '__Host-diffdevil-works-link';
 const ATTEMPT_MS = 10 * 60_000;
@@ -574,6 +574,7 @@ export function createCommercialService({ store, wirt, signing, authorization, p
         betaTimeZone: readProjectionCommercialTimeZone(projection?.benefits),
         // Wirt's participation reward facts from the applied projection: `null` when this projection carries none.
         participationRewards: readProjectionRewards(projection?.benefits),
+        fundedComponents: readProjectionFundedComponents(projection?.benefits),
         capacity: (projection?.benefits.organisation_capacity ?? []).map(value => {
           const binding = bindings.find(candidate => candidate.slot === value.slot);
           return { slot: value.slot, funding: value.funding, pendingEndOn: value.pending_end_on,

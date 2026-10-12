@@ -3,7 +3,7 @@
  * The product-facing Wirt seam of Plan & funding: the six Works destinations the standing card opens in the DiffDevil
  * frame, and the presentation of a benefit projection (wirt.benefit-projection/v1, restricted renewal presentation) as
  * the commercial consumer's status route reports it. diffdevil never calculates an amount; the renewal total is the
- * display-only figure Works supplies. No grace length, end date or countdown is shown anywhere.
+ * display-only figure Works supplies. No grace length or countdown is invented; supplied component dates stay visible.
  */
 
 /** Works-hosted pages. `null` origin (no Works configured) leaves every exit unavailable rather than guessed. */
@@ -61,7 +61,7 @@ export function projectionKey(status) {
   if (!status?.linked) return 'free';
   if (status.reconciling) return 'reconciling';
   const commercial = status.commercial;
-  if (!commercial) return 'linking';
+  if (!commercial) return status.order ? 'reward-only' : 'linking';
   if (commercial.standing === 'first-payment-pending') return 'first-payment';
   if (commercial.standing === 'ended') return commercial.ended?.earlier_attempt === 'unresolved' ? 'ended-unresolved' : 'ended';
   if (commercial.standing === 'renewal-in-grace') return { 'payment-due': 'overdue', renewing: 'renewing', 'not-yet-invoiced': 'preparing', unresolved: 'checking' }[commercial.grace?.renewal] ?? 'checking';
@@ -91,6 +91,7 @@ export function presentProjection(status, { works, ended = false } = {}) {
   const planName = ['ended', 'ended-unresolved', 'free'].includes(key) ? 'Free' : tier;
   let planSub = commercial ? `${cadenceWord(commercial.cadence) ?? 'Subscription'}${(status.capacity ?? []).filter(slot => slot.funding === 'paid').length ? ` · with ${(status.capacity ?? []).filter(slot => slot.funding === 'paid').length} additional ${(status.capacity ?? []).filter(slot => slot.funding === 'paid').length === 1 ? 'organisation' : 'organisations'}` : ''}${total ? ` · ${total} ${perWord(commercial.cadence)}${commercial.nextRenewal?.tax_inclusive ? ', tax included' : ''}` : ''}` : '';
   switch (key) {
+    case 'reward-only': head = banner('info', 'info', 'Works benefits are linked', 'Works has confirmed benefits without a funded subscription. Free remains your plan; a reward alone does not fund repository access or an organisation slot. Manage your gifts and benefits at Works.'); planSub = 'No funded subscription'; rows.push({ term: 'Subscription', value: 'None funded' }); break;
     case 'linking': head = banner('info', 'clock', 'Linked to Wolfsblvt Works', 'Works has not sent this account\'s plan yet. It appears here as soon as Works confirms it; you don\'t need to refresh.'); planSub = 'Waiting for Works'; rows.push({ term: 'Status', value: 'Waiting for Works\' first answer' }); break;
     case 'reconciling': head = banner('info', 'clock', 'Your plan is being checked with Works', 'The App was restored from a backup, so Works-funded benefits are held until Works confirms the current plan. Nothing is charged by this.'); rows.push({ term: 'Status', value: 'Reconciling', sub: 'Premium features pause until Works answers' }); break;
     case 'first-payment': head = banner('info', 'clock', 'Your first payment is being confirmed', `${tier} starts here once Wolfsblvt Works confirms it. Coming back from the payment page doesn't confirm it. You don't need to pay again or refresh.`); rows.push({ term: 'Status', value: 'Waiting for confirmation', sub: `${tier} features aren't on yet` }, organisations); break;
@@ -109,11 +110,24 @@ export function presentProjection(status, { works, ended = false } = {}) {
       rows.push(organisations);
       if (protection) rows.push(protection);
   }
+  const componentStates = { available: 'Available', queued: 'Queued', active: 'Active reward', expired: 'Expired', ended: 'Ended', corrected: 'Corrected', withdrawn: 'Withdrawn', unknown: 'Unknown' };
+  for (const component of status?.fundedComponents ?? []) {
+    const start = component.state === 'queued' ? `Starts automatically with compatible Pro or Business coverage${component.applicationDeadline ? ` before ${fmtDay(component.applicationDeadline) ?? '—'}` : ''}` : null;
+    const term = component.endsOn ? `Through ${dayBefore(component.endsOn) ?? '—'}` : null;
+    rows.push({ term: component.name, value: componentStates[component.state] ?? 'Unknown', sub: [component.reason, start, term].filter(Boolean).join(' · ') });
+  }
   // A grant names what funds the period (the beta month is one); whether anything follows it is Works' renewal preference.
   // Its `until` is the end date Works sends, like the period's `ends_on`, so both read as the last funded day.
   const grantWord = kind => ({ gift: 'A gift', beta: 'Beta access' })[kind] ?? 'Funded access';
   for (const grant of grants) rows.push({ term: 'Funded by', value: `${grantWord(grant.kind)}, through ${dayBefore(grant.until) ?? '—'}`,
     sub: commercial?.renewalPreference === 'manual' ? 'No charge and no card. Nothing renews automatically; continuing with Pro is your choice at Works.' : 'No charge until then. Renewal after it is set at Works.' });
-  const slotBanners = slotEnding.map(slot => ({ tone: 'warn', icon: 'info', title: `Slot ${slot.slot.replace(/^slot-/u, '')} ends on ${fmtDay(slot.pendingEndOn)}`, text: `You removed it at Works. ${slot.binding?.display ?? 'Its organisation'} keeps ${tier} until then, then has no plan: its repositories stop, history and settings stay. Fund it another way, or move it to a slot you keep.`, action: works?.experience ? { label: 'Keep the slot at Works', href: works.experience, purpose: 'renewal' } : null }));
+  const slotBanners = slotEnding.map(slot => {
+    const component = slot.funding === 'grant' ? status?.fundedComponents?.find(value => value.id === slot.slot) : null;
+    if (component) return { tone: 'warn', icon: 'info', title: `${component.name} ends on ${fmtDay(slot.pendingEndOn)}`,
+      text: slot.binding ? 'This reward-funded slot ends with its finite term. Its organisation will need another funded slot after that date; history and settings stay.'
+        : 'This reward-funded slot is open and currently funds no organisation. Its finite term ends on this date.',
+      action: works?.relationship ? { label: 'Manage benefit at Works', href: works.relationship, destination: 'relationship', purpose: 'browse' } : null };
+    return { tone: 'warn', icon: 'info', title: `Slot ${slot.slot.replace(/^slot-/u, '')} ends on ${fmtDay(slot.pendingEndOn)}`, text: `You removed it at Works. ${slot.binding?.display ?? 'Its organisation'} keeps ${tier} until then, then has no plan: its repositories stop, history and settings stay. Fund it another way, or move it to a slot you keep.`, action: works?.experience ? { label: 'Keep the slot at Works', href: works.experience, purpose: 'renewal' } : null };
+  });
   return { key, tier, planName, planSub, banner: head, slotBanners, rows, change, ended: ended || ['ended', 'ended-unresolved'].includes(key), compareable: ['funded', 'overdue', 'renewing', 'preparing', 'checking'].includes(key), choosing: ['cancelling', 'downgrade', 'ended'].includes(key) ? (key === 'downgrade' ? { target: change.target, on: change.effective_on } : key === 'cancelling' ? { target: 'free', on: endsOn } : { target: 'free', on: commercial?.ended?.on ?? null, applied: true }) : null };
 }

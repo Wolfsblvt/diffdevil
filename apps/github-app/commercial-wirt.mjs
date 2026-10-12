@@ -5,6 +5,7 @@
  * and the payload shapes diffdevil consumes. Wirt's adopted producer contract owns the grammar:
  * docs/commercial-projection-runtime.md and docs/commercial-projection.md at Wirt 04e253a8;
  * native beta_grants and commercial_timezone are candidate c33d5d9, pending producer/consumer acceptance.
+ * The paired reward-only nullable commercial branch and component display facts follow Wirt c3e0671fa6e98e8835bfdbbaff7244ab27c7f892.
  */
 
 export const WIRT_CLIENT = 'diffdevil';
@@ -185,8 +186,15 @@ export function readWirtMessage(value) {
     && value.account_lineage.every(account => typeof account === 'string' && identifierPattern.test(account))
     && timestamp(value.generated_at) && (value.source_operation === null || (typeof value.source_operation === 'string' && value.source_operation.length <= 128))
     && Array.isArray(value.pending) && Array.isArray(value.bindings_seen));
-  readCommercial(value.commercial);
+  if (value.commercial !== null) readCommercial(value.commercial);
   const benefits = readBenefits(value.benefits);
+  // Wirt's explicit reward-only branch carries no base coverage, even when an additive reward is queued.
+  if (value.commercial === null) {
+    const components = readProjectionFundedComponents(benefits);
+    shape(benefits.organisation_capacity.length === 0 && benefits.grants.length === 0 && benefits.protection === null
+      && value.pending.length === 0 && components !== null && components.length > 0
+      && components.every(component => oneOf(component.state, ['queued', 'expired'])));
+  }
   return { kind: 'projection', stream: readStream(value.stream), order: readOrder(value.order), lineage: value.account_lineage, projection: { ...value, benefits } };
 }
 
@@ -245,6 +253,22 @@ export function readProjectionRewards(benefits) {
   if (!object(benefits) || benefits.participation_rewards === undefined) return null;
   if (!Array.isArray(benefits.participation_rewards) || benefits.participation_rewards.length > 64) return null;
   try { return benefits.participation_rewards.map(readRewardFacts); } catch { return null; }
+}
+
+/** Display-only component rewards; absent or unreadable facts stay unknown and never select access or capacity. */
+export function readProjectionFundedComponents(benefits) {
+  if (!object(benefits) || !Array.isArray(benefits.funded_components)) return null;
+  try {
+    return benefits.funded_components.map(value => {
+      shape(object(value) && typeof value.component_id === 'string' && identifierPattern.test(value.component_id) && value.funding === 'participation-reward'
+        && value.component_kind === 'paid-subject' && value.capacity_type === 'organisation'
+        && shortText(value.name, 160) && shortText(value.reason) && typeof value.state === 'string'
+        && nullableDate(value.starts_on) && nullableDate(value.ends_on) && nullableTimestamp(value.application_deadline));
+      return { id: value.component_id, name: value.name, reason: value.reason,
+        state: oneOf(value.state, ['available', 'queued', 'active', 'expired', 'ended', 'corrected', 'withdrawn']) ? value.state : 'unknown',
+        startsOn: value.starts_on, endsOn: value.ends_on, applicationDeadline: value.application_deadline ?? null };
+    });
+  } catch { return null; }
 }
 
 function readNextCharge(value) {

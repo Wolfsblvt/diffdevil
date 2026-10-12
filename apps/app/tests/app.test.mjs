@@ -11,11 +11,14 @@
 import assert from 'node:assert/strict';
 import { after, test } from 'node:test';
 import { createGitHubAppWorker } from '../../github-app/app.mjs';
+import { D1AuthorizationStore } from '../../github-app/authorization-storage.mjs';
+import { createProtector } from '../src/lib/protector.mjs';
+import { createAppRuntime } from '../src/lib/runtime.mjs';
 import { authSession, authLogout, briefPreview, openSession, cookieValue, SESSION_COOKIE } from '../src/lib/routes.mjs';
-import { scopeRepositories, loadTitles } from '../src/lib/viewer.mjs';
+import { scopeRepositories, loadTitles, resolveViewer } from '../src/lib/viewer.mjs';
 import { loadView, entitlementFor } from '../src/lib/view.mjs';
 import { describeScope } from '../src/lib/scope.mjs';
-import { REPOSITORIES, ENTITLEMENT_FIXTURE, CODE } from '../qa/fixture.mjs';
+import { REPOSITORIES, ENTITLEMENT_FIXTURE, CODE, USER, createFakeGitHub } from '../qa/fixture.mjs';
 import { fixture, disposeFixture, signIn, viewerFor, ORIGIN, NOW } from './support.mjs';
 
 after(disposeFixture);
@@ -65,6 +68,116 @@ test('the viewer sees GitHub-reachable repositories with their App standing and 
   assert.equal(paid.plan, 'Pro');
   assert.equal(paid.entitlementSource, 'local-fixture');
   assert.deepEqual(Object.fromEntries(paid.namespaces.map(namespace => [namespace.login, namespace.plan])), { 'ada-sample': 'Pro', 'parser-guild': 'Pro', 'northwind-tools': 'Business', 'kai-sample': 'Free' });
+});
+
+test('the signed-in authority and viewer handle billing managers, pending membership and failed reads without Members-read', async () => {
+  const { app: compose, github } = await fixture();
+  const app = compose();
+  const { cookie } = await signIn(app);
+  const callStart = github.calls.length;
+  try {
+    assert.deepEqual(await app.auth.organisationAuthority({ session: cookie, organisationId: 7001 }), { userId: 123, authority: 'present', display: 'parser-guild' });
+    github.state.roles.set('northwind-tools', 'billing_manager');
+    assert.deepEqual(await app.auth.organisationAuthority({ session: cookie, organisationId: 7001 }), { userId: 123, authority: 'present', display: 'parser-guild' });
+    assert.deepEqual(await app.auth.organisationAuthority({ session: cookie, organisationId: 7002 }), { userId: 123, authority: 'absent', display: null });
+    const opened = await openSession(new Request(`${ORIGIN}/`, { headers: { cookie: `${SESSION_COOKIE}=${cookie}` } }), app);
+    const billingViewer = await resolveViewer({ reads: opened.reads, actor: opened.actor, store: app.store, entitlement: app.entitlement, cache: app.cache });
+    assert.equal(billingViewer.namespaces.find(namespace => namespace.login === 'parser-guild').role, 'admin');
+    assert.equal(billingViewer.namespaces.find(namespace => namespace.login === 'parser-guild').yours, true);
+    assert.equal(billingViewer.namespaces.find(namespace => namespace.login === 'northwind-tools').role, 'member');
+    assert.equal(billingViewer.namespaces.find(namespace => namespace.login === 'northwind-tools').yours, false);
+    github.state.membershipStates.set('parser-guild', 'pending');
+    assert.deepEqual(await app.auth.organisationAuthority({ session: cookie, organisationId: 7001 }), { userId: 123, authority: 'absent', display: null });
+    assert.equal(await opened.reads.organizationRole('parser-guild'), 'none');
+    // Only the membership endpoint is unavailable; the same stored grant still verifies.
+    github.state.membershipStatus = 404;
+    assert.deepEqual(await app.auth.organisationAuthority({ session: cookie, organisationId: 7001 }), { userId: 123, authority: 'unknown', display: null });
+    await assert.rejects(opened.reads.organizationRole('parser-guild'), { code: 'E_PROVIDER_NOT_FOUND' });
+    app.cache.clear();
+    const viewer = await resolveViewer({ reads: opened.reads, actor: opened.actor, store: app.store, entitlement: app.entitlement, cache: app.cache });
+    assert.equal(viewer.namespaces.find(namespace => namespace.login === 'parser-guild').role, 'unknown');
+    assert.equal(viewer.namespaces.find(namespace => namespace.login === 'parser-guild').yours, false);
+    const paths = github.calls.slice(callStart).map(call => call.path);
+    assert.ok(paths.includes('/user/memberships/orgs'));
+    assert.equal(paths.some(path => /^\/user\/memberships\/orgs\//u.test(path)), false);
+  } finally {
+    github.state.roles.clear(); github.state.membershipStates.clear(); github.state.membershipStatus = 200; app.cache.clear();
+  }
+});
+
+test('real GitHub verification uncertainty preserves sealed grants and sessions in D1 while invalidation and disconnect still retire them', async () => {
+  const { env, clock } = await fixture();
+  const userId = 8123;
+  const github = createFakeGitHub({ user: { ...USER, id: userId, login: 'verification-fixture' } });
+  const app = createAppRuntime(env, { fetch: github.fetch, now: () => clock.value });
+  const store = new D1AuthorizationStore(env.APP_DB, { now: () => clock.value });
+  const protector = createProtector({ secret: env.APP_SEAL_KEY });
+  const sessions = async () => (await env.APP_DB.prepare('SELECT session_hash, revoked_at FROM browser_sessions WHERE user_id=? ORDER BY session_hash').bind(userId).all()).results;
+  const assertRetired = async cookie => {
+    const row = await store.authorization(userId);
+    assert.equal(row.protected_material, '');
+    assert.ok(row.revoked_at);
+    assert.ok((await sessions()).every(row => row.revoked_at));
+    await assert.rejects(app.auth.authenticate(cookie), { code: 'E_SESSION_UNAVAILABLE' });
+  };
+  try {
+    let { cookie } = await signIn(app);
+    const original = await store.authorization(userId), originalSessions = await sessions();
+    const unavailable = [
+      () => Response.json({}, { status: 503 }),
+      () => Response.json({}, { status: 401 }),
+      () => Response.json({}, { status: 429 }),
+      () => Response.json({}),
+      () => new Response('fixture malformed body'),
+      () => { throw new Error('fixture transport failure'); }
+    ];
+    for (const answer of unavailable) {
+      github.state.tokenCheckResponse = answer;
+      await assert.rejects(app.auth.authenticate(cookie), { code: 'E_AUTHORIZATION_UNAVAILABLE' });
+      assert.equal((await app.auth.observeOrganisationAuthority({ userId, organisationId: 7001 })).authority, 'unknown');
+      assert.deepEqual(await store.authorization(userId), original);
+      assert.deepEqual(await sessions(), originalSessions);
+    }
+    github.state.tokenCheckResponse = null;
+    assert.equal((await app.auth.authenticate(cookie)).userId, userId, 'the same session recovers on a later successful encounter');
+    github.state.tokenValid = false;
+    await assert.rejects(app.auth.authenticate(cookie), { code: 'E_AUTHORIZATION_UNAVAILABLE' });
+    await assertRetired(cookie);
+    github.state.tokenValid = true;
+
+    ({ cookie } = await signIn(app));
+    const signedIn = await store.authorization(userId);
+    const expiring = { ...await protector.open(signedIn.protected_material), refreshToken: 'fixture-refresh', accessExpiresAt: new Date(Date.parse(clock.value) + 30_000).toISOString() };
+    const sealed = await protector.seal(expiring);
+    assert.equal(await store.refreshAuthorization(userId, signedIn.protected_material, sealed, signedIn.expires_at), true);
+    const beforeRefresh = await store.authorization(userId), refreshSessions = await sessions();
+    for (const answer of [...unavailable, () => Response.json({ error: 'incorrect_client_credentials' }), () => Response.json({ error: 'unknown_oauth_error' })]) {
+      github.state.refreshResponse = answer;
+      await assert.rejects(app.auth.authenticate(cookie), { code: 'E_AUTHORIZATION_UNAVAILABLE' });
+      assert.deepEqual(await store.authorization(userId), beforeRefresh);
+      assert.deepEqual(await sessions(), refreshSessions);
+    }
+    github.state.refreshResponse = null;
+    assert.equal((await app.auth.authenticate(cookie)).userId, userId);
+    const refreshed = await store.authorization(userId);
+    assert.notEqual(refreshed.protected_material, sealed);
+    assert.equal((await protector.open(refreshed.protected_material)).refreshToken, 'fixture-next-refresh');
+    assert.equal(refreshed.expires_at, new Date(Date.parse(clock.value) + 15897600_000).toISOString());
+    assert.deepEqual(await sessions(), refreshSessions, 'successful rotation preserves the browser sessions');
+
+    assert.equal(await store.refreshAuthorization(userId, refreshed.protected_material, await protector.seal(expiring), refreshed.expires_at), true);
+    github.state.refreshResponse = () => Response.json({ error: 'bad_refresh_token' }, { status: 400 });
+    await assert.rejects(app.auth.authenticate(cookie), { code: 'E_AUTHORIZATION_UNAVAILABLE' });
+    await assertRetired(cookie);
+    github.state.refreshResponse = null;
+    ({ cookie } = await signIn(app));
+    github.state.tokenCheckResponse = () => Response.json({}, { status: 503 });
+    await app.auth.revokeAuthorization({ session: cookie, method: 'POST', origin: ORIGIN });
+    await assertRetired(cookie);
+    assert.equal(await store.serviceDisconnected(userId), true, 'explicit disconnect retains its separate durable preference');
+  } finally {
+    github.state.tokenCheckResponse = null; github.state.refreshResponse = null; github.state.tokenValid = true; app.cache.clear();
+  }
 });
 
 test('the page loader drives populations from the retained analytical records and falls back to pathless analyses where none are retained', async () => {

@@ -6,6 +6,7 @@
  * receipts, a reservation, confirmed charges down to exhaustion, deleting the answers without losing the reward, the
  * export, and narrower widths without overflow. Every figure is the stand-in's; none is a real quote or payment.
  */
+import { readSigningKeys, signedHeaders } from '../../github-app/commercial-wirt.mjs';
 
 /** A beta participant: thirty days of Pro by grant, no card, nothing renewing automatically. */
 export const COMMERCIAL_BETA = Object.freeze({ account: 123, linked: true, since: '2026-09-20', commercial: { standing: 'funded', tier: 'pro', cadence: 'monthly', period: { started_on: '2026-09-20', ends_on: '2026-10-20' }, renewal_preference: 'manual', cancellation_intent: 'none', grace: null, ended: null, next_renewal: null },
@@ -19,6 +20,101 @@ export const COMMERCIAL_BETA = Object.freeze({ account: 123, linked: true, since
     rewards: [{ key: 'monthly', kind: 'discount', tier: 'Pro', cadence: 'monthly', unit: 'percent', value: 50, uses: 3, charge_classes: ['first-purchase', 'renewal'], combinable: false }, { key: 'annual', kind: 'discount', tier: 'Pro', cadence: 'annual', unit: 'percent', value: 20, uses: 1, charge_classes: ['first-purchase', 'renewal'], combinable: false }] } } });
 /** QA's campaign configuration: an open window around the run, no invitation delay, a one-day reminder. Not a launch default. */
 export const QA_CAMPAIGN = Object.freeze({ key: 'qa-beta-survey', version: 1, survey: 'beta-v1', name: 'Beta survey', opensAt: '2026-01-01T00:00:00Z', closesAt: '2029-12-01T00:00:00Z', inviteAfterDays: 0, reminderAfterDays: 1 });
+
+/** A separate synthetic component reward, outside the beta survey; it grants no subscription or capacity. */
+export const COMMERCIAL_REWARD_ONLY = Object.freeze({ account: 123, linked: true, since: '2026-10-02', commercial: null, capacity: [], grants: [], protection: null,
+  fundedComponents: [{ component_id: 'reward-component:1', funding: 'participation-reward', component_kind: 'paid-subject', capacity_type: 'organisation',
+    name: 'Additional organisation slot', reason: 'Community contribution', state: 'queued', starts_on: null, ends_on: null, application_deadline: '2030-06-01T00:00:00Z' }] });
+
+// Receiver-only local inputs: no Wirt origin, owner token or outbound commercial call is configured.
+export const NULLABLE_SIGNING_KEY = 'fixture-nullable-projection-key-at-least-32-bytes';
+export const NULLABLE_LINK = 'qa-nullable-contract';
+
+/** Prove rejection and retained Manage truth through the built signed receiver and native D1, not the stand-in. */
+export async function nullableReceiverJourney({ page, go, check, shot, ORIGIN }) {
+  const component = COMMERCIAL_REWARD_ONLY.fundedComponents[0];
+  const projection = (version, components) => ({ schema: 'wirt.benefit-projection/v1', client: 'diffdevil',
+    stream: { works_account: '77', link: { id: NULLABLE_LINK, product_account: { github_user_id: 123 } } },
+    account_lineage: [], order: { epoch: 1, version }, generated_at: new Date().toISOString(), source_operation: null,
+    commercial: null, benefits: { organisation_capacity: [], grants: [], protection: null, funded_components: components }, pending: [], bindings_seen: [] });
+  const push = async value => {
+    const path = '/integrations/wirt/projection', body = JSON.stringify(value);
+    const headers = await signedHeaders(readSigningKeys({ current: NULLABLE_SIGNING_KEY }), { method: 'POST', path, body, account: '123' });
+    return fetch(`${ORIGIN}${path}`, { method: 'POST', headers: { ...headers, 'content-type': 'application/json' }, body });
+  };
+  for (const [name, components] of [['empty', []], ['active', [{ ...component, state: 'active' }]]]) {
+    const response = await push(projection(1, components));
+    check(`native receiver rejects ${name} null input`, response.status === 422 && (await response.json()).code === 'E_COMMERCIAL_SHAPE');
+    await go('/manage/plan');
+    check(`${name} null input renders no confirmed benefit or active reward`, await page.locator('[data-standing="linking"]').count() === 1
+      && await page.locator('[data-standing="reward-only"]').count() === 0 && !/Active reward/u.test(await page.locator('.m-stack').innerText()));
+    await shot(`reward-only-rejected-${name}`);
+  }
+  check('native receiver applies a claimed queued component', (await push(projection(1, [component]))).status === 200);
+  await go('/manage/plan');
+  check('native queued component renders as confirmed Free', await page.locator('[data-standing="reward-only"] .plan b').textContent() === 'Free'
+    && /Queued/u.test(await page.locator('[data-standing="reward-only"]').innerText()));
+  const mixed = await push(projection(2, [component, { ...component, state: 'active' }]));
+  check('native receiver rejects an active component beside a queued one', mixed.status === 422);
+  await go('/manage/plan');
+  check('invalid later null input preserves the applied queued display', /Queued/u.test(await page.locator('[data-standing="reward-only"]').innerText())
+    && !/Active reward/u.test(await page.locator('.m-stack').innerText()));
+  check('native receiver applies claimed expired facts', (await push(projection(2, [{ ...component, state: 'expired' }]))).status === 200);
+  await go('/manage/plan');
+  check('native expired component remains visible as Free', await page.locator('[data-standing="reward-only"] .plan b').textContent() === 'Free'
+    && /Expired/u.test(await page.locator('[data-standing="reward-only"]').innerText()));
+  const active = { ...component, state: 'active', starts_on: '2026-10-01', ends_on: '2026-11-01', application_deadline: null };
+  const full = projection(3, [active]);
+  full.commercial = { standing: 'funded', tier: 'pro', cadence: 'monthly', period: { started_on: '2026-10-01', ends_on: '2026-11-01' },
+    renewal_preference: 'manual', cancellation_intent: 'none', grace: null, ended: null, next_renewal: null };
+  full.benefits.organisation_capacity = [{ slot: component.component_id, funding: 'grant', pending_end_on: active.ends_on }];
+  check('native receiver admits active component facts with a compatible full base', (await push(full)).status === 200);
+  await go('/manage/plan');
+  check('the same stable component can render active beside the funded Pro base', await page.locator('[data-standing="funded"] .plan b').textContent() === 'Pro'
+    && /Active reward/u.test(await page.locator('[data-standing="funded"]').innerText()));
+  check('a funded Pro base retains its included personal capacity card', /Personal · included/iu.test(await page.locator('[data-funds]').innerText())
+    && !/Pooled Free allowance/u.test(await page.locator('[data-funds]').innerText()));
+  check('a reward term end does not claim removal or funding an unbound organisation', !/You removed it at Works/u.test(await page.locator('.m-stack').innerText())
+    && /currently funds no organisation/u.test(await page.locator('.m-stack').innerText()));
+  await shot('reward-component-full-base-active');
+}
+
+export async function rewardOnlyJourney({ page, go, check, shot }, state, { unlimited = false } = {}) {
+  const capture = `${state}${unlimited ? '-unlimited' : ''}`;
+  await go('/manage');
+  const band = page.locator('[data-plan-band]');
+  check(`${state} Manage overview shows Free with readable linked-benefits standing`, await band.locator('.m-planname b').textContent() === 'Free'
+    && await band.locator('.m-st.info').filter({ hasText: 'Works benefits linked' }).count() === 1
+    && !/reward-only/u.test(await band.innerText()));
+  check(`${state} linked-benefits overview does not present a warning`, await band.locator('.m-planname .m-st.warn, .m-planname .m-st.err').count() === 0);
+  const personal = band.locator('.m-org').first();
+  check(`${capture} personal capacity follows the actual Free allowance`, (await personal.innerText()).includes(unlimited ? 'No repository limit on this deployment' : 'Pooled Free allowance')
+    && !/Personal · included/iu.test(await personal.innerText()) && (unlimited || !/No repository limit/u.test(await personal.innerText())));
+  await shot(`reward-only-${capture}-overview`);
+  await Promise.all([page.waitForURL('**/manage/plan'), band.getByRole('link', { name: 'Plan & funding', exact: true }).click()]);
+  await page.waitForLoadState('networkidle');
+  const card = page.locator('[data-standing="reward-only"]');
+  check(`${state} reward-only state shows Free and confirmed benefits`, await card.count() === 1 && await card.locator('.plan b').textContent() === 'Free'
+    && /No funded subscription/u.test(await card.innerText()));
+  check(`${state} component facts stay visible without pretending to be a funded slot`, (await card.innerText()).includes('Community contribution')
+    && (await card.innerText()).includes(state === 'queued' ? 'Queued' : 'Expired') && await page.locator('[data-funds], [data-compare]').count() === 0);
+  check(`${state} reward-only plan keeps Works management and unlink available`, await card.getByRole('link', { name: 'Gifts and benefits' }).count() === 1
+    && await page.getByRole('button', { name: 'Unlink…' }).count() === 1);
+  check(`${state} component does not invent a renewal or protection`, !/Funded through|Next renewal|Price protected|Waiting for Works/u.test(await card.innerText()));
+  if (state === 'queued') check(`${capture} queued benefit explains automatic compatible-coverage start without an Apply action`, /Starts automatically with compatible Pro or Business coverage/u.test(await card.innerText())
+    && (unlimited ? !/before/u.test(await card.innerText()) : /before 1 Jun 2030/u.test(await card.innerText()))
+    && !/Apply before/u.test(await card.innerText()) && await card.getByRole('button', { name: /Apply/u }).count() === 0);
+  check(`${capture} Plan displays the actual private and public-history allowances`, unlimited
+    ? await card.locator('.m-allowg .num').filter({ hasText: 'no limit' }).count() === 2
+    : await card.locator('.m-allowg [aria-label*="private slots"], .m-allowg [aria-label*="public history places"]').count() === 2);
+  await shot(`reward-only-${capture}`);
+  if (state === 'queued') {
+    await page.setViewportSize({ width: 390, height: 844 });
+    check('reward-only standing fits a narrow viewport', await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+    await shot(`reward-only-${capture}-mobile`);
+    await page.setViewportSize({ width: 1440, height: 900 });
+  }
+}
 
 export async function participationJourney(ctx) {
   const { check, go, page, shot, ORIGIN } = ctx;

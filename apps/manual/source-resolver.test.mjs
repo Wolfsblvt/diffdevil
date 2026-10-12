@@ -20,6 +20,11 @@ test('maintained resolver destinations exist at their selected repository paths'
   assert.ok(existsSync(new URL('../../'+source,import.meta.url)),`Missing maintained resolver destination: ${source}`);
  }
 });
+test('joined App staging guidance resolves to its exact technical source', () => {
+ const targets = sourceTargets({ref,state:{},exists:source=>source==='docs/integration/app-staging.md'});
+ assert.equal(targets['docs/integration/app-staging.md'].url,
+  `https://github.com/Wolfsblvt/diffdevil/blob/${ref}/docs/integration/app-staging.md`);
+});
 
 import { bindSourceSelection } from '../website/src/lib/source-resolution.mjs';
 test('source links follow fragments and history, and refusal removes a previous destination', () => {

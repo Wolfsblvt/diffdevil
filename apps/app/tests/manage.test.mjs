@@ -149,6 +149,47 @@ test('a Wirt projection presents as one of the designed states, without a grace 
   assert.equal(formatMoney({ total_cents: 4250, currency: 'EUR' }), '€42.50');
 });
 
+test('an applied reward-only answer is Free with visible benefits, distinct from waiting for the first Works answer', () => {
+  const status = { linked: true, commercial: null, plan: 'free', order: { epoch: 1, version: 1 }, capacity: [], grants: [], protection: null,
+    fundedComponents: [{ id: 'reward-component:1', name: 'Additional organisation slot', reason: 'Community contribution', state: 'queued', startsOn: null, endsOn: null, applicationDeadline: '2027-04-08T00:00:00Z' }] };
+  const queued = presentProjection(status);
+  assert.equal(queued.key, 'reward-only');
+  assert.equal(queued.planName, 'Free');
+  assert.equal(queued.planSub, 'No funded subscription');
+  assert.deepEqual(queued.rows.map(row => row.term), ['Subscription', 'Additional organisation slot']);
+  assert.equal(queued.rows[1].value, 'Queued');
+  assert.match(queued.rows[1].sub, /Community contribution · Starts automatically with compatible Pro or Business coverage before 8 Apr 2027/u);
+  const withoutDeadline = presentProjection({ ...status, fundedComponents: [{ ...status.fundedComponents[0], applicationDeadline: null }] });
+  assert.match(withoutDeadline.rows[1].sub, /Starts automatically with compatible Pro or Business coverage/u);
+  assert.ok(!/before|Apply/u.test(withoutDeadline.rows[1].sub));
+  assert.equal(queued.compareable, false);
+  assert.equal(queued.choosing, null);
+  assert.deepEqual(queued.slotBanners, []);
+  const expired = presentProjection({ ...status, fundedComponents: [{ ...status.fundedComponents[0], state: 'expired' }] });
+  assert.equal(expired.rows[1].value, 'Expired');
+  assert.equal(expired.rows[1].sub, 'Community contribution', 'an expired reward does not invite application');
+  assert.equal(projectionKey({ ...status, order: null }), 'linking');
+  assert.equal(projectionKey({ ...status, reconciling: true }), 'reconciling');
+});
+
+test('a component-funded slot ends with its reward term without claiming a customer removed or renewed it', () => {
+  const status = { linked: true, plan: 'pro', pending: [], commercial: { standing: 'funded', tier: 'pro', cadence: 'monthly', period: { started_on: '2026-10-01', ends_on: '2026-11-01' }, renewalPreference: 'manual' },
+    capacity: [{ slot: 'reward-component:1', funding: 'grant', pendingEndOn: '2026-11-01', binding: null }],
+    fundedComponents: [{ id: 'reward-component:1', name: 'Additional organisation slot', state: 'active', endsOn: '2026-11-01' }] };
+  const works = { experience: 'https://works.example/plan', relationship: 'https://works.example/benefits' };
+  const open = presentProjection(status, { works }).slotBanners[0];
+  assert.ok(open.title.startsWith('Additional organisation slot'));
+  assert.ok(!/removed|keeps Pro/u.test(open.text));
+  assert.match(open.text, /currently funds no organisation/u);
+  assert.equal(open.action.destination, 'relationship');
+  assert.equal(open.action.purpose, 'browse');
+  const bound = presentProjection({ ...status, capacity: [{ ...status.capacity[0], binding: { organisationId: 7001, authority: 'unknown' } }] }, { works }).slotBanners[0];
+  assert.ok(!/removed|keeps Pro/u.test(bound.text));
+  const paid = presentProjection({ ...status, capacity: [{ ...status.capacity[0], funding: 'paid' }] }, { works }).slotBanners[0];
+  assert.match(paid.text, /You removed it at Works/u);
+  assert.equal(paid.action.purpose, 'renewal');
+});
+
 test('the return from Works is decided by what Works sent since the departure, never by the return itself', () => {
   const status = order => ({ linked: true, order, capacity: [{ slot: 'slot-included', binding: null }] });
   const departure = { purpose: 'change-plan', snapshot: { order: { epoch: 1, version: 3 }, capacity: 1 } };

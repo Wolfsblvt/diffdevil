@@ -27,10 +27,10 @@ import { existsSync, readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { once } from 'node:events';
 import { dirname, join, resolve } from 'node:path';
-import { createFakeGitHub, CODE, ENTITLEMENT_FIXTURE, setScale } from './fixture.mjs';
+import { createFakeGitHub, CODE, ENTITLEMENT_FIXTURE, INSTALLATIONS, setScale } from './fixture.mjs';
 import { seedLocalState, executeLocal, recordLocalDelivery } from './seed.mjs';
 import { proManage, freeManage, businessManage, delegateManage, setupRecovery, manageAccess, COMMERCIAL_PRO, COMMERCIAL_FREE, COMMERCIAL_BUSINESS } from './manage.mjs';
-import { participationJourney, COMMERCIAL_BETA, QA_CAMPAIGN } from './participation.mjs';
+import { participationJourney, rewardOnlyJourney, nullableReceiverJourney, COMMERCIAL_BETA, COMMERCIAL_REWARD_ONLY, NULLABLE_LINK, NULLABLE_SIGNING_KEY, QA_CAMPAIGN } from './participation.mjs';
 import { appBuildTarget } from '../build-target.mjs';
 
 const target = appBuildTarget();
@@ -85,9 +85,10 @@ const seeded = await seedLocalState(STATE);
 console.log(`Seeded ${seeded.written.written} analyses, ${seeded.written.retained} analytical records and ${seeded.written.observations} size observations into local D1 state.`);
 
 /** Local Worker variables as --var flags: fixture values only, never real credentials. `commercial` is the loopback Works stand-in's spec. */
-function workerVars(entitlement, { commercial, allowances, participation } = {}) {
+function workerVars(entitlement, { commercial, allowances, participation, signingKey } = {}) {
   const vars = { APP_ORIGIN: ORIGIN, GITHUB_API_BASE: `http://127.0.0.1:${GITHUB_PORT}`, GITHUB_OAUTH_BASE: `http://127.0.0.1:${GITHUB_PORT}`, GITHUB_OAUTH_CLIENT_ID: 'fixture-client', GITHUB_OAUTH_CLIENT_SECRET: 'fixture-secret-private', APP_SEAL_KEY: 'fixture-seal-key-with-enough-length', APP_SESSION_DAYS: '30', GITHUB_WEBHOOK_SECRET: 'fixture-webhook-secret',
-    ...(entitlement ? { APP_ENTITLEMENT_FIXTURE: JSON.stringify(entitlement) } : {}), ...(commercial ? { APP_COMMERCIAL_FIXTURE: JSON.stringify(commercial) } : {}), ...(allowances ? { APP_PLAN_ALLOWANCES: JSON.stringify(allowances) } : {}), ...(participation ? { APP_PARTICIPATION_CAMPAIGN: JSON.stringify(participation) } : {}) };
+    ...(target.name === 'staging' ? { APP_STAGING_INSTALLATION_ACCOUNT_IDS: JSON.stringify(INSTALLATIONS.map(value => value.account.id)) } : {}),
+    ...(entitlement ? { APP_ENTITLEMENT_FIXTURE: JSON.stringify(entitlement) } : {}), ...(commercial ? { APP_COMMERCIAL_FIXTURE: JSON.stringify(commercial) } : {}), ...(allowances ? { APP_PLAN_ALLOWANCES: JSON.stringify(allowances) } : {}), ...(participation ? { APP_PARTICIPATION_CAMPAIGN: JSON.stringify(participation) } : {}), ...(signingKey ? { WIRT_SIGNING_KEY_CURRENT: signingKey, WIRT_LINK_CONTINUATION_URL: 'https://app.example.test/manage/plan' } : {}) };
   return Object.entries(vars).flatMap(([key, value]) => ['--var', `${key}:${value}`]);
 }
 
@@ -552,6 +553,22 @@ try {
   await startWorker(undefined, STATE, { commercial: COMMERCIAL_BETA, participation: QA_CAMPAIGN });
   await signIn();
   await participationJourney(ctx);
+
+  for (const [state, unlimited] of [['queued', false], ['expired', false], ['queued', true]]) {
+    await stopWorker();
+    await startWorker(undefined, STATE, { commercial: { ...COMMERCIAL_REWARD_ONLY,
+      fundedComponents: COMMERCIAL_REWARD_ONLY.fundedComponents.map(component => ({ ...component, state, application_deadline: unlimited ? null : component.application_deadline })) },
+      allowances: { free: { private: unlimited ? null : 3, publicHistory: unlimited ? null : 10 }, proOrganisation: { private: 3 } } });
+    await signIn();
+    await rewardOnlyJourney(ctx, state, { unlimited });
+  }
+
+  await stopWorker();
+  executeLocal(`INSERT INTO commercial_links (link_id, product_account, works_account, state, established_at, updated_at) VALUES ('${NULLABLE_LINK}', 123, '77', 'active', '2026-10-02T00:00:00Z', '2026-10-02T00:00:00Z')`, STATE);
+  // The native page consumer requires an HTTPS continuation even on loopback. This fixture is never opened: no client/callback is configured.
+  await startWorker(undefined, STATE, { signingKey: NULLABLE_SIGNING_KEY });
+  await signIn();
+  await nullableReceiverJourney(ctx);
 
   if (DENSE && !PARTICIPATION_ONLY) {
     // ── dense pass: a scaled fixture, for the cloud's packing time and the dense charts ──
