@@ -6,6 +6,7 @@
  * receipts, a reservation, confirmed charges down to exhaustion, deleting the answers without losing the reward, the
  * export, and narrower widths without overflow. Every figure is the stand-in's; none is a real quote or payment.
  */
+import { readSigningKeys, signedHeaders } from '../../github-app/commercial-wirt.mjs';
 
 /** A beta participant: thirty days of Pro by grant, no card, nothing renewing automatically. */
 export const COMMERCIAL_BETA = Object.freeze({ account: 123, linked: true, since: '2026-09-20', commercial: { standing: 'funded', tier: 'pro', cadence: 'monthly', period: { started_on: '2026-09-20', ends_on: '2026-10-20' }, renewal_preference: 'manual', cancellation_intent: 'none', grace: null, ended: null, next_renewal: null },
@@ -24,6 +25,55 @@ export const QA_CAMPAIGN = Object.freeze({ key: 'qa-beta-survey', version: 1, su
 export const COMMERCIAL_REWARD_ONLY = Object.freeze({ account: 123, linked: true, since: '2026-10-02', commercial: null, capacity: [], grants: [], protection: null,
   fundedComponents: [{ component_id: 'reward-component:1', funding: 'participation-reward', component_kind: 'paid-subject', capacity_type: 'organisation',
     name: 'Additional organisation slot', reason: 'Community contribution', state: 'queued', starts_on: null, ends_on: null, application_deadline: '2030-06-01T00:00:00Z' }] });
+
+// Receiver-only local inputs: no Wirt origin, owner token or outbound commercial call is configured.
+export const NULLABLE_SIGNING_KEY = 'fixture-nullable-projection-key-at-least-32-bytes';
+export const NULLABLE_LINK = 'qa-nullable-contract';
+
+/** Prove rejection and retained Manage truth through the built signed receiver and native D1, not the stand-in. */
+export async function nullableReceiverJourney({ page, go, check, shot, ORIGIN }) {
+  const component = COMMERCIAL_REWARD_ONLY.fundedComponents[0];
+  const projection = (version, components) => ({ schema: 'wirt.benefit-projection/v1', client: 'diffdevil',
+    stream: { works_account: '77', link: { id: NULLABLE_LINK, product_account: { github_user_id: 123 } } },
+    account_lineage: [], order: { epoch: 1, version }, generated_at: new Date().toISOString(), source_operation: null,
+    commercial: null, benefits: { organisation_capacity: [], grants: [], protection: null, funded_components: components }, pending: [], bindings_seen: [] });
+  const push = async value => {
+    const path = '/integrations/wirt/projection', body = JSON.stringify(value);
+    const headers = await signedHeaders(readSigningKeys({ current: NULLABLE_SIGNING_KEY }), { method: 'POST', path, body, account: '123' });
+    return fetch(`${ORIGIN}${path}`, { method: 'POST', headers: { ...headers, 'content-type': 'application/json' }, body });
+  };
+  for (const [name, components] of [['empty', []], ['active', [{ ...component, state: 'active' }]]]) {
+    const response = await push(projection(1, components));
+    check(`native receiver rejects ${name} null input`, response.status === 422 && (await response.json()).code === 'E_COMMERCIAL_SHAPE');
+    await go('/manage/plan');
+    check(`${name} null input renders no confirmed benefit or active reward`, await page.locator('[data-standing="linking"]').count() === 1
+      && await page.locator('[data-standing="reward-only"]').count() === 0 && !/Active reward/u.test(await page.locator('.m-stack').innerText()));
+    await shot(`reward-only-rejected-${name}`);
+  }
+  check('native receiver applies a claimed queued component', (await push(projection(1, [component]))).status === 200);
+  await go('/manage/plan');
+  check('native queued component renders as confirmed Free', await page.locator('[data-standing="reward-only"] .plan b').textContent() === 'Free'
+    && /Queued/u.test(await page.locator('[data-standing="reward-only"]').innerText()));
+  const mixed = await push(projection(2, [component, { ...component, state: 'active' }]));
+  check('native receiver rejects an active component beside a queued one', mixed.status === 422);
+  await go('/manage/plan');
+  check('invalid later null input preserves the applied queued display', /Queued/u.test(await page.locator('[data-standing="reward-only"]').innerText())
+    && !/Active reward/u.test(await page.locator('.m-stack').innerText()));
+  check('native receiver applies claimed expired facts', (await push(projection(2, [{ ...component, state: 'expired' }]))).status === 200);
+  await go('/manage/plan');
+  check('native expired component remains visible as Free', await page.locator('[data-standing="reward-only"] .plan b').textContent() === 'Free'
+    && /Expired/u.test(await page.locator('[data-standing="reward-only"]').innerText()));
+  const active = { ...component, state: 'active', starts_on: '2026-10-01', ends_on: '2026-11-01', application_deadline: null };
+  const full = projection(3, [active]);
+  full.commercial = { standing: 'funded', tier: 'pro', cadence: 'monthly', period: { started_on: '2026-10-01', ends_on: '2026-11-01' },
+    renewal_preference: 'manual', cancellation_intent: 'none', grace: null, ended: null, next_renewal: null };
+  full.benefits.organisation_capacity = [{ slot: component.component_id, funding: 'grant', pending_end_on: active.ends_on }];
+  check('native receiver admits active component facts with a compatible full base', (await push(full)).status === 200);
+  await go('/manage/plan');
+  check('the same stable component can render active beside the funded Pro base', await page.locator('[data-standing="funded"] .plan b').textContent() === 'Pro'
+    && /Active reward/u.test(await page.locator('[data-standing="funded"]').innerText()));
+  await shot('reward-component-full-base-active');
+}
 
 export async function rewardOnlyJourney({ page, go, check, shot }, state) {
   await go('/manage/plan');

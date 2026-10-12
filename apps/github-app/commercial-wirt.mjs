@@ -189,8 +189,12 @@ export function readWirtMessage(value) {
   if (value.commercial !== null) readCommercial(value.commercial);
   const benefits = readBenefits(value.benefits);
   // Wirt's explicit reward-only branch carries no base coverage, even when an additive reward is queued.
-  if (value.commercial === null) shape(benefits.organisation_capacity.length === 0 && benefits.grants.length === 0
-    && benefits.protection === null && value.pending.length === 0);
+  if (value.commercial === null) {
+    const components = readProjectionFundedComponents(benefits);
+    shape(benefits.organisation_capacity.length === 0 && benefits.grants.length === 0 && benefits.protection === null
+      && value.pending.length === 0 && components !== null && components.length > 0
+      && components.every(component => oneOf(component.state, ['queued', 'expired'])));
+  }
   return { kind: 'projection', stream: readStream(value.stream), order: readOrder(value.order), lineage: value.account_lineage, projection: { ...value, benefits } };
 }
 
@@ -256,7 +260,7 @@ export function readProjectionFundedComponents(benefits) {
   if (!object(benefits) || !Array.isArray(benefits.funded_components)) return null;
   try {
     return benefits.funded_components.map(value => {
-      shape(object(value) && typeof value.component_id === 'string' && value.funding === 'participation-reward'
+      shape(object(value) && typeof value.component_id === 'string' && identifierPattern.test(value.component_id) && value.funding === 'participation-reward'
         && value.component_kind === 'paid-subject' && value.capacity_type === 'organisation'
         && shortText(value.name, 160) && shortText(value.reason) && typeof value.state === 'string'
         && nullableDate(value.starts_on) && nullableDate(value.ends_on) && nullableTimestamp(value.application_deadline));
