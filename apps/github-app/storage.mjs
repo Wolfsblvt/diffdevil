@@ -20,11 +20,25 @@ function analyticalExpiry(now, retentionDays, restored) {
 
 /** D1 is the authority for delivery ownership. Every provider-capable path carries an attempt and fencing token. */
 export class D1AppStore {
-  constructor(database, { now = () => new Date().toISOString(), leaseMs = 60_000, attemptId = nextAttempt } = {}) {
+  constructor(database, { now = () => new Date().toISOString(), leaseMs = 60_000, attemptId = nextAttempt, installationAccounts = null } = {}) {
     this.database = database;
     this.now = now;
     this.leaseMs = leaseMs;
     this.attemptId = attemptId;
+    this.installationAccounts = installationAccounts;
+  }
+
+  /** A known installation's immutable account controls staging reach; unknown accounts are not admitted. */
+  async installationAdmitted(installationId, observedAccountId) {
+    if (this.installationAccounts === null) return true;
+    const row = await this.statement('SELECT account_id FROM installations WHERE installation_id=?', installationId).first();
+    return this.installationAccounts.has(row?.account_id ?? observedAccountId);
+  }
+
+  async repositoryAdmitted(repositoryId) {
+    if (this.installationAccounts === null) return true;
+    const row = await this.statement('SELECT i.account_id FROM repositories r JOIN installations i ON i.installation_id=r.installation_id WHERE r.repository_id=?', repositoryId).first();
+    return this.installationAccounts.has(row?.account_id);
   }
 
   statement(sql, ...values) { return this.database.prepare(sql).bind(...values); }
@@ -183,13 +197,13 @@ export class D1AppStore {
       FROM repositories r JOIN installations i ON i.installation_id=r.installation_id WHERE r.repository_id=?`, repositoryId).first();
     const tombstone = await this.statement('SELECT 1 AS blocked FROM deletion_tombstones WHERE scope IN (?, ?) AND reapply_until > ?', `history:${repositoryId}`, `repository:${repositoryId}`, this.now()).first();
     const admitted = row?.state === 'active' || (independentExecution && row?.state === 'pending-enable');
-    return { enabled: !tombstone?.blocked && row?.history_enabled === 1 && row?.history_consent_reason === null && admitted && row?.access_state === 'available' && row?.installation_state === 'active', retentionDays: boundedDays(row?.retention_days) };
+    return { enabled: await this.repositoryAdmitted(repositoryId) && !tombstone?.blocked && row?.history_enabled === 1 && row?.history_consent_reason === null && admitted && row?.access_state === 'available' && row?.installation_state === 'active', retentionDays: boundedDays(row?.retention_days) };
   }
 
   async executionAllowed(repositoryId) {
     const row = await this.statement(`SELECT r.state, r.access_state, r.execution_consent_reason, i.state AS installation_state
       FROM repositories r JOIN installations i ON i.installation_id=r.installation_id WHERE r.repository_id=?`, repositoryId).first();
-    return row?.state === 'active' && row?.access_state === 'available' && row?.installation_state === 'active' && row?.execution_consent_reason === null;
+    return await this.repositoryAdmitted(repositoryId) && row?.state === 'active' && row?.access_state === 'available' && row?.installation_state === 'active' && row?.execution_consent_reason === null;
   }
 
   async recordHistory(identity, projection) {
@@ -290,7 +304,7 @@ export class D1AppStore {
       repositoryId: row.repository_id,
       installationId: row.installation_id,
       state: row.state,
-      reach: { repository: row.access_state, installation: row.installation_state, tombstoned: Boolean(tombstone?.blocked) },
+      reach: { repository: await this.repositoryAdmitted(repositoryId) ? row.access_state : 'unavailable', installation: row.installation_state, tombstoned: Boolean(tombstone?.blocked) },
       revision: Number.isSafeInteger(row.settings_revision) ? row.settings_revision : 0,
       execution: { origin: row.execution_consent_origin ?? 'unknown', reason: row.execution_consent_reason ?? null, actorId: row.execution_consent_actor_id ?? null },
       history: { enabled: row.history_enabled === 1, retentionDays: boundedDays(row.retention_days), origin: row.history_consent_origin ?? 'unknown', reason: row.history_consent_reason ?? null, actorId: row.history_consent_actor_id ?? null },

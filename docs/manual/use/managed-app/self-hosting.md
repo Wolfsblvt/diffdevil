@@ -29,7 +29,17 @@ Run the ordinary application tests before selecting an upgrade. They exercise si
 
 You need authority over the account or organization that will own the registration, an actual HTTPS webhook destination, and the ability to review the installation's repository access. Keep the App registration, a repository installation, and execution enablement distinct.
 
-This complete, read-only specimen prints registration inputs and a provider registration link:
+For a new registration, start with the [native manifest registration and capture
+guide](../../../integration/app-staging.md#native-manifest-registration-and-capture).
+The local helper prepares GitHub's personal or organisation form, captures its
+response encrypted, and hands the validated inputs to the installer. Select your
+own namespace, visibility, callbacks and deployment; the guide's staging values
+are specimens. Registration, protected installation and deployment remain
+separate operator actions.
+
+For an existing registration or file-based recovery, the supported file-input
+installer below remains available. This complete, read-only specimen prints
+registration inputs and a provider registration link:
 
 ```sh
 node apps/github-app/operator-helper.mjs registration --webhook-url https://example.invalid/webhooks/github
@@ -126,6 +136,9 @@ That exact version must still be latest immediately before the secret write.
 For a confirmed new/empty target, use `--seal-key-initial`; an established target
 uses `--seal-key-previous-receipt <durable-successful-receipt>` and the same
 retained key/custody reference. A foreign target or different seal refuses.
+Initial mode also refuses when the qualified uploaded version already names an
+`APP_SEAL_KEY` secret binding. Absence of that name does not prove an empty database
+or recoverable key custody.
 The receipt's non-secret check proves key equality against that record; it does
 not establish off-workstation custody or retrieval.
 

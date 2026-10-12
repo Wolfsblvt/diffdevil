@@ -45,6 +45,31 @@ values into staging. Stage GitHub ingress/installation identity, OAuth client,
 seal and Wirt signing material must belong to the staging registrations, rather
 than reusing production identity by convenience.
 
+## Bound the admitted staging accounts
+
+The staging configuration supplies `APP_STAGING_INSTALLATION_ACCOUNT_IDS` as a
+non-secret JSON array of positive numeric GitHub **installation-account IDs**.
+The checked-in `"[]"` admits no account. The activation operator must supply the
+separately admitted personal and test-organisation IDs in the selected derived
+configuration; source supplies no real identifiers. A person's collaborator role
+is still decided by GitHub within an admitted account, rather than by a list of
+user IDs. Production omits this setting and retains ordinary authorised reach.
+
+The guard applies to signed-in repository discovery and authorization, webhook
+admission, queued repository operation, and App installation credentials. Store
+eligibility also disables history acquisition, publication and reads for an
+outside account, including already-enabled repositories and history-only
+repositories with execution off. Existing outside history jobs stop with
+`history-off`; suspension and removal still withdraw existing reach. The guard
+does not delete retained data, change stored consent or add a GitHub permission.
+Malformed configuration refuses rather than opening the estate.
+
+A public-unlisted registration does not enforce this boundary. Provider
+visibility, actual exposure, information given to participants, real admitted
+identifiers and live guard behavior must still be qualified in the activation
+packet. Removing the setting from a derived staging configuration removes the
+restriction; read back the actual version's configuration before exposure.
+
 ## Build and qualify locally
 
 ```powershell
@@ -273,7 +298,9 @@ engine and composition before activation. Do not upload another build between
 the qualified bootstrap and this operation.
 
 The specimen's `--seal-key-initial` is only for a confirmed new/empty staging
-database. For an established target, replace that flag with
+database. It refuses if the already-qualified version names an `APP_SEAL_KEY`
+secret binding, without reading its value. Name absence does not prove an empty
+database or custody. For an established target, replace that flag with
 `--seal-key-previous-receipt <durable-successful-receipt>`. Install compares the
 domain-separated seal check, custody reference and exact account/Worker/database
 before its write. A different key or foreign receipt refuses. The receipt records

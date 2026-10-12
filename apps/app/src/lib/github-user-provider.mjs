@@ -19,7 +19,7 @@ const PAGE = 100;
 function providerError(code, status) { return Object.assign(new Error(code), { code, status }); }
 function iso(ms) { return new Date(ms).toISOString(); }
 
-export function createGitHubUserProvider({ clientId, clientSecret, callbackUrl, apiBase = DEFAULT_API_BASE, oauthBase = DEFAULT_OAUTH_BASE, fetch: fetchImpl = globalThis.fetch, now = () => Date.now(), userAgent = 'diffdevil-app' }) {
+export function createGitHubUserProvider({ clientId, clientSecret, callbackUrl, apiBase = DEFAULT_API_BASE, oauthBase = DEFAULT_OAUTH_BASE, fetch: fetchImpl = globalThis.fetch, now = () => Date.now(), userAgent = 'diffdevil-app', installationAccounts = null, installationAdmitted = async () => true }) {
   if (!clientId || !clientSecret || !callbackUrl) throw new TypeError('GitHub user authorization needs a client ID, client secret and callback URL.');
   const api = apiBase.replace(/\/$/u, ''), oauth = oauthBase.replace(/\/$/u, '');
 
@@ -130,6 +130,7 @@ export function createGitHubUserProvider({ clientId, clientSecret, callbackUrl, 
       return { valid: checked.user.id === userId };
     },
     async checkRepositoryAccess({ material, installationId, repositoryId }) {
+      if (!await installationAdmitted(installationId)) return { installation: 'unavailable', repository: 'unavailable', canAdminister: false };
       let repositories;
       try { repositories = await pages(`${api}/user/installations/${installationId}/repositories`, material.accessToken, value => value.repositories ?? []); }
       catch (error) { if (error.code === 'E_PROVIDER_NOT_FOUND') return { installation: 'unavailable', repository: 'unavailable', canAdminister: false }; throw error; }
@@ -144,9 +145,10 @@ export function createGitHubUserProvider({ clientId, clientSecret, callbackUrl, 
       return { id: user.id, login: user.login, avatarUrl: user.avatar_url, type: user.type };
     },
     async installations({ material }) {
-      return pages(`${api}/user/installations`, material.accessToken, value => value.installations ?? []).then(list => list.map(value => ({ id: value.id, account: { login: value.account?.login, type: value.account?.type } })));
+      return pages(`${api}/user/installations`, material.accessToken, value => value.installations ?? []).then(list => list.filter(value => installationAccounts === null || installationAccounts.has(value.account?.id)).map(value => ({ id: value.id, account: { login: value.account?.login, type: value.account?.type } })));
     },
     async installationRepositories({ material, installationId }) {
+      if (!await installationAdmitted(installationId)) return [];
       const list = await pages(`${api}/user/installations/${installationId}/repositories`, material.accessToken, value => value.repositories ?? []);
       return list.map(value => ({ repositoryId: value.id, installationId, fullName: value.full_name, owner: value.owner?.login, name: value.name, private: value.private === true, canAdminister: value.permissions?.admin === true, canWrite: canWrite(value) }));
     },

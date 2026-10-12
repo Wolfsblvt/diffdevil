@@ -602,6 +602,23 @@ test('manifest-captured GitHub inputs qualify identity without plaintext credent
   } finally { await rm(setup.directory, { recursive: true, force: true }); }
 });
 
+test('initial seal mode refuses an existing uploaded seal by name before protected input or a native write', async () => {
+  const setup = await appFixture();
+  try {
+    await writeFile(join(setup.directory, 'fixture-options.json'), JSON.stringify({ existingInputs: ['APP_SEAL_KEY'] }));
+    for (const command of ['check', 'install']) {
+      const result = cli(setup, command);
+      assert.notEqual(result.status, 0);
+      assert.match(result.stderr, /APP_SEAL_KEY/u);
+      assert.equal(containsProtectedValues(result.stdout + result.stderr, setup), false);
+    }
+    const state = JSON.parse(await readFile(join(setup.directory, 'fixture-state.json'), 'utf8'));
+    assert.equal(state.writes, 0);
+    assert.equal(state.calls.some(args => args.includes('bulk')), false);
+    await assert.rejects(readFile(setup.options.receiptPath), { code: 'ENOENT' });
+  } finally { await rm(setup.directory, { recursive: true, force: true }); }
+});
+
 test('the qualified bootstrap version refuses early mismatch and drift during private input', async () => {
   const setup = await appFixture();
   const fake = versionRunner();

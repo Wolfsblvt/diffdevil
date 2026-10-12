@@ -27,7 +27,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { once } from 'node:events';
 import { dirname, join, resolve } from 'node:path';
-import { createFakeGitHub, CODE, ENTITLEMENT_FIXTURE, setScale } from './fixture.mjs';
+import { createFakeGitHub, CODE, ENTITLEMENT_FIXTURE, INSTALLATIONS, setScale } from './fixture.mjs';
 import { seedLocalState, executeLocal, recordLocalDelivery } from './seed.mjs';
 import { proManage, freeManage, businessManage, delegateManage, setupRecovery, manageAccess, COMMERCIAL_PRO, COMMERCIAL_FREE, COMMERCIAL_BUSINESS } from './manage.mjs';
 import { participationJourney, COMMERCIAL_BETA, QA_CAMPAIGN } from './participation.mjs';
@@ -87,6 +87,7 @@ console.log(`Seeded ${seeded.written.written} analyses, ${seeded.written.retaine
 /** Local Worker variables as --var flags: fixture values only, never real credentials. `commercial` is the loopback Works stand-in's spec. */
 function workerVars(entitlement, { commercial, allowances, participation } = {}) {
   const vars = { APP_ORIGIN: ORIGIN, GITHUB_API_BASE: `http://127.0.0.1:${GITHUB_PORT}`, GITHUB_OAUTH_BASE: `http://127.0.0.1:${GITHUB_PORT}`, GITHUB_OAUTH_CLIENT_ID: 'fixture-client', GITHUB_OAUTH_CLIENT_SECRET: 'fixture-secret-private', APP_SEAL_KEY: 'fixture-seal-key-with-enough-length', APP_SESSION_DAYS: '30', GITHUB_WEBHOOK_SECRET: 'fixture-webhook-secret',
+    ...(target.name === 'staging' ? { APP_STAGING_INSTALLATION_ACCOUNT_IDS: JSON.stringify(INSTALLATIONS.map(value => value.account.id)) } : {}),
     ...(entitlement ? { APP_ENTITLEMENT_FIXTURE: JSON.stringify(entitlement) } : {}), ...(commercial ? { APP_COMMERCIAL_FIXTURE: JSON.stringify(commercial) } : {}), ...(allowances ? { APP_PLAN_ALLOWANCES: JSON.stringify(allowances) } : {}), ...(participation ? { APP_PARTICIPATION_CAMPAIGN: JSON.stringify(participation) } : {}) };
   return Object.entries(vars).flatMap(([key, value]) => ['--var', `${key}:${value}`]);
 }

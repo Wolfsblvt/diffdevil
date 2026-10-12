@@ -217,6 +217,9 @@ async function requireVersionTarget(options, target) {
   }
   const viewed = await nativeJson({ runner: options.runner, args: buildWranglerCommand(options.wrangler, ['versions', 'view', latest.id, '--json'], target), env: target.env });
   if (viewed?.id !== latest.id || !hasVersionTarget(viewed.resources?.bindings, target)) fail('The latest Worker version does not read back the configured APP_DB and bot identity.', 'E_OPERATOR_TARGET');
+  if (target.joinedApp && options.sealKeyInitial && viewed.resources.bindings.some(binding => binding.type === 'secret_text' && binding.name === 'APP_SEAL_KEY')) {
+    fail('The qualified version already has APP_SEAL_KEY. Use the established target’s retained seal and previous successful receipt; initial mode cannot replace it.', 'E_OPERATOR_TARGET');
+  }
   target.baseVersionId = latest.id;
 }
 

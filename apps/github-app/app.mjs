@@ -6,6 +6,7 @@ import { APP_QUEUE_KIND, BRIEF_REFRESH_TARGETS, POLICY_PATH, WEBHOOK_BODY_LIMIT,
   readQueueEnvelope } from './contracts.mjs';
 import { createAppJwt, verifyWebhookSignature } from './crypto.mjs';
 import { D1AppStore } from './storage.mjs';
+import { stagingInstallationAccounts } from './staging-admission.mjs';
 import { DEFAULT_SIZE_POLICY, resolveEffectivePolicy, validateRepositoryConfiguration } from './configuration.mjs';
 import { checkSummary } from '../shared/check-summary.mjs';
 import { analyticalHttp } from './analytical-http.mjs';
@@ -101,6 +102,8 @@ export function budgetedClient(options = {}) {
 }
 
 async function mintInstallationClient(env, installationId, body, options = {}) {
+  const store = new D1AppStore(env.APP_DB, { installationAccounts: stagingInstallationAccounts(env) });
+  if (!await store.installationAdmitted(installationId)) throw appError('E_ACCESS_DISABLED');
   const jwt = await (options.createJwt ?? createAppJwt)({ appId: env.GITHUB_APP_ID, privateKey: env.GITHUB_APP_PRIVATE_KEY, ...(options.now === undefined ? {} : { now: options.now }) });
   const app = new GitHubClient({ token: jwt, ...(options.fetch === undefined ? {} : { fetch: options.fetch }), responseBytes: WORKER_RESULT_LIMIT, readRetries: 0 });
   const token = installationToken(await app.json(`/app/installations/${installationId}/access_tokens`, { method: 'POST', phase: 'apply', body }));
@@ -722,7 +725,13 @@ async function consumeCapture(message, envelope, dependencies) {
 }
 
 async function consumeMessage(message, dependencies) {
-  const envelope = readQueueEnvelope(typeof message.body === 'string' ? JSON.parse(message.body) : message.body);
+  let envelope = readQueueEnvelope(typeof message.body === 'string' ? JSON.parse(message.body) : message.body);
+  const admitted = !dependencies.store.installationAdmitted || await dependencies.store.installationAdmitted(envelope.installationId, envelope.accountId);
+  if (!admitted && envelope.type !== 'history-job') {
+    // Offboarding and suspension still withdraw existing reach. Outside accounts cannot add reach or acquire data.
+    if (envelope.type !== 'lifecycle' || !['deleted', 'suspend', 'removed'].includes(envelope.action)) return message.ack();
+    envelope = { ...envelope, addedRepositories: [] };
+  }
   if (envelope.type === 'brief-refresh') return consumeRefresh(message, envelope, dependencies);
   if (envelope.type === 'history-job') {
     if (!dependencies.jobs) return message.retry();
@@ -743,7 +752,7 @@ async function consumeMessage(message, dependencies) {
     if (accepted.kind === 'active') return message.retry();
     await dependencies.store.recordLifecycle(envelope);
     if (envelope.accountId !== undefined) await dependencies.store.recordInstallationAccount(envelope.installationId, envelope.accountId, envelope.accountKind);
-    if (envelope.event === 'installation_repositories') await dependencies.store.reconcileRepositories(envelope.installationId, await dependencies.listInstallationRepositories(dependencies.env, envelope.installationId));
+    if (admitted && envelope.event === 'installation_repositories') await dependencies.store.reconcileRepositories(envelope.installationId, await dependencies.listInstallationRepositories(dependencies.env, envelope.installationId));
     // Automatic setup (Business), when the App composed it: what a newly granted repository gets, as its administrator chose. It records its own outcome and never fails the delivery.
     if (typeof dependencies.automaticSetup === 'function' && envelope.action !== 'deleted' && envelope.addedRepositories?.length) { try { await dependencies.automaticSetup({ installationId: envelope.installationId, repositoryIds: envelope.addedRepositories }); } catch { /* recorded by the setup itself where it could */ } }
     await dependencies.store.finishLifecycle(envelope, accepted);
@@ -859,6 +868,13 @@ export function createGitHubAppWorker(options = {}) {
       let envelope;
       try { envelope = normalizeWebhookEvent(event, payload, new Date().toISOString(), id); } catch { return publicFailure(400, 'E_WEBHOOK_IDENTITY'); }
       if (!envelope) return response(202, { ok: true, status: 'ignored' });
+      try {
+        const store = options.store ?? new D1AppStore(env.APP_DB, { installationAccounts: stagingInstallationAccounts(env) });
+        if (store.installationAdmitted && !await store.installationAdmitted(envelope.installationId, envelope.accountId)) {
+          if (envelope.type !== 'lifecycle' || !['deleted', 'suspend', 'removed'].includes(envelope.action)) return response(202, { ok: true, status: 'disabled' });
+          envelope = { ...envelope, addedRepositories: [] };
+        }
+      } catch { return publicFailure(503, 'E_NOT_READY'); }
       try { await env.APP_QUEUE.send(envelope); return response(202, { ok: true, status: 'enqueued' }); }
       catch { return publicFailure(503, 'E_ENQUEUE'); }
     },
@@ -870,7 +886,7 @@ export function createGitHubAppWorker(options = {}) {
       // The plan funding this repository's namespace; without a commercial consumer every namespace reads as Free.
       const briefPlan = options.briefPlan ?? (async repositoryId => { try { return commercial ? await commercial.entitlement({ repositoryId, actor: null }) : 'free'; } catch { return 'unknown'; } });
       // One open-PR file read per repository is shared across this invocation's evaluations (in memory only).
-      const dependencies = { env, store: options.store ?? new D1AppStore(env.APP_DB), execute: options.execute ?? executeDelivery, briefPlan, briefProvider: options.briefProvider ?? null, ...(options.accountLayer ? { accountLayer: options.accountLayer } : {}), ...(options.automaticSetup ? { automaticSetup: options.automaticSetup } : {}), ...(options.now ? { now: options.now } : {}),
+      const dependencies = { env, store: options.store ?? new D1AppStore(env.APP_DB, { installationAccounts: stagingInstallationAccounts(env) }), execute: options.execute ?? executeDelivery, briefPlan, briefProvider: options.briefProvider ?? null, ...(options.accountLayer ? { accountLayer: options.accountLayer } : {}), ...(options.automaticSetup ? { automaticSetup: options.automaticSetup } : {}), ...(options.now ? { now: options.now } : {}),
         ...(options.operating ? { operating: options.operating } : {}), ...(options.importScope ? { importScope: options.importScope } : {}), ...(options.currentPolicy ? { currentPolicy: options.currentPolicy } : {}),
         jobs: options.jobs ?? (env.APP_DB ? new D1HistoryJobStore(env.APP_DB, options.now ? { now: options.now } : {}) : undefined),
         // History jobs read with the same repository-scoped Contents/Pull-requests read credential as live collection.

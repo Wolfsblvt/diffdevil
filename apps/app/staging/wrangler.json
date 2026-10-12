@@ -8,6 +8,7 @@
   "preview_urls": false,
   "triggers": { "crons": ["17 3 * * *"] },
   "vars": {
+    "APP_STAGING_INSTALLATION_ACCOUNT_IDS": "[]",
     "APP_ORIGIN": "https://diffdevil-app-staging.invalid",
     "SITE_ORIGIN": "https://diffdevil.dev",
     "APP_SESSION_DAYS": "30",

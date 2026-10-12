@@ -12,10 +12,13 @@ import { appBuildTarget } from '../build-target.mjs';
 import { createAppRuntime } from '../src/lib/runtime.mjs';
 import { authStart, authCallback, authSession, openSession } from '../src/lib/routes.mjs';
 import { D1AppStore } from '../../github-app/storage.mjs';
-import { createGitHubAppWorker, COMMERCIAL_ROUTES } from '../../github-app/app.mjs';
+import { createGitHubAppWorker, createInstallationClient, collectDeliveryAnalytics, COMMERCIAL_ROUTES } from '../../github-app/app.mjs';
+import { stagingInstallationAccounts } from '../../github-app/staging-admission.mjs';
+import { normalizeWebhookEvent, historyCaptureEnvelope, briefRefreshEnvelope, historyJobEnvelope } from '../../github-app/contracts.mjs';
+import { D1HistoryJobStore } from '../../github-app/history-jobs.mjs';
 import { D1ParticipationStore } from '../src/lib/participation/store.mjs';
 import { migrationNames } from '../qa/seed.mjs';
-import { createFakeGitHub, CODE, NOW } from '../qa/fixture.mjs';
+import { createFakeGitHub, analyticalRecords, CODE, NOW } from '../qa/fixture.mjs';
 import { readOwnedComments } from '../../../dist/lib/github/comments.js';
 
 const stagingConfig = readConfig({ config: 'apps/app/staging/wrangler.json' });
@@ -46,11 +49,89 @@ test('the selected staging build has distinct Worker, D1, queues, artifacts and 
   assert.notEqual(stagingConfig.vars.GITHUB_APP_BOT_LOGIN, productionConfig.vars.GITHUB_APP_BOT_LOGIN ?? 'diffdevil[bot]');
   assert.equal(stagingConfig.workers_dev, false);
   assert.equal(stagingConfig.preview_urls, false);
+  assert.deepEqual([...stagingInstallationAccounts(stagingConfig.vars)], []);
+  assert.equal(stagingInstallationAccounts(productionConfig.vars), null);
+  for (const value of ['', 'null', '[0]', '["123"]']) assert.throws(() => stagingInstallationAccounts({ APP_STAGING_INSTALLATION_ACCOUNT_IDS: value }), /positive numeric/u);
   assert.equal(stagingConfig.vars.WIRT_LINK_CALLBACK_URL, `${staging.origin}${COMMERCIAL_ROUTES.callback}`);
   assert.equal(stagingConfig.vars.WIRT_LINK_CONTINUATION_URL, `${staging.origin}/manage/plan`);
   assert.equal(staging.configPath, 'staging/wrangler.json');
   assert.throws(() => appBuildTarget({ DIFFDEVIL_APP_TARGET: 'staging', DIFFDEVIL_APP_ORIGIN: production.origin }), /must match/u);
   assert.throws(() => appBuildTarget({ DIFFDEVIL_APP_TARGET: 'typo' }), /production or staging/u);
+});
+
+test('staging admits installation accounts and collaborators but refuses outside execution and history before acquisition', async () => {
+  const local = new Miniflare({ workers: [{ config: { name: 'stage-estate', type: 'worker', compatibilityDate: '2026-09-17',
+    env: { APP_DB: { type: 'd1', id: `stage-estate-${randomUUID()}` } },
+    manifest: { mainModule: 'worker.mjs', modulesRoot: resolve('.'), modules: { 'worker.mjs': { type: 'esm', contents: 'export default { fetch() { return new Response("ok"); } };' } } }
+  } }] });
+  try {
+    const database = await local.getD1Database('APP_DB'), unrestricted = new D1AppStore(database);
+    for (const migration of await migrationNames()) await unrestricted.migrate(await readFile(resolve('apps/github-app/migrations', migration), 'utf8'));
+    // All IDs are the existing synthetic fixture identities. Outside repositories were enabled before this guard.
+    for (const [installationId, accountId, accountKind, repositoryId] of [[9, 123, 'user', 1004], [10, 7001, 'organization', 1001], [11, 7002, 'organization', 1006]]) {
+      await unrestricted.recordLifecycle({ installationId, action: 'created', addedRepositories: [repositoryId], removedRepositories: [] });
+      await unrestricted.recordInstallationAccount(installationId, accountId, accountKind);
+      await database.prepare("UPDATE repositories SET state='active', history_enabled=1, execution_consent_reason=NULL, history_consent_reason=NULL WHERE repository_id=?").bind(repositoryId).run();
+    }
+    const env = { ...stagingConfig.vars, APP_DB: database, APP_STAGING_INSTALLATION_ACCOUNT_IDS: '[123,7001]',
+      APP_SEAL_KEY: 'fixture-stage-seal-material', GITHUB_OAUTH_CLIENT_ID: 'fixture-stage-client', GITHUB_OAUTH_CLIENT_SECRET: 'fixture-stage-secret',
+      GITHUB_API_BASE: 'http://github.invalid', GITHUB_OAUTH_BASE: 'http://github.invalid', APP_QUEUE: { async send() {} } };
+    const github = createFakeGitHub({ clientId: env.GITHUB_OAUTH_CLIENT_ID }), requests = [];
+    const app = createAppRuntime(env, { now: () => NOW, fetch: (input, init) => { requests.push(new URL(input).pathname); return github.fetch(input, init); } });
+    const cookie = await signIn(app);
+    const session = await openSession(new Request(`${env.APP_ORIGIN}/`, { headers: { cookie } }), app);
+    await app.auth.read({ session: session.session }, async reads => {
+      assert.deepEqual((await reads.installations()).map(value => value.id), [9, 10]);
+      assert.ok((await reads.installationRepositories(9)).some(value => value.repositoryId === 1004));
+      assert.ok((await reads.installationRepositories(10)).some(value => value.repositoryId === 1001));
+      const before = requests.length;
+      assert.deepEqual(await reads.installationRepositories(11), []);
+      assert.equal(requests.length, before, 'outside repository discovery never reaches GitHub');
+    });
+    // GitHub keeps collaborator reach: this person need not be the admitted account's owner.
+    const access = await app.provider.checkRepositoryAccess({ material: { accessToken: 'fixture-user-token-private' }, installationId: 10, repositoryId: 1001 });
+    assert.equal(access.repository, 'available');
+    const before = requests.length;
+    assert.equal((await app.provider.checkRepositoryAccess({ material: { accessToken: 'fixture-user-token-private' }, installationId: 11, repositoryId: 1006 })).repository, 'unavailable');
+    assert.equal(requests.length, before);
+    assert.equal(await app.appStore.executionAllowed(1004), true);
+    assert.equal(await app.appStore.executionAllowed(1006), false);
+    assert.equal((await app.appStore.historySettings(1006, { independentExecution: true })).enabled, false);
+    const record = analyticalRecords().records.find(value => value.repositoryId === 1006);
+    assert.equal((await unrestricted.recordAnalytical(record)).status, 'published');
+    assert.deepEqual(await app.appStore.recordAnalytical(record), { status: 'disabled' });
+    assert.deepEqual(await app.appStore.analyticalRecords(1006), []);
+    assert.equal((await unrestricted.analyticalRecords(1006)).length, 1, 'the guard preserves existing retained data');
+    assert.equal((await app.appStore.repositoryAdmission(1006)).reach.repository, 'unavailable');
+    assert.equal(await unrestricted.executionAllowed(1006), true, 'production reach and stored consent are unchanged');
+    await database.prepare("UPDATE repositories SET state='pending-enable' WHERE repository_id IN (1001,1006)").run();
+    assert.equal((await app.appStore.historySettings(1001, { independentExecution: true })).enabled, true, 'admitted history-only operation remains useful');
+    assert.equal((await app.appStore.historySettings(1006, { independentExecution: true })).enabled, false);
+    const outside = normalizeWebhookEvent('pull_request', { action: 'opened', installation: { id: 11 }, repository: { id: 1006, owner: { id: 7002, login: 'northwind-tools', type: 'Organization' }, name: 'ci-recipes', private: true }, pull_request: { number: 1 } }, NOW, 'outside-pull');
+    const noClient = async () => { assert.fail('outside acquisition reached a credential or GitHub client'); };
+    assert.deepEqual(await collectDeliveryAnalytics(outside, { env, store: app.appStore, analyticalClientFactory: noClient }), { status: 'disabled' });
+    assert.deepEqual(await app.appStore.recordHistory({ repositoryId: 1006 }, {}), { status: 'disabled' });
+    await assert.rejects(createInstallationClient(env, 11, 1006, { createJwt: noClient }), { code: 'E_ACCESS_DISABLED' });
+    const jobs = new D1HistoryJobStore(database, { now: () => NOW });
+    const { job } = await jobs.request({ installationId: 11, repositoryId: 1006, kind: 'import' });
+    const bodies = [outside, briefRefreshEnvelope({ installationId: 11, repositoryId: 1006, causeId: 'outside-refresh', cause: 'policy', targets: 'open', receivedAt: NOW }),
+      historyCaptureEnvelope({ installationId: 11, repositoryId: 1006, pullRequest: 1, causeId: 'outside-capture', receivedAt: NOW }),
+      historyJobEnvelope({ installationId: 11, repositoryId: 1006, jobId: job.jobId, kind: 'import', sequence: 0, receivedAt: NOW })];
+    let ack = 0;
+    const worker = createGitHubAppWorker({ store: app.appStore, jobs, now: () => NOW, execute: noClient, collectAnalytics: noClient,
+      clientFactory: noClient, analyticalClientFactory: noClient, listInstallationRepositories: noClient, verifySignature: async () => true });
+    await worker.queue({ messages: bodies.map(body => ({ body, ack() { ack++; }, retry() { assert.fail('outside messages should settle'); } })) }, env);
+    assert.equal(ack, bodies.length);
+    assert.equal((await jobs.job(job.jobId)).state, 'stopped');
+    assert.equal((await jobs.job(job.jobId)).reason, 'history-off');
+    const payload = { action: 'created', installation: { id: 11, account: { id: 7002, type: 'Organization' } }, repositories: [{ id: 1999 }] };
+    const receipt = await worker.fetch(new Request(`${env.APP_ORIGIN}/webhooks/github`, { method: 'POST', headers: { 'x-github-event': 'installation', 'x-github-delivery': 'outside-new' }, body: JSON.stringify(payload) }), env);
+    assert.equal((await receipt.json()).status, 'disabled');
+    const removal = normalizeWebhookEvent('installation', { ...payload, action: 'deleted' }, NOW, 'outside-remove');
+    await worker.queue({ messages: [{ body: removal, ack() {}, retry() { assert.fail('offboarding remains usable'); } }] }, env);
+    assert.equal((await unrestricted.repositoryAdmission(1006)).reach.installation, 'removed');
+    assert.equal(await database.prepare('SELECT repository_id FROM repositories WHERE repository_id=1999').first(), null);
+  } finally { await local.dispose(); }
 });
 
 test('the production check refuses an inherited staging target before building or dry-running stale production output', async () => {

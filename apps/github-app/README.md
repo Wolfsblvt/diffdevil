@@ -116,6 +116,9 @@ own exact config, Worker, custody files or named child inputs, and recovery refe
 For a joined App, select `--base-version-id <qualified-version>` and either
 `--seal-key-initial` for a confirmed new/empty target or
 `--seal-key-previous-receipt <durable-receipt>` for an established target. The
+initial mode refuses an existing `APP_SEAL_KEY` secret binding in the qualified
+version's metadata without reading its value; absence is not empty-D1 or custody
+evidence. The
 latest uploaded version must equal that qualified bootstrap/base before input
 and again before the write. The base's actual source, included engine and
 Community/private composition are qualified separately by the activation operator.

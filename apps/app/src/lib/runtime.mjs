@@ -7,6 +7,7 @@
  * and the premium extension when the build joined one. One composition per request; provider context is cached per isolate for a minute.
  */
 import { D1AppStore } from '../../../github-app/storage.mjs';
+import { stagingInstallationAccounts } from '../../../github-app/staging-admission.mjs';
 import { D1AuthorizationStore } from '../../../github-app/authorization-storage.mjs';
 import { D1CommercialStore } from '../../../github-app/commercial-storage.mjs';
 import { createAuthorizationService } from '../../../github-app/authorization.mjs';
@@ -63,7 +64,8 @@ export function createAppRuntime(env, { fetch = globalThis.fetch, now, premium =
   if (!Number.isSafeInteger(sessionDays) || sessionDays < 1 || sessionDays > 365) throw new TypeError('APP_SESSION_DAYS must be a whole number of days between 1 and 365.');
   const callbackUrl = `${origin}/auth/callback`;
   const clock = now ?? (() => new Date().toISOString());
-  const appStore = new D1AppStore(env.APP_DB, { now: clock });
+  const installationAccounts = stagingInstallationAccounts(env);
+  const appStore = new D1AppStore(env.APP_DB, { now: clock, installationAccounts });
   const authStore = new D1AuthorizationStore(env.APP_DB, { now: clock });
   const commercialStore = new D1CommercialStore(env.APP_DB, { now: clock });
   const store = new D1AppReadStore(env.APP_DB, { now: clock });
@@ -73,7 +75,7 @@ export function createAppRuntime(env, { fetch = globalThis.fetch, now, premium =
   const provider = createGitHubUserProvider({
     clientId: required(env, 'GITHUB_OAUTH_CLIENT_ID'), clientSecret: required(env, 'GITHUB_OAUTH_CLIENT_SECRET'), callbackUrl,
     ...(env.GITHUB_API_BASE ? { apiBase: env.GITHUB_API_BASE } : {}), ...(env.GITHUB_OAUTH_BASE ? { oauthBase: env.GITHUB_OAUTH_BASE } : {}),
-    fetch, now: () => Date.parse(clock())
+    fetch, now: () => Date.parse(clock()), installationAccounts, installationAdmitted: id => appStore.installationAdmitted(id)
   });
   // Entitlement is read lazily: the brief preview needs the plan funding the repository, composed further below.
   let entitlement;
