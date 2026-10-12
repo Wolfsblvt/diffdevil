@@ -13,7 +13,8 @@ const results = [];
 try {
   for (const ownerType of ['personal', 'organisation']) for (const visibility of ['public', 'private']) {
     const wirt = ownerType === 'organisation';
-    const setup = await manifestFixture({ ownerType, visibility, wirt });
+    const policyRefresh = visibility === 'public';
+    const setup = await manifestFixture({ ownerType, visibility, wirt, policyRefresh });
     const fixtureOptionsPath = join(setup.directory, 'fixture-options.json');
     const fixtureOptions = JSON.parse(await readFile(fixtureOptionsPath, 'utf8'));
     await writeFile(fixtureOptionsPath, JSON.stringify({ ...fixtureOptions, absentEnvironmentNames: ['DIFFDEVIL_FIXTURE_SEAL', 'DIFFDEVIL_FIXTURE_WIRT'] }));
@@ -27,10 +28,24 @@ try {
     const running = manifestCli('register', setup.options);
     try {
       await page.goto(await running.listening);
+      const manifest = JSON.parse(await page.locator('input[name="manifest"]').inputValue());
+      const permissions = page.getByRole('region', { name: 'Requested permissions' });
+      await permissions.waitFor({ timeout: 5000 });
+      assert.equal(await permissions.isVisible(), true);
+      const displayedAccess = await permissions.locator('dd').allTextContents();
+      const displayedPermissions = Object.fromEntries((await permissions.locator('dt').allTextContents()).map((name, index) => [name, displayedAccess[index]]));
+      assert.deepEqual(displayedPermissions, { Contents: 'read', 'Pull requests': 'write', Checks: 'write' });
+      assert.deepEqual(displayedAccess, Object.values(manifest.default_permissions));
+      const events = page.getByRole('region', { name: 'Selected events' });
+      assert.equal(await events.isVisible(), true);
+      const displayedEvents = await events.locator('li code').allTextContents();
+      assert.deepEqual(displayedEvents, manifest.default_events);
+      assert.deepEqual(displayedEvents, ['pull_request', 'check_run', ...(policyRefresh ? ['push'] : [])]);
+      assert.deepEqual(await page.getByRole('region', { name: 'GitHub lifecycle events' }).locator('code').allTextContents(), ['installation', 'installation_repositories']);
       await page.getByRole('button', { name: 'Continue on GitHub' }).focus();
       assert.equal(await page.locator('button:focus').count(), 1);
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
-      if (ownerType === 'personal' && visibility === 'public') await page.screenshot({ path: join(out, 'registration-start.png') });
+      if (ownerType === 'personal') await page.screenshot({ path: join(out, visibility === 'public' ? 'registration-start.png' : 'registration-without-policy-refresh.png'), fullPage: true });
       await page.keyboard.press('Enter');
       await page.getByRole('heading', { name: 'GitHub inputs captured' }).waitFor();
       assert.equal(new URL(page.url()).pathname, '/result');
@@ -44,7 +59,8 @@ try {
       assert.equal(post.manifest.public, visibility === 'public');
       assert.equal(post.manifest.callback_urls[0], 'https://staging.example/auth/callback');
       assert.deepEqual(post.manifest.default_permissions, { contents: 'read', pull_requests: 'write', checks: 'write' });
-      assert.deepEqual(post.manifest.default_events, ['pull_request', 'check_run', 'push']);
+      assert.deepEqual(post.manifest, manifest);
+      assert.deepEqual(post.manifest.default_events, displayedEvents);
       if (ownerType === 'personal' && visibility === 'public') await page.screenshot({ path: join(out, 'registration-captured.png') });
       const installed = await manifestCli('install', { ...setup.options, config: setup.config, accountId: 'account-1', installReceiptPath: join(setup.directory, 'receipt.json'), fixtureWrangler: 'apps/github-app/fixtures/operator-provider.mjs', baseVersionId: 'version-before', sealKeyInitial: true }).completed;
       assert.equal(includesSecrets(installed.output + installed.errors, setup), false);
@@ -54,7 +70,7 @@ try {
       assert.equal(receipt.identity.state, 'verified'); assert.equal(receipt.sealKeyContinuity.state, 'initial');
       assert.equal(receipt.inputs.length, wirt ? 7 : 6); assert.equal((await nativeState(setup)).writes, 1);
       assert.equal(setup.state.conversions, 1);
-      results.push({ ownerType, visibility, state: 'version-created', inputs: receipt.inputs.length, sealInput: 'explicit-environment', baseVersionId: receipt.baseVersionId, browser: 'isolated-headless-chromium', nativeConversion: 'contained', provider: 'synthetic' });
+      results.push({ ownerType, visibility, policyRefresh, displayedPermissions, displayedEvents, state: 'version-created', inputs: receipt.inputs.length, sealInput: 'explicit-environment', baseVersionId: receipt.baseVersionId, browser: 'isolated-headless-chromium', nativeConversion: 'contained', provider: 'synthetic' });
     } catch (error) {
       console.error(JSON.stringify({ ownerType, visibility, failure: error.name, providerPosts: setup.state.posts.length, conversions: setup.state.conversions, pageStage: new URL(page.url()).pathname.startsWith('/start/') ? 'start' : 'return' }));
       await page.screenshot({ path: join(out, 'registration-failure.png') });

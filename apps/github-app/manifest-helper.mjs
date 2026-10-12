@@ -165,6 +165,13 @@ async function convert(options, capture, seal) {
   return safeReceipt(capture);
 }
 function escapeHtml(value) { return String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;'); }
+function permissionAndEventDisclosure(manifest, selection) {
+  const labels = { contents: 'Contents', pull_requests: 'Pull requests', checks: 'Checks' };
+  const permissions = Object.entries(manifest.default_permissions).map(([name, access]) => `<dt>${escapeHtml(labels[name] ?? name)}</dt><dd>${escapeHtml(access)}</dd>`).join('');
+  const events = manifest.default_events.map(event => `<li><code>${escapeHtml(event)}</code>${event === 'push' ? ' — refresh trusted policy when the repository’s default branch changes.' : ''}</li>`).join('');
+  const lifecycle = registrationInputs(selection).providerDefaultEvents.map(event => `<code>${escapeHtml(event)}</code>`).join(', ');
+  return `<section aria-labelledby="permissions-heading"><h2 id="permissions-heading">Requested permissions</h2><dl>${permissions}</dl></section><section aria-labelledby="events-heading"><h2 id="events-heading">Selected events</h2><ul>${events}</ul></section><section aria-labelledby="lifecycle-heading"><h2 id="lifecycle-heading">GitHub lifecycle events</h2><p>GitHub supplies ${lifecycle} by default. These lifecycle events are separate from the selected subscriptions and do not add another requested permission.</p></section>`;
+}
 function page(body) {
   return `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>diffdevil · GitHub App registration</title><style>body{font:17px/1.6 system-ui;max-width:44rem;margin:3rem auto;padding:0 1rem;color:#202124}h1{line-height:1.2}button{font:inherit;padding:.6rem 1rem;cursor:pointer}button:focus-visible{outline:3px solid #315ad8;outline-offset:3px}dl{display:grid;grid-template-columns:10rem 1fr}dt{font-weight:600}dd{margin:0;overflow-wrap:anywhere}</style><main>${body}</main></html>`;
 }
@@ -194,8 +201,9 @@ async function serve(options, capture, seal) {
       return;
     }
     if (url.pathname === `/start/${capture.stateToken}` && capture.stage === 'prepared') {
+      const manifest = manifestFor(capture);
       const fields = [['App name', capture.selection.appName], ['Registration owner', `${capture.selection.owner} (${capture.selection.ownerType})`], ['Visibility', capture.selection.visibility], ['Webhook', capture.selection.webhookUrl], ['OAuth callback', capture.selection.oauthCallbackUrl ?? 'Standalone backend; none']];
-      return reply(200, `<h1>Register the diffdevil GitHub App</h1><p>Confirm the namespace and visibility below. The next step creates a GitHub App on GitHub. This local helper captures its matching inputs; it does not install or deploy them.</p><dl>${fields.map(([label, value]) => `<dt>${label}</dt><dd>${escapeHtml(value)}</dd>`).join('')}</dl><p>Complete this manifest handshake within one hour. Keep this helper running for the return.</p><p>If you already submitted on GitHub before an interruption, inspect that registration first. An interrupted callback does not mean the App was never created; do not submit another registration to recover it.</p><form method="post" action="${escapeHtml(registrationEndpoint(capture))}"><input type="hidden" name="manifest" value="${escapeHtml(JSON.stringify(manifestFor(capture)))}"><button type="submit">Continue on GitHub</button></form>`);
+      return reply(200, `<h1>Register the diffdevil GitHub App</h1><p>Confirm the namespace, visibility, permissions and events below. The next step creates a GitHub App on GitHub. This local helper captures its matching inputs; it does not install or deploy them.</p><dl>${fields.map(([label, value]) => `<dt>${label}</dt><dd>${escapeHtml(value)}</dd>`).join('')}</dl>${permissionAndEventDisclosure(manifest, capture.selection)}<p>Complete this manifest handshake within one hour. Keep this helper running for the return.</p><p>If you already submitted on GitHub before an interruption, inspect that registration first. An interrupted callback does not mean the App was never created; do not submit another registration to recover it.</p><form method="post" action="${escapeHtml(registrationEndpoint(capture))}"><input type="hidden" name="manifest" value="${escapeHtml(JSON.stringify(manifest))}"><button type="submit">Continue on GitHub</button></form>`);
     }
     if (url.pathname !== '/callback') return reply(404, '<h1>Registration helper</h1><p>Use the local start address printed by the helper.</p>');
     const valid = url.searchParams.getAll('state').length === 1 && url.searchParams.getAll('code').length === 1 && same(url.searchParams.get('state'), capture.stateToken) && /^[A-Za-z0-9_-]+$/u.test(url.searchParams.get('code') ?? '');

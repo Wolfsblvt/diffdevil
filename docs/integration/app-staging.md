@@ -421,7 +421,18 @@ consumer. `check` reads file metadata where applicable and exercises the
 same-directory atomic output commit, without reading protected contents or
 contacting GitHub. `register` privately
 validates the seal, flushes the empty encrypted checkpoint, and serves a native
-form with the namespace, visibility and callbacks visible before submission.
+form with the namespace, visibility, callbacks and actual manifest permission/event
+contract visible before **Continue on GitHub**. The operation handoff must carry
+that same contract: **Contents: read; Pull requests: write; Checks: write**;
+selected events **`pull_request`, `check_run`**, plus **`push`** when
+`--policy-refresh` is selected, as in the specimen above. `push` lets the App
+refresh trusted policy when the repository's default branch changes. Omitting
+that flag omits `push` from both the page and submitted manifest.
+GitHub supplies [`installation` and `installation_repositories` lifecycle events](https://docs.github.com/en/webhooks/webhook-events-and-payloads#installation)
+by default; they are separate from the selected subscriptions and add no requested
+permission. These disclosures explain the existing scopes, not another consent
+step or authority for creation/installation. Actual GitHub presentation remains
+a separate live readback.
 Selected seal/Wirt environment names are withheld from the contained conversion
 child; the installer sends their values only through its private native stdin.
 GitHub's [manifest handshake](https://docs.github.com/en/apps/sharing-github-apps/registering-a-github-app-from-a-manifest)
@@ -487,7 +498,9 @@ encrypted capture/recovery, unsafe native stdout/stderr positive control, and
 standalone/Community/Wirt installation through the synthetic native provider.
 `npm run qa:app:manifest` exercises the real form, keyboard submission, state
 callback, contained native conversion and exact-base installation for both namespace
-types and visibility choices, using the named-environment seal throughout. Personal
+types and visibility choices, using the named-environment seal throughout. It
+compares visible permissions/events with the submitted manifest, with policy refresh
+selected and omitted, and keeps GitHub's lifecycle events visibly separate. Personal
 fixtures deliver Community's six inputs; organisation fixtures deliver Wirt's seven.
 Its non-secret result/screenshots go under
 `artifacts/verification/manifest/`. This proves local synthetic operation, not

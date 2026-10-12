@@ -9,10 +9,10 @@ import { tmpdir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
 
 const pem = generateKeyPairSync('rsa', { modulusLength: 2048 }).privateKey.export({ type: 'pkcs1', format: 'pem' });
-export async function manifestFixture({ ownerType = 'personal', visibility = 'public', joined = true, wirt = false } = {}) {
+export async function manifestFixture({ ownerType = 'personal', visibility = 'public', joined = true, wirt = false, policyRefresh = true } = {}) {
   const directory = await mkdtemp(join(tmpdir(), 'diffdevil-manifest-'));
   const seal = randomUUID();
-  const body = { id: 123, name: 'diffdevil-synthetic', slug: 'diffdevil-synthetic', owner: { login: 'fixture-owner', type: ownerType === 'personal' ? 'User' : 'Organization' }, client_id: 'Iv1.fixture-client', client_secret: randomUUID(), webhook_secret: randomUUID(), pem, permissions: { contents: 'read', pull_requests: 'write', checks: 'write', metadata: 'read' }, events: ['pull_request', 'check_run', 'push'] };
+  const body = { id: 123, name: 'diffdevil-synthetic', slug: 'diffdevil-synthetic', owner: { login: 'fixture-owner', type: ownerType === 'personal' ? 'User' : 'Organization' }, client_id: 'Iv1.fixture-client', client_secret: randomUUID(), webhook_secret: randomUUID(), pem, permissions: { contents: 'read', pull_requests: 'write', checks: 'write', metadata: 'read' }, events: ['pull_request', 'check_run', ...(policyRefresh ? ['push'] : [])] };
   const config = join(directory, 'config.json');
   const wirtSigningKeyPath = wirt ? join(directory, 'wirt.txt') : undefined;
   const wirtKey = wirt ? randomUUID() : undefined;
@@ -49,7 +49,7 @@ export async function manifestFixture({ ownerType = 'personal', visibility = 'pu
   await new Promise(resolveListen => portProbe.listen(0, '127.0.0.1', resolveListen));
   const port = portProbe.address().port;
   await new Promise(resolveClose => portProbe.close(resolveClose));
-  const options = { capturePath: join(directory, 'capture.enc'), receiptPath: join(directory, 'capture-receipt.json'), sealKeyPath, sealKeyRecoveryRef: 'fixture-retained-custody', owner: 'fixture-owner', ownerType, visibility, appName: body.name, webhookUrl: 'https://staging.example/webhooks/github', ...(joined ? { oauthCallbackUrl: 'https://staging.example/auth/callback' } : {}), policyRefresh: true, port, fixtureOrigin: `http://127.0.0.1:${server.address().port}` };
+  const options = { capturePath: join(directory, 'capture.enc'), receiptPath: join(directory, 'capture-receipt.json'), sealKeyPath, sealKeyRecoveryRef: 'fixture-retained-custody', owner: 'fixture-owner', ownerType, visibility, appName: body.name, webhookUrl: 'https://staging.example/webhooks/github', ...(joined ? { oauthCallbackUrl: 'https://staging.example/auth/callback' } : {}), policyRefresh, port, fixtureOrigin: `http://127.0.0.1:${server.address().port}` };
   return { directory, seal, body, values, config, options, state, wirtSigningKeyPath, close: () => new Promise(resolveClose => { server.close(resolveClose); server.closeAllConnections(); }) };
 }
 const flags = { capturePath: 'capture-file', receiptPath: 'receipt-file', sealKeyPath: 'seal-key-file', sealKeyEnv: 'seal-key-env', sealKeyRecoveryRef: 'seal-key-recovery-ref', owner: 'owner', ownerType: 'owner-type', visibility: 'visibility', appName: 'app-name', webhookUrl: 'webhook-url', oauthCallbackUrl: 'oauth-callback-url', port: 'port', fixtureOrigin: 'fixture-provider', config: 'config', accountId: 'account-id', installReceiptPath: 'install-receipt-file', fixtureWrangler: 'fixture-wrangler', wirtSigningKeyPath: 'wirt-signing-key-file', wirtSigningKeyEnv: 'wirt-signing-key-env', baseVersionId: 'base-version-id', sealKeyPreviousReceiptPath: 'seal-key-previous-receipt' };
