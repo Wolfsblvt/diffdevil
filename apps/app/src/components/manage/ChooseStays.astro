@@ -4,7 +4,7 @@
 // lower allowance, public history fit and how defaults or linked policies become plain repository settings. Before
 // the effective date it is saved and applied when the reduction takes effect; after it, saving applies at once. If
 // nobody chooses, diffdevil doesn't pick: what is over the lower limits stays inactive (the runtime holds it too).
-// Once applied, the section says what the choice did.
+// Once applied, lead with the current plan and keep the saved choice's result historical.
 import Icon from '../Icon.astro';
 import { holdsSlot } from '../../lib/manage/states.mjs';
 import { fmtDay, tierLabel } from '../../lib/manage/works.mjs';
@@ -21,6 +21,7 @@ const reducedNow = past && (unchosen.length > 0 || (choosing?.applied === true &
 const appliedOutcome = choice?.appliedAt ? choice.outcome : null;
 const showApplied = Boolean(appliedOutcome) && !reducedNow;
 const currentPlan = ['Free', 'Pro', 'Business'].includes(model.viewerPlan) ? model.viewerPlan : null;
+const choicePlan = appliedOutcome ? tierLabel(appliedOutcome.plan) : null;
 const target = choosing?.target ?? (model.viewerPlan === 'Free' ? 'free' : 'pro');
 const from = choice?.from ?? (choosing ? String(tier).toLowerCase() : model.viewerPlan === 'Free' ? 'pro' : 'business');
 const show = Boolean(choosing && !past) || reducedNow || showApplied;
@@ -39,8 +40,8 @@ const applying = !past;
   <header><h2>{showApplied ? `${tierLabel(appliedOutcome.plan)} choice applied` : reducedNow ? `Choose what stays on ${tierLabel(target)}` : `Choose what stays on ${tierLabel(target)}`}</h2>
     <span class="d">{showApplied ? `${currentPlan ? `Your current plan is ${currentPlan}` : 'Your current plan is not confirmed'} · choice applied on ${fmtDay(choice.appliedAt) ?? 'the effective date'}` : reducedNow ? `${tierLabel(target)} is in effect · nothing over its limits runs until you choose` : `Applies on ${fmtDay(choosing!.on) ?? 'the effective date'} · change it any time before then`}</span></header>
   {showApplied && <div class="b" data-choice-outcome><div class="m-eff">
-    {appliedOutcome.connected && <div><Icon name="building-2" /><span><b>{login(appliedOutcome.connected) ?? 'Your organisation'} stays connected</b><span class="d">It shares your Free allowance.</span></span><span></span></div>}
-    <div><Icon name="lock" /><span><b>{appliedOutcome.kept.length ? `Kept: ${appliedOutcome.kept.map(name).join(', ')}` : appliedOutcome.released.length ? 'No private repository was kept' : 'Every private repository fits the lower plan and keeps running'}</b><span class="d">{appliedOutcome.released.length ? `Stopped and released: ${appliedOutcome.released.map(name).join(', ')}. Their history and settings stay; swap one in when a place is free.` : 'Nothing needed to stop.'}</span></span><span></span></div>
+    {appliedOutcome.connected && <div><Icon name="building-2" /><span><b>{login(appliedOutcome.connected) ?? 'Your organisation'} was selected to stay connected under this {choicePlan} choice</b><span class="d">That choice assigned it a share of the Free allowance.</span></span><span></span></div>}
+    <div><Icon name="lock" /><span><b>{appliedOutcome.kept.length ? `Kept under this ${choicePlan} choice: ${appliedOutcome.kept.map(name).join(', ')}` : appliedOutcome.released.length ? `No private repository was kept by this ${choicePlan} choice` : `Every private repository fit the ${choicePlan} plan when this choice applied`}</b><span class="d">{appliedOutcome.released.length ? `Not kept under this ${choicePlan} choice: ${appliedOutcome.released.map(name).join(', ')}. They stopped and were released when it applied; their history and settings stay. Swap one in when a place is free.` : `Nothing needed to stop when this ${choicePlan} choice applied.`}</span></span><span></span></div>
   </div><p class="m-note">To choose differently, swap repositories in Repositories. A new choice is saved for the next change of plan.</p></div>}
   {!showApplied && <div class="b"><form method="post" action="/manage/do"><input type="hidden" name="action" value="plan-choice" /><input type="hidden" name="back" value="/manage/plan" /><input type="hidden" name="target" value={target} /><input type="hidden" name="from" value={from} />{choosing?.on && <input type="hidden" name="on" value={choosing.on} />}<div class="m-stay">
     {target === 'free' && <div><span class="m-k">One connected organisation</span><div class="m-swapopts" style="margin-top:8px">{organisations.length ? organisations.map((namespace: any) => <label><input type="radio" name="organisation" value={namespace.accountId} checked={choice?.organisation ? choice.organisation === namespace.accountId : false} /><span><b>{namespace.login}</b><span>{namespace.funding.kind === 'own-slot' ? `runs on slot ${String(namespace.funding.slot).replace(/^slot-/u, '')} today` : namespace.funding.kind === 'paused' ? 'paused today' : namespace.funding.kind === 'unconnected' ? 'not connected now' : 'connected today'}</span></span></label>) : <span class="m-note" style="margin:0">No organisation is funded by your plan today.</span>}</div><p class="m-note">{organisations.length > 1 ? 'The other organisation stops running. Its history and settings stay with it.' : ''}</p></div>}
