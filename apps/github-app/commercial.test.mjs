@@ -9,7 +9,7 @@ import { Miniflare } from 'miniflare';
 import { COMMERCIAL_ROUTES, createGitHubAppWorker } from './app.mjs';
 import { commercialFromEnv, decideProjection } from './commercial.mjs';
 import { D1CommercialStore } from './commercial-storage.mjs';
-import { readProjectionFundedComponents, readSigningKeys, signedHeaders, verifySignedMessage } from './commercial-wirt.mjs';
+import { readProjectionFundedComponents, readSigningKeys, readWirtMessage, signedHeaders, verifySignedMessage } from './commercial-wirt.mjs';
 import { normalizeWebhookEvent } from './contracts.mjs';
 import { D1AppStore } from './storage.mjs';
 import { D1AuthorizationStore } from './authorization-storage.mjs';
@@ -296,6 +296,24 @@ test('component display facts preserve unknown versus empty and exclude producer
     funded: true, usable: true, binding: { github_org_id: ORG, display: 'private-label' }, product_application: { result: 'applied' }, internal_evidence: 'private' };
   assert.deepEqual(readProjectionFundedComponents({ funded_components: [component] }), [{ id: 'reward-component:1', name: component.name, reason: component.reason,
     state: 'unknown', startsOn: null, endsOn: null, applicationDeadline: null }]);
+});
+
+test('null commercial requires readable claimed queued or expired components, while full commercial keeps wider states', () => {
+  const component = { component_id: 'reward-component:1', funding: 'participation-reward', component_kind: 'paid-subject', capacity_type: 'organisation',
+    name: 'Additional organisation slot', reason: 'Community contribution', state: 'queued', starts_on: null, ends_on: null, application_deadline: '2027-04-08T00:00:00Z' };
+  const base = projection({ linkId: 'nullable-contract', slots: [] });
+  const message = components => ({ ...base, commercial: null, benefits: { ...base.benefits, funded_components: components } });
+  for (const components of [undefined, null, [], [{}], [{ ...component, component_id: '' }], [{ ...component, state: 'active' }],
+    [{ ...component, state: 'available' }], [{ ...component, state: 'ended' }], [{ ...component, state: 'corrected' }],
+    [{ ...component, state: 'withdrawn' }], [{ ...component, state: 'future-state' }], [component, { ...component, state: 'active' }]]) {
+    assert.throws(() => readWirtMessage(message(components)), { code: 'E_COMMERCIAL_SHAPE' });
+  }
+  for (const state of ['queued', 'expired']) assert.equal(readWirtMessage(message([{ ...component, state }])).kind, 'projection');
+  for (const state of ['available', 'active', 'ended', 'corrected', 'withdrawn']) {
+    const full = { ...base, benefits: { ...base.benefits, funded_components: [{ ...component, state }] } };
+    const read = readWirtMessage(full);
+    assert.equal(readProjectionFundedComponents(read.projection.benefits)[0].state, state, 'the narrower null contract does not erase full-state vocabulary');
+  }
 });
 
 test('a customer-approved link is browser-bound, PKCE-protected, resumable and seeded from the pull fallback', async () => {
@@ -643,11 +661,26 @@ test('reward-only commercial null survives pull, signed application, replay and 
     assert.equal(await source.authStore.serviceConnection(USER), 'not-retained');
     assert.equal(await commercial.entitlement({ repositoryId: null, actor: { userId: USER } }), 'free');
 
+    const beforeInvalid = await store.link(linkId);
+    const reportsBeforeInvalid = wirt.state.reports.length;
+    for (const components of [undefined, [], [{}], [{ ...component, state: 'active' }], [component, { ...component, state: 'active' }]]) {
+      const invalid = rewardOnly(linkId, 2);
+      invalid.benefits.funded_components = components;
+      const response = await push(source, invalid);
+      assert.equal(response.status, 422, 'signed invalid null state is rejected before application');
+      assert.equal((await response.json()).code, 'E_COMMERCIAL_SHAPE');
+    }
+    assert.equal((await store.link(linkId)).revision, beforeInvalid.revision);
+    assert.equal(wirt.state.reports.length, reportsBeforeInvalid, 'a rejected producer input queues no applied report');
+    assert.deepEqual(await status(), initial, 'the previously applied queued component remains the displayed truth');
+
     // A compatible funded base may arrive later on the same stream. Its ordinary slot can be bound.
     await appStore.recordLifecycle({ installationId: 11, action: 'created', addedRepositories: [21], removedRepositories: [] });
     await appStore.recordInstallationAccount(11, ORG);
     const funded = projection({ linkId, version: 2, tier: 'business', slots: ['slot-included', 'slot-1'] });
+    funded.benefits.funded_components = [{ ...component, state: 'active', starts_on: '2027-03-01', ends_on: '2027-04-01', application_deadline: null }];
     assert.equal((await push(source, funded)).status, 200);
+    assert.ok(presentProjection(await status()).rows.some(row => row.term === component.name && row.value === 'Active reward'), 'a compatible full base may activate the same stable component');
     assert.equal((await bindRequest(source, { action: 'bind', slot: 'slot-1', organisationId: ORG })).status, 200);
     assert.equal(await commercial.entitlement({ repositoryId: 21, actor: { userId: OTHER_USER } }), 'business');
     assert.equal(await source.authStore.serviceConnection(USER), 'retained');
