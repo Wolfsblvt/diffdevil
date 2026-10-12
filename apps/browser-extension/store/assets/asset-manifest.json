@@ -11,7 +11,7 @@
       "height": 800,
       "depth": 8,
       "colorType": 2,
-      "sha256": "9c9c053367bd80d5897abc88966386913c0cd1018543f7c6b96801fe29f8f44f",
+      "sha256": "44f53fd6b098e176e597d2092e1616912f07e3e2a727c69d76b7c8d4fc93a564",
       "generatedFrom": "artifacts/browser-extension/qa/github-dark.png",
       "caption": "Changed in GitHub’s own diffstat seats: the pull request with its decomposition, size chip, band rail and local provenance; each file with its own Changed.",
       "standing": "Actual production UI in an explicitly authored fixture; not a live or installed-extension capture."
@@ -22,20 +22,20 @@
       "height": 800,
       "depth": 8,
       "colorType": 2,
-      "sha256": "a556332e04c6b5d20bff273bd64772f2f997808d582095d05d8a32142d00d22e",
-      "generatedFrom": "artifacts/browser-extension/qa/report-light.png",
+      "sha256": "255f2b4df097942b5966a45f949b5450d9e43c81181078d4a9062249ac33f3a6",
+      "generatedFrom": "artifacts/browser-extension/qa/report-dark.png",
       "caption": "The anchored report: one dominant value with its evidence, the decomposition, raw churn, files, the policy in effect and the effect plan.",
       "standing": "Actual production UI in an explicitly authored fixture; not a live or installed-extension capture."
     },
     {
-      "path": "screenshots/03-your-icon-preference.png",
+      "path": "screenshots/03-large-pr-coverage.png",
       "width": 1280,
       "height": 800,
       "depth": 8,
       "colorType": 2,
-      "sha256": "1c6cfc61b8c678d0968aaa9650b3c4f059e6cc2e3a5052731ea8f6f9ded8c101",
-      "generatedFrom": "artifacts/browser-extension/qa/settings-icon-dark.png",
-      "caption": "Literal stable-setting anchors and the glyph, full-colour or no-icon choices.",
+      "sha256": "37462e5e48513efd683f92171ba521a3a314104cee2a2467632bf78482e9aa26",
+      "generatedFrom": "artifacts/browser-extension/qa/continuity-report-partial.png",
+      "caption": "A bounded comparison names measured, bounded and provider-declined files, with one explicit Analyze remaining files action.",
       "standing": "Actual production UI in an explicitly authored fixture; not a live or installed-extension capture."
     },
     {
@@ -44,20 +44,20 @@
       "height": 800,
       "depth": 8,
       "colorType": 2,
-      "sha256": "078704e44070c0bccd09bccec9d553f6d52c1b5fb9c3c6a02e6286c18a5d7f86",
+      "sha256": "1de369b2d491c7b0a3c1932ba1a7df76da0f22eaf708b6a6349f146188482d61",
       "generatedFrom": "artifacts/browser-extension/qa/settings-bands-light.png",
-      "caption": "Editable personal thresholds, colour metadata and optional existing-label mappings in the authored light theme.",
+      "caption": "Trusted-base repository policy mode alongside editable personal thresholds, colour metadata and optional existing-label mappings in the authored light theme.",
       "standing": "Actual production UI in an explicitly authored fixture; not a live or installed-extension capture."
     },
     {
-      "path": "screenshots/05-honest-uncertainty.png",
+      "path": "screenshots/05-local-data-control.png",
       "width": 1280,
       "height": 800,
       "depth": 8,
       "colorType": 2,
-      "sha256": "7ebc126af9a86536816212bc772f0ce71b597d954df887f9779ba992e57d405b",
-      "generatedFrom": "artifacts/browser-extension/qa/evidence-unknown.png",
-      "caption": "Incomplete evidence remains visibly unknown. No unsupported exact total or selected band is manufactured.",
+      "sha256": "b9753030bb408636a57b1fd98df847b39c23164a6c5b03d5985280e6c606d466",
+      "generatedFrom": "artifacts/browser-extension/qa/settings-data-light.png",
+      "caption": "Local report inventory with scoped PR/repository clearing and a paused repository with its Resume control. Pausing and deletion are separate choices.",
       "standing": "Actual production UI in an explicitly authored fixture; not a live or installed-extension capture."
     },
     {
@@ -77,9 +77,9 @@
       "height": 560,
       "depth": 8,
       "colorType": 2,
-      "sha256": "0e7135cfec81756aaa63cd19b1b4cc39b41c80b3fd88437441686fdaace778cf",
+      "sha256": "15b896d8577ffa3c03c1d609aa1304e2eb93fe98176fa862fba48442619c654f",
       "editableSource": "promo/marquee-1400x560.svg",
-      "editableSourceSha256": "6c04e50fe58bf7b0b41a8e839fdbd174722a9a13b0648f68776b2441bf659de5",
+      "editableSourceSha256": "2489c982188b3e1f49606f0e933c6d0a9d576b6bf87a6ed12321aae093aa4c7a",
       "standing": "Authored promotional composition using accepted identity bytes and exact synthetic fixture measurements."
     },
     {

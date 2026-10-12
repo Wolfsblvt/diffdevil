@@ -57,8 +57,16 @@ Use `listing.md` for the single purpose, short and detailed descriptions. Use `p
 
 Load the corresponding unpacked package in an allowed Chrome profile, open an accessible GitHub PR, and wait for the comparison to qualify. Click Changed to inspect the report, including raw counts and revision identity. Open Settings with the toolbar action; search `#policy.advancedYaml`, change theme, inspect cache/diagnostics and try an invalid policy without overwriting the saved value. The README explains policy modes and the deliberate absence of hosted-App delivery.
 
+On first install, Settings opens at `#ready`: inspect the active policy, automatic file budget, cache limit and public example link. Ready is orientation, not an account/setup wizard. In an accessible PR, check right-aligned aggregate and file seats, then navigate away and back, open the same comparison in a second tab, and restart the worker/browser. Cached facts must visibly revalidate; inaccessible or moved comparisons must not silently become current.
+
+Use a PR above the selected automatic file budget to inspect measured/bounded/provider-declined coverage. Scroll onto additional files, try a file's on-demand action and the report's **Analyze remaining files** control. One explicit pass may still leave collapsed or unavailable files bounded; it does not promise a complete result.
+
+Pause the repository from its report and use **Resume** on the page or at `#repositories.paused`. Inspect `#data.controls`, expand a repository and try confirmed **Clear this PR** and **Clear this repository** scopes on disposable data. Pausing preserves reports; a scoped clear does not resume or change GitHub. A PR clear retains the repository's trusted-policy cache, while a repository clear removes that cache as well. Settings and overrides remain separate.
+
+The five Store images are production UI with authored fixtures, including test storage for the data-control specimen. They prove those rendered states, not installed unrestricted Chrome, real signed-in GitHub, Store submission or Store-installed use. Keep these evidence layers separate even when older installed evidence exists. Before submission, resolve the current user-data FAQ's stored-data encryption language against this package's explicitly unencrypted cache; no build receipt supplies legal certification or provider acceptance.
+
 A writable repository is not required for local counts or virtual bands. Native-label handoff is visible only where the relevant native picker is available. An API rate limit or an inaccessible private base may require signed-in acquisition or a deliberate Personal only policy mode; it must not be reported as a zero-sized PR.
 
 ## Primary image specification
 
-[Chrome Web Store images](https://developer.chrome.com/docs/webstore/images), checked 2026-09-19. Image dimensions and file hashes are recorded in `apps/browser-extension/store/assets/asset-manifest.json`; `artifacts/browser-extension/store/` is only its validated disposable copy. This checklist does not grant publication authority or claim Store approval.
+[Chrome Web Store images](https://developer.chrome.com/docs/webstore/images), checked 2026-10-12. Image dimensions and file hashes are recorded in `apps/browser-extension/store/assets/asset-manifest.json`; `artifacts/browser-extension/store/` is only its validated disposable copy. This checklist does not grant publication authority or claim Store approval.

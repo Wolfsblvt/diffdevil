@@ -12,10 +12,10 @@ const generate = process.argv.includes('--generate');
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
 const screenshots = [
   ['01-changed-on-github.png', 'github-dark.png', 'Changed in GitHub’s own diffstat seats: the pull request with its decomposition, size chip, band rail and local provenance; each file with its own Changed.'],
-  ['02-inspect-the-report.png', 'report-light.png', 'The anchored report: one dominant value with its evidence, the decomposition, raw churn, files, the policy in effect and the effect plan.'],
-  ['03-your-icon-preference.png', 'settings-icon-dark.png', 'Literal stable-setting anchors and the glyph, full-colour or no-icon choices.'],
-  ['04-your-policy-bands.png', 'settings-bands-light.png', 'Editable personal thresholds, colour metadata and optional existing-label mappings in the authored light theme.'],
-  ['05-honest-uncertainty.png', 'evidence-unknown.png', 'Incomplete evidence remains visibly unknown. No unsupported exact total or selected band is manufactured.'],
+  ['02-inspect-the-report.png', 'report-dark.png', 'The anchored report: one dominant value with its evidence, the decomposition, raw churn, files, the policy in effect and the effect plan.'],
+  ['03-large-pr-coverage.png', 'continuity-report-partial.png', 'A bounded comparison names measured, bounded and provider-declined files, with one explicit Analyze remaining files action.'],
+  ['04-your-policy-bands.png', 'settings-bands-light.png', 'Trusted-base repository policy mode alongside editable personal thresholds, colour metadata and optional existing-label mappings in the authored light theme.'],
+  ['05-local-data-control.png', 'settings-data-light.png', 'Local report inventory with scoped PR/repository clearing and a paused repository with its Resume control. Pausing and deletion are separate choices.'],
 ];
 const expected = new Map([
   ...screenshots.map(([name]) => [`screenshots/${name}`, { width: 1280, height: 800, colorType: 2 }]),
@@ -40,7 +40,13 @@ function rgbPng(rendered) {
 async function generateSourceAssets() {
   const qa = resolve('artifacts/browser-extension/qa');
   const receipt = JSON.parse(await readFile(join(qa, 'receipt.json'), 'utf8'));
-  if (receipt.failed || receipt.passed < 40) throw new Error('Generate and pass the production DOM QA before updating committed Store assets. Run npm run extension:qa.');
+  if (receipt.kind !== 'diffdevil.extension.dom-qa/1' || receipt.completed !== true || receipt.failed !== 0 || !receipt.checks?.length || receipt.checks.some(check => check.status !== 'passed')) throw new Error('Generate and pass the production DOM QA before updating committed Store assets. Run npm run extension:qa.');
+  // A green receipt must describe the actual input captures, not a stale image
+  // left in the output folder by another run.
+  for (const [, source] of screenshots) {
+    const capture = receipt.screenshots.find(item => item.file === source);
+    if (!capture || capture.sha256 !== sha256(await readFile(join(qa, source)))) throw new Error(`${source} does not match the passing DOM QA receipt.`);
+  }
   await rm(sourceRoot, { recursive: true, force: true });
   await mkdir(join(sourceRoot, 'screenshots'), { recursive: true });
   await mkdir(join(sourceRoot, 'promo'), { recursive: true });

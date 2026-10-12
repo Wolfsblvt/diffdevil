@@ -51,21 +51,19 @@ GitHub shows added and removed lines. diffdevil also shows what changed.
 
 A replaced line is one changed position, not two units of churn. diffdevil displays Changed with added-only, deleted-only and modified components, while keeping raw additions and deletions available separately. Pull-request totals and each acquired file use the same deterministic diffdevil engine.
 
-Highlights:
-- See replacement-aware Changed beside GitHub's native diff facts.
-- Inspect added-only, deleted-only, modified and raw-churn measurements.
-- Classify the pull request and individual files with your configured size bands.
-- Open one anchored report for revisions, evidence, files, metrics, scopes, rules and policy provenance.
-- Keep incomplete or unmeasurable evidence explicit instead of turning missing source into zero.
-- Search and deep-link the complete Basic and Advanced settings catalogue.
-- Edit guided thresholds and path rules or use the full diffdevil YAML policy language.
-- Import, export and clear your local configuration and rebuildable report cache.
+Understand the comparison. See replacement-aware Changed in GitHub's own pull-request and file diffstat seats, keeping the host's right-edge placement. Open an anchored report for the decomposition, raw churn, file facts, immutable revisions, metrics, scopes, rules and policy provenance. Exact, bounded, incomplete and unmeasurable evidence stay distinct; missing source never becomes zero or an unsupported exact total.
+
+Keep working across ordinary browser life. Bounded, rebuildable local reports can reappear across navigation, tabs, extension-worker restart and browser restart. Cached facts visibly revalidate against GitHub before becoming current. If GitHub cannot be reached or the comparison has moved, the extension tells you instead of silently treating an old report as fresh.
+
+Handle large pull requests honestly. A configurable automatic file budget bounds the opening work. Files you scroll onto can use the remaining budget, and a file's report offers on-demand measurement. Analyze remaining files starts one explicit continuation. The report names measured, bounded and provider-declined coverage; a collapsed, unavailable or binary diff is not counted as fully measured simply because you asked for it.
 
 Choose your own policy. Use personal defaults, the repository's trusted base-revision configuration, or a deliberate composition with your own repository override. Optional existing-label mappings can open GitHub's visible native picker, but you make the actual selection. The extension does not automatically add, remove, create or reconcile labels.
 
-No diffdevil account or local daemon is required. The extension does not collect a personal access token, trigger hosted App analysis or send your source to a diffdevil service. It reads the current GitHub comparison, trusted configuration and explicitly referenced templates from GitHub, processes them locally, and stores bounded rebuildable numeric reports and policy data in your browser. Small preferences may synchronize through Chrome; advanced policy and repository overrides remain local. Cached reports can include private paths and repository identifiers. You can inspect and clear that data in Settings.
+Own your settings and data. Edit guided size bands and path rules or use the full diffdevil YAML policy language. Search and deep-link Basic and Advanced settings, and import or export your configuration. Pause a repository to stop analysis and restore GitHub's counters; resume it when you choose. Pausing deletes nothing. Inspect stored reports by repository and pull request, clear one PR or repository, or clear all reports and trusted-policy cache separately. Clearing data does not resume a paused repository or change GitHub.
 
-The extension supports github.com in normal Chrome profiles. It does not support Incognito or GitHub Enterprise hosts. Very large or incomplete provider responses are qualified or rejected explicitly. The current release presents local results and does not claim authenticated hosted-App report delivery.
+No diffdevil account or local daemon is required. First install opens a Ready page explaining the active policy, file budget, cache and data controls, with a public example PR to try. The extension does not collect a personal access token, trigger hosted App analysis or send your source to Wolfsblvt Works. It reads the current GitHub comparison, trusted configuration and explicitly referenced templates from GitHub and processes them locally. Raw diffs are never persisted. Bounded rebuildable reports retain counts, file paths, revision identities, coverage and last-confirmed comparisons; trusted-policy text/templates are also cached. Small preferences may synchronize through Chrome; advanced policy, repository overrides and paused repositories remain local. Stored data can reveal private paths and repository identifiers to someone with access to your browser profile. It has a configurable size limit and least-recently-used eviction, and is not independently encrypted.
+
+The extension supports github.com in normal Chrome profiles. It does not support Incognito or GitHub Enterprise hosts. Very large or incomplete provider responses remain qualified explicitly. The current candidate presents local results; authenticated hosted-App report delivery is not included.
 
 This is an independent open-source product. It is not affiliated with, endorsed by or provided by GitHub or Google.
 ```
@@ -76,9 +74,9 @@ Chrome Web Store accepts up to five screenshots. Submit the committed source-bac
 
 1. `assets/screenshots/01-changed-on-github.png`
 2. `assets/screenshots/02-inspect-the-report.png`
-3. `assets/screenshots/03-your-icon-preference.png`
+3. `assets/screenshots/03-large-pr-coverage.png`
 4. `assets/screenshots/04-your-policy-bands.png`
-5. `assets/screenshots/05-honest-uncertainty.png`
+5. `assets/screenshots/05-local-data-control.png`
 
 The committed manifest records the exact SHA-256, dimensions, colour format, caption and provenance of each image. The set renders the production UI against explicitly authored fixtures and must retain that disclosure; it is not presented as a live private-repository capture.
 
