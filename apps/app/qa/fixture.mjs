@@ -242,7 +242,7 @@ export function createFakeGitHub({ user = USER, token = TOKEN, code = CODE, clie
   const calls = [];
   // Narrow the signed-in person's GitHub access for a case: `push` and `admin` per repository (repositoryId → boolean,
   // default write and the fixture's admin flag), `roles` per organisation login (default ROLES).
-  const state = { rateLimited: false, tokenValid: true, membershipStatus: 200, push: new Map(), admin: new Map(), roles: new Map(), membershipStates: new Map(), collaborators: new Map(), installationTokens: [], extraRepositories: [], logins: new Map() };
+  const state = { rateLimited: false, tokenValid: true, tokenCheckResponse: null, refreshResponse: null, membershipStatus: 200, push: new Map(), admin: new Map(), roles: new Map(), membershipStates: new Map(), collaborators: new Map(), installationTokens: [], extraRepositories: [], logins: new Map() };
   async function fetch(input, init = {}) {
     const url = new URL(String(input)), method = init.method ?? 'GET', path = url.pathname;
     const authorization = new Headers(init.headers).get('authorization') ?? '';
@@ -250,10 +250,11 @@ export function createFakeGitHub({ user = USER, token = TOKEN, code = CODE, clie
     if (state.rateLimited) return json({ message: 'rate limited' }, 403, { 'x-ratelimit-remaining': '0' });
     if (method === 'POST' && path === '/login/oauth/access_token') {
       const body = JSON.parse(String(init.body));
-      if (body.code === code || body.grant_type === 'refresh_token') return json({ access_token: token, token_type: 'bearer', scope: '' });
+      if (body.grant_type === 'refresh_token') return state.refreshResponse ? state.refreshResponse() : json({ access_token: token, refresh_token: 'fixture-next-refresh', expires_in: 28800, refresh_token_expires_in: 15897600 });
+      if (body.code === code) return json({ access_token: token, token_type: 'bearer', scope: '' });
       return json({ error: 'bad_verification_code' });
     }
-    if (method === 'POST' && path === `/applications/${clientId}/token`) return state.tokenValid && JSON.parse(String(init.body)).access_token === token ? json({ user: { id: user.id } }) : json({ message: 'invalid' }, 404);
+    if (method === 'POST' && path === `/applications/${clientId}/token`) return state.tokenCheckResponse ? state.tokenCheckResponse() : state.tokenValid && JSON.parse(String(init.body)).access_token === token ? json({ user: { id: user.id } }) : json({ message: 'invalid' }, 404);
     // The App's own installation route: an App JWT mints a token scoped to the requested repositories, and that token
     // reads an account by id, the installation's repositories (with `extraRepositories` a case grants later) and a
     // user's calculated repository permission (`collaborators`, keyed `repositoryId:login`; a missing entry is GitHub's
