@@ -11,7 +11,7 @@ import { resolve, join } from 'node:path';
 import { performance } from 'node:perf_hooks';
 import { createHash } from 'node:crypto';
 import { productionModules, memoryAreas, unwrap } from '../tests/support.mjs';
-import { comparison, diff, filePatch, fileHeader, githubHtml, githubCss } from './fixtures.mjs';
+import { comparison, diff, filePatch, fileHeader, githubHtml, githubCss, storeSeatCss } from './fixtures.mjs';
 const out = resolve('artifacts/browser-extension/qa'); await mkdir(out, { recursive: true });
 const loaded = await productionModules(); const m = loaded.module;
 const areas = memoryAreas(); const preferences = new m.Preferences(areas); let settings = await preferences.load();
@@ -81,17 +81,17 @@ async function environment({ dark = true, mobile = false, backend = rpc } = {}) 
 }
 async function check(name, run) { const start = performance.now(); try { await run(); checks.push({ name, status: 'passed', milliseconds: Math.round((performance.now() - start) * 100) / 100 }); } catch (error) { checks.push({ name, status: 'failed', message: error.message }); throw error; } }
 async function capture(page, name) { const path = join(out, `${name}.png`); await page.screenshot({ path, animations: 'disabled' }); screenshots.push({ file: `${name}.png`, sha256: createHash('sha256').update(await readFile(path)).digest('hex'), width: page.viewportSize().width, height: page.viewportSize().height }); }
-async function optionsPage(dark = true, mobile = false) {
-  const env = await environment({ dark, mobile });
+async function optionsPage(dark = true, mobile = false, backend = rpc) {
+  const env = await environment({ dark, mobile, backend });
   const html = (await readFile('apps/browser-extension/options.html', 'utf8')).replace(/<script\b[^>]*>[\s\S]*?<\/script>/gu, '').replace(/<link\b[^>]*>/gu, '').replace('src="assets/diffdevil-wordmark-dark.svg"', `src="${assets['assets/diffdevil-wordmark-dark.svg']}"`);
   await env.page.setContent(html); await env.page.addStyleTag({ content: optionsCss });
   await env.page.addScriptTag({ content: optionsCode }); await env.page.locator('[id="display.enabled"]').waitFor();
   await env.page.evaluate(() => { const notice = document.createElement('div'); notice.id = 'qa-note'; notice.textContent = 'Rendered source candidate · Test storage · Not an installed-extension capture'; notice.style.cssText = 'position:fixed;bottom:0;left:0;right:0;text-align:center;padding:4px;z-index:9999;background:var(--bg);color:var(--fg-3);font:10px sans-serif;border-top:1px solid var(--hair)'; document.body.append(notice); });
   return env;
 }
-async function contentPage({ dark = true, modern = false, files = true, mobile = false, data = comparison, value = currentPacket, href, failures = 0, ready = '.ddx-root[data-ddx="aggregate"]', backend, measure, headers = [], headerHeight = 30, verifyResult, settings: pageSettings } = {}) {
+async function contentPage({ dark = true, modern = false, files = true, mobile = false, data = comparison, value = currentPacket, href, failures = 0, ready = '.ddx-root[data-ddx="aggregate"]', backend, measure, headers = [], headerHeight = 30, headersRoot = 'main', verifyResult, settings: pageSettings } = {}) {
   const env = await environment({ dark, mobile, ...(backend ? { backend } : {}) });
-  if (measure) await env.page.exposeFunction('__measure', measure); await env.page.setContent(githubHtml({ dark, modern, files, data })); await env.page.addStyleTag({ content: githubCss + contentCss }); if (headers.length) await env.page.evaluate(({ paths, height }) => { for (const path of paths) document.querySelector('main').insertAdjacentHTML('beforeend', '<section data-path="' + path + '" style="min-height:' + height + 'px"><div class="file-header" data-path="' + path + '" style="height:30px"><span>' + path + '</span><span class="diffstat"><span>+2</span> <span>−1</span></span></div></section>'); }, { paths: headers, height: headerHeight }); await env.page.addScriptTag({ content: domCode });
+  if (measure) await env.page.exposeFunction('__measure', measure); await env.page.setContent(githubHtml({ dark, modern, files, data })); await env.page.addStyleTag({ content: githubCss + storeSeatCss + contentCss }); if (headers.length) await env.page.evaluate(({ paths, height, target }) => { for (const path of paths) document.querySelector(target).insertAdjacentHTML('beforeend', '<section data-path="' + path + '" style="min-height:' + height + 'px"><div class="file-header" data-path="' + path + '" style="height:30px"><span>' + path + '</span><span class="diffstat"><span>+2</span> <span>−1</span></span></div></section>'); }, { paths: headers, height: headerHeight, target: headersRoot }); await env.page.addScriptTag({ content: domCode });
   await env.page.evaluate(({ packet, settings, href, failures, verifyResult }) => {
     globalThis.fixture = { href: href ?? 'https://github.com/example/cinder/pull/42/files', packet, settings, calls: 0, delay: 0, failures, verifyResult };
     globalThis.controller = DiffdevilUnderTest.startContent({ href: () => fixture.href, acquire: async () => {
@@ -118,7 +118,9 @@ try {
   await page.locator('#settings-search').fill('diffdevil icon'); await capture(page, 'settings-icon-dark');
   await check('All three icon choices are real saved values, including no-icon layout', async () => { await page.locator('input[name="display.brandIcon"][value="none"]').check(); await page.waitForFunction(() => document.querySelector('#save-status')?.textContent.startsWith('Saved')); await page.waitForTimeout(30); assert.equal(settings['display.brandIcon'], 'none'); assert.equal(await page.locator('[data-icon-preview="none"] .ddx-brand').count(), 0); await page.locator('input[name="display.brandIcon"][value="full-color"]').check(); await page.waitForTimeout(30); assert.equal(settings['display.brandIcon'], 'full-color'); assert.equal(await page.locator('[data-icon-preview="full-color"] img').count(), 1); });
   await check('Theme changes preserve unsaved policy drafts and use the light identity asset', async () => { await page.locator('#theme-control [data-theme="light"]').click(); await page.waitForFunction(() => document.documentElement.dataset.theme === 'light'); await page.locator('#settings-search').fill(''); assert.equal(await page.locator('[id="control-policy.advancedYaml"]').inputValue(), 'version: 1\nunknownThing: true\n'); assert.ok((await page.locator('#wordmark').getAttribute('src')).startsWith('data:image/svg+xml')); });
-  await page.locator('#settings-search').fill('bands and label mappings'); await capture(page, 'settings-bands-light');
+  await page.locator('#settings-search').fill('bands and label mappings');
+  await page.locator('[id="policy.bands"]').scrollIntoViewIfNeeded();
+  await capture(page, 'settings-bands-editor-light');
   await check('Guided bands validate ascending thresholds and retain invalid edits for correction', async () => { await page.locator('.band-editor input[aria-label="S lt"]').fill('10'); const before = settingsWrites; await page.getByRole('button', { name: 'Save bands', exact: true }).click(); await page.locator('[id="policy.bands"] .validation-message').filter({ hasText: /./ }).waitFor(); assert.equal(settingsWrites, before); await page.getByRole('button', { name: 'Discard edits', exact: true }).click(); assert.equal(await page.locator('.band-editor input[aria-label="S lt"]').inputValue(), '100'); });
   await page.locator('#settings-search').fill(''); await page.evaluate(() => { location.hash = '#policy.repositoryOverrides'; });
   await check('Repository mode and explicit YAML save through the real settings validator', async () => { await page.locator('input[aria-label="Repository identifier"]').fill('Private/Example'); await page.locator('select[aria-label="Repository policy mode"]').selectOption('personal-only'); await page.locator('textarea[aria-label="Repository override YAML"]').fill('version: 1\nsize:\n  metric: raw.churn\n'); await page.getByRole('button', { name: 'Save repository override' }).click(); await page.locator('.repository-chip').filter({ hasText: 'private/example' }).waitFor(); assert.equal(m.overrides(settings['policy.repositoryOverrides'])['private/example'].mode, 'personal-only'); });
@@ -128,6 +130,68 @@ try {
   await check('Narrow settings viewport does not produce page-level horizontal overflow', async () => { await page.setViewportSize({ width: 375, height: 740 }); await page.locator('#settings-search').fill('bands'); const dimensions = await page.evaluate(() => ({ width: innerWidth, scroll: document.documentElement.scrollWidth })); assert.ok(dimensions.scroll <= dimensions.width + 1, JSON.stringify(dimensions)); });
   await capture(page, 'settings-mobile'); await context.close();
 
+  // The Store data-control specimen uses the real cache inventory and scoped
+  // deletion over authored data, rather than painting plausible storage rows.
+  const storeMemory = new m.MemoryStore();
+  const storeData = new m.Analysis({ cache: new m.AnalysisCache(storeMemory), engine: 'qa', now: () => Date.UTC(2026, 8, 19, 12) });
+  let storeSettings = m.validateSettings({ 'repositories.paused': m.pausedWith('{}', 'example/cinder', true, Date.UTC(2026, 8, 19, 12)) });
+  await storeData.run({ comparison, acquisition: { comparison, format: 'diff', text: diff, complete: true }, policy: { status: 'absent', at: 1 } }, m.DEFAULTS);
+  await storeMemory.run('readwrite', async tx => { for (const entry of await tx.all()) tx.put({ ...entry, touched: Date.UTC(2026, 8, 19, 12) }); });
+  const dataBackend = async message => {
+    let value;
+    switch (message.type) {
+      case 'settings.get': value = storeSettings; break;
+      case 'diagnostics.get': value = { ...await diagnostics(), cache: (await storeData.inventory()).info }; break;
+      case 'data.inventory': value = await storeData.inventory(); break;
+      case 'repository.pause': storeSettings = { ...storeSettings, 'repositories.paused': m.pausedWith(String(storeSettings['repositories.paused']), message.repository, message.paused, Date.UTC(2026, 8, 19, 12)) }; value = { paused: message.paused }; break;
+      case 'data.action':
+        assert.equal(message.confirmed, true);
+        assert.ok(['data.clearPullRequest', 'data.clearRepository'].includes(message.action));
+        await storeData.clearScope(m.repositoryKey(message.repository), message.action === 'data.clearPullRequest' ? message.pullRequest : undefined);
+        value = { ...await diagnostics(), cache: (await storeData.inventory()).info }; break;
+      default: throw new Error(`Unexpected Store data fixture message: ${message.type}`);
+    }
+    return { ok: true, value };
+  };
+  const dataScene = await optionsPage(false, false, dataBackend);
+  await dataScene.page.evaluate(() => { location.hash = '#repositories.paused'; });
+  await dataScene.page.locator('.inventory-repository summary').click();
+  await dataScene.page.locator('[id="repositories.paused"]').scrollIntoViewIfNeeded();
+  await check('The Store local-data specimen shows production inventory and separate pause/resume and scoped clear controls', async () => {
+    assert.equal(await dataScene.page.locator('.paused-name').textContent(), 'example/cinder');
+    assert.match(await dataScene.page.locator('.inventory-pull').innerText(), /#42.*measured 2.*bounded 0/su);
+    assert.equal(await dataScene.page.getByRole('button', { name: 'Resume', exact: true }).count(), 1);
+    assert.equal(await dataScene.page.getByRole('button', { name: 'Clear this PR', exact: true }).count(), 1);
+    assert.equal(await dataScene.page.getByRole('button', { name: 'Clear this repository', exact: true }).count(), 1);
+    await capture(dataScene.page, 'settings-data-light');
+  });
+  await check('Declining a scoped clear preserves the report; confirming removes it without resuming the repository', async () => {
+    dataScene.page.once('dialog', dialog => dialog.dismiss());
+    await dataScene.page.getByRole('button', { name: 'Clear this PR', exact: true }).click();
+    assert.equal((await storeData.inventory()).info.reportEntries, 1);
+    dataScene.page.once('dialog', dialog => dialog.accept());
+    await dataScene.page.getByRole('button', { name: 'Clear this PR', exact: true }).click();
+    await dataScene.page.waitForFunction(() => document.querySelectorAll('.inventory-pull').length === 0);
+    assert.equal((await storeData.inventory()).info.reportEntries, 0);
+    assert.equal(await dataScene.page.locator('.paused-name').textContent(), 'example/cinder');
+    await dataScene.page.getByRole('button', { name: 'Resume', exact: true }).click();
+    await dataScene.page.getByText('No repository is paused.', { exact: true }).waitFor();
+  });
+  await dataScene.context.close();
+
+  const storeBands = m.bands(String(m.DEFAULTS['policy.bands']));
+  storeBands[0].lt = 25;
+  settings = await preferences.save({ ...m.DEFAULTS, 'policy.mode': 'repository', 'policy.bands': JSON.stringify(storeBands) }, true);
+  const policyScene = await optionsPage(false);
+  await policyScene.page.locator('#settings-search').fill('@modified');
+  await policyScene.page.locator('[id="policy.mode"]').evaluate(element => element.scrollIntoView({ block: 'start' }));
+  await check('The Store policy specimen shows trusted-base mode and editable personal bands together', async () => {
+    assert.equal(await policyScene.page.locator('[id="control-policy.mode"]').inputValue(), 'repository');
+    assert.equal(await policyScene.page.locator('.band-editor input[aria-label="XS lt"]').inputValue(), '25');
+    await capture(policyScene.page, 'settings-bands-light');
+  });
+  await policyScene.context.close();
+
   settings = await preferences.save(m.DEFAULTS, true); currentPacket = packet();
   const scene = await contentPage({ files: false }); const github = scene.page;
   await check('Aggregate seat arrives before lazy-rendered files: Changed, the indivisible triplet, the proposed size chip, the rail and local provenance', async () => { assert.equal(await github.locator('[data-ddx="aggregate"] .ddx-value').textContent(), '178'); assert.equal((await github.locator('[data-ddx="aggregate"] .ddx-parts').innerText()).replace(/\s+/gu, ' '), '+60 −18 ~100'); assert.equal(await github.locator('[data-ddx="aggregate"] .ddx-chip').innerText(), 'size/M'); assert.equal(await github.locator('[data-ddx="aggregate"] .ddx-chip').getAttribute('data-standing'), 'proposed'); assert.equal(await github.locator('[data-ddx="aggregate"] .ddx-cell').count(), 5); assert.equal(await github.locator('[data-ddx="aggregate"] .ddx-selected').count(), 1); assert.equal(await github.locator('[data-ddx="aggregate"] .ddx-provenance').textContent(), 'local'); assert.equal(await github.locator('[data-ddx="aggregate"] .ddx-trigger').getAttribute('aria-haspopup'), 'dialog'); });
@@ -136,6 +200,15 @@ try {
   await check('Repeated soft navigation and unrelated mutations do not duplicate or reacquire', async () => { await github.evaluate(() => { for (let i = 0; i < 20; i++) { document.dispatchEvent(new Event('soft-nav:payload')); const div = document.createElement('div'); div.textContent = 'unrelated'; document.body.append(div); div.remove(); } }); await github.waitForTimeout(100); assert.equal(await github.locator('.ddx-root').count(), 4); assert.equal(await github.evaluate(() => fixture.calls), 1); });
   await check('Once Changed is known, GitHub’s native diffstat is hidden in place, never removed', async () => { const result = await github.locator('.gh-header-meta .diffstat').evaluate(element => ({ display: getComputedStyle(element).display, present: element.isConnected, hidden: element.classList.contains('ddx-native-hidden') })); assert.deepEqual(result, { display: 'none', present: true, hidden: true }); });
   await capture(github, 'github-dark');
+  await check('Store aggregate and file seats retain the fixture host’s right edge', async () => {
+    for (const selector of ['.gh-header-meta', '.fixture-file .file-header', '.fixture-file [data-testid="file-header"]']) {
+      const box = await github.locator(selector).evaluate(host => {
+        const seat = host.querySelector('.ddx-root');
+        return { host: host.getBoundingClientRect().right - parseFloat(getComputedStyle(host).paddingRight), seat: seat.getBoundingClientRect().right };
+      });
+      assert.ok(Math.abs(box.host - box.seat) < 2, `${selector}: ${JSON.stringify(box)}`);
+    }
+  });
   const aggregate = github.locator('[data-ddx="aggregate"] .ddx-trigger');
   await check('Report popover is one persistent, non-modal anchored surface', async () => { await aggregate.click(); const panel = github.locator('.ddx-popover'); await panel.waitFor(); const headingId = await panel.locator('h2').getAttribute('id'); assert.ok(headingId); assert.equal(await panel.getAttribute('role'), 'dialog'); assert.equal(await panel.getAttribute('aria-labelledby'), headingId); assert.equal(await panel.getAttribute('aria-label'), null); assert.equal(await panel.getAttribute('aria-modal'), null); const text = (await panel.innerText()).toLowerCase(); assert.ok(text.includes('178') && text.includes('changed') && text.includes('= exact') && text.includes('raw') && text.includes('effect plan') && text.includes('copy facts'), text); assert.equal(await github.locator('.ddx-popover-host').evaluate(host => Boolean(host.shadowRoot)), true); assert.equal(await panel.locator('.ddx-close').evaluate(close => close.getRootNode().activeElement === close), true); assert.equal(await github.evaluate(() => document.body.style.overflow), ''); assert.equal(await github.locator('.ddx-popover').count(), 1); });
   await check('Constrained report keeps its full comparison subtitle visible', async () => {
@@ -268,7 +341,14 @@ ${await page.evaluate(() => JSON.stringify({ calls: fixture.calls, href: fixture
     assert.match(await continuity.page.locator('[data-ddx="aggregate"] .ddx-evidence').textContent(), /bounded/u);
     await continuity.page.locator('[data-ddx="aggregate"] .ddx-trigger').click(); const text = await reportText();
     assert.match(text, /measured\s+4/u); assert.match(text, /bounded\s+7/u); assert.match(text, /provider-declined\s+1/u); assert.match(text, /total\s+12/u); assert.match(text, /automatic limit 6 · 4 measured automatically/u); assert.ok(await continuity.page.getByRole('button', { name: 'Analyze remaining files' }).count() === 1);
-    await capture(continuity.page, 'continuity-report-partial');
+    // The public specimen must not inherit the two unrelated cache/renderer
+    // rows from the generic DOM harness: their native counters belong to a
+    // different comparison. Render only matching measured rows here.
+    const storeCoverage = await contentPage({ files: false, value: worldPacket, data: worldComparison, settings: worldSettings, backend: worldBackend, measure: worldMeasure, headers: [fileName(0), fileName(1)], headersRoot: '#fixture-files' });
+    await storeCoverage.page.locator('[data-ddx="aggregate"] .ddx-trigger').click();
+    await capture(storeCoverage.page, 'continuity-report-partial');
+    await storeCoverage.page.evaluate(() => controller.stop());
+    await storeCoverage.context.close();
   });
   const shadowFocus = () => continuity.page.evaluate(() => { const active = document.querySelector('.ddx-popover-host')?.shadowRoot?.activeElement; return active ? { key: active.dataset.key ?? null, role: active.getAttribute('role'), text: active.textContent } : null; });
   await check('Files rendered below the viewport are not the reader’s demand: nothing is measured until they are scrolled onto', async () => {
@@ -437,7 +517,7 @@ ${await page.evaluate(() => JSON.stringify({ calls: fixture.calls, href: fixture
 } catch (error) { failure = error; }
 finally {
   await browser.close(); await loaded.cleanup();
-  const result = { kind: 'diffdevil.extension.dom-qa/1', mode: 'production DOM/controllers with deterministic test transport and storage', browser: 'Chromium via Playwright', installedExtensionVerified: false, liveGitHubVerified: false, checks, passed: checks.filter(check => check.status === 'passed').length, failed: checks.filter(check => check.status === 'failed').length, pageErrors: errors, networkRequests: network, screenshots, timings: measurements, timingQualification: 'Single sandbox samples, including JIT effects; not a performance benchmark or live latency measurement.' };
+  const result = { kind: 'diffdevil.extension.dom-qa/1', completed: !failure, mode: 'production DOM/controllers with deterministic test transport and storage', browser: 'Chromium via Playwright', installedExtensionVerified: false, liveGitHubVerified: false, checks, passed: checks.filter(check => check.status === 'passed').length, failed: checks.filter(check => check.status === 'failed').length, pageErrors: errors, networkRequests: network, screenshots, timings: measurements, timingQualification: 'Single sandbox samples, including JIT effects; not a performance benchmark or live latency measurement.' };
   await writeFile(join(out, 'receipt.json'), `${JSON.stringify(result, null, 2)}\n`);
   console.log(JSON.stringify({ passed: result.passed, failed: result.failed, screenshots: screenshots.length, qualification: result.mode }, null, 2));
 }

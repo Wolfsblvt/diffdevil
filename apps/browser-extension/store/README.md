@@ -21,9 +21,9 @@ apps/browser-extension/store/
     screenshots/
       01-changed-on-github.png
       02-inspect-the-report.png
-      03-your-icon-preference.png
+      03-large-pr-coverage.png
       04-your-policy-bands.png
-      05-honest-uncertainty.png
+      05-local-data-control.png
     promo/
       small-promo-440x280.png
       small-promo-440x280.svg
@@ -66,6 +66,6 @@ npm run extension:store:generate
 
 The generation command intentionally rewrites the tracked `assets/` tree from the real extension UI, authored GitHub fixtures and accepted identity source. Inspect the image set, manifest, captions and resulting Git diff before committing it. Ordinary verification and packaging must not silently change Store artwork.
 
-The five screenshots render the actual production interface against explicitly authored fixtures. They are not captures of a private repository or proof of live provider behavior. The promotional compositions use the same exact fixture facts: 178 Changed = 60 added-only + 18 deleted-only + 100 modified; raw +160/−118 = 278 churn. Store copy and reviewer notes preserve that boundary honestly.
+The five screenshots render the actual production interface against explicitly authored fixtures: right-aligned aggregate/file seats, the inspectable report, bounded large-PR coverage and continuation, personal policy bands, and local pause/resume plus scoped data controls. They are not captures of a private repository or proof of live provider behavior. The promotional compositions use the same exact fixture facts: 178 Changed = 60 added-only + 18 deleted-only + 100 modified; raw +160/−118 = 278 churn. Store copy and reviewer notes preserve that boundary honestly.
 
 Assets remain reserved product artwork. The extension's small monochrome interface slot uses the accepted centre-seam product glyph; the Store icon uses the accepted master symbol. No font files or remotely hosted executable code are introduced by the Store kit.
