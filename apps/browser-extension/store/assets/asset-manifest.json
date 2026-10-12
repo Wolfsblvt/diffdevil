@@ -33,7 +33,7 @@
       "height": 800,
       "depth": 8,
       "colorType": 2,
-      "sha256": "37462e5e48513efd683f92171ba521a3a314104cee2a2467632bf78482e9aa26",
+      "sha256": "e2f9d89fd76c1acc8be99724075442576f9f3e1e0630e538c56d96e47cfca863",
       "generatedFrom": "artifacts/browser-extension/qa/continuity-report-partial.png",
       "caption": "A bounded comparison names measured, bounded and provider-declined files, with one explicit Analyze remaining files action.",
       "standing": "Actual production UI in an explicitly authored fixture; not a live or installed-extension capture."

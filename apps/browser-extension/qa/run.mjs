@@ -89,9 +89,9 @@ async function optionsPage(dark = true, mobile = false, backend = rpc) {
   await env.page.evaluate(() => { const notice = document.createElement('div'); notice.id = 'qa-note'; notice.textContent = 'Rendered source candidate · Test storage · Not an installed-extension capture'; notice.style.cssText = 'position:fixed;bottom:0;left:0;right:0;text-align:center;padding:4px;z-index:9999;background:var(--bg);color:var(--fg-3);font:10px sans-serif;border-top:1px solid var(--hair)'; document.body.append(notice); });
   return env;
 }
-async function contentPage({ dark = true, modern = false, files = true, mobile = false, data = comparison, value = currentPacket, href, failures = 0, ready = '.ddx-root[data-ddx="aggregate"]', backend, measure, headers = [], headerHeight = 30, verifyResult, settings: pageSettings } = {}) {
+async function contentPage({ dark = true, modern = false, files = true, mobile = false, data = comparison, value = currentPacket, href, failures = 0, ready = '.ddx-root[data-ddx="aggregate"]', backend, measure, headers = [], headerHeight = 30, headersRoot = 'main', verifyResult, settings: pageSettings } = {}) {
   const env = await environment({ dark, mobile, ...(backend ? { backend } : {}) });
-  if (measure) await env.page.exposeFunction('__measure', measure); await env.page.setContent(githubHtml({ dark, modern, files, data })); await env.page.addStyleTag({ content: githubCss + storeSeatCss + contentCss }); if (headers.length) await env.page.evaluate(({ paths, height }) => { for (const path of paths) document.querySelector('main').insertAdjacentHTML('beforeend', '<section data-path="' + path + '" style="min-height:' + height + 'px"><div class="file-header" data-path="' + path + '" style="height:30px"><span>' + path + '</span><span class="diffstat"><span>+2</span> <span>−1</span></span></div></section>'); }, { paths: headers, height: headerHeight }); await env.page.addScriptTag({ content: domCode });
+  if (measure) await env.page.exposeFunction('__measure', measure); await env.page.setContent(githubHtml({ dark, modern, files, data })); await env.page.addStyleTag({ content: githubCss + storeSeatCss + contentCss }); if (headers.length) await env.page.evaluate(({ paths, height, target }) => { for (const path of paths) document.querySelector(target).insertAdjacentHTML('beforeend', '<section data-path="' + path + '" style="min-height:' + height + 'px"><div class="file-header" data-path="' + path + '" style="height:30px"><span>' + path + '</span><span class="diffstat"><span>+2</span> <span>−1</span></span></div></section>'); }, { paths: headers, height: headerHeight, target: headersRoot }); await env.page.addScriptTag({ content: domCode });
   await env.page.evaluate(({ packet, settings, href, failures, verifyResult }) => {
     globalThis.fixture = { href: href ?? 'https://github.com/example/cinder/pull/42/files', packet, settings, calls: 0, delay: 0, failures, verifyResult };
     globalThis.controller = DiffdevilUnderTest.startContent({ href: () => fixture.href, acquire: async () => {
@@ -341,7 +341,14 @@ ${await page.evaluate(() => JSON.stringify({ calls: fixture.calls, href: fixture
     assert.match(await continuity.page.locator('[data-ddx="aggregate"] .ddx-evidence').textContent(), /bounded/u);
     await continuity.page.locator('[data-ddx="aggregate"] .ddx-trigger').click(); const text = await reportText();
     assert.match(text, /measured\s+4/u); assert.match(text, /bounded\s+7/u); assert.match(text, /provider-declined\s+1/u); assert.match(text, /total\s+12/u); assert.match(text, /automatic limit 6 · 4 measured automatically/u); assert.ok(await continuity.page.getByRole('button', { name: 'Analyze remaining files' }).count() === 1);
-    await capture(continuity.page, 'continuity-report-partial');
+    // The public specimen must not inherit the two unrelated cache/renderer
+    // rows from the generic DOM harness: their native counters belong to a
+    // different comparison. Render only matching measured rows here.
+    const storeCoverage = await contentPage({ files: false, value: worldPacket, data: worldComparison, settings: worldSettings, backend: worldBackend, measure: worldMeasure, headers: [fileName(0), fileName(1)], headersRoot: '#fixture-files' });
+    await storeCoverage.page.locator('[data-ddx="aggregate"] .ddx-trigger').click();
+    await capture(storeCoverage.page, 'continuity-report-partial');
+    await storeCoverage.page.evaluate(() => controller.stop());
+    await storeCoverage.context.close();
   });
   const shadowFocus = () => continuity.page.evaluate(() => { const active = document.querySelector('.ddx-popover-host')?.shadowRoot?.activeElement; return active ? { key: active.dataset.key ?? null, role: active.getAttribute('role'), text: active.textContent } : null; });
   await check('Files rendered below the viewport are not the reader’s demand: nothing is measured until they are scrolled onto', async () => {
