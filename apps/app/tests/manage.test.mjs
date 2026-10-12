@@ -158,7 +158,10 @@ test('an applied reward-only answer is Free with visible benefits, distinct from
   assert.equal(queued.planSub, 'No funded subscription');
   assert.deepEqual(queued.rows.map(row => row.term), ['Subscription', 'Additional organisation slot']);
   assert.equal(queued.rows[1].value, 'Queued');
-  assert.match(queued.rows[1].sub, /Community contribution · Apply before 8 Apr 2027/u);
+  assert.match(queued.rows[1].sub, /Community contribution · Starts automatically with compatible Pro or Business coverage before 8 Apr 2027/u);
+  const withoutDeadline = presentProjection({ ...status, fundedComponents: [{ ...status.fundedComponents[0], applicationDeadline: null }] });
+  assert.match(withoutDeadline.rows[1].sub, /Starts automatically with compatible Pro or Business coverage/u);
+  assert.ok(!/before|Apply/u.test(withoutDeadline.rows[1].sub));
   assert.equal(queued.compareable, false);
   assert.equal(queued.choosing, null);
   assert.deepEqual(queued.slotBanners, []);

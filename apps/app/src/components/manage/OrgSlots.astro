@@ -18,11 +18,15 @@ const fundable = fundableOrganisations(model);
 const byAccount = (id: number) => model.namespaces.find((namespace: any) => namespace.accountId === id);
 const slotNumber = (slot: string) => slot.replace(/^slot-/u, '');
 const addHref = model.worksOrigin ? `/manage/depart?to=experience&purpose=add-slot&from=${encodeURIComponent(`${Astro.url.pathname}${Astro.url.search}`)}` : null;
+let personalAllowance = 'No repository limit';
+if (model.viewerPlan === 'Unknown') personalAllowance = 'Plan not established';
+else if (model.viewerPlan === 'Free') personalAllowance = model.allowances.free.private === null && model.allowances.free.publicHistory === null
+  ? 'No repository limit on this deployment' : 'Pooled Free allowance';
 ---
 <div class="m-orgs">
-  {!status?.linked
+  {!status?.linked || model.viewerPlan === 'Free'
     ? <>
-        <div class="m-org"><span class="k">Personal</span><b><Avatar login={model.login} kind="user" />{model.login}</b><span class="d">{model.viewerPlan === 'Free' ? 'Pooled Free allowance' : model.viewerPlan === 'Unknown' ? 'Plan not established' : 'No repository limit'}</span></div>
+        <div class="m-org"><span class="k">Personal</span><b><Avatar login={model.login} kind="user" />{model.login}</b><span class="d">{personal?.installation?.state === 'suspended' ? <><Icon name="circle-alert" size={12} /> installation suspended</> : personalAllowance}</span></div>
         {model.freeConnected
           ? <div class="m-org"><span class="k">Connected organisation</span><b><Avatar login={model.freeConnected.login} kind="org" />{model.freeConnected.login}</b><span class="d">Free connects one organisation</span></div>
           : <div class="m-org open"><span class="k">Connected organisation</span><b class="quiet">None yet</b><span class="d">Free connects one organisation you administer</span></div>}

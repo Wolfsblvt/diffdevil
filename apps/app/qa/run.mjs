@@ -554,12 +554,13 @@ try {
   await signIn();
   await participationJourney(ctx);
 
-  for (const state of ['queued', 'expired']) {
+  for (const [state, unlimited] of [['queued', false], ['expired', false], ['queued', true]]) {
     await stopWorker();
     await startWorker(undefined, STATE, { commercial: { ...COMMERCIAL_REWARD_ONLY,
-      fundedComponents: COMMERCIAL_REWARD_ONLY.fundedComponents.map(component => ({ ...component, state })) } });
+      fundedComponents: COMMERCIAL_REWARD_ONLY.fundedComponents.map(component => ({ ...component, state, application_deadline: unlimited ? null : component.application_deadline })) },
+      allowances: { free: { private: unlimited ? null : 3, publicHistory: unlimited ? null : 10 }, proOrganisation: { private: 3 } } });
     await signIn();
-    await rewardOnlyJourney(ctx, state);
+    await rewardOnlyJourney(ctx, state, { unlimited });
   }
 
   await stopWorker();
