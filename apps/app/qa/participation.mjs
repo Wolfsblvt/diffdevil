@@ -78,7 +78,15 @@ export async function nullableReceiverJourney({ page, go, check, shot, ORIGIN })
 }
 
 export async function rewardOnlyJourney({ page, go, check, shot }, state) {
-  await go('/manage/plan');
+  await go('/manage');
+  const band = page.locator('[data-plan-band]');
+  check(`${state} Manage overview shows Free with readable linked-benefits standing`, await band.locator('.m-planname b').textContent() === 'Free'
+    && await band.locator('.m-st.info').filter({ hasText: 'Works benefits linked' }).count() === 1
+    && !/reward-only/u.test(await band.innerText()));
+  check(`${state} linked-benefits overview does not present a warning`, await band.locator('.m-planname .m-st.warn, .m-planname .m-st.err').count() === 0);
+  await shot(`reward-only-${state}-overview`);
+  await Promise.all([page.waitForURL('**/manage/plan'), band.getByRole('link', { name: 'Plan & funding', exact: true }).click()]);
+  await page.waitForLoadState('networkidle');
   const card = page.locator('[data-standing="reward-only"]');
   check(`${state} reward-only state shows Free and confirmed benefits`, await card.count() === 1 && await card.locator('.plan b').textContent() === 'Free'
     && /No funded subscription/u.test(await card.innerText()));
