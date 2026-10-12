@@ -72,19 +72,25 @@ export async function nullableReceiverJourney({ page, go, check, shot, ORIGIN })
   await go('/manage/plan');
   check('the same stable component can render active beside the funded Pro base', await page.locator('[data-standing="funded"] .plan b').textContent() === 'Pro'
     && /Active reward/u.test(await page.locator('[data-standing="funded"]').innerText()));
+  check('a funded Pro base retains its included personal capacity card', /Personal · included/u.test(await page.locator('[data-funds]').innerText())
+    && !/Pooled Free allowance/u.test(await page.locator('[data-funds]').innerText()));
   check('a reward term end does not claim removal or funding an unbound organisation', !/You removed it at Works/u.test(await page.locator('.m-stack').innerText())
     && /currently funds no organisation/u.test(await page.locator('.m-stack').innerText()));
   await shot('reward-component-full-base-active');
 }
 
-export async function rewardOnlyJourney({ page, go, check, shot }, state) {
+export async function rewardOnlyJourney({ page, go, check, shot }, state, { unlimited = false } = {}) {
+  const capture = `${state}${unlimited ? '-unlimited' : ''}`;
   await go('/manage');
   const band = page.locator('[data-plan-band]');
   check(`${state} Manage overview shows Free with readable linked-benefits standing`, await band.locator('.m-planname b').textContent() === 'Free'
     && await band.locator('.m-st.info').filter({ hasText: 'Works benefits linked' }).count() === 1
     && !/reward-only/u.test(await band.innerText()));
   check(`${state} linked-benefits overview does not present a warning`, await band.locator('.m-planname .m-st.warn, .m-planname .m-st.err').count() === 0);
-  await shot(`reward-only-${state}-overview`);
+  const personal = band.locator('.m-org').first();
+  check(`${capture} personal capacity follows the actual Free allowance`, (await personal.innerText()).includes(unlimited ? 'No repository limit on this deployment' : 'Pooled Free allowance')
+    && !/Personal · included/u.test(await personal.innerText()) && (unlimited || !/No repository limit/u.test(await personal.innerText())));
+  await shot(`reward-only-${capture}-overview`);
   await Promise.all([page.waitForURL('**/manage/plan'), band.getByRole('link', { name: 'Plan & funding', exact: true }).click()]);
   await page.waitForLoadState('networkidle');
   const card = page.locator('[data-standing="reward-only"]');
@@ -95,11 +101,17 @@ export async function rewardOnlyJourney({ page, go, check, shot }, state) {
   check(`${state} reward-only plan keeps Works management and unlink available`, await card.getByRole('link', { name: 'Gifts and benefits' }).count() === 1
     && await page.getByRole('button', { name: 'Unlink…' }).count() === 1);
   check(`${state} component does not invent a renewal or protection`, !/Funded through|Next renewal|Price protected|Waiting for Works/u.test(await card.innerText()));
-  await shot(`reward-only-${state}`);
+  if (state === 'queued') check(`${capture} queued benefit explains automatic compatible-coverage start without an Apply action`, /Starts automatically with compatible Pro or Business coverage/u.test(await card.innerText())
+    && (unlimited ? !/before/u.test(await card.innerText()) : /before 1 Jun 2030/u.test(await card.innerText()))
+    && !/Apply before/u.test(await card.innerText()) && await card.getByRole('button', { name: /Apply/u }).count() === 0);
+  check(`${capture} Plan displays the actual private and public-history allowances`, unlimited
+    ? await card.locator('.m-allowg .num').filter({ hasText: 'no limit' }).count() === 2
+    : await card.locator('.m-allowg [aria-label*="private slots"], .m-allowg [aria-label*="public history places"]').count() === 2);
+  await shot(`reward-only-${capture}`);
   if (state === 'queued') {
     await page.setViewportSize({ width: 390, height: 844 });
     check('reward-only standing fits a narrow viewport', await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
-    await shot('reward-only-queued-mobile');
+    await shot(`reward-only-${capture}-mobile`);
     await page.setViewportSize({ width: 1440, height: 900 });
   }
 }

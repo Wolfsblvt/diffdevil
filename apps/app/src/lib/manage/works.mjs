@@ -3,7 +3,7 @@
  * The product-facing Wirt seam of Plan & funding: the six Works destinations the standing card opens in the DiffDevil
  * frame, and the presentation of a benefit projection (wirt.benefit-projection/v1, restricted renewal presentation) as
  * the commercial consumer's status route reports it. diffdevil never calculates an amount; the renewal total is the
- * display-only figure Works supplies. No grace length, end date or countdown is shown anywhere.
+ * display-only figure Works supplies. No grace length or countdown is invented; supplied component dates stay visible.
  */
 
 /** Works-hosted pages. `null` origin (no Works configured) leaves every exit unavailable rather than guessed. */
@@ -112,9 +112,9 @@ export function presentProjection(status, { works, ended = false } = {}) {
   }
   const componentStates = { available: 'Available', queued: 'Queued', active: 'Active reward', expired: 'Expired', ended: 'Ended', corrected: 'Corrected', withdrawn: 'Withdrawn', unknown: 'Unknown' };
   for (const component of status?.fundedComponents ?? []) {
-    const dates = component.endsOn ? `Through ${dayBefore(component.endsOn) ?? '—'}`
-      : component.state === 'queued' && component.applicationDeadline ? `Apply before ${fmtDay(component.applicationDeadline) ?? '—'}` : null;
-    rows.push({ term: component.name, value: componentStates[component.state] ?? 'Unknown', sub: [component.reason, dates].filter(Boolean).join(' · ') });
+    const start = component.state === 'queued' ? `Starts automatically with compatible Pro or Business coverage${component.applicationDeadline ? ` before ${fmtDay(component.applicationDeadline) ?? '—'}` : ''}` : null;
+    const term = component.endsOn ? `Through ${dayBefore(component.endsOn) ?? '—'}` : null;
+    rows.push({ term: component.name, value: componentStates[component.state] ?? 'Unknown', sub: [component.reason, start, term].filter(Boolean).join(' · ') });
   }
   // A grant names what funds the period (the beta month is one); whether anything follows it is Works' renewal preference.
   // Its `until` is the end date Works sends, like the period's `ends_on`, so both read as the last funded day.
