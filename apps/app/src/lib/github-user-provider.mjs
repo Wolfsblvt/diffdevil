@@ -54,7 +54,7 @@ export function createGitHubUserProvider({ clientId, clientSecret, callbackUrl, 
       const memberships = await json(`${api}/user/memberships/orgs?per_page=${PAGE}&page=${page}`, { token });
       if (!Array.isArray(memberships) || memberships.some(value => !Number.isSafeInteger(value?.organization?.id)
         || value.organization.id <= 0 || typeof value.organization.login !== 'string' || !value.organization.login
-        || !['active', 'pending'].includes(value.state) || !['admin', 'member'].includes(value.role))) throw providerError('E_PROVIDER_RESPONSE');
+        || !['active', 'pending'].includes(value.state))) throw providerError('E_PROVIDER_RESPONSE');
       const membership = memberships.find(matches);
       if (membership) return membership;
       if (memberships.length < PAGE) return null;
@@ -158,10 +158,11 @@ export function createGitHubUserProvider({ clientId, clientSecret, callbackUrl, 
       const membership = await organisationMembership(material.accessToken, value => value.organization.id === organisationId);
       return { administer: membership?.role === 'admin' && membership?.state === 'active', login: membership?.organization.login ?? null };
     },
-    /** Active membership role for this login (GitHub logins are case insensitive), or none after a complete read. */
+    /** Active admin or non-admin member for this login, or none. Provider roles never expand App administration. */
     async organizationRole({ material, organization }) {
       const membership = await organisationMembership(material.accessToken, value => value.organization.login.toLowerCase() === organization.toLowerCase());
-      return membership?.state === 'active' ? membership.role : 'none';
+      if (membership?.state !== 'active') return 'none';
+      return membership.role === 'admin' ? 'admin' : 'member';
     },
     /** GitHub's 100 most recently updated pull requests of one repository: lifecycle facts, transiently. */
     async recentPullRequests({ material, fullName }) {

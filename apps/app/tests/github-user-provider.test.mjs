@@ -41,6 +41,21 @@ test('only active membership grants an organisation role or administration', asy
   assert.equal(await provider.organizationRole({ material, organization: 'not-a-member' }), 'none');
 });
 
+test('a billing-manager membership does not poison administration of an unrelated organisation', async () => {
+  const { provider } = fixture(() => Response.json([membership(7002, 'billing-org', 'billing_manager'), membership(7001, 'owned-org')]));
+  assert.deepEqual(await provider.checkOrganisationAdministration({ material, organisationId: 7001 }), { administer: true, login: 'owned-org' });
+  assert.equal(await provider.organizationRole({ material, organization: 'OWNED-ORG' }), 'admin');
+});
+
+test('billing managers have a non-admin role and pending membership still grants no role', async () => {
+  const rows = [membership(7001, 'billing-org', 'billing_manager'), membership(7002, 'pending-billing', 'billing_manager', 'pending')];
+  const { provider } = fixture(() => Response.json(rows));
+  for (const row of rows) {
+    assert.deepEqual(await provider.checkOrganisationAdministration({ material, organisationId: row.organization.id }), { administer: false, login: row.organization.login });
+    assert.equal(await provider.organizationRole({ material, organization: row.organization.login }), row.state === 'active' ? 'member' : 'none');
+  }
+});
+
 test('both authority observations reach memberships on later pages', async () => {
   const first = Array.from({ length: 100 }, (_, index) => membership(index + 1, `org-${index + 1}`, 'member'));
   const { provider, requests } = fixture(page => Response.json(page === 1 ? first : [membership(7001, 'later-org')]));
@@ -74,7 +89,7 @@ test('provider refusals and rate limits never claim absent membership', async ()
 });
 
 test('malformed membership evidence does not become negative authority', async () => {
-  for (const payload of [{}, [null], [membership('7001', 'org')], [membership(7001, '')], [membership(7001, 'org', 'unexpected')], [membership(7001, 'org', 'admin', 'unexpected')]]) {
+  for (const payload of [{}, [null], [membership('7001', 'org')], [membership(7001, '')], [membership(7001, 'org', 'admin', 'unexpected')]]) {
     const { provider } = fixture(() => Response.json(payload));
     await assert.rejects(provider.checkOrganisationAdministration({ material, organisationId: 7001 }), { code: 'E_PROVIDER_RESPONSE' });
     await assert.rejects(provider.organizationRole({ material, organization: 'org' }), { code: 'E_PROVIDER_RESPONSE' });
