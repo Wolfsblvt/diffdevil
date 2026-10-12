@@ -70,16 +70,24 @@ test('the viewer sees GitHub-reachable repositories with their App standing and 
   assert.deepEqual(Object.fromEntries(paid.namespaces.map(namespace => [namespace.login, namespace.plan])), { 'ada-sample': 'Pro', 'parser-guild': 'Pro', 'northwind-tools': 'Business', 'kai-sample': 'Free' });
 });
 
-test('the signed-in authority and viewer keep pending membership and failed provider reads distinct without Members-read', async () => {
+test('the signed-in authority and viewer handle billing managers, pending membership and failed reads without Members-read', async () => {
   const { app: compose, github } = await fixture();
   const app = compose();
   const { cookie } = await signIn(app);
   const callStart = github.calls.length;
   try {
     assert.deepEqual(await app.auth.organisationAuthority({ session: cookie, organisationId: 7001 }), { userId: 123, authority: 'present', display: 'parser-guild' });
+    github.state.roles.set('northwind-tools', 'billing_manager');
+    assert.deepEqual(await app.auth.organisationAuthority({ session: cookie, organisationId: 7001 }), { userId: 123, authority: 'present', display: 'parser-guild' });
+    assert.deepEqual(await app.auth.organisationAuthority({ session: cookie, organisationId: 7002 }), { userId: 123, authority: 'absent', display: null });
+    const opened = await openSession(new Request(`${ORIGIN}/`, { headers: { cookie: `${SESSION_COOKIE}=${cookie}` } }), app);
+    const billingViewer = await resolveViewer({ reads: opened.reads, actor: opened.actor, store: app.store, entitlement: app.entitlement, cache: app.cache });
+    assert.equal(billingViewer.namespaces.find(namespace => namespace.login === 'parser-guild').role, 'admin');
+    assert.equal(billingViewer.namespaces.find(namespace => namespace.login === 'parser-guild').yours, true);
+    assert.equal(billingViewer.namespaces.find(namespace => namespace.login === 'northwind-tools').role, 'member');
+    assert.equal(billingViewer.namespaces.find(namespace => namespace.login === 'northwind-tools').yours, false);
     github.state.membershipStates.set('parser-guild', 'pending');
     assert.deepEqual(await app.auth.organisationAuthority({ session: cookie, organisationId: 7001 }), { userId: 123, authority: 'absent', display: null });
-    const opened = await openSession(new Request(`${ORIGIN}/`, { headers: { cookie: `${SESSION_COOKIE}=${cookie}` } }), app);
     assert.equal(await opened.reads.organizationRole('parser-guild'), 'none');
     // Only the membership endpoint is unavailable; the same stored grant still verifies.
     github.state.membershipStatus = 404;
@@ -93,7 +101,7 @@ test('the signed-in authority and viewer keep pending membership and failed prov
     assert.ok(paths.includes('/user/memberships/orgs'));
     assert.equal(paths.some(path => /^\/user\/memberships\/orgs\//u.test(path)), false);
   } finally {
-    github.state.membershipStates.clear(); github.state.membershipStatus = 200; app.cache.clear();
+    github.state.roles.clear(); github.state.membershipStates.clear(); github.state.membershipStatus = 200; app.cache.clear();
   }
 });
 
