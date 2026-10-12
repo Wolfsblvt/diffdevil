@@ -20,6 +20,30 @@ export const COMMERCIAL_BETA = Object.freeze({ account: 123, linked: true, since
 /** QA's campaign configuration: an open window around the run, no invitation delay, a one-day reminder. Not a launch default. */
 export const QA_CAMPAIGN = Object.freeze({ key: 'qa-beta-survey', version: 1, survey: 'beta-v1', name: 'Beta survey', opensAt: '2026-01-01T00:00:00Z', closesAt: '2029-12-01T00:00:00Z', inviteAfterDays: 0, reminderAfterDays: 1 });
 
+/** A separate synthetic component reward, outside the beta survey; it grants no subscription or capacity. */
+export const COMMERCIAL_REWARD_ONLY = Object.freeze({ account: 123, linked: true, since: '2026-10-02', commercial: null, capacity: [], grants: [], protection: null,
+  fundedComponents: [{ component_id: 'reward-component:1', funding: 'participation-reward', component_kind: 'paid-subject', capacity_type: 'organisation',
+    name: 'Additional organisation slot', reason: 'Community contribution', state: 'queued', starts_on: null, ends_on: null, application_deadline: '2030-06-01T00:00:00Z' }] });
+
+export async function rewardOnlyJourney({ page, go, check, shot }, state) {
+  await go('/manage/plan');
+  const card = page.locator('[data-standing="reward-only"]');
+  check(`${state} reward-only state shows Free and confirmed benefits`, await card.count() === 1 && await card.locator('.plan b').textContent() === 'Free'
+    && /No funded subscription/u.test(await card.innerText()));
+  check(`${state} component facts stay visible without pretending to be a funded slot`, (await card.innerText()).includes('Community contribution')
+    && (await card.innerText()).includes(state === 'queued' ? 'Queued' : 'Expired') && await page.locator('[data-funds], [data-compare]').count() === 0);
+  check(`${state} reward-only plan keeps Works management and unlink available`, await card.getByRole('link', { name: 'Gifts and benefits' }).count() === 1
+    && await page.getByRole('button', { name: 'Unlink…' }).count() === 1);
+  check(`${state} component does not invent a renewal or protection`, !/Funded through|Next renewal|Price protected|Waiting for Works/u.test(await card.innerText()));
+  await shot(`reward-only-${state}`);
+  if (state === 'queued') {
+    await page.setViewportSize({ width: 390, height: 844 });
+    check('reward-only standing fits a narrow viewport', await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+    await shot('reward-only-queued-mobile');
+    await page.setViewportSize({ width: 1440, height: 900 });
+  }
+}
+
 export async function participationJourney(ctx) {
   const { check, go, page, shot, ORIGIN } = ctx;
   const text = () => page.evaluate(() => document.body.innerText);

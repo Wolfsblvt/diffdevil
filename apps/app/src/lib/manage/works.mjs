@@ -61,7 +61,7 @@ export function projectionKey(status) {
   if (!status?.linked) return 'free';
   if (status.reconciling) return 'reconciling';
   const commercial = status.commercial;
-  if (!commercial) return 'linking';
+  if (!commercial) return status.order ? 'reward-only' : 'linking';
   if (commercial.standing === 'first-payment-pending') return 'first-payment';
   if (commercial.standing === 'ended') return commercial.ended?.earlier_attempt === 'unresolved' ? 'ended-unresolved' : 'ended';
   if (commercial.standing === 'renewal-in-grace') return { 'payment-due': 'overdue', renewing: 'renewing', 'not-yet-invoiced': 'preparing', unresolved: 'checking' }[commercial.grace?.renewal] ?? 'checking';
@@ -91,6 +91,7 @@ export function presentProjection(status, { works, ended = false } = {}) {
   const planName = ['ended', 'ended-unresolved', 'free'].includes(key) ? 'Free' : tier;
   let planSub = commercial ? `${cadenceWord(commercial.cadence) ?? 'Subscription'}${(status.capacity ?? []).filter(slot => slot.funding === 'paid').length ? ` · with ${(status.capacity ?? []).filter(slot => slot.funding === 'paid').length} additional ${(status.capacity ?? []).filter(slot => slot.funding === 'paid').length === 1 ? 'organisation' : 'organisations'}` : ''}${total ? ` · ${total} ${perWord(commercial.cadence)}${commercial.nextRenewal?.tax_inclusive ? ', tax included' : ''}` : ''}` : '';
   switch (key) {
+    case 'reward-only': head = banner('info', 'info', 'Works benefits are linked', 'Works has confirmed benefits without a funded subscription. Free remains your plan; a reward alone does not fund repository access or an organisation slot. Manage your gifts and benefits at Works.'); planSub = 'No funded subscription'; rows.push({ term: 'Subscription', value: 'None funded' }); break;
     case 'linking': head = banner('info', 'clock', 'Linked to Wolfsblvt Works', 'Works has not sent this account\'s plan yet. It appears here as soon as Works confirms it; you don\'t need to refresh.'); planSub = 'Waiting for Works'; rows.push({ term: 'Status', value: 'Waiting for Works\' first answer' }); break;
     case 'reconciling': head = banner('info', 'clock', 'Your plan is being checked with Works', 'The App was restored from a backup, so Works-funded benefits are held until Works confirms the current plan. Nothing is charged by this.'); rows.push({ term: 'Status', value: 'Reconciling', sub: 'Premium features pause until Works answers' }); break;
     case 'first-payment': head = banner('info', 'clock', 'Your first payment is being confirmed', `${tier} starts here once Wolfsblvt Works confirms it. Coming back from the payment page doesn't confirm it. You don't need to pay again or refresh.`); rows.push({ term: 'Status', value: 'Waiting for confirmation', sub: `${tier} features aren't on yet` }, organisations); break;
@@ -108,6 +109,12 @@ export function presentProjection(status, { works, ended = false } = {}) {
       else rows.push({ term: 'Next renewal', value: renewsOn ? `${total ? `${total} ` : ''}on ${renewsOn}` : '—', sub: `Renews automatically · ${tier}${(status.capacity ?? []).filter(slot => slot.funding === 'paid').length ? ` + ${(status.capacity ?? []).filter(slot => slot.funding === 'paid').length} additional ${(status.capacity ?? []).filter(slot => slot.funding === 'paid').length === 1 ? 'organisation' : 'organisations'}` : ''}` });
       rows.push(organisations);
       if (protection) rows.push(protection);
+  }
+  const componentStates = { available: 'Available', queued: 'Queued', active: 'Active reward', expired: 'Expired', ended: 'Ended', corrected: 'Corrected', withdrawn: 'Withdrawn', unknown: 'Unknown' };
+  for (const component of status?.fundedComponents ?? []) {
+    const dates = component.endsOn ? `Through ${dayBefore(component.endsOn) ?? '—'}`
+      : component.state === 'queued' && component.applicationDeadline ? `Apply before ${fmtDay(component.applicationDeadline) ?? '—'}` : null;
+    rows.push({ term: component.name, value: componentStates[component.state] ?? 'Unknown', sub: [component.reason, dates].filter(Boolean).join(' · ') });
   }
   // A grant names what funds the period (the beta month is one); whether anything follows it is Works' renewal preference.
   // Its `until` is the end date Works sends, like the period's `ends_on`, so both read as the last funded day.
