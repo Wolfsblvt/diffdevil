@@ -72,6 +72,8 @@ export async function nullableReceiverJourney({ page, go, check, shot, ORIGIN })
   await go('/manage/plan');
   check('the same stable component can render active beside the funded Pro base', await page.locator('[data-standing="funded"] .plan b').textContent() === 'Pro'
     && /Active reward/u.test(await page.locator('[data-standing="funded"]').innerText()));
+  check('a reward term end does not claim removal or funding an unbound organisation', !/You removed it at Works/u.test(await page.locator('.m-stack').innerText())
+    && /currently funds no organisation/u.test(await page.locator('.m-stack').innerText()));
   await shot('reward-component-full-base-active');
 }
 

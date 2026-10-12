@@ -64,7 +64,7 @@ if (participation?.nextCharge) for (const row of presented.rows) if (row.term ==
         </>
       : <>
           {presented.banner && <Banner tone={presented.banner.tone as any} icon={presented.banner.icon} title={presented.banner.title} text={presented.banner.text} data-standing-banner={presented.key}>{presented.banner.action && <a class:list={['m-btn', { pri: presented.banner.action.primary }]} href={depart('experience', presented.banner.action.purpose)}>{presented.banner.action.label} <Icon name="arrow-up-right" size={13} /></a>}</Banner>}
-          {presented.slotBanners.map((banner: any) => <Banner tone="warn" icon="info" title={banner.title} text={banner.text}>{banner.action && <a class="m-btn" href={depart('experience', 'renewal')}>{banner.action.label} <Icon name="arrow-up-right" size={13} /></a>}</Banner>)}
+          {presented.slotBanners.map((banner: any) => <Banner tone="warn" icon="info" title={banner.title} text={banner.text}>{banner.action && <a class="m-btn" href={depart(banner.action.destination ?? 'experience', banner.action.purpose)}>{banner.action.label} <Icon name="arrow-up-right" size={13} /></a>}</Banner>)}
           <section class="m-sec" data-standing={presented.key}><div class="m-standing"><div class="main"><div class="plan"><b>{presented.planName}</b><span>{presented.ended ? `${tier} has ended` : presented.planSub}</span></div>
             <dl class="m-dl">{presented.rows.map((row: any) => <><dt>{row.term}</dt><dd class:list={[row.tone]}>{row.value}{row.sub && <span class="sub">{row.sub}</span>}</dd></>)}</dl>
             {presented.key === 'reward-only' && personal && <AllowanceGroups capacity={personal.capacity} model={model} />}</div>
