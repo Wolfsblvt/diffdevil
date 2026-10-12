@@ -30,7 +30,7 @@ import { dirname, join, resolve } from 'node:path';
 import { createFakeGitHub, CODE, ENTITLEMENT_FIXTURE, INSTALLATIONS, setScale } from './fixture.mjs';
 import { seedLocalState, executeLocal, recordLocalDelivery } from './seed.mjs';
 import { proManage, freeManage, businessManage, delegateManage, setupRecovery, manageAccess, COMMERCIAL_PRO, COMMERCIAL_FREE, COMMERCIAL_BUSINESS } from './manage.mjs';
-import { participationJourney, COMMERCIAL_BETA, QA_CAMPAIGN } from './participation.mjs';
+import { participationJourney, rewardOnlyJourney, COMMERCIAL_BETA, COMMERCIAL_REWARD_ONLY, QA_CAMPAIGN } from './participation.mjs';
 import { appBuildTarget } from '../build-target.mjs';
 
 const target = appBuildTarget();
@@ -553,6 +553,14 @@ try {
   await startWorker(undefined, STATE, { commercial: COMMERCIAL_BETA, participation: QA_CAMPAIGN });
   await signIn();
   await participationJourney(ctx);
+
+  for (const state of ['queued', 'expired']) {
+    await stopWorker();
+    await startWorker(undefined, STATE, { commercial: { ...COMMERCIAL_REWARD_ONLY,
+      fundedComponents: COMMERCIAL_REWARD_ONLY.fundedComponents.map(component => ({ ...component, state })) } });
+    await signIn();
+    await rewardOnlyJourney(ctx, state);
+  }
 
   if (DENSE && !PARTICIPATION_ONLY) {
     // ── dense pass: a scaled fixture, for the cloud's packing time and the dense charts ──

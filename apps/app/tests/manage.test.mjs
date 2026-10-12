@@ -149,6 +149,26 @@ test('a Wirt projection presents as one of the designed states, without a grace 
   assert.equal(formatMoney({ total_cents: 4250, currency: 'EUR' }), '€42.50');
 });
 
+test('an applied reward-only answer is Free with visible benefits, distinct from waiting for the first Works answer', () => {
+  const status = { linked: true, commercial: null, plan: 'free', order: { epoch: 1, version: 1 }, capacity: [], grants: [], protection: null,
+    fundedComponents: [{ id: 'reward-component:1', name: 'Additional organisation slot', reason: 'Community contribution', state: 'queued', startsOn: null, endsOn: null, applicationDeadline: '2027-04-08T00:00:00Z' }] };
+  const queued = presentProjection(status);
+  assert.equal(queued.key, 'reward-only');
+  assert.equal(queued.planName, 'Free');
+  assert.equal(queued.planSub, 'No funded subscription');
+  assert.deepEqual(queued.rows.map(row => row.term), ['Subscription', 'Additional organisation slot']);
+  assert.equal(queued.rows[1].value, 'Queued');
+  assert.match(queued.rows[1].sub, /Community contribution · Apply before 8 Apr 2027/u);
+  assert.equal(queued.compareable, false);
+  assert.equal(queued.choosing, null);
+  assert.deepEqual(queued.slotBanners, []);
+  const expired = presentProjection({ ...status, fundedComponents: [{ ...status.fundedComponents[0], state: 'expired' }] });
+  assert.equal(expired.rows[1].value, 'Expired');
+  assert.equal(expired.rows[1].sub, 'Community contribution', 'an expired reward does not invite application');
+  assert.equal(projectionKey({ ...status, order: null }), 'linking');
+  assert.equal(projectionKey({ ...status, reconciling: true }), 'reconciling');
+});
+
 test('the return from Works is decided by what Works sent since the departure, never by the return itself', () => {
   const status = order => ({ linked: true, order, capacity: [{ slot: 'slot-included', binding: null }] });
   const departure = { purpose: 'change-plan', snapshot: { order: { epoch: 1, version: 3 }, capacity: 1 } };
