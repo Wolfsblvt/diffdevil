@@ -2,7 +2,7 @@
 /** Disposable synthetic provider for the real operator CLI. Never use with real credentials. */
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { readFile, writeFile } from 'node:fs/promises';
+import { readdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 
 const args = process.argv.slice(2);
@@ -46,8 +46,9 @@ else {
     process.stdout.write(input);
     process.stderr.write(input);
     result = undefined;
-    const receipt = JSON.parse(await readFile(join(directory, process.env.DIFFDEVIL_OPERATOR_FIXTURE_RECEIPT ?? 'receipt.json'), 'utf8'));
-    assert.equal(receipt.command, 'attempted-unknown');
+    const receipts = await Promise.all((await readdir(directory)).filter(name => name.endsWith('receipt.json')).map(async name => JSON.parse(await readFile(join(directory, name), 'utf8'))));
+    const receipt = receipts.find(candidate => candidate.command === 'attempted-unknown');
+    assert.ok(receipt);
     assert.equal(receipt.inputs.length, state.inputs.length);
   }
 }
