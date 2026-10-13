@@ -22,9 +22,13 @@ The comparison most recently analysed is session-scoped. Diagnostic history reta
 
 ## Use and sharing
 
-The extension uses the information above only to provide and improve its visible pull-request analysis, configuration, cache and diagnostic features. It does not sell user data, use it for advertising or creditworthiness, transfer it for unrelated purposes, or provide routine human access to it.
+diffdevil for GitHub’s use and transfer of user data complies with the Chrome Web Store User Data Policy’s Limited Use restrictions. This applies to information read from GitHub pages and APIs and the local results derived from it.
+
+The extension uses the information above only to provide and improve its disclosed local pull-request analysis, policy configuration, cache, diagnostic and data-management features. It does not sell user data, use or transfer it for advertising or creditworthiness, transfer it for unrelated purposes, or provide routine human access to it.
 
 The extension makes ordinary HTTPS requests to GitHub for GitHub resources and may use Chrome synchronization for the small preferences assigned to synchronized storage. It does not transmit source, reports, paths or policy to Wolfsblvt Works. A user-initiated export, copied support snapshot or public Issue attachment is a deliberate user action rather than background collection.
+
+This Limited Use affirmation concerns use and transfer, not compliance with every Store requirement or Store approval. The cache is not independently encrypted, as disclosed above. Store submission remains on hold pending provider clarification of the separate at-rest-encryption requirement; this affirmation does not resolve that requirement.
 
 ## Controls and deletion
 
