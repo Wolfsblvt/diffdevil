@@ -55,8 +55,11 @@ export function setScale(scale) {
   PATHS = SCALE === 1 ? BASE_PATHS : [...BASE_PATHS, ...Array.from({ length: (SCALE - 1) * 10 }, (_, index) => `${folders[index % folders.length]}/${['scan', 'walk', 'bind', 'emit', 'check', 'merge', 'fold', 'trace', 'parse', 'route'][index % 10]}-${Math.floor(index / 10) + 1}.ts`)];
 }
 export const currentScale = () => SCALE;
-/** A file every merged PR of a repository touches, so its size chain stays continuous and its Turnover can be exact. */
+/** The recurring file in generated examples, keeping its size and Turnover path continuous. */
 const SPINE = 'src/index.ts';
+// A recent parser-lab merge carries this file without another changed file, so
+// Pro Files can qualify the real no-partner state alongside a positive pair.
+const PRO_FILE_WITHOUT_PARTNERS = 'src/independent-parser.ts';
 const others = () => PATHS.filter(path => path !== SPINE);
 
 let seed = 90210;
@@ -127,6 +130,14 @@ export function pullRequests() {
       const finalRecovered = !(repository.repositoryId === 1001 && i % 9 === 5);
       out.push({ repository, number: number--, title: `${TITLES[out.length % TITLES.length]}${out.length >= TITLES.length ? ` (${Math.floor(out.length / TITLES.length) + 1})` : ''}`, state, draft: state === 'draft', openedAt, readyAt: state === 'draft' ? null : i % 3 === 0 ? at(ageDays + 0.4) : null, mergedAt, closedAt, updatedAt: closedAt ?? at(rnd() * 2), base: sha(number * 7), headSha: revisions.at(-1).head, mergeCommitSha: mergedAt ? sha(number * 13) : null, revisions, analysed, finalRecovered, bounded: analysed && i % 7 === 3, recordedBands: repository.repositoryId === 1007 ? i % 2 === 0 : repository.repositoryId !== 1001 || i % 2 === 0 });
     }
+    if (repository.repositoryId === 1001) {
+      // A recent one-file merge makes a real zero-partner specimen in Pro Files
+      // without changing the spine or its continuous size/Turnover history.
+      const soloNumber = number--;
+      const soloHead = sha(soloNumber * 10);
+      const mergedAt = at(6.5);
+      out.push({ repository, number: soloNumber, title: 'Add an independent parser file', state: 'merged', draft: false, openedAt: at(9), readyAt: at(8), mergedAt, closedAt: mergedAt, updatedAt: mergedAt, base: sha(soloNumber * 7), headSha: soloHead, mergeCommitSha: sha(soloNumber * 13), revisions: [{ head: soloHead, observedAt: at(7), files: [{ path: PRO_FILE_WITHOUT_PARTNERS, modified: 1, added: 1, deleted: 0 }] }], analysed: true, finalRecovered: true, bounded: false, recordedBands: true });
+    }
   }
   return out;
 }
@@ -165,13 +176,14 @@ export function analyticalRecords() {
   for (const pull of pulls) { if (!byRepository.has(pull.repository.repositoryId)) byRepository.set(pull.repository.repositoryId, []); byRepository.get(pull.repository.repositoryId).push(pull); }
   const records = [], observations = [];
   for (const [repositoryId, list] of byRepository) {
-    const sizes = new Map(PATHS.map(path => [path, 120 + (path.length * 17) % 300]));
+    const filePaths = repositoryId === 1001 ? [...PATHS, PRO_FILE_WITHOUT_PARTNERS] : PATHS;
+    const sizes = new Map(filePaths.map(path => [path, 120 + (path.length * 17) % 300]));
     let branchHead = sha(repositoryId * 31);
     const merged = list.filter(pull => pull.mergedAt).sort((a, b) => a.mergedAt.localeCompare(b.mergedAt));
     const others = list.filter(pull => !pull.mergedAt);
     // Default-branch sizes observed before the first merge: the earliest size observation of each file.
     const firstObservedAt = at(120);
-    for (const path of PATHS) observations.push({ repositoryId, path, observedAt: firstObservedAt, revision: branchHead, size: sizes.get(path) });
+    for (const path of filePaths) observations.push({ repositoryId, path, observedAt: firstObservedAt, revision: branchHead, size: sizes.get(path) });
     const record = (pull, final) => ({ version: 1, repositoryId, pullRequest: pull.number, state: pull.state, openedAt: pull.openedAt, readyAt: pull.readyAt, mergedAt: pull.mergedAt, closedAt: pull.closedAt, updatedAt: pull.updatedAt, observedAt: pull.mergedAt ? new Date(Date.parse(pull.mergedAt) + 3_600_000).toISOString() : pull.updatedAt, currentHead: pull.headSha,
       revisions: pull.revisions.map((revision, index) => { const report = comparisonReport(revision.files, { base: pull.base, head: revision.head, comparisonId: `pr:${pull.base}:${revision.head}` }); const band = unwrap(evaluatePolicy(sizePolicy(), report)).report.bands?.size; return { base: pull.base, head: revision.head, observedAt: revision.observedAt, report, originalPolicyId: 'size-v1-fixture', originalBand: band?.status === 'resolved' ? band.id : null, desiredLabel: labelFor({ bands: { size: band } }), observedLabel: index === pull.revisions.length - 1 && pull.recordedBands ? labelFor({ bands: { size: band } }) : null }; }),
       final });
@@ -189,7 +201,7 @@ export function analyticalRecords() {
     }
     for (const pull of others) records.push(record(pull, null));
     // One repository has a size observation at the fixture's "now", as if a capture had just run; its spine Turnover can close.
-    if (REPOSITORIES.find(repository => repository.repositoryId === repositoryId)?.observeNow) for (const path of PATHS) observations.push({ repositoryId, path, observedAt: NOW, revision: branchHead, size: sizes.get(path) });
+    if (REPOSITORIES.find(repository => repository.repositoryId === repositoryId)?.observeNow) for (const path of filePaths) observations.push({ repositoryId, path, observedAt: NOW, revision: branchHead, size: sizes.get(path) });
   }
   return { records, observations };
 }
