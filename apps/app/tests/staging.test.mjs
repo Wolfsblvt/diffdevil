@@ -34,6 +34,14 @@ test('the selected staging build has distinct Worker, D1, queues, artifacts and 
   assert.notEqual(stagingConfig.d1_databases[0].database_id, productionConfig.d1_databases[0].database_id);
   assert.notEqual(stagingConfig.d1_databases[0].database_name, productionConfig.d1_databases[0].database_name);
   assert.notEqual(stagingConfig.queues.producers[0].queue, productionConfig.queues.producers[0].queue);
+  assert.equal(stagingConfig.name, 'diffdevil-app-staging');
+  assert.equal(stagingConfig.vars.APP_ORIGIN, 'https://app-staging.diffdevil.dev');
+  assert.equal(stagingConfig.vars.GITHUB_APP_BOT_LOGIN, 'diffdevil-staging[bot]');
+  assert.equal(stagingConfig.vars.WIRT_ORIGIN, 'https://wirt-test.wolfsblvt.app');
+  assert.equal(stagingConfig.vars.WIRT_OAUTH_CLIENT_ID, '01a136df-f666-70e6-9876-ce292de127c8');
+  assert.equal(stagingConfig.d1_databases[0].database_id, '6f952779-bd44-42de-adf7-cc03709c8222');
+  assert.equal(stagingConfig.queues.producers[0].queue, 'diffdevil-github-app-staging-work');
+  assert.equal(stagingConfig.queues.consumers[0].dead_letter_queue, 'diffdevil-github-app-staging-dlq');
   assert.equal(stagingConfig.queues.consumers[0].queue, stagingConfig.queues.producers[0].queue);
   assert.notEqual(stagingConfig.queues.consumers[0].dead_letter_queue, productionConfig.queues.consumers[0].dead_letter_queue);
   assert.equal(resolve('apps/app/staging', stagingConfig.d1_databases[0].migrations_dir), resolve('apps/app', productionConfig.d1_databases[0].migrations_dir));
@@ -49,7 +57,7 @@ test('the selected staging build has distinct Worker, D1, queues, artifacts and 
   assert.notEqual(stagingConfig.vars.GITHUB_APP_BOT_LOGIN, productionConfig.vars.GITHUB_APP_BOT_LOGIN ?? 'diffdevil[bot]');
   assert.equal(stagingConfig.workers_dev, false);
   assert.equal(stagingConfig.preview_urls, false);
-  assert.deepEqual([...stagingInstallationAccounts(stagingConfig.vars)], []);
+  assert.deepEqual([...stagingInstallationAccounts(stagingConfig.vars)], [9962104, 341708115]);
   assert.equal(stagingInstallationAccounts(productionConfig.vars), null);
   for (const value of ['', 'null', '[0]', '["123"]']) assert.throws(() => stagingInstallationAccounts({ APP_STAGING_INSTALLATION_ACCOUNT_IDS: value }), /positive numeric/u);
   assert.equal(stagingConfig.vars.WIRT_LINK_CALLBACK_URL, `${staging.origin}${COMMERCIAL_ROUTES.callback}`);
