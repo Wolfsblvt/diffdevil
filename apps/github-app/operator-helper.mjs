@@ -4,12 +4,13 @@ import { spawn } from 'node:child_process';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { open, readFile, rename, rm, stat } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { parse } from 'jsonc-parser';
 import { createAppJwt, validateGitHubAppPrivateKey } from './crypto.mjs';
 import { readSigningKeys } from './commercial-wirt.mjs';
 
 const GITHUB_REGISTRATION_URL = 'https://github.com/settings/apps/new';
+const DEFAULT_WRANGLER = fileURLToPath(new URL('../../node_modules/wrangler/bin/wrangler.js', import.meta.url));
 const INERT_DATABASE_IDS = new Set(['00000000-0000-0000-0000-000000000000', '00000000-0000-0000-0000-000000000001']);
 const BACKEND_INPUTS = ['GITHUB_APP_ID', 'GITHUB_WEBHOOK_SECRET', 'GITHUB_APP_PRIVATE_KEY'];
 const APP_INPUTS = [...BACKEND_INPUTS, 'GITHUB_OAUTH_CLIENT_ID', 'GITHUB_OAUTH_CLIENT_SECRET', 'APP_SEAL_KEY'];
@@ -285,7 +286,7 @@ async function receiptDestination(path) {
 
 /** Same target, file metadata and receipt-commit preflight as install; no protected contents read. */
 export async function checkCredentials(options) {
-  const selected = { wrangler: 'node_modules/wrangler/bin/wrangler.js', runner: createProcessRunner(), ...options };
+  const selected = { wrangler: DEFAULT_WRANGLER, runner: createProcessRunner(), ...options };
   validateAppId(selected.appId);
   const target = await requireTarget(selected);
   await requireVersionTarget(selected, target);
@@ -415,7 +416,7 @@ async function reconcileReceipt({ runner, wrangler, target, report }) {
 
 /** Creates one undeployed version. Protected contents go directly to contained native stdin, never a disk carrier. */
 export async function installCredentials(options) {
-  const selected = { wrangler: 'node_modules/wrangler/bin/wrangler.js', runner: createProcessRunner(), ...options };
+  const selected = { wrangler: DEFAULT_WRANGLER, runner: createProcessRunner(), ...options };
   validateAppId(selected.appId);
   const target = await requireTarget(selected);
   await requireVersionTarget(selected, target);
@@ -495,7 +496,7 @@ async function readReceipt(path, target) {
 
 /** Readback-only recovery. No credential read, secret upload, deployment, or blind retry. */
 export async function resumeCredentials(options) {
-  const selected = { wrangler: 'node_modules/wrangler/bin/wrangler.js', runner: createProcessRunner(), ...options };
+  const selected = { wrangler: DEFAULT_WRANGLER, runner: createProcessRunner(), ...options };
   const target = await requireTarget(selected);
   const report = await readReceipt(selected.receiptPath, target);
   await reconcileReceipt({ ...selected, target, report });
