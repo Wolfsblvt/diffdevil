@@ -49,7 +49,9 @@ No remotely hosted executable code is used. JavaScript, compiled validators, CSS
 
 ## Public notice and owner attestations
 
-The bundled privacy notice is `apps/browser-extension/privacy.md`. The current public source URL selected in `listing.md` is valid until the accepted public privacy route is deployed and read back. The owner must complete the provider's Limited Use certification only after reviewing the exact package and public notice; source authorship does not fabricate an owner's legal certification. Reviewer access and any required test account must be arranged without putting credentials in the repository or source archive.
+The bundled privacy notice is `apps/browser-extension/privacy.md`. It explicitly affirms that the extension's use and transfer of user data complies with the Chrome Web Store User Data Policy's Limited Use restrictions, scoped to the disclosed GitHub data and local features. The current public source URL selected in `listing.md` is linked directly from the selected extension homepage and remains valid until the accepted public privacy route is deployed and read back.
+
+This public affirmation does not certify the separate at-rest-encryption requirement. Store submission remains held pending provider clarification of that requirement for the explicitly unencrypted local cache. The owner must complete the provider's Limited Use certification only after reviewing the exact package and public notice; source authorship does not fabricate an owner's legal certification. Reviewer access and any required test account must be arranged without putting credentials in the repository or source archive.
 
 ## Primary references
 

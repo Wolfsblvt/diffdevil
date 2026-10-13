@@ -18,7 +18,7 @@ The visual asset set renders the Extension Grammar v1 implementation against aut
 | Distribution | Public; free; all supported regions unless a current legal/provider restriction requires an explicit narrower set |
 | Mature content | No |
 | In-app purchases | No |
-| Homepage URL | `https://github.com/Wolfsblvt/diffdevil` until the accepted public `/extension/` page is deployed and read back |
+| Homepage URL | `https://github.com/Wolfsblvt/diffdevil/blob/main/apps/browser-extension/README.md` (its Privacy link opens the notice in one click) until the accepted public `/extension/` page is deployed and read back |
 | Support URL | `https://github.com/Wolfsblvt/diffdevil/issues` |
 | Privacy policy URL | `https://github.com/Wolfsblvt/diffdevil/blob/main/apps/browser-extension/privacy.md` until the accepted public privacy route is deployed and read back |
 | Official URL | Leave unset until a verified public `diffdevil.dev` property is available in the provider dashboard |
