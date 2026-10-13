@@ -6,10 +6,14 @@ The signed-in App can be built as a separate persistent consumer of Wirt staging
 Its dashboard, managed backend, sessions, commercial projections, participation
 records, history and background work share one staging Worker and staging D1,
 separate from production. This document owns the source configuration, local
-qualification and activation handoff. The committed coordinates are placeholders
-and proposed resource names; they establish no live hostname, registration,
-database, Queue or deployment. The existing controlled TEST callback into
-production remains valid until a separately admitted successor replaces it.
+qualification and activation handoff. The selected staging origin, GitHub App
+bot, installation-account IDs, D1 UUID and Queue names are committed source
+assignments from returned provider readbacks. These source values do not prove
+that the selected hostname is served, the bindings are deployed or the App's
+live consumer journey works. The dedicated staging Wirt client and participation
+campaign remain unassigned until their exact counterpart values are returned.
+The existing controlled TEST callback into production remains valid until a
+separately admitted successor replaces it.
 Only a staging build adds a small neutral Staging mark beside the analytical and
 Manage page headings and the `Staging ·` browser-title prefix. Both project the
 existing selected build target; the fixed Works header and production appearance
@@ -25,21 +29,26 @@ responses and analytical history. `APP_QUEUE` and its consumer/dead-letter Queue
 belong to that same deployment. The standalone `apps/github-app/wrangler.jsonc`
 is not a second staging backend to deploy beside it.
 
-| Boundary | Ordinary App source | Proposed staging source |
+| Boundary | Ordinary App source | Staging source assignment |
 | --- | --- | --- |
 | Worker | `diffdevil-app` | `diffdevil-app-staging` |
-| D1 | `diffdevil-github-app` | `diffdevil-github-app-staging` |
-| Work Queue | `diffdevil-github-app-work` | `diffdevil-github-app-staging-work` |
-| Dead-letter Queue | `diffdevil-github-app-dlq` | `diffdevil-github-app-staging-dlq` |
+| GitHub App identity | Production registration | App `5304708`, OAuth client `Iv23ligyaI03RtvptTAa`, bot `diffdevil-staging[bot]` |
+| Installation accounts | Production access | Exactly `[9962104,341708115]` |
+| D1 | `diffdevil-github-app` | `diffdevil-github-app-staging` (`6f952779-bd44-42de-adf7-cc03709c8222`) |
+| Work Queue | `diffdevil-github-app-work` | `diffdevil-github-app-staging-work` (`0c99f14931e64ba68c280a6caec96e58`) |
+| Dead-letter Queue | `diffdevil-github-app-dlq` | `diffdevil-github-app-staging-dlq` (`caf7011b0fb840c780cfa614463b8657`) |
+| App and Wirt origins | Production endpoints | `https://app-staging.diffdevil.dev` and `https://wirt-test.wolfsblvt.app` |
 | Build, notices and edition receipt | `artifacts/app/` | `artifacts/app-staging/` |
 | Local adapter/QA state | `artifacts/app/state/` | `artifacts/app-staging/state/` |
 | Local secret file, when deliberately supplied | `apps/app/.dev.vars` | `apps/app/staging/.dev.vars` |
 
-The reserved `.invalid` App/Wirt origins, `staging-client-registration-required`,
-`staging-bot-login-required[bot]` and D1 UUID ending `0001` are unresolved operator
-inputs, not provider IDs. No route is committed; `workers_dev` and `preview_urls`
-are explicitly disabled. Their source values do not prove the provider's current
-exposure settings.
+The dedicated Wirt client registration and participation campaign remain
+unresolved operator inputs. `staging-client-registration-required` is a
+placeholder, not a provider ID. The actual App ID and OAuth client ID are
+recorded above; the protected-input operation supplies them to the runtime from
+that same registration. Source does not duplicate those runtime inputs. The
+configuration explicitly disables `workers_dev` and `preview_urls`; source
+assignments do not prove the provider's current exposure settings.
 Production configuration and its existing TEST client are unchanged. Do not copy production D1 or its protected
 values into staging. Stage GitHub ingress/installation identity, OAuth client,
 seal and Wirt signing material must belong to the staging registrations, rather
@@ -49,10 +58,10 @@ than reusing production identity by convenience.
 
 The staging configuration supplies `APP_STAGING_INSTALLATION_ACCOUNT_IDS` as a
 non-secret JSON array of positive numeric GitHub **installation-account IDs**.
-The checked-in `"[]"` admits no account. The activation operator must supply the
-separately admitted personal and test-organisation IDs in the selected derived
-configuration; source supplies no real identifiers. A person's collaborator role
-is still decided by GitHub within an admitted account, rather than by a list of
+Its selected source value is exactly `[9962104,341708115]`: Wolf's personal
+account and the dedicated staging test organisation. The collective fixture
+actor is not a third installation account. A person's collaborator role is
+still decided by GitHub within an admitted account, rather than by a list of
 user IDs. Production omits this setting and retains ordinary authorised reach.
 
 The guard applies to signed-in repository discovery and authorization, webhook
@@ -126,15 +135,15 @@ its actual credential/data assignment. Source acceptance is not activation.
    target and its output paths; it must not copy a second configuration or deploy
    its old production artifact as staging. Qualification must record the actual
    included engine, public source and private composition separately.
-2. Admit the staging App origin and provider account/resource coordinates. Fill
-   `APP_ORIGIN`, both Wirt return URLs, `WIRT_ORIGIN`, `WIRT_OAUTH_CLIENT_ID`,
-   `GITHUB_APP_BOT_LOGIN` and the distinct D1 ID/resource names in
-   `apps/app/staging/wrangler.json`. Land the admitted non-secret coordinates,
-   including the selected participation campaign below, through the ordinary
-   qualified source/integration route before activation so redeploy and recovery
-   rebuild the admitted environment rather than the placeholders. Exclude secrets.
-   Then rebuild and inspect its generated configuration and header links. Do not
-   use placeholders for an actual deploy. The customer continuation is exactly
+2. The committed source carries the returned non-secret App origin, bot login,
+   installation-account IDs, D1 UUID and Queue names. The App ID and its OAuth
+   client ID enter through the protected-input operation from the actual
+   registration. Before activation, the Wirt counterpart must return the
+   dedicated staging client and campaign values; then land those admitted
+   non-secret values through the ordinary qualified source/integration route.
+   Keep secrets out of source. Rebuild and inspect generated configuration and
+   header links after assignment changes. Do not deploy unresolved placeholders.
+   The customer continuation is exactly
    `<admitted staging App origin>/manage/plan`.
 3. Establish the separate staging Worker, D1, work Queue and dead-letter Queue
    through the established provider route under explicit authority. The same
