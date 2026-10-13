@@ -14,7 +14,7 @@
     "APP_SESSION_DAYS": "30",
     "GITHUB_APP_BOT_LOGIN": "diffdevil-staging[bot]",
     "WIRT_ORIGIN": "https://wirt-test.wolfsblvt.app",
-    "WIRT_OAUTH_CLIENT_ID": "staging-client-registration-required",
+    "WIRT_OAUTH_CLIENT_ID": "01a136df-f666-70e6-9876-ce292de127c8",
     "WIRT_LINK_CALLBACK_URL": "https://app-staging.diffdevil.dev/integrations/wirt/link/callback",
     "WIRT_LINK_CONTINUATION_URL": "https://app-staging.diffdevil.dev/manage/plan"
   },

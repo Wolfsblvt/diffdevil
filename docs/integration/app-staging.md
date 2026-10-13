@@ -7,11 +7,15 @@ Its dashboard, managed backend, sessions, commercial projections, participation
 records, history and background work share one staging Worker and staging D1,
 separate from production. This document owns the source configuration, local
 qualification and activation handoff. The selected staging origin, GitHub App
-bot, installation-account IDs, D1 UUID and Queue names are committed source
-assignments from returned provider readbacks. These source values do not prove
+bot, installation-account IDs, D1 UUID, Queue names and Wirt public client ID
+are committed source assignments from returned provider readbacks. These source values do not prove
 that the selected hostname is served, the bindings are deployed or the App's
-live consumer journey works. The dedicated staging Wirt client and participation
-campaign remain unassigned until their exact counterpart values are returned.
+live consumer journey works. No participation campaign is currently admitted,
+so its configuration remains unset while the selected survey/reward journey stays
+a later activation prerequisite. Ops returned a protected signing-key custody
+reference and confirmed its active key matches retained custody, but the installer's
+consumer binding has not been read back. Protected reference and key material stay
+in Ops custody and are not repeated in this public source document.
 The existing controlled TEST callback into production remains valid until a
 separately admitted successor replaces it.
 Only a staging build adds a small neutral Staging mark beside the analytical and
@@ -33,6 +37,7 @@ is not a second staging backend to deploy beside it.
 | --- | --- | --- |
 | Worker | `diffdevil-app` | `diffdevil-app-staging` |
 | GitHub App identity | Production registration | App `5304708`, OAuth client `Iv23ligyaI03RtvptTAa`, bot `diffdevil-staging[bot]` |
+| Wirt public OAuth client | Production controlled-test client | `01a136df-f666-70e6-9876-ce292de127c8` |
 | Installation accounts | Production access | Exactly `[9962104,341708115]` |
 | D1 | `diffdevil-github-app` | `diffdevil-github-app-staging` (`6f952779-bd44-42de-adf7-cc03709c8222`) |
 | Work Queue | `diffdevil-github-app-work` | `diffdevil-github-app-staging-work` (`0c99f14931e64ba68c280a6caec96e58`) |
@@ -42,13 +47,18 @@ is not a second staging backend to deploy beside it.
 | Local adapter/QA state | `artifacts/app/state/` | `artifacts/app-staging/state/` |
 | Local secret file, when deliberately supplied | `apps/app/.dev.vars` | `apps/app/staging/.dev.vars` |
 
-The dedicated Wirt client registration and participation campaign remain
-unresolved operator inputs. `staging-client-registration-required` is a
-placeholder, not a provider ID. The actual App ID and OAuth client ID are
-recorded above; the protected-input operation supplies them to the runtime from
-that same registration. Source does not duplicate those runtime inputs. The
-configuration explicitly disables `workers_dev` and `preview_urls`; source
-assignments do not prove the provider's current exposure settings.
+The Wirt public client ID is a non-secret source assignment; its returned
+registration is secretless and uses PKCE. There is no currently admitted Wirt
+campaign, so `APP_PARTICIPATION_CAMPAIGN` stays unset. The staged survey/reward
+journey remains selected and still needs a real campaign before that part can be
+activated. The protected-input operation supplies the GitHub App ID and OAuth
+client ID from their registration; source does not duplicate those runtime
+inputs. Ops has returned the protected Wirt signing-key custody reference and
+matched the active producer key to retained custody, but delivery through the
+staging installer's consumer set remains unobserved. The private reference and
+key are not copied here. The configuration explicitly disables `workers_dev`
+and `preview_urls`; source assignments do not prove the provider's current
+exposure settings.
 Production configuration and its existing TEST client are unchanged. Do not copy production D1 or its protected
 values into staging. Stage GitHub ingress/installation identity, OAuth client,
 seal and Wirt signing material must belong to the staging registrations, rather
@@ -136,14 +146,11 @@ its actual credential/data assignment. Source acceptance is not activation.
    its old production artifact as staging. Qualification must record the actual
    included engine, public source and private composition separately.
 2. The committed source carries the returned non-secret App origin, bot login,
-   installation-account IDs, D1 UUID and Queue names. The App ID and its OAuth
-   client ID enter through the protected-input operation from the actual
-   registration. Before activation, the Wirt counterpart must return the
-   dedicated staging client and campaign values; then land those admitted
-   non-secret values through the ordinary qualified source/integration route.
-   Keep secrets out of source. Rebuild and inspect generated configuration and
-   header links after assignment changes. Do not deploy unresolved placeholders.
-   The customer continuation is exactly
+   installation-account IDs, D1 UUID, Queue names and staging Wirt public OAuth
+   client ID. The App ID and its OAuth client ID enter through the protected-input
+   operation from the actual registration. Keep secrets out of source. Rebuild
+   and inspect generated configuration and header links after assignment changes.
+   Do not deploy unresolved placeholders. The customer continuation is exactly
    `<admitted staging App origin>/manage/plan`.
 3. Establish the separate staging Worker, D1, work Queue and dead-letter Queue
    through the established provider route under explicit authority. The same
@@ -181,13 +188,20 @@ its actual credential/data assignment. Source acceptance is not activation.
    and two writers reconciling the same declared labels. Any co-installation
    requires deliberate acceptance of those effects for the exact named repository;
    this packet grants no installation or acceptance.
-5. Wirt's responsible operator registers the staging public client with exact
+5. The returned Wirt staging public client is
+   `01a136df-f666-70e6-9876-ce292de127c8`, secretless and PKCE-required, with
    callback `<staging origin>/integrations/wirt/link/callback` and receiver
-   `<staging origin>/integrations/wirt/projection`, paired with Wirt staging's
-   origin/signing set. Retain the production controlled-test client until this
-   replacement is qualified. No client, signing, producer or data reassignment
-   follows merely from the continuation route existing.
-   Select `APP_PARTICIPATION_CAMPAIGN` with Wirt staging's registered campaign
+   `<staging origin>/integrations/wirt/projection`; source carries its public ID.
+   The production controlled-test client remains intact until the staging
+   replacement is qualified. Ops returned the protected signing-key custody
+   reference and matched the active producer key to retained custody; the exact
+   installer consumer binding and delivery remain a later Ops operation. Do not
+   copy the protected reference or key material into this public repository. No
+   producer or data reassignment follows merely from the continuation route
+   existing. No staging campaign is currently admitted; keep
+   `APP_PARTICIPATION_CAMPAIGN` unset. The selected survey/reward journey remains
+   a later activation prerequisite. When a campaign is admitted, select the
+   variable with Wirt staging's registered campaign
    `key` and `version`, the implemented `survey` (`beta-v1`), public `name`, UTC
    `opensAt`/`closesAt` and `inviteAfterDays`/`reminderAfterDays`. Persist that
    non-secret JSON in staging vars through step 2. The runtime validates the

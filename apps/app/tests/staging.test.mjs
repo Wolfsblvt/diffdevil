@@ -38,6 +38,7 @@ test('the selected staging build has distinct Worker, D1, queues, artifacts and 
   assert.equal(stagingConfig.vars.APP_ORIGIN, 'https://app-staging.diffdevil.dev');
   assert.equal(stagingConfig.vars.GITHUB_APP_BOT_LOGIN, 'diffdevil-staging[bot]');
   assert.equal(stagingConfig.vars.WIRT_ORIGIN, 'https://wirt-test.wolfsblvt.app');
+  assert.equal(stagingConfig.vars.WIRT_OAUTH_CLIENT_ID, '01a136df-f666-70e6-9876-ce292de127c8');
   assert.equal(stagingConfig.d1_databases[0].database_id, '6f952779-bd44-42de-adf7-cc03709c8222');
   assert.equal(stagingConfig.queues.producers[0].queue, 'diffdevil-github-app-staging-work');
   assert.equal(stagingConfig.queues.consumers[0].dead_letter_queue, 'diffdevil-github-app-staging-dlq');
