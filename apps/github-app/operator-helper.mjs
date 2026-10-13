@@ -18,6 +18,13 @@ const PROCESS_ENVIRONMENT_NAMES = new Set([
   'APPDATA', 'LOCALAPPDATA', 'XDG_CONFIG_HOME', 'WRANGLER_HOME'
 ]);
 const AUTH_ENVIRONMENT_NAMES = ['CLOUDFLARE_API_TOKEN', 'CLOUDFLARE_API_KEY', 'CLOUDFLARE_EMAIL'];
+const PROVIDER_CONTROL_ENVIRONMENT_NAMES = new Set([
+  'CLOUDFLARE_API_BASE_URL', 'CF_API_BASE_URL', 'CLOUDFLARE_BASE_URL',
+  'CLOUDFLARE_COMPLIANCE_REGION', 'CLOUDFLARE_ENV', 'CLOUDFLARE_ACCOUNT_ID', 'CF_ACCOUNT_ID',
+  'CF_API_TOKEN', 'CF_API_KEY', 'CF_EMAIL', 'CLOUDFLARE_API_USER_SERVICE_KEY',
+  'CLOUDFLARE_ACCESS_CLIENT_ID', 'CLOUDFLARE_ACCESS_CLIENT_SECRET',
+  'WRANGLER_SEND_METRICS', 'WRANGLER_WRITE_LOGS', 'WRANGLER_LOG'
+].map(environmentName));
 const INERT_DATABASE_IDS = new Set(['00000000-0000-0000-0000-000000000000', '00000000-0000-0000-0000-000000000001']);
 const BACKEND_INPUTS = ['GITHUB_APP_ID', 'GITHUB_WEBHOOK_SECRET', 'GITHUB_APP_PRIVATE_KEY'];
 const APP_INPUTS = [...BACKEND_INPUTS, 'GITHUB_OAUTH_CLIENT_ID', 'GITHUB_OAUTH_CLIENT_SECRET', 'APP_SEAL_KEY'];
@@ -109,12 +116,11 @@ export function createProcessRunner({ executable = process.execPath, cwd = HELPE
 }
 
 function environment(accountId, options) {
-  const env = nativeProcessEnvironment(process.env, options);
+  const env = withoutProtectedInputs(process.env, options);
   const controls = { CLOUDFLARE_ACCOUNT_ID: accountId, WRANGLER_SEND_METRICS: 'false', WRANGLER_WRITE_LOGS: 'false', WRANGLER_LOG: 'error' };
   for (const key of Object.keys(env)) {
     const normalized = environmentName(key);
-    if (normalized.startsWith('CLOUDFLARE_') && !AUTH_ENVIRONMENT_NAMES.includes(normalized)) delete env[key];
-    if (normalized.startsWith('WRANGLER_') && normalized !== 'WRANGLER_HOME') delete env[key];
+    if (PROVIDER_CONTROL_ENVIRONMENT_NAMES.has(normalized)) delete env[key];
   }
   return { ...env, ...controls };
 }
@@ -141,7 +147,15 @@ export function selectedEnvironmentInputs(options) {
   }
 }
 
-/** Keep process/platform and selected provider authentication values, excluding protected inputs. */
+/** Preserve the caller's process environment except for explicitly selected protected inputs. */
+export function withoutProtectedInputs(source, options) {
+  const env = { ...source };
+  const protectedNames = new Set([options.sealKeyEnv, options.wirtSigningKeyEnv].filter(Boolean).map(environmentName));
+  for (const name of Object.keys(env)) if (protectedNames.has(environmentName(name))) delete env[name];
+  return env;
+}
+
+/** Keep the pre-existing manifest conversion child environment unchanged. */
 export function nativeProcessEnvironment(source, options) {
   const names = new Set([...PROCESS_ENVIRONMENT_NAMES, ...AUTH_ENVIRONMENT_NAMES].map(environmentName));
   const env = Object.fromEntries(Object.entries(source).filter(([name]) => names.has(environmentName(name))));

@@ -11,7 +11,7 @@ import { pathToFileURL } from 'node:url';
 import { PassThrough } from 'node:stream';
 import { test } from 'node:test';
 import { createProtector } from '../app/src/lib/protector.mjs';
-import { buildWranglerCommand, checkCredentials, createProcessRunner, installCredentials as install, nativeProcessEnvironment, resumeCredentials, readHiddenTerminalSecret, registrationInputs } from './operator-helper.mjs';
+import { buildWranglerCommand, checkCredentials, createProcessRunner, installCredentials as install, resumeCredentials, readHiddenTerminalSecret, registrationInputs, withoutProtectedInputs } from './operator-helper.mjs';
 
 const databaseId = '12345678-1234-1234-1234-123456789abc';
 const keyPair = generateKeyPairSync('rsa', { modulusLength: 2048 });
@@ -129,30 +129,50 @@ test('the ready-entry path runs Wrangler from the helper installation outside th
   }
 });
 
-test('provider commands keep only the selected Cloudflare authentication source and helper controls', async () => {
+test('provider commands preserve unrelated process inputs and selected authentication while overriding route controls', async () => {
   const setup = await fixture();
-  const names = ['CLOUDFLARE_API_BASE_URL', 'CLOUDFLARE_API_TOKEN', 'CLOUDFLARE_ENV', 'CLOUDFLARE_ACCOUNT_ID', 'WRANGLER_HOME', 'WRANGLER_CONFIG_DIR'];
+  const names = ['CLOUDFLARE_API_BASE_URL', 'CLOUDFLARE_BASE_URL', 'CF_API_BASE_URL', 'CLOUDFLARE_API_TOKEN', 'CLOUDFLARE_ENV', 'CLOUDFLARE_ACCOUNT_ID', 'CF_ACCOUNT_ID', 'CF_API_TOKEN', 'CLOUDFLARE_API_USER_SERVICE_KEY', 'CLOUDFLARE_AUTH_USE_KEYRING', 'WRANGLER_HOME', 'WRANGLER_CONFIG_DIR', 'WRANGLER_SEND_METRICS', 'WRANGLER_WRITE_LOGS', 'WRANGLER_LOG', 'DIFFDEVIL_TEST_UNRELATED_ENV'];
   const previous = new Map(names.map(name => [name, process.env[name]]));
   const { calls, runner } = versionRunner();
 
   try {
     process.env.CLOUDFLARE_API_BASE_URL = 'https://caller.example/client/v4';
+    process.env.CLOUDFLARE_BASE_URL = 'https://caller-base.example/client/v4';
+    process.env.CF_API_BASE_URL = 'https://caller-alias.example/client/v4';
     process.env.CLOUDFLARE_API_TOKEN = 'selected-process-token';
     process.env.CLOUDFLARE_ENV = 'caller-env';
     process.env.CLOUDFLARE_ACCOUNT_ID = 'caller-account';
+    process.env.CF_ACCOUNT_ID = 'caller-account-alias';
+    process.env.CF_API_TOKEN = 'unselected-alias-token';
+    process.env.CLOUDFLARE_API_USER_SERVICE_KEY = 'unselected-service-key';
+    process.env.CLOUDFLARE_AUTH_USE_KEYRING = 'false';
     process.env.WRANGLER_HOME = 'selected-wrangler-home';
     process.env.WRANGLER_CONFIG_DIR = 'caller-wrangler-config';
+    process.env.WRANGLER_SEND_METRICS = 'true';
+    process.env.WRANGLER_WRITE_LOGS = 'true';
+    process.env.WRANGLER_LOG = 'debug';
+    process.env.DIFFDEVIL_TEST_UNRELATED_ENV = 'keep-this-process-input';
 
     await checkCredentials({ appId: '123', privateKeyPath: setup.privateKeyPath, webhookSecretPath: setup.privateKeyPath, accountId: 'account-1', config: setup.config, receiptPath: join(setup.directory, 'receipt.json'), runner });
 
     assert.ok(calls.length > 0);
     for (const call of calls) {
       assert.equal(call.env.CLOUDFLARE_API_BASE_URL, undefined);
+      assert.equal(call.env.CLOUDFLARE_BASE_URL, undefined);
+      assert.equal(call.env.CF_API_BASE_URL, undefined);
       assert.equal(call.env.CLOUDFLARE_ENV, undefined);
       assert.equal(call.env.CLOUDFLARE_ACCOUNT_ID, 'account-1');
+      assert.equal(call.env.CF_ACCOUNT_ID, undefined);
       assert.equal(call.env.CLOUDFLARE_API_TOKEN, 'selected-process-token');
+      assert.equal(call.env.CF_API_TOKEN, undefined);
+      assert.equal(call.env.CLOUDFLARE_API_USER_SERVICE_KEY, undefined);
+      assert.equal(call.env.CLOUDFLARE_AUTH_USE_KEYRING, 'false');
       assert.equal(call.env.WRANGLER_HOME, 'selected-wrangler-home');
-      assert.equal(call.env.WRANGLER_CONFIG_DIR, undefined);
+      assert.equal(call.env.WRANGLER_CONFIG_DIR, 'caller-wrangler-config');
+      assert.equal(call.env.WRANGLER_SEND_METRICS, 'false');
+      assert.equal(call.env.WRANGLER_WRITE_LOGS, 'false');
+      assert.equal(call.env.WRANGLER_LOG, 'error');
+      assert.equal(call.env.DIFFDEVIL_TEST_UNRELATED_ENV, 'keep-this-process-input');
       assert.ok(call.args.includes('--env-file'));
     }
   } finally {
@@ -179,6 +199,7 @@ test('a missing installed Wrangler runtime is reported before provider authentic
 test('the Wrangler child ignores caller dotenv and ambient route overrides while preserving explicit fixture routing', async () => {
   const setup = await fixture();
   const callerDirectory = await mkdtemp(join(tmpdir(), 'diffdevil-helper-caller-env-'));
+  const installedDirectory = await mkdtemp(join(tmpdir(), 'diffdevil-helper-installed-env-'));
   const requests = { selected: [], caller: [] };
   const selectedServer = createServer((request, response) => {
     const chunks = [];
@@ -207,9 +228,10 @@ test('the Wrangler child ignores caller dotenv and ambient route overrides while
   try {
     [selectedUrl, callerUrl] = await Promise.all([start(selectedServer), start(callerServer)]);
     await writeFile(join(callerDirectory, '.env'), `CLOUDFLARE_API_BASE_URL=${callerUrl}\nCLOUDFLARE_API_TOKEN=caller-decoy-token\n`);
+    await writeFile(join(installedDirectory, '.env'), `CLOUDFLARE_API_BASE_URL=${callerUrl}\nCLOUDFLARE_API_TOKEN=installed-decoy-token\n`);
     const wrangler = resolve('node_modules/wrangler/bin/wrangler.js');
     const env = {
-      ...nativeProcessEnvironment(process.env, {}),
+      ...withoutProtectedInputs(process.env, {}),
       CLOUDFLARE_API_BASE_URL: selectedUrl,
       CLOUDFLARE_API_TOKEN: 'selected-synthetic-token',
       CLOUDFLARE_ACCOUNT_ID: 'account-1',
@@ -217,17 +239,23 @@ test('the Wrangler child ignores caller dotenv and ambient route overrides while
       WRANGLER_WRITE_LOGS: 'false',
       WRANGLER_LOG: 'error'
     };
-    const runner = createProcessRunner({ cwd: callerDirectory });
+    for (const name of ['CLOUDFLARE_BASE_URL', 'CF_API_BASE_URL', 'CLOUDFLARE_COMPLIANCE_REGION', 'CLOUDFLARE_ENV', 'CLOUDFLARE_ACCOUNT_ID', 'CF_ACCOUNT_ID', 'CF_API_TOKEN', 'CLOUDFLARE_API_USER_SERVICE_KEY', 'CLOUDFLARE_ACCESS_CLIENT_ID', 'CLOUDFLARE_ACCESS_CLIENT_SECRET']) delete env[name];
     const args = buildWranglerCommand(wrangler, ['versions', 'secret', 'bulk', '--message', 'synthetic protected-input route check'], { worker: 'diffdevil-github-app', config: setup.config });
 
-    await runner({ args, input: JSON.stringify({ GITHUB_APP_PRIVATE_KEY: 'synthetic-protected-payload' }), env });
+    for (const cwd of [callerDirectory, installedDirectory]) {
+      const requestCount = requests.selected.length;
+      const runner = createProcessRunner({ cwd });
+      await runner({ args, input: JSON.stringify({ GITHUB_APP_PRIVATE_KEY: 'synthetic-protected-payload' }), env });
+      assert.ok(requests.selected.length > requestCount);
+    }
 
-    assert.ok(requests.selected.some(request => request.authorization === 'Bearer selected-synthetic-token'));
+    assert.ok(requests.selected.length >= 2);
+    assert.ok(requests.selected.every(request => request.authorization === 'Bearer selected-synthetic-token'));
     assert.ok(requests.selected.some(request => request.body.includes('synthetic-protected-payload')));
     assert.deepEqual(requests.caller, []);
   } finally {
     process.chdir(originalDirectory);
-    await Promise.all([close(selectedServer), close(callerServer), rm(setup.directory, { recursive: true, force: true }), rm(callerDirectory, { recursive: true, force: true })]);
+    await Promise.all([close(selectedServer), close(callerServer), rm(setup.directory, { recursive: true, force: true }), rm(callerDirectory, { recursive: true, force: true }), rm(installedDirectory, { recursive: true, force: true })]);
   }
 });
 
