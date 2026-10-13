@@ -208,6 +208,40 @@ async function qualifyCloud(label, selector) {
   const overlap = await page.evaluate(selector => { const boxes = [...document.querySelectorAll(`${selector} .cl-words .cl-w`)].filter(node => node.style.opacity !== '0').flatMap(node => [...node.querySelectorAll('.nmb, .dir')].filter(span => span.textContent).map(span => { const rect = span.getBoundingClientRect(); return { key: node.dataset.key, left: rect.left + 1, right: rect.right - 1, top: rect.top + rect.height * 0.42, bottom: rect.bottom - rect.height * 0.22 }; })); const pairs = new Set(); for (let a = 0; a < boxes.length; a++) for (let b = a + 1; b < boxes.length; b++) { const x = boxes[a], y = boxes[b]; if (x.key !== y.key && x.left < y.right && y.left < x.right && x.top < y.bottom && y.top < x.bottom) pairs.add(`${x.key} × ${y.key}`); } return { words: boxes.length, pairs: [...pairs] }; }, selector);
   check(`${label}: no two words' glyph bodies overlap`, overlap.pairs.length === 0, JSON.stringify(overlap).slice(0, 400));
   chartTelemetry.push({ label, page: page.url(), cloud: timings, words: placed });
+
+  // Rank is not a relationship guarantee: a valid single-file spine may be
+  // first in the cloud. Walk the displayed words and choose by the served
+  // interaction result instead of assuming ArrowRight reaches a partner.
+  await page.focus(`${selector} .cl-stage`);
+  await page.keyboard.press('Escape');
+  const candidates = await page.evaluate(selector => [...document.querySelectorAll(`${selector} .cl-words .cl-w`)].map(word => word.dataset.key).filter(Boolean), selector);
+  const observations = [];
+  for (let index = 0; index < candidates.length; index++) {
+    await page.keyboard.press('ArrowRight');
+    const current = await page.evaluate(selector => {
+      const host = document.querySelector(selector);
+      const focus = host?.querySelector('.cl-w.is-focus');
+      const partners = [...(host?.querySelectorAll('.cl-w.is-partner') ?? [])];
+      return {
+        focusKey: focus?.dataset.key ?? null,
+        partnerKeys: partners.map(word => word.dataset.key).filter(Boolean).sort(),
+        meters: partners.map(word => ({ key: word.dataset.key, ratio: word.querySelector('.co')?.textContent?.trim() ?? '' })).sort((a, b) => a.key.localeCompare(b.key)),
+        chips: partners.filter(word => word.querySelector('.co')?.style.display === 'inline').length
+      };
+    }, selector);
+    observations.push(current);
+    if (observations.some(observation => observation.partnerKeys.length > 0)
+      && observations.some(observation => observation.focusKey && observation.partnerKeys.length === 0)) break;
+  }
+  const positive = observations.find(observation => observation.partnerKeys.length > 0);
+  const empty = observations.find(observation => observation.focusKey && observation.partnerKeys.length === 0);
+  const ratiosAreExact = positive?.meters.length === positive?.partnerKeys.length
+    && positive.meters.every(meter => /^\d+\/\d+$/u.test(meter.ratio));
+  check(`${label}: fixture exposes a displayed file with co-change partners`, Boolean(positive), `displayed=${candidates.length} focus=${observations.map(item => item.focusKey ?? 'none').join(', ')}`);
+  check(`${label}: partner selection preserves exact companion keys and meter ratios`, Boolean(positive && positive.partnerKeys.length > 0 && positive.chips === positive.partnerKeys.length && ratiosAreExact), JSON.stringify(positive ?? { displayed: candidates.length, observations }));
+  check(`${label}: a single-file selection shows no fabricated companions or meter chips`, Boolean(empty && empty.partnerKeys.length === 0 && empty.meters.length === 0 && empty.chips === 0), JSON.stringify(empty ?? { displayed: candidates.length, observations }));
+
+  await page.keyboard.press('Escape');
   const summaryBefore = await page.evaluate(selector => document.querySelector(`${selector} [data-readout]`)?.textContent ?? '', selector);
   await page.focus(`${selector} .cl-stage`);
   await page.keyboard.press('ArrowRight');
