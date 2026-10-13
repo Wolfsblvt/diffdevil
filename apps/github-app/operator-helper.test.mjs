@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
 
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises';
 import { createHash, generateKeyPairSync, randomUUID, verify } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
@@ -10,7 +10,7 @@ import { pathToFileURL } from 'node:url';
 import { PassThrough } from 'node:stream';
 import { test } from 'node:test';
 import { createProtector } from '../app/src/lib/protector.mjs';
-import { checkCredentials, installCredentials as install, resumeCredentials, readHiddenTerminalSecret, registrationInputs } from './operator-helper.mjs';
+import { checkCredentials, createProcessRunner, installCredentials as install, resumeCredentials, readHiddenTerminalSecret, registrationInputs } from './operator-helper.mjs';
 
 const databaseId = '12345678-1234-1234-1234-123456789abc';
 const keyPair = generateKeyPairSync('rsa', { modulusLength: 2048 });
@@ -101,6 +101,32 @@ function versionRunner({ account = 'match', command = 'accepted', deployment: de
     }
   };
 }
+
+test('the ready-entry path runs Wrangler from the helper installation outside the caller directory', async () => {
+  const setup = await fixture();
+  const callerDirectory = await mkdtemp(join(tmpdir(), 'diffdevil-helper-caller-'));
+  const markerPath = join(callerDirectory, 'decoy-ran.txt');
+  const decoyPath = join(callerDirectory, 'node_modules', 'wrangler', 'bin', 'wrangler.js');
+  const { calls, runner } = versionRunner();
+  const originalDirectory = process.cwd();
+
+  try {
+    await mkdir(dirname(decoyPath), { recursive: true });
+    await writeFile(decoyPath, `import { writeFileSync } from 'node:fs'; writeFileSync(${JSON.stringify(markerPath)}, 'ran'); process.stdout.write('DECOY');\n`);
+    process.chdir(callerDirectory);
+
+    const readiness = await checkCredentials({ appId: '123', privateKeyPath: setup.privateKeyPath, webhookSecretPath: setup.privateKeyPath, accountId: 'account-1', config: setup.config, receiptPath: join(setup.directory, 'receipt.json'), runner });
+    assert.equal(readiness.state, 'ready-for-input');
+
+    const result = await createProcessRunner()({ args: [calls[0].args[0], '--version'], env: process.env });
+    assert.equal(result.code, 0);
+    assert.notEqual(result.stdout, 'DECOY');
+    assert.equal(await readFile(markerPath).then(() => true, () => false), false);
+  } finally {
+    process.chdir(originalDirectory);
+    await Promise.all([rm(setup.directory, { recursive: true, force: true }), rm(callerDirectory, { recursive: true, force: true })]);
+  }
+});
 
 test('registration inputs select only the App permissions and explicit events', () => {
   const inputs = registrationInputs({ webhookUrl: 'https://app.example/webhooks/github' });
