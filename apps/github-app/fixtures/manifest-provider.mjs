@@ -60,8 +60,9 @@ export function manifestCli(command, options) {
     else if (key === 'sealKeyInitial' && value) args.push('--seal-key-initial');
     else if (flags[key] && value !== undefined) args.push(`--${flags[key]}`, String(value));
   }
-  const env = { ...process.env, ...options.environmentValues, DIFFDEVIL_OPERATOR_FIXTURE_DIRECTORY: dirname(options.capturePath), DIFFDEVIL_OPERATOR_FIXTURE_RECEIPT: options.installReceiptPath ? basename(options.installReceiptPath) : 'receipt.json', NODE_OPTIONS: '--import ./apps/github-app/fixtures/manifest-environment.mjs' };
-  const child = spawn(process.execPath, args, { env, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true });
+  const env = { ...process.env, ...options.environmentValues, DIFFDEVIL_OPERATOR_FIXTURE_DIRECTORY: dirname(options.capturePath), DIFFDEVIL_OPERATOR_FIXTURE_RECEIPT: options.installReceiptPath ? basename(options.installReceiptPath) : 'receipt.json' };
+  delete env.NODE_OPTIONS;
+  const child = spawn(process.execPath, ['--import', './apps/github-app/fixtures/manifest-environment.mjs', ...args], { env, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true });
   let output = '', errors = '', resolveListening;
   const listening = new Promise(resolveUrl => { resolveListening = resolveUrl; });
   child.stdout.on('data', chunk => {

@@ -10,7 +10,21 @@ import { createAppJwt, validateGitHubAppPrivateKey } from './crypto.mjs';
 import { readSigningKeys } from './commercial-wirt.mjs';
 
 const GITHUB_REGISTRATION_URL = 'https://github.com/settings/apps/new';
+const HELPER_DIRECTORY = dirname(fileURLToPath(import.meta.url));
 const DEFAULT_WRANGLER = fileURLToPath(new URL('../../node_modules/wrangler/bin/wrangler.js', import.meta.url));
+const WRANGLER_ENV_FILE = fileURLToPath(new URL('./wrangler-empty.env', import.meta.url));
+const PROCESS_ENVIRONMENT_NAMES = new Set([
+  'PATH', 'SYSTEMROOT', 'WINDIR', 'TEMP', 'TMP', 'TMPDIR', 'HOME', 'USERPROFILE', 'HOMEDRIVE', 'HOMEPATH',
+  'APPDATA', 'LOCALAPPDATA', 'XDG_CONFIG_HOME', 'WRANGLER_HOME'
+]);
+const AUTH_ENVIRONMENT_NAMES = ['CLOUDFLARE_API_TOKEN', 'CLOUDFLARE_API_KEY', 'CLOUDFLARE_EMAIL'];
+const PROVIDER_CONTROL_ENVIRONMENT_NAMES = new Set([
+  'CLOUDFLARE_API_BASE_URL', 'CF_API_BASE_URL', 'CLOUDFLARE_BASE_URL',
+  'CLOUDFLARE_COMPLIANCE_REGION', 'CLOUDFLARE_ENV', 'CLOUDFLARE_ACCOUNT_ID', 'CF_ACCOUNT_ID',
+  'CF_API_TOKEN', 'CF_API_KEY', 'CF_EMAIL', 'CLOUDFLARE_API_USER_SERVICE_KEY',
+  'CLOUDFLARE_ACCESS_CLIENT_ID', 'CLOUDFLARE_ACCESS_CLIENT_SECRET',
+  'WRANGLER_SEND_METRICS', 'WRANGLER_WRITE_LOGS', 'WRANGLER_LOG'
+].map(environmentName));
 const INERT_DATABASE_IDS = new Set(['00000000-0000-0000-0000-000000000000', '00000000-0000-0000-0000-000000000001']);
 const BACKEND_INPUTS = ['GITHUB_APP_ID', 'GITHUB_WEBHOOK_SECRET', 'GITHUB_APP_PRIVATE_KEY'];
 const APP_INPUTS = [...BACKEND_INPUTS, 'GITHUB_OAUTH_CLIENT_ID', 'GITHUB_OAUTH_CLIENT_SECRET', 'APP_SEAL_KEY'];
@@ -76,13 +90,13 @@ export function registrationInputs({ webhookUrl, visibility = 'private', appName
 }
 
 export function buildWranglerCommand(command, args, { worker, config }) {
-  return [command, ...args, '--name', worker, '--config', config];
+  return [command, ...args, ...(worker ? ['--name', worker] : []), '--config', config, '--env-file', WRANGLER_ENV_FILE];
 }
 
 /** Drain native output privately. Neither stderr nor a raw native exception reaches the caller. */
-export function createProcessRunner({ executable = process.execPath } = {}) {
+export function createProcessRunner({ executable = process.execPath, cwd = HELPER_DIRECTORY } = {}) {
   return async ({ args, input, env, signal }) => {
-    const child = spawn(executable, args, { env, signal, stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true });
+    const child = spawn(executable, args, { cwd, env, signal, stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true });
     const stdout = [];
     child.stdout.on('data', chunk => stdout.push(chunk));
     child.stderr.resume();
@@ -104,9 +118,10 @@ export function createProcessRunner({ executable = process.execPath } = {}) {
 function environment(accountId, options) {
   const env = withoutProtectedInputs(process.env, options);
   const controls = { CLOUDFLARE_ACCOUNT_ID: accountId, WRANGLER_SEND_METRICS: 'false', WRANGLER_WRITE_LOGS: 'false', WRANGLER_LOG: 'error' };
-  const withheld = new Set([...Object.keys(controls), 'CLOUDFLARE_ENV'].map(environmentName));
-  // Match only selected names. Windows process.env is case-insensitive; this copied object is not.
-  for (const key of Object.keys(env)) if (withheld.has(environmentName(key))) delete env[key];
+  for (const key of Object.keys(env)) {
+    const normalized = environmentName(key);
+    if (PROVIDER_CONTROL_ENVIRONMENT_NAMES.has(normalized)) delete env[key];
+  }
   return { ...env, ...controls };
 }
 
@@ -132,11 +147,20 @@ export function selectedEnvironmentInputs(options) {
   }
 }
 
-/** Withhold only the selected seal/Wirt names from a contained child's environment. */
+/** Preserve the caller's process environment except for explicitly selected protected inputs. */
 export function withoutProtectedInputs(source, options) {
   const env = { ...source };
-  const names = new Set([options.sealKeyEnv, options.wirtSigningKeyEnv].filter(Boolean).map(environmentName));
-  for (const name of Object.keys(env)) if (names.has(environmentName(name))) delete env[name];
+  const protectedNames = new Set([options.sealKeyEnv, options.wirtSigningKeyEnv].filter(Boolean).map(environmentName));
+  for (const name of Object.keys(env)) if (protectedNames.has(environmentName(name))) delete env[name];
+  return env;
+}
+
+/** Keep the pre-existing manifest conversion child environment unchanged. */
+export function nativeProcessEnvironment(source, options) {
+  const names = new Set([...PROCESS_ENVIRONMENT_NAMES, ...AUTH_ENVIRONMENT_NAMES].map(environmentName));
+  const env = Object.fromEntries(Object.entries(source).filter(([name]) => names.has(environmentName(name))));
+  const protectedNames = new Set([options.sealKeyEnv, options.wirtSigningKeyEnv].filter(Boolean).map(environmentName));
+  for (const name of Object.keys(env)) if (protectedNames.has(environmentName(name))) delete env[name];
   return env;
 }
 
@@ -188,11 +212,15 @@ async function readDeployment({ runner, wrangler, ...target }) {
 }
 
 async function requireTarget(options) {
+  let runtime;
+  try { runtime = await stat(options.wrangler); } catch { fail('The installed Wrangler runtime is unavailable.', 'E_OPERATOR_RUNTIME'); }
+  if (!runtime.isFile()) fail('The installed Wrangler runtime is unavailable.', 'E_OPERATOR_RUNTIME');
   selectedEnvironmentInputs(options);
   const target = await qualificationConfig(options);
   target.fixture = options.fixture === true;
   target.env = environment(target.accountId, options);
-  const account = await nativeJson({ runner: options.runner, args: [options.wrangler, 'whoami', '--account', target.accountId, '--json', '--config', target.config], env: target.env });
+  // whoami accepts the shared configuration flags, but not the Worker-only --name.
+  const account = await nativeJson({ runner: options.runner, args: buildWranglerCommand(options.wrangler, ['whoami', '--account', target.accountId, '--json'], { config: target.config }), env: target.env });
   if (!Array.isArray(account?.accounts) || !account.accounts.some(entry => entry?.id === target.accountId)) fail('Wrangler could not read back the requested Cloudflare account.', 'E_OPERATOR_TARGET');
   target.deployment = await readDeployment({ ...options, ...target });
   if (target.deployment.state !== 'read-back') fail('Wrangler could not read back the requested Worker deployment.', 'E_OPERATOR_TARGET');
@@ -286,7 +314,7 @@ async function receiptDestination(path) {
 
 /** Same target, file metadata and receipt-commit preflight as install; no protected contents read. */
 export async function checkCredentials(options) {
-  const selected = { wrangler: DEFAULT_WRANGLER, runner: createProcessRunner(), ...options };
+  const selected = { ...options, wrangler: options.wrangler ? resolve(options.wrangler) : DEFAULT_WRANGLER, runner: options.runner ?? createProcessRunner() };
   validateAppId(selected.appId);
   const target = await requireTarget(selected);
   await requireVersionTarget(selected, target);
@@ -416,7 +444,7 @@ async function reconcileReceipt({ runner, wrangler, target, report }) {
 
 /** Creates one undeployed version. Protected contents go directly to contained native stdin, never a disk carrier. */
 export async function installCredentials(options) {
-  const selected = { wrangler: DEFAULT_WRANGLER, runner: createProcessRunner(), ...options };
+  const selected = { ...options, wrangler: options.wrangler ? resolve(options.wrangler) : DEFAULT_WRANGLER, runner: options.runner ?? createProcessRunner() };
   validateAppId(selected.appId);
   const target = await requireTarget(selected);
   await requireVersionTarget(selected, target);
@@ -496,7 +524,7 @@ async function readReceipt(path, target) {
 
 /** Readback-only recovery. No credential read, secret upload, deployment, or blind retry. */
 export async function resumeCredentials(options) {
-  const selected = { wrangler: DEFAULT_WRANGLER, runner: createProcessRunner(), ...options };
+  const selected = { ...options, wrangler: options.wrangler ? resolve(options.wrangler) : DEFAULT_WRANGLER, runner: options.runner ?? createProcessRunner() };
   const target = await requireTarget(selected);
   const report = await readReceipt(selected.receiptPath, target);
   await reconcileReceipt({ ...selected, target, report });

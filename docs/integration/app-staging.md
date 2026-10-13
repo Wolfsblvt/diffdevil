@@ -286,7 +286,14 @@ and Wirt inputs may instead use explicit names such as
 alternative to its corresponding file option; passing both refuses. The helper
 reads only those named values after the receipt is flushed, removes those names
 from the Wrangler child environment, and sends the values through private stdin.
-It does not inspect ambient variables or establish a vault record or recovery
+Provider commands default to the helper-installed Wrangler path and working
+directory; intentional Wrangler and runner injection remain supported. They use
+an explicit empty env file, so caller-folder and helper-root dotenv files cannot
+select provider configuration. The helper pins the target account and removes
+known endpoint, environment, account-alias and unselected authentication
+overrides. It preserves the supported `CLOUDFLARE_API_TOKEN`,
+`CLOUDFLARE_API_KEY` and `CLOUDFLARE_EMAIL` sources, `WRANGLER_HOME`, and other
+ordinary process inputs. It does not establish a vault record or recovery
 route. Native output is not forwarded, disk logs/telemetry are disabled, and no
 temporary secret carrier exists to clean up. Operator-owned input files remain
 intact. Preflight reads

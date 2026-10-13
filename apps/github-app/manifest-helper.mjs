@@ -8,7 +8,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { parse } from 'jsonc-parser';
 import { createProtector } from '../app/src/lib/protector.mjs';
 import { validateGitHubAppPrivateKey } from './crypto.mjs';
-import { createProcessRunner, installCredentials, readSealKey, registrationInputs, selectedEnvironmentInputs, validateAppId, validateOAuthClientId, validateWebhookSecret, withoutProtectedInputs } from './operator-helper.mjs';
+import { createProcessRunner, installCredentials, nativeProcessEnvironment, readSealKey, registrationInputs, selectedEnvironmentInputs, validateAppId, validateOAuthClientId, validateWebhookSecret } from './operator-helper.mjs';
 
 const FORMAT = 'diffdevil-manifest-capture-v1';
 const HANDSHAKE_MS = 60 * 60 * 1000; // GitHub's documented manifest handshake, not an authorization lifetime.
@@ -150,7 +150,7 @@ async function convert(options, capture, seal) {
     capture.stage = 'conversion-attempted';
     await save(options, capture, seal);
     const runner = createProcessRunner();
-    const response = await runner({ args: [CHILD], input: JSON.stringify({ code: capture.code, fixtureOrigin: capture.selection.fixtureOrigin }), env: withoutProtectedInputs(process.env, options), signal: options.signal });
+    const response = await runner({ args: [CHILD], input: JSON.stringify({ code: capture.code, fixtureOrigin: capture.selection.fixtureOrigin }), env: nativeProcessEnvironment(process.env, options), signal: options.signal });
     if (response.code !== 0) fail('Conversion outcome is unknown; resume will refuse a second conversion.', 'E_MANIFEST_UNKNOWN');
     try { capture.response = JSON.parse(response.stdout); } catch { fail('Conversion outcome is unknown; its child response was unusable.', 'E_MANIFEST_UNKNOWN'); }
     capture.stage = 'captured';
