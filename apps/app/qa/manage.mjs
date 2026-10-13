@@ -538,7 +538,7 @@ export async function manageAccess(ctx, { browser, label = 'pro' }) {
   check(`${label} Enter on a sub-tab opens it`, new URL(page.url()).pathname === '/manage/repositories', page.url());
   await page.focus('[data-repository-row="parser-guild/grammar-fuzz"] form button');
   const selectFocus = await focusRing();
-  await Promise.all([page.waitForLoadState('networkidle'), page.keyboard.press('Enter')]);
+  await Promise.all([page.waitForNavigation({ waitUntil: 'networkidle' }), page.keyboard.press('Enter')]);
   const selected = await page.evaluate(() => ({ role: document.querySelector('.m-msg')?.getAttribute('role'), message: document.querySelector('.m-msg')?.textContent ?? '', state: document.querySelector('[data-repository-row="parser-guild/grammar-fuzz"] .m-st')?.textContent ?? '' }));
   check(`${label} Enter on the focused Select button selects the repository and the confirmation is a status live region`, selectFocus.ring && /Selected/u.test(selected.message) && selected.role === 'status' && selected.state === 'Pending enable', JSON.stringify({ selectFocus, selected }));
   await page.focus('[data-repository-row="parser-guild/grammar-fuzz"] a.m-btn');
@@ -547,7 +547,7 @@ export async function manageAccess(ctx, { browser, label = 'pro' }) {
   const declaration = await page.$('[data-enable-panel] input[name="writer"]');
   if (declaration) { await declaration.focus(); await page.keyboard.press('Space'); await page.keyboard.press('Tab'); } else await page.focus('[data-enable-panel] form button');
   const enableFocus = await focusRing();
-  await Promise.all([page.waitForLoadState('networkidle'), page.keyboard.press('Enter')]);
+  await Promise.all([page.waitForNavigation({ waitUntil: 'networkidle' }), page.keyboard.press('Enter')]);
   const enabled = await page.evaluate(() => ({ message: document.querySelector('.m-msg')?.textContent ?? '', pill: document.querySelector('.a-head .a-scope .m-st')?.textContent ?? '' }));
   check(`${label} the enable panel works from the keyboard: ${declaration ? 'Space declares the writer, Tab reaches Enable' : 'Enable takes focus'} with a ring, Enter enables`, /Enable$/u.test(enableFocus.el) && enableFocus.ring && /Enabled/u.test(enabled.message) && enabled.pill === 'Running', JSON.stringify({ enableFocus, enabled, declaration: Boolean(declaration) }));
   await go('/manage/repositories/parser-guild/grammar-fuzz?confirm=delete');
@@ -557,7 +557,7 @@ export async function manageAccess(ctx, { browser, label = 'pro' }) {
   await Promise.all([page.waitForURL(url => !/confirm=delete/u.test(url.toString()), { timeout: 15_000 }).catch(() => {}), page.keyboard.press('Enter')]);
   check(`${label} Enter on Cancel leaves the dialog without deleting`, !/confirm=delete/u.test(page.url()) && (await page.evaluate(() => document.querySelector('.a-head .a-scope .m-st')?.textContent ?? '')) === 'Running');
   await page.focus('[data-leave] form button');
-  await Promise.all([page.waitForLoadState('networkidle'), page.keyboard.press('Enter')]);
+  await Promise.all([page.waitForNavigation({ waitUntil: 'networkidle' }), page.keyboard.press('Enter')]);
   check(`${label} Stop works from the keyboard and leaves the repository stopped`, /Stopped/u.test(await page.evaluate(() => document.querySelector('.m-msg')?.textContent ?? '')));
 
   // Narrow: the selected 1024 width and the console's own 900 breakpoint, every route, without horizontal overflow.
