@@ -90,7 +90,7 @@ export function registrationInputs({ webhookUrl, visibility = 'private', appName
 }
 
 export function buildWranglerCommand(command, args, { worker, config }) {
-  return [command, ...args, '--name', worker, '--config', config, '--env-file', WRANGLER_ENV_FILE];
+  return [command, ...args, ...(worker ? ['--name', worker] : []), '--config', config, '--env-file', WRANGLER_ENV_FILE];
 }
 
 /** Drain native output privately. Neither stderr nor a raw native exception reaches the caller. */
@@ -219,7 +219,8 @@ async function requireTarget(options) {
   const target = await qualificationConfig(options);
   target.fixture = options.fixture === true;
   target.env = environment(target.accountId, options);
-  const account = await nativeJson({ runner: options.runner, args: buildWranglerCommand(options.wrangler, ['whoami', '--account', target.accountId, '--json'], target), env: target.env });
+  // whoami accepts the shared configuration flags, but not the Worker-only --name.
+  const account = await nativeJson({ runner: options.runner, args: buildWranglerCommand(options.wrangler, ['whoami', '--account', target.accountId, '--json'], { config: target.config }), env: target.env });
   if (!Array.isArray(account?.accounts) || !account.accounts.some(entry => entry?.id === target.accountId)) fail('Wrangler could not read back the requested Cloudflare account.', 'E_OPERATOR_TARGET');
   target.deployment = await readDeployment({ ...options, ...target });
   if (target.deployment.state !== 'read-back') fail('Wrangler could not read back the requested Worker deployment.', 'E_OPERATOR_TARGET');

@@ -196,6 +196,65 @@ test('a missing installed Wrangler runtime is reported before provider authentic
   }
 });
 
+test('the account readiness command is accepted by the locked Wrangler CLI', async () => {
+  const setup = await fixture();
+  const requests = [];
+  const providerResults = {
+    '/client/v4/user/tokens/verify': { id: 'fixture-token', status: 'active' },
+    '/client/v4/user': { email: 'fixture@example.test' },
+    '/client/v4/accounts': [{ id: 'account-1', name: 'Fixture account' }],
+    '/client/v4/memberships': [{ account: { id: 'account-1' } }]
+  };
+  const server = createServer((request, response) => {
+    request.resume();
+    requests.push({ path: request.url, authorization: request.headers.authorization });
+    const path = new URL(request.url, 'http://fixture.example').pathname;
+    const knownPath = Object.hasOwn(providerResults, path);
+    response.writeHead(knownPath ? 200 : 404, { 'content-type': 'application/json' });
+    response.end(JSON.stringify({ success: knownPath, errors: knownPath ? [] : [{ code: 10000, message: 'Unknown fixture route' }], result: providerResults[path], result_info: { page: 1, per_page: 50, total_count: 1, total_pages: 1 } }));
+  });
+  const { runner: fixtureRunner } = versionRunner();
+  let accountResult;
+  let readinessError;
+
+  try {
+    const baseUrl = await new Promise((resolveStart, reject) => {
+      server.once('error', reject);
+      server.listen(0, '127.0.0.1', () => resolveStart(`http://127.0.0.1:${server.address().port}/client/v4`));
+    });
+    // The native child receives only synthetic authentication and a loopback provider.
+    const launchNames = new Set(['PATH', 'SYSTEMROOT', 'WINDIR', 'TEMP', 'TMP', 'TMPDIR']);
+    const env = {
+      ...Object.fromEntries(Object.entries(process.env).filter(([name]) => launchNames.has(name.toUpperCase()))),
+      CLOUDFLARE_API_BASE_URL: baseUrl,
+      CLOUDFLARE_API_TOKEN: 'selected-synthetic-token',
+      CLOUDFLARE_AUTH_USE_KEYRING: 'false',
+      WRANGLER_HOME: setup.directory,
+      WRANGLER_SEND_METRICS: 'false',
+      WRANGLER_WRITE_LOGS: 'false',
+      WRANGLER_LOG: 'error'
+    };
+    const nativeRunner = createProcessRunner();
+    const runner = async call => {
+      if (!call.args.includes('whoami')) return fixtureRunner(call);
+      accountResult = await nativeRunner({ ...call, env });
+      return accountResult;
+    };
+    try {
+      const readiness = await checkCredentials({ appId: '123', privateKeyPath: setup.privateKeyPath, webhookSecretPath: setup.privateKeyPath, accountId: 'account-1', config: setup.config, receiptPath: join(setup.directory, 'receipt.json'), runner });
+      assert.equal(readiness.state, 'ready-for-input');
+    } catch (error) { readinessError = error; }
+
+    assert.equal(accountResult?.code, 0, 'locked Wrangler must accept the helper account-read arguments');
+    assert.ifError(readinessError);
+    assert.ok(requests.some(request => request.path.startsWith('/client/v4/accounts')));
+    assert.ok(requests.every(request => request.authorization === 'Bearer selected-synthetic-token'));
+  } finally {
+    await new Promise(resolveClose => { server.close(resolveClose); server.closeAllConnections(); });
+    await rm(setup.directory, { recursive: true, force: true });
+  }
+});
+
 test('the Wrangler child ignores caller dotenv and ambient route overrides while preserving explicit fixture routing', async () => {
   const setup = await fixture();
   const callerDirectory = await mkdtemp(join(tmpdir(), 'diffdevil-helper-caller-env-'));
