@@ -29,7 +29,7 @@ import { once } from 'node:events';
 import { dirname, join, resolve } from 'node:path';
 import { createFakeGitHub, CODE, ENTITLEMENT_FIXTURE, INSTALLATIONS, setScale } from './fixture.mjs';
 import { seedLocalState, executeLocal, recordLocalDelivery } from './seed.mjs';
-import { proManage, freeManage, businessManage, delegateManage, setupRecovery, manageAccess, COMMERCIAL_PRO, COMMERCIAL_FREE, COMMERCIAL_BUSINESS } from './manage.mjs';
+import { proManage, planChoiceReturn, freeManage, businessManage, delegateManage, setupRecovery, manageAccess, COMMERCIAL_PRO, COMMERCIAL_FREE, COMMERCIAL_BUSINESS } from './manage.mjs';
 import { participationJourney, rewardOnlyJourney, nullableReceiverJourney, COMMERCIAL_BETA, COMMERCIAL_REWARD_ONLY, NULLABLE_LINK, NULLABLE_SIGNING_KEY, QA_CAMPAIGN } from './participation.mjs';
 import { appBuildTarget } from '../build-target.mjs';
 
@@ -595,6 +595,16 @@ try {
     }
     setScale(1);
   }
+
+  // Run the plan-choice return journey from a clean seed after the other Manage journeys, so its intentional saved
+  // choice and repository effects cannot change their starting fixture.
+  await stopWorker();
+  const planChoiceSeed = spawnSync(process.execPath, [resolve('apps/app/qa/seed.mjs'), STATE], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true });
+  if (planChoiceSeed.status !== 0) throw new Error(`plan-choice seeding failed:\n${planChoiceSeed.stdout}\n${planChoiceSeed.stderr}`);
+  console.log(`Re-seeded Manage return fixture: ${planChoiceSeed.stdout.trim().split(/\r?\n/u).at(-1)}`);
+  await startWorker(undefined, STATE, { commercial: COMMERCIAL_PRO });
+  await signIn();
+  await planChoiceReturn(ctx);
 
   }
   check('no console errors', consoleErrors.length === 0, consoleErrors.slice(0, 5).join(' | '));
