@@ -203,12 +203,12 @@ async function qualifyAllRepositoriesSearchDetail(returnUrl, originalFacts) {
   const noHistoryText = await page.locator('.a-pn-b').innerText();
   check('a completed empty analytical read says no retained analysis', noHistoryResponse.status() === 200 && /No retained analysis/u.test(noHistoryText) && !/cannot confirm/u.test(noHistoryText), noHistoryText);
 
-  // This malformed row makes the analytical service read fail; the independent pathless lookup stays readable.
+  // This malformed row makes the repository's analytical service read fail; pathless PR452 history remains readable.
   executeLocal("INSERT INTO analytical_pull_requests(repository_id, pull_request, updated_at, expires_at, record_json) VALUES (1001, 999999, '2026-10-15T00:00:00.000Z', NULL, 'not-json')", STATE);
   try {
-    const unavailableResponse = await go('/pr/parser-guild/parser-lab/999999?per=90d');
-    const unavailableText = await page.locator('.a-pn-b').innerText();
-    check('an unanswered analytical read does not claim that retained analysis is absent', unavailableResponse.status() === 200 && /Analysis unavailable/u.test(unavailableText) && /cannot confirm whether it has retained analysis/u.test(unavailableText) && !/^No retained analysis/u.test(unavailableText), unavailableText);
+    const unavailableResponse = await go('/pr/parser-guild/parser-lab/452?per=90d');
+    const unavailableFacts = await page.evaluate(() => ({ text: document.body.innerText, changed: document.querySelector('.a-result .big .n')?.textContent ?? '' }));
+    check('an unanswered retained read is explicit while the older pathless PR detail remains available', unavailableResponse.status() === 200 && unavailableFacts.changed !== '' && /retained read unanswered · showing pathless history/u.test(unavailableFacts.text) && /The retained analytical read did not answer/u.test(unavailableFacts.text) && /cannot confirm this pull request’s lifecycle or final merged comparison/u.test(unavailableFacts.text) && !/lifecycle not retained for this repository/u.test(unavailableFacts.text), JSON.stringify({ changed: unavailableFacts.changed, text: unavailableFacts.text.replace(/\s+/gu, ' ').slice(0, 500) }));
   } finally {
     executeLocal('DELETE FROM analytical_pull_requests WHERE repository_id=1001 AND pull_request=999999', STATE);
   }
