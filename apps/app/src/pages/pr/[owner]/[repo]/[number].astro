@@ -25,7 +25,7 @@ const { owner, repo, number } = Astro.params;
 const fullName = `${owner}/${repo}`;
 const prNumber = Number(number);
 const repository = Number.isSafeInteger(prNumber) && prNumber > 0 ? repositoryByFullName(Astro.locals.viewer, fullName) : undefined;
-const view = await loadView({ url: new URL(Astro.url.pathname + (Astro.url.search || `?s=${repository ? fullName : 'all'}`), Astro.url), viewer: Astro.locals.viewer, session: Astro.locals.session, runtime, surface: 'pr', detail: { pullRequest: prNumber } });
+const view = await loadView({ url: new URL(Astro.url.pathname + (Astro.url.search || `?s=${repository ? fullName : 'all'}`), Astro.url), viewer: Astro.locals.viewer, session: Astro.locals.session, runtime, surface: 'pr', detail: { repositoryId: repository?.repositoryId, pullRequest: prNumber } });
 if (!repository) Astro.response.status = 404;
 const pages = runtime.premium.pages.pr;
 const Context = pages?.Context;
