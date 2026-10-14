@@ -179,6 +179,8 @@ test('development deltas preserve bounded and unknown evidence instead of subtra
   const boundedReadout = readoutOf(development, 1);
   assert.equal(boundedReadout.vals.find(value => value.label === 'vs previous').value, '−2,095–+2,095');
   assert.equal(boundedReadout.vals.find(value => value.label === 'since opened').value, '−2,095–+2,095');
+  assert.equal(boundedReadout.vals.find(value => value.label === 'Changed').cls, 'sum range');
+  assert.ok(boundedReadout.vals.filter(value => value.label === 'vs previous' || value.label === 'since opened').every(value => value.cls === 'range'));
   assert.equal(readoutOf(development, 0).vals.find(value => value.label === 'since opened').value, '±0', 'the first observed head is compared with the same measurement as its baseline');
 
   const unknownReadout = readoutOf(development, 2);

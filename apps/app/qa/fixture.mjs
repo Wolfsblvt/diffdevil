@@ -139,6 +139,10 @@ export function pullRequests() {
       out.push({ repository, number: soloNumber, title: 'Add an independent parser file', state: 'merged', draft: false, openedAt: at(9), readyAt: at(8), mergedAt, closedAt: mergedAt, updatedAt: mergedAt, base: sha(soloNumber * 7), headSha: soloHead, mergeCommitSha: sha(soloNumber * 13), revisions: [{ head: soloHead, observedAt: at(7), files: [{ path: PRO_FILE_WITHOUT_PARTNERS, modified: 1, added: 1, deleted: 0 }] }], analysed: true, finalRecovered: true, bounded: false, recordedBands: true });
     }
   }
+  // Retained closed-unmerged lifecycle with no analysed revisions: the PR reader must not claim a latest revision exists.
+  out.push({ repository: REPOSITORIES[0], number: 74, title: 'Closed without a retained revision', state: 'closed', draft: false,
+    openedAt: at(4), readyAt: null, mergedAt: null, closedAt: at(2), updatedAt: at(2), base: sha(74 * 7), headSha: sha(74 * 10),
+    mergeCommitSha: null, revisions: [], analysed: true, finalRecovered: false, bounded: false, recordedBands: true });
   return out;
 }
 

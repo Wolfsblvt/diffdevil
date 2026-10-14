@@ -40,7 +40,8 @@ const IDENTITY_ONLY = process.argv.includes('--identity');
 const AUTHORITY_ONLY = process.argv.includes('--authority');
 const HISTORY_ONLY = process.argv.includes('--history');
 const PR_SEARCH_DETAIL_ONLY = process.argv.includes('--pr-search-detail');
-const OUT = join(target.artifacts, 'qa', ...(PR_SEARCH_DETAIL_ONLY ? ['pr-search-detail'] : IDENTITY_ONLY ? ['identity'] : AUTHORITY_ONLY ? ['authority'] : HISTORY_ONLY ? ['history'] : []));
+const PR_CONFIDENCE_ONLY = process.argv.includes('--pr-confidence-state');
+const OUT = join(target.artifacts, 'qa', ...(PR_CONFIDENCE_ONLY ? ['pr-confidence-state'] : PR_SEARCH_DETAIL_ONLY ? ['pr-search-detail'] : IDENTITY_ONLY ? ['identity'] : AUTHORITY_ONLY ? ['authority'] : HISTORY_ONLY ? ['history'] : []));
 const APP_PORT = Number(process.env.DIFFDEVIL_APP_QA_PORT ?? (target.name === 'staging' ? 4512 : 4412));
 const GITHUB_PORT = Number(process.env.DIFFDEVIL_APP_QA_GITHUB_PORT ?? (target.name === 'staging' ? 4533 : 4433));
 // Chromium accepts Secure (__Host-) cookies from http://localhost, not from a loopback IP, so the browser origin is localhost; the Worker still binds 127.0.0.1.
@@ -438,11 +439,65 @@ async function qualifyPages(label, { pro }) {
   check(`${label} nav shows repository status vocabulary`, await page.evaluate(() => { const texts = [...document.querySelectorAll('.a-repos .a-st')].map(element => element.textContent); return texts.includes('History off') && texts.includes('Labels only'); }));
 }
 
+async function qualifyPrConfidenceState() {
+  const detail = await go('/pr/parser-guild/parser-lab/452');
+  await settled();
+  check('PR detail renders the Development chart for a retained merged pull request', detail.status() === 200 && await page.locator('[data-chart-id="dev"].is-mounted').count() === 1, `${detail.status()}`);
+  await page.setViewportSize({ width: 1280, height: 900 });
+  const boundedReadout = await page.evaluate(() => {
+    const host = document.querySelector('[data-chart-id="dev"]');
+    const frame = host?.__frame;
+    if (!host || !frame) return null;
+    const now = frame.model.now;
+    const interval = { status: 'bounded', lower: 2240, upper: 4335 };
+    const delta = { status: 'bounded', lower: -2095, upper: 2095 };
+    frame.model = { ...frame.model, rows: [
+      { index: 0, sha: 'before1', at: now - 1, changed: interval.lower, upper: interval.upper, status: interval.status, bandShort: null, color: null, changedFrom: null, sinceOpened: { status: 'exact', lower: 0, upper: 0 }, transition: null },
+      { index: 1, sha: 'after01', at: now, changed: interval.lower, upper: interval.upper, status: interval.status, bandShort: null, color: null, changedFrom: delta, sinceOpened: delta, transition: null },
+    ] };
+    frame.setFocus(1, { announce: true });
+    const readout = host.querySelector('[data-readout]');
+    const strip = readout.querySelector('.fr-vals');
+    const stripBox = strip.getBoundingClientRect();
+    const values = [...strip.querySelectorAll('dd')].map(value => {
+      const range = document.createRange();
+      range.selectNodeContents(value);
+      const textBox = range.getBoundingClientRect();
+      return { label: value.previousElementSibling.textContent, value: value.textContent, left: textBox.left, right: textBox.right, clipped: value.scrollWidth > value.clientWidth + 1 };
+    });
+    const boxes = [...strip.children].map(value => { const box = value.getBoundingClientRect(); return { left: box.left, right: box.right }; });
+    const overlapping = boxes.some((box, index) => index > 0 && boxes[index - 1].right > box.left + 1);
+    return { viewport: innerWidth, readoutWidth: readout.clientWidth, stripWidth: strip.clientWidth, stripScrollWidth: strip.scrollWidth,
+      overflowing: strip.scrollWidth > strip.clientWidth + 1, overlapping, valuesOutside: values.some(value => value.left < stripBox.left - 1 || value.right > stripBox.right + 1), values };
+  });
+  check('PR Development F1 readout shows the full signed bounded delta at 1280px without clipping or overlap', boundedReadout?.viewport === 1280
+    && boundedReadout.values.filter(value => value.label === 'vs previous' || value.label === 'since opened').every(value => value.value === '−2,095–+2,095')
+    && !boundedReadout.overflowing && !boundedReadout.overlapping && !boundedReadout.valuesOutside && boundedReadout.values.every(value => !value.clipped), JSON.stringify(boundedReadout));
+  await page.locator('[data-chart-id="dev"] [data-readout]').screenshot({ path: join(OUT, 'pr-development-bounded-1280x900.png') });
+  await page.evaluate(() => {
+    const host = document.querySelector('[data-chart-id="dev"]');
+    const frame = host?.__frame;
+    if (host && frame) { frame.model = JSON.parse(host.querySelector('[data-chart-model]').textContent); frame.setFocus(null, { quiet: true }); }
+  });
+  await page.setViewportSize({ width: 1440, height: 900 });
+
+  const closedWithoutRevision = await go('/pr/parser-guild/parser-lab/74');
+  const closedWithoutRevisionText = await page.evaluate(() => document.body.innerText);
+  check('closed-unmerged PR with zero analysed revisions states that no revision or final comparison was retained', closedWithoutRevision.status() === 200
+    && /Closed unmerged; no analysed revision was retained, and no final merged comparison exists\./u.test(closedWithoutRevisionText)
+    && /No analysed revision retained/u.test(closedWithoutRevisionText), closedWithoutRevisionText.replace(/\s+/gu, ' ').slice(0, 500));
+  await shot('closed-unmerged-no-analysed-revision-pr74');
+}
+
 try {
   if (PR_SEARCH_DETAIL_ONLY) {
     await startWorker(undefined, STATE, { commercial: COMMERCIAL_FREE, allowances: { free: { private: 3, publicHistory: 10 }, proOrganisation: { private: 3 } } });
     await signIn();
     await qualifyAllRepositoriesSearchDetail();
+  } else if (PR_CONFIDENCE_ONLY) {
+    await startWorker(undefined, STATE, { commercial: COMMERCIAL_PRO });
+    await signIn();
+    await qualifyPrConfidenceState();
   } else if (AUTHORITY_ONLY) {
     for (const [name, status, role, state] of [
       ['unavailable', 403, 'admin', 'active'], ['pending', 200, 'admin', 'pending'],
@@ -627,7 +682,9 @@ try {
   await settled();
   check('PR detail draws development over the size zones', (await page.locator('[data-chart="development"].is-mounted').count()) === 1);
   await qualifyFrame('pro pr detail', '[data-chart-id="dev"]');
-  await qualifyAllRepositoriesSearchDetail(page.url(), detailFacts);
+  const prDetailUrl = page.url();
+  await qualifyPrConfidenceState();
+  await qualifyAllRepositoriesSearchDetail(prDetailUrl, detailFacts);
   await premium?.prDetail?.(ctx, { detailFacts });
   if (!premium) {
     check('without the premium extension PR detail keeps its named files as plain text and says file context is not part of this build', detailFacts.fileLinks === 0 && (await page.locator('#h-ctx1, #h-recent, #h-ow').count()) === 0 && (await page.evaluate(() => /File context is not part of this build/u.test(document.body.innerText))));
@@ -848,7 +905,7 @@ try {
   githubServer.closeAllConnections?.();
   githubServer.close();
 }
-await writeFile(join(OUT, 'results.json'), JSON.stringify({ origin: ORIGIN, scope: PR_SEARCH_DETAIL_ONLY ? 'pr-search-detail' : AUTHORITY_ONLY ? 'authority' : HISTORY_ONLY ? 'history' : IDENTITY_ONLY ? 'identity' : PARTICIPATION_ONLY ? 'participation' : 'full', target: target.name, seeded: seeded.written, dense: DENSE && !PR_SEARCH_DETAIL_ONLY && !PARTICIPATION_ONLY && !IDENTITY_ONLY && !AUTHORITY_ONLY && !HISTORY_ONLY, charts: chartTelemetry, results, failures, consoleErrors, pageErrors, external }, null, 2));
+await writeFile(join(OUT, 'results.json'), JSON.stringify({ origin: ORIGIN, scope: PR_CONFIDENCE_ONLY ? 'pr-confidence-state' : PR_SEARCH_DETAIL_ONLY ? 'pr-search-detail' : AUTHORITY_ONLY ? 'authority' : HISTORY_ONLY ? 'history' : IDENTITY_ONLY ? 'identity' : PARTICIPATION_ONLY ? 'participation' : 'full', target: target.name, seeded: seeded.written, dense: DENSE && !PR_CONFIDENCE_ONLY && !PR_SEARCH_DETAIL_ONLY && !PARTICIPATION_ONLY && !IDENTITY_ONLY && !AUTHORITY_ONLY && !HISTORY_ONLY, charts: chartTelemetry, results, failures, consoleErrors, pageErrors, external }, null, 2));
 await writeFile(join(OUT, 'worker.log'), workerLog);
 console.log(`${PARTICIPATION_ONLY ? 'Participation: ' : ''}${results.filter(result => result.ok).length} of ${results.length} checks passed; screenshots and results in ${OUT}`);
 if (failures.length) { console.error(failures.map(failure => ` ✗ ${failure}`).join('\n')); process.exit(1); }

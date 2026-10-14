@@ -48,6 +48,14 @@
 .fr-drill { margin-left: auto; align-self: center; flex: none; display: inline-flex; align-items: center; height: 28px; background: none; border: 1px solid var(--hair-strong); border-radius: var(--r-control); color: var(--fg); font: 600 12px var(--font-ui); padding: 0 10px; cursor: pointer; white-space: nowrap; }
 .fr-drill:hover { border-color: var(--accent); }
 
+/* Long Development intervals keep their full text inside the five-column panel at desktop widths. */
+@media (min-width: 1181px) and (max-width: 1360px) {
+  .fr[data-chart="development"] .fr-vals { column-gap: 4px; }
+  .fr[data-chart="development"] .fr-vals > .range dd { font-size: 13px; }
+  .fr[data-chart="development"] .fr-vals > .sum.range { padding-left: 10px; }
+  .fr[data-chart="development"] .fr-vals > .sum.range dd { font-size: 15px; }
+}
+
 /* equivalent tables */
 .fr-tbl { width: 100%; border-collapse: collapse; font-size: 12.5px; }
 .fr-tbl th { text-align: left; font: 500 10.5px var(--font-mono); color: var(--fg-3); padding: 6px 8px; border-bottom: 1px solid var(--hair); white-space: nowrap; }
