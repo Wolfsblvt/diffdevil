@@ -179,6 +179,8 @@ try {
   await page.getByRole('button', { name: 'Approve fixture Works link' }).click();
   await page.waitForURL(url => url.origin === APP && url.searchParams.get('works-link') === 'pending');
   check('approved but unestablished remains pending and offers the same-link continuation', await page.locator('[data-link-standing="pending"]').count() === 1 && (await page.locator('body').innerText()).includes('continues the same link instead of starting over'));
+  const pendingReturn = await page.evaluate(() => ({ headline: document.querySelector('.m-return[data-link-standing="pending"] b')?.textContent ?? '', text: document.querySelector('.m-return[data-link-standing="pending"]')?.textContent ?? '', waiting: Boolean(document.querySelector('.m-return.wait')) }));
+  check('the server-owned unfinished return stays neutral, uncharged and retryable', /didn't finish/u.test(pendingReturn.headline) && /Nothing was charged/u.test(pendingReturn.text) && !pendingReturn.wait && await page.getByRole('button', { name: 'Try again', exact: true }).count() === 1);
   const intentCount = intents.size;
   failure = null;
   await page.getByRole('button', { name: 'Try again', exact: true }).click();

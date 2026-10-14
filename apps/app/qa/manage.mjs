@@ -3,7 +3,8 @@
  * The Manage console's browser journeys for apps/app/qa/run.mjs, against the local Works stand-in: the capacity-first
  * Overview and its decisions, selecting / enabling (with the one-writer declaration) / stopping and swapping in
  * Repositories, the repository settings page with the pull-request message preview, Plan & funding with its slots,
- * the departure to Works and the three return states, the Account page's four relationships, disconnect and
+ * the stand-in's successful and waiting returns (native attempt returns are in works-entry.mjs), the Account page's
+ * four relationships, disconnect and
  * reconnect, the sign-out disclosure, and on Free the pooled allowances, the connected organisation and the first link.
  * `ctx` carries the runner's `check`, `go`, `page`, `shot`, `ORIGIN`, `OUT` and `settled`. The accessible journeys (keyboard, focus,
  * labelled controls, live regions, narrow widths, the dark lock under a light preference, reduced motion) are `manageAccess`.
@@ -259,8 +260,6 @@ export async function freeManage(ctx) {
   const linked = await page.evaluate(() => ({ path: location.pathname + location.search, strip: document.querySelector('.m-return b')?.textContent ?? '', banner: document.querySelector('[data-standing-banner]')?.dataset.standingBanner ?? '', plan: document.querySelector('[data-standing] .plan b')?.textContent ?? '' }));
   check('after linking, the return lands on Plan & funding as linked, with the first payment pending until Works confirms', /^\/manage\/plan\?works-link=linked/u.test(linked.path) && /Linked to Wolfsblvt Works/u.test(linked.strip) && linked.banner === 'first-payment' && linked.plan === 'Pro', JSON.stringify(linked));
   await shot('free-manage-plan-linked');
-  await go('/manage/plan?works-link=pending');
-  check('a link that did not finish is reported neutrally with a way to try again and nothing charged', await page.evaluate(() => /didn't finish/u.test(document.querySelector('.m-return b')?.textContent ?? '') && /Nothing was charged/u.test(document.querySelector('.m-return p')?.textContent ?? '') && !document.querySelector('.m-return.wait')));
   await qualifyPage(ctx, 'free', '/manage/account', { tab: 'Account', tabs: 5 });
   // Sign out from Account: the sign-in page discloses the connection standing.
   await page.click('[data-sessions] form[action="/auth/logout"] button');
