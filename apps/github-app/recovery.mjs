@@ -2,10 +2,13 @@
 import { D1AppStore } from './storage.mjs';
 import { D1AuthorizationStore } from './authorization-storage.mjs';
 import { D1CommercialStore } from './commercial-storage.mjs';
+import { D1ManageStore } from '../app/src/lib/manage/store.mjs';
+import { D1ParticipationStore } from '../app/src/lib/participation/store.mjs';
 
 const DAY = 86_400_000;
 const DUTIES = ['deletion-expiry', 'history-consent', 'service-disconnect', 'works-disconnect'];
-const TYPES = new Set(['history-deleted', 'repository-deleted', 'history-disabled', 'history-retention', 'service-disconnected', 'works-disconnected']);
+const TYPES = new Set(['history-deleted', 'repository-deleted', 'history-disabled', 'history-retention', 'service-disconnected', 'works-disconnected',
+  'participation-answers-deleted', 'account-closed', 'sessions-revoked', 'free-organisation-disconnected']);
 const iso = value => typeof value === 'string' && Number.isFinite(Date.parse(value)) && new Date(value).toISOString() === value;
 const id = value => Number.isSafeInteger(value) && value > 0;
 const text = value => typeof value === 'string' && value.trim().length > 0;
@@ -38,11 +41,15 @@ export function readRecoveryInput(input, point, through) {
     if (event.type.startsWith('history-') || event.type === 'repository-deleted') {
       if (!id(event.repositoryId)) throw refuse();
     }
-    if (event.type.endsWith('-deleted') && (!iso(event.reapplyUntil)
+    if (['history-deleted', 'repository-deleted', 'account-closed'].includes(event.type) && (!iso(event.reapplyUntil)
       || Date.parse(event.reapplyUntil) < Date.parse(event.at) + 37 * DAY)) throw refuse();
     if (event.type === 'history-retention' && (!id(event.retentionDays) || event.retentionDays > 3660)) throw refuse();
-    if (event.type === 'service-disconnected' && !id(event.userId)) throw refuse();
+    if (['service-disconnected', 'participation-answers-deleted', 'account-closed', 'sessions-revoked', 'free-organisation-disconnected'].includes(event.type) && !id(event.userId)) throw refuse();
     if (event.type === 'works-disconnected' && !text(event.linkId)) throw refuse();
+    if (event.type === 'participation-answers-deleted' && (!text(event.campaign?.key) || !id(event.campaign?.version))) throw refuse();
+    if (['account-closed', 'free-organisation-disconnected'].includes(event.type)
+      && (!Array.isArray(event.repositoryIds) || event.repositoryIds.some(value => !id(value))
+        || new Set(event.repositoryIds).size !== event.repositoryIds.length)) throw refuse();
     ids.add(event.id);
     previous = event.at;
   }
@@ -69,6 +76,8 @@ export async function replayRecoveryObligations({ database, input, point, throug
   const app = new D1AppStore(database, { now });
   const auth = new D1AuthorizationStore(database, { now });
   const works = new D1CommercialStore(database, { now });
+  const manage = new D1ManageStore(database, { now });
+  const participation = new D1ParticipationStore(database, { now });
   const receipt = { kind: 'diffdevil.app-recovery-checkpoint', version: 1, point: selected.point,
     inputSha256, coverage: selected.coverage, phase: 'applying', applied: [], commercial: null, code: null };
   const commit = () => checkpoint(structuredClone(receipt));
@@ -96,6 +105,32 @@ export async function replayRecoveryObligations({ database, input, point, throug
           break;
         case 'works-disconnected':
           await works.endLink(event.linkId, { source: 'recovery-input', endedAt: event.at });
+          break;
+        case 'participation-answers-deleted':
+          await participation.deleteAnswers(event.userId, event.campaign);
+          break;
+        case 'sessions-revoked':
+          await manage.revokeUserSessions(event.userId);
+          break;
+        case 'free-organisation-disconnected':
+          for (const repositoryId of event.repositoryIds) await app.setRepositoryExecution(repositoryId, { enabled: false, origin: 'recovery-input' });
+          await manage.disconnectFree(event.userId);
+          break;
+        case 'account-closed':
+          // The authoritative closure names its personal targets; never infer organisations from restored reach.
+          for (const repositoryId of event.repositoryIds) {
+            await app.setRepositoryExecution(repositoryId, { enabled: false, origin: 'recovery-input' });
+            await manage.deselect(repositoryId);
+            await app.deleteHistory(repositoryId, { deletedAt: event.at, reapplyUntil: event.reapplyUntil });
+          }
+          // A closure was admitted only without a Works link. A stale restored link cannot resurrect it.
+          for (const link of (await database.prepare("SELECT link_id FROM commercial_links WHERE product_account=? AND state='active'").bind(event.userId).all()).results) {
+            await works.endLink(link.link_id, { source: 'recovery-account-closure', endedAt: event.at });
+          }
+          await manage.forgetAccount(event.userId);
+          await participation.forgetAccount(event.userId);
+          await auth.revokeAuthorization(event.userId, { disconnectService: true });
+          await manage.forgetPreference(event.userId);
           break;
       }
       receipt.applied.push(event.id);

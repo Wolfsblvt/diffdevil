@@ -7,6 +7,8 @@ import { Miniflare } from 'miniflare';
 import { D1AppStore } from './storage.mjs';
 import { D1AuthorizationStore } from './authorization-storage.mjs';
 import { D1CommercialStore } from './commercial-storage.mjs';
+import { D1ManageStore } from '../app/src/lib/manage/store.mjs';
+import { D1ParticipationStore } from '../app/src/lib/participation/store.mjs';
 import { readRecoveryInput, replayRecoveryObligations } from './recovery.mjs';
 
 const point = { id: 'sanitized-point', capturedAt: '2026-10-01T00:00:00.000Z', supportedUntil: '2026-10-31T00:00:00.000Z' };
@@ -133,5 +135,47 @@ test('commercial unavailability and mere acknowledgements keep replay incomplete
     } };
     assert.equal((await f.replay(input(), { commercial: current })).phase, 'replayed');
     assert.equal(f.receipts.at(-1).phase, 'replayed');
+  } finally { await f.runtime.dispose(); }
+});
+
+test('later answer deletion preserves completion, while account closure removes personal facts and leaves organisation history', async () => {
+  const f = await fixture();
+  try {
+    const participation = new D1ParticipationStore(f.database, { now: () => at });
+    const manage = new D1ManageStore(f.database, { now: () => at });
+    const campaign = { key: 'fixture-campaign', version: 1, survey: 'fixture-survey' };
+    await participation.complete(77, campaign, { feedback: 'synthetic answer' });
+    await manage.select(17, 77);
+    await manage.connectFree(77, 9001);
+    await f.replay(input([{ type: 'participation-answers-deleted', userId: 77, campaign }]));
+    const response = await participation.response(77, campaign);
+    assert.equal(response.answers, null);
+    assert.equal(response.state, 'completed');
+    assert.ok(await participation.delivery(response.responseId), 'answer deletion keeps the earned completion event');
+    await f.replay(input([{ type: 'account-closed', userId: 77, repositoryIds: [17], reapplyUntil: until }]));
+    assert.equal(await participation.response(77, campaign), null);
+    assert.equal(await participation.delivery(response.responseId), null);
+    assert.equal(await manage.selection(17), null);
+    assert.equal(await manage.freeConnection(77), null);
+    assert.equal(await f.app.executionAllowed(17), false);
+    assert.equal((await f.database.prepare('SELECT count(*) AS n FROM analytical_file_sizes WHERE repository_id=17').first()).n, 0);
+    assert.equal((await f.database.prepare('SELECT count(*) AS n FROM analytical_file_sizes WHERE repository_id=18').first()).n, 1);
+    assert.equal((await f.database.prepare("SELECT state FROM commercial_links WHERE link_id='link-1'").first()).state, 'ended');
+    assert.equal((await f.database.prepare('SELECT last_establish FROM commercial_link_attempts').first()).last_establish, 'expired');
+  } finally { await f.runtime.dispose(); }
+});
+
+test('Free disconnect and session revocation replay without deleting retained organisation history or selection', async () => {
+  const f = await fixture();
+  try {
+    const manage = new D1ManageStore(f.database, { now: () => at });
+    await manage.select(18, 77);
+    await manage.connectFree(77, 9001);
+    await f.replay(input([{ type: 'free-organisation-disconnected', userId: 77, repositoryIds: [18] }, { type: 'sessions-revoked', userId: 77 }]));
+    assert.equal(await manage.freeConnection(77), null);
+    assert.ok(await manage.selection(18));
+    assert.equal(await f.app.executionAllowed(18), false);
+    assert.ok((await f.auth.session('session')).revoked_at);
+    assert.equal((await f.database.prepare('SELECT count(*) AS n FROM analytical_file_sizes WHERE repository_id=18').first()).n, 1);
   } finally { await f.runtime.dispose(); }
 });

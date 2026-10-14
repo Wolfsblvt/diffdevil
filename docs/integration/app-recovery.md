@@ -68,6 +68,10 @@ Every event has stable `id`, original ISO UTC `at`, and:
 | `history-retention` | `repositoryId`, `retentionDays` (1–3660) | Clamp existing expiry to at most event time plus those days; never lengthen or enable collection. |
 | `service-disconnected` | numeric `userId` | Existing account disconnect, revoke restored grant/sessions/artifacts. |
 | `works-disconnected` | `linkId` | Existing permanent link end, remove bindings/grant/disclosure, supersede pending reports, preserve attempts. |
+| `participation-answers-deleted` | `userId`, `campaign: { key, version }` | Existing answer deletion; retain the completion/reward event, delete empty drafts. |
+| `account-closed` | `userId`, `repositoryIds`, `reapplyUntil` | Stop/deselect/delete the closure's personal repository targets, forget Manage/participation facts and grants; end stale restored personal Works links. Organisation history remains. |
+| `sessions-revoked` | `userId` | Existing sign-out-everywhere revocation, independent of the service connection. |
+| `free-organisation-disconnected` | `userId`, `repositoryIds` | Disconnect the Free organisation and stop its named execution targets while retaining selection and history. |
 
 Deletion lifetimes are at least 37 days from the original event. Replay preserves
 those times and never shortens a longer retained tombstone. Ordinary measurement
@@ -76,9 +80,12 @@ Include historical deletion events even when the deleted row no longer exists.
 The consumer only restricts or erases state; it never grants consent or reconnects
 service. Later explicit reconsent and current authority use their ordinary routes.
 
-Other data families, including participation-answer deletion, need their own source
-and consumer before a recovery claim includes them. This vocabulary does not claim
-those duties; an unsupported duty must not silently disappear from an input.
+The deletion source includes answer deletion and account closure; the service source
+includes session revocation and Free organisation disconnect. Closure's personal
+targets and Free disconnect's affected targets come from the actual operation, not
+inference from stale restored reach. A closure establishes that no personal Works
+link was active when admitted, so stale restored links for that account end too.
+An unsupported duty must not silently disappear from an input.
 
 ## Invoke, checkpoint and retry
 
