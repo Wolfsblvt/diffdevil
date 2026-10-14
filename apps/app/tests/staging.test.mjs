@@ -10,7 +10,7 @@ import { Miniflare } from 'miniflare';
 import { unstable_readConfig as readConfig } from 'wrangler';
 import { appBuildTarget } from '../build-target.mjs';
 import { createAppRuntime } from '../src/lib/runtime.mjs';
-import { authStart, authCallback, authSession, openSession } from '../src/lib/routes.mjs';
+import { authStart, authCallback, authSession, openSession, pageHeaders } from '../src/lib/routes.mjs';
 import { D1AppStore } from '../../github-app/storage.mjs';
 import { createGitHubAppWorker, createInstallationClient, collectDeliveryAnalytics, COMMERCIAL_ROUTES } from '../../github-app/app.mjs';
 import { stagingInstallationAccounts } from '../../github-app/staging-admission.mjs';
@@ -253,6 +253,11 @@ test('staging sessions, callbacks, projections and product state cannot enter th
       consumers[name] = { database, env, app, wirt, call: (path, init = {}) => worker.fetch(new Request(`${origin}${path}`, init), env) };
     }
     const { production, staging } = consumers;
+    for (const consumer of [production, staging]) {
+      assert.equal(/form-action ([^;]+)/u.exec(pageHeaders(consumer.app)['content-security-policy'])[1], `'self' https://github.com ${consumer.env.WIRT_ORIGIN}`);
+    }
+    assert.equal(pageHeaders(staging.app)['content-security-policy'].includes(production.env.WIRT_ORIGIN), false);
+    assert.equal(pageHeaders(production.app)['content-security-policy'].includes(staging.env.WIRT_ORIGIN), false);
     const productionCookie = await signIn(production.app), stagingCookie = await signIn(staging.app);
     assert.equal((await openSession(new Request(`${staging.env.APP_ORIGIN}/`, { headers: { cookie: productionCookie } }), staging.app)).refusal, 'E_SESSION_UNAVAILABLE');
     assert.equal((await openSession(new Request(`${production.env.APP_ORIGIN}/`, { headers: { cookie: stagingCookie } }), production.app)).refusal, 'E_SESSION_UNAVAILABLE');

@@ -21,12 +21,16 @@ export function cookieValue(request, name) {
   return undefined;
 }
 
-/** Browser security headers for every App document; pages add the protected-cache pair. */
-export function securityHeaders() {
+/** Browser security headers; only the runtime's successfully configured Works consumer adds an external form destination. */
+export function securityHeaders(runtime) {
+  // Chromium checks a form's redirect chain too: /manage/do creates the bound intent, then returns its Works URL.
+  // Use the same exact origin already admitted by the commercial client, never a request or provider-returned URL.
+  const formSources = ["'self'", 'https://github.com'];
+  if (runtime?.commercialSource === 'commercial' && runtime.config.worksOrigin) formSources.push(runtime.config.worksOrigin);
   return {
     // style-src allows attribute styles: data-bound bar widths and label colours are rendered as style attributes
     // from escaped server values. Scripts remain 'self' only; no inline script exists on any App page.
-    'content-security-policy': "default-src 'none'; script-src 'self'; worker-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: https://avatars.githubusercontent.com; connect-src 'self'; base-uri 'none'; form-action 'self' https://github.com; frame-ancestors 'none'",
+    'content-security-policy': `default-src 'none'; script-src 'self'; worker-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: https://avatars.githubusercontent.com; connect-src 'self'; base-uri 'none'; form-action ${formSources.join(' ')}; frame-ancestors 'none'`,
     'permissions-policy': 'camera=(), microphone=(), geolocation=(), payment=(), usb=()',
     // same-origin, not no-referrer, on documents: with no-referrer a browser sends `Origin: null` on same-origin
     // form posts, which the sign-in exchange must refuse. Cross-origin requests (GitHub links) still receive nothing.
@@ -38,15 +42,15 @@ export function securityHeaders() {
 }
 
 /** Merge headers from the authorization service into a document response: its cache pair stays, its referrer policy yields to the document's. */
-export function documentHeaders(extra = {}) {
-  const merged = { ...securityHeaders() };
+export function documentHeaders(extra = {}, runtime) {
+  const merged = { ...securityHeaders(runtime) };
   for (const [name, value] of Object.entries({ ...protectedHeaders(), ...extra })) {
     if (name.toLowerCase() === 'referrer-policy') continue;
     merged[name] = value;
   }
   return merged;
 }
-export function pageHeaders() { return documentHeaders(); }
+export function pageHeaders(runtime) { return documentHeaders({}, runtime); }
 
 /** Plain words for the stable refusal codes a person can meet on the way in. */
 export const SIGN_IN_MESSAGES = Object.freeze({

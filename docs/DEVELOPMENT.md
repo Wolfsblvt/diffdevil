@@ -80,6 +80,17 @@ built Worker to qualify Overview/Manage headings, browser titles, the unchanged
 Works header, desktop layout and keyboard navigation. It records its focused scope
 under the selected target's `qa/identity/`, separately from full journey evidence.
 
+After the matching App build, `npm run qa:app:works-entry` qualifies the native
+Manage Pro form through an external Works consent double and the real callback.
+It loads the emitted Worker and middleware in local Miniflare, uses disposable D1,
+and intercepts every Chromium navigation hop and outgoing provider call. Set
+`DIFFDEVIL_APP_TARGET=staging` after `app:build:staging` to exercise the distinct
+staging consumer. It checks the bound numeric actor, signed intent, PKCE,
+application and queued report, visible unavailable/foreign-answer refusals, and
+CSP refusal of an unadmitted redirect after the Works hop. Screenshots and results
+go to the selected target's `qa/works-entry/`. No live sign-in, Works consent,
+report delivery, deployment or private composition is proved by this local pass.
+
 | Command | What it proves |
 | --- | --- |
 | `npm run check:prep` | Parses machine assets and checks unique, nonempty declared case IDs. It does not execute cases or judge prose. |
