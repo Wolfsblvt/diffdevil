@@ -275,7 +275,14 @@ async function refreshAfterClose(dependencies, envelope, client, target, author)
     // Keyed by the merge commit, like the default-branch push that delivers the same change, so both are one refresh.
     const canResolveTimeline = timestamp(pull.merged_at) !== null && Number.isSafeInteger(pull.number) && pull.number > 0;
     const canResolveIdentity = commitSha(pull.merge_commit_sha) || canResolveTimeline;
-    const mergeCommit = canResolveIdentity ? await mergedCommit(client, target.repository, pull) : null;
+    let mergeCommit = null;
+    if (canResolveIdentity) {
+      try {
+        mergeCommit = await mergedCommit(client, target.repository, pull);
+      } catch {
+        // Without a reliable timeline identity, the unique delivery ID still preserves this refresh.
+      }
+    }
     const causeId = mergeCommit ? `policy-${mergeCommit}` : envelope.deliveryId;
     return { neighbour, policy: await enqueueBriefRefresh(dependencies, envelope, 'open', 'policy', causeId) };
   } catch { return { status: 'failed' }; }

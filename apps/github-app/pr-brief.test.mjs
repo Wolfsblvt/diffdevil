@@ -268,6 +268,15 @@ test('a merged trusted-policy change refreshes every open brief and settings cha
   assert.deepEqual(applied.calls.filter(row => row[0] === 'finish').map(row => row[1]), ['complete', 'complete'], 'PRs 7 and 8 are evaluated again; closed PR 42 is not');
   assert.equal(repository.owned(7).length, 1); assert.equal(repository.owned(8).length, 1);
 
+  const readTimeline = subject.before;
+  subject.before = (call, state) => call.method === 'GET' && call.path === '/repos/example/repository/issues/42/timeline'
+    ? json({ message: 'unavailable' }, 503) : readTimeline(call, state);
+  const unavailable = await deliverEnvelope(repository, pullEvent(42, 'closed', 'timeline-unavailable'), standard);
+  const fallbackPolicy = unavailable.queue.sent.filter(item => item.action === 'policy');
+  assert.deepEqual(fallbackPolicy.map(item => [item.causeId, item.deliveryId]), [[
+    'timeline-unavailable', 'brief-refresh-part:policy:timeline-unavailable:17:0'
+  ]], 'an unavailable merge timeline preserves the unique delivery-ID refresh');
+
   // Settings: the admission service enqueues the cause; the queue lists the open briefs, admission reads nothing.
   const queue = captureQueue();
   const refresher = createBriefRefresher({ GITHUB_APP_ID: '1', GITHUB_APP_PRIVATE_KEY: 'unused', APP_QUEUE: queue });
