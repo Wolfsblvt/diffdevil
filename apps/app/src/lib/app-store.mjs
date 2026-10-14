@@ -43,8 +43,7 @@ export class D1AppReadStore {
       for (const row of rows.results ?? []) {
         const executionActive = row.state === 'active' && row.access_state === 'available' && row.installation_state === 'active' && row.execution_consent_reason === null;
         const pauseReason = historyCollectionPause(row);
-        const historyConsented = row.history_consent_reason === null
-          && (row.history_enabled === 1 || row.history_consent_origin !== null) && !row.tombstoned;
+        const historyConsented = row.history_consent_reason === null && !row.tombstoned;
         const historyReadable = historyConsented && ['active', 'pending-enable'].includes(row.state) && row.access_state === 'available' && row.installation_state === 'active' && !row.tombstoned;
         const historyEnabled = row.history_enabled === 1 && historyConsented && historyReadable && !pauseReason;
         const removed = ['offboarding', 'removed'].includes(row.state) || row.access_state === 'removed';

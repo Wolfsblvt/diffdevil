@@ -194,13 +194,13 @@ export class D1AppStore {
   }
 
   async historySettings(repositoryId, { independentExecution = false } = {}) {
-    const row = await this.statement(`SELECT r.history_enabled, r.history_consent_origin, r.history_consent_reason, r.retention_days, r.state, r.access_state, r.execution_consent_origin, r.execution_consent_reason, i.state AS installation_state
+    const row = await this.statement(`SELECT r.history_enabled, r.history_consent_reason, r.retention_days, r.state, r.access_state, r.execution_consent_origin, r.execution_consent_reason, i.state AS installation_state
       FROM repositories r JOIN installations i ON i.installation_id=r.installation_id WHERE r.repository_id=?`, repositoryId).first();
     if (historyCollectionPause(row)) row.selected_at = (await this.statement('SELECT selected_at FROM repository_selections WHERE repository_id=?', repositoryId).first())?.selected_at;
     const pauseReason = historyCollectionPause(row);
     const tombstone = await this.statement('SELECT 1 AS blocked FROM deletion_tombstones WHERE scope IN (?, ?) AND reapply_until > ?', `history:${repositoryId}`, `repository:${repositoryId}`, this.now()).first();
     const admitted = row?.state === 'active' || (independentExecution && row?.state === 'pending-enable');
-    const consented = row?.history_consent_reason === null && (row?.history_enabled === 1 || row?.history_consent_origin !== null);
+    const consented = row?.history_consent_reason === null;
     const readable = await this.repositoryAdmitted(repositoryId) && !tombstone?.blocked && consented && admitted && row?.access_state === 'available' && row?.installation_state === 'active';
     return { enabled: row?.history_enabled === 1 && consented && readable && !pauseReason, readable, retentionDays: boundedDays(row?.retention_days), pauseReason };
   }

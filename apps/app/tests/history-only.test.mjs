@@ -3,6 +3,9 @@ import assert from 'node:assert/strict';
 import { after, test } from 'node:test';
 import { fixture, disposeFixture, viewerFor, NOW, ORIGIN } from './support.mjs';
 import { handleManageAction } from '../src/lib/manage/actions.mjs';
+import { handleManageExport } from '../src/lib/manage/export.mjs';
+import { openSession, SESSION_COOKIE } from '../src/lib/routes.mjs';
+import { historyProjection } from '../../github-app/contracts.mjs';
 import { loadManage } from '../src/lib/manage/model.mjs';
 import { loadView } from '../src/lib/view.mjs';
 import { runHistoryJob } from '../../github-app/history-jobs.mjs';
@@ -10,8 +13,8 @@ import { describeJob } from '../src/lib/manage/jobs.mjs';
 import { resolveViewer } from '../src/lib/viewer.mjs';
 after(disposeFixture);
 
-test('consented history imports and repairs three current-API comparisons with repository effects off', async () => {
-  const { app: compose } = await fixture({ seed: async store => {
+test('consented history imports and repairs three current-API comparisons with repository effects off', async t => {
+  const { app: compose, runtime: fixtureRuntime } = await fixture({ seed: async store => {
     await store.recordLifecycle({ installationId: 9, action: 'created', addedRepositories: [1005], removedRepositories: [] });
     await store.recordInstallationAccount(9, 123, 'user');
     await store.recordRepositoryVisibility(1005, false);
@@ -19,15 +22,25 @@ test('consented history imports and repairs three current-API comparisons with r
   } });
   const queued = [];
   const app = compose(undefined, { env: { APP_QUEUE: { send: async value => queued.push(value) } } });
-  const { opened, viewer: initialViewer } = await viewerFor(app);
+  const database = await fixtureRuntime.getD1Database('APP_DB');
+  const { cookie, opened, viewer: initialViewer } = await viewerFor(app);
   let viewer = initialViewer;
   const refreshViewer = async () => { viewer = await resolveViewer({ reads: opened.reads, actor: opened.actor, store: app.store, entitlement: app.entitlement, cache: app.cache }); };
   const repositoryId = 1005, repository = 'ada-sample/notes-site';
-  const act = async (action, enabled = 'on') => {
+  const act = async (action, enabled = 'on', fields = {}) => {
     const response = await handleManageAction(new Request(`${ORIGIN}/manage/do`, { method: 'POST', headers: { origin: ORIGIN },
-      body: new URLSearchParams({ action, repository, enabled, back: `/manage/repositories/${repository}` }) }), { runtime: app, viewer, session: opened });
-    return { message: new URL(response.headers.get('location'), ORIGIN).searchParams.get('m') };
+      body: new URLSearchParams({ action, repository, enabled, back: `/manage/repositories/${repository}`, ...fields }) }), { runtime: app, viewer, session: opened });
+    const destination = new URL(response.headers.get('location'), ORIGIN);
+    return { message: destination.searchParams.get('m'), reason: destination.searchParams.get('reason') };
   };
+  const exportFor = async (name = repository) => {
+    await refreshViewer();
+    const response = await handleManageExport({ url: new URL(`${ORIGIN}/manage/export?repository=${name}`), locals: { app, viewer, session: opened } });
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get('cache-control'), 'private, no-store');
+    return response.json();
+  };
+  const rawCount = async id => (await database.prepare('SELECT COUNT(*) AS n FROM analytical_pull_requests WHERE repository_id=?').bind(id).first()).n;
   assert.equal((await act('history')).message, 'history-on');
   await refreshViewer();
   const admission = await app.appStore.repositoryAdmission(repositoryId);
@@ -118,9 +131,28 @@ test('consented history imports and repairs three current-API comparisons with r
   await refreshViewer();
   const retainedView = await loadView({ url: new URL(`${ORIGIN}/history?s=${repository}`), viewer, session: opened, runtime: app, surface: 'history' });
   assert.equal(retainedView.current.mergedRecovered, 3, 'Stop keeps retained comparisons available');
+  await t.test('a collection pause exports its permitted retained comparisons', async () => {
+    const exported = (await exportFor()).repositories[0];
+    assert.ok(exported.retainedHistory);
+    assert.deepEqual(exported.analyticalRecords.records.map(row => row.record), records);
+    assert.equal((await app.appStore.historySettings(repositoryId, { independentExecution: true })).enabled, false);
+  });
+  await t.test('failed personal history deletion refuses account closure and keeps the session recoverable', async () => {
+    const deleteHistory = app.appStore.deleteHistory;
+    app.appStore.deleteHistory = async () => { throw new Error('fixture deletion unavailable'); };
+    try {
+      const refused = await act('close-account', 'off', { confirm: viewer.login, back: '/manage/account' });
+      assert.equal(refused.message, 'close-incomplete');
+      assert.equal(refused.reason, null);
+      assert.equal(await rawCount(repositoryId), 3);
+      assert.equal((await openSession(new Request(`${ORIGIN}/manage/account`, { headers: { cookie: `${SESSION_COOKIE}=${cookie}` } }), app)).refusal, undefined);
+    } finally { app.appStore.deleteHistory = deleteHistory; }
+  });
   assert.equal((await act('history')).message, 'history-on', 'explicit history readmission is independent of execution');
   assert.equal((await app.appStore.historySettings(repositoryId, { independentExecution: true })).enabled, true);
   assert.equal(await app.appStore.executionAllowed(repositoryId), false);
+  // Migration 0003 preserves this valid consent even though its original actor and origin are unknown.
+  await database.prepare('UPDATE repositories SET history_consent_origin=NULL, history_consent_actor_id=NULL WHERE repository_id=?').bind(repositoryId).run();
   assert.equal((await act('history', 'off')).message, 'history-off');
   const off = (await app.store.repositoryStandings([repositoryId])).get(repositoryId);
   assert.equal(off.historyEnabled, false);
@@ -128,6 +160,8 @@ test('consented history imports and repairs three current-API comparisons with r
   assert.equal(off.historyReason, null);
   assert.equal(off.historyCollectionEnabled, false);
   assert.equal(off.historyReadable, true);
+  assert.equal(off.historyOrigin, 'unknown');
+  assert.equal(off.historyActorId, null);
   assert.equal(off.selected, false);
   assert.equal((await app.appStore.historySettings(repositoryId, { independentExecution: true })).enabled, false, 'opt-out still prevents new collection');
   assert.equal((await app.appStore.analyticalRecords(repositoryId)).length, 3, 'Stop collecting preserves already-retained records for reading');
@@ -135,4 +169,80 @@ test('consented history imports and repairs three current-API comparisons with r
   const historyOffView = await loadView({ url: new URL(`${ORIGIN}/history?s=${repository}`), viewer, session: opened, runtime: app, surface: 'history' });
   assert.equal(historyOffView.historyRepositories.length, 1);
   assert.equal(historyOffView.current.mergedRecovered, 3, 'History keeps its factual retained population after collection stops');
+  await t.test('legacy consent with unknown provenance retains real exports after Stop collecting', async () => {
+    const exported = (await exportFor()).repositories[0];
+    assert.ok(exported.retainedHistory);
+    assert.deepEqual(exported.analyticalRecords.records.map(row => row.record), records);
+    assert.equal((await app.appStore.repositoryAdmission(repositoryId)).history.origin, 'unknown');
+    assert.equal((await app.appStore.repositoryAdmission(repositoryId)).history.actorId, null);
+    assert.equal((await app.appStore.recordAnalytical({ ...records[0], pullRequest: 99 })).status, 'disabled');
+    assert.equal(await rawCount(repositoryId), 3, 'retained readability cannot publish a new comparison');
+  });
+  await t.test('export still requires current administration and retained reads still enforce each refusal', async () => {
+    const readAdmission = app.auth.readAdmission;
+    app.auth.readAdmission = async () => { throw Object.assign(new Error('fixture administration denied'), { code: 'E_ADMISSION_UNAUTHORIZED' }); };
+    try {
+      const refused = await exportFor();
+      assert.deepEqual(refused.repositories, []);
+      assert.deepEqual(refused.notAdministered, [repository]);
+    } finally { app.auth.readAdmission = readAdmission; }
+    const changes = [
+      ['history_consent_reason', 'never-enabled', null],
+      ['history_consent_reason', 'explicitly-disabled', null],
+      ['history_consent_reason', 're-consent-required', null],
+      ['history_consent_reason', 'unknown', null],
+      ['state', 'offboarding', 'pending-enable'],
+      ['access_state', 'removed', 'available']
+    ];
+    for (const [column, value, original] of changes) {
+      await database.prepare(`UPDATE repositories SET ${column}=? WHERE repository_id=?`).bind(value, repositoryId).run();
+      try {
+        assert.equal((await app.store.repositoryStandings([repositoryId])).get(repositoryId).historyReadable, false, `${column}=${value}`);
+        assert.deepEqual(await app.appStore.analyticalRecords(repositoryId), []);
+        const exported = await exportFor();
+        assert.ok(exported.repositories.every(row => row.retainedHistory === null && row.analyticalRecords === null));
+      } finally { await database.prepare(`UPDATE repositories SET ${column}=? WHERE repository_id=?`).bind(original, repositoryId).run(); }
+    }
+    const expiry = (await database.prepare('SELECT expires_at FROM analytical_pull_requests WHERE repository_id=? AND pull_request=1').bind(repositoryId).first()).expires_at;
+    await database.prepare('UPDATE analytical_pull_requests SET expires_at=? WHERE repository_id=? AND pull_request=1').bind(NOW, repositoryId).run();
+    assert.equal((await exportFor()).repositories[0].analyticalRecords.records.length, 2, 'expired observations are omitted');
+    await database.prepare('UPDATE analytical_pull_requests SET expires_at=? WHERE repository_id=? AND pull_request=1').bind(expiry, repositoryId).run();
+    await database.prepare('INSERT INTO deletion_tombstones(scope,deleted_at,reapply_until) VALUES (?,?,?)').bind(`history:${repositoryId}`, NOW, '2026-11-15T00:00:00.000Z').run();
+    try {
+      assert.deepEqual(await app.appStore.analyticalRecords(repositoryId), []);
+      const exported = await exportFor();
+      assert.ok(exported.repositories.every(row => row.retainedHistory === null && row.analyticalRecords === null));
+    } finally { await database.prepare('DELETE FROM deletion_tombstones WHERE scope=?').bind(`history:${repositoryId}`).run(); }
+  });
+  await t.test('account closure deletes stopped and paused personal history and keeps organisation history', async () => {
+    for (const [id, installationId, accountId, kind, privateRepository] of [[1004, 9, 123, 'user', true], [1002, 10, 7001, 'organization', false]]) {
+      await app.appStore.recordLifecycle({ installationId, action: 'created', addedRepositories: [id], removedRepositories: [] });
+      await app.appStore.recordInstallationAccount(installationId, accountId, kind);
+      await app.appStore.recordRepositoryVisibility(id, privateRepository);
+      await app.appStore.setRepositoryConsent(id, { enabled: true, retentionDays: 30, origin: 'fixture' });
+      assert.equal((await app.appStore.recordAnalytical({ ...records[0], repositoryId: id })).status, 'published');
+    }
+    await app.appStore.setRepositoryExecution(1004, { enabled: true, origin: 'fixture' });
+    assert.equal((await app.appStore.recordHistory({ repositoryId: 1004, pullRequest: 1, comparisonId: 'closure-pathless', policyId: 'fixture' }, historyProjection(records[0].final.report, []))).status, 'published');
+    assert.equal((await database.prepare('SELECT COUNT(*) AS n FROM history_records WHERE repository_id=1004').first()).n, 1);
+    await refreshViewer();
+    assert.equal((await act('stop', 'off', { repository: 'ada-sample/dotfiles' })).message, 'stopped');
+    const paused = (await app.store.repositoryStandings([1004])).get(1004);
+    assert.equal(paused.historyConsented, true);
+    assert.equal(paused.historyEnabled, false);
+    const retainedExport = (await exportFor()).repositories[0].analyticalRecords;
+    const closure = await act('close-account', 'off', { confirm: viewer.login, back: '/manage/account' });
+    assert.equal(closure.reason, 'E_ACCOUNT_CLOSED');
+    assert.equal((await openSession(new Request(`${ORIGIN}/manage/account`, { headers: { cookie: `${SESSION_COOKIE}=${cookie}` } }), app)).refusal, 'E_SESSION_UNAVAILABLE');
+    for (const id of [repositoryId, 1004]) {
+      assert.equal(await rawCount(id), 0);
+      assert.deepEqual(await app.appStore.analyticalRecords(id), []);
+      assert.ok(await database.prepare('SELECT 1 FROM deletion_tombstones WHERE scope=? AND reapply_until>?').bind(`history:${id}`, NOW).first());
+    }
+    assert.equal((await database.prepare('SELECT COUNT(*) AS n FROM history_records WHERE repository_id=1004').first()).n, 0);
+    assert.equal((await app.appStore.importAnalytical(retainedExport)).published, 0, 'an earlier export cannot restore deleted personal history');
+    assert.equal(await rawCount(1002), 1, 'organisation-owned history remains');
+    assert.equal((await app.appStore.analyticalRecords(1002)).length, 1);
+    assert.equal(await database.prepare('SELECT 1 FROM deletion_tombstones WHERE scope=?').bind('history:1002').first(), null);
+  });
 });
