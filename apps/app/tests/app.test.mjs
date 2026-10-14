@@ -100,8 +100,21 @@ test('the signed-in authority and viewer handle billing managers, pending member
     const paths = github.calls.slice(callStart).map(call => call.path);
     assert.ok(paths.includes('/user/memberships/orgs'));
     assert.equal(paths.some(path => /^\/user\/memberships\/orgs\//u.test(path)), false);
+
+    github.state.membershipStatus = 200;
+    github.state.omittedMemberships.add(7001);
+    assert.deepEqual(await app.auth.organisationAuthority({ session: cookie, organisationId: 7001 }), { userId: 123, authority: 'unknown', display: null });
+    await assert.rejects(opened.reads.organizationRole('parser-guild'), { code: 'E_GITHUB_MEMBERSHIP_UNCONFIRMED' });
+    app.cache.clear();
+    const omitted = await resolveViewer({ reads: opened.reads, actor: opened.actor, store: app.store, entitlement: app.entitlement, cache: app.cache });
+    assert.equal(omitted.namespaces.find(namespace => namespace.login === 'parser-guild').role, 'unknown');
+    assert.equal(omitted.namespaces.find(namespace => namespace.login === 'parser-guild').yours, false);
+    assert.ok(omitted.repositories.some(repository => repository.owner === 'parser-guild'), 'the role omission preserves authorised reading');
+    github.state.omittedMemberships.clear();
+    const recovered = await resolveViewer({ reads: opened.reads, actor: opened.actor, store: app.store, entitlement: app.entitlement, cache: app.cache });
+    assert.equal(recovered.namespaces.find(namespace => namespace.login === 'parser-guild').role, 'admin', 'an omitted target is retried without caching a false role');
   } finally {
-    github.state.roles.clear(); github.state.membershipStates.clear(); github.state.membershipStatus = 200; app.cache.clear();
+    github.state.roles.clear(); github.state.membershipStates.clear(); github.state.omittedMemberships.clear(); github.state.membershipStatus = 200; app.cache.clear();
   }
 });
 

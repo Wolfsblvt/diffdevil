@@ -10,7 +10,7 @@ import { planLabel } from './entitlement.mjs';
 
 const TTL_MS = 60_000;
 const TITLE_SCOPE_LIMIT = 25;
-const ROLE_ERRORS = new Set(['E_GITHUB_RATE_LIMIT', 'E_PROVIDER_NOT_FOUND', 'E_PROVIDER_UNAUTHORIZED', 'E_PROVIDER_REQUEST', 'E_PROVIDER_RESPONSE']);
+const ROLE_ERRORS = new Set(['E_GITHUB_RATE_LIMIT', 'E_GITHUB_MEMBERSHIP_UNCONFIRMED', 'E_PROVIDER_NOT_FOUND', 'E_PROVIDER_UNAUTHORIZED', 'E_PROVIDER_REQUEST', 'E_PROVIDER_RESPONSE']);
 
 /** A per-isolate, per-user TTL cache for transient provider context. Expiry is the only invalidation. */
 export function createContextCache(now = () => Date.now()) {

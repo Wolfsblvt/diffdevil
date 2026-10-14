@@ -27,7 +27,7 @@ test('organisation administration uses numeric identity from the current-user me
   const { provider, requests } = fixture(() => Response.json([membership(7001, 'renamed-org'), membership(7002, 'old-name', 'member')]));
   assert.deepEqual(await provider.checkOrganisationAdministration({ material, organisationId: 7001 }), { administer: true, login: 'renamed-org' });
   assert.deepEqual(await provider.checkOrganisationAdministration({ material, organisationId: 7002 }), { administer: false, login: 'old-name' });
-  assert.deepEqual(await provider.checkOrganisationAdministration({ material, organisationId: 7003 }), { administer: false, login: null });
+  await assert.rejects(provider.checkOrganisationAdministration({ material, organisationId: 7003 }), { code: 'E_GITHUB_MEMBERSHIP_UNCONFIRMED' });
   assert.equal(requests.every(url => url.pathname === '/user/memberships/orgs'), true);
 });
 
@@ -38,7 +38,7 @@ test('only active membership grants an organisation role or administration', asy
     assert.equal(await provider.organizationRole({ material, organization: row.organization.login.toUpperCase() }), role);
     assert.deepEqual(await provider.checkOrganisationAdministration({ material, organisationId: row.organization.id }), { administer: role === 'admin', login: row.organization.login });
   }
-  assert.equal(await provider.organizationRole({ material, organization: 'not-a-member' }), 'none');
+  await assert.rejects(provider.organizationRole({ material, organization: 'not-listed' }), { code: 'E_GITHUB_MEMBERSHIP_UNCONFIRMED' });
 });
 
 test('the authority observation exposes only the target membership and distinguishes pending from a complete missing result', async () => {
@@ -49,7 +49,7 @@ test('the authority observation exposes only the target membership and distingui
   assert.deepEqual(await provider.organizationAuthority({ material, organization: 'TARGET-ORG' }), {
     role: 'none', membership: { organizationId: 7001, role: 'admin', state: 'pending' }
   });
-  assert.deepEqual(await provider.organizationAuthority({ material, organization: 'not-listed' }), { role: 'none', membership: null });
+  await assert.rejects(provider.organizationAuthority({ material, organization: 'not-listed' }), { code: 'E_GITHUB_MEMBERSHIP_UNCONFIRMED' });
 });
 
 test('an absent or unrecognised target role is unavailable evidence, not a known member or negative authority', async () => {
@@ -126,5 +126,5 @@ test('a subsequent authority encounter observes demotion and removal rather than
   rows = [membership(7001, 'org', 'member')];
   assert.deepEqual(await provider.checkOrganisationAdministration({ material, organisationId: 7001 }), { administer: false, login: 'org' });
   rows = [];
-  assert.equal(await provider.organizationRole({ material, organization: 'org' }), 'none');
+  await assert.rejects(provider.organizationRole({ material, organization: 'org' }), { code: 'E_GITHUB_MEMBERSHIP_UNCONFIRMED' });
 });

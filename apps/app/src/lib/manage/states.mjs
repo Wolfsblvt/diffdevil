@@ -15,6 +15,7 @@ export function readerAuthority(namespace) {
   if (namespace.role === 'unknown') {
     const issue = namespace.authorityIssue;
     const why = issue?.code === 'E_GITHUB_RATE_LIMIT' ? 'GitHub rate-limited the organisation-role read.'
+      : issue?.code === 'E_GITHUB_MEMBERSHIP_UNCONFIRMED' ? 'GitHub\'s membership list did not include this organisation.'
       : issue?.code === 'E_PROVIDER_RESPONSE' ? 'GitHub did not return a usable organisation membership response.'
       : issue?.status ? `GitHub did not confirm your organisation role (HTTP ${issue.status}).`
       : 'GitHub did not answer the organisation-role read.';

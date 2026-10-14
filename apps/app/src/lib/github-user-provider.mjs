@@ -49,7 +49,7 @@ export function createGitHubUserProvider({ clientId, clientSecret, callbackUrl, 
     return out;
   }
   // The current-user list needs no Members-read permission. A per-organisation membership read does.
-  // Stop on the requested membership or a complete list, never infer absence from a truncated collection.
+  // A completed list is still the App user token's view, not proof of nonmembership.
   async function organisationMembership(token, matches) {
     for (let page = 1; ; page++) {
       const memberships = await json(`${api}/user/memberships/orgs?per_page=${PAGE}&page=${page}`, { token });
@@ -58,13 +58,12 @@ export function createGitHubUserProvider({ clientId, clientSecret, callbackUrl, 
         || !['active', 'pending'].includes(value.state))) throw providerError('E_PROVIDER_RESPONSE');
       const membership = memberships.find(matches);
       if (membership) return membership;
-      if (memberships.length < PAGE) return null;
+      if (memberships.length < PAGE) throw providerError('E_GITHUB_MEMBERSHIP_UNCONFIRMED');
     }
   }
   // Project only the requested membership. Its role/state explain authority; unrelated organisations,
   // provider prose and the user token must never become display or diagnostic context.
   function membershipAuthority(membership) {
-    if (!membership) return { role: 'none', membership: null };
     if (!['admin', 'member', 'billing_manager'].includes(membership.role)) throw providerError('E_PROVIDER_RESPONSE');
     return {
       role: membership.state !== 'active' ? 'none' : membership.role === 'admin' ? 'admin' : 'member',
@@ -175,7 +174,7 @@ export function createGitHubUserProvider({ clientId, clientSecret, callbackUrl, 
       const membership = await organisationMembership(material.accessToken, value => value.organization.id === organisationId);
       return { administer: membershipAuthority(membership).role === 'admin', login: membership?.organization.login ?? null };
     },
-    /** Current role with the target's safe membership evidence, or null membership after a complete list. */
+    /** Current role with the target's safe membership evidence; an omitted target remains unknown. */
     organizationAuthority,
     /** Active admin or non-admin member for this login, or none. Provider roles never expand App administration. */
     async organizationRole({ material, organization }) {
