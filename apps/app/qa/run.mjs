@@ -29,14 +29,15 @@ import { once } from 'node:events';
 import { dirname, join, resolve } from 'node:path';
 import { createFakeGitHub, CODE, ENTITLEMENT_FIXTURE, INSTALLATIONS, setScale } from './fixture.mjs';
 import { seedLocalState, executeLocal, recordLocalDelivery } from './seed.mjs';
-import { proManage, planChoiceReturn, freeManage, businessManage, delegateManage, setupRecovery, manageAccess, COMMERCIAL_PRO, COMMERCIAL_FREE, COMMERCIAL_BUSINESS } from './manage.mjs';
+import { proManage, historyOnlyManage, planChoiceReturn, freeManage, businessManage, delegateManage, setupRecovery, manageAccess, COMMERCIAL_PRO, COMMERCIAL_FREE, COMMERCIAL_BUSINESS } from './manage.mjs';
 import { participationJourney, rewardOnlyJourney, nullableReceiverJourney, COMMERCIAL_BETA, COMMERCIAL_REWARD_ONLY, NULLABLE_LINK, NULLABLE_SIGNING_KEY, QA_CAMPAIGN } from './participation.mjs';
 import { appBuildTarget } from '../build-target.mjs';
 
 const target = appBuildTarget();
 const IDENTITY_ONLY = process.argv.includes('--identity');
 const AUTHORITY_ONLY = process.argv.includes('--authority');
-const OUT = join(target.artifacts, 'qa', ...(IDENTITY_ONLY ? ['identity'] : AUTHORITY_ONLY ? ['authority'] : []));
+const HISTORY_ONLY = process.argv.includes('--history');
+const OUT = join(target.artifacts, 'qa', ...(IDENTITY_ONLY ? ['identity'] : AUTHORITY_ONLY ? ['authority'] : HISTORY_ONLY ? ['history'] : []));
 const APP_PORT = Number(process.env.DIFFDEVIL_APP_QA_PORT ?? (target.name === 'staging' ? 4512 : 4412));
 const GITHUB_PORT = Number(process.env.DIFFDEVIL_APP_QA_GITHUB_PORT ?? (target.name === 'staging' ? 4533 : 4433));
 // Chromium accepts Secure (__Host-) cookies from http://localhost, not from a loopback IP, so the browser origin is localhost; the Worker still binds 127.0.0.1.
@@ -408,6 +409,47 @@ try {
       await shot(`authority-${name}`);
       await stopWorker();
     }
+  } else if (HISTORY_ONLY) {
+    await startWorker(undefined, STATE, { commercial: COMMERCIAL_PRO });
+    await signIn();
+    await historyOnlyManage(ctx);
+    await go('/history?s=%40parser-guild&per=90d');
+    await settled();
+    await page.locator('[data-chart-id="volume"] button[data-view="table"]').click();
+    check('history table keeps an uncovered empty bucket unknown in every numerical quantity', await page.evaluate(() => [...document.querySelectorAll('[data-chart-id="volume"] [data-table] tbody tr')].some(row => [...row.children].slice(2, 7).every(cell => cell.textContent.trim() === 'unknown') && row.lastElementChild.textContent.includes('partial window'))));
+    await shot('history-evidence-table');
+    await stopWorker();
+    await startWorker(undefined, STATE, { commercial: COMMERCIAL_FREE, allowances: { free: { private: 2, publicHistory: 10 }, proOrganisation: { private: 3 } } });
+    await signIn();
+    await go('/manage/repositories');
+    await page.locator('[data-namespace-block="parser-guild"] header form button').click();
+    await page.waitForLoadState('networkidle');
+    check('private swap fixture actually has two finite occupied places', await page.locator('[data-free-allowance] .m-segs.priv i').count() === 2 && await page.locator('[data-free-allowance] .m-segs.priv i.on').count() === 2);
+    await page.locator('[data-repository-row="parser-guild/grammar-fuzz"]').getByRole('link', { name: 'Swap in…' }).click();
+    await page.waitForLoadState('networkidle');
+    check('private swap names lost collection and retained history before confirmation', await page.locator('[data-swap-panel]').getByText('collection will stop; retained history stays', { exact: false }).count() > 0);
+    await page.locator('[data-swap-panel] input[name="outgoing"][value="parser-guild/parser-lab"]').check();
+    await shot('history-private-swap-before-confirmation');
+    await page.locator('[data-swap-panel] button[type="submit"]').click();
+    await page.waitForLoadState('networkidle');
+    await go('/manage/repositories/parser-guild/parser-lab');
+    check('confirmed private swap pauses history, preserves consent and frees its place', await page.evaluate(() => /Paused by Stop/u.test(document.querySelector('[data-history] dl')?.textContent ?? '') && /its place is free/u.test(document.querySelector('[data-history] dl')?.textContent ?? '') && Boolean(document.querySelector('[data-history] input[name="enabled"][value="on"]'))));
+    await shot('history-private-swap-after-confirmation');
+    await page.locator('[data-history]').getByRole('button', { name: 'Resume history', exact: true }).click();
+    await page.waitForLoadState('networkidle');
+    check('displaced history cannot resume outside the real private allowance', /Every private slot/u.test(await page.locator('.m-msg').innerText()) && /Paused/u.test(await page.locator('[data-history] dl').innerText()));
+    await go('/manage/repositories/parser-guild/grammar-fuzz');
+    await page.locator('[data-leave]').getByRole('button', { name: 'Stop', exact: true }).click();
+    await page.waitForLoadState('networkidle');
+    await go('/manage/repositories/parser-guild/parser-lab');
+    await page.locator('[data-history]').getByRole('button', { name: 'Resume history', exact: true }).click();
+    await page.waitForLoadState('networkidle');
+    check('the place released by Stop permits private history-only readmission', await page.evaluate(() => /History only/u.test(document.querySelector('[data-history]')?.textContent ?? '') && [...document.querySelectorAll('[data-operation] .m-eff .m-st')].every(node => node.textContent.trim() === 'Off')));
+    await shot('history-private-readmission');
+    await page.locator('[data-history]').getByRole('button', { name: 'Stop collecting', exact: true }).click();
+    await page.waitForLoadState('networkidle');
+    await go('/manage/repositories');
+    check('Stop collecting releases a private history-only place while leaving repository effects off', await page.locator('[data-free-allowance] .m-segs.priv i.on').count() === 1 && /Stopped/u.test(await page.locator('[data-repository-row="parser-guild/parser-lab"]').innerText()));
   } else if (IDENTITY_ONLY) {
     await startWorker(undefined, STATE, { commercial: COMMERCIAL_PRO });
     await signIn();
@@ -467,6 +509,14 @@ try {
   check('the period and scope persist into the next section through the URL', /per=90d/u.test(page.url()) && /s=%40parser-guild/u.test(page.url()), page.url());
   await settled();
   check('history bucket navigation offers weekly buckets for 90 days', (await page.locator('.a-bucketnav a').count()) >= 12, String(await page.locator('.a-bucketnav a').count()));
+  await page.locator('[data-chart-id="volume"] button[data-view="table"]').click();
+  const historyTable = await page.evaluate(() => {
+    const host = document.querySelector('[data-chart-id="volume"]'), model = JSON.parse(host.querySelector('[data-chart-model]').textContent);
+    return [...host.querySelectorAll('[data-table] tbody tr')].map((row, i) => ({ covered: model.rows[i].covered, coverage: model.rows[i].coverage, cells: [...row.children].map(cell => cell.textContent.trim()) }));
+  });
+  check('History table preserves unknown quantities and marks every uncovered retained window', historyTable.some(row => row.coverage === 'none') && historyTable.every(row => (row.coverage !== 'none' || row.cells.slice(2, 7).every(value => value === 'unknown')) && (row.covered !== false || row.cells[7].includes('partial window'))), JSON.stringify(historyTable));
+  await shot('pro-history-evidence-table');
+  await page.locator('[data-chart-id="volume"] button[data-view="chart"]').click();
   check(`Pro history composes Change volume, Merged PRs by size${premium ? ', growth and concentration' : ''} as chart frames`, await page.evaluate(kinds => kinds.every(kind => document.querySelector(`[data-chart="${kind}"].is-mounted`)), premium ? ['mosaic', 'lanes', 'growth', 'concentration'] : ['mosaic', 'lanes']), await page.evaluate(() => [...document.querySelectorAll('[data-chart]')].map(host => `${host.dataset.chart}:${host.classList.contains('is-mounted')}`).join(',')));
   const bucketBefore = await page.evaluate(() => document.querySelector('#h-bucket')?.textContent ?? '');
   await page.evaluate(() => { document.querySelector('[data-chart-id="volume"]').dataset.qaMark = '1'; });
@@ -716,7 +766,7 @@ try {
   githubServer.closeAllConnections?.();
   githubServer.close();
 }
-await writeFile(join(OUT, 'results.json'), JSON.stringify({ origin: ORIGIN, scope: AUTHORITY_ONLY ? 'authority' : IDENTITY_ONLY ? 'identity' : PARTICIPATION_ONLY ? 'participation' : 'full', target: target.name, seeded: seeded.written, dense: DENSE && !PARTICIPATION_ONLY && !IDENTITY_ONLY && !AUTHORITY_ONLY, charts: chartTelemetry, results, failures, consoleErrors, pageErrors, external }, null, 2));
+await writeFile(join(OUT, 'results.json'), JSON.stringify({ origin: ORIGIN, scope: AUTHORITY_ONLY ? 'authority' : HISTORY_ONLY ? 'history' : IDENTITY_ONLY ? 'identity' : PARTICIPATION_ONLY ? 'participation' : 'full', target: target.name, seeded: seeded.written, dense: DENSE && !PARTICIPATION_ONLY && !IDENTITY_ONLY && !AUTHORITY_ONLY && !HISTORY_ONLY, charts: chartTelemetry, results, failures, consoleErrors, pageErrors, external }, null, 2));
 await writeFile(join(OUT, 'worker.log'), workerLog);
 console.log(`${PARTICIPATION_ONLY ? 'Participation: ' : ''}${results.filter(result => result.ok).length} of ${results.length} checks passed; screenshots and results in ${OUT}`);
 if (failures.length) { console.error(failures.map(failure => ` ✗ ${failure}`).join('\n')); process.exit(1); }

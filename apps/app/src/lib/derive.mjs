@@ -179,11 +179,12 @@ export function periodStats({ pullRequests, lifecycle, from, to }) {
   const med = medianFor(retained ? 'retained' : 'pathless');
   const merged = retained ? prs.filter(pr => pr.lifecycle && within(pr.lifecycle.mergedAt, from, to)) : [];
   const analysed = retained ? merged.filter(pr => !pr.unrecovered) : prs.filter(pr => within(pr.observedAt, from, to));
-  const changed = analysed.map(pr => pr.latest.changed), raw = analysed.map(pr => pr.latest.raw);
+  const population = retained ? merged : analysed;
+  const changed = population.map(pr => pr.unrecovered ? unknown() : pr.latest.changed), raw = population.map(pr => pr.unrecovered ? unknown() : pr.latest.raw);
   const exactPrs = analysed.filter(pr => pr.latest.changed.status === 'exact');
   const boundedPrs = analysed.filter(pr => pr.latest.changed.status !== 'exact');
   const decomposition = {
-    added: sumBounds(exactPrs.map(pr => pr.latest.added)), deleted: sumBounds(exactPrs.map(pr => pr.latest.deleted)), modified: sumBounds(exactPrs.map(pr => pr.latest.modified)),
+    added: sumBounds(population.map(pr => pr.unrecovered ? unknown() : pr.latest.added)), deleted: sumBounds(population.map(pr => pr.unrecovered ? unknown() : pr.latest.deleted)), modified: sumBounds(population.map(pr => pr.unrecovered ? unknown() : pr.latest.modified)),
     boundedLow: boundedPrs.reduce((total, pr) => total + (pr.latest.changed.lower ?? 0), 0),
     boundedHigh: boundedPrs.every(pr => pr.latest.changed.upper !== null) ? boundedPrs.reduce((total, pr) => total + pr.latest.changed.upper, 0) : null,
     boundedCount: boundedPrs.length
@@ -269,10 +270,12 @@ export function changeVolume({ buckets, pullRequests, lifecycle }) {
     const boundedOnes = recovered.filter(member => member.pr.latest.changed.status !== 'exact');
     const sum = (list, key) => list.reduce((total, member) => total + (member.pr.latest[key].lower ?? 0), 0);
     return {
-      ...bucket, count: inside.length, recovered: recovered.length, coverage: inside.length > recovered.length ? 'partial' : 'complete',
+      ...bucket, covered: !lifecycle?.coverageFrom || bucket.start >= lifecycle.coverageFrom, count: inside.length, recovered: recovered.length, coverage: inside.length > recovered.length ? 'partial' : 'complete',
       added: sum(exactOnes, 'added'), deleted: sum(exactOnes, 'deleted'), modified: sum(exactOnes, 'modified'),
       boundedLow: sum(boundedOnes, 'changed'), boundedHigh: boundedOnes.every(member => member.pr.latest.changed.upper !== null) ? boundedOnes.reduce((total, member) => total + member.pr.latest.changed.upper, 0) : null, boundedCount: boundedOnes.length,
       rawChurn: recovered.reduce((total, member) => total + (member.pr.latest.raw.lower ?? 0), 0),
+      evidence: Object.fromEntries([['changed', 'changed'], ['modified', 'modified'], ['added', 'added'], ['deleted', 'deleted'], ['rawChurn', 'raw']].map(([key, measure]) => [key,
+        sumBounds(inside.map(member => member.recovered ? member.pr.latest[measure] : unknown()))])),
       members: inside.map(member => member.pr)
     };
   });

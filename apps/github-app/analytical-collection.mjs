@@ -7,6 +7,24 @@ import { normalizeAnalyticalRecord } from './analytical-data.mjs';
 const sha = value => typeof value === 'string' && /^[0-9a-f]{40,64}$/u.test(value);
 const iso = value => value == null ? null : new Date(value).toISOString();
 
+/** API 2026-03-10 removed merge_commit_sha; the matching merged timeline event owns that identity. */
+export async function mergedCommit(client, repository, pull) {
+  if (sha(pull.merge_commit_sha)) return pull.merge_commit_sha;
+  if (!pull.merged_at) return null;
+  const candidates = new Set();
+  for (let page = 1;; page++) {
+    const events = await client.json(`/repos/${repository}/issues/${pull.number}/timeline?per_page=100&page=${page}`);
+    if (!Array.isArray(events)) throw new TypeError('Merge timeline unavailable.');
+    for (const event of events) {
+      if (event.event !== 'merged') continue;
+      if (!sha(event.commit_id) || iso(event.created_at) !== iso(pull.merged_at)) return null;
+      candidates.add(event.commit_id);
+    }
+    if (events.length < 100) break;
+  }
+  return candidates.size === 1 ? [...candidates][0] : null;
+}
+
 /** Use GitHub's default-branch commit introducer, rather than guessing squash versus rebase from parent count. */
 export async function recoverFinalComparison({ client, repository, pull, commit, defaultBranch }) {
   if (commit.sha !== pull.merge_commit_sha || !sha(commit.sha) || typeof defaultBranch !== 'string'
@@ -62,9 +80,10 @@ export async function collectAnalyticalPullRequest({ client, store, repositoryId
   if (before.number !== pullRequest || !sha(before.head?.sha)) throw new TypeError('Pull request identity mismatch.');
   const existing = (await store.analyticalRecords(repositoryId)).find(record => record.pullRequest === pullRequest);
   const observedAt = now(), revisions = existing?.revisions ?? [];
-  let final = existing?.final ?? null, recovery = null, code = null;
+  let final = existing?.final ?? null, recovery = null, code = null, providerStatus = null, phase = null;
   try {
     if (before.state === 'open') {
+      phase = 'open-comparison';
       const report = unwrap(await analyzeGitHub(client, { provider: 'github', repository: name, pullRequest }));
       const sameHead = recordedResult?.head === report.source.head;
       const revision = { base: report.source.base, head: report.source.head, observedAt, report, observedLabel: null,
@@ -74,12 +93,18 @@ export async function collectAnalyticalPullRequest({ client, store, repositoryId
       if (index < 0) revisions.push(revision);
       else revisions[index] = { ...revisions[index], report, observedAt };
     } else if (before.merged_at && !final) {
-      const commit = await client.json(`/repos/${name}/git/commits/${before.merge_commit_sha}`);
+      phase = 'merge-timeline';
+      const merge = await mergedCommit(client, name, before);
+      const mergedPull = { ...before, merge_commit_sha: merge };
+      phase = 'merge-commit';
+      const commit = merge ? await client.json(`/repos/${name}/git/commits/${merge}`) : {};
       let boundary;
-      if (commit.sha === before.merge_commit_sha && commit.parents?.length > 1 && sha(commit.parents[0].sha)) boundary = { base: commit.parents[0].sha, head: commit.sha };
-      else boundary = resolveFinalComparison ? await resolveFinalComparison({ repositoryId, pullRequest, pull: before, commit })
-        : await recoverFinalComparison({ client, repository: name, pull: before, commit, defaultBranch: repository.default_branch });
-      if (boundary && sha(boundary.base) && sha(boundary.head) && boundary.head === before.merge_commit_sha) {
+      phase = 'merge-boundary';
+      if (merge && commit.sha === merge && commit.parents?.length > 1 && sha(commit.parents[0].sha)) boundary = { base: commit.parents[0].sha, head: commit.sha };
+      else if (merge) boundary = resolveFinalComparison ? await resolveFinalComparison({ repositoryId, pullRequest, pull: mergedPull, commit })
+        : await recoverFinalComparison({ client, repository: name, pull: mergedPull, commit, defaultBranch: repository.default_branch });
+      if (boundary && sha(boundary.base) && sha(boundary.head) && boundary.head === merge) {
+        phase = 'final-comparison';
         const comparison = await client.json(`/repos/${name}/compare/${boundary.base}...${boundary.head}`);
         if (comparison.merge_base_commit?.sha !== boundary.base || !Array.isArray(comparison.files)) throw new TypeError('Final comparison does not establish its direct base.');
         const diff = await client.request(`/repos/${name}/compare/${boundary.base}...${boundary.head}`, { accept: 'application/vnd.github.diff' });
@@ -91,6 +116,7 @@ export async function collectAnalyticalPullRequest({ client, store, repositoryId
           : { status: 'unknown', lower: total, reasons: [{ code: 'FILE_SET_INCOMPLETE' }] } },
         source: { kind: 'github-api', comparison: 'direct', comparisonId: `final:${boundary.base}:${boundary.head}`, ...boundary } }));
         const sizes = [];
+        phase = 'file-size';
         for (const file of report.files) sizes.push({ path: file.path,
           before: file.changeType === 'added' ? 0 : file.kind === 'text' ? await observeFileSize(client, name, file.oldPath ?? file.path, boundary.base) : null,
           after: file.changeType === 'deleted' ? 0 : file.kind === 'text' ? await observeFileSize(client, name, file.path, boundary.head) : null });
@@ -102,9 +128,11 @@ export async function collectAnalyticalPullRequest({ client, store, repositoryId
     recovery = 'comparison-acquisition-unavailable';
     const candidate = error?.diagnostic?.code ?? error?.code;
     code = typeof candidate === 'string' && /^[A-Z0-9_]+$/u.test(candidate) ? candidate : 'E_APP_DATA_COMPARISON';
+    const status = error?.status ?? error?.diagnostic?.details?.status;
+    providerStatus = Number.isInteger(status) && status >= 100 && status <= 599 ? status : null;
   }
   const after = await client.json(route);
-  if (after.head?.sha !== before.head.sha || after.state !== before.state || after.merge_commit_sha !== before.merge_commit_sha || after.updated_at !== before.updated_at) throw Object.assign(new Error('E_APP_DATA_STALE'), { code: 'E_APP_DATA_STALE' });
+  if (after.head?.sha !== before.head.sha || after.state !== before.state || after.merged_at !== before.merged_at || after.merge_commit_sha !== before.merge_commit_sha || after.updated_at !== before.updated_at) throw Object.assign(new Error('E_APP_DATA_STALE'), { code: 'E_APP_DATA_STALE' });
   if (recordedResult?.head === after.head.sha && Array.isArray(after.labels)) {
     const selected = after.labels.filter(label => recordedResult.managedLabels?.includes(label.name));
     const revision = revisions.find(value => value.head === after.head.sha);
@@ -114,7 +142,7 @@ export async function collectAnalyticalPullRequest({ client, store, repositoryId
     state: before.merged_at ? 'merged' : before.state === 'closed' ? 'closed' : before.draft ? 'draft' : 'open',
     openedAt: iso(before.created_at), readyAt: existing?.readyAt ?? null, mergedAt: iso(before.merged_at), closedAt: iso(before.closed_at),
     updatedAt: iso(before.updated_at), observedAt, currentHead: before.head.sha, revisions, final });
-  return { ...await store.recordAnalytical(record), recovery, code };
+  return { ...await store.recordAnalytical(record), recovery, code, ...(recovery ? { phase, providerStatus } : {}) };
 }
 
 export async function defaultBranch(client, repositoryId) {

@@ -3,6 +3,7 @@ import { normalizeHistoryLens } from './history-analytics.mjs';
 import { normalizeAnalyticalRecord } from './analytical-data.mjs';
 import { expireSizes, publishSizeSet, sizesAt, sizesIn } from './analytical-size-storage.mjs';
 import { sizeCaptureGroups } from './size-capture-groups.mjs';
+import { historyCollectionPause } from './history-standing.mjs';
 
 const DAY = 86_400_000;
 const leaseExpiry = (now, durationMs) => new Date(Date.parse(now) + durationMs).toISOString();
@@ -193,11 +194,14 @@ export class D1AppStore {
   }
 
   async historySettings(repositoryId, { independentExecution = false } = {}) {
-    const row = await this.statement(`SELECT r.history_enabled, r.history_consent_reason, r.retention_days, r.state, r.access_state, i.state AS installation_state
+    const row = await this.statement(`SELECT r.history_enabled, r.history_consent_reason, r.retention_days, r.state, r.access_state, r.execution_consent_origin, r.execution_consent_reason, i.state AS installation_state
       FROM repositories r JOIN installations i ON i.installation_id=r.installation_id WHERE r.repository_id=?`, repositoryId).first();
+    if (historyCollectionPause(row)) row.selected_at = (await this.statement('SELECT selected_at FROM repository_selections WHERE repository_id=?', repositoryId).first())?.selected_at;
+    const pauseReason = historyCollectionPause(row);
     const tombstone = await this.statement('SELECT 1 AS blocked FROM deletion_tombstones WHERE scope IN (?, ?) AND reapply_until > ?', `history:${repositoryId}`, `repository:${repositoryId}`, this.now()).first();
     const admitted = row?.state === 'active' || (independentExecution && row?.state === 'pending-enable');
-    return { enabled: await this.repositoryAdmitted(repositoryId) && !tombstone?.blocked && row?.history_enabled === 1 && row?.history_consent_reason === null && admitted && row?.access_state === 'available' && row?.installation_state === 'active', retentionDays: boundedDays(row?.retention_days) };
+    const readable = await this.repositoryAdmitted(repositoryId) && !tombstone?.blocked && row?.history_enabled === 1 && row?.history_consent_reason === null && admitted && row?.access_state === 'available' && row?.installation_state === 'active';
+    return { enabled: readable && !pauseReason, readable, retentionDays: boundedDays(row?.retention_days), pauseReason };
   }
 
   async executionAllowed(repositoryId) {
@@ -514,10 +518,10 @@ export class D1AppStore {
 
   /** Current consent and expiry apply to the complete PR record, including its named numerical rows. */
   async analyticalRecords(repositoryId) {
-    if (!(await this.historySettings(repositoryId, { independentExecution: true })).enabled) return [];
+    if (!(await this.historySettings(repositoryId, { independentExecution: true })).readable) return [];
     const result = await this.statement(`SELECT record_json FROM analytical_pull_requests WHERE repository_id=?
       AND (expires_at IS NULL OR expires_at>?) ORDER BY pull_request`, repositoryId, this.now()).all();
-    if (!(await this.historySettings(repositoryId, { independentExecution: true })).enabled) return [];
+    if (!(await this.historySettings(repositoryId, { independentExecution: true })).readable) return [];
     return (result.results ?? []).map(row => normalizeAnalyticalRecord(JSON.parse(row.record_json)));
   }
 
@@ -567,23 +571,23 @@ export class D1AppStore {
 
   /** The retained observations at one immutable default-branch revision, for capture to resume and reuse. */
   async analyticalSizesAt(repositoryId, revision, { latest = false, captureSince } = {}) {
-    if (!(await this.historySettings(repositoryId, { independentExecution: true })).enabled) return [];
+    if (!(await this.historySettings(repositoryId, { independentExecution: true })).readable) return [];
     const result = await sizesAt(this, repositoryId, revision, this.now(), latest, captureSince);
-    return (await this.historySettings(repositoryId, { independentExecution: true })).enabled ? result : [];
+    return (await this.historySettings(repositoryId, { independentExecution: true })).readable ? result : [];
   }
 
   async analyticalSizes(repositoryId, from, to) {
-    if (!(await this.historySettings(repositoryId, { independentExecution: true })).enabled) return [];
+    if (!(await this.historySettings(repositoryId, { independentExecution: true })).readable) return [];
     const result = await sizesIn(this, repositoryId, from, to, this.now());
-    if (!(await this.historySettings(repositoryId, { independentExecution: true })).enabled) return [];
+    if (!(await this.historySettings(repositoryId, { independentExecution: true })).readable) return [];
     return result;
   }
 
   async exportAnalytical(repositoryId) {
-    if (!(await this.historySettings(repositoryId, { independentExecution: true })).enabled) return { kind: 'diffdevil.app-analytics-export', version: 1, repositoryId, records: [], sizes: [] };
+    if (!(await this.historySettings(repositoryId, { independentExecution: true })).readable) return { kind: 'diffdevil.app-analytics-export', version: 1, repositoryId, records: [], sizes: [] };
     const records = await this.statement('SELECT record_json,expires_at FROM analytical_pull_requests WHERE repository_id=? AND (expires_at IS NULL OR expires_at>?)', repositoryId, this.now()).all();
     const sizes = await this.statement('SELECT path,observed_at,revision,size,expires_at FROM analytical_file_sizes WHERE repository_id=? AND (expires_at IS NULL OR expires_at>?)', repositoryId, this.now()).all();
-    if (!(await this.historySettings(repositoryId, { independentExecution: true })).enabled) return { kind: 'diffdevil.app-analytics-export', version: 1, repositoryId, records: [], sizes: [] };
+    if (!(await this.historySettings(repositoryId, { independentExecution: true })).readable) return { kind: 'diffdevil.app-analytics-export', version: 1, repositoryId, records: [], sizes: [] };
     return { kind: 'diffdevil.app-analytics-export', version: 1, repositoryId,
       records: (records.results ?? []).map(row => ({ record: normalizeAnalyticalRecord(JSON.parse(row.record_json)), expiresAt: row.expires_at })),
       sizes: (sizes.results ?? []).map(row => ({ repositoryId, path: row.path, observedAt: row.observed_at, revision: row.revision, size: row.size, expiresAt: row.expires_at })) };

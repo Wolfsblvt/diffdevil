@@ -24,11 +24,11 @@ export function entitlementFor(viewer, scope, repositories) {
     const entry = viewer.namespaces.find(candidate => candidate.login === namespace);
     return entry?.yours ? viewer.plan : entry?.plan ?? 'Free';
   };
-  const premiumRepositories = repositories.filter(repository => repository.standing?.historyEnabled && planOf(repository.owner) !== 'Free');
+  const premiumRepositories = repositories.filter(repository => repository.standing?.historyReadable && planOf(repository.owner) !== 'Free');
   const sharedPaid = [...new Set(viewer.repositories.filter(repository => !viewer.namespaces.find(candidate => candidate.login === repository.owner)?.yours && planOf(repository.owner) !== 'Free').map(repository => repository.owner))];
   if (scope.kind === 'all') {
     const premium = viewer.plan !== 'Free' && premiumRepositories.length > 0;
-    return { premium, plan: viewer.plan, scope: 'all', premiumRepositories: premium ? premiumRepositories : [], excluded: premium ? repositories.filter(repository => repository.standing?.historyEnabled).length - premiumRepositories.length : 0, sharedPaid: viewer.plan === 'Free' ? sharedPaid : [], source: 'expected' };
+    return { premium, plan: viewer.plan, scope: 'all', premiumRepositories: premium ? premiumRepositories : [], excluded: premium ? repositories.filter(repository => repository.standing?.historyReadable).length - premiumRepositories.length : 0, sharedPaid: viewer.plan === 'Free' ? sharedPaid : [], source: 'expected' };
   }
   const plan = planOf(scope.namespace);
   return { premium: plan !== 'Free' && premiumRepositories.length > 0, plan, scope: 'namespace', premiumRepositories, excluded: 0, sharedPaid: plan === 'Free' ? sharedPaid : [], source: 'expected' };
@@ -76,7 +76,7 @@ export async function loadView({ url, viewer, session, runtime, surface = 'prs',
   const period = periodOf(state);
   const nowMs = Date.parse(nowIso);
   const window = { from: new Date(nowMs - period.days * DAY).toISOString(), to: nowIso, previousFrom: new Date(nowMs - 2 * period.days * DAY).toISOString() };
-  const historyRepositories = repositories.filter(repository => repository.standing?.historyEnabled);
+  const historyRepositories = repositories.filter(repository => repository.standing?.historyReadable);
   const ids = historyRepositories.map(repository => repository.repositoryId);
   const actor = { userId: viewer.userId, authorizedRepositoryIds: viewer.repositories.map(repository => repository.repositoryId) };
   const expected = entitlementFor(viewer, scope, repositories);

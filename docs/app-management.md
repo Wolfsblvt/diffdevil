@@ -57,6 +57,26 @@ Provide a scoped view of imports, enrichment and recalculation, with useful prog
 
 Show the job's purpose, repository/range, completed coverage, remaining scope when known, actual policy basis and reason for delay. Distinguish user pause, fair scheduling, provider rate limit, partial evidence, recoverable failure and completion. Do not give an exact total or completion estimate the service has not established.
 
+Explicit history consent permits collection, import and recalculation while repository
+execution, checks, labels and briefs stay off. Manage and the analytical navigation
+show that history independently. Private history-only repositories still occupy their
+private allowance. Stop operating pauses collection and frees the place, retaining
+consent, history and settings. Stop collecting is the distinct history-off choice.
+A private-capacity swap names the outgoing repository's paused collection before
+confirmation. Both swap and a saved lower-plan choice release displaced capacity
+without revoking history consent. Explicit selection or resuming history re-admits
+it only within the current allowance; history can
+resume while execution stays off. Installation interruption, revocation, deletion and
+the current operating allowance continue to govern collection. Paused collection
+does not hide retained history; current consent and access still govern reads.
+
+Completing an import means its selected closed-PR listing ended or its plan limit was
+reached; it does not prove every comparison was recovered. Jobs retain the latest
+unrecovered PR number, boundary/acquisition reason, acquisition phase, stable error
+code and HTTP status when observed in their
+existing progress, without provider bodies or raw messages. Recalculation retries
+missing final comparisons through the same read-only collection.
+
 Live PR work has priority. Recent premium enrichment can lag while the base report remains useful. Older import and wide recalculation may be paused for sustained heavy use; a visible queue is not a guarantee that every account will eventually catch up.
 
 Actions can request an import, pause/resume optional processing, retry a recoverable failure, refresh history, export or delete. Pausing an import does not disable live labels or cancel billing. Resumption preserves the same progress and does not count service recovery as new customer work.

@@ -12,6 +12,7 @@
 import { BANDS, UNKNOWN_BAND } from '../bands.mjs';
 import { fmtDur, quantile, medianOf } from './format.mjs';
 import { medianFor } from '../derive.mjs';
+import { sumBounds } from '../intervals.mjs';
 
 const DAY = 86_400_000;
 const bandList = [...BANDS, UNKNOWN_BAND];
@@ -32,9 +33,17 @@ export function coverageOf(count, recovered) {
 export function mosaicModel({ buckets, unit, period, population = 'merged', scopeLabel = '', labelOf, nameOf, hrefOf, strip = null, compact = false, sel = null }) {
   const rows = buckets.map((bucket, index) => {
     const exact = bucket.added + bucket.deleted + bucket.modified;
+    const covered = bucket.covered !== false;
+    const coverage = !covered && bucket.recovered === 0 ? 'none' : !covered ? 'partial' : coverageOf(bucket.count, bucket.recovered);
+    const measurement = (key, lower, upper = lower) => {
+      const value = bucket.evidence?.[key] ?? { status: coverage === 'none' ? 'unknown' : upper === lower ? 'exact' : 'bounded', lower, upper: coverage === 'complete' ? upper : null };
+      return covered ? value : { ...value, status: 'unknown', upper: null };
+    };
     return {
       label: labelOf(bucket, index), name: nameOf(bucket, index), href: hrefOf ? hrefOf(bucket, index) : null,
-      count: bucket.count, recovered: bucket.recovered, coverage: coverageOf(bucket.count, bucket.recovered),
+      count: bucket.count, recovered: bucket.recovered, coverage, covered,
+      measures: { modified: measurement('modified', bucket.modified), added: measurement('added', bucket.added), deleted: measurement('deleted', bucket.deleted),
+        changed: measurement('changed', exact + (bucket.boundedLow || 0), bucket.boundedHigh === null ? null : exact + (bucket.boundedHigh ?? 0)), rawChurn: measurement('rawChurn', bucket.rawChurn || 0) },
       added: bucket.added, deleted: bucket.deleted, modified: bucket.modified, exact,
       boundedLow: bucket.boundedLow || 0, boundedHigh: bucket.boundedHigh ?? null, boundedCount: bucket.boundedCount || 0,
       rawChurn: bucket.rawChurn || 0,
@@ -50,6 +59,9 @@ export function mosaicModel({ buckets, unit, period, population = 'merged', scop
   totals.exact = totals.added + totals.deleted + totals.modified;
   totals.proven = totals.exact + totals.boundedLow;
   totals.coverage = coverageOf(totals.count, totals.recovered);
+  totals.covered = rows.every(row => row.covered);
+  if (!totals.covered) totals.coverage = totals.recovered ? 'partial' : 'none';
+  totals.measures = Object.fromEntries(['modified', 'added', 'deleted', 'changed', 'rawChurn'].map(key => [key, sumBounds(rows.map(row => row.measures[key]))]));
   const every = rows.length > 14 ? 2 : 1;
   return { kind: 'mosaic', unit, period, population, scopeLabel, rows, totals, every, strip, compact, sel };
 }

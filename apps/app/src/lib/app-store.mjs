@@ -6,6 +6,7 @@
  * current, and never infers names, authors or merge facts from numeric rows.
  */
 
+import { historyCollectionPause } from '../../../github-app/history-standing.mjs';
 const batches = (values, size = 100) => Array.from({ length: Math.ceil(values.length / size) }, (_, index) => values.slice(index * size, (index + 1) * size));
 const boundedDays = value => Number.isSafeInteger(value) && value >= 1 && value <= 3660 ? value : null;
 const parse = text => { try { return JSON.parse(text); } catch { return undefined; } };
@@ -41,12 +42,14 @@ export class D1AppReadStore {
         WHERE r.repository_id IN (${placeholders(chunk)})`, now, ...chunk).all();
       for (const row of rows.results ?? []) {
         const executionActive = row.state === 'active' && row.access_state === 'available' && row.installation_state === 'active' && row.execution_consent_reason === null;
-        const historyEnabled = row.history_enabled === 1 && row.history_consent_reason === null && row.state === 'active' && row.access_state === 'available' && row.installation_state === 'active' && !row.tombstoned;
+        const pauseReason = historyCollectionPause(row);
+        const historyReadable = row.history_enabled === 1 && row.history_consent_reason === null && ['active', 'pending-enable'].includes(row.state) && row.access_state === 'available' && row.installation_state === 'active' && !row.tombstoned;
+        const historyEnabled = historyReadable && !pauseReason;
         const removed = ['offboarding', 'removed'].includes(row.state) || row.access_state === 'removed';
         standings.set(row.repository_id, {
           repositoryId: row.repository_id, installationId: row.installation_id, state: row.state, accessState: row.access_state, installationState: row.installation_state,
           executionActive, executionReason: row.execution_consent_reason ?? null, executionOrigin: row.execution_consent_origin ?? null, historyEnabled, historyReason: row.history_consent_reason ?? null,
-          historyConsented: row.history_enabled === 1 && row.history_consent_reason === null && !row.tombstoned,
+          historyConsented: row.history_enabled === 1 && row.history_consent_reason === null && !row.tombstoned, historyReadable, historyPauseReason: pauseReason,
           historyOrigin: row.history_consent_origin ?? 'unknown', historyActorId: row.history_consent_actor_id ?? null,
           retentionDays: boundedDays(row.retention_days), tombstoned: Boolean(row.tombstoned), writerStanding: row.writer_standing ?? 'unverified', revision: row.settings_revision ?? 0,
           selected: Boolean(row.selected_at) && !removed, selectedAt: row.selected_at ?? null,
@@ -55,21 +58,21 @@ export class D1AppReadStore {
           lastDelivery: row.last_delivery_code || row.last_delivery_state ? { code: row.last_delivery_code ?? null, state: row.last_delivery_state ?? null, at: row.last_delivery_at ?? null } : null,
           // Offboarding removes the repository's retained data thirty days after it left; the clock starts at the removal.
           retainedUntil: removed ? new Date(Date.parse(row.offboarding_at ?? row.updated_at) + 30 * 86_400_000).toISOString() : null,
-          status: historyEnabled ? 'history' : executionActive ? 'labels-only' : 'history-off'
+          status: historyEnabled ? 'history' : pauseReason && row.history_enabled === 1 && row.history_consent_reason === null ? 'history-paused' : executionActive ? 'labels-only' : 'history-off'
         });
       }
     }
     return standings;
   }
 
-  async historyEnabledRepositories(repositoryIds) {
+  async historyReadableRepositories(repositoryIds) {
     const standings = await this.repositoryStandings(repositoryIds);
-    return repositoryIds.filter(id => standings.get(id)?.historyEnabled);
+    return repositoryIds.filter(id => standings.get(id)?.historyReadable);
   }
 
-  /** Published analyses observed inside [from, to) for history-enabled repositories, newest first. */
+  /** Retained consented analyses inside [from, to), including repositories whose collection is paused. */
   async analyses(repositoryIds, from, to) {
-    const enabled = await this.historyEnabledRepositories(repositoryIds);
+    const enabled = await this.historyReadableRepositories(repositoryIds);
     if (enabled.length === 0) return { records: [], truncated: false, repositories: enabled };
     const now = this.now();
     const rows = [];
@@ -86,7 +89,7 @@ export class D1AppReadStore {
 
   /** Every retained analysis of one pull request, oldest first: its development across analysed heads. */
   async pullRequestAnalyses(repositoryId, pullRequest) {
-    const enabled = await this.historyEnabledRepositories([repositoryId]);
+    const enabled = await this.historyReadableRepositories([repositoryId]);
     if (enabled.length === 0) return [];
     const result = await this.statement(`SELECT id, repository_id, pull_request, comparison_id, policy_id, schema_version, engine_version, report_version, metric_version, base_sha, head_sha, observed_at, projection_json, coverage_json, results_json, gaps_json
       FROM history_records WHERE repository_id=? AND pull_request=? AND state='published' AND (expires_at IS NULL OR expires_at>?) ORDER BY observed_at ASC, id ASC LIMIT 500`, repositoryId, pullRequest, this.now()).all();
@@ -101,7 +104,7 @@ export class D1AppReadStore {
   async analyticalCoverage(repositoryIds) {
     const counts = new Map();
     let first = null, latest = null;
-    const enabled = await this.historyEnabledRepositories(repositoryIds);
+    const enabled = await this.historyReadableRepositories(repositoryIds);
     if (enabled.length === 0) return { counts, first, latest };
     const now = this.now();
     for (const chunk of batches(enabled, 50)) {
@@ -118,7 +121,7 @@ export class D1AppReadStore {
 
   /** Observation bounds of the retained history for the scope: first and latest analysis time. */
   async observationBounds(repositoryIds) {
-    const enabled = await this.historyEnabledRepositories(repositoryIds);
+    const enabled = await this.historyReadableRepositories(repositoryIds);
     if (enabled.length === 0) return { first: null, latest: null };
     let first = null, latest = null;
     for (const chunk of batches(enabled, 50)) {

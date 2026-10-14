@@ -1,0 +1,23 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
+import { describeBound, n0 } from '../lib/intervals.mjs';
+import { sgn } from '../lib/format.mjs';
+const { rows, comparable, currentCovered, previousCovered, period } = Astro.props;
+const exact = (value: any) => value === null || typeof value !== 'object' || value.status === 'exact';
+const amount = (value: any) => typeof value === 'object' && value !== null ? value.lower : value;
+const text = (value: any, covered: boolean, sample: boolean, key: string) => {
+  if (value === null) return 'n/a';
+  if (typeof value === 'object') return describeBound(covered || sample ? value : { ...value, status: 'unknown', upper: null }, { decimals: key === 'median days to merge' ? 1 : 0 });
+  return `${covered ? '' : '≥ '}${value % 1 ? value.toFixed(1) : n0(value)}`;
+};
+---
+<table class="a-tbl a-cmp">
+  <thead><tr><th></th><th class="r">selected {period}</th><th class="r">previous {period}</th><th class="r">change</th><th style="width:28%"></th></tr></thead>
+  <tbody>{rows.map(([key, left, right, sample]: any) => {
+    if (sample === null) return <tr class="covrow"><td>{key}</td><td class="r num">{left}</td><td class="r num" style="color:var(--fg-3)">{right}</td><td class="r a-mini">{comparable ? 'same coverage' : 'differs'}</td><td></td></tr>;
+    const x = amount(left), y = amount(right), empty = x === null || y === null;
+    const ok = ((sample && currentCovered && previousCovered) || comparable) && exact(left) && exact(right);
+    const scale = Math.max(1, x ?? 0, y ?? 0);
+    return <tr><td>{key}</td><td class="r num" style="font-weight:600">{text(left, currentCovered, sample, key)}</td><td class="r num" style="color:var(--fg-3)">{text(right, previousCovered, sample, key)}</td><td class="r a-mini">{empty ? 'n/a' : ok ? `${sgn(x - y)}${y ? ` · ${sgn(Math.round(((x - y) / y) * 100), '%')}` : ''}` : <span title={`Observed difference ${sgn(x - y)}; coverage or evidence differs, so the change is not comparable`}>incomplete coverage</span>}</td><td><div class:list={['a-pair', { inc: !ok }]}><i style={`width:${((x ?? 0) / scale) * 100}%`}></i><i style={`width:${((y ?? 0) / scale) * 100}%`}></i></div></td></tr>;
+  })}</tbody>
+</table>

@@ -87,8 +87,9 @@ const historyLine = (repository: any) => (repository.standing?.historyEnabled ? 
                       {repository.standing.historyEnabled ? <ActionForm action="history" fields={{ repository: repository.fullName }} label="Labels only" class="ghost sm" /> : <span aria-current="true">Labels only</span>}
                     </div></div>
                   : <div class="m-acts">
-                      {['active', 'labels'].includes(state.kind) && <ActionForm action="stop" fields={{ repository: repository.fullName }} label="Stop" class="sm ghost" title="Stop operating: frees its slot, keeps history" />}
-                      {state.kind === 'overAllowance' && <><a class="m-btn sm" href="/manage/plan#choose">Choose what stays</a><ActionForm action="stop" fields={{ repository: repository.fullName }} label="Stop" class="sm ghost" title="Stop operating: gives up its place, keeps history" /></>}
+                      {['active', 'labels'].includes(state.kind) && <ActionForm action="stop" fields={{ repository: repository.fullName }} label="Stop" class="sm ghost" title="Stop operating: pauses collection, frees its place, keeps consent and retained history" />}
+                      {state.kind === 'history' && <ActionForm action="history" fields={{ repository: repository.fullName }} label="Stop collecting" class="sm ghost" title="Stop history collection; retained data stays" />}
+                      {state.kind === 'overAllowance' && <><a class="m-btn sm" href="/manage/plan#choose">Choose what stays</a>{repository.standing.historyEnabled ? <ActionForm action="history" fields={{ repository: repository.fullName }} label="Stop collecting" class="sm ghost" title="Gives up its history place; retained data stays" /> : <ActionForm action="stop" fields={{ repository: repository.fullName }} label="Stop" class="sm ghost" title="Stop operating: gives up its place, keeps retained history" />}</>}
                       {['pending', 'reconsent'].includes(state.kind) && <><a class="m-btn sm" href={repositoryPath(repository)}>Review &amp; enable</a>{state.kind === 'pending' && <ActionForm action="release" fields={{ repository: repository.fullName }} label="Release slot" class="sm ghost" />}</>}
                       {state.kind === 'held' && <a class="m-btn sm" href={repositoryPath(repository)}>Fix</a>}
                     </div>}</td>
@@ -115,7 +116,7 @@ const historyLine = (repository: any) => (repository.standing?.historyEnabled ? 
               </tr>
               {swapHere && <tr class="m-swaprow" data-swap-panel><td colspan="4"><div class="m-swap"><b>Run {repository.name} instead of</b>
                 <ActionForm action="swap" fields={{ repository: repository.fullName }} label="Swap" class="pri sm" back={namespacePath(namespace.login)}>
-                  <div class="m-swapopts">{capacity.inSlot.map((held: any, index: number) => <label><input type="radio" name="outgoing" value={held.fullName} checked={index === capacity.inSlot.length - 1} /><span><b>{held.name}</b><span>{held.state?.label}{held.standing?.historyEnabled ? ' · history on' : ''}</span></span></label>)}</div>
+                  <div class="m-swapopts">{capacity.inSlot.map((held: any, index: number) => <label><input type="radio" name="outgoing" value={held.fullName} checked={index === capacity.inSlot.length - 1} /><span><b>{held.name}</b><span>{held.state?.label}{held.standing?.historyEnabled ? ' · collection will stop; retained history stays' : ''}</span></span></label>)}</div>
                   <p class="m-note">The repository you pick stops: no labels, no check, no new history. Its history and settings stay. {repository.name} takes the slot as <b>Pending enable</b>, so you review its policy before anything is written.</p>
                 </ActionForm>
                 <div class="m-acts"><a class="m-btn ghost sm" href={here({ swap: '' })}>Cancel</a>{free && <span class="m-note">Or upgrade: Pro removes the personal limit.</span>}</div></div></td></tr>}</>;

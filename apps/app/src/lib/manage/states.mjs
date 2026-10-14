@@ -30,10 +30,10 @@ export function readerAuthority(namespace) {
 const removedOf = standing => Boolean(standing) && (['offboarding', 'removed'].includes(standing.state) || standing.accessState === 'removed');
 export const isRemoved = repository => removedOf(repository.standing);
 const suspendedOf = (standing, namespace) => (standing ? standing.installationState !== 'active' || standing.accessState === 'suspended' : namespace?.installation?.state === 'suspended');
-/** A repository takes part in the private allowance while it is selected or already running, and has not left the installation. */
+/** Private selection, execution and consented history share the allowance until the repository leaves the installation. */
 export function holdsSlot(repository) {
   const standing = repository.standing;
-  return repository.private && Boolean(standing) && !removedOf(standing) && (standing.selected || standing.executionActive);
+  return repository.private && Boolean(standing) && !removedOf(standing) && (standing.selected || standing.executionActive || standing.historyEnabled);
 }
 /** The administrator-visible failure of the latest delivery, when a policy could not be read. */
 export function heldBy(standing) {
@@ -99,6 +99,10 @@ export function describeRepository(repository, namespace, capacity, { freeConnec
       : `${capacity.inSlot.length + capacity.waiting.length} private repositories hold places and the plan now allows ${capacity.of}. diffdevil doesn't pick: none of them runs until you choose what stays.`;
     return { kind: 'overAllowance', label: 'Over the allowance', tone: 'warn', icon: 'pause', why, holdsSlot: true, overLimit: true };
   }
+  if (!standing.executionActive && standing.historyEnabled) {
+    if (!repository.private && capacity?.publicHistory?.over) return { kind: 'history', label: 'History paused', tone: 'warn', icon: 'pause', why: `Collection is paused: ${capacity.publicHistory.used} public repositories have history and the plan allows ${capacity.publicHistory.of}. Stop collecting on another repository to free a place. Labels and the check stay off.`, holdsSlot: false, historyHeld: true };
+    return { kind: 'history', label: 'History only', tone: 'ok', icon: 'database', why: 'History is collected. Labels and the check stay off.', holdsSlot: holdsSlot(repository) };
+  }
   if (standing.executionActive) {
     const historyHeld = !repository.private && standing.historyEnabled && capacity?.publicHistory?.over === true;
     const base = historyHeld ? { kind: 'labels', label: 'History paused', tone: 'warn', icon: 'pause', why: `Size labels and the check run. ${capacity.publicHistory.used} public repositories have history and the plan allows ${capacity.publicHistory.of}, so collection is paused for all of them until some switch to Labels only. Retained history stays.`, holdsSlot: false, historyHeld: true }
@@ -110,10 +114,10 @@ export function describeRepository(repository, namespace, capacity, { freeConnec
   if (waiting) return { kind: 'inactive', label: 'Over the limit', tone: 'warn', icon: 'pause', why: 'Every private slot is taken. Swap it in for another repository to run it.', holdsSlot: true };
   if (standing.executionReason === 're-consent-required' && (standing.selected || standing.writerStanding !== 'unverified')) return { kind: 'reconsent', label: 'Enable again', tone: 'warn', icon: 'clock', why: 'Access to this repository was interrupted and restored. Review its policy, then enable it again; nothing restarts by itself.', holdsSlot: repository.private };
   if (standing.selected) return { kind: 'pending', label: 'Pending enable', tone: 'warn', icon: 'clock', why: repository.private ? 'Holds a slot but isn\'t running yet. Review its policy, then enable.' : 'Selected but not running yet. Review its policy, then enable.', holdsSlot: repository.private };
-  if (standing.executionReason === 'explicitly-disabled') return { kind: 'stoppedByYou', label: 'Stopped', tone: '', icon: 'pause', why: standing.executionOrigin === 'plan-change' ? 'Stopped when the plan changed: it was not among what you chose to keep. Labels and the check don\'t run; retained history and settings are kept.' : 'Stopped by an administrator. Labels and the check don\'t run; retained history is kept.', holdsSlot: false };
+  if (standing.executionReason === 'explicitly-disabled') return { kind: 'stoppedByYou', label: 'Stopped', tone: '', icon: 'pause', why: standing.executionOrigin === 'plan-change' ? 'Stopped when the plan changed: it was not among what you chose to keep. Nothing runs or collects; consent, retained history and settings stay. Its place is free.' : 'Stopped by an administrator. Nothing runs or collects; consent, retained history and settings stay. Its place is free.', holdsSlot: false };
   return { kind: 'available', label: 'Not selected', tone: 'off', icon: 'circle-dashed', why: 'The GitHub App can reach it. It doesn\'t run until you select it.', holdsSlot: false };
 }
-export const RUNNING_KINDS = new Set(['active', 'labels', 'pending', 'held', 'stopped', 'reconsent', 'overAllowance']);
+export const RUNNING_KINDS = new Set(['active', 'labels', 'history', 'pending', 'held', 'stopped', 'reconsent', 'overAllowance']);
 export const isEnabledGroup = state => RUNNING_KINDS.has(state.kind);
 
 function fmtDay(iso) { return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }); }

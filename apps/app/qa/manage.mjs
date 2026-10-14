@@ -37,8 +37,34 @@ async function qualifyPage({ check, go, page, shot }, label, path, { tab, tabs }
   return seen;
 }
 
+export async function historyOnlyManage(ctx) {
+  const { check, go, page, shot, ORIGIN } = ctx;
+  // Explicit history consent must work while every repository writer stays disabled.
+  await go('/manage/repositories/ada-sample/notes-site');
+  await page.locator('[data-history] form:has(input[name="enabled"][value="on"]) button').click();
+  await page.waitForLoadState('networkidle');
+  await page.locator('[data-operation] form:has(input[name="mode"][value="stop"]) button').click();
+  await page.waitForLoadState('networkidle');
+  const paused = await page.locator('[data-history]').innerText();
+  check('native Stop pauses collection, keeps consent and retained history, and frees the place', /Paused by Stop/u.test(paused) && /its place is free/u.test(paused) && await page.locator('[data-history]').getByRole('button', { name: 'Resume history', exact: true }).count() === 1);
+  await shot('pro-manage-history-paused');
+  await page.locator('[data-history]').getByRole('button', { name: 'Resume history', exact: true }).click();
+  await page.waitForLoadState('networkidle');
+  const historyOnly = await page.evaluate(() => ({ history: document.querySelector('[data-history]')?.textContent ?? '', effects: [...document.querySelectorAll('[data-operation] .m-eff .m-st')].map(node => node.textContent?.trim()), buttons: [...document.querySelectorAll('[data-history] button')].map(node => node.textContent?.trim()) }));
+  check('native Resume history supplies history-only, Import and Recalculate with labels, check and brief off', /History only/u.test(historyOnly.history) && historyOnly.effects.every(value => value === 'Off') && historyOnly.buttons.includes('Import past PRs') && historyOnly.buttons.includes('Recalculate'), JSON.stringify(historyOnly));
+  await shot('pro-manage-history-only');
+  // Restore the existing fixture's operation and separate history-off choice for the other journeys.
+  await page.locator('[data-history] form:has(input[name="action"][value="history"]):not(:has(input[name="enabled"])) button').click();
+  await page.waitForLoadState('networkidle');
+  const writer = page.locator('[data-enable-panel] input[name="writer"]');
+  if (await writer.count()) await writer.check();
+  await page.locator('[data-enable-panel] form button').click();
+  await page.waitForLoadState('networkidle');
+}
+
 export async function proManage(ctx) {
   const { check, go, page, shot, ORIGIN } = ctx;
+  await historyOnlyManage(ctx);
   const overview = await qualifyPage(ctx, 'pro', '/manage', { tab: 'Overview', tabs: 5 });
   check('pro Overview leads with the plan band, the organisation slots and the private slot cells', await page.evaluate(() => /Your plan/u.test(document.querySelector('[data-plan-band]')?.textContent ?? '') && /Pro/u.test(document.querySelector('[data-plan-band] .m-planname b')?.textContent ?? '') && document.querySelectorAll('[data-plan-band] .m-org').length >= 3 && document.querySelectorAll('[data-slots] .m-nsrow').length >= 2 && document.querySelectorAll('[data-slots] .m-cap.md .m-cell').length === 3), await page.evaluate(() => document.querySelector('[data-plan-band]')?.textContent?.slice(0, 200)));
   check('pro Overview lists the open paid slot under Needs you and the badge agrees with the list everywhere', overview.attention > 0 && /Slot 2 is open/u.test(await text(page)) && overview.badge === String(overview.attention) && overview.tabBadge === String(overview.attention), JSON.stringify({ attention: overview.attention, badge: overview.badge, tabBadge: overview.tabBadge }));
