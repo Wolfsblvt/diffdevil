@@ -10,6 +10,7 @@ import { D1CommercialStore } from './commercial-storage.mjs';
 import { D1ManageStore } from '../app/src/lib/manage/store.mjs';
 import { D1ParticipationStore } from '../app/src/lib/participation/store.mjs';
 import { readRecoveryInput, replayRecoveryObligations } from './recovery.mjs';
+import { exportHealthyRecoveryInput } from './recovery-input.mjs';
 
 const point = { id: 'sanitized-point', capturedAt: '2026-10-01T00:00:00.000Z', supportedUntil: '2026-10-31T00:00:00.000Z' };
 const through = '2026-10-05T00:00:00.000Z';
@@ -178,4 +179,82 @@ test('Free disconnect and session revocation replay without deleting retained or
     assert.ok((await f.auth.session('session')).revoked_at);
     assert.equal((await f.database.prepare('SELECT count(*) AS n FROM analytical_file_sizes WHERE repository_id=18').first()).n, 1);
   } finally { await f.runtime.dispose(); }
+});
+
+test('the one-time healthy-source export supplies and checkpoints actual current state for interrupted rollback replay', async () => {
+  // Two copies of the same deterministic sanitized point, before later source-only changes.
+  const current = await fixture();
+  let target;
+  try {
+    target = await fixture();
+    const selectedPoint = { ...point, databaseId: 'sanitized-original-database' };
+    const source = { mode: 'immutable-current-copy', databaseId: selectedPoint.databaseId, capturedAt: through,
+      snapshotId: 'fixture-current-snapshot', healthEvidence: 'fixture-live-read-before-isolation',
+      consistencyEvidence: 'fixture-owned-stopped-writers', interpretation: 'fixture-schema-0016-original-seal' };
+    await current.app.deleteHistory(17);
+    await current.app.reapplyRepositoryDeletion(18, { deletedAt: at, reapplyUntil: until });
+    await current.app.setRepositoryConsent(19, { enabled: false, origin: 'fixture-withdrawal' });
+    await current.auth.revokeAuthorization(77, { disconnectService: true });
+    await new D1CommercialStore(current.database, { now: () => through }).endLink('link-1', { source: 'fixture-current-end', endedAt: at });
+    const campaign = { key: 'fixture-campaign', version: 1, survey: 'fixture-survey' };
+    for (const f of [current, target]) await new D1ParticipationStore(f.database, { now: () => at }).complete(77, campaign, { feedback: 'synthetic answer' });
+    await new D1ParticipationStore(current.database, { now: () => through }).deleteAnswers(77, campaign);
+    let committed;
+    const exported = await exportHealthyRecoveryInput({ database: current.database, point: selectedPoint, source,
+      checkpoint: async value => { committed = value; } });
+    assert.deepEqual(exported, committed);
+    assert.equal(exported.coverage.mode, 'healthy-source-rollback');
+    assert.equal(exported.events.length, 0, 'current state supplies obligations without inventing historical events or their times');
+    const partial = structuredClone(exported);
+    partial.currentState.tables.pop();
+    let touched = false;
+    await assert.rejects(target.replay(partial, { point: selectedPoint, checkpoint: async () => { touched = true; } }), { code: 'E_RECOVERY_SOURCE' });
+    assert.equal(touched, false);
+    assert.equal((await target.app.historySettings(17)).enabled, true);
+    let repositoryInsert = false, interrupted = false;
+    const failing = {
+      prepare(sql) { if (sql.startsWith('INSERT INTO "repositories"')) repositoryInsert = true; return target.database.prepare(sql); },
+      batch(statements) {
+        if (repositoryInsert && !interrupted) { interrupted = true; throw new Error('fixture interrupted metadata publication'); }
+        return target.database.batch(statements);
+      }
+    };
+    await assert.rejects(target.replay(exported, { database: failing, point: selectedPoint }), { code: 'E_RECOVERY_REPLAY' });
+    assert.equal(target.receipts.at(-1).phase, 'incomplete');
+    const result = await target.replay(exported, { point: selectedPoint });
+    assert.equal(result.phase, 'replayed');
+    assert.ok(result.applied.includes('healthy-current-state'));
+    assert.equal((await target.app.historySettings(17)).enabled, false);
+    assert.equal(await target.app.repositoryAdmission(18), undefined);
+    assert.equal((await target.app.historySettings(19)).enabled, false);
+    assert.equal(await target.auth.serviceDisconnected(77), true);
+    assert.equal(await target.auth.authorization(77), null);
+    assert.equal((await new D1ParticipationStore(target.database).response(77, campaign)).answers, null);
+    assert.equal((await target.database.prepare('SELECT count(*) AS n FROM analytical_file_sizes WHERE repository_id=20').first()).n, 1);
+    assert.equal((await target.database.prepare('SELECT last_establish FROM commercial_link_attempts').first()).last_establish, 'expired');
+    await assert.rejects(exportHealthyRecoveryInput({ database: current.database, point: selectedPoint,
+      source: { ...source, healthEvidence: '' }, checkpoint: async () => {} }), { code: 'E_RECOVERY_SOURCE' });
+    await assert.rejects(exportHealthyRecoveryInput({ database: current.database, point: selectedPoint, source,
+      checkpoint: async () => { throw new Error('fixture protected output unavailable'); } }), /protected output unavailable/u);
+  } finally { await current.runtime.dispose(); await target?.runtime.dispose(); }
+});
+
+test('healthy-source export proves its output route before reads and refuses incomplete table reads', async () => {
+  const selectedPoint = { ...point, databaseId: 'fixture-db' };
+  const source = { mode: 'immutable-current-copy', databaseId: selectedPoint.databaseId, capturedAt: through,
+    snapshotId: 'fixture-current', healthEvidence: 'fixture-health', consistencyEvidence: 'fixture-immutable-copy', interpretation: 'fixture-0016' };
+  let read = false;
+  await assert.rejects(exportHealthyRecoveryInput({ point: selectedPoint, source,
+    database: { prepare() { read = true; } }, checkpoint: async () => { throw new Error('fixture output refusal'); } }), /output refusal/u);
+  assert.equal(read, false);
+  const committed = [];
+  const partial = { prepare(sql) { return {
+    first: async () => ({ count: 2 }),
+    all: async () => ({ success: true, results: sql.startsWith('PRAGMA') ? [{ name: 'installation_id' }] : [{ installation_id: 9 }] })
+  }; } };
+  await assert.rejects(exportHealthyRecoveryInput({ point: selectedPoint, source, database: partial,
+    checkpoint: async value => { committed.push(value); } }), { code: 'E_RECOVERY_SOURCE' });
+  assert.equal(committed.length, 1);
+  assert.equal(committed[0].phase, 'reading');
+  assert.notEqual(committed[0].kind, 'diffdevil.app-recovery-input');
 });

@@ -5,9 +5,10 @@
 This is the product-owned input, replay and checkpoint interface for an isolated
 restored App database. It applies later deletion, expiry, history opt-out and
 service/Works disconnect facts, then uses the existing current Works reconciliation.
-The source consumer is implemented. An independently recoverable complete input
-producer is **not** implemented or established by this interface. A configuration
-export cannot supply missing later facts after loss of the same database.
+The consumer and a one-time healthy-source input adapter are implemented. Recovery
+after loss of the authoritative current source still has no independently complete
+input producer. A configuration export cannot supply missing later facts after loss
+of the same database. A coordinated healthy-source rollback is a separate claim.
 
 ## Preserve the original point and isolation
 
@@ -126,6 +127,74 @@ input, current GitHub authority, a compiled HTTP App encounter or serving recove
 Reconcile duties after that barrier and exercise the matching App/current grants
 before any separately authorized serving transition.
 
+## One-time input from a healthy current source
+
+`apps/github-app/recovery-input.mjs: exportHealthyRecoveryInput` supplies the
+coordinated rollback route. The operator first establishes actual current App health
+and identity, then uses the existing native consistent whole-D1 capture and
+isolated-import route to produce an **immutable current copy**. Keep its writers
+stopped while reading it. An old point, a merely existing database, or independent
+GitHub/Works answers are not that source. The API does not perform provider capture
+or prove health from a caller's description.
+
+```js
+import { exportHealthyRecoveryInput } from '../../apps/github-app/recovery-input.mjs';
+const input = await exportHealthyRecoveryInput({
+  database: immutableCurrentD1,
+  point: { ...originalPoint, databaseId: originalDatabaseId },
+  source: {
+    mode: 'immutable-current-copy', databaseId: originalDatabaseId,
+    capturedAt: currentSnapshotTime, snapshotId: currentSnapshotCoordinate,
+    healthEvidence: actualAppHealthAndIdentityReceipt,
+    consistencyEvidence: nativeCaptureAndIsolatedImportReceipt,
+    interpretation: compatibleSourceSchemaAndOriginalSealReceipt
+  },
+  checkpoint: commitProtectedInput
+});
+```
+
+These references name actual operating evidence; they do not certify themselves.
+Database identity must match the original point, timestamp is the exact `through`
+boundary, and the original supported window still applies. This route transfers
+actual complete current state and logical observation membership through that
+boundary, without guessing historical event times.
+
+The exporter commits `diffdevil.healthy-source-export-checkpoint` / `phase: reading`
+before credential-bearing reads. Each selected table is read completely and checked
+against its actual count in the immutable copy. A D1 error, limit or count mismatch
+refuses; it never silently truncates or paginates a moving live database. Only after
+all reads does the complete versioned recovery input commit and return. An initial
+reading checkpoint is not an input and the consumer refuses it. This API belongs
+inside an admitted protected operator process: do not invoke it through a
+value-returning agent tool, print its return, or put it in a public artifact/log.
+
+`currentState` includes complete current repository/installation,
+authorization/session/service, Manage/Business configuration/audit, history-job/lens,
+participation and commercial tables. It contains sensitive account data, survey
+answers and existing **sealed** grants/verifiers, rather than only non-secret event
+coordinates. Preserve existing protected capture/input custody and seal
+interpretation. It creates no new grant, credential, permission or recurring archive.
+The operator qualifies source/current interpretation and matching seal; column
+parity alone cannot prove them.
+
+Replay validates every selected table/column/count and logical membership shape
+against the target before its first write. It removes old numerical history
+records/size observations absent from the actual current source, then copies current
+privacy/control state in foreign-key order. Current numerical observations are not
+imported: retained old comparisons keep the original point's interpretation, subject
+to actual current removal and expiry. Original commercial attempts remain; current
+rows supersede matching attempt identities. This carries current positive choices
+and still-protected grants from their actual authority rather than inventing
+replacement consent or forcing routine reconfirmation. Every restored active
+commercial link is then held for current Works reconciliation.
+
+The complete protected input is recoverable before target mutation. If publication
+is interrupted after table deletion or insertion, keep the target isolated and
+repeat with that same complete input. This route is not atomic across all target
+tables and cannot run alongside target consumers. Subsequent source changes need a
+new complete barrier before serving. `coverage.mode: healthy-source-rollback` stays
+in the replay receipt and never becomes source-loss recovery proof.
+
 ## What remains unavailable after database loss
 
 The current App stores deletion tombstones, history choices and service disconnects
@@ -153,7 +222,10 @@ node --test apps/github-app/recovery.test.mjs apps/github-app/d1-state.test.mjs
 
 Sanitized local D1 tests exercise actual migrations/stores, input refusals before
 writes, deletion/opt-out/expiry, revocation, preserved attempts, checkpoint failure,
-replay and real commercial hold state. Existing `commercial.test.mjs` separately
+replay and real commercial hold state. The twin-copy healthy-source specimen also
+exercises complete input commit, partial projection refusal, interrupted metadata
+publication and recovery, output refusal before source reads and count mismatch.
+Existing `commercial.test.mjs` separately
 qualifies the signed Works consumer's current/ended/unavailable answers. Neither
 proves independent production custody or a real restored HTTP App. Those remain
 with the recovery operator and its original source/interpretation envelope.

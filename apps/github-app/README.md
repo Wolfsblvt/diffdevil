@@ -7,8 +7,9 @@ This is the source-owned Cloudflare Worker, Queue, and D1 adapter for the option
 ## Boundary
 
 [Recovery replay](../../docs/integration/app-recovery.md) owns the isolated restored
-point's later-duty input, application and durable checkpoint. Its source consumer
-does not supply independently recoverable post-point facts or authorize serving.
+point's one-time healthy-source input adapter, later-duty application and durable
+checkpoint. Healthy-source rollback does not establish input after loss of that
+source or authorize serving.
 
 `worker.mjs` is the small provider entry point. `app.mjs` carries webhook execution use cases; `admission.mjs` is the non-visual, authorization-callback boundary for repository settings; `storage.mjs` is the D1-only lease/recovery/history adapter; `contracts.mjs` defines the minimized queue and history shapes; `crypto.mjs` keeps webhook authentication and short-lived App-JWT minting at the secret boundary. `authorization.mjs` and `authorization-storage.mjs` provide a separate route-neutral GitHub-user authorization and protected browser-session seam. `commercial.mjs`, `commercial-wirt.mjs` and `commercial-storage.mjs` are the Wirt consumer: customer-authorized Works link, signed projection receiver, ordered application and report outbox, organisation bindings and the entitlement adapter; [the commercial link contract](../../docs/integration/app-commercial-link.md) owns their routes and boundaries, including the `reconcileAfterRestore()` seam an operator runs after any database restore or import, before serving again. The common engine remains in `src/diffdevil/`.
 

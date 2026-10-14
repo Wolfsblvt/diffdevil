@@ -4,6 +4,7 @@ import { D1AuthorizationStore } from './authorization-storage.mjs';
 import { D1CommercialStore } from './commercial-storage.mjs';
 import { D1ManageStore } from '../app/src/lib/manage/store.mjs';
 import { D1ParticipationStore } from '../app/src/lib/participation/store.mjs';
+import { applyHealthyRecoveryState, validateHealthyRecoveryState } from './recovery-input.mjs';
 
 const DAY = 86_400_000;
 const DUTIES = ['deletion-expiry', 'history-consent', 'service-disconnect', 'works-disconnect'];
@@ -24,6 +25,7 @@ export function readRecoveryInput(input, point, through) {
     || !iso(through) || through < point.capturedAt || through > point.supportedUntil
     || input?.kind !== 'diffdevil.app-recovery-input' || input.version !== 1
     || input.point?.id !== point.id || input.point?.capturedAt !== point.capturedAt || input.point?.supportedUntil !== point.supportedUntil
+    || (input.currentState !== undefined && input.point?.databaseId !== point.databaseId)
     || input.coverage?.from !== point.capturedAt || input.coverage?.through !== through
     || !Array.isArray(input.events) || !Array.isArray(input.coverage.sources)) throw refuse();
   const sources = new Map();
@@ -60,15 +62,18 @@ export function readRecoveryInput(input, point, through) {
 /**
  * Apply later obligations to an isolated restored D1 before any reader, Queue or maintenance consumer starts.
  * `checkpoint` must durably commit the supplied value, or reject. No input means no replay, never empty duties.
- * On interruption rerun the same input against the same isolated point; operations only restrict or erase state.
+ * On interruption rerun the same input against the same isolated point. Duty replay restricts/erases state;
+ * the healthy-source route carries actual current authority and preferences from its complete protected input.
  * A receipt qualifies this input boundary only, never current provider access, artifact custody or serving.
  *
- * @param {{database: object, input: object, point: {id: string, capturedAt: string, supportedUntil: string}, through: string,
+ * @param {{database: object, input: object, point: {id: string, capturedAt: string, supportedUntil: string, databaseId?: string}, through: string,
  * checkpoint: (receipt: object) => Promise<void>, commercial?: object}} options
  */
 export async function replayRecoveryObligations({ database, input, point, through, checkpoint, commercial }) {
   const selected = readRecoveryInput(input, point, through);
   if (typeof checkpoint !== 'function') throw refuse();
+  if (selected.currentState !== undefined) await validateHealthyRecoveryState(database, selected);
+  else if (selected.coverage.mode === 'healthy-source-rollback') throw refuse();
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(selected)));
   const inputSha256 = [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, '0')).join('');
   let at = through;
@@ -84,6 +89,11 @@ export async function replayRecoveryObligations({ database, input, point, throug
   // Prove the output route before touching the restored database.
   await commit();
   try {
+    if (selected.currentState) {
+      await applyHealthyRecoveryState(database, selected.currentState, through);
+      receipt.applied.push('healthy-current-state');
+      await commit();
+    }
     await works.holdRestoredLinks(through);
     for (const event of selected.events) {
       at = event.at;
