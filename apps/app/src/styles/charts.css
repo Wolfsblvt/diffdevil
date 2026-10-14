@@ -49,7 +49,7 @@
 .fr-drill:hover { border-color: var(--accent); }
 
 /* Long Development intervals keep their full text inside the five-column panel at desktop widths. */
-@media (min-width: 1181px) and (max-width: 1360px) {
+@media (min-width: 1181px) and (max-width: 1600px) {
   .fr[data-chart="development"] .fr-vals { column-gap: 4px; }
   .fr[data-chart="development"] .fr-vals > .range dd { font-size: 13px; }
   .fr[data-chart="development"] .fr-vals > .sum.range { padding-left: 10px; }

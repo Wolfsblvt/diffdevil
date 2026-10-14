@@ -439,22 +439,20 @@ async function qualifyPages(label, { pro }) {
   check(`${label} nav shows repository status vocabulary`, await page.evaluate(() => { const texts = [...document.querySelectorAll('.a-repos .a-st')].map(element => element.textContent); return texts.includes('History off') && texts.includes('Labels only'); }));
 }
 
-async function qualifyPrConfidenceState() {
+async function readPrDetailFacts() {
+  return page.evaluate(() => ({ lanes: document.querySelectorAll('.lane').length, result: document.querySelector('.a-result .big .n')?.textContent ?? '', snap: document.querySelector('.a-snap')?.textContent ?? '', files: document.querySelectorAll('#h-pf ~ * table tbody tr, .a-tbl tbody tr').length, github: Boolean(document.querySelector('a[href^="https://github.com/"]')), named: /src\/index\.ts/u.test(document.body.innerText), fileLinks: document.querySelectorAll('a[href^="/file/"]').length }));
+}
+
+async function qualifyPrConfidenceState(consumerReturn = null) {
   const detail = await go('/pr/parser-guild/parser-lab/452');
   await settled();
   check('PR detail renders the Development chart for a retained merged pull request', detail.status() === 200 && await page.locator('[data-chart-id="dev"].is-mounted').count() === 1, `${detail.status()}`);
-  await page.setViewportSize({ width: 1280, height: 900 });
-  const boundedReadout = await page.evaluate(() => {
+  const inspectBoundedReadout = async width => {
+    await page.setViewportSize({ width, height: 900 });
+    return page.evaluate(() => {
     const host = document.querySelector('[data-chart-id="dev"]');
     const frame = host?.__frame;
     if (!host || !frame) return null;
-    const now = frame.model.now;
-    const interval = { status: 'bounded', lower: 2240, upper: 4335 };
-    const delta = { status: 'bounded', lower: -2095, upper: 2095 };
-    frame.model = { ...frame.model, rows: [
-      { index: 0, sha: 'before1', at: now - 1, changed: interval.lower, upper: interval.upper, status: interval.status, bandShort: null, color: null, changedFrom: null, sinceOpened: { status: 'exact', lower: 0, upper: 0 }, transition: null },
-      { index: 1, sha: 'after01', at: now, changed: interval.lower, upper: interval.upper, status: interval.status, bandShort: null, color: null, changedFrom: delta, sinceOpened: delta, transition: null },
-    ] };
     frame.setFocus(1, { announce: true });
     const readout = host.querySelector('[data-readout]');
     const strip = readout.querySelector('.fr-vals');
@@ -469,11 +467,32 @@ async function qualifyPrConfidenceState() {
     const overlapping = boxes.some((box, index) => index > 0 && boxes[index - 1].right > box.left + 1);
     return { viewport: innerWidth, readoutWidth: readout.clientWidth, stripWidth: strip.clientWidth, stripScrollWidth: strip.scrollWidth,
       overflowing: strip.scrollWidth > strip.clientWidth + 1, overlapping, valuesOutside: values.some(value => value.left < stripBox.left - 1 || value.right > stripBox.right + 1), values };
-  });
+    });
+  };
+  const now = await page.evaluate(() => document.querySelector('[data-chart-id="dev"]')?.__frame?.model.now);
+  await page.evaluate(now => {
+    const host = document.querySelector('[data-chart-id="dev"]');
+    const frame = host?.__frame;
+    if (!host || !frame) return;
+    const interval = { status: 'bounded', lower: 2240, upper: 4335 };
+    const delta = { status: 'bounded', lower: -2095, upper: 2095 };
+    frame.model = { ...frame.model, rows: [
+      { index: 0, sha: 'before1', at: now - 1, changed: interval.lower, upper: interval.upper, status: interval.status, bandShort: null, color: null, changedFrom: null, sinceOpened: { status: 'exact', lower: 0, upper: 0 }, transition: null },
+      { index: 1, sha: 'after01', at: now, changed: interval.lower, upper: interval.upper, status: interval.status, bandShort: null, color: null, changedFrom: delta, sinceOpened: delta, transition: null },
+    ] };
+    frame.setFocus(1, { announce: true });
+  }, now);
+  const boundedReadout = await inspectBoundedReadout(1280);
   check('PR Development F1 readout shows the full signed bounded delta at 1280px without clipping or overlap', boundedReadout?.viewport === 1280
     && boundedReadout.values.filter(value => value.label === 'vs previous' || value.label === 'since opened').every(value => value.value === '−2,095–+2,095')
     && !boundedReadout.overflowing && !boundedReadout.overlapping && !boundedReadout.valuesOutside && boundedReadout.values.every(value => !value.clipped), JSON.stringify(boundedReadout));
   await page.locator('[data-chart-id="dev"] [data-readout]').screenshot({ path: join(OUT, 'pr-development-bounded-1280x900.png') });
+  for (const width of [1361, 1440]) {
+    const readout = await inspectBoundedReadout(width);
+    check(`PR Development F1 readout preserves the full signed bounded delta at ${width}px without clipping or overlap`, readout?.viewport === width
+      && readout.values.filter(value => value.label === 'vs previous' || value.label === 'since opened').every(value => value.value === '−2,095–+2,095')
+      && !readout.overflowing && !readout.overlapping && !readout.valuesOutside && readout.values.every(value => !value.clipped), JSON.stringify(readout));
+  }
   await page.evaluate(() => {
     const host = document.querySelector('[data-chart-id="dev"]');
     const frame = host?.__frame;
@@ -487,6 +506,18 @@ async function qualifyPrConfidenceState() {
     && /Closed unmerged; no analysed revision was retained, and no final merged comparison exists\./u.test(closedWithoutRevisionText)
     && /No analysed revision retained/u.test(closedWithoutRevisionText), closedWithoutRevisionText.replace(/\s+/gu, ' ').slice(0, 500));
   await shot('closed-unmerged-no-analysed-revision-pr74');
+
+  if (consumerReturn) {
+    const restored = await go(consumerReturn.href);
+    await settled();
+    const restoredFacts = await readPrDetailFacts();
+    const restoredUrl = new URL(page.url());
+    const expectedUrl = new URL(consumerReturn.href, page.url());
+    check('PR confidence qualification returns to the same PR detail and facts before its premium consumer runs', restored.status() === 200
+      && restoredUrl.pathname === expectedUrl.pathname && restoredUrl.search === expectedUrl.search
+      && JSON.stringify(restoredFacts) === JSON.stringify(consumerReturn.expectedFacts), JSON.stringify({ href: consumerReturn.href, restoredUrl: page.url(), restoredFacts, expectedFacts: consumerReturn.expectedFacts }));
+    return restoredFacts;
+  }
 }
 
 try {
@@ -497,7 +528,13 @@ try {
   } else if (PR_CONFIDENCE_ONLY) {
     await startWorker(undefined, STATE, { commercial: COMMERCIAL_PRO });
     await signIn();
-    await qualifyPrConfidenceState();
+    await go('/prs?s=parser-guild%2Fparser-lab&per=90d&f=merged');
+    const href = await page.locator('.a-prs2 .a-pr').first().getAttribute('href');
+    const detailResponse = await go(href);
+    const detailFacts = await readPrDetailFacts();
+    check('focused PR detail reaches its retained analysis before confidence qualification', detailResponse.status() === 200 && detailFacts.lanes >= 3 && detailFacts.result !== '', JSON.stringify({ href, ...detailFacts }));
+    const consumerDetailFacts = await qualifyPrConfidenceState({ href, expectedFacts: detailFacts });
+    await premium?.prDetail?.(ctx, { detailFacts: consumerDetailFacts });
   } else if (AUTHORITY_ONLY) {
     for (const [name, status, role, state] of [
       ['unavailable', 403, 'admin', 'active'], ['pending', 200, 'admin', 'pending'],
@@ -677,15 +714,14 @@ try {
   const href = await firstRow.getAttribute('href');
   const detailResponse = await go(href);
   check('PR detail answers 200', detailResponse.status() === 200, `${detailResponse.status()} :: ${(await page.evaluate(() => document.body.innerText)).replace(/\s+/gu, ' ').slice(0, 400)}`);
-  const detailFacts = await page.evaluate(() => ({ lanes: document.querySelectorAll('.lane').length, result: document.querySelector('.a-result .big .n')?.textContent ?? '', snap: document.querySelector('.a-snap')?.textContent ?? '', files: document.querySelectorAll('#h-pf ~ * table tbody tr, .a-tbl tbody tr').length, github: Boolean(document.querySelector('a[href^="https://github.com/"]')), named: /src\/index\.ts/u.test(document.body.innerText), fileLinks: document.querySelectorAll('a[href^="/file/"]').length }));
+  const detailFacts = await readPrDetailFacts();
   check('PR detail shows the result, policy lanes, freshness, named file rows and the GitHub link', detailFacts.lanes >= 3 && detailFacts.result !== '' && /analysed head/u.test(detailFacts.snap) && detailFacts.files > 0 && detailFacts.github && detailFacts.named, JSON.stringify({ href, ...detailFacts }));
   await settled();
   check('PR detail draws development over the size zones', (await page.locator('[data-chart="development"].is-mounted').count()) === 1);
   await qualifyFrame('pro pr detail', '[data-chart-id="dev"]');
-  const prDetailUrl = page.url();
-  await qualifyPrConfidenceState();
-  await qualifyAllRepositoriesSearchDetail(prDetailUrl, detailFacts);
-  await premium?.prDetail?.(ctx, { detailFacts });
+  const consumerDetailFacts = await qualifyPrConfidenceState({ href, expectedFacts: detailFacts });
+  await qualifyAllRepositoriesSearchDetail(href, consumerDetailFacts);
+  await premium?.prDetail?.(ctx, { detailFacts: consumerDetailFacts });
   if (!premium) {
     check('without the premium extension PR detail keeps its named files as plain text and says file context is not part of this build', detailFacts.fileLinks === 0 && (await page.locator('#h-ctx1, #h-recent, #h-ow').count()) === 0 && (await page.evaluate(() => /File context is not part of this build/u.test(document.body.innerText))));
     await shot('community-pr-detail');
