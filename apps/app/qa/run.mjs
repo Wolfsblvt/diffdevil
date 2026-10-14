@@ -446,6 +446,10 @@ try {
     await page.waitForLoadState('networkidle');
     check('the place released by Stop permits private history-only readmission', await page.evaluate(() => /History only/u.test(document.querySelector('[data-history]')?.textContent ?? '') && [...document.querySelectorAll('[data-operation] .m-eff .m-st')].every(node => node.textContent.trim() === 'Off')));
     await shot('history-private-readmission');
+    await page.locator('[data-history]').getByRole('button', { name: 'Stop collecting', exact: true }).click();
+    await page.waitForLoadState('networkidle');
+    await go('/manage/repositories');
+    check('Stop collecting releases a private history-only place while leaving repository effects off', await page.locator('[data-free-allowance] .m-segs.priv i.on').count() === 1 && /Stopped/u.test(await page.locator('[data-repository-row="parser-guild/parser-lab"]').innerText()));
   } else if (IDENTITY_ONLY) {
     await startWorker(undefined, STATE, { commercial: COMMERCIAL_PRO });
     await signIn();

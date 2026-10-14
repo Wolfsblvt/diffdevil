@@ -91,6 +91,9 @@ test('a reduction applies the saved choice: the runtime holds what was not chose
   assert.equal(await act(app, cookie, { action: 'select', repository: 'ada-sample/dotfiles', back: '/manage' }), 'selected', 'the freed place admits a different repository');
   assert.equal((await store.historySettings(1004, { independentExecution: true })).enabled, true, 'explicit re-admission resumes retained consent');
   assert.equal(await store.executionAllowed(1004), false, 'history resumes without enabling repository effects');
+  assert.equal(await act(app, cookie, { action: 'history', repository: 'ada-sample/dotfiles', back: '/manage' }), 'history-off');
+  assert.equal((await app.store.repositoryStandings([1004])).get(1004).selected, false, 'Stop collecting gives up a history-only private place');
+  assert.equal((await manageModel(app, cookie)).namespaces[0].capacity.inSlot.length, 0);
 });
 
 test('without a choice diffdevil does not pick: a scope over its lower limit holds all of it, and an organisation without a plan holds', async () => {
