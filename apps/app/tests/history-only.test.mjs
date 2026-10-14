@@ -124,7 +124,9 @@ test('consented history imports and repairs three current-API comparisons with r
   assert.equal((await act('history', 'off')).message, 'history-off');
   const off = (await app.store.repositoryStandings([repositoryId])).get(repositoryId);
   assert.equal(off.historyEnabled, false);
-  assert.equal(off.historyConsented, false, 'Stop collecting is the distinct history-off choice');
+  assert.equal(off.historyConsented, true, 'Stop collecting stops new collection without revoking history consent');
+  assert.equal(off.historyCollectionEnabled, false);
+  assert.equal(off.historyReadable, true);
   assert.equal(off.selected, false);
   assert.equal((await app.appStore.historySettings(repositoryId, { independentExecution: true })).enabled, false, 'opt-out still prevents new collection');
   assert.equal((await app.appStore.analyticalRecords(repositoryId)).length, 3, 'Stop collecting preserves already-retained records for reading');

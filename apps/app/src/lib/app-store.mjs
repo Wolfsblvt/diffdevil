@@ -43,15 +43,15 @@ export class D1AppReadStore {
       for (const row of rows.results ?? []) {
         const executionActive = row.state === 'active' && row.access_state === 'available' && row.installation_state === 'active' && row.execution_consent_reason === null;
         const pauseReason = historyCollectionPause(row);
-        const historyConsented = row.history_enabled === 1 && row.history_consent_reason === null && !row.tombstoned;
-        const stoppedExplicitly = row.history_enabled === 0 && row.history_consent_reason === 'explicitly-disabled';
-        const historyReadable = (historyConsented || stoppedExplicitly) && ['active', 'pending-enable'].includes(row.state) && row.access_state === 'available' && row.installation_state === 'active' && !row.tombstoned;
-        const historyEnabled = historyConsented && historyReadable && !pauseReason;
+        const historyConsented = row.history_consent_reason === null
+          && (row.history_enabled === 1 || row.history_consent_origin !== null) && !row.tombstoned;
+        const historyReadable = historyConsented && ['active', 'pending-enable'].includes(row.state) && row.access_state === 'available' && row.installation_state === 'active' && !row.tombstoned;
+        const historyEnabled = row.history_enabled === 1 && historyConsented && historyReadable && !pauseReason;
         const removed = ['offboarding', 'removed'].includes(row.state) || row.access_state === 'removed';
         standings.set(row.repository_id, {
           repositoryId: row.repository_id, installationId: row.installation_id, state: row.state, accessState: row.access_state, installationState: row.installation_state,
           executionActive, executionReason: row.execution_consent_reason ?? null, executionOrigin: row.execution_consent_origin ?? null, historyEnabled, historyReason: row.history_consent_reason ?? null,
-          historyConsented, historyReadable, historyPauseReason: pauseReason,
+          historyConsented, historyCollectionEnabled: row.history_enabled === 1, historyReadable, historyPauseReason: pauseReason,
           historyOrigin: row.history_consent_origin ?? 'unknown', historyActorId: row.history_consent_actor_id ?? null,
           retentionDays: boundedDays(row.retention_days), tombstoned: Boolean(row.tombstoned), writerStanding: row.writer_standing ?? 'unverified', revision: row.settings_revision ?? 0,
           selected: Boolean(row.selected_at) && !removed, selectedAt: row.selected_at ?? null,

@@ -108,8 +108,7 @@ export function createAdmissionService({ store, authorize = async () => false, r
     if (!configuration && !writer && execution === undefined && !history) throw admissionError('E_ADMISSION_NO_CHANGE');
     const executionConsentChanged = execution !== undefined
       && (execution ? before.execution.reason !== null : before.execution.reason !== 'explicitly-disabled');
-    const historyConsentChanged = history !== undefined
-      && (history.enabled ? !before.history.enabled : before.history.reason !== 'explicitly-disabled');
+    const historyConsentChanged = history !== undefined && history.enabled && before.history.reason !== null;
     const actorId = executionConsentChanged || historyConsentChanged ? request.actor?.userId : undefined;
     if (origin === 'dashboard' && (executionConsentChanged || historyConsentChanged)
       && (!Number.isSafeInteger(actorId) || actorId <= 0)) throw admissionError('E_ADMISSION_ACTOR');
