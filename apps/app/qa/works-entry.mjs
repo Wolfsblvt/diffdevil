@@ -55,6 +55,7 @@ async function outbound(request) {
     if (failure === 'unavailable') return json({ error: 'unavailable' }, 503);
     const input = JSON.parse(body), id = randomUUID();
     assert.equal(input.product_account, USER.id);
+    assert.equal(input.product_account_label, USER.login, 'the native form signs its authenticated GitHub handle');
     assert.match(input.state, /^[A-Za-z0-9_-]{43}$/u);
     assert.match(input.challenge, /^[A-Za-z0-9_-]{43}$/u);
     intents.set(id, input);

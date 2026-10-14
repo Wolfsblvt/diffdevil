@@ -9,7 +9,7 @@ import { Miniflare } from 'miniflare';
 import { COMMERCIAL_ROUTES, createGitHubAppWorker } from './app.mjs';
 import { commercialFromEnv, decideProjection } from './commercial.mjs';
 import { D1CommercialStore } from './commercial-storage.mjs';
-import { readProjectionFundedComponents, readSigningKeys, readWirtMessage, signedHeaders, verifySignedMessage } from './commercial-wirt.mjs';
+import { createWirtClient, readProjectionFundedComponents, readSigningKeys, readWirtMessage, signedHeaders, verifySignedMessage } from './commercial-wirt.mjs';
 import { normalizeWebhookEvent } from './contracts.mjs';
 import { D1AppStore } from './storage.mjs';
 import { D1AuthorizationStore } from './authorization-storage.mjs';
@@ -60,7 +60,7 @@ function notice({ linkId, worksAccount = '77', productAccount = USER, epoch = 1,
  */
 function wirtDouble(clock) {
   const state = { intents: new Map(), links: new Map(), codes: new Map(), tokens: new Map(), refresh: new Map(), reports: [], cases: [], requests: [],
-    reportAnswer: undefined, establishmentLost: 0, latest: new Map(), history: new Map(), down: false };
+    reportAnswer: undefined, establishmentLost: 0, latest: new Map(), history: new Map(), down: false, accountLabels: true };
   const respond = (status, value, headers = {}) => new Response(value === undefined ? null : JSON.stringify(value), { status, headers: { 'content-type': 'application/json', ...headers } });
   const issue = userId => {
     const access = `access-${randomUUID()}`, refresh = `refresh-${randomUUID()}`;
@@ -112,7 +112,11 @@ function wirtDouble(clock) {
     if (path === '/api/wirt/diffdevil/link-intents') {
       const input = JSON.parse(text), id = randomUUID();
       assert.match(input.challenge, /^[A-Za-z0-9_-]{43}$/u);
-      state.intents.set(id, { ...input, approved: false });
+      if (state.accountLabels && Object.hasOwn(input, 'product_account_label')
+        && (typeof input.product_account_label !== 'string' || !/^[A-Za-z0-9_-]{1,39}$/u.test(input.product_account_label))) return respond(422, {});
+      // The original consumer inserted only its known fields, accepting but discarding an extra label.
+      state.intents.set(id, { product_account: input.product_account, challenge: input.challenge, state: input.state,
+        ...(state.accountLabels ? { product_account_label: input.product_account_label ?? null } : {}), approved: false });
       return respond(201, { intent: id, authorization_url: `${WIRT}/wirt/products/diffdevil/link/${id}` });
     }
     const token = state.tokens.get((headers.get('authorization') ?? '').replace(/^Bearer /u, ''));
@@ -178,6 +182,7 @@ async function fixture({ Store = D1CommercialStore, realAuthorization = false } 
   const protector = { seal: async value => { const handle = `sealed:${randomUUID()}`; vault.set(handle, structuredClone(value)); return handle; }, open: async handle => structuredClone(vault.get(handle)) };
   const administers = new Map([[USER, new Set([ORG])], [OTHER_USER, new Set([ORG])]]);
   const sessions = new Map([[SESSION, USER], [OTHER_SESSION, OTHER_USER]]);
+  const profiles = new Map([[USER, { id: USER, login: 'example-user' }], [OTHER_USER, { id: OTHER_USER, login: 'other-user' }]]);
   // Users whose GitHub authorization the product still retains; the background observation needs it.
   const retained = new Set([USER, OTHER_USER]);
   const github = { answering: true };
@@ -189,6 +194,13 @@ async function fixture({ Store = D1CommercialStore, realAuthorization = false } 
   };
   let authorization = {
     authenticate: async session => { if (!sessions.has(session)) throw Object.assign(new Error('E_SESSION_UNAVAILABLE'), { code: 'E_SESSION_UNAVAILABLE' }); return { userId: sessions.get(session) }; },
+    read: async ({ session }, operation) => {
+      const actor = await authorization.authenticate(session);
+      return operation({ profile: async () => {
+        if (!github.answering) throw new Error('fixture provider unavailable');
+        return profiles.get(actor.userId);
+      } }, actor);
+    },
     organisationAuthority: async ({ session, organisationId }) => {
       const userId = sessions.get(session);
       if (!userId) throw Object.assign(new Error('E_SESSION_UNAVAILABLE'), { code: 'E_SESSION_UNAVAILABLE' });
@@ -205,6 +217,11 @@ async function fixture({ Store = D1CommercialStore, realAuthorization = false } 
       exchangeCode: async ({ code }) => ({ material: { userId: Number(code) }, expiresAt: '2027-04-01T00:00:00.000Z' }),
       userForAuthorization: async material => material.userId,
       verifyUserAuthorization: async ({ userId, material }) => ({ valid: retained.has(userId) && material.userId === userId }),
+      profile: async ({ userId, material }) => {
+        assert.equal(material.userId, userId);
+        if (!github.answering) throw new Error('fixture provider unavailable');
+        return profiles.get(userId);
+      },
       checkOrganisationAdministration: async ({ userId, material, organisationId }) => {
         assert.equal(material.userId, userId);
         if (!github.answering) throw new Error('fixture provider unavailable');
@@ -231,7 +248,7 @@ async function fixture({ Store = D1CommercialStore, realAuthorization = false } 
   const call = (path, init = {}) => worker.fetch(new Request(`${APP}${path}`, init), env);
   const browser = (session = SESSION, cookies = '') => ({ cookie: [`__Host-diffdevil-session=${browserSessions.get(session) ?? session}`, cookies].filter(Boolean).join('; '), origin: APP });
   return { runtime, database, appStore, store, wirt, clock, commercial, worker, env, call, browser, administers, retained, github, vault,
-    authorization, authStore, browserSessions, signIn };
+    authorization, authStore, browserSessions, signIn, profiles };
 }
 
 const at = source => Date.parse(source.clock.value);
@@ -344,6 +361,79 @@ test('link attempt standing is account-owned, browser-bound before consent, and 
   } finally { await source.runtime.dispose(); }
 });
 
+test('new link intents sign the current authenticated handle and ignore browser identity input', async () => {
+  const source = await fixture({ realAuthorization: true });
+  try {
+    const begin = session => source.call(`${COMMERCIAL_ROUTES.link}?product_account=456&product_account_label=query-user`, {
+      method: 'POST', headers: { ...source.browser(session), 'content-type': 'application/json' },
+      body: JSON.stringify({ product_account: OTHER_USER, product_account_label: 'body-user' })
+    });
+    assert.equal((await begin('invalid-session')).status, 401);
+    assert.equal(source.wirt.state.intents.size, 0);
+    assert.equal((await begin(SESSION)).status, 200);
+    const first = [...source.wirt.state.intents.values()][0];
+    assert.equal(first.product_account, USER);
+    assert.equal(first.product_account_label, 'example-user');
+    source.profiles.set(USER, { id: USER, login: 'Renamed-User_acme' });
+    assert.equal((await begin(SESSION)).status, 200);
+    const longestHandle = `${'a'.repeat(34)}_acme`;
+    source.profiles.set(USER, { id: USER, login: longestHandle });
+    assert.equal((await begin(SESSION)).status, 200);
+    assert.equal((await begin(OTHER_SESSION)).status, 200);
+    const intents = [...source.wirt.state.intents.values()];
+    assert.equal(intents[1].product_account_label, 'Renamed-User_acme', 'new consent reads the current managed-user handle without a cached profile');
+    assert.equal(intents[2].product_account_label, longestHandle, 'the whole managed-user handle may reach the existing 39-character limit');
+    assert.equal(intents[3].product_account, OTHER_USER);
+    assert.equal(intents[3].product_account_label, 'other-user', 'each signed-in account supplies its own handle');
+    assert.equal(first.product_account_label, 'example-user', 'an existing intent keeps its original signed display fact');
+    assert.equal((await commercialBytes(source)).includes('Renamed-User_acme'), false, 'the display fact needs no local storage copy');
+    // The Wirt double independently verifies the signature over these exact bodies before retaining an intent.
+    const request = source.wirt.state.requests.find(value => value.path.endsWith('/link-intents'));
+    const tampered = { ...request, text: request.text.replace('example-user', 'forged-user') };
+    assert.equal((await source.wirt.fetch(`${WIRT}${request.path}`, { method: request.method, headers: tampered.headers,
+      body: new TextEncoder().encode(tampered.text), redirect: 'manual' })).status, 401);
+  } finally { await source.runtime.dispose(); }
+});
+
+test('labelled and legacy senders preserve the actual intent-creation contract', async () => {
+  const clock = { value: '2027-03-01T00:00:00.000Z' }, wirt = wirtDouble(clock);
+  const client = createWirtClient({ origin: WIRT, oauthClientId: 'diffdevil-public-client', callbackUrl: CALLBACK,
+    signing: readSigningKeys({ current: KEY }), fetch: wirt.fetch, now: () => Date.parse(clock.value) });
+  const input = { productAccount: USER, productAccountLabel: 'example-user', challenge: 'a'.repeat(43), state: 'b'.repeat(43) };
+  const labelled = await client.intent(input);
+  assert.equal(wirt.state.intents.get(labelled.intent).product_account_label, input.productAccountLabel);
+  const oldBody = JSON.stringify({ product_account: USER, challenge: input.challenge, state: input.state });
+  const sendOld = () => wirt.fetch(`${WIRT}/api/wirt/diffdevil/link-intents`, { method: 'POST', redirect: 'manual',
+    body: new TextEncoder().encode(oldBody), headers: wirtHeaders(KEY, { method: 'POST', path: '/api/wirt/diffdevil/link-intents', account: '', body: oldBody, clock }) });
+  const unlabelled = await sendOld();
+  assert.equal(unlabelled.status, 201, 'the paired consumer accepts intent creation without the optional label');
+  assert.equal(wirt.state.intents.get((await unlabelled.json()).intent).product_account_label, null);
+  // This double models intent creation only. Native Wirt consent/approval is a separate qualification boundary.
+  assert.equal(wirt.state.intents.size, 2);
+  wirt.state.accountLabels = false;
+  const legacy = await client.intent(input);
+  assert.equal(wirt.state.intents.get(legacy.intent).product_account_label, undefined, 'legacy acceptance does not prove retained or displayed label');
+  assert.equal((await sendOld()).status, 201, 'the original wire contract stays modelled independently');
+});
+
+test('missing, malformed, mismatched or unavailable authenticated profiles create no intent or local attempt', async () => {
+  const source = await fixture({ realAuthorization: true });
+  try {
+    for (const profile of [undefined, null, {}, { id: OTHER_USER, login: 'other-user' },
+      ...[undefined, null, '', 123, 'has space', '<script>', 'a'.repeat(40)].map(login => ({ id: USER, login }))]) {
+      source.profiles.set(USER, profile);
+      const response = await source.call(COMMERCIAL_ROUTES.link, { method: 'POST', headers: source.browser() });
+      assert.equal(response.status, 503);
+      assert.equal((await response.json()).code, 'E_COMMERCIAL_UNAVAILABLE');
+    }
+    source.github.answering = false;
+    const response = await source.call(COMMERCIAL_ROUTES.link, { method: 'POST', headers: source.browser() });
+    assert.equal(response.status, 503);
+    assert.equal(source.wirt.state.requests.length, 0, 'no numeric-only or browser-label fallback reaches Wirt');
+    assert.deepEqual(await rows(source, 'commercial_link_attempts'), []);
+  } finally { await source.runtime.dispose(); }
+});
+
 test('a customer-approved link is browser-bound, PKCE-protected, resumable and seeded from the pull fallback', async () => {
   const source = await fixture();
   try {
@@ -370,9 +460,12 @@ test('a customer-approved link is browser-bound, PKCE-protected, resumable and s
     const pendingAttempt = (await rows(source, 'commercial_link_attempts')).find(attempt => attempt.protected_grant);
     assert.equal((await source.commercial.status({ session: SESSION, linkAttempt: { stateHash: pendingAttempt.state_hash } })).body.linkAttempt.standing, 'pending', 'an approved retained grant remains pending after the browser cookie is cleared');
     wirt.state.seed = value => projection({ linkId: value.id, worksAccount: String(value.owner), version: 1 });
+    source.profiles.delete(USER);
+    const intentCount = wirt.state.intents.size;
     const resumed = await call(COMMERCIAL_ROUTES.link, { method: 'POST', headers: browser() });
     assert.deepEqual(await resumed.json(), { ok: true, result: 'linked' }, 'retry reuses the same intent and owner grant; no second consent');
     assert.equal(wirt.state.links.size, 1, 'Wirt created exactly one association');
+    assert.equal(wirt.state.intents.size, intentCount, 'a retained grant resumes its original intent even without a new readable profile');
     const record = await store.activeLink(USER);
     assert.equal(record.works_account, '77');
     assert.equal(record.applied_version, 1, 'the pull fallback seeded current state at establishment');
