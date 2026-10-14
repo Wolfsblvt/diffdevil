@@ -374,7 +374,8 @@ try {
   if (AUTHORITY_ONLY) {
     for (const [name, status, role, state] of [
       ['unavailable', 403, 'admin', 'active'], ['pending', 200, 'admin', 'pending'],
-      ['missing', 200, '', 'active'], ['member', 200, 'member', 'active'], ['administrator', 200, 'admin', 'active']
+      ['missing', 200, '', 'active'], ['member', 200, 'member', 'active'],
+      ['billing-manager', 200, 'billing_manager', 'active'], ['administrator', 200, 'admin', 'active']
     ]) {
       github.state.membershipStatus = status;
       github.state.roles.set('parser-guild', role);
@@ -382,14 +383,27 @@ try {
       await startWorker(undefined, STATE, { commercial: COMMERCIAL_PRO });
       await signIn();
       await go('/manage');
-      const reader = page.locator('[data-readers] .m-nsrow').filter({ hasText: 'parser-guild' });
+      const reader = page.locator('[data-readers] .m-nsrow, [data-unconfirmed-readers] .m-nsrow').filter({ hasText: 'parser-guild' });
       const text = name === 'administrator' ? '' : await reader.innerText();
       check(`${name}: Manage reflects the observed organisation authority`, name === 'administrator'
         ? await reader.count() === 0 && await page.locator('[data-namespace-row="parser-guild"]').count() === 1
         : name === 'unavailable' ? /HTTP 403/u.test(text) && /Administration is unconfirmed/u.test(text)
         : name === 'pending' ? /membership is pending/u.test(text)
         : name === 'missing' ? /list did not include/u.test(text)
+        : name === 'billing-manager' ? /active billing manager role/u.test(text)
         : /active member role/u.test(text), text);
+      const groups = await page.evaluate(() => ({
+        knownHeading: document.querySelector('[data-readers] h2')?.textContent,
+        knownOrientation: document.querySelector('[data-readers] header .d')?.textContent,
+        knownRoles: [...document.querySelectorAll('[data-readers] [data-namespace-authority]')].map(row => row.getAttribute('data-namespace-authority')),
+        unknownHeading: document.querySelector('[data-unconfirmed-readers] h2')?.textContent,
+        unknownRoles: [...document.querySelectorAll('[data-unconfirmed-readers] [data-namespace-authority]')].map(row => row.getAttribute('data-namespace-authority'))
+      }));
+      check(`${name}: known readers retain their orientation and only failed role reads enter the unconfirmed group`,
+        groups.knownHeading === 'Read-only for you' && /Someone else manages them/u.test(groups.knownOrientation ?? '')
+        && groups.knownRoles.length > 0 && !groups.knownRoles.includes('unknown')
+        && (name === 'unavailable' ? groups.unknownHeading === 'Read access · administration unconfirmed'
+          && groups.unknownRoles.length > 0 && groups.unknownRoles.every(role => role === 'unknown') : groups.unknownRoles.length === 0), JSON.stringify(groups));
       check(`${name}: authority explanation fits the existing desktop layout`, await overflow() <= 0, await offenders());
       await shot(`authority-${name}`);
       await stopWorker();
