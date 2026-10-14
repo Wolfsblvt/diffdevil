@@ -26,6 +26,9 @@ const fullName = `${owner}/${repo}`;
 const prNumber = Number(number);
 const repository = Number.isSafeInteger(prNumber) && prNumber > 0 ? repositoryByFullName(Astro.locals.viewer, fullName) : undefined;
 const view = await loadView({ url: new URL(Astro.url.pathname + (Astro.url.search || `?s=${repository ? fullName : 'all'}`), Astro.url), viewer: Astro.locals.viewer, session: Astro.locals.session, runtime, surface: 'pr', detail: { repositoryId: repository?.repositoryId, pullRequest: prNumber } });
+const noAnalysisState = view.dataStanding === 'unavailable'
+  ? { title: 'Analysis unavailable', message: 'The analytical read did not answer, so the App cannot confirm whether it has retained analysis for this pull request.' }
+  : { title: 'No retained analysis', message: `The App has no retained analysis for this pull request${repository?.standing?.historyEnabled ? '' : ' because history is not enabled for this repository'}.` };
 if (!repository) Astro.response.status = 404;
 const pages = runtime.premium.pages.pr;
 const Context = pages?.Context;
@@ -70,7 +73,7 @@ const policyBasis = retainedRow?.policy?.basis;
       {pr?.url && <a class="btn btn-quiet" href={pr.url} rel="noopener"><Icon name="external" size={14} /> GitHub</a>}
     </Fragment>
   </PageHead>
-  {!pr ? <div class="a-focus a-pn"><div class="a-pn-b" style="padding:28px 32px"><h2 style="font-size:19px;margin:0 0 8px">No retained analysis</h2><p class="lede">The App has no retained analysis for this pull request{repository.standing?.historyEnabled ? '' : ' because history is not enabled for this repository'}.{view.dataStanding === 'unavailable' ? ' The analytical read did not answer.' : ''}</p></div></div>
+  {!pr ? <div class="a-focus a-pn"><div class="a-pn-b" style="padding:28px 32px"><h2 style="font-size:19px;margin:0 0 8px">{noAnalysisState.title}</h2><p class="lede">{noAnalysisState.message}</p></div></div>
   : <div class="a-grid">
     <section class="a-pn s5"><div class="a-pn-b a-result">
       <div class="label">replacement-aware Changed · what a size policy counts{retainedRow && pr.unrecovered ? ' · final comparison not recovered' : ''}</div>

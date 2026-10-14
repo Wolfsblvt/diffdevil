@@ -16,7 +16,8 @@
  * carries the same rows, the cloud packs (in its Worker), arranges, opens its Top column and
  * walks the rank order, the period switch morphs the live charts in place, and reduced motion
  * still draws. `DIFFDEVIL_APP_QA_DENSE=1` adds a pass over a denser fixture and records the
- * cloud's layout timings. Pass --pr-search-detail to qualify only the all-repositories search → PR detail → return path.
+ * cloud's layout timings. Pass --pr-search-detail to qualify the Free search → PR detail return,
+ * including empty and unavailable read states.
  * Results and screenshots go to the selected target's qa/ directory. This proves local
  * behaviour against a fixture; it proves no deployment, no live GitHub and no real data.
  */
@@ -172,7 +173,7 @@ async function settled(timeout = 25_000) {
   await page.evaluate(() => new Promise(resolve => setTimeout(resolve, 150)));
 }
 
-async function qualifyAllRepositoriesSearchDetail() {
+async function qualifyAllRepositoriesSearchDetail(returnUrl, originalFacts) {
   await go('/prs?per=90d');
   await settled();
   await page.fill('.a-search input', '452');
@@ -186,6 +187,8 @@ async function qualifyAllRepositoriesSearchDetail() {
   const searchedDetailResponse = await go(searchedHref);
   const searchedDetail = await page.evaluate(() => ({ params: Object.fromEntries(new URLSearchParams(location.search)), result: document.querySelector('.a-result .big .n')?.textContent ?? '', unavailable: document.body.innerText.includes('The analytical read did not answer.') }));
   check('opening a searched retained PR reads detail from the repository in its route and keeps the search for return', searchedDetailResponse.status() === 200 && searchedDetail.result !== '' && !searchedDetail.unavailable && searchedDetail.params.q === '452' && searchedDetail.params.s === undefined, JSON.stringify(searchedDetail));
+  const restoreUrl = returnUrl ?? searchedHref;
+  const restoreFacts = originalFacts ?? await page.evaluate(() => ({ result: document.querySelector('.a-result .big .n')?.textContent ?? '', lanes: document.querySelectorAll('.lane').length, files: document.querySelectorAll('#h-pf ~ * table tbody tr, .a-tbl tbody tr').length }));
 
   await page.locator('.a-head nav.crumb').getByRole('link', { name: 'Pull requests', exact: true }).click();
   await page.waitForLoadState('networkidle');
@@ -195,6 +198,26 @@ async function qualifyAllRepositoriesSearchDetail() {
   const directResponse = await go('/pr/parser-guild/parser-lab/452?per=90d');
   const directDetail = await page.evaluate(() => ({ result: document.querySelector('.a-result .big .n')?.textContent ?? '', unavailable: document.body.innerText.includes('The analytical read did not answer.') }));
   check('the ordinary direct PR detail route returns the same retained result as search-to-detail', directResponse.status() === 200 && directDetail.result === searchedDetail.result && !directDetail.unavailable, JSON.stringify(directDetail));
+
+  const noHistoryResponse = await go('/pr/parser-guild/parser-lab/999999?per=90d');
+  const noHistoryText = await page.locator('.a-pn-b').innerText();
+  check('a completed empty analytical read says no retained analysis', noHistoryResponse.status() === 200 && /No retained analysis/u.test(noHistoryText) && !/cannot confirm/u.test(noHistoryText), noHistoryText);
+
+  // This malformed row makes the analytical service read fail; the independent pathless lookup stays readable.
+  executeLocal("INSERT INTO analytical_pull_requests(repository_id, pull_request, updated_at, expires_at, record_json) VALUES (1001, 999999, '2026-10-15T00:00:00.000Z', NULL, 'not-json')", STATE);
+  try {
+    const unavailableResponse = await go('/pr/parser-guild/parser-lab/999999?per=90d');
+    const unavailableText = await page.locator('.a-pn-b').innerText();
+    check('an unanswered analytical read does not claim that retained analysis is absent', unavailableResponse.status() === 200 && /Analysis unavailable/u.test(unavailableText) && /cannot confirm whether it has retained analysis/u.test(unavailableText) && !/^No retained analysis/u.test(unavailableText), unavailableText);
+  } finally {
+    executeLocal('DELETE FROM analytical_pull_requests WHERE repository_id=1001 AND pull_request=999999', STATE);
+  }
+
+  const restoredResponse = await go(restoreUrl);
+  const restoredFacts = await page.evaluate(() => ({ result: document.querySelector('.a-result .big .n')?.textContent ?? '', lanes: document.querySelectorAll('.lane').length, files: document.querySelectorAll('#h-pf ~ * table tbody tr, .a-tbl tbody tr').length }));
+  const restoredUrl = new URL(page.url());
+  const expectedUrl = new URL(restoreUrl, ORIGIN);
+  check('the all-repositories journey restores the original PR page before its existing consumer runs', restoredResponse.status() === 200 && restoredUrl.pathname + restoredUrl.search === expectedUrl.pathname + expectedUrl.search && restoredFacts.result === restoreFacts.result && restoredFacts.lanes === restoreFacts.lanes && restoredFacts.files === restoreFacts.files, JSON.stringify({ restoredUrl: page.url(), restoredFacts, restoreFacts }));
 }
 const geometry = selector => page.evaluate(selector => { const host = document.querySelector(selector); if (!host) return null; const readout = host.querySelector('[data-readout]'), plot = host.querySelector('[data-plot]'); return { readout: Math.round(readout.getBoundingClientRect().height), plotTop: Math.round(plot.getBoundingClientRect().top + window.scrollY), plotHeight: Math.round(plot.getBoundingClientRect().height), when: readout.querySelector('.fr-when b')?.textContent ?? '', vals: readout.querySelectorAll('.fr-vals dd').length, overflowing: readout.scrollWidth > readout.clientWidth + 1 }; }, selector);
 
@@ -604,7 +627,7 @@ try {
   await settled();
   check('PR detail draws development over the size zones', (await page.locator('[data-chart="development"].is-mounted').count()) === 1);
   await qualifyFrame('pro pr detail', '[data-chart-id="dev"]');
-  await qualifyAllRepositoriesSearchDetail();
+  await qualifyAllRepositoriesSearchDetail(page.url(), detailFacts);
   await premium?.prDetail?.(ctx, { detailFacts });
   if (!premium) {
     check('without the premium extension PR detail keeps its named files as plain text and says file context is not part of this build', detailFacts.fileLinks === 0 && (await page.locator('#h-ctx1, #h-recent, #h-ow').count()) === 0 && (await page.evaluate(() => /File context is not part of this build/u.test(document.body.innerText))));
