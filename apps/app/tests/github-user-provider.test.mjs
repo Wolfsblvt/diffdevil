@@ -6,15 +6,17 @@ import { createGitHubUserProvider } from '../src/lib/github-user-provider.mjs';
 const material = { accessToken: 'fixture-user-token' };
 const membership = (id, login, role = 'admin', state = 'active') => ({ organization: { id, login }, role, state });
 
-function fixture(answer) {
+function fixture(answer, { installations = [], targeted = () => Response.json({ message: 'unavailable' }, { status: 403 }), installationAccounts = null, installationAdmitted = async () => true } = {}) {
   const requests = [];
   const provider = createGitHubUserProvider({
     clientId: 'fixture-client', clientSecret: 'fixture-secret', callbackUrl: 'https://app.example/auth/callback',
+    installationAccounts, installationAdmitted,
     fetch: async (input, options) => {
       const url = new URL(input);
       requests.push(url);
       assert.equal(options.headers.authorization, `Bearer ${material.accessToken}`);
-      // The registration has no Members-read permission. The per-organisation route must fail.
+      if (url.pathname === '/user/installations') return Response.json({ installations });
+      if (url.pathname.startsWith('/user/memberships/orgs/')) return targeted(url);
       if (url.pathname !== '/user/memberships/orgs') return Response.json({ message: 'Resource not accessible by integration' }, { status: 403 });
       assert.equal(url.searchParams.get('per_page'), '100');
       return answer(Number(url.searchParams.get('page')));
@@ -27,7 +29,6 @@ test('organisation administration uses numeric identity from the current-user me
   const { provider, requests } = fixture(() => Response.json([membership(7001, 'renamed-org'), membership(7002, 'old-name', 'member')]));
   assert.deepEqual(await provider.checkOrganisationAdministration({ material, organisationId: 7001 }), { administer: true, login: 'renamed-org' });
   assert.deepEqual(await provider.checkOrganisationAdministration({ material, organisationId: 7002 }), { administer: false, login: 'old-name' });
-  assert.deepEqual(await provider.checkOrganisationAdministration({ material, organisationId: 7003 }), { administer: false, login: null });
   assert.equal(requests.every(url => url.pathname === '/user/memberships/orgs'), true);
 });
 
@@ -38,7 +39,7 @@ test('only active membership grants an organisation role or administration', asy
     assert.equal(await provider.organizationRole({ material, organization: row.organization.login.toUpperCase() }), role);
     assert.deepEqual(await provider.checkOrganisationAdministration({ material, organisationId: row.organization.id }), { administer: role === 'admin', login: row.organization.login });
   }
-  assert.equal(await provider.organizationRole({ material, organization: 'not-a-member' }), 'none');
+  await assert.rejects(provider.organizationRole({ material, organization: 'not-listed' }), { code: 'E_PROVIDER_REQUEST', status: 403 });
 });
 
 test('the authority observation exposes only the target membership and distinguishes pending from a complete missing result', async () => {
@@ -49,7 +50,7 @@ test('the authority observation exposes only the target membership and distingui
   assert.deepEqual(await provider.organizationAuthority({ material, organization: 'TARGET-ORG' }), {
     role: 'none', membership: { organizationId: 7001, role: 'admin', state: 'pending' }
   });
-  assert.deepEqual(await provider.organizationAuthority({ material, organization: 'not-listed' }), { role: 'none', membership: null });
+  await assert.rejects(provider.organizationAuthority({ material, organization: 'not-listed' }), { code: 'E_PROVIDER_REQUEST', status: 403 });
 });
 
 test('an absent or unrecognised target role is unavailable evidence, not a known member or negative authority', async () => {
@@ -119,12 +120,64 @@ test('malformed membership evidence does not become negative authority', async (
     error.code === 'E_PROVIDER_RESPONSE' && error.status === 200 && !error.message.includes('fixture-private'));
 });
 
-test('a subsequent authority encounter observes demotion and removal rather than retaining an admin result', async () => {
+test('a subsequent authority encounter observes demotion and leaves omission or removal unconfirmed', async () => {
   let rows = [membership(7001, 'org')];
   const { provider } = fixture(() => Response.json(rows));
   assert.equal(await provider.organizationRole({ material, organization: 'org' }), 'admin');
   rows = [membership(7001, 'org', 'member')];
   assert.deepEqual(await provider.checkOrganisationAdministration({ material, organisationId: 7001 }), { administer: false, login: 'org' });
   rows = [];
-  assert.equal(await provider.organizationRole({ material, organization: 'org' }), 'none');
+  await assert.rejects(provider.organizationRole({ material, organization: 'org' }), { code: 'E_PROVIDER_REQUEST', status: 403 });
+});
+
+const admitted = { id: 10, account: { id: 7001, login: 'org', type: 'Organization' } };
+const target = (role = 'admin', state = 'active') => ({ ...membership(7001, 'org', role, state), user: { id: 123 } });
+
+test('an omitted membership uses the documented target read for both current role and stable numeric funding authority', async () => {
+  let row = target();
+  const { provider, requests } = fixture(() => Response.json([]), { installations: [admitted], targeted: () => Response.json(row) });
+  const input = { material, userId: 123 };
+  assert.deepEqual(await provider.organizationAuthority({ ...input, organization: 'ORG' }), { role: 'admin', membership: { organizationId: 7001, role: 'admin', state: 'active' } });
+  assert.deepEqual(await provider.checkOrganisationAdministration({ ...input, organisationId: 7001 }), { administer: true, login: 'org' });
+  row = target('member');
+  assert.equal(await provider.organizationRole({ ...input, organization: 'org' }), 'member', 'fresh use observes demotion');
+  row = target('admin', 'pending');
+  assert.deepEqual(await provider.checkOrganisationAdministration({ ...input, organisationId: 7001 }), { administer: false, login: 'org' });
+  assert.ok(requests.some(url => url.pathname === '/user/memberships/orgs/ORG'));
+  assert.ok(requests.some(url => url.pathname === '/user/memberships/orgs/org'));
+});
+
+test('targeted authority refuses an incorrect actor, numeric organisation, reused login or malformed state/role', async () => {
+  for (const row of [
+    { ...target(), user: { id: 456 } },
+    { ...target(), organization: { id: 7002, login: 'org' } },
+    { ...target(), organization: { id: 7001, login: 'reused-login' } },
+    target('unexpected'), target('admin', 'unexpected'), null
+  ]) {
+    const { provider } = fixture(() => Response.json([]), { installations: [admitted], targeted: () => Response.json(row) });
+    await assert.rejects(provider.checkOrganisationAdministration({ material, userId: 123, organisationId: 7001 }), { code: 'E_PROVIDER_RESPONSE' });
+  }
+});
+
+test('numeric fallback requires the exact reachable admitted organisation installation', async () => {
+  for (const options of [
+    { installations: [] },
+    { installations: [{ ...admitted, account: { ...admitted.account, id: 7002 } }] },
+    { installations: [{ ...admitted, account: { ...admitted.account, type: 'User' } }] },
+    { installations: [{ ...admitted, id: undefined }] },
+    { installations: [admitted], installationAccounts: new Set([7002]) },
+    { installations: [admitted], installationAdmitted: async id => { assert.equal(id, 10); return false; } }
+  ]) {
+    const { provider, requests } = fixture(() => Response.json([]), options);
+    await assert.rejects(provider.checkOrganisationAdministration({ material, userId: 123, organisationId: 7001 }), { code: 'E_GITHUB_MEMBERSHIP_UNCONFIRMED' });
+    assert.equal(requests.some(url => url.pathname.startsWith('/user/memberships/orgs/')), false);
+  }
+});
+
+test('a targeted refusal is unknown with its actual HTTP standing, never a fabricated membership or missing-permission diagnosis', async () => {
+  for (const [status, code] of [[401, 'E_PROVIDER_UNAUTHORIZED'], [403, 'E_PROVIDER_REQUEST'], [404, 'E_PROVIDER_NOT_FOUND'], [429, 'E_GITHUB_RATE_LIMIT'], [503, 'E_PROVIDER_REQUEST']]) {
+    const { provider } = fixture(() => Response.json([]), { installations: [admitted], targeted: () => Response.json({ message: 'fixture-secret-provider-prose' }, { status }) });
+    await assert.rejects(provider.checkOrganisationAdministration({ material, userId: 123, organisationId: 7001 }), error => error.code === code && error.status === status && !error.message.includes('fixture-secret'));
+    await assert.rejects(provider.organizationAuthority({ material, userId: 123, organization: 'org' }), { code, status });
+  }
 });

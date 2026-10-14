@@ -254,7 +254,7 @@ export function createFakeGitHub({ user = USER, token = TOKEN, code = CODE, clie
   const calls = [];
   // Narrow the signed-in person's GitHub access for a case: `push` and `admin` per repository (repositoryId → boolean,
   // default write and the fixture's admin flag), `roles` per organisation login (default ROLES).
-  const state = { rateLimited: false, tokenValid: true, tokenCheckResponse: null, refreshResponse: null, membershipStatus: 200, push: new Map(), admin: new Map(), roles: new Map(), membershipStates: new Map(), collaborators: new Map(), installationTokens: [], extraRepositories: [], logins: new Map() };
+  const state = { rateLimited: false, tokenValid: true, tokenCheckResponse: null, refreshResponse: null, membershipStatus: 200, targetedMembershipStatus: 403, omittedMemberships: new Set(), push: new Map(), admin: new Map(), roles: new Map(), membershipStates: new Map(), collaborators: new Map(), installationTokens: [], extraRepositories: [], logins: new Map() };
   async function fetch(input, init = {}) {
     const url = new URL(String(input)), method = init.method ?? 'GET', path = url.pathname;
     const authorization = new Headers(init.headers).get('authorization') ?? '';
@@ -304,7 +304,7 @@ export function createFakeGitHub({ user = USER, token = TOKEN, code = CODE, clie
       if (state.membershipStatus !== 200) return json({ message: 'membership read unavailable' }, state.membershipStatus);
       const memberships = INSTALLATIONS.filter(installation => installation.account.type === 'Organization').flatMap(installation => {
         const organization = installation.account, role = state.roles.get(organization.login) ?? ROLES[organization.login];
-        return role ? [{ organization: { id: organization.id, login: organization.login }, role, state: state.membershipStates.get(organization.login) ?? 'active' }] : [];
+        return role && !state.omittedMemberships.has(organization.id) ? [{ organization: { id: organization.id, login: organization.login }, role, state: state.membershipStates.get(organization.login) ?? 'active' }] : [];
       });
       const page = Number(url.searchParams.get('page') ?? 1), perPage = Number(url.searchParams.get('per_page') ?? 30);
       return json(memberships.slice((page - 1) * perPage, page * perPage));
@@ -314,8 +314,13 @@ export function createFakeGitHub({ user = USER, token = TOKEN, code = CODE, clie
     match = /^\/users\/([^/]+)$/u.exec(path);
     if (match) { const login = decodeURIComponent(match[1]); const id = ACCOUNTS[login]; return Number.isSafeInteger(id) ? json({ id, login, type: ['ada-sample', 'kai-sample'].includes(login) ? 'User' : 'Organization' }) : json({ message: 'Not Found' }, 404); }
     match = /^\/user\/memberships\/orgs\/([^/]+)$/u.exec(path);
-    // The maintained registration has no Members-read permission; qualify the same refusal in local App journeys.
-    if (match) return json({ message: 'Resource not accessible by integration' }, 403);
+    // The unchanged registration has no Members-read. A test can explicitly supply the documented target result.
+    if (match) {
+      if (state.targetedMembershipStatus !== 200) return json({ message: 'membership read unavailable' }, state.targetedMembershipStatus);
+      const organization = INSTALLATIONS.find(installation => installation.account.type === 'Organization' && installation.account.login.toLowerCase() === decodeURIComponent(match[1]).toLowerCase())?.account;
+      if (!organization) return json({ message: 'Not Found' }, 404);
+      return json({ organization: { id: organization.id, login: organization.login }, user: { id: user.id }, role: state.roles.get(organization.login) ?? ROLES[organization.login], state: state.membershipStates.get(organization.login) ?? 'active' });
+    }
     match = /^\/repos\/([^/]+\/[^/]+)\/pulls$/u.exec(path);
     if (match) return json(pulls.filter(pull => pull.repository.fullName === match[1]).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).slice(0, 100).map(wire));
     match = /^\/repos\/([^/]+\/[^/]+)\/pulls\/(\d+)$/u.exec(path);
