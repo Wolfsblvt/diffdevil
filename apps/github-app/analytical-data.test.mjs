@@ -224,6 +224,7 @@ test('current API merged identities require the matching timeline event, with pa
   let events = [{ event: 'merged', created_at: at, commit_id: head }];
   const pages = [];
   const client = { json: async route => { pages.push(route); return route.endsWith('page=1') ? Array(100).fill({ event: 'commented' }) : events; } };
+  assert.equal(await mergedCommit({ json: async () => { throw new Error('legacy identity should not read timeline'); } }, 'owner/repo', { merge_commit_sha: head }), head);
   assert.equal(await mergedCommit(client, 'owner/repo', pull), head);
   assert.equal(pages.length, 2);
   events = [];
@@ -317,15 +318,22 @@ test('Queue gives effects priority, collects closed/history-only PRs, and preser
 
 test('collector recovers actual merge parents, observes sizes, refuses a fabricated final from revisions', async () => {
   let saved, singleParent = false;
-  const pull = { number: 1, state: 'closed', merged_at: at, closed_at: at, created_at: from, updated_at: at, head: { sha: other }, merge_commit_sha: head };
+  const timeline = [{ event: 'merged', created_at: at, commit_id: head }];
+  const timelineReads = [];
+  const pull = { number: 1, state: 'closed', merged_at: at, closed_at: at, created_at: from, updated_at: at, head: { sha: other } };
   const client = {
-    json: async route => route.startsWith('/repositories/') ? { id: 17, full_name: 'owner/repo' }
-      : route.includes('/git/commits/') ? { sha: head, parents: singleParent ? [{ sha: base }] : [{ sha: base }, { sha: other }] }
-        : route.includes('/compare/') ? { merge_base_commit: { sha: base }, files: [{ filename: 'a.txt' }] } : pull,
+    json: async route => {
+      if (route.startsWith('/repositories/')) return { id: 17, full_name: 'owner/repo' };
+      if (route.includes('/issues/1/timeline')) { timelineReads.push(route); return timeline; }
+      if (route.includes('/git/commits/')) return { sha: head, parents: singleParent ? [{ sha: base }] : [{ sha: base }, { sha: other }] };
+      if (route.includes('/compare/')) return { merge_base_commit: { sha: base }, files: [{ filename: 'a.txt' }] };
+      return pull;
+    },
     request: async route => ({ text: route.includes('/compare/') ? patch : 'one\ntwo\n' })
   };
   const store = { historySettings: async () => ({ enabled: true }), analyticalRecords: async () => [], recordAnalytical: async value => { saved = value; return { status: 'published' }; } };
   assert.equal((await collectAnalyticalPullRequest({ client, store, repositoryId: 17, pullRequest: 1, now: () => at })).recovery, null);
+  assert.deepEqual(timelineReads, ['/repos/owner/repo/issues/1/timeline?per_page=100&page=1']);
   assert.equal(saved.final.sizes[0].before, 2);
   assert.equal(saved.final.report.source.comparison, 'direct');
   singleParent = true;
