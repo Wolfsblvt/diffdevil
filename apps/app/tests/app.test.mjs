@@ -226,6 +226,20 @@ test('the page loader drives populations from the retained analytical records an
   assert.equal(searchedDetail.data.result.pullRequest, 452);
   assert.equal(searchedDetail.state.q, '452', 'the original search remains available to the return link');
   assert.equal(searchedDetail.href('/prs'), '/prs?q=452');
+  const failedDetailRuntime = {
+    ...app,
+    premium: { provided: true },
+    analytics: {
+      ...app.analytics,
+      async query() { throw Object.assign(new Error('fixture analytics outage'), { code: 'E_APP_DATA_QUERY' }); }
+    }
+  };
+  const unavailableFreeDetail = await loadView({ url: new URL(`${ORIGIN}/pr/kai-sample/tree-sitter-dd/452?q=452`), viewer, session: opened, runtime: failedDetailRuntime, surface: 'pr', detail: { repositoryId: 1007, pullRequest: 452 } });
+  assert.equal(unavailableFreeDetail.scope.kind, 'all', 'the search query remains all-repositories navigation context');
+  assert.equal(unavailableFreeDetail.dataStanding, 'unavailable');
+  assert.equal(unavailableFreeDetail.entitlement.plan, 'Free', 'the unanswered detail uses the resolved repository namespace plan');
+  assert.equal(unavailableFreeDetail.entitlement.premium, false, 'a Pro viewer does not lend their plan to a Free repository detail');
+  assert.equal(unavailableFreeDetail.premiumHere, false, 'the premium detail slot follows the Free repository after its read fails');
   // The pathless-only repository keeps its older analyses, by analysis time, and says so.
   const pathless = await loadView({ url: new URL(`${ORIGIN}/?s=kai-sample%2Ftree-sitter-dd&per=90d`), viewer, session: opened, runtime: app, surface: 'prs' });
   assert.equal(pathless.lifecycle.standing, 'unavailable');

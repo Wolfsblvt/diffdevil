@@ -83,7 +83,10 @@ export async function loadView({ url, viewer, session, runtime, surface = 'prs',
   const historyRepositories = (detailRepository ? [detailRepository] : repositories).filter(repository => repository.standing?.historyReadable);
   const ids = historyRepositories.map(repository => repository.repositoryId);
   const actor = { userId: viewer.userId, authorizedRepositoryIds: viewer.repositories.map(repository => repository.repositoryId) };
-  const expected = entitlementFor(viewer, scope, repositories);
+  // Detail fallback follows the authorised route repository; its broader query scope is only navigation context.
+  const expectedScope = detailRepository ? { kind: 'namespace', namespace: detailRepository.owner } : scope;
+  const expectedRepositories = detailRepository ? [detailRepository] : repositories;
+  const expected = entitlementFor(viewer, expectedScope, expectedRepositories);
   const [coverage, bounds, titles] = await Promise.all([
     runtime.store.analyticalCoverage(ids),
     runtime.store.observationBounds(ids),
