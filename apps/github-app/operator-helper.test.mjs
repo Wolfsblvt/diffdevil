@@ -171,7 +171,7 @@ test('provider commands preserve unrelated process inputs and selected authentic
       assert.equal(call.env.WRANGLER_CONFIG_DIR, 'caller-wrangler-config');
       assert.equal(call.env.WRANGLER_SEND_METRICS, 'false');
       assert.equal(call.env.WRANGLER_WRITE_LOGS, 'false');
-      assert.equal(call.env.WRANGLER_LOG, 'error');
+      assert.equal(call.env.WRANGLER_LOG, 'log');
       assert.equal(call.env.DIFFDEVIL_TEST_UNRELATED_ENV, 'keep-this-process-input');
       assert.ok(call.args.includes('--env-file'));
     }
@@ -196,25 +196,29 @@ test('a missing installed Wrangler runtime is reported before provider authentic
   }
 });
 
-test('the account readiness command is accepted by the locked Wrangler CLI', async () => {
+test('the locked Wrangler reads the complete credential target as strict JSON before protected input', async () => {
   const setup = await fixture();
   const requests = [];
+  const version = { id: 'version-before', metadata: { created_on: '2026-10-01T00:00:00Z' }, resources: { bindings: [{ name: 'APP_DB', type: 'd1', id: databaseId }] } };
   const providerResults = {
     '/client/v4/user/tokens/verify': { id: 'fixture-token', status: 'active' },
     '/client/v4/user': { email: 'fixture@example.test' },
     '/client/v4/accounts': [{ id: 'account-1', name: 'Fixture account' }],
-    '/client/v4/memberships': [{ account: { id: 'account-1' } }]
+    '/client/v4/memberships': [{ account: { id: 'account-1' } }],
+    '/client/v4/accounts/account-1/workers/scripts/diffdevil-github-app/deployments': { deployments: [{ ...deployment('deployment-before'), created_on: '2026-10-01T00:00:00Z' }] },
+    '/client/v4/accounts/account-1/workers/scripts/diffdevil-github-app/versions': { items: [version] },
+    '/client/v4/accounts/account-1/workers/scripts/diffdevil-github-app/versions/version-before': version
   };
   const server = createServer((request, response) => {
     request.resume();
-    requests.push({ path: request.url, authorization: request.headers.authorization });
+    requests.push({ method: request.method, path: request.url, authorization: request.headers.authorization });
     const path = new URL(request.url, 'http://fixture.example').pathname;
     const knownPath = Object.hasOwn(providerResults, path);
     response.writeHead(knownPath ? 200 : 404, { 'content-type': 'application/json' });
     response.end(JSON.stringify({ success: knownPath, errors: knownPath ? [] : [{ code: 10000, message: 'Unknown fixture route' }], result: providerResults[path], result_info: { page: 1, per_page: 50, total_count: 1, total_pages: 1 } }));
   });
-  const { runner: fixtureRunner } = versionRunner();
-  let accountResult;
+  const results = [];
+  let protectedReads = 0;
   let readinessError;
 
   try {
@@ -231,28 +235,81 @@ test('the account readiness command is accepted by the locked Wrangler CLI', asy
       CLOUDFLARE_AUTH_USE_KEYRING: 'false',
       WRANGLER_HOME: setup.directory,
       WRANGLER_SEND_METRICS: 'false',
-      WRANGLER_WRITE_LOGS: 'false',
-      WRANGLER_LOG: 'error'
+      WRANGLER_WRITE_LOGS: 'false'
     };
     const nativeRunner = createProcessRunner();
     const runner = async call => {
-      if (!call.args.includes('whoami')) return fixtureRunner(call);
-      accountResult = await nativeRunner({ ...call, env });
-      return accountResult;
+      const result = await nativeRunner({ ...call, env: { ...env, WRANGLER_LOG: call.env.WRANGLER_LOG } });
+      results.push(result);
+      return result;
     };
     try {
-      const readiness = await checkCredentials({ appId: '123', privateKeyPath: setup.privateKeyPath, webhookSecretPath: setup.privateKeyPath, accountId: 'account-1', config: setup.config, receiptPath: join(setup.directory, 'receipt.json'), runner });
+      const readiness = await checkCredentials({ appId: '123', readGitHubInputs: async () => { protectedReads++; throw new Error('Preflight must not read protected input'); }, accountId: 'account-1', config: setup.config, baseVersionId: version.id, receiptPath: join(setup.directory, 'receipt.json'), runner });
       assert.equal(readiness.state, 'ready-for-input');
+      assert.equal(readiness.baseVersionId, version.id);
+      assert.equal(readiness.protectedValues, 'unread');
+      assert.equal(readiness.providerWrite, 'not-attempted');
     } catch (error) { readinessError = error; }
 
-    assert.equal(accountResult?.code, 0, 'locked Wrangler must accept the helper account-read arguments');
+    assert.ok(results.length > 0);
+    assert.ok(results.every(result => result.code === 0), 'locked Wrangler must accept all target-read commands');
     assert.ifError(readinessError);
+    assert.equal(results.length, 4);
+    for (const result of results) assert.doesNotThrow(() => JSON.parse(result.stdout), 'each real CLI read must contain only JSON');
+    assert.equal(protectedReads, 0);
     assert.ok(requests.some(request => request.path.startsWith('/client/v4/accounts')));
+    for (const path of ['deployments', 'versions?deployable=true', 'versions/version-before']) assert.ok(requests.some(request => request.path.endsWith(path)), `real Wrangler must read ${path}`);
+    assert.ok(requests.every(request => request.method === 'GET'));
     assert.ok(requests.every(request => request.authorization === 'Bearer selected-synthetic-token'));
   } finally {
     await new Promise(resolveClose => { server.close(resolveClose); server.closeAllConnections(); });
     await rm(setup.directory, { recursive: true, force: true });
   }
+});
+
+test('native readback refuses non-JSON output before protected input or writes', async () => {
+  const setup = await fixture();
+  const json = JSON.stringify([deployment('deployment-before')]);
+  try {
+    for (const output of ['', `provider prelude\n${json}`, `${json}\nprovider suffix`, `${json}\n${json}`]) {
+      const { runner: validRunner } = versionRunner();
+      let protectedReads = 0;
+      let writes = 0;
+      const runner = async call => {
+        if (call.args.includes('bulk')) writes++;
+        if (call.args.includes('deployments')) return { code: 0, stdout: output };
+        return validRunner(call);
+      };
+      await assert.rejects(checkCredentials({ appId: '123', config: setup.config, accountId: 'account-1', receiptPath: join(setup.directory, 'receipt.json'), readGitHubInputs: async () => { protectedReads++; }, runner }), { code: 'E_OPERATOR_TARGET' });
+      assert.equal(protectedReads, 0);
+      assert.equal(writes, 0);
+    }
+  } finally { await rm(setup.directory, { recursive: true, force: true }); }
+});
+
+test('target readback recognizes only complete native upgrade notices at JSON stream boundaries', async () => {
+  const setup = await fixture();
+  const notice = 'There is a newer version of Wrangler available (current: 4.135.0, latest: 4.136.0). Try upgrading, as it might support this configuration option.';
+  try {
+    for (const [before, after] of [[notice, ''], ['', notice], [notice, notice]]) {
+      const { runner: validRunner } = versionRunner();
+      let protectedReads = 0;
+      const runner = async call => {
+        const result = await validRunner(call);
+        return { ...result, stdout: `${before}\r\n${result.stdout}\r\n${after}` };
+      };
+      const result = await checkCredentials({ appId: '123', config: setup.config, accountId: 'account-1', receiptPath: join(setup.directory, 'receipt.json'), readGitHubInputs: async () => { protectedReads++; }, runner });
+      assert.equal(result.state, 'ready-for-input');
+      assert.equal(result.protectedValues, 'unread');
+      assert.equal(result.providerWrite, 'not-attempted');
+      assert.equal(protectedReads, 0);
+    }
+    const { runner: validRunner } = versionRunner();
+    await assert.rejects(checkCredentials({ appId: '123', config: setup.config, accountId: 'account-1', receiptPath: join(setup.directory, 'receipt.json'), runner: async call => {
+      const result = await validRunner(call);
+      return call.args.includes('deployments') ? { ...result, stdout: `[\n${notice}\n${result.stdout.slice(1)}` } : result;
+    } }), { code: 'E_OPERATOR_TARGET' });
+  } finally { await rm(setup.directory, { recursive: true, force: true }); }
 });
 
 test('the Wrangler child ignores caller dotenv and ambient route overrides while preserving explicit fixture routing', async () => {
@@ -341,6 +398,7 @@ test('credential installation creates one undeployed version without a transient
     assert.deepEqual(result.carrier, { state: 'not-created' });
     const bulk = calls.find(call => call.args.includes('bulk'));
     assert.ok(bulk);
+    assert.equal(bulk.env.WRANGLER_LOG, 'error');
     assert.equal(bulk.args.includes(webhookSecret), false);
     assert.equal(bulk.args.some(argument => argument.includes('BEGIN RSA PRIVATE KEY')), false);
     assert.equal(bulk.args[bulk.args.indexOf('bulk') + 1], '--message');

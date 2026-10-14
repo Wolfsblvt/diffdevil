@@ -13,6 +13,7 @@ const GITHUB_REGISTRATION_URL = 'https://github.com/settings/apps/new';
 const HELPER_DIRECTORY = dirname(fileURLToPath(import.meta.url));
 const DEFAULT_WRANGLER = fileURLToPath(new URL('../../node_modules/wrangler/bin/wrangler.js', import.meta.url));
 const WRANGLER_ENV_FILE = fileURLToPath(new URL('./wrangler-empty.env', import.meta.url));
+const WRANGLER_UPGRADE_HINT = /^There is a newer version of Wrangler available \(current: [0-9A-Za-z.+-]+, latest: [0-9A-Za-z.+-]+\)\. Try upgrading, as it might support this configuration option\.$/u;
 const PROCESS_ENVIRONMENT_NAMES = new Set([
   'PATH', 'SYSTEMROOT', 'WINDIR', 'TEMP', 'TMP', 'TMPDIR', 'HOME', 'USERPROFILE', 'HOMEDRIVE', 'HOMEPATH',
   'APPDATA', 'LOCALAPPDATA', 'XDG_CONFIG_HOME', 'WRANGLER_HOME'
@@ -187,9 +188,15 @@ async function qualificationConfig({ config, worker, accountId }) {
 
 async function nativeJson({ runner, args, env }) {
   try {
-    const result = await runner({ args, input: '', env });
+    // Pinned Wrangler emits versions/deployments JSON through logRaw at level log.
+    const result = await runner({ args, input: '', env: { ...env, WRANGLER_LOG: 'log' } });
     if (result.code !== 0) return undefined;
-    return JSON.parse(result.stdout);
+    // Generated configs can also trigger this asynchronous native upgrade hint.
+    // Remove only its complete line at stream boundaries; all JSON stays strict.
+    const lines = result.stdout.trim().split(/\r?\n/u);
+    if (WRANGLER_UPGRADE_HINT.test(lines[0])) lines.shift();
+    if (WRANGLER_UPGRADE_HINT.test(lines.at(-1))) lines.pop();
+    return JSON.parse(lines.join('\n'));
   } catch { return undefined; }
 }
 
