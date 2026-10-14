@@ -29,7 +29,7 @@
     "@wolfsblvt/starlight-works": "file:../../artifacts/manual-toolchain/package",
     "astro": "7.3.3",
     "github-slugger": "2.0.0",
-    "mermaid": "12.0.0",
+    "mermaid": "12.1.0",
     "remark-gfm": "4.0.1",
     "remark-parse": "11.0.0",
     "remark-stringify": "11.0.0",
