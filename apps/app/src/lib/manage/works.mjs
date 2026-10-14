@@ -46,8 +46,13 @@ const perWord = cadence => (cadence === 'annual' ? 'a year' : 'a month');
  * the link itself), nothing changed (a browse departure), or waiting (a return is not proof of payment).
  */
 export function returnOutcome({ departure, status, outcome = null }) {
+  if (status?.linked === true && (departure?.purpose === 'link' || outcome)) return 'done';
   if (outcome && outcome !== 'linked') return 'link-failed';
-  if (!departure) return outcome === 'linked' ? 'done' : null;
+  if (!departure) return outcome === 'linked' && status ? 'link-open' : null;
+  if (departure.purpose === 'link') {
+    if (!status) return null; // The existing unavailable banner owns the refused status read; departure proves no outcome.
+    return ['pending', 'expired', 'failed', 'denied', 'invalid', 'conflict', 'ended'].includes(status.linkAttempt?.standing) ? 'link-failed' : 'link-open';
+  }
   const snapshot = departure.snapshot ?? null;
   const orderChanged = snapshot && status ? JSON.stringify(status.order ?? null) !== JSON.stringify(snapshot.order ?? null) : false;
   const slotAdded = snapshot && status ? (status.capacity ?? []).length > (snapshot.capacity ?? 0) : false;
@@ -84,12 +89,13 @@ export function presentProjection(status, { works, ended = false } = {}) {
   const grants = status?.grants ?? [];
   const change = (status?.pending ?? []).find(entry => entry?.kind === 'plan-change' && typeof entry.target === 'string');
   const protection = status?.protection ? { term: 'Price', value: status.protection.kind === 'beta' ? 'Beta price protected' : 'Price protected', sub: status.protection.kind === 'beta' ? 'Through beta and at least twelve months after it ends' : null } : null;
+  const paidSlots = (status?.capacity ?? []).filter(slot => slot.funding === 'paid').length;
   const organisations = { term: 'Organisations', value: `${(status?.capacity ?? []).length} ${(status?.capacity ?? []).length === 1 ? 'slot' : 'slots'} · ${(status?.capacity ?? []).filter(slot => slot.funding === 'included').length} included, ${(status?.capacity ?? []).filter(slot => slot.funding === 'paid').length} additional${(status?.capacity ?? []).some(slot => slot.funding === 'grant') ? ', some by grant' : ''}` };
   const banner = (tone, icon, title, text, action = null) => ({ tone, icon, title, text, action });
   const rows = [];
   let head = null;
   const planName = ['ended', 'ended-unresolved', 'free'].includes(key) ? 'Free' : tier;
-  let planSub = commercial ? `${cadenceWord(commercial.cadence) ?? 'Subscription'}${(status.capacity ?? []).filter(slot => slot.funding === 'paid').length ? ` · with ${(status.capacity ?? []).filter(slot => slot.funding === 'paid').length} additional ${(status.capacity ?? []).filter(slot => slot.funding === 'paid').length === 1 ? 'organisation' : 'organisations'}` : ''}${total ? ` · ${total} ${perWord(commercial.cadence)}${commercial.nextRenewal?.tax_inclusive ? ', tax included' : ''}` : ''}` : '';
+  let planSub = commercial ? `${cadenceWord(commercial.cadence) ?? 'Subscription'}${paidSlots ? ` · with ${paidSlots} additional ${paidSlots === 1 ? 'organisation' : 'organisations'}` : ''}${total ? ` · ${total} ${perWord(commercial.cadence)}${commercial.nextRenewal?.tax_inclusive ? ', tax included' : ''}` : ''}` : '';
   switch (key) {
     case 'reward-only': head = banner('info', 'info', 'Works benefits are linked', 'Works has confirmed benefits without a funded subscription. Free remains your plan; a reward alone does not fund repository access or an organisation slot. Manage your gifts and benefits at Works.'); planSub = 'No funded subscription'; rows.push({ term: 'Subscription', value: 'None funded' }); break;
     case 'linking': head = banner('info', 'clock', 'Linked to Wolfsblvt Works', 'Works has not sent this account\'s plan yet. It appears here as soon as Works confirms it; you don\'t need to refresh.'); planSub = 'Waiting for Works'; rows.push({ term: 'Status', value: 'Waiting for Works\' first answer' }); break;
@@ -106,7 +112,7 @@ export function presentProjection(status, { works, ended = false } = {}) {
     default:
       rows.push({ term: 'Funded through', value: fundedThrough ?? '—' });
       if (commercial?.renewalPreference === 'manual') rows.push({ term: 'Next renewal', value: renewsOn ? `${total ? `${total} ` : ''}on ${renewsOn}` : '—', sub: 'Renewed manually at Works' });
-      else rows.push({ term: 'Next renewal', value: renewsOn ? `${total ? `${total} ` : ''}on ${renewsOn}` : '—', sub: `Renews automatically · ${tier}${(status.capacity ?? []).filter(slot => slot.funding === 'paid').length ? ` + ${(status.capacity ?? []).filter(slot => slot.funding === 'paid').length} additional ${(status.capacity ?? []).filter(slot => slot.funding === 'paid').length === 1 ? 'organisation' : 'organisations'}` : ''}` });
+      else rows.push({ term: 'Next renewal', value: renewsOn ? `${total ? `${total} ` : ''}on ${renewsOn}` : '—', sub: `Renews automatically · ${tier}${paidSlots ? ` + ${paidSlots} additional ${paidSlots === 1 ? 'organisation' : 'organisations'}` : ''}` });
       rows.push(organisations);
       if (protection) rows.push(protection);
   }

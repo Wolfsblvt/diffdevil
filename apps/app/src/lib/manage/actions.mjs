@@ -353,7 +353,8 @@ export async function handleManageAction(request, { runtime, session, viewer }) 
         if (!runtime.commercial) return done('commercial-unavailable');
         const begun = await runtime.commercial.beginLink(mutation);
         if (begun.outcome === 'authorize') {
-          await runtime.manage.recordDeparture(viewer.userId, { purpose: 'link', fromPath: back, snapshot: null });
+          await runtime.manage.recordDeparture(viewer.userId, { purpose: 'link', fromPath: back,
+            snapshot: begun.attemptStateHash ? { attemptStateHash: begun.attemptStateHash } : null });
           runtime.cache.clear();
           return redirect(begun.authorizationUrl, begun.headers);
         }

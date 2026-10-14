@@ -6,6 +6,7 @@
  * turned into plain words.
  */
 import { protectedHeaders } from '../../../github-app/authorization.mjs';
+import { COMMERCIAL_LINK_COOKIE } from '../../../github-app/commercial.mjs';
 import { RETURN_CONTEXT } from './runtime.mjs';
 import { escapeHtml } from './format.mjs';
 
@@ -117,7 +118,7 @@ export async function authLogout(request, runtime) {
 export async function openSession(request, runtime) {
   const session = cookieValue(request, SESSION_COOKIE);
   if (!session) return { refusal: 'E_SESSION_UNAVAILABLE' };
-  try { return await runtime.auth.read({ session }, async (reads, actor) => ({ reads, actor, session })); }
+  try { return await runtime.auth.read({ session }, async (reads, actor) => ({ reads, actor, session, worksLinkBinding: cookieValue(request, COMMERCIAL_LINK_COOKIE) })); }
   catch (error) { return { refusal: error?.code ?? 'E_SESSION_UNAVAILABLE' }; }
 }
 

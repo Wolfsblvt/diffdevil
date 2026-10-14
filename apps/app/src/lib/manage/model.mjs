@@ -11,10 +11,15 @@ import { attentionItems, capacityOf, describeRepository } from './states.mjs';
 const STATUS_TTL_MS = 60_000;
 
 /** The commercial status of the signed-in account, or null without a subscription source. Never throws: an unavailable read is `unavailable`. */
-export async function commercialStatus({ session, runtime, fresh = false }) {
+export async function commercialStatus({ session, runtime, fresh = false, departure = null }) {
   if (!runtime.commercial) return null;
   const load = async () => {
-    try { return { standing: 'available', status: (await runtime.commercial.status({ session: session.session })).body }; }
+    try {
+      const linkAttempt = fresh && departure?.purpose === 'link'
+        ? { stateHash: departure.snapshot?.attemptStateHash, browserBinding: session.worksLinkBinding } : undefined;
+      const result = await runtime.commercial.status({ session: session.session, ...(linkAttempt ? { linkAttempt } : {}) });
+      return { standing: 'available', status: result.body };
+    }
     catch (error) { return { standing: 'unavailable', code: typeof error?.code === 'string' ? error.code : 'E_COMMERCIAL_UNAVAILABLE', status: null }; }
   };
   if (fresh) return load();
@@ -50,11 +55,12 @@ export async function loadManage({ viewer, session, runtime, fresh = true }) {
   const userId = viewer.userId;
   // A saved choice of what stays becomes durable state as soon as the reduction it was made for has taken effect.
   if (runtime.operating) { try { if (await runtime.operating.applyDueChoice(userId)) runtime.cache.clear(); } catch { /* the scheduled maintenance tries again */ } }
+  const departureRead = manage.departure(userId);
   const [commercial, serviceConnection, freeConnection, departure, planChoice] = await Promise.all([
-    commercialStatus({ session, runtime, fresh }),
+    departureRead.then(departure => commercialStatus({ session, runtime, fresh, departure })),
     runtime.auth.serviceConnection({ session: session.session }).then(result => result.body.serviceConnection).catch(() => 'unknown'),
     manage.freeConnection(userId),
-    manage.departure(userId),
+    departureRead,
     manage.planChoice(userId)
   ]);
   const status = commercial?.status ?? null;

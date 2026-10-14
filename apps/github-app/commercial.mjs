@@ -347,12 +347,12 @@ export function createCommercialService({ store, wirt, signing, authorization, p
         if (result.status === 403 || result.status === 409) { await store.finishAttempt(stateHash); return result.status === 409 ? 'conflict' : 'failed'; }
         return 'pending';
       }
-      if (result.stream.productAccount !== userId) { await store.finishAttempt(stateHash); return 'failed'; }
+      if (result.stream.productAccount !== userId) { await store.finishAttempt(stateHash, 'failed'); return 'failed'; }
       let link;
       try {
         link = await store.saveEstablishedLink({ linkId: result.stream.linkId, productAccount: userId, worksAccount: result.stream.worksAccount,
           intentId, protectedGrant: await protector.seal(held.grant) });
-      } catch { await store.finishAttempt(stateHash); return 'conflict'; }
+      } catch { await store.finishAttempt(stateHash, 'conflict'); return 'conflict'; }
       await store.finishAttempt(stateHash);
       // The pull fallback gives a fresh link its current state without waiting for the next push.
       await pullCurrent(link);
@@ -402,9 +402,11 @@ export function createCommercialService({ store, wirt, signing, authorization, p
       let intent;
       try { intent = await wirt.intent({ productAccount: userId, challenge: await s256(verifier), state }); }
       catch { throw refusal('E_COMMERCIAL_UNAVAILABLE', 503); }
-      await store.createLinkAttempt({ stateHash: await sha256Hex(state), browserHash: await sha256Hex(browserBinding), userId, intentId: intent.intent,
-        protectedVerifier: await protector.seal({ verifier }), expiresAt: later(ATTEMPT_MS) });
-      return { outcome: 'authorize', authorizationUrl: intent.authorizationUrl, headers: { ...protectedHeaders(), 'Set-Cookie': cookie(browserBinding, ATTEMPT_MS / 1000) } };
+      const stateHash = await sha256Hex(state), expiresAt = later(ATTEMPT_MS);
+      await store.createLinkAttempt({ stateHash, browserHash: await sha256Hex(browserBinding), userId, intentId: intent.intent,
+        protectedVerifier: await protector.seal({ verifier }), expiresAt });
+      return { outcome: 'authorize', authorizationUrl: intent.authorizationUrl, attemptStateHash: stateHash,
+        headers: { ...protectedHeaders(), 'Set-Cookie': cookie(browserBinding, ATTEMPT_MS / 1000) } };
     },
 
     /** Wirt's redirect continues only in the initiating browser and the same signed-in product account. */
@@ -420,11 +422,18 @@ export function createCommercialService({ store, wirt, signing, authorization, p
       const [stateHash, browserHash] = await Promise.all([opaqueDigest(state), opaqueDigest(browserBinding)]);
       const attempt = stateHash && browserHash ? await store.consumeLinkAttempt(stateHash, browserHash, userId) : undefined;
       if (!attempt) return finish('invalid');
-      if (error !== undefined && error !== null) return finish(error === 'access_denied' ? 'denied' : 'expired');
-      if (typeof code !== 'string' || code.length === 0 || code.length > 2048) return finish('invalid');
+      if (error !== undefined && error !== null) {
+        const outcome = error === 'access_denied' ? 'denied' : 'expired';
+        await store.finishAttempt(stateHash, outcome);
+        return finish(outcome);
+      }
+      if (typeof code !== 'string' || code.length === 0 || code.length > 2048) {
+        await store.finishAttempt(stateHash, 'invalid');
+        return finish('invalid');
+      }
       let grant;
       try { grant = await wirt.exchangeCode({ code, verifier: (await protector.open(attempt.protectedVerifier)).verifier }); }
-      catch { return finish('failed'); }
+      catch { await store.finishAttempt(stateHash, 'failed'); return finish('failed'); }
       const sealedGrant = await protector.seal(grant);
       await store.holdExchangedGrant(stateHash, sealedGrant, later(ESTABLISHMENT_RETRY_MS));
       return finish(await establish(userId, { stateHash, intentId: attempt.intentId, sealedGrant }));
@@ -544,12 +553,26 @@ export function createCommercialService({ store, wirt, signing, authorization, p
     /**
      * The signed-in account's own commercial standing, without payment instruments or other accounts.
      * Reading it re-observes the funder's authority for each bound organisation.
+     * The optional server-owned departure reference adds only its public attempt standing, within this same actor read.
      */
-    async status({ session }) {
+    async status({ session, linkAttempt }) {
       if (!authorization) throw refusal('E_COMMERCIAL_UNAVAILABLE', 503);
       const { userId } = await actor(session);
       let link = await store.activeLink(userId);
-      if (!link) return { body: { linked: false }, headers: protectedHeaders() };
+      if (!link) {
+        if (!linkAttempt) return { body: { linked: false }, headers: protectedHeaders() };
+        const attempt = await store.linkAttempt(userId, linkAttempt.stateHash ?? null);
+        let standing = 'unknown';
+        if (attempt?.link_state === 'ended') standing = 'ended';
+        else if (attempt?.finished_at) standing = ({ denied: 'denied', expired: 'expired', invalid: 'invalid', failed: 'failed', conflict: 'conflict', 'grant-refused': 'failed', 'status-403': 'failed', 'status-409': 'conflict' })[attempt.last_establish] ?? 'unknown';
+        else if (attempt && attempt.expires_at <= now()) standing = 'expired';
+        else if (attempt?.approved) standing = 'pending';
+        else if (attempt && await opaqueDigest(linkAttempt.browserBinding) === attempt.browser_hash) {
+          standing = attempt.consumed_at ? 'unknown' : 'open';
+        }
+        // Only public lifecycle facts leave this read: never the browser/state hashes, verifier, intent or owner grant.
+        return { body: { linked: false, linkAttempt: { standing } }, headers: protectedHeaders() };
+      }
       const observed = [];
       for (const binding of await store.bindings(link.link_id)) {
         const result = await observeBinding(link, binding);

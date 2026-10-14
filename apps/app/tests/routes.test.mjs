@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { createAppRuntime } from '../src/lib/runtime.mjs';
 import { securityHeaders, pageHeaders } from '../src/lib/routes.mjs';
+import { returnOutcome, presentProjection } from '../src/lib/manage/works.mjs';
+import { commercialStatus } from '../src/lib/manage/model.mjs';
 
 test('document form policy admits only the successfully configured Works origin, keeping every other protection', () => {
   // Composition validates configuration without reading the database or contacting a provider.
@@ -20,7 +22,7 @@ test('document form policy admits only the successfully configured Works origin,
   assert.equal(pageHeaders(configured)['content-security-policy'], policy(configured));
   assert.equal(new Headers(pageHeaders(configured)).get('cache-control'), 'private, no-store');
   assert.equal(policy(configured).replace(` ${works}`, ''), policy(compose()));
-  for (const invalid of ['https://works.example.test/path', 'https://works.example.test/', 'https://works.example.test; form-action *', 'https://works.example.test;script-src', 'https://*.example.test', 'https://user:pass@works.example.test', 'http://works.example.test', 'not a URL']) {
+  for (const invalid of ['https://works.example.test/path', 'https://works.example.test/', 'https://works.example.test; form-action *', 'https://works.example.test;script-src', 'https://*.example.test', 'https://works.example.test,other', "https://works.example.test'other", 'https://works.example.test"other', 'https://user:pass@works.example.test', 'http://works.example.test', 'not a URL']) {
     const app = compose({ ...env, WIRT_ORIGIN: invalid });
     assert.equal(app.commercialSource, 'none');
     assert.equal(app.config.worksOrigin, null);
@@ -34,4 +36,17 @@ test('document form policy admits only the successfully configured Works origin,
   const fixtureApp = compose({ APP_ORIGIN: 'http://localhost:4412', APP_COMMERCIAL_FIXTURE: JSON.stringify({ account: 123, linked: false }) });
   assert.equal(fixtureApp.commercialSource, 'fixture');
   assert.equal(destinations(fixtureApp), "'self' https://github.com", 'the local stand-in never adds an external destination');
+});
+
+test('a link departure presents observed attempt standing, while unavailable evidence and replay preserve current truth', async () => {
+  const departure = { purpose: 'link', snapshot: null };
+  for (const standing of ['open', 'unknown']) assert.equal(returnOutcome({ departure, status: { linked: false, linkAttempt: { standing } } }), 'link-open');
+  for (const standing of ['expired', 'pending', 'failed', 'denied', 'invalid', 'conflict', 'ended']) assert.equal(returnOutcome({ departure, status: { linked: false, linkAttempt: { standing } } }), 'link-failed');
+  assert.equal(returnOutcome({ departure, status: { linked: true }, outcome: 'invalid' }), 'done');
+  assert.equal(returnOutcome({ departure: null, status: { linked: true }, outcome: 'invalid' }), 'done');
+  assert.equal(returnOutcome({ departure: null, status: { linked: false }, outcome: 'linked' }), 'link-open', 'a callback word alone never confirms a link');
+  const commercial = await commercialStatus({ session: { session: 'fixture', actor: { userId: 123 } }, runtime: { commercial: { status() { throw new Error('unavailable'); } } }, fresh: true, departure });
+  assert.equal(commercial.standing, 'unavailable');
+  assert.doesNotThrow(() => presentProjection(commercial.status));
+  assert.equal(returnOutcome({ departure, status: commercial.status }), null, 'the existing unavailable banner replaces invented progress');
 });

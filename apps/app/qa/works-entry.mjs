@@ -72,6 +72,7 @@ async function outbound(request) {
     assert.equal(request.headers.get('authorization'), 'Bearer fixture-works-access');
     const input = JSON.parse(body);
     assert.ok(intents.has(input.intent));
+    if (failure === 'pending') return json({ error: 'not confirmed' }, 503);
     return json({ stream: projection.stream }, 201);
   }
   if (url.pathname.endsWith('/projection')) return json(projection);
@@ -129,7 +130,7 @@ try {
           await fulfill(new Response(null, { status: 303, headers: { location: 'https://unadmitted.example.test/collect' } }));
           return;
         }
-        await fulfill(new Response(`<h1>Fixture Works consent</h1><p>Product account ${input.product_account}</p><form method="get" action="${CALLBACK}"><input name="state" type="hidden" value="${input.state}"><input name="code" type="hidden" value="${id}"><button>Approve fixture Works link</button></form>`, { headers: { 'content-type': 'text/html' } }));
+        await fulfill(new Response(`<h1>Fixture Works consent</h1><p>Product account ${input.product_account}</p><form method="get" action="${CALLBACK}"><input name="state" type="hidden" value="${input.state}"><input name="code" type="hidden" value="${id}"><button>Approve fixture Works link</button></form><a href="${APP}/manage/plan">Return without approving</a>`, { headers: { 'content-type': 'text/html' } }));
         return;
       }
       throw new Error(`Unexpected browser destination: ${url.origin}${url.pathname}`);
@@ -155,8 +156,38 @@ try {
   check('native POST returns 303 to the exact admitted intent route', response.status === 303 && intents.has(new URL(response.location).pathname.split('/').at(-1)));
   check('configured Works consent is reached without a CSP violation', violations.length === 0);
   await page.screenshot({ path: join(OUT, 'native-works-consent.png'), fullPage: true });
+  await page.getByRole('link', { name: 'Return without approving' }).click();
+  check('an unapproved return stays open without claiming the Works step occurred', await page.locator('[data-link-standing="open"]').count() === 1 && await page.locator('.m-return .m-steps3').count() === 0 && intents.size === 1);
+  // A contained storage-read refusal proves the existing unavailable presentation without losing the disposable attempt.
+  await database.prepare('ALTER TABLE commercial_link_attempts RENAME TO commercial_link_attempts_unavailable').run();
+  try {
+    await page.reload();
+    check('unavailable attempt evidence shows the existing refusal rather than progress', (await page.locator('body').innerText()).includes('Works could not be read right now') && await page.locator('.m-return.wait').count() === 0 && intents.size === 1);
+    await page.screenshot({ path: join(OUT, 'native-works-read-unavailable.png'), fullPage: true });
+  } finally { await database.prepare('ALTER TABLE commercial_link_attempts_unavailable RENAME TO commercial_link_attempts').run(); }
+  await database.prepare('UPDATE commercial_link_attempts SET expires_at=?').bind(new Date(Date.now() - 1000).toISOString()).run();
+  await page.reload();
+  check('the expired unconsumed attempt shows the existing expiry message and explicit retry', await page.locator('[data-link-standing="expired"]').count() === 1 && (await page.locator('body').innerText()).includes('The link attempt expired before it finished') && await page.getByRole('button', { name: 'Try again', exact: true }).count() === 1 && intents.size === 1);
+  await page.screenshot({ path: join(OUT, 'native-works-expired.png'), fullPage: true });
+  await database.prepare('UPDATE works_departures SET snapshot_json=NULL').run();
+  await page.reload();
+  check('the pre-repair departure also reads the actual expired attempt', await page.locator('[data-link-standing="expired"]').count() === 1 && intents.size === 1);
+  await page.getByRole('button', { name: 'Try again', exact: true }).click();
+  await page.waitForURL(`${WORKS}/wirt/products/diffdevil/link/*`);
+  const approvedIntent = new URL(page.url()).pathname.split('/').at(-1);
+  failure = 'pending';
   await page.getByRole('button', { name: 'Approve fixture Works link' }).click();
-  await page.waitForURL(url => url.origin === APP && url.pathname === '/manage/plan' && url.searchParams.get('works-link') === 'linked');
+  await page.waitForURL(url => url.origin === APP && url.searchParams.get('works-link') === 'pending');
+  check('approved but unestablished remains pending and offers the same-link continuation', await page.locator('[data-link-standing="pending"]').count() === 1 && (await page.locator('body').innerText()).includes('continues the same link instead of starting over'));
+  const intentCount = intents.size;
+  failure = null;
+  await page.getByRole('button', { name: 'Try again', exact: true }).click();
+  await page.waitForURL(url => url.origin === APP && url.searchParams.get('m') === 'linked');
+  check('explicit recovery uses the retained approved intent without another consent', intents.size === intentCount);
+  const establishmentCount = calls.filter(call => call.path === '/api/wirt/diffdevil/links').length;
+  await page.goto(`${CALLBACK}?state=${intents.get(approvedIntent).state}&code=${approvedIntent}`);
+  await page.waitForURL(url => url.origin === APP && url.pathname === '/manage/plan' && url.searchParams.get('works-link') === 'invalid');
+  check('a spent callback keeps the finished link visible and performs no second establishment', await page.locator('.m-return.done').count() === 1 && calls.filter(call => call.path === '/api/wirt/diffdevil/links').length === establishmentCount);
   check('state/browser binding and PKCE complete the native callback', await page.locator('body').innerText().then(text => text.includes('Linked to Wolfsblvt Works')));
   const applied = await database.prepare('SELECT product_account, applied_version, applied_result FROM commercial_links WHERE link_id = ?').bind(link).first();
   assert.deepEqual(applied, { product_account: USER.id, applied_version: 1, applied_result: 'applied' });

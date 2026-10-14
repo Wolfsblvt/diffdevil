@@ -88,11 +88,15 @@ and intercepts every Chromium navigation hop and outgoing provider call. Set
 staging consumer. It checks the bound numeric actor, signed intent, PKCE,
 application and queued report, visible unavailable/foreign-answer refusals, and
 CSP refusal of an unadmitted redirect after the Works hop. Screenshots and results
-go to the selected target's `qa/works-entry/`. No live sign-in, Works consent,
+also cover an unapproved return, the actual expired attempt (including an older
+departure), a refused attempt read, approved-pending same-intent recovery and a
+spent-callback replay without a second establishment. Existing copy is used.
+Results go to the selected target's `qa/works-entry/`. No live sign-in, Works consent,
 report delivery, deployment or private composition is proved by this local pass.
 
 | Command | What it proves |
 | --- | --- |
+| `npm run qa:app:works-entry` | The matching built Worker and native Manage link form in isolated Chromium, with disposable D1 and independent GitHub/Works doubles: consent navigation, callback/application, queued report and truthful return/refusal standing. Run for production and staging separately. Results/captures go to the selected target's `qa/works-entry/`; no live consent or report delivery. |
 | `npm run check:prep` | Parses machine assets and checks unique, nonempty declared case IDs. It does not execute cases or judge prose. |
 | `npm run verify` | Preparation, ordinary build, all registered core and application cases, exact Action regeneration parity, no-write playground/App Worker checks, both public static builds and extension checks. |
 | `npm test` | Ordinary tests against the existing build; build first after source edits. |
