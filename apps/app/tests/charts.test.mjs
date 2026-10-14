@@ -168,6 +168,24 @@ test('lanes keep unrecovered PRs hollow and development names a label transition
   assert.equal(latest.vals.find(value => value.label === 'vs previous').value, '+60');
 });
 
+test('development deltas preserve bounded and unknown evidence instead of subtracting lower bounds', () => {
+  const development = developmentModel({ heads: [
+    { head: 'abc1234567', observedAt: at(3), changed: bounded(2240, 4335) },
+    { head: 'def1234567', observedAt: at(1), changed: bounded(2240, 4335) },
+    { head: 'ghi1234567', observedAt: at(0), changed: { status: 'unknown', lower: null, upper: null } },
+  ], now: NOW });
+
+  assert.deepEqual(development.rows[1].changedFrom, { status: 'bounded', lower: -2095, upper: 2095 });
+  const boundedReadout = readoutOf(development, 1);
+  assert.equal(boundedReadout.vals.find(value => value.label === 'vs previous').value, '−2,095–+2,095');
+  assert.equal(boundedReadout.vals.find(value => value.label === 'since opened').value, '−2,095–+2,095');
+  assert.equal(readoutOf(development, 0).vals.find(value => value.label === 'since opened').value, '±0', 'the first observed head is compared with the same measurement as its baseline');
+
+  const unknownReadout = readoutOf(development, 2);
+  assert.equal(unknownReadout.vals.find(value => value.label === 'vs previous').value, 'unknown');
+  assert.equal(unknownReadout.vals.find(value => value.label === 'since opened').value, 'unknown');
+});
+
 test('the hero model accumulates both periods and the skeletons come in the chart\'s shape', () => {
   const hero = heroModel({ current: [1, 0, 2], previous: [0, 1, 1], from: at(3), days: 3, comparable: true, kindWord: 'merged' });
   assert.deepEqual(hero.rows.map(row => [row.cur, row.prev]), [[1, 0], [1, 1], [3, 2]]);
