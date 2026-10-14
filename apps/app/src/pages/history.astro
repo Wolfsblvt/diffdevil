@@ -55,7 +55,7 @@ const lastWithContent = list.map((bucket: any, index: number) => bucket.count ? 
 const selected = list.length ? (state.w !== '' ? Math.max(0, Math.min(list.length - 1, Number(state.w))) : (lastWithContent ?? list.length - 1)) : null;
 const bucket = selected === null ? null : list[selected];
 const labelOf = (item: any) => item.unit === 'month' ? fmtMonth(item.start) : fmtDate(item.start);
-const nameOf = (item: any) => item.unit === 'week' ? `Week of ${fmtDate(item.start)}` : item.unit === 'month' ? fmtMonthLong(item.start) : item.unit === '2 days' ? `${fmtDate(item.start)} – ${fmtDate(new Date(Date.parse(item.start) + DAY).toISOString())}` : fmtDate(item.start);
+const nameOf = (item: any) => item.unit === 'week' ? `Week of ${fmtDate(item.start)}` : item.unit === 'month' ? fmtMonthLong(item.start) : item.unit === '2 days' ? `${fmtDate(item.start)} – ${fmtDate(new Date(Date.parse(item.end) - 1).toISOString())}` : fmtDate(item.start);
 const unitWord = unit === '2 days' ? 'bucket' : unit;
 const population = life ? 'merged' : 'analysed';
 const scopeLabel = view.scope.kind === 'all' ? 'all repositories' : view.scope.kind === 'namespace' ? view.scope.namespace : view.scope.name;

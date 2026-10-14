@@ -335,6 +335,15 @@ async function qualifyPages(label, { pro }) {
     check(`${label} ${name} prints no NaN or undefined`, !facts.nan);
     check(`${label} ${name} is dark and uses IBM Plex Sans`, facts.theme === 'dark' && /IBM Plex Sans/u.test(facts.font), facts.font);
     check(`${label} ${name} sends private no-store headers and the document referrer policy`, (response.headers()['cache-control'] ?? '').includes('no-store') && (response.headers()['content-security-policy'] ?? '').includes("default-src 'none'") && response.headers()['referrer-policy'] === 'same-origin', JSON.stringify({ cache: response.headers()['cache-control'], referrer: response.headers()['referrer-policy'] }));
+    if (label === 'pro' && name === 'history') {
+      const finalBucket = await page.locator('.a-bucketnav a').last().getAttribute('title');
+      const expectedRange = await page.evaluate(() => {
+        const format = value => new Date(value).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' });
+        const now = Date.now();
+        return `${format(now - 2 * 86_400_000)} – ${format(now)}`;
+      });
+      check('retained History names the final bucket through its actual end date', finalBucket === expectedRange, `${finalBucket ?? 'no final bucket'} (expected ${expectedRange})`);
+    }
     await shot(`${label}-${name}`);
   }
   const proChips = await page.evaluate(() => [...document.querySelectorAll('.a-pn-t .a-plan')].length);
@@ -348,6 +357,14 @@ async function qualifyPages(label, { pro }) {
   await page.focus('[data-hero-plot]'); await page.keyboard.press('ArrowLeft');
   const heroKeyed = await page.evaluate(() => document.querySelector('[data-hero-dl]')?.textContent ?? '');
   check(`${label} overview hero line draws and rewrites its delta line from the keyboard`, hero.svg && heroKeyed !== hero.dl && /by /u.test(heroKeyed), JSON.stringify({ hero, heroKeyed }));
+  if (label === 'pro') {
+    const originalViewport = page.viewportSize();
+    await page.setViewportSize({ width: 1280, height: 720 });
+    const desktopPlot = await page.locator('[data-hero-plot]').boundingBox();
+    check('overview cumulative plot remains perceptible at ordinary 1280×720 desktop', Boolean(desktopPlot && desktopPlot.height >= 96), JSON.stringify(desktopPlot));
+    await shot('pro-overview-1280x720-hero');
+    if (originalViewport) await page.setViewportSize(originalViewport);
+  }
   await page.keyboard.press('Escape');
   const volume = await qualifyFrame(`${label} overview`, '[data-chart-id="volume"]');
   check(`${label} overview Change volume drills from a pinned bucket into History`, Boolean(volume?.pin.drill && /\/history\?/u.test(volume.pin.drill) && /w=\d/u.test(volume.pin.drill)), JSON.stringify(volume?.pin));
@@ -592,6 +609,16 @@ try {
   // the pathless-only repository keeps its older analyses and says what is not retained
   await go('/?s=kai-sample%2Ftree-sitter-dd&per=90d');
   check('a repository without retained named history shows analysed populations and names what is missing', await page.evaluate(() => /Analysed pull requests/u.test(document.querySelector('.a-hero-l .eb')?.textContent ?? '') && /not retained/u.test(document.body.innerText)));
+  await go('/history?s=kai-sample%2Ftree-sitter-dd&per=30d');
+  await settled();
+  const pathlessFinalBucket = await page.locator('.a-bucketnav a').last().getAttribute('title');
+  const expectedPathlessRange = await page.evaluate(() => {
+    const format = value => new Date(value).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' });
+    const now = Date.now();
+    return `${format(now - 86_400_000)} – ${format(now)}`;
+  });
+  check('pathless History keeps its calendar bucket span through the final covered date', pathlessFinalBucket === expectedPathlessRange, `${pathlessFinalBucket ?? 'no final bucket'} (expected ${expectedPathlessRange})`);
+  await go('/?s=kai-sample%2Ftree-sitter-dd&per=90d');
 
   // ── the Manage console on Pro: capacity, repositories, settings, the message preview, Plan & funding, the return from Works, Account ──
   await proManage(ctx);
