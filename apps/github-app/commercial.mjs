@@ -404,7 +404,7 @@ export function createCommercialService({ store, wirt, signing, authorization, p
           const profile = await reads.profile();
           // This is a fresh display fact for this numeric principal, never a browser label or an identity lookup.
           if (viewer.userId !== userId || profile?.id !== userId || typeof profile.login !== 'string'
-            || !/^[A-Za-z0-9-]{1,39}$/u.test(profile.login)) throw refusal('E_COMMERCIAL_UNAVAILABLE', 503);
+            || !/^[A-Za-z0-9_-]{1,39}$/u.test(profile.login)) throw refusal('E_COMMERCIAL_UNAVAILABLE', 503);
           return profile.login;
         });
       } catch { throw refusal('E_COMMERCIAL_UNAVAILABLE', 503); }

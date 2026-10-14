@@ -112,10 +112,11 @@ function wirtDouble(clock) {
     if (path === '/api/wirt/diffdevil/link-intents') {
       const input = JSON.parse(text), id = randomUUID();
       assert.match(input.challenge, /^[A-Za-z0-9_-]{43}$/u);
-      if (state.accountLabels && (typeof input.product_account_label !== 'string' || !/^[A-Za-z0-9-]{1,39}$/u.test(input.product_account_label))) return respond(422, {});
+      if (state.accountLabels && Object.hasOwn(input, 'product_account_label')
+        && (typeof input.product_account_label !== 'string' || !/^[A-Za-z0-9_-]{1,39}$/u.test(input.product_account_label))) return respond(422, {});
       // The original consumer inserted only its known fields, accepting but discarding an extra label.
       state.intents.set(id, { product_account: input.product_account, challenge: input.challenge, state: input.state,
-        ...(state.accountLabels ? { product_account_label: input.product_account_label } : {}), approved: false });
+        ...(state.accountLabels ? { product_account_label: input.product_account_label ?? null } : {}), approved: false });
       return respond(201, { intent: id, authorization_url: `${WIRT}/wirt/products/diffdevil/link/${id}` });
     }
     const token = state.tokens.get((headers.get('authorization') ?? '').replace(/^Bearer /u, ''));
@@ -373,15 +374,19 @@ test('new link intents sign the current authenticated handle and ignore browser 
     const first = [...source.wirt.state.intents.values()][0];
     assert.equal(first.product_account, USER);
     assert.equal(first.product_account_label, 'example-user');
-    source.profiles.set(USER, { id: USER, login: 'Renamed-User' });
+    source.profiles.set(USER, { id: USER, login: 'Renamed-User_acme' });
+    assert.equal((await begin(SESSION)).status, 200);
+    const longestHandle = `${'a'.repeat(34)}_acme`;
+    source.profiles.set(USER, { id: USER, login: longestHandle });
     assert.equal((await begin(SESSION)).status, 200);
     assert.equal((await begin(OTHER_SESSION)).status, 200);
     const intents = [...source.wirt.state.intents.values()];
-    assert.equal(intents[1].product_account_label, 'Renamed-User', 'new consent reads the current provider profile without a cached handle');
-    assert.equal(intents[2].product_account, OTHER_USER);
-    assert.equal(intents[2].product_account_label, 'other-user', 'each signed-in account supplies its own handle');
+    assert.equal(intents[1].product_account_label, 'Renamed-User_acme', 'new consent reads the current managed-user handle without a cached profile');
+    assert.equal(intents[2].product_account_label, longestHandle, 'the whole managed-user handle may reach the existing 39-character limit');
+    assert.equal(intents[3].product_account, OTHER_USER);
+    assert.equal(intents[3].product_account_label, 'other-user', 'each signed-in account supplies its own handle');
     assert.equal(first.product_account_label, 'example-user', 'an existing intent keeps its original signed display fact');
-    assert.equal((await commercialBytes(source)).includes('Renamed-User'), false, 'the display fact needs no local storage copy');
+    assert.equal((await commercialBytes(source)).includes('Renamed-User_acme'), false, 'the display fact needs no local storage copy');
     // The Wirt double independently verifies the signature over these exact bodies before retaining an intent.
     const request = source.wirt.state.requests.find(value => value.path.endsWith('/link-intents'));
     const tampered = { ...request, text: request.text.replace('example-user', 'forged-user') };
@@ -390,7 +395,7 @@ test('new link intents sign the current authenticated handle and ignore browser 
   } finally { await source.runtime.dispose(); }
 });
 
-test('the labelled sender keeps the original endpoint contract, while repaired consent refuses an unlabelled sender', async () => {
+test('labelled and legacy senders preserve the actual intent-creation contract', async () => {
   const clock = { value: '2027-03-01T00:00:00.000Z' }, wirt = wirtDouble(clock);
   const client = createWirtClient({ origin: WIRT, oauthClientId: 'diffdevil-public-client', callbackUrl: CALLBACK,
     signing: readSigningKeys({ current: KEY }), fetch: wirt.fetch, now: () => Date.parse(clock.value) });
@@ -400,8 +405,11 @@ test('the labelled sender keeps the original endpoint contract, while repaired c
   const oldBody = JSON.stringify({ product_account: USER, challenge: input.challenge, state: input.state });
   const sendOld = () => wirt.fetch(`${WIRT}/api/wirt/diffdevil/link-intents`, { method: 'POST', redirect: 'manual',
     body: new TextEncoder().encode(oldBody), headers: wirtHeaders(KEY, { method: 'POST', path: '/api/wirt/diffdevil/link-intents', account: '', body: oldBody, clock }) });
-  assert.equal((await sendOld()).status, 422, 'the repaired consumer cannot create recognizable consent from numeric identity alone');
-  assert.equal(wirt.state.intents.size, 1);
+  const unlabelled = await sendOld();
+  assert.equal(unlabelled.status, 201, 'the paired consumer accepts intent creation without the optional label');
+  assert.equal(wirt.state.intents.get((await unlabelled.json()).intent).product_account_label, null);
+  // This double models intent creation only. Native Wirt consent/approval is a separate qualification boundary.
+  assert.equal(wirt.state.intents.size, 2);
   wirt.state.accountLabels = false;
   const legacy = await client.intent(input);
   assert.equal(wirt.state.intents.get(legacy.intent).product_account_label, undefined, 'legacy acceptance does not prove retained or displayed label');

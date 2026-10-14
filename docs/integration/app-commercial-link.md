@@ -25,8 +25,12 @@ dashboard's profile cache. The profile's numeric ID must match the authenticated
 initiator; a missing, malformed, mismatched or unavailable profile returns
 `503 E_COMMERCIAL_UNAVAILABLE` before creating an intent or local attempt. Browser
 body/query labels are not read. The raw handle (without an added `@`) is display
-meaning only; the numeric product account remains authority. The exact JSON body,
-including this label, uses the existing signature grammar, keys and client.
+meaning only; the numeric product account remains authority. The accepted handle
+envelope includes letters, digits, hyphens and underscores, with at most 39
+characters in the whole handle. This includes GitHub's
+[Enterprise Managed User shortcode suffix](https://docs.github.com/en/enterprise-cloud@latest/admin/managing-iam/iam-configuration-reference/username-considerations-for-external-authentication).
+The exact JSON body, including this label, uses the existing signature grammar,
+keys and client.
 No local schema, stored handle, permission or login method is added.
 
 This sender must be paired with Wirt's recognizable-consent consumer, which retains
@@ -34,8 +38,12 @@ the authenticated label on that exact intent. The original consumer validates th
 numeric account, challenge and state, then stores only those known fields. It
 accepts but discards the added label, so request acceptance there does not establish
 recognizable consent. Conversely, a sender without the field cannot supply recognizable
-consent to the repaired consumer, and a browser label is no substitute. New consent
-therefore needs the accepted matching producer/consumer cut before customer use;
+consent to the repaired consumer, and a browser label is no substitute. The paired
+consumer can accept an unlabelled intent with a null label and return 201, while
+refusing its approval with 409; intent acceptance is separate from approvable
+consent. diffdevil's wire double qualifies intent creation, not Wirt's native
+consent or approval handlers. New consent therefore needs the accepted matching
+producer/consumer cut before customer use;
 source and doubled-provider checks do not prove that installed pairing. Existing
 attempts are neither rewritten nor relabelled. An approved pending establishment
 still resumes its original intent and retained owner grant before any new profile
