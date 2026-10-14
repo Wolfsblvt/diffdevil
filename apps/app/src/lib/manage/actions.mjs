@@ -25,7 +25,7 @@ import { SETUP_ROLES, SETUP_BELONGS } from './setup.mjs';
 export const MESSAGES = Object.freeze({
   selected: { tone: 'ok', text: 'Selected. It holds a slot and isn\'t running yet: review its policy, then enable it.' },
   enabled: { tone: 'ok', text: 'Enabled. Size labels and the check run on its pull requests from now on. History stays a separate choice.' },
-  stopped: { tone: 'ok', text: 'Stopped. Labels and the check no longer run; its history and settings stay.' },
+  stopped: { tone: 'ok', text: 'Stopped. Nothing runs or collects; its place is free. Consent, retained history and settings stay.' },
   released: { tone: 'ok', text: 'Released. It no longer holds a slot.' },
   swapped: { tone: 'ok', text: 'Swapped. The repository you picked stopped; the incoming one holds the slot as Pending enable.' },
   'history-on': { tone: 'ok', text: 'History is on from now. Past pull requests are not imported by this.' },
@@ -244,7 +244,7 @@ export async function handleManageAction(request, { runtime, session, viewer }) 
   const allowanceAllows = async repository => (await allowanceRefusal(repository)) === null;
   const stopRepository = async (repository, { keepSelection = false } = {}) => {
     const current = await admission(repository.repositoryId);
-    if (current.state === 'active' || current.execution.reason === null) await update(repository.repositoryId, { revision: current.revision, execution: false });
+    await update(repository.repositoryId, { revision: current.revision, execution: false });
     if (!keepSelection) await runtime.manage.deselect(repository.repositoryId);
   };
   try {
@@ -302,9 +302,6 @@ export async function handleManageAction(request, { runtime, session, viewer }) 
         await admission(incoming.repositoryId);
         const planRefusal = await allowanceRefusal({ ...incoming, private: false });
         if (planRefusal) return done(planRefusal);
-        // The swap explicitly displaces this private history place; generic execution Stop does not.
-        const outgoingAdmission = await admission(outgoing.repositoryId);
-        if (outgoing.private && outgoingAdmission.history.enabled) await update(outgoing.repositoryId, { revision: outgoingAdmission.revision, history: { enabled: false } });
         await stopRepository(outgoing);
         await runtime.manage.select(incoming.repositoryId, viewer.userId);
         return done('swapped');
@@ -313,13 +310,19 @@ export async function handleManageAction(request, { runtime, session, viewer }) 
         const repository = repositoryOf();
         const enabled = form.get('enabled') === 'on';
         const current = await admission(repository.repositoryId);
+        if (enabled && repository.private && !repository.standing?.selected) {
+          const refusal = await allowanceRefusal(repository);
+          if (refusal) return done(refusal);
+        }
         if (enabled && !repository.private) {
           const model = await fresh();
           const namespace = model.namespaces.find(candidate => candidate.login === repository.owner);
           const places = namespace?.capacity.publicHistory;
           if (places?.of !== null && places?.of !== undefined && !repository.standing?.historyEnabled && places.used >= places.of) return done('history-allowance-full');
         }
+        if (enabled) await runtime.manage.select(repository.repositoryId, viewer.userId);
         await update(repository.repositoryId, { revision: current.revision, history: enabled ? { enabled: true, retentionDays: runtime.config.retentionDays } : { enabled: false } });
+        if (!enabled && !repository.standing?.executionActive) await runtime.manage.deselect(repository.repositoryId);
         return done(enabled ? 'history-on' : 'history-off');
       }
       case 'delete-history': {

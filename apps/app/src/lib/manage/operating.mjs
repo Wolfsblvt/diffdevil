@@ -80,6 +80,7 @@ export function createOperating({ database, store, appStore, manage, entitlement
     const repositories = await repositoriesOf([...new Set(scope.accounts)]);
     const subject = repositories.find(repository => repository.repositoryId === repositoryId);
     if (!subject || !subject.visibilityKnown) return allow('visibility-unestablished');
+    if (subject.standing.historyPauseReason) return hold(subject.standing.historyPauseReason === 'capacity' ? 'not-chosen' : 'repository-stopped');
     const choice = scope.owner ? await manage.planChoice(scope.owner) : null;
     const capacity = capacityOf({ plan: PLAN_LABEL[plan], kind: scope.kind, pooled: scope.pooled === true, repositories }, { allowances, keep: choice?.keep ?? null });
     if (subject.private && capacity.waiting.some(repository => repository.repositoryId === repositoryId)) return hold(capacity.chosen ? 'not-chosen' : 'over-allowance-unchosen');

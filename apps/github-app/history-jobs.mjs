@@ -157,6 +157,11 @@ export async function runHistoryJob(envelope, dependencies) {
   const job = await jobs.claim(envelope.jobId, envelope.sequence);
   if (!job || job.repositoryId !== envelope.repositoryId || job.kind !== envelope.action) return { status: 'not-claimed' };
   const settings = await store.historySettings(job.repositoryId, { independentExecution: true });
+  if (settings.pauseReason) {
+    const reason = settings.pauseReason === 'capacity' ? 'over-allowance' : 'repository-stopped';
+    await jobs.pause(job, reason);
+    return { status: 'paused', reason };
+  }
   if (!settings.enabled) { await jobs.finish(job, 'stopped', { reason: 'history-off' }); return { status: 'stopped' }; }
   const operating = dependencies.operating ? await dependencies.operating(job.repositoryId) : { history: 'allowed' };
   if (operating.history !== 'allowed') { await jobs.pause(job, 'over-allowance'); return { status: 'paused', reason: 'over-allowance' }; }

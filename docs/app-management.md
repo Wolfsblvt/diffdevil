@@ -60,12 +60,15 @@ Show the job's purpose, repository/range, completed coverage, remaining scope wh
 Explicit history consent permits collection, import and recalculation while repository
 execution, checks, labels and briefs stay off. Manage and the analytical navigation
 show that history independently. Private history-only repositories still occupy their
-private allowance. Stopping repository operation keeps separate history consent and
-lawful collection; Stop collecting is its own action. A private-capacity swap names
-the outgoing repository's lost collection before confirmation and stops that future
-collection while keeping retained data. A plan reduction holds unchosen history under
-the saved capacity choice without revoking consent. Installation interruption, revocation, deletion and
-the current operating allowance continue to govern collection and reads.
+private allowance. Stop operating pauses collection and frees the place, retaining
+consent, history and settings. Stop collecting is the distinct history-off choice.
+A private-capacity swap names the outgoing repository's paused collection before
+confirmation. Both swap and a saved lower-plan choice release displaced capacity
+without revoking history consent. Explicit selection or resuming history re-admits
+it only within the current allowance; history can
+resume while execution stays off. Installation interruption, revocation, deletion and
+the current operating allowance continue to govern collection. Paused collection
+does not hide retained history; current consent and access still govern reads.
 
 Completing an import means its selected closed-PR listing ended or its plan limit was
 reached; it does not prove every comparison was recovered. Jobs retain the latest

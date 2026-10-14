@@ -45,8 +45,13 @@ export async function historyOnlyManage(ctx) {
   await page.waitForLoadState('networkidle');
   await page.locator('[data-operation] form:has(input[name="mode"][value="stop"]) button').click();
   await page.waitForLoadState('networkidle');
+  const paused = await page.locator('[data-history]').innerText();
+  check('native Stop pauses collection, keeps consent and retained history, and frees the place', /Paused by Stop/u.test(paused) && /its place is free/u.test(paused) && await page.locator('[data-history]').getByRole('button', { name: 'Resume history', exact: true }).count() === 1);
+  await shot('pro-manage-history-paused');
+  await page.locator('[data-history]').getByRole('button', { name: 'Resume history', exact: true }).click();
+  await page.waitForLoadState('networkidle');
   const historyOnly = await page.evaluate(() => ({ history: document.querySelector('[data-history]')?.textContent ?? '', effects: [...document.querySelectorAll('[data-operation] .m-eff .m-st')].map(node => node.textContent?.trim()), buttons: [...document.querySelectorAll('[data-history] button')].map(node => node.textContent?.trim()) }));
-  check('operation Stop preserves consented history, Import and Recalculate with labels, check and brief off', /History only/u.test(historyOnly.history) && historyOnly.effects.every(value => value === 'Off') && historyOnly.buttons.includes('Import past PRs') && historyOnly.buttons.includes('Recalculate'), JSON.stringify(historyOnly));
+  check('native Resume history supplies history-only, Import and Recalculate with labels, check and brief off', /History only/u.test(historyOnly.history) && historyOnly.effects.every(value => value === 'Off') && historyOnly.buttons.includes('Import past PRs') && historyOnly.buttons.includes('Recalculate'), JSON.stringify(historyOnly));
   await shot('pro-manage-history-only');
   // Restore the existing fixture's operation and separate history-off choice for the other journeys.
   await page.locator('[data-history] form:has(input[name="action"][value="history"]):not(:has(input[name="enabled"])) button').click();

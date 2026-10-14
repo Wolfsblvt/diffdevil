@@ -10,6 +10,7 @@ import { plural } from '../format.mjs';
 
 const PAUSES = Object.freeze({
   person: 'Paused by an administrator. Live labels and checks are not affected.',
+  'repository-stopped': 'Paused: repository operation was stopped. Consent and retained history stay; resume history within the allowance before resuming this job.',
   'provider-rate-limit': 'Paused: GitHub\'s rate limit for this installation. It continues by itself after the limit resets.',
   'over-allowance': 'Paused: this repository is over its plan\'s allowance, so no history is collected. It continues once it is within the allowance again.',
   'plan-unestablished': 'Paused: the plan funding this repository could not be established right now. It continues once it is.'

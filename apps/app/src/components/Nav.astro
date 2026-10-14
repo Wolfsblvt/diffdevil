@@ -22,6 +22,7 @@ const planOf = (namespace: any) => (namespace.yours ? viewer.plan : namespace.pl
 const statusText: Record<string, { label: string; title: string } | undefined> = {
   'labels-only': { label: 'Labels only', title: 'Size labels only; history is not collected' },
   'history-off': { label: 'History off', title: 'Installed; history not enabled' },
+  'history-paused': { label: 'History paused', title: 'Consent kept; collection resumes after explicit readmission within the allowance' },
   'not-recorded': { label: 'Not recorded', title: 'GitHub grants this repository, but the App has not recorded it yet' }
 };
 const yours = viewer.namespaces.filter((namespace: any) => namespace.yours);

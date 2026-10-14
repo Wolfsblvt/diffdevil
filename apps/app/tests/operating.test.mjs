@@ -37,7 +37,10 @@ async function act(app, cookie, fields) {
 /** The tests share one seeded database: put the repositories and Free connection a reduction test relies on back. */
 async function reset(env) {
   const store = new D1AppStore(env.APP_DB);
-  for (const repositoryId of [1001, 1004]) await store.setRepositoryExecution(repositoryId, { enabled: true, origin: 'fixture' });
+  for (const repositoryId of [1001, 1004]) {
+    await store.setRepositoryExecution(repositoryId, { enabled: true, origin: 'fixture' });
+    await store.setRepositoryConsent(repositoryId, { enabled: true, retentionDays: 3660, origin: 'fixture' });
+  }
   await env.APP_DB.batch(['DELETE FROM free_connections', 'DELETE FROM plan_change_choices', 'DELETE FROM repository_selections'].map(sql => env.APP_DB.prepare(sql)));
 }
 async function manageModel(app, cookie) { const context = await locals(app, cookie); return loadManage({ viewer: context.viewer, session: context.session, runtime: app }); }
@@ -77,10 +80,17 @@ test('a reduction applies the saved choice: the runtime holds what was not chose
   assert.deepEqual(await app.operating.maintain(), { applied: 0 }, 'an applied choice is applied once');
   const loaded = await manageModel(app, cookie);
   const dotfiles = loaded.namespaces.find(namespace => namespace.login === 'ada-sample').repositories.find(repository => repository.repositoryId === 1004);
-  assert.equal(dotfiles.state.kind, 'overAllowance');
+  assert.equal(dotfiles.state.kind, 'stoppedByYou');
   assert.equal(dotfiles.standing.historyConsented, true, 'the lower allowance holds collection without revoking separate consent');
-  assert.match(dotfiles.state.why, /Not among/u);
+  assert.match(dotfiles.state.why, /when the plan changed/u);
+  assert.equal(loaded.namespaces[0].capacity.over, false, 'the saved choice really frees displaced capacity');
+  assert.equal((await store.historySettings(1004, { independentExecution: true })).enabled, false, 'released history is held at collection, not just hidden');
   assert.equal(loaded.namespaces.find(namespace => namespace.login === 'parser-guild').repositories.find(repository => repository.repositoryId === 1001).state.kind, 'active');
+  assert.equal(await act(app, cookie, { action: 'stop', repository: 'parser-guild/parser-lab', back: '/manage' }), 'stopped');
+  assert.equal((await app.store.repositoryStandings([1001])).get(1001).historyConsented, true, 'Stop frees the place without changing history choice');
+  assert.equal(await act(app, cookie, { action: 'select', repository: 'ada-sample/dotfiles', back: '/manage' }), 'selected', 'the freed place admits a different repository');
+  assert.equal((await store.historySettings(1004, { independentExecution: true })).enabled, true, 'explicit re-admission resumes retained consent');
+  assert.equal(await store.executionAllowed(1004), false, 'history resumes without enabling repository effects');
 });
 
 test('without a choice diffdevil does not pick: a scope over its lower limit holds all of it, and an organisation without a plan holds', async () => {
