@@ -182,10 +182,13 @@ nearest per-path boundary anchors inside D1, without transferring older shared
 snapshots to the Worker or keeping a duplicate membership store. They seek the
 nearest marker per shared set, expand candidate paths inside D1 and choose each
 path's nearest time. It is physical normalization, not
-coalescing observations or inferring file continuity. All remain under current
-opt-in consent, expiry, deletion tombstones and offboarding cleanup.
-This new analytical path keeps collection independent of execution consent while
-requiring current history consent and installation/repository access.
+coalescing observations or inferring file continuity. These observations were
+collected under opt-in consent and remain subject to expiry, deletion tombstones
+and offboarding cleanup. Current repository access governs reads; current history
+consent governs new collection. Stopping collection leaves retained observations
+readable until their retention boundary or an explicit deletion.
+This new analytical path keeps collection independent of execution consent and
+requires current history consent plus installation/repository access before writing.
 This does not relabel `history_records` or reinterpret pathless rows as named files.
 
 Turnover is **Changed during the period divided by time-weighted average file size**.

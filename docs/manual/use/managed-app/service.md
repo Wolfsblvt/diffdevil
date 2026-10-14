@@ -80,7 +80,7 @@ Read distributions with their coverage. A revision count is not a PR count, an a
 
 ## Export, stop collection, or leave
 
-Export the resolved policy for use elsewhere and retained numeric history in its versioned format when needed. Stopping future collection and deleting existing history are distinct choices. Deletion covers the selected history, derived projections, and pending recovery that could recreate it; an uninstall alone is not a claim that every provider backup vanished immediately.
+Export the resolved policy for use elsewhere and retained numeric history in its versioned format when needed. **Stop collecting** prevents new rows and leaves existing retained history readable under current repository access until expiry or deletion. Deleting existing history is a separate choice; deletion covers the selected history, derived projections, and pending recovery that could recreate it. An uninstall alone is not a claim that every provider backup vanished immediately.
 
 Repository deselection, confirmed installation removal, and entitlement end stop collection immediately and begin the selected thirty-day offboarding grace. Only an independently authenticated service-account or organization administrator whose authority predates the access loss may inspect, export, shorten, or delete already-retained numeric history during that grace. This exception cannot fetch GitHub context, restore repository access, or perform cleanup writes through a removed installation. Without an eligible administrator, the history is inaccessible and still expires.
 

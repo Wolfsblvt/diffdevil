@@ -52,7 +52,7 @@ Detail expressions operate on checked inert data with fixed functions; they cann
 
 The operational ledger lasts seven days and keeps only what is needed for admitted-work deduplication, diagnosis, retries, and recovery: delivery/attempt identity, numeric repository/installation identifiers, PR/comparison/policy references, bounded codes, and compact result/effect readback summaries. Failures and dead letters share that boundary; retry does not continually reset the original retention clock.
 
-With history off, there is no permanent per-file/result table quietly collecting data for a future dashboard. Labels, comments, checks, and ordinary recovery remain available without long-term history. Account, installation, configuration, and entitlement state have their separate active-service lifecycle; they do not disappear because the recovery ledger expires.
+With history off, the App collects no new history. Rows already retained remain readable while the person still has current repository access and the rows remain within retention; Stop collecting does not delete them. Explicit deletion and access-loss rules still apply. Labels, comments, checks, and ordinary recovery remain available without new history collection. Account, installation, configuration, and entitlement state have their separate active-service lifecycle; they do not disappear because the recovery ledger expires.
 
 Numeric repository/PR/revision references remain linkable to GitHub. Omitting names does not make either recovery records or history anonymous. Queues, dead letters, logs, traces, caches, and exports must obey the same minimized-data intent instead of becoming hidden richer copies.
 
