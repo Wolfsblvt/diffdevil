@@ -54,7 +54,6 @@ test('native explanation distinguishes rate limits, malformed responses, pending
   const namespace = { login: 'org', kind: 'org', plan: 'Free', role: 'unknown' };
   assert.match(readerAuthority({ ...namespace, authorityIssue: { code: 'E_GITHUB_RATE_LIMIT', status: 429 } }), /rate-limited/u);
   assert.match(readerAuthority({ ...namespace, authorityIssue: { code: 'E_PROVIDER_RESPONSE', status: null } }), /usable organisation membership response/u);
-  assert.match(readerAuthority({ ...namespace, authorityIssue: { code: 'E_GITHUB_MEMBERSHIP_UNCONFIRMED', status: null } }), /list did not include.*Administration is unconfirmed/u);
   assert.match(readerAuthority({ ...namespace, role: 'none', membership: { state: 'pending', role: 'admin' } }), /membership is pending/u);
   assert.match(readerAuthority({ ...namespace, role: 'none', membership: null }), /list did not include/u);
   assert.match(readerAuthority({ ...namespace, role: 'member', membership: { state: 'active', role: 'billing_manager' } }), /active billing manager role/u);

@@ -436,6 +436,10 @@ test('funding makes nobody an administrator: only current GitHub administration 
   const app = compose(undefined, { env: { APP_COMMERCIAL_FIXTURE: BUSINESS } });
   const { cookie } = await signIn(app);
   try {
+    // The list omits this organisation. Exercise the same real action boundaries with a
+    // documented targeted membership response, including demotion after rendering.
+    github.state.omittedMemberships.add(7001);
+    github.state.targetedMembershipStatus = 200;
     // ada-sample administers parser-guild on GitHub: naming by login resolves the GitHub user; unknown logins, oneself and an empty repository list are refused.
     assert.equal((await act(app, cookie, { action: 'delegate-add', namespace: guild, login: 'nobody-here', role: 'account-admin', back: '/manage/people' })).message, 'delegate-unknown');
     assert.equal((await act(app, cookie, { action: 'delegate-add', namespace: guild, login: 'ada-sample', role: 'account-admin', back: '/manage/people' })).message, 'delegate-self');
@@ -489,7 +493,7 @@ test('funding makes nobody an administrator: only current GitHub administration 
     await act(app, cookie, { action: 'policy-remove', policy: policyId, back: '/manage/policies' });
   } finally {
     await app.manage.revokeDelegation(7001, 123);
-    github.state.push.clear(); github.state.admin.clear(); github.state.roles.clear(); app.cache.clear();
+    github.state.push.clear(); github.state.admin.clear(); github.state.roles.clear(); github.state.omittedMemberships.clear(); github.state.targetedMembershipStatus = 403; app.cache.clear();
   }
 });
 

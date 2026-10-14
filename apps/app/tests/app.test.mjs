@@ -70,7 +70,7 @@ test('the viewer sees GitHub-reachable repositories with their App standing and 
   assert.deepEqual(Object.fromEntries(paid.namespaces.map(namespace => [namespace.login, namespace.plan])), { 'ada-sample': 'Pro', 'parser-guild': 'Pro', 'northwind-tools': 'Business', 'kai-sample': 'Free' });
 });
 
-test('the signed-in authority and viewer handle billing managers, pending membership and failed reads without Members-read', async () => {
+test('listed roles stay permission-free and the signed-in authority observes an omitted organisation through the targeted read', async () => {
   const { app: compose, github } = await fixture();
   const app = compose();
   const { cookie } = await signIn(app);
@@ -104,17 +104,21 @@ test('the signed-in authority and viewer handle billing managers, pending member
     github.state.membershipStatus = 200;
     github.state.omittedMemberships.add(7001);
     assert.deepEqual(await app.auth.organisationAuthority({ session: cookie, organisationId: 7001 }), { userId: 123, authority: 'unknown', display: null });
-    await assert.rejects(opened.reads.organizationRole('parser-guild'), { code: 'E_GITHUB_MEMBERSHIP_UNCONFIRMED' });
+    await assert.rejects(opened.reads.organizationRole('parser-guild'), { code: 'E_PROVIDER_REQUEST', status: 403 });
     app.cache.clear();
     const omitted = await resolveViewer({ reads: opened.reads, actor: opened.actor, store: app.store, entitlement: app.entitlement, cache: app.cache });
     assert.equal(omitted.namespaces.find(namespace => namespace.login === 'parser-guild').role, 'unknown');
     assert.equal(omitted.namespaces.find(namespace => namespace.login === 'parser-guild').yours, false);
     assert.ok(omitted.repositories.some(repository => repository.owner === 'parser-guild'), 'the role omission preserves authorised reading');
-    github.state.omittedMemberships.clear();
+    github.state.targetedMembershipStatus = 200;
+    github.state.membershipStates.delete('parser-guild');
+    assert.deepEqual(await app.auth.organisationAuthority({ session: cookie, organisationId: 7001 }), { userId: 123, authority: 'present', display: 'parser-guild' });
     const recovered = await resolveViewer({ reads: opened.reads, actor: opened.actor, store: app.store, entitlement: app.entitlement, cache: app.cache });
-    assert.equal(recovered.namespaces.find(namespace => namespace.login === 'parser-guild').role, 'admin', 'an omitted target is retried without caching a false role');
+    assert.equal(recovered.namespaces.find(namespace => namespace.login === 'parser-guild').role, 'admin', 'the documented target result restores administration without caching the earlier refusal');
+    github.state.roles.set('parser-guild', 'member');
+    assert.equal(await opened.reads.organizationRole('parser-guild'), 'member', 'each action re-observes the targeted role');
   } finally {
-    github.state.roles.clear(); github.state.membershipStates.clear(); github.state.omittedMemberships.clear(); github.state.membershipStatus = 200; app.cache.clear();
+    github.state.roles.clear(); github.state.membershipStates.clear(); github.state.omittedMemberships.clear(); github.state.membershipStatus = 200; github.state.targetedMembershipStatus = 403; app.cache.clear();
   }
 });
 

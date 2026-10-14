@@ -48,8 +48,7 @@ export function createGitHubUserProvider({ clientId, clientSecret, callbackUrl, 
     }
     return out;
   }
-  // The current-user list needs no Members-read permission. A per-organisation membership read does.
-  // A completed list is still the App user token's view, not proof of nonmembership.
+  // The list needs no Members-read permission, but only proves memberships it actually returns.
   async function organisationMembership(token, matches) {
     for (let page = 1; ; page++) {
       const memberships = await json(`${api}/user/memberships/orgs?per_page=${PAGE}&page=${page}`, { token });
@@ -58,8 +57,31 @@ export function createGitHubUserProvider({ clientId, clientSecret, callbackUrl, 
         || !['active', 'pending'].includes(value.state))) throw providerError('E_PROVIDER_RESPONSE');
       const membership = memberships.find(matches);
       if (membership) return membership;
-      if (memberships.length < PAGE) throw providerError('E_GITHUB_MEMBERSHIP_UNCONFIRMED');
+      if (memberships.length < PAGE) return null;
     }
+  }
+  /** A missing list entry gets one documented target read, never a fabricated role or permission diagnosis. */
+  async function targetedMembership({ material, userId, organization, organisationId }) {
+    if (!organization) {
+      // Funding binds a numeric organisation, not a reusable login. Resolve it only through
+      // this person's currently reachable, admitted installation; no broad org/member read.
+      const installations = await pages(`${api}/user/installations`, material.accessToken, value => value.installations ?? []);
+      const installation = installations.find(value => Number.isSafeInteger(value?.id) && value.id > 0
+        && value.account?.id === organisationId && value.account.type === 'Organization');
+      if (!installation || (installationAccounts !== null && !installationAccounts.has(organisationId))
+        || !await installationAdmitted(installation.id)) throw providerError('E_GITHUB_MEMBERSHIP_UNCONFIRMED');
+      organization = installation.account.login;
+    }
+    if (typeof organization !== 'string' || !/^[A-Za-z0-9-]{1,39}$/u.test(organization)) throw providerError('E_PROVIDER_RESPONSE');
+    // GitHub documents Members-read for this endpoint. A refusal remains the observed
+    // provider error; requesting it neither grants that permission nor changes the grant.
+    const membership = await json(`${api}/user/memberships/orgs/${encodeURIComponent(organization)}`, { token: material.accessToken });
+    if (!Number.isSafeInteger(membership?.organization?.id) || membership.organization.id <= 0
+      || typeof membership.organization.login !== 'string' || membership.organization.login.toLowerCase() !== organization.toLowerCase()
+      || (organisationId !== undefined && membership.organization.id !== organisationId)
+      || !Number.isSafeInteger(userId) || membership.user?.id !== userId
+      || !['active', 'pending'].includes(membership.state)) throw providerError('E_PROVIDER_RESPONSE');
+    return membership;
   }
   // Project only the requested membership. Its role/state explain authority; unrelated organisations,
   // provider prose and the user token must never become display or diagnostic context.
@@ -70,9 +92,10 @@ export function createGitHubUserProvider({ clientId, clientSecret, callbackUrl, 
       membership: { organizationId: membership.organization.id, role: membership.role, state: membership.state }
     };
   }
-  async function organizationAuthority({ material, organization }) {
-    return membershipAuthority(await organisationMembership(material.accessToken,
-      value => value.organization.login.toLowerCase() === organization.toLowerCase()));
+  async function organizationAuthority({ material, userId, organization }) {
+    const membership = await organisationMembership(material.accessToken,
+      value => value.organization.login.toLowerCase() === organization.toLowerCase());
+    return membershipAuthority(membership ?? await targetedMembership({ material, userId, organization }));
   }
   function grantFrom(payload) {
     if (!payload || typeof payload.access_token !== 'string' || payload.access_token.length === 0) throw providerError('E_PROVIDER_TOKEN');
@@ -170,15 +193,16 @@ export function createGitHubUserProvider({ clientId, clientSecret, callbackUrl, 
      * Whether the person currently administers this numeric organisation: their own membership names its ID,
      * login, role and state together. Provider failure remains unknown to the authorization service.
      */
-    async checkOrganisationAdministration({ material, organisationId }) {
-      const membership = await organisationMembership(material.accessToken, value => value.organization.id === organisationId);
-      return { administer: membershipAuthority(membership).role === 'admin', login: membership?.organization.login ?? null };
+    async checkOrganisationAdministration({ material, userId, organisationId }) {
+      const listed = await organisationMembership(material.accessToken, value => value.organization.id === organisationId);
+      const membership = listed ?? await targetedMembership({ material, userId, organisationId });
+      return { administer: membershipAuthority(membership).role === 'admin', login: membership.organization.login };
     },
     /** Current role with the target's safe membership evidence; an omitted target remains unknown. */
     organizationAuthority,
     /** Active admin or non-admin member for this login, or none. Provider roles never expand App administration. */
-    async organizationRole({ material, organization }) {
-      return (await organizationAuthority({ material, organization })).role;
+    async organizationRole({ material, userId, organization }) {
+      return (await organizationAuthority({ material, userId, organization })).role;
     },
     /** GitHub's 100 most recently updated pull requests of one repository: lifecycle facts, transiently. */
     async recentPullRequests({ material, fullName }) {
