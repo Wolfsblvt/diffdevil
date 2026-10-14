@@ -8,6 +8,30 @@ The service-connection lifecycle below separates actual funded purpose, browser 
 
 ## Trust boundary
 
+The native Manage link form posts to the App before redirecting to Works' exact
+intent-specific consent route. Chromium applies `form-action` to that redirect
+chain. App document headers therefore admit the single `WIRT_ORIGIN` validated by
+a successfully composed commercial consumer, alongside the App itself and GitHub.
+Missing or refused commercial configuration adds no external form destination;
+the local stand-in stays same-origin. The client still validates the returned
+intent ID, exact Works origin and consent path before creating the local attempt.
+No request parameter or provider-returned URL selects the browser allowlist.
+
+A link departure references its server-owned attempt in the existing departure
+snapshot. The signed-in account's status read derives only public lifecycle
+standing from that exact account/attempt; an older departure without a reference
+reads the account's sole retained unfinished attempt; absent or ambiguous candidates
+stay unknown rather than selecting another attempt. Before consent, an open attempt is
+recognised only in its initiating browser. An expired attempt needs no live cookie;
+an approved retained grant is pending until establishment finishes, including after
+the callback cleared the browser cookie. Missing or unreadable evidence is unknown,
+not a completed external step. No state hash, verifier, browser binding or grant
+is sent in the status body. The existing expiry, denial, pending and retry copy is
+used on Manage; an open/unknown return has no completed-Works timeline. The existing
+unavailable banner owns a refused read, and a confirmed active link stays finished
+even when a spent callback is replayed. Rendering never consumes, resumes or starts
+an attempt; explicit retry keeps the existing same-intent recovery semantics.
+
 Commercial standing selects capability; it never grants GitHub authority. Repository and analytical reads still check current GitHub access through the existing authorization service at every use. A paid namespace keeps its plan for any authorized reader, and a paying viewer gains nothing in a namespace their subscription does not fund.
 
 The product account is the signed-in GitHub user's numeric ID from the existing opaque session. A namespace is the numeric GitHub account of the repository's installation, captured from webhook identities (`installation.account.id`, or `repository.owner.id` on pull-request events). An organisation becomes a funded namespace only through a binding to a purchased capacity slot, made by a funder who currently administers that organisation on GitHub. One organisation has at most one funder. The authorization service's `organisationAuthority` checks administration through the viewer's own GitHub authorization; its provider adapter's `checkOrganisationAdministration` must confirm that the numeric account is an organisation the user currently administers, never merely an account they can see.

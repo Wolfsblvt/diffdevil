@@ -37,6 +37,6 @@ export const onRequest = defineMiddleware(async (context, next) => {
     }
   }
   const response = await next();
-  for (const [name, value] of Object.entries(pathname.startsWith('/auth/') || pathname.startsWith('/health/') ? securityHeaders() : pageHeaders())) response.headers.set(name, value);
+  for (const [name, value] of Object.entries(pathname.startsWith('/auth/') || pathname.startsWith('/health/') ? securityHeaders() : pageHeaders(context.locals.app))) response.headers.set(name, value);
   return response;
 });

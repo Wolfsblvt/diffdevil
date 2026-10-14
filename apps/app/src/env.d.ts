@@ -36,7 +36,7 @@ declare namespace App {
     /** Why the runtime could not be composed, when it could not. Never carries a value. */
     configurationProblem?: string | undefined;
     /** The authenticated session: bound provider reads and the acting GitHub user. Absent on public routes. */
-    session?: { reads: any; actor: { userId: number; returnContext: string }; session: string };
+    session?: { reads: any; actor: { userId: number; returnContext: string }; session: string; worksLinkBinding?: string | undefined };
     /** The resolved viewer: profile, namespaces and authorised repositories. Absent on public routes. */
     viewer?: any;
   }

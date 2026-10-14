@@ -135,7 +135,9 @@ export function createAppRuntime(env, { fetch = globalThis.fetch, now, premium =
   // History retention is service configuration: the admission contract needs a bounded number of days and the terms are not published yet.
   const retentionDays = Number(env.APP_HISTORY_RETENTION_DAYS ?? 3660);
   if (!Number.isSafeInteger(retentionDays) || retentionDays < 1 || retentionDays > 3660) throw new TypeError('APP_HISTORY_RETENTION_DAYS must be a whole number of days between 1 and 3660.');
-  const worksOrigin = typeof env.WIRT_ORIGIN === 'string' && /^https:\/\//u.test(env.WIRT_ORIGIN) ? env.WIRT_ORIGIN.replace(/\/$/u, '') : commercialSource === 'fixture' ? `${origin}/manage/works-stand-in?dest=` : null;
+  // A real consumer has already validated WIRT_ORIGIN as one exact HTTPS origin. Do not expose an unconfigured or
+  // refused destination to either the Works exits or the browser's form policy; the loopback stand-in stays local.
+  const worksOrigin = commercialSource === 'commercial' && env.WIRT_ORIGIN ? env.WIRT_ORIGIN : commercialSource === 'fixture' ? `${origin}/manage/works-stand-in?dest=` : null;
   // The premium analytical extension, when the build joined one, is composed from the public host: the interval kit, the
   // turnover-v1 rules and a Contents-read installation credential minted only when a returned Turnover has an open tail.
   // Without the GitHub App credentials the extension reports the observation unavailable and the read still answers.

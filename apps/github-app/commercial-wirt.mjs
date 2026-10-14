@@ -289,7 +289,9 @@ function readQuote(value, cadence) {
 function readOrigin(value) {
   let url;
   try { url = new URL(value); } catch { throw wirtError('E_COMMERCIAL_CONFIGURATION'); }
-  if (url.protocol !== 'https:' || url.origin !== value) throw wirtError('E_COMMERCIAL_CONFIGURATION');
+  // This exact server destination also enters the document's form policy. URL parsing alone permits wildcard hosts
+  // and CSP punctuation; these are not one literal host-source, even when URL parsing round-trips them.
+  if (url.protocol !== 'https:' || url.origin !== value || /[*;,"']/u.test(value)) throw wirtError('E_COMMERCIAL_CONFIGURATION');
   return url.origin;
 }
 export function readExactHttpsUrl(value) {

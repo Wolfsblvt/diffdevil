@@ -50,6 +50,18 @@ export class D1CommercialStore {
 
   async attempt(stateHash) { return this.statement('SELECT * FROM commercial_link_attempts WHERE state_hash=?', stateHash).first(); }
 
+  /** Read the acting account's named attempt. Without an old departure's reference, only one unfinished candidate is attributable. */
+  async linkAttempt(userId, stateHash = null) {
+    const query = `SELECT a.browser_hash, a.expires_at, a.consumed_at, a.finished_at, a.last_establish,
+      a.protected_grant IS NOT NULL AS approved, l.state AS link_state
+      FROM commercial_link_attempts a LEFT JOIN commercial_links l ON l.intent_id=a.intent_id AND l.product_account=a.user_id
+      WHERE a.user_id=? ${stateHash ? 'AND a.state_hash=?' : 'AND a.finished_at IS NULL'}
+      LIMIT ${stateHash ? '1' : '2'}`;
+    if (stateHash) return this.statement(query, userId, stateHash).first();
+    const candidates = (await this.statement(query, userId).all()).results ?? [];
+    return candidates.length === 1 ? candidates[0] : null;
+  }
+
   /** Typed evidence of the latest establishment try; the attempt stays retryable until finished or expired. */
   async recordEstablishment(stateHash, outcome) {
     await this.statement('UPDATE commercial_link_attempts SET last_establish=?, last_establish_at=? WHERE state_hash=?', outcome, this.now(), stateHash).run();
@@ -60,8 +72,11 @@ export class D1CommercialStore {
       AND finished_at IS NULL AND expires_at > ? ORDER BY expires_at DESC LIMIT 1`, userId, this.now()).first();
   }
 
-  async finishAttempt(stateHash) {
-    await this.statement("UPDATE commercial_link_attempts SET finished_at=?, protected_grant=NULL, protected_verifier='' WHERE state_hash=?", this.now(), stateHash).run();
+  async finishAttempt(stateHash, outcome = null) {
+    const at = this.now();
+    await this.statement(`UPDATE commercial_link_attempts SET finished_at=?, last_establish=COALESCE(?, last_establish),
+      last_establish_at=CASE WHEN ? IS NULL THEN last_establish_at ELSE ? END, protected_grant=NULL, protected_verifier=''
+      WHERE state_hash=?`, at, outcome, outcome, at, stateHash).run();
   }
 
   async link(linkId) { return this.statement('SELECT * FROM commercial_links WHERE link_id=?', linkId).first(); }

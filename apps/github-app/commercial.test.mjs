@@ -316,6 +316,34 @@ test('null commercial requires readable claimed queued or expired components, wh
   }
 });
 
+test('link attempt standing is account-owned, browser-bound before consent, and survives expiry and denial without exposing protected state', async () => {
+  const source = await fixture();
+  try {
+    const start = () => source.commercial.beginLink({ session: SESSION, method: 'POST', origin: APP });
+    const begun = await start();
+    const browserBinding = begun.headers['Set-Cookie'].match(/^__Host-diffdevil-works-link=([^;]+)/u)[1];
+    const read = (session = SESSION, binding = browserBinding, stateHash = begun.attemptStateHash) => source.commercial.status({ session, linkAttempt: { stateHash, browserBinding: binding } }).then(result => result.body);
+    const before = await commercialBytes(source);
+    assert.deepEqual(await read(), { linked: false, linkAttempt: { standing: 'open' } });
+    assert.deepEqual(await read(OTHER_SESSION), { linked: false, linkAttempt: { standing: 'unknown' } });
+    assert.deepEqual(await read(SESSION, 'A'.repeat(43)), { linked: false, linkAttempt: { standing: 'unknown' } });
+    assert.equal(await commercialBytes(source), before, 'standing reads neither consume nor restart an attempt');
+    source.clock.value = (await source.store.attempt(begun.attemptStateHash)).expires_at;
+    assert.deepEqual(await read(SESSION, null), { linked: false, linkAttempt: { standing: 'expired' } });
+    assert.deepEqual(await source.commercial.status({ session: SESSION, linkAttempt: {} }).then(result => result.body), { linked: false, linkAttempt: { standing: 'expired' } }, 'the retained older departure reads its actual expired attempt');
+    await source.store.maintain();
+    assert.deepEqual(await read(), { linked: false, linkAttempt: { standing: 'unknown' } }, 'missing evidence is not an invented expiry');
+
+    const denied = await start();
+    const deniedBinding = denied.headers['Set-Cookie'].match(/^__Host-diffdevil-works-link=([^;]+)/u)[1];
+    const intent = source.wirt.state.intents.get(new URL(denied.authorizationUrl).pathname.split('/').at(-1));
+    assert.equal((await source.commercial.completeLink({ session: SESSION, state: intent.state, browserBinding: deniedBinding, error: 'access_denied' })).outcome, 'denied');
+    assert.deepEqual(await read(SESSION, null, denied.attemptStateHash), { linked: false, linkAttempt: { standing: 'denied' } });
+    await start(); await start();
+    assert.deepEqual((await source.commercial.status({ session: SESSION, linkAttempt: {} })).body, { linked: false, linkAttempt: { standing: 'unknown' } }, 'an older departure with multiple candidates never guesses which attempt it owns');
+  } finally { await source.runtime.dispose(); }
+});
+
 test('a customer-approved link is browser-bound, PKCE-protected, resumable and seeded from the pull fallback', async () => {
   const source = await fixture();
   try {
@@ -339,6 +367,8 @@ test('a customer-approved link is browser-bound, PKCE-protected, resumable and s
     const lost = await link(source, { owner: 77 });
     assert.equal(new URL(lost.callback.headers.get('location')).searchParams.get('works-link'), 'pending', 'an unknown outcome is not reported as a failure');
     assert.equal(await store.activeLink(USER), null);
+    const pendingAttempt = (await rows(source, 'commercial_link_attempts')).find(attempt => attempt.protected_grant);
+    assert.equal((await source.commercial.status({ session: SESSION, linkAttempt: { stateHash: pendingAttempt.state_hash } })).body.linkAttempt.standing, 'pending', 'an approved retained grant remains pending after the browser cookie is cleared');
     wirt.state.seed = value => projection({ linkId: value.id, worksAccount: String(value.owner), version: 1 });
     const resumed = await call(COMMERCIAL_ROUTES.link, { method: 'POST', headers: browser() });
     assert.deepEqual(await resumed.json(), { ok: true, result: 'linked' }, 'retry reuses the same intent and owner grant; no second consent');

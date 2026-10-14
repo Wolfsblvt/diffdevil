@@ -53,6 +53,7 @@
     "check:app:staging": "node tools/website-docs.mjs && npm run app:icons && node tools/app-command.mjs build --staging && node tools/run-wrangler.mjs deploy --dry-run --config artifacts/app-staging/dist/server/wrangler.json --outdir ../../wrangler-dry-run-app",
     "test:app": "node --test apps/app/tests/*.test.mjs",
     "qa:app": "node apps/app/qa/run.mjs",
+    "qa:app:works-entry": "node apps/app/qa/works-entry.mjs",
     "qa:app:manifest": "node apps/github-app/manifest-qa.mjs"
   },
   "keywords": [

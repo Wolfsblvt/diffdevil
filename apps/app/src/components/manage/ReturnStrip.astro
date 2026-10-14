@@ -22,12 +22,15 @@ const nowLinked = departure?.purpose === 'link' && status?.linked;
 const openSlot = (status?.capacity ?? []).find((slot: any) => !slot.binding);
 const fundable = fundableOrganisations(model);
 const kind = returnOutcome({ departure, status, outcome });
+const linkOutcome = outcome ?? status?.linkAttempt?.standing;
 const steps = (done: number) => [['At Wolfsblvt Works', 0], ['Works confirms', 1], ['Ready in diffdevil', 2]] as [string, number][];
 const linkMessages: Record<string, string> = { pending: 'Works didn\'t answer after you approved. Nothing was charged and no plan changed. Try again: it continues the same link instead of starting over.', denied: 'You didn\'t approve the link at Works. Nothing was charged and no plan changed.', expired: 'The link attempt expired before it finished. Nothing was charged; start it again when you like.', conflict: 'Works already links this diffdevil account elsewhere. Nothing was charged.', ended: 'Works reports this link as ended. Start again at Works if you want to link.', invalid: 'The return from Works did not match the attempt this browser started. Nothing was charged; start again from here.', 'session-required': 'Your diffdevil session ended before Works returned. Sign in and start the link again.', failed: 'Works could not finish the link. Nothing was charged; try again.' };
 ---
 {kind && (
   kind === 'link-failed'
-    ? <div class="m-return" role="status"><Icon name="info" size={20} /><div><span class="k">Linking Wolfsblvt Works</span><b>The link didn't finish</b><p>{linkMessages[outcome!] ?? linkMessages.failed}</p></div><div class="m-acts"><ActionForm action="link" label="Try again" class="pri" external /><ActionForm action="dismiss-return" label="Dismiss" class="ghost" /></div></div>
+    ? <div class="m-return" role="status" data-link-standing={linkOutcome}><Icon name="info" size={20} /><div><span class="k">Linking Wolfsblvt Works</span><b>The link didn't finish</b><p>{linkMessages[linkOutcome!] ?? linkMessages.failed}</p></div><div class="m-acts"><ActionForm action="link" label="Try again" class="pri" external /><ActionForm action="dismiss-return" label="Dismiss" class="ghost" /></div></div>
+  : kind === 'link-open'
+    ? <div class="m-return" role="status" data-link-standing={status?.linkAttempt?.standing ?? 'unknown'}><Icon name="info" size={20} /><div><b>Linking Wolfsblvt Works</b><p>The link didn't finish</p></div><div class="m-acts"><ActionForm action="dismiss-return" label="Dismiss" class="ghost" /></div></div>
   : kind === 'done'
     ? <div class="m-return done" role="status"><Icon name="circle-check" size={20} /><div><span class="k">Back from Wolfsblvt Works</span><b>{nowLinked ? 'Linked to Wolfsblvt Works' : slotAdded ? 'A new organisation slot is ready' : 'Works confirmed the change'}</b><p>{left}. Works confirmed it{slotAdded ? '; nothing runs until you choose what it funds' : ''}.</p>
         <div class="m-steps3">{steps(2).map(([label]) => <span class="done"><Icon name="check" size={12} /> {label}</span>)}</div></div>
