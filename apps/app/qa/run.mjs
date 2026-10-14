@@ -35,7 +35,8 @@ import { appBuildTarget } from '../build-target.mjs';
 
 const target = appBuildTarget();
 const IDENTITY_ONLY = process.argv.includes('--identity');
-const OUT = join(target.artifacts, 'qa', ...(IDENTITY_ONLY ? ['identity'] : []));
+const AUTHORITY_ONLY = process.argv.includes('--authority');
+const OUT = join(target.artifacts, 'qa', ...(IDENTITY_ONLY ? ['identity'] : AUTHORITY_ONLY ? ['authority'] : []));
 const APP_PORT = Number(process.env.DIFFDEVIL_APP_QA_PORT ?? (target.name === 'staging' ? 4512 : 4412));
 const GITHUB_PORT = Number(process.env.DIFFDEVIL_APP_QA_GITHUB_PORT ?? (target.name === 'staging' ? 4533 : 4433));
 // Chromium accepts Secure (__Host-) cookies from http://localhost, not from a loopback IP, so the browser origin is localhost; the Worker still binds 127.0.0.1.
@@ -370,7 +371,30 @@ async function qualifyPages(label, { pro }) {
 }
 
 try {
-  if (IDENTITY_ONLY) {
+  if (AUTHORITY_ONLY) {
+    for (const [name, status, role, state] of [
+      ['unavailable', 403, 'admin', 'active'], ['pending', 200, 'admin', 'pending'],
+      ['missing', 200, '', 'active'], ['member', 200, 'member', 'active'], ['administrator', 200, 'admin', 'active']
+    ]) {
+      github.state.membershipStatus = status;
+      github.state.roles.set('parser-guild', role);
+      github.state.membershipStates.set('parser-guild', state);
+      await startWorker(undefined, STATE, { commercial: COMMERCIAL_PRO });
+      await signIn();
+      await go('/manage');
+      const reader = page.locator('[data-readers] .m-nsrow').filter({ hasText: 'parser-guild' });
+      const text = name === 'administrator' ? '' : await reader.innerText();
+      check(`${name}: Manage reflects the observed organisation authority`, name === 'administrator'
+        ? await reader.count() === 0 && await page.locator('[data-namespace-row="parser-guild"]').count() === 1
+        : name === 'unavailable' ? /HTTP 403/u.test(text) && /Administration is unconfirmed/u.test(text)
+        : name === 'pending' ? /membership is pending/u.test(text)
+        : name === 'missing' ? /list did not include/u.test(text)
+        : /active member role/u.test(text), text);
+      check(`${name}: authority explanation fits the existing desktop layout`, await overflow() <= 0, await offenders());
+      await shot(`authority-${name}`);
+      await stopWorker();
+    }
+  } else if (IDENTITY_ONLY) {
     await startWorker(undefined, STATE, { commercial: COMMERCIAL_PRO });
     await signIn();
     for (const [name, path] of [['overview', '/'], ['manage', '/manage']]) {
@@ -678,7 +702,7 @@ try {
   githubServer.closeAllConnections?.();
   githubServer.close();
 }
-await writeFile(join(OUT, 'results.json'), JSON.stringify({ origin: ORIGIN, scope: IDENTITY_ONLY ? 'identity' : PARTICIPATION_ONLY ? 'participation' : 'full', target: target.name, seeded: seeded.written, dense: DENSE && !PARTICIPATION_ONLY && !IDENTITY_ONLY, charts: chartTelemetry, results, failures, consoleErrors, pageErrors, external }, null, 2));
+await writeFile(join(OUT, 'results.json'), JSON.stringify({ origin: ORIGIN, scope: AUTHORITY_ONLY ? 'authority' : IDENTITY_ONLY ? 'identity' : PARTICIPATION_ONLY ? 'participation' : 'full', target: target.name, seeded: seeded.written, dense: DENSE && !PARTICIPATION_ONLY && !IDENTITY_ONLY && !AUTHORITY_ONLY, charts: chartTelemetry, results, failures, consoleErrors, pageErrors, external }, null, 2));
 await writeFile(join(OUT, 'worker.log'), workerLog);
 console.log(`${PARTICIPATION_ONLY ? 'Participation: ' : ''}${results.filter(result => result.ok).length} of ${results.length} checks passed; screenshots and results in ${OUT}`);
 if (failures.length) { console.error(failures.map(failure => ` ✗ ${failure}`).join('\n')); process.exit(1); }

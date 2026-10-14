@@ -12,7 +12,7 @@ import SlotCells from '../../components/manage/SlotCells.astro';
 import OrgSlots from '../../components/manage/OrgSlots.astro';
 import AllowanceGroups from '../../components/manage/AllowanceGroups.astro';
 import { loadManage } from '../../lib/manage/model.mjs';
-import { capacityWord, capacityTone, namespacePath } from '../../lib/manage/states.mjs';
+import { capacityWord, capacityTone, namespacePath, readerAuthority } from '../../lib/manage/states.mjs';
 import { projectionKey, presentProjection, worksDestinations, formatMoney, fmtDay } from '../../lib/manage/works.mjs';
 
 const runtime = Astro.locals.app;
@@ -73,8 +73,8 @@ const renewsOn = fmtDay(status?.commercial?.nextRenewal?.on);
     </section>}
 
     {model.readers.length > 0 && <section class="m-sec" data-readers>
-      <header><h2>Read-only for you</h2><span class="d">You read these with their own plan. Someone else manages them.</span></header>
-      <div class="b flush">{model.readers.map((namespace: any) => <div class="m-nsrow"><span class="m-nsname"><Avatar login={namespace.login} kind={namespace.kind} /><b>{namespace.login}</b><PlanChip plan={namespace.plan} /></span><span class="m-capnote">{namespace.delegation ? `You are named ${namespace.delegation.role === 'account-admin' ? 'Account administrator' : 'Repository administrator'} here, but ${namespace.login} is not on Business right now, so the delegation waits.` : namespace.plan !== 'Free' ? `Funded by its owner. You get its ${namespace.plan} features without paying.` : 'Free. Managed by its own administrator.'}</span><span></span><a class="m-go" href={`/?s=${encodeURIComponent(`@${namespace.login}`)}`}>Activity <Icon name="arrow-right" size={13} /></a></div>)}</div>
+      <header><h2>{model.readers.some((namespace: any) => namespace.role === 'unknown') ? 'Read access · administration unconfirmed' : 'Read-only for you'}</h2><span class="d">You read these with their own plan. Administration follows your current GitHub authority.</span></header>
+      <div class="b flush">{model.readers.map((namespace: any) => <div class="m-nsrow" data-namespace-authority={namespace.role}><span class="m-nsname"><Avatar login={namespace.login} kind={namespace.kind} /><b>{namespace.login}</b><PlanChip plan={namespace.plan} /></span><span class="m-capnote">{readerAuthority(namespace)}</span><span></span><a class="m-go" href={`/?s=${encodeURIComponent(`@${namespace.login}`)}`}>Activity <Icon name="arrow-right" size={13} /></a></div>)}</div>
     </section>}
 
     <section class="m-sec" data-attention>

@@ -95,6 +95,26 @@ The Worker needs the managed App's D1 database (`APP_DB`, every migration applie
 
 Per page view the App performs one GitHub token check, one installations read, one repositories read per installation, one organisation-membership read per organisation and one recent-pull-requests read per repository in scope (titles only, scopes of up to 25 repositories), each cached for a minute per isolate; then one analytical read for the page's surface (two on the Overview and Files for a Pro scope). Installation accounts are recorded from webhook identities; an installation observed before that column existed resolves to no namespace until its next delivery, which reads as Free.
 
+Organisation authority comes from the signed-in person's App user token and the
+paginated [current-user membership list](https://docs.github.com/en/rest/orgs/members#list-organization-memberships-for-the-authenticated-user).
+GitHub documents that route without additional permissions; the single-organisation
+membership route instead requires Members read. The App does not substitute its
+installation token, a CLI credential, repository administration or a stored delegation
+for the person's current organisation role. Manage distinguishes an active non-admin
+role, pending membership, a completed list without the requested organisation and an
+unconfirmed provider read. Unknown authority grants no namespace administration.
+Failures carry only a fixed reason/code and an HTTP status when observed, and are not
+cached, so refreshing can retry. Successful target role/state/numeric identity remains
+transient in the existing one-minute display cache; no full membership response, token,
+exception message or unrelated organisation is retained in logs, history or storage.
+Action-time authority and repository write/delegation checks remain separate.
+
+`node apps/app/qa/run.mjs --authority` exercises these native Manage states against the
+built Worker and a GitHub double; run it with `DIFFDEVIL_APP_TARGET=staging` for the
+separate staging build. Screenshots and results use each target's `qa/authority/`
+directory. This is local source/consumer evidence, not real GitHub authority or proof
+that a missing App permission caused a live refusal.
+
 ## Boundaries kept
 
 The build carries [third-party notices](THIRD-PARTY-NOTICES.txt) at `/third-party-notices.txt`, including the private extension's additional notices when composed. This records dependency licence inputs and does not publish an App release.

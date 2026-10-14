@@ -10,6 +10,7 @@ import { planLabel } from './entitlement.mjs';
 
 const TTL_MS = 60_000;
 const TITLE_SCOPE_LIMIT = 25;
+const ROLE_ERRORS = new Set(['E_GITHUB_RATE_LIMIT', 'E_PROVIDER_NOT_FOUND', 'E_PROVIDER_UNAUTHORIZED', 'E_PROVIDER_REQUEST', 'E_PROVIDER_RESPONSE']);
 
 /** A per-isolate, per-user TTL cache for transient provider context. Expiry is the only invalidation. */
 export function createContextCache(now = () => Date.now()) {
@@ -46,17 +47,29 @@ export async function resolveViewer({ reads, actor, store, entitlement, cache })
   const owners = [...new Set(repositories.map(repository => repository.owner))];
   const roles = new Map(await Promise.all(owners.map(async owner => {
     const kind = repositories.find(repository => repository.owner === owner)?.accountType === 'Organization' ? 'org' : 'user';
-    if (kind === 'user') return [owner, owner === profile.login ? 'self' : 'other'];
-    return [owner, await cache.get(`role:${userId}:${owner}`, () => reads.organizationRole(owner).catch(() => 'unknown'))];
+    if (kind === 'user') return [owner, { role: owner === profile.login ? 'self' : 'other' }];
+    let observation;
+    try {
+      observation = await cache.get(`role:${userId}:${owner}`, () => typeof reads.organizationAuthority === 'function'
+        ? reads.organizationAuthority(owner) : reads.organizationRole(owner).then(role => ({ role })));
+    } catch (error) {
+      // Failed reads are not cached: an ordinary refresh can retry. Only fixed codes and HTTP
+      // status are display evidence, never bodies, exception messages, credentials or siblings.
+      observation = { role: 'unknown', authorityIssue: {
+        code: ROLE_ERRORS.has(error?.code) ? error.code : 'E_PROVIDER_UNAVAILABLE',
+        status: Number.isInteger(error?.status) && error.status >= 100 && error.status <= 599 ? error.status : null
+      } };
+    }
+    return [owner, observation];
   })));
   // A namespace's plan is read through one of its repositories; the viewer's own plan through their account.
   const viewerPlan = await entitlement.planOfViewer({ userId });
   const namespaces = await Promise.all(owners.map(async owner => {
-    const role = roles.get(owner);
+    const { role, membership, authorityIssue } = roles.get(owner);
     const kind = role === 'self' || role === 'other' ? 'user' : 'org';
     const members = repositories.filter(repository => repository.owner === owner);
     const plan = await entitlement.planOfRepository(members[0].repositoryId, { userId });
-    return { login: owner, kind, yours: role === 'self' || role === 'admin', role, plan: planLabel(plan), planStanding: plan, repositories: members };
+    return { login: owner, kind, yours: role === 'self' || role === 'admin', role, ...(membership !== undefined ? { membership } : {}), ...(authorityIssue ? { authorityIssue } : {}), plan: planLabel(plan), planStanding: plan, repositories: members };
   }));
   namespaces.sort((a, b) => Number(b.yours) - Number(a.yours) || (a.login === profile.login ? -1 : b.login === profile.login ? 1 : a.login.localeCompare(b.login)));
   return { userId, login: profile.login, avatarUrl: profile.avatarUrl, plan: planLabel(viewerPlan), planStanding: viewerPlan, namespaces, repositories, entitlementSource: entitlement.source, entitlementNote: entitlement.describe() };
