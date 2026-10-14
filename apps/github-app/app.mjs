@@ -10,7 +10,7 @@ import { stagingInstallationAccounts } from './staging-admission.mjs';
 import { DEFAULT_SIZE_POLICY, resolveEffectivePolicy, validateRepositoryConfiguration } from './configuration.mjs';
 import { checkSummary } from '../shared/check-summary.mjs';
 import { analyticalHttp } from './analytical-http.mjs';
-import { collectAnalyticalPullRequest, captureDefaultBranchSizes, defaultBranch, observeFileSize } from './analytical-collection.mjs';
+import { collectAnalyticalPullRequest, captureDefaultBranchSizes, defaultBranch, mergedCommit, observeFileSize } from './analytical-collection.mjs';
 import { analyticalKit } from './analytical-data.mjs';
 import { D1HistoryJobStore, resumeHistoryJobs, runHistoryJob } from './history-jobs.mjs';
 import { COMMERCIAL_LINK_COOKIE, commercialFromEnv } from './commercial.mjs';
@@ -64,6 +64,8 @@ function failureDisposition(error) {
 }
 function appError(code) { return Object.assign(new Error(code), { code }); }
 function stable(value, fallback = 'unknown') { return typeof value === 'string' && /^[A-Za-z0-9._-]{1,200}$/u.test(value) ? value : fallback; }
+const commitSha = value => typeof value === 'string' && /^[0-9a-f]{40,64}$/u.test(value);
+const timestamp = value => typeof value === 'string' && Number.isFinite(Date.parse(value)) ? Date.parse(value) : null;
 function repairProjection(error) {
   const diagnostics = Array.isArray(error?.diagnostics) ? error.diagnostics.map(value => ({ code: stable(value?.code, 'E_DIAGNOSTIC'), phase: stable(value?.phase) })) : [];
   const observations = Array.isArray(error?.observations) ? error.observations.map(value => ({ kind: stable(value?.kind), outcome: stable(value?.outcome), request: stable(value?.request), readback: stable(value?.readback) })) : [];
@@ -271,7 +273,17 @@ async function refreshAfterClose(dependencies, envelope, client, target, author)
     // A truncated file list cannot show that the policy was left alone.
     if (files.truncated !== true && !files.items.some(file => file?.filename === POLICY_PATH || file?.previous_filename === POLICY_PATH)) return { neighbour };
     // Keyed by the merge commit, like the default-branch push that delivers the same change, so both are one refresh.
-    const causeId = typeof pull.merge_commit_sha === 'string' && /^[0-9a-f]{40,64}$/u.test(pull.merge_commit_sha) ? `policy-${pull.merge_commit_sha}` : envelope.deliveryId;
+    const canResolveTimeline = timestamp(pull.merged_at) !== null && Number.isSafeInteger(pull.number) && pull.number > 0;
+    const canResolveIdentity = commitSha(pull.merge_commit_sha) || canResolveTimeline;
+    let mergeCommit = null;
+    if (canResolveIdentity) {
+      try {
+        mergeCommit = await mergedCommit(client, target.repository, pull);
+      } catch {
+        // Without a reliable timeline identity, the unique delivery ID still preserves this refresh.
+      }
+    }
+    const causeId = mergeCommit ? `policy-${mergeCommit}` : envelope.deliveryId;
     return { neighbour, policy: await enqueueBriefRefresh(dependencies, envelope, 'open', 'policy', causeId) };
   } catch { return { status: 'failed' }; }
 }

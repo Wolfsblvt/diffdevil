@@ -249,8 +249,11 @@ test('a merged trusted-policy change refreshes every open brief and settings cha
   repository.add(7); repository.add(8);
   subject.state = 'closed';
   const mergeCommit = 'c'.repeat(40);
+  const mergedAt = '2026-10-10T12:00:00.000Z';
   subject.before = (call, state) => call.method === 'GET' && call.path === '/repos/example/repository/pulls/42' && call.accept !== 'application/vnd.github.diff'
-    ? json({ number: 42, state: 'closed', merged: true, merge_commit_sha: mergeCommit, head: { sha: state.head }, base: { sha: state.base, repo: { full_name: 'example/repository' } }, changed_files: state.files.length }) : undefined;
+    ? json({ number: 42, state: 'closed', merged: true, merged_at: mergedAt, head: { sha: state.head }, base: { sha: state.base, repo: { full_name: 'example/repository' } }, changed_files: state.files.length })
+    : call.method === 'GET' && call.path === '/repos/example/repository/issues/42/timeline'
+      ? json([{ event: 'merged', commit_id: mergeCommit, created_at: mergedAt }]) : undefined;
   const merged = await deliverEnvelope(repository, pullEvent(42, 'closed'), standard);
   const policy = merged.queue.sent.filter(item => item.action === 'policy');
   assert.deepEqual(policy.map(item => [item.targets, item.deliveryId]), [['open', `brief-refresh-part:policy:policy-${mergeCommit}:17:0`]]);
@@ -258,9 +261,21 @@ test('a merged trusted-policy change refreshes every open brief and settings cha
   const push = normalizeWebhookEvent('push', { installation: { id: 9 }, repository: { id: 17, default_branch: 'main' }, ref: 'refs/heads/main', after: mergeCommit,
     commits: [{ added: [], modified: ['.diffdevil.yml'], removed: [] }] }, '2026-10-10T12:00:00.000Z', 'push-delivery');
   assert.equal(push.deliveryId, policy[0].deliveryId);
+  const otherPolicyPush = normalizeWebhookEvent('push', { installation: { id: 9 }, repository: { id: 17, default_branch: 'main' }, ref: 'refs/heads/main', after: 'e'.repeat(40),
+    commits: [{ added: [], modified: ['.diffdevil.yml'], removed: [] }] }, '2026-10-10T12:00:00.000Z', 'other-push');
+  assert.notEqual(otherPolicyPush.deliveryId, policy[0].deliveryId, 'a different policy commit keeps its own refresh identity');
   const applied = await deliverEnvelope(repository, policy[0], standard);
   assert.deepEqual(applied.calls.filter(row => row[0] === 'finish').map(row => row[1]), ['complete', 'complete'], 'PRs 7 and 8 are evaluated again; closed PR 42 is not');
   assert.equal(repository.owned(7).length, 1); assert.equal(repository.owned(8).length, 1);
+
+  const readTimeline = subject.before;
+  subject.before = (call, state) => call.method === 'GET' && call.path === '/repos/example/repository/issues/42/timeline'
+    ? json({ message: 'unavailable' }, 503) : readTimeline(call, state);
+  const unavailable = await deliverEnvelope(repository, pullEvent(42, 'closed', 'timeline-unavailable'), standard);
+  const fallbackPolicy = unavailable.queue.sent.filter(item => item.action === 'policy');
+  assert.deepEqual(fallbackPolicy.map(item => [item.causeId, item.deliveryId]), [[
+    'timeline-unavailable', 'brief-refresh-part:policy:timeline-unavailable:17:0'
+  ]], 'an unavailable merge timeline preserves the unique delivery-ID refresh');
 
   // Settings: the admission service enqueues the cause; the queue lists the open briefs, admission reads nothing.
   const queue = captureQueue();
