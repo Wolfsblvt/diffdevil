@@ -317,7 +317,11 @@ known endpoint, environment, account-alias and unselected authentication
 overrides. It preserves the supported `CLOUDFLARE_API_TOKEN`,
 `CLOUDFLARE_API_KEY` and `CLOUDFLARE_EMAIL` sources, `WRANGLER_HOME`, and other
 ordinary process inputs. It does not establish a vault record or recovery
-route. Native output is not forwarded, disk logs/telemetry are disabled, and no
+route. Structured provider reads enable Wrangler's JSON output at `log`. The
+helper recognizes only its native version-update notice at stream boundaries,
+then strictly parses the complete JSON; other output refuses target qualification.
+Credential writes retain `error` logging. Native output is not forwarded,
+disk logs/telemetry are disabled, and no
 temporary secret carrier exists to clean up. Operator-owned input files remain
 intact. Preflight reads
 back the latest uploaded version's `APP_DB` against the selected configuration;
