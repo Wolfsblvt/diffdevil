@@ -345,8 +345,10 @@ export function createWirtClient({ origin, oauthClientId, callbackUrl, signing, 
 
   return {
     origin: base,
-    async intent({ productAccount, challenge, state }) {
-      const result = await call('/api/wirt/diffdevil/link-intents', { method: 'POST', json: { product_account: productAccount, challenge, state } });
+    async intent({ productAccount, productAccountLabel, challenge, state }) {
+      const result = await call('/api/wirt/diffdevil/link-intents', { method: 'POST', json: {
+        product_account: productAccount, product_account_label: productAccountLabel, challenge, state
+      } });
       if (result.status !== 201) throw wirtError('E_COMMERCIAL_INTENT', { status: result.status });
       const value = parseJsonBytes(result.bytes);
       if (!object(value) || typeof value.intent !== 'string' || !uuidPattern.test(value.intent) || typeof value.authorization_url !== 'string') throw wirtError('E_COMMERCIAL_INTENT');

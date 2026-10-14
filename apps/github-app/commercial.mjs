@@ -398,9 +398,19 @@ export function createCommercialService({ store, wirt, signing, authorization, p
         if (outcome === 'linked') return { outcome, headers: protectedHeaders() };
         if (outcome === 'pending') throw refusal('E_COMMERCIAL_LINK_PENDING', 503);
       }
+      let productAccountLabel;
+      try {
+        productAccountLabel = await authorization.read({ session }, async (reads, viewer) => {
+          const profile = await reads.profile();
+          // This is a fresh display fact for this numeric principal, never a browser label or an identity lookup.
+          if (viewer.userId !== userId || profile?.id !== userId || typeof profile.login !== 'string'
+            || !/^[A-Za-z0-9-]{1,39}$/u.test(profile.login)) throw refusal('E_COMMERCIAL_UNAVAILABLE', 503);
+          return profile.login;
+        });
+      } catch { throw refusal('E_COMMERCIAL_UNAVAILABLE', 503); }
       const verifier = opaqueValue(), state = opaqueValue(), browserBinding = opaqueValue();
       let intent;
-      try { intent = await wirt.intent({ productAccount: userId, challenge: await s256(verifier), state }); }
+      try { intent = await wirt.intent({ productAccount: userId, productAccountLabel, challenge: await s256(verifier), state }); }
       catch { throw refusal('E_COMMERCIAL_UNAVAILABLE', 503); }
       const stateHash = await sha256Hex(state), expiresAt = later(ATTEMPT_MS);
       await store.createLinkAttempt({ stateHash, browserHash: await sha256Hex(browserBinding), userId, intentId: intent.intent,

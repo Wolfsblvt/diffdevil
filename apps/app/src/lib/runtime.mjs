@@ -96,7 +96,7 @@ export function createAppRuntime(env, { fetch = globalThis.fetch, now, premium =
   // The authorization service is composed first so the commercial consumer and the analytics route can share it.
   let auth;
   // The consumer also observes a funder's authority without a session and carries the Account page's disconnect and reconnect.
-  const authorizationRef = { analyticalQuery: (...args) => auth.analyticalQuery(...args), authenticate: (...args) => auth.authenticate(...args), organisationAuthority: (...args) => auth.organisationAuthority(...args),
+  const authorizationRef = { analyticalQuery: (...args) => auth.analyticalQuery(...args), authenticate: (...args) => auth.authenticate(...args), read: (...args) => auth.read(...args), organisationAuthority: (...args) => auth.organisationAuthority(...args),
     observeOrganisationAuthority: (...args) => auth.observeOrganisationAuthority(...args), revokeAuthorization: (...args) => auth.revokeAuthorization(...args), reconnectService: (...args) => auth.reconnectService(...args) };
   let commercial, commercialSource = 'none';
   // Invalid or absent commercial configuration leaves entitlement at Free and the commercial routes unavailable; it never blocks pages.

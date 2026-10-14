@@ -17,6 +17,30 @@ the local stand-in stays same-origin. The client still validates the returned
 intent ID, exact Works origin and consent path before creating the local attempt.
 No request parameter or provider-returned URL selects the browser allowlist.
 
+New link intents include `product_account_label` in the existing signed
+`POST /api/wirt/diffdevil/link-intents` JSON alongside `product_account`, `challenge`
+and `state`. The commercial service uses the authorization service's existing
+session-bound `read`/`profile` route to fetch the current GitHub handle without the
+dashboard's profile cache. The profile's numeric ID must match the authenticated
+initiator; a missing, malformed, mismatched or unavailable profile returns
+`503 E_COMMERCIAL_UNAVAILABLE` before creating an intent or local attempt. Browser
+body/query labels are not read. The raw handle (without an added `@`) is display
+meaning only; the numeric product account remains authority. The exact JSON body,
+including this label, uses the existing signature grammar, keys and client.
+No local schema, stored handle, permission or login method is added.
+
+This sender must be paired with Wirt's recognizable-consent consumer, which retains
+the authenticated label on that exact intent. The original consumer validates the
+numeric account, challenge and state, then stores only those known fields. It
+accepts but discards the added label, so request acceptance there does not establish
+recognizable consent. Conversely, a sender without the field cannot supply recognizable
+consent to the repaired consumer, and a browser label is no substitute. New consent
+therefore needs the accepted matching producer/consumer cut before customer use;
+source and doubled-provider checks do not prove that installed pairing. Existing
+attempts are neither rewritten nor relabelled. An approved pending establishment
+still resumes its original intent and retained owner grant before any new profile
+read, preserving its existing recovery path without another consent.
+
 A link departure references its server-owned attempt in the existing departure
 snapshot. The signed-in account's status read derives only public lifecycle
 standing from that exact account/attempt; an older departure without a reference
