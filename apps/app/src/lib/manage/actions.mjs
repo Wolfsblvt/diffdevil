@@ -291,7 +291,7 @@ export async function handleManageAction(request, { runtime, session, viewer }) 
           await update(repository.repositoryId, { revision: latest.revision, history: { enabled: true, retentionDays: runtime.config.retentionDays } });
           return done('history-on');
         }
-        if (mode === 'labels' && current.history.enabled) { const latest = await admission(repository.repositoryId); await update(repository.repositoryId, { revision: latest.revision, history: { enabled: false } }); return done('history-off'); }
+        if (mode === 'labels' && current.history.enabled) { const latest = await admission(repository.repositoryId); await update(repository.repositoryId, { revision: latest.revision, history: { enabled: false, stopCollecting: true } }); return done('history-off'); }
         return done('enabled');
       }
       case 'release': { const repository = repositoryOf(); await admission(repository.repositoryId); await runtime.manage.deselect(repository.repositoryId); return done('released'); }
@@ -321,7 +321,7 @@ export async function handleManageAction(request, { runtime, session, viewer }) 
           if (places?.of !== null && places?.of !== undefined && !repository.standing?.historyEnabled && places.used >= places.of) return done('history-allowance-full');
         }
         if (enabled) await runtime.manage.select(repository.repositoryId, viewer.userId);
-        await update(repository.repositoryId, { revision: current.revision, history: enabled ? { enabled: true, retentionDays: runtime.config.retentionDays } : { enabled: false } });
+        await update(repository.repositoryId, { revision: current.revision, history: enabled ? { enabled: true, retentionDays: runtime.config.retentionDays } : { enabled: false, stopCollecting: true } });
         if (!enabled && !repository.standing?.executionActive) await runtime.manage.deselect(repository.repositoryId);
         return done(enabled ? 'history-on' : 'history-off');
       }

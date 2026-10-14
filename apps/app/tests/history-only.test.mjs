@@ -125,6 +125,7 @@ test('consented history imports and repairs three current-API comparisons with r
   const off = (await app.store.repositoryStandings([repositoryId])).get(repositoryId);
   assert.equal(off.historyEnabled, false);
   assert.equal(off.historyConsented, true, 'Stop collecting stops new collection without revoking history consent');
+  assert.equal(off.historyReason, null);
   assert.equal(off.historyCollectionEnabled, false);
   assert.equal(off.historyReadable, true);
   assert.equal(off.selected, false);
