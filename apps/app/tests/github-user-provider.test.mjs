@@ -120,7 +120,7 @@ test('malformed membership evidence does not become negative authority', async (
     error.code === 'E_PROVIDER_RESPONSE' && error.status === 200 && !error.message.includes('fixture-private'));
 });
 
-test('a subsequent authority encounter observes demotion and removal rather than retaining an admin result', async () => {
+test('a subsequent authority encounter observes demotion and leaves omission or removal unconfirmed', async () => {
   let rows = [membership(7001, 'org')];
   const { provider } = fixture(() => Response.json(rows));
   assert.equal(await provider.organizationRole({ material, organization: 'org' }), 'admin');
