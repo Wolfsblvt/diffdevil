@@ -30,7 +30,7 @@ No history promise supplies infinite physical storage, perpetual operation or pe
 
 ## Execution, history and enrichment are separate
 
-Installation reach, selected execution and history enablement are distinct. An authorised administrator explicitly enables history with a clear explanation of retained data, coverage, export and deletion. Labelling-only operation does not create permanent history.
+Installation reach, selected execution, history collection and retained-history reads are distinct. An authorised administrator explicitly enables collection with a clear explanation of retained data, coverage, export and deletion. Current repository access governs reads of existing rows; current history consent governs new collection. Stopping collection leaves retained history readable until expiry or explicit deletion. Labelling-only operation does not create permanent history.
 
 History-enabled Free retains permitted paths and numerical per-file facts, including policy-excluded observations. It does not expose premium cross-time file exploration or collect all premium enrichment by default. Pro/Business or an applicable repository grant enable the richer processing and experience.
 
@@ -150,7 +150,7 @@ Imports/recalculation never replay old labels, comments or closed-PR replies. A 
 
 ## Export, deletion and ending
 
-Stopping collection and deleting retained history are separate. A processing pause does not erase data or change billing. An export is documented, versioned and currently authorised; it contains permitted measurements, names where authorised, versions, references and evidence/coverage.
+Stopping collection and deleting retained history are separate. Stopping prevents new history writes, while already-retained data remains readable under current repository access and its retention/deletion boundaries. A processing pause does not erase data or change billing. An export is documented, versioned and currently authorised; it contains permitted measurements, names where authorised, versions, references and evidence/coverage.
 
 Analytical export is not a raw database dump. Do not include credentials, source, account configuration or audit by accident. Configuration/audit exports have distinct authority and purpose.
 

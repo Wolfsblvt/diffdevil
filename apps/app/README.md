@@ -120,7 +120,7 @@ that a missing App permission caused a live refusal.
 The build carries [third-party notices](THIRD-PARTY-NOTICES.txt) at `/third-party-notices.txt`, including the private extension's additional notices when composed. This records dependency licence inputs and does not publish an App release.
 
 - Reads are authorised per request from the person's current GitHub reach; possession of a link is not access, and a repository or file handle outside the authorised set is refused, not rendered.
-- History is served only while a repository's consent is current and no tombstone blocks it, on both the named and the pathless basis.
+- Retained history is served under current repository access and retention/deletion rules; collection consent gates new rows. An explicit Stop collecting keeps existing rows readable, while tombstones and expiry still apply.
 - Entitlement is the service's answer: a namespace's plan inside it, the viewer's plan across all repositories, premium aggregation only over premium-funded repositories.
 - A file-detail address never carries a path, a document title never names a file, documents carry a `same-origin` referrer policy and the JSON routes `no-referrer`, and the App logs no request URL, query, body or path.
 - Every protected response carries `Cache-Control: private, no-store`, a `default-src 'none'` content-security policy and the other browser security headers.

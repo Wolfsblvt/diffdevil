@@ -200,8 +200,9 @@ export class D1AppStore {
     const pauseReason = historyCollectionPause(row);
     const tombstone = await this.statement('SELECT 1 AS blocked FROM deletion_tombstones WHERE scope IN (?, ?) AND reapply_until > ?', `history:${repositoryId}`, `repository:${repositoryId}`, this.now()).first();
     const admitted = row?.state === 'active' || (independentExecution && row?.state === 'pending-enable');
-    const readable = await this.repositoryAdmitted(repositoryId) && !tombstone?.blocked && row?.history_enabled === 1 && row?.history_consent_reason === null && admitted && row?.access_state === 'available' && row?.installation_state === 'active';
-    return { enabled: readable && !pauseReason, readable, retentionDays: boundedDays(row?.retention_days), pauseReason };
+    const consented = row?.history_consent_reason === null;
+    const readable = await this.repositoryAdmitted(repositoryId) && !tombstone?.blocked && consented && admitted && row?.access_state === 'available' && row?.installation_state === 'active';
+    return { enabled: row?.history_enabled === 1 && consented && readable && !pauseReason, readable, retentionDays: boundedDays(row?.retention_days), pauseReason };
   }
 
   async executionAllowed(repositoryId) {
@@ -516,7 +517,7 @@ export class D1AppStore {
     await this.statement("UPDATE repairs SET state='complete', completed_at=? WHERE repair_id=? AND state='open'", this.now(), `analytical:${repositoryId}:${pullRequest}`).run();
   }
 
-  /** Current consent and expiry apply to the complete PR record, including its named numerical rows. */
+  /** Current access, opt-out, deletion tombstones and expiry govern retained PR reads; consent governs collection. */
   async analyticalRecords(repositoryId) {
     if (!(await this.historySettings(repositoryId, { independentExecution: true })).readable) return [];
     const result = await this.statement(`SELECT record_json FROM analytical_pull_requests WHERE repository_id=?

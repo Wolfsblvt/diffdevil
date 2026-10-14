@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
 /**
  * Read-only D1 access for the App experience. It reads what the managed App already
- * retains: repository standing and the opted-in, pathless numeric history. It writes
- * nothing, serves a repository's history only while that repository's history consent is
- * current, and never infers names, authors or merge facts from numeric rows.
+ * retains: repository standing and pathless numeric history. It writes nothing, serves
+ * retained history under current repository access and retention/deletion rules, and never
+ * infers names, authors or merge facts from numeric rows. History consent governs collection.
  */
 
 import { historyCollectionPause } from '../../../github-app/history-standing.mjs';
@@ -43,13 +43,14 @@ export class D1AppReadStore {
       for (const row of rows.results ?? []) {
         const executionActive = row.state === 'active' && row.access_state === 'available' && row.installation_state === 'active' && row.execution_consent_reason === null;
         const pauseReason = historyCollectionPause(row);
-        const historyReadable = row.history_enabled === 1 && row.history_consent_reason === null && ['active', 'pending-enable'].includes(row.state) && row.access_state === 'available' && row.installation_state === 'active' && !row.tombstoned;
-        const historyEnabled = historyReadable && !pauseReason;
+        const historyConsented = row.history_consent_reason === null && !row.tombstoned;
+        const historyReadable = historyConsented && ['active', 'pending-enable'].includes(row.state) && row.access_state === 'available' && row.installation_state === 'active' && !row.tombstoned;
+        const historyEnabled = row.history_enabled === 1 && historyConsented && historyReadable && !pauseReason;
         const removed = ['offboarding', 'removed'].includes(row.state) || row.access_state === 'removed';
         standings.set(row.repository_id, {
           repositoryId: row.repository_id, installationId: row.installation_id, state: row.state, accessState: row.access_state, installationState: row.installation_state,
           executionActive, executionReason: row.execution_consent_reason ?? null, executionOrigin: row.execution_consent_origin ?? null, historyEnabled, historyReason: row.history_consent_reason ?? null,
-          historyConsented: row.history_enabled === 1 && row.history_consent_reason === null && !row.tombstoned, historyReadable, historyPauseReason: pauseReason,
+          historyConsented, historyCollectionEnabled: row.history_enabled === 1, historyReadable, historyPauseReason: pauseReason,
           historyOrigin: row.history_consent_origin ?? 'unknown', historyActorId: row.history_consent_actor_id ?? null,
           retentionDays: boundedDays(row.retention_days), tombstoned: Boolean(row.tombstoned), writerStanding: row.writer_standing ?? 'unverified', revision: row.settings_revision ?? 0,
           selected: Boolean(row.selected_at) && !removed, selectedAt: row.selected_at ?? null,

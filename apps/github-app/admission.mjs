@@ -101,14 +101,15 @@ export function createAdmissionService({ store, authorize = async () => false, r
     let history;
     if (request.history !== undefined) {
       if (!request.history || typeof request.history.enabled !== 'boolean') throw admissionError('E_ADMISSION_HISTORY');
+      if (request.history.stopCollecting !== undefined && (typeof request.history.stopCollecting !== 'boolean' || request.history.enabled)) throw admissionError('E_ADMISSION_HISTORY');
       const retentionDays = request.history.enabled ? boundedDays(request.history.retentionDays) : null;
       if (request.history.enabled && retentionDays === undefined) throw admissionError('E_ADMISSION_HISTORY_RETENTION');
-      history = { enabled: request.history.enabled, retentionDays, policyId: finalConfiguration?.policyId ?? null };
+      history = { enabled: request.history.enabled, stopCollecting: request.history.stopCollecting === true, retentionDays, policyId: finalConfiguration?.policyId ?? null };
     }
     if (!configuration && !writer && execution === undefined && !history) throw admissionError('E_ADMISSION_NO_CHANGE');
     const executionConsentChanged = execution !== undefined
       && (execution ? before.execution.reason !== null : before.execution.reason !== 'explicitly-disabled');
-    const historyConsentChanged = history !== undefined
+    const historyConsentChanged = history !== undefined && !history.stopCollecting
       && (history.enabled ? !before.history.enabled : before.history.reason !== 'explicitly-disabled');
     const actorId = executionConsentChanged || historyConsentChanged ? request.actor?.userId : undefined;
     if (origin === 'dashboard' && (executionConsentChanged || historyConsentChanged)

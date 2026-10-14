@@ -76,6 +76,7 @@ export const MESSAGES = Object.freeze({
   'not-pro-default': { tone: 'err', text: 'Applying a reusable default is Pro. Business repositories follow their linked policy from Policies.' },
   'return-dismissed': { tone: 'ok', text: 'Noted.' },
   'close-linked': { tone: 'err', text: 'Your account is linked to a Works plan. Whether closure may end or unlink the plan is not settled yet, so unlink it at Works first.' },
+  'close-incomplete': { tone: 'err', text: 'Account closure did not finish. Some repositories may already be stopped or their history deleted. Reload Account and retry.' },
   'confirm-mismatch': { tone: 'err', text: 'Type your account name exactly to confirm.' },
   'repository-mismatch': { tone: 'err', text: 'Type the repository name exactly to confirm.' },
   'default-saved': { tone: 'ok', text: 'Default saved as a new revision. A repository adopts it from its own settings.' },
@@ -291,7 +292,7 @@ export async function handleManageAction(request, { runtime, session, viewer }) 
           await update(repository.repositoryId, { revision: latest.revision, history: { enabled: true, retentionDays: runtime.config.retentionDays } });
           return done('history-on');
         }
-        if (mode === 'labels' && current.history.enabled) { const latest = await admission(repository.repositoryId); await update(repository.repositoryId, { revision: latest.revision, history: { enabled: false } }); return done('history-off'); }
+        if (mode === 'labels' && current.history.enabled) { const latest = await admission(repository.repositoryId); await update(repository.repositoryId, { revision: latest.revision, history: { enabled: false, stopCollecting: true } }); return done('history-off'); }
         return done('enabled');
       }
       case 'release': { const repository = repositoryOf(); await admission(repository.repositoryId); await runtime.manage.deselect(repository.repositoryId); return done('released'); }
@@ -321,7 +322,7 @@ export async function handleManageAction(request, { runtime, session, viewer }) 
           if (places?.of !== null && places?.of !== undefined && !repository.standing?.historyEnabled && places.used >= places.of) return done('history-allowance-full');
         }
         if (enabled) await runtime.manage.select(repository.repositoryId, viewer.userId);
-        await update(repository.repositoryId, { revision: current.revision, history: enabled ? { enabled: true, retentionDays: runtime.config.retentionDays } : { enabled: false } });
+        await update(repository.repositoryId, { revision: current.revision, history: enabled ? { enabled: true, retentionDays: runtime.config.retentionDays } : { enabled: false, stopCollecting: true } });
         if (!enabled && !repository.standing?.executionActive) await runtime.manage.deselect(repository.repositoryId);
         return done(enabled ? 'history-on' : 'history-off');
       }
@@ -472,7 +473,8 @@ export async function handleManageAction(request, { runtime, session, viewer }) 
         const personal = model.namespaces.find(namespace => namespace.kind === 'user');
         for (const repository of personal?.repositories ?? []) {
           if (!repository.standing || isRemoved(repository)) continue;
-          try { await stopRepository(repository); if (repository.standing.historyEnabled) await runtime.appStore.deleteHistory(repository.repositoryId); } catch { /* a repository that cannot be administered right now keeps its state */ }
+          await stopRepository(repository);
+          await runtime.appStore.deleteHistory(repository.repositoryId);
         }
         await runtime.manage.forgetAccount(viewer.userId);
         // Survey answers, completions and invitation records go too; Wirt keeps its own commercial record of any reward.
@@ -659,7 +661,7 @@ export async function handleManageAction(request, { runtime, session, viewer }) 
     if (code === 'E_COMMERCIAL_NOT_FUNDED') return redirect(withMessage(back, 'not-funded'));
     if (code.startsWith('E_COMMERCIAL_') || code === 'E_SERVICE_RECONNECT_UNCONFIRMED') return redirect(withMessage(back, code === 'E_SERVICE_RECONNECT_UNCONFIRMED' ? 'reconnect-unconfirmed' : 'commercial-unavailable'));
     if (code === 'E_UNKNOWN_REPOSITORY') return new Response('Not in your repositories.', { status: 404, headers: documentHeaders({ 'content-type': 'text/plain; charset=utf-8' }) });
-    const refused = admissionMessage(error);
+    const refused = action === 'close-account' ? 'close-incomplete' : admissionMessage(error);
     // A refused request is kept as it happened: who asked for what, and why it did not happen.
     await audit(refused, { result: 'failed', reason: `${MESSAGES[refused]?.text ?? refused}${code ? ` (${code})` : ''}` });
     return redirect(withMessage(back, refused));
