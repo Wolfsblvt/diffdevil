@@ -115,7 +115,7 @@ export async function loadManage({ viewer, session, runtime, fresh = true }) {
     }
   }
   const administered = new Set(namespaces.map(namespace => namespace.login));
-  const readers = viewer.namespaces.filter(namespace => !administered.has(namespace.login)).map(namespace => ({ login: namespace.login, kind: namespace.kind, plan: namespace.plan, planStanding: namespace.planStanding, repositories: namespace.repositories, delegation: delegatedElsewhere.find(candidate => candidate.login === namespace.login) ?? null }));
+  const readers = viewer.namespaces.filter(namespace => !administered.has(namespace.login)).map(namespace => ({ login: namespace.login, kind: namespace.kind, role: namespace.role, membership: namespace.membership, authorityIssue: namespace.authorityIssue ?? null, plan: namespace.plan, planStanding: namespace.planStanding, repositories: namespace.repositories, delegation: delegatedElsewhere.find(candidate => candidate.login === namespace.login) ?? null }));
   const anySelected = namespaces.some(namespace => namespace.repositories.some(repository => repository.standing && (repository.standing.selected || repository.standing.executionActive)));
   // Imports and recalculation in progress, for the one-line processing standing on each repository row.
   let jobs = new Map();

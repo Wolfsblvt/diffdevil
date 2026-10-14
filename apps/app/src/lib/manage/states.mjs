@@ -10,6 +10,23 @@ const POLICY_FAILURE = /^(E_APP_(POLICY|REPOSITORY_CONFIGURATION|ACCOUNT_POLICY)
 export const repositoryPath = repository => `/manage/repositories/${repository.fullName}`;
 export const namespacePath = login => `/manage/repositories?ns=${encodeURIComponent(login)}`;
 
+/** Explain a readable namespace without turning missing provider evidence into a known non-admin role. */
+export function readerAuthority(namespace) {
+  if (namespace.role === 'unknown') {
+    const issue = namespace.authorityIssue;
+    const why = issue?.code === 'E_GITHUB_RATE_LIMIT' ? 'GitHub rate-limited the organisation-role read.'
+      : issue?.code === 'E_PROVIDER_RESPONSE' ? 'GitHub did not return a usable organisation membership response.'
+      : issue?.status ? `GitHub did not confirm your organisation role (HTTP ${issue.status}).`
+      : 'GitHub did not answer the organisation-role read.';
+    return `${why} Administration is unconfirmed. Refresh to retry; your read access remains available.`;
+  }
+  if (namespace.kind === 'org' && namespace.membership?.state === 'pending') return 'Your GitHub organisation membership is pending. It does not grant administration.';
+  if (namespace.kind === 'org' && namespace.membership === null) return 'GitHub\'s membership list did not include this organisation. It did not establish administration for you.';
+  if (namespace.delegation) return `You are named ${namespace.delegation.role === 'account-admin' ? 'Account administrator' : 'Repository administrator'} here, but ${namespace.login} is not on Business right now, so the delegation waits.`;
+  const plan = namespace.plan !== 'Free' ? `Funded by its owner. You get its ${namespace.plan} features without paying.` : 'Free. Managed by its own administrator.';
+  return namespace.kind === 'org' && namespace.membership ? `GitHub reports an active ${namespace.membership.role === 'billing_manager' ? 'billing manager' : 'member'} role, without organisation administration. ${plan}` : plan;
+}
+
 const removedOf = standing => Boolean(standing) && (['offboarding', 'removed'].includes(standing.state) || standing.accessState === 'removed');
 export const isRemoved = repository => removedOf(repository.standing);
 const suspendedOf = (standing, namespace) => (standing ? standing.installationState !== 'active' || standing.accessState === 'suspended' : namespace?.installation?.state === 'suspended');

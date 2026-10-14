@@ -256,6 +256,26 @@ test('without a subscription source the console is Free and unlimited, with the 
   assert.equal(badge.count, loaded.attention.length);
 });
 
+test('an unavailable organisation role stays unconfirmed in Manage and a later successful read restores administration', async () => {
+  const { app: compose, github } = await fixture();
+  const app = compose();
+  const { cookie } = await signIn(app);
+  try {
+    github.state.membershipStatus = 403;
+    const { model: unavailable } = await model(app, cookie);
+    const reader = unavailable.readers.find(namespace => namespace.login === 'parser-guild');
+    assert.equal(reader.role, 'unknown');
+    assert.deepEqual(reader.authorityIssue, { code: 'E_PROVIDER_REQUEST', status: 403 });
+    assert.equal(unavailable.namespaces.some(namespace => namespace.login === 'parser-guild'), false);
+    assert.equal((await act(app, cookie, { action: 'free-connect', organisation: '7001' })).message, 'invalid');
+
+    github.state.membershipStatus = 200;
+    const { model: recovered } = await model(app, cookie);
+    assert.equal(recovered.namespaces.find(namespace => namespace.login === 'parser-guild').administration.kind, 'owner');
+    assert.equal(recovered.readers.some(namespace => namespace.login === 'parser-guild'), false);
+  } finally { github.state.membershipStatus = 200; app.cache.clear(); }
+});
+
 test('on the hosted Free offer, selecting is bounded by the pooled allowance, an organisation must be connected first, and a swap lands the incoming repository as pending', async () => {
   const { app: compose } = await fixture();
   const app = compose(undefined, { env: { APP_COMMERCIAL_FIXTURE: COMMERCIAL_FREE, APP_PLAN_ALLOWANCES: JSON.stringify({ free: { private: 2, publicHistory: 10 }, proOrganisation: { private: 3 } }) } });

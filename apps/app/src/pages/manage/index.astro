@@ -12,7 +12,7 @@ import SlotCells from '../../components/manage/SlotCells.astro';
 import OrgSlots from '../../components/manage/OrgSlots.astro';
 import AllowanceGroups from '../../components/manage/AllowanceGroups.astro';
 import { loadManage } from '../../lib/manage/model.mjs';
-import { capacityWord, capacityTone, namespacePath } from '../../lib/manage/states.mjs';
+import { capacityWord, capacityTone, namespacePath, readerAuthority } from '../../lib/manage/states.mjs';
 import { projectionKey, presentProjection, worksDestinations, formatMoney, fmtDay } from '../../lib/manage/works.mjs';
 
 const runtime = Astro.locals.app;
@@ -30,6 +30,12 @@ const reachable = model.namespaces.flatMap((namespace: any) => namespace.reposit
 const depart = (purpose: string) => `/manage/depart?to=experience&purpose=${purpose}&from=${encodeURIComponent('/manage')}`;
 const planLine = status?.linked && status.commercial ? `${status.commercial.cadence === 'annual' ? 'Annual' : 'Monthly'}${formatMoney(status.commercial.nextRenewal) ? ` · ${formatMoney(status.commercial.nextRenewal)} ${status.commercial.cadence === 'annual' ? 'a year' : 'a month'}` : ''}${(status.capacity ?? []).filter((slot: any) => slot.funding === 'paid').length ? ` with ${(status.capacity ?? []).filter((slot: any) => slot.funding === 'paid').length} additional ${(status.capacity ?? []).filter((slot: any) => slot.funding === 'paid').length === 1 ? 'organisation' : 'organisations'}` : ''}` : null;
 const renewsOn = fmtDay(status?.commercial?.nextRenewal?.on);
+const readerGroups = [
+  { readers: model.readers.filter((namespace: any) => namespace.role !== 'unknown'), unconfirmed: false,
+    heading: 'Read-only for you', description: 'You read these with their own plan. Someone else manages them.' },
+  { readers: model.readers.filter((namespace: any) => namespace.role === 'unknown'), unconfirmed: true,
+    heading: 'Read access · administration unconfirmed', description: 'You can read their activity, but GitHub did not confirm whether you administer these namespaces.' }
+];
 ---
 <ManagePage model={model} tab="overview">
   <div class="m-stack">
@@ -72,10 +78,10 @@ const renewsOn = fmtDay(status?.commercial?.nextRenewal?.on);
       </div>
     </section>}
 
-    {model.readers.length > 0 && <section class="m-sec" data-readers>
-      <header><h2>Read-only for you</h2><span class="d">You read these with their own plan. Someone else manages them.</span></header>
-      <div class="b flush">{model.readers.map((namespace: any) => <div class="m-nsrow"><span class="m-nsname"><Avatar login={namespace.login} kind={namespace.kind} /><b>{namespace.login}</b><PlanChip plan={namespace.plan} /></span><span class="m-capnote">{namespace.delegation ? `You are named ${namespace.delegation.role === 'account-admin' ? 'Account administrator' : 'Repository administrator'} here, but ${namespace.login} is not on Business right now, so the delegation waits.` : namespace.plan !== 'Free' ? `Funded by its owner. You get its ${namespace.plan} features without paying.` : 'Free. Managed by its own administrator.'}</span><span></span><a class="m-go" href={`/?s=${encodeURIComponent(`@${namespace.login}`)}`}>Activity <Icon name="arrow-right" size={13} /></a></div>)}</div>
-    </section>}
+    {readerGroups.map(group => group.readers.length > 0 && <section class="m-sec" data-readers={group.unconfirmed ? undefined : true} data-unconfirmed-readers={group.unconfirmed ? true : undefined}>
+      <header><h2>{group.heading}</h2><span class="d">{group.description}</span></header>
+      <div class="b flush">{group.readers.map((namespace: any) => <div class="m-nsrow" data-namespace-authority={namespace.role}><span class="m-nsname"><Avatar login={namespace.login} kind={namespace.kind} /><b>{namespace.login}</b><PlanChip plan={namespace.plan} /></span><span class="m-capnote">{readerAuthority(namespace)}</span><span></span><a class="m-go" href={`/?s=${encodeURIComponent(`@${namespace.login}`)}`}>Activity <Icon name="arrow-right" size={13} /></a></div>)}</div>
+    </section>)}
 
     <section class="m-sec" data-attention>
       <header><h2>Needs you</h2><span class="d">Only decisions. Imports and ordinary waiting stay on their repository.</span></header>

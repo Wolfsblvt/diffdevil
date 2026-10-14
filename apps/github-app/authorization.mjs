@@ -280,6 +280,9 @@ export function createAuthorizationService({ store, admission, history, analytic
         installations: () => provider.installations({ material, userId: actor.userId }),
         installationRepositories: installationId => provider.installationRepositories({ material, userId: actor.userId, installationId }),
         organizationRole: organization => provider.organizationRole({ material, userId: actor.userId, organization }),
+        organizationAuthority: async organization => typeof provider.organizationAuthority === 'function'
+          ? provider.organizationAuthority({ material, userId: actor.userId, organization })
+          : { role: await provider.organizationRole({ material, userId: actor.userId, organization }) },
         recentPullRequests: fullName => provider.recentPullRequests({ material, userId: actor.userId, fullName }),
         pullRequest: (fullName, number) => provider.pullRequest({ material, userId: actor.userId, fullName, number }),
         // The numeric account behind a GitHub login, for naming a delegate; null when GitHub knows no such user.

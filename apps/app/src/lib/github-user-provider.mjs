@@ -35,7 +35,8 @@ export function createGitHubUserProvider({ clientId, clientSecret, callbackUrl, 
   async function json(url, options) {
     const response = await send(url, options);
     if (!response.ok) throw providerError(response.status === 404 ? 'E_PROVIDER_NOT_FOUND' : response.status === 401 ? 'E_PROVIDER_UNAUTHORIZED' : 'E_PROVIDER_REQUEST', response.status);
-    return response.json();
+    try { return await response.json(); }
+    catch { throw providerError('E_PROVIDER_RESPONSE', response.status); }
   }
   async function pages(url, token, select) {
     const out = [];
@@ -59,6 +60,20 @@ export function createGitHubUserProvider({ clientId, clientSecret, callbackUrl, 
       if (membership) return membership;
       if (memberships.length < PAGE) return null;
     }
+  }
+  // Project only the requested membership. Its role/state explain authority; unrelated organisations,
+  // provider prose and the user token must never become display or diagnostic context.
+  function membershipAuthority(membership) {
+    if (!membership) return { role: 'none', membership: null };
+    if (!['admin', 'member', 'billing_manager'].includes(membership.role)) throw providerError('E_PROVIDER_RESPONSE');
+    return {
+      role: membership.state !== 'active' ? 'none' : membership.role === 'admin' ? 'admin' : 'member',
+      membership: { organizationId: membership.organization.id, role: membership.role, state: membership.state }
+    };
+  }
+  async function organizationAuthority({ material, organization }) {
+    return membershipAuthority(await organisationMembership(material.accessToken,
+      value => value.organization.login.toLowerCase() === organization.toLowerCase()));
   }
   function grantFrom(payload) {
     if (!payload || typeof payload.access_token !== 'string' || payload.access_token.length === 0) throw providerError('E_PROVIDER_TOKEN');
@@ -158,13 +173,13 @@ export function createGitHubUserProvider({ clientId, clientSecret, callbackUrl, 
      */
     async checkOrganisationAdministration({ material, organisationId }) {
       const membership = await organisationMembership(material.accessToken, value => value.organization.id === organisationId);
-      return { administer: membership?.role === 'admin' && membership?.state === 'active', login: membership?.organization.login ?? null };
+      return { administer: membershipAuthority(membership).role === 'admin', login: membership?.organization.login ?? null };
     },
+    /** Current role with the target's safe membership evidence, or null membership after a complete list. */
+    organizationAuthority,
     /** Active admin or non-admin member for this login, or none. Provider roles never expand App administration. */
     async organizationRole({ material, organization }) {
-      const membership = await organisationMembership(material.accessToken, value => value.organization.login.toLowerCase() === organization.toLowerCase());
-      if (membership?.state !== 'active') return 'none';
-      return membership.role === 'admin' ? 'admin' : 'member';
+      return (await organizationAuthority({ material, organization })).role;
     },
     /** GitHub's 100 most recently updated pull requests of one repository: lifecycle facts, transiently. */
     async recentPullRequests({ material, fullName }) {

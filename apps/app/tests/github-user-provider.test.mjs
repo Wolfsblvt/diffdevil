@@ -41,6 +41,26 @@ test('only active membership grants an organisation role or administration', asy
   assert.equal(await provider.organizationRole({ material, organization: 'not-a-member' }), 'none');
 });
 
+test('the authority observation exposes only the target membership and distinguishes pending from a complete missing result', async () => {
+  const { provider } = fixture(() => Response.json([
+    { ...membership(7001, 'target-org', 'admin', 'pending'), user: { private: 'fixture-private-user' }, description: 'fixture-provider-prose' },
+    membership(7002, 'fixture-private-sibling')
+  ]));
+  assert.deepEqual(await provider.organizationAuthority({ material, organization: 'TARGET-ORG' }), {
+    role: 'none', membership: { organizationId: 7001, role: 'admin', state: 'pending' }
+  });
+  assert.deepEqual(await provider.organizationAuthority({ material, organization: 'not-listed' }), { role: 'none', membership: null });
+});
+
+test('an absent or unrecognised target role is unavailable evidence, not a known member or negative authority', async () => {
+  for (const target of [{ organization: { id: 7001, login: 'org' }, state: 'active' }, membership(7001, 'org', null), membership(7001, 'org', '')]) {
+    const { provider } = fixture(() => Response.json([target]));
+    await assert.rejects(provider.organizationAuthority({ material, organization: 'org' }), { code: 'E_PROVIDER_RESPONSE' });
+    await assert.rejects(provider.organizationRole({ material, organization: 'org' }), { code: 'E_PROVIDER_RESPONSE' });
+    await assert.rejects(provider.checkOrganisationAdministration({ material, organisationId: 7001 }), { code: 'E_PROVIDER_RESPONSE' });
+  }
+});
+
 test('a billing-manager membership does not poison administration of an unrelated organisation', async () => {
   const { provider } = fixture(() => Response.json([membership(7002, 'billing-org', 'billing_manager'), membership(7001, 'owned-org')]));
   assert.deepEqual(await provider.checkOrganisationAdministration({ material, organisationId: 7001 }), { administer: true, login: 'owned-org' });
@@ -94,6 +114,9 @@ test('malformed membership evidence does not become negative authority', async (
     await assert.rejects(provider.checkOrganisationAdministration({ material, organisationId: 7001 }), { code: 'E_PROVIDER_RESPONSE' });
     await assert.rejects(provider.organizationRole({ material, organization: 'org' }), { code: 'E_PROVIDER_RESPONSE' });
   }
+  const { provider } = fixture(() => new Response('fixture-private-invalid-json', { status: 200 }));
+  await assert.rejects(provider.organizationAuthority({ material, organization: 'org' }), error =>
+    error.code === 'E_PROVIDER_RESPONSE' && error.status === 200 && !error.message.includes('fixture-private'));
 });
 
 test('a subsequent authority encounter observes demotion and removal rather than retaining an admin result', async () => {
