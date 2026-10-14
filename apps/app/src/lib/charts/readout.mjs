@@ -26,12 +26,13 @@ export function registerChartKinds(kinds) {
 /** Values of one mosaic bucket (or of the totals) under its coverage. */
 function mosaicVals(row, coverage) {
   const q = value => (coverage === 'none' ? 'unknown' : (coverage === 'partial' ? '≥ ' : '') + value);
+  const valueOf = (key, fallback) => row.measures?.[key] ? describeBound(row.measures[key]) : fallback;
   const bounded = row.boundedLow > 0;
   return [
-    { key: 'mod', label: '~ modified', value: q(n0(row.modified)) }, { key: 'add', label: '+ added-only', value: q(n0(row.added)) }, { key: 'del', label: '− deleted-only', value: q(n0(row.deleted)) },
+    { key: 'mod', label: '~ modified', value: valueOf('modified', q(n0(row.modified))) }, { key: 'add', label: '+ added-only', value: valueOf('added', q(n0(row.added))) }, { key: 'del', label: '− deleted-only', value: valueOf('deleted', q(n0(row.deleted))) },
     ...(bounded ? [{ key: 'unres', label: 'bounded', value: row.boundedHigh === null ? `≥ ${n0(row.boundedLow)}` : rangeText(row.boundedLow, row.boundedHigh) }] : []),
-    { cls: 'sum', label: 'Changed', value: coverage === 'none' ? 'unknown' : coverage === 'partial' ? `≥ ${n0(row.proven)}` : bounded ? (row.boundedHigh === null ? `≥ ${n0(row.proven)}` : rangeText(row.proven, row.exact + row.boundedHigh)) : n0(row.exact) },
-    { key: 'raw', label: 'raw churn', value: q(n0(row.rawChurn)) }
+    { cls: 'sum', label: 'Changed', value: valueOf('changed', coverage === 'none' ? 'unknown' : coverage === 'partial' ? `≥ ${n0(row.proven)}` : bounded ? (row.boundedHigh === null ? `≥ ${n0(row.proven)}` : rangeText(row.proven, row.exact + row.boundedHigh)) : n0(row.exact)) },
+    { key: 'raw', label: 'raw churn', value: valueOf('rawChurn', q(n0(row.rawChurn))) }
   ];
 }
 
@@ -47,6 +48,7 @@ const READOUT = {
     if (row.coverage === 'partial') tags.push({ cls: 'warn', text: `partial · ${row.recovered}/${row.count} recovered` });
     if (row.coverage === 'none') tags.push({ cls: 'warn', text: `0 of ${row.count} recovered` });
     if (row.boundedCount) tags.push({ text: `${row.boundedCount} bounded` });
+    if (row.covered === false) tags.push({ cls: 'warn', text: 'partial window · retained lower bounds' });
     if (row.band) tags.push({ cls: 'raw', html: chip(row.band.color, row.band.short) });
     if (row.mergedAgo) tags.push({ text: `merged ${row.mergedAgo}` });
     const vals = mosaicVals(row, row.coverage);
@@ -165,7 +167,12 @@ export function tableOf(model) {
   const num = label => ({ label, num: true });
   switch (model.kind) {
     case 'mosaic': return { caption: 'Change volume', columns: [{ label: model.unit === 'merged PR' ? 'pull request' : model.unit }, num(`${model.population}`), num('~ mod'), num('+ add'), num('− del'), num('Changed'), num('raw churn'), { label: 'coverage' }, ...(model.strip ? [num(model.strip.label)] : [])],
-      rows: model.rows.map((row, index) => [{ text: row.name }, { text: n0(row.count) }, { text: n0(row.modified) }, { text: n0(row.added) }, { text: n0(row.deleted) }, { text: row.coverage === 'none' ? 'unknown' : row.boundedCount ? (row.boundedHigh === null ? `≥ ${n0(row.proven)}` : rangeText(row.proven, row.exact + row.boundedHigh)) : `${row.coverage === 'partial' ? '≥ ' : ''}${n0(row.exact)}`, strong: true }, { text: n0(row.rawChurn) }, { text: row.coverage === 'partial' ? `partial ${row.recovered}/${row.count}` : row.coverage === 'none' ? 'none recovered' : 'complete' }, ...(model.strip ? [{ text: model.strip.values[index] === null ? '—' : n0(model.strip.values[index]) }] : [])]) };
+      rows: model.rows.map((row, index) => {
+        const values = mosaicVals(row, row.coverage);
+        const cell = key => ({ text: values.find(value => value.key === key)?.value ?? 'unknown' });
+        return [{ text: row.name }, { text: `${row.covered === false ? '≥ ' : ''}${n0(row.count)}` }, cell('mod'), cell('add'), cell('del'), { text: values.find(value => value.cls === 'sum').value, strong: true }, cell('raw'),
+          { text: `${row.coverage === 'partial' ? `partial ${row.recovered}/${row.count}` : row.coverage === 'none' ? 'none recovered' : 'complete'}${row.covered === false ? ' · partial window' : ''}` }, ...(model.strip ? [{ text: model.strip.values[index] === null ? '—' : n0(model.strip.values[index]) }] : [])];
+      }) };
     case 'flow': return { caption: 'Weekly flow', columns: [{ label: 'week of' }, ...(model.lifecycle ? [num('opened'), num('merged'), num('closed unmerged'), num('net'), num('open at end')] : []), num('analysed')],
       rows: model.rows.map(row => [{ text: row.label }, ...(model.lifecycle ? [{ text: n0(row.opened) }, { text: n0(row.merged) }, { text: n0(row.closed) }, { text: signed(row.net) }, { text: n0(row.openAtEnd) }] : []), { text: n0(row.analysed) }]) };
     case 'ttm': return { caption: 'Time to merge by size', columns: [{ label: 'size' }, num('PRs'), num('usually (middle half)'), num('median'), num('slowest')],

@@ -69,9 +69,22 @@ test('the mosaic keeps unknown and partial buckets honest in readout and table',
   const table = tableOf(model);
   assert.equal(table.rows.length, 4);
   assert.equal(table.rows[2][5].text, 'unknown');
+  assert.deepEqual(table.rows[2].slice(2, 7).map(cell => cell.text), ['unknown', 'unknown', 'unknown', 'unknown', 'unknown']);
+  assert.deepEqual(table.rows[1].slice(2, 7).map(cell => cell.text), ['≥ 6', '≥ 4', '≥ 0', '≥ 10', '≥ 16']);
   assert.equal(table.rows[1][7].text, 'partial 1/2');
   assert.match(tableHtml(table), /<caption class="visually-hidden">Change volume<\/caption>/u);
   assert.match(teachOf(model), /hatch = bounded/u);
+});
+
+test('uncovered empty buckets stay unknown while complete measured zero stays zero', () => {
+  const zero = { count: 0, recovered: 0, modified: 0, added: 0, deleted: 0, rawChurn: 0 };
+  const model = mosaicModel({ buckets: [{ ...zero, covered: false }, zero], unit: 'day', period: '7 days', labelOf: (_, i) => String(i), nameOf: (_, i) => String(i) });
+  assert.deepEqual(tableOf(model).rows[0].slice(2, 7).map(cell => cell.text), Array(5).fill('unknown'));
+  assert.match(tableOf(model).rows[0][7].text, /partial window/u);
+  assert.equal(tableOf(model).rows[0][1].text, '≥ 0');
+  assert.deepEqual(tableOf(model).rows[1].slice(2, 7).map(cell => cell.text), Array(5).fill('0'));
+  assert.ok(readoutOf(model, 0).vals.every(value => value.value === 'unknown'));
+  assert.equal(readoutOf(model, null).vals.find(value => value.cls === 'sum').value, 'unknown');
 });
 
 test('the flow readout names net and the backlog; the table carries the same columns', () => {

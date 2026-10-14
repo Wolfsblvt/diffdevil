@@ -467,6 +467,14 @@ try {
   check('the period and scope persist into the next section through the URL', /per=90d/u.test(page.url()) && /s=%40parser-guild/u.test(page.url()), page.url());
   await settled();
   check('history bucket navigation offers weekly buckets for 90 days', (await page.locator('.a-bucketnav a').count()) >= 12, String(await page.locator('.a-bucketnav a').count()));
+  await page.locator('[data-chart-id="volume"] button[data-view="table"]').click();
+  const historyTable = await page.evaluate(() => {
+    const host = document.querySelector('[data-chart-id="volume"]'), model = JSON.parse(host.querySelector('[data-chart-model]').textContent);
+    return [...host.querySelectorAll('[data-table] tbody tr')].map((row, i) => ({ covered: model.rows[i].covered, coverage: model.rows[i].coverage, cells: [...row.children].map(cell => cell.textContent.trim()) }));
+  });
+  check('History table preserves unknown quantities and marks every uncovered retained window', historyTable.some(row => row.coverage === 'none') && historyTable.every(row => (row.coverage !== 'none' || row.cells.slice(2, 7).every(value => value === 'unknown')) && (row.covered !== false || row.cells[7].includes('partial window'))), JSON.stringify(historyTable));
+  await shot('pro-history-evidence-table');
+  await page.locator('[data-chart-id="volume"] button[data-view="chart"]').click();
   check(`Pro history composes Change volume, Merged PRs by size${premium ? ', growth and concentration' : ''} as chart frames`, await page.evaluate(kinds => kinds.every(kind => document.querySelector(`[data-chart="${kind}"].is-mounted`)), premium ? ['mosaic', 'lanes', 'growth', 'concentration'] : ['mosaic', 'lanes']), await page.evaluate(() => [...document.querySelectorAll('[data-chart]')].map(host => `${host.dataset.chart}:${host.classList.contains('is-mounted')}`).join(',')));
   const bucketBefore = await page.evaluate(() => document.querySelector('#h-bucket')?.textContent ?? '');
   await page.evaluate(() => { document.querySelector('[data-chart-id="volume"]').dataset.qaMark = '1'; });

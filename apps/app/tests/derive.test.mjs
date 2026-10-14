@@ -116,6 +116,9 @@ test('period statistics name populations and never invent lifecycle facts', () =
   assert.equal(withLife.basis, 'retained');
   assert.deepEqual([withLife.opened, withLife.merged, withLife.closedUnmerged, withLife.openNow, withLife.backlog], [4, 2, 1, 1, 1]);
   assert.equal(withLife.mergedRecovered, 1, 'only the recovered final comparison is measured');
+  assert.equal(withLife.changedTotal.upper, null, 'the missing comparison stays in the merged total');
+  assert.equal(withLife.rawTotal.upper, null);
+  assert.equal(withLife.decomposition.modified.upper, null);
   assert.equal(withLife.analysedCount, 1);
   assert.equal(withLife.timeToMerge.lower, 4.25, 'the contract median averages the two central merged durations');
   assert.equal(withLife.windowCovered, true);

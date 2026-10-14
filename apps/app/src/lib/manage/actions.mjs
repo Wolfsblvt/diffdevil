@@ -244,7 +244,7 @@ export async function handleManageAction(request, { runtime, session, viewer }) 
   const allowanceAllows = async repository => (await allowanceRefusal(repository)) === null;
   const stopRepository = async (repository, { keepSelection = false } = {}) => {
     const current = await admission(repository.repositoryId);
-    if (current.state === 'active' || current.execution.reason === null) await update(repository.repositoryId, { revision: current.revision, execution: false });
+    if (current.state === 'active' || current.execution.reason === null || current.history.enabled) await update(repository.repositoryId, { revision: current.revision, execution: false, ...(current.history.enabled ? { history: { enabled: false } } : {}) });
     if (!keepSelection) await runtime.manage.deselect(repository.repositoryId);
   };
   try {

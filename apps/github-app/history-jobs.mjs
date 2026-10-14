@@ -222,7 +222,8 @@ async function importStep({ client, store, job, scopeLimit, progress, resolveFin
     try {
       const result = await collectAnalyticalPullRequest({ client, store, repositoryId: job.repositoryId, pullRequest: pull.number, resolveFinalComparison, now });
       if (result.status === 'disabled') return { status: 'disabled' };
-      if (result.recovery) progress.unrecovered += 1; else progress.recorded += 1;
+      if (result.code === 'E_GITHUB_RATE_LIMIT') throw Object.assign(new Error('E_GITHUB_RATE_LIMIT'), { code: result.code });
+      if (result.recovery) { progress.unrecovered += 1; progress.lastRecovery = { pullRequest: pull.number, reason: result.recovery, code: result.code, phase: result.phase, providerStatus: result.providerStatus }; } else progress.recorded += 1;
     } catch (error) {
       if (code(error) === 'E_GITHUB_RATE_LIMIT') { cursor.index -= 1; progress.examined -= 1; throw error; }
       if (code(error) === 'E_APP_DATA_STALE') progress.changed += 1;
@@ -249,7 +250,8 @@ async function recalculateStep({ client, store, job, progress, currentPolicy, re
     try {
       const result = await collectAnalyticalPullRequest({ client, store, repositoryId: job.repositoryId, pullRequest, resolveFinalComparison, now });
       if (result.status === 'disabled') return { status: 'disabled' };
-      if (result.recovery) progress.unrecovered += 1;
+      if (result.code === 'E_GITHUB_RATE_LIMIT') throw Object.assign(new Error('E_GITHUB_RATE_LIMIT'), { code: result.code });
+      if (result.recovery) { progress.unrecovered += 1; progress.lastRecovery = { pullRequest, reason: result.recovery, code: result.code, phase: result.phase, providerStatus: result.providerStatus }; }
       else { progress.reacquired += 1; if (store.resolveAnalyticalRepair) await store.resolveAnalyticalRepair(job.repositoryId, pullRequest); }
     } catch (error) {
       if (code(error) === 'E_GITHUB_RATE_LIMIT') throw error;

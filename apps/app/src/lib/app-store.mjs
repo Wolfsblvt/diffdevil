@@ -41,7 +41,7 @@ export class D1AppReadStore {
         WHERE r.repository_id IN (${placeholders(chunk)})`, now, ...chunk).all();
       for (const row of rows.results ?? []) {
         const executionActive = row.state === 'active' && row.access_state === 'available' && row.installation_state === 'active' && row.execution_consent_reason === null;
-        const historyEnabled = row.history_enabled === 1 && row.history_consent_reason === null && row.state === 'active' && row.access_state === 'available' && row.installation_state === 'active' && !row.tombstoned;
+        const historyEnabled = row.history_enabled === 1 && row.history_consent_reason === null && ['active', 'pending-enable'].includes(row.state) && row.access_state === 'available' && row.installation_state === 'active' && !row.tombstoned;
         const removed = ['offboarding', 'removed'].includes(row.state) || row.access_state === 'removed';
         standings.set(row.repository_id, {
           repositoryId: row.repository_id, installationId: row.installation_id, state: row.state, accessState: row.access_state, installationState: row.installation_state,

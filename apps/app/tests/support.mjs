@@ -20,7 +20,7 @@ export { NOW };
 export const ORIGIN = 'http://127.0.0.1:4412';
 
 let shared;
-export async function fixture() {
+export async function fixture({ seed = seedStore } = {}) {
   shared ??= (async () => {
     const clock = { value: NOW };
     const runtime = new Miniflare({ workers: [{
@@ -30,7 +30,7 @@ export async function fixture() {
       const database = await runtime.getD1Database('APP_DB');
       const appStore = new D1AppStore(database, { now: () => clock.value });
       for (const name of await migrationNames()) await appStore.migrate(await readFile(resolve('apps/github-app/migrations', name), 'utf8'));
-      const written = await seedStore(appStore, clock);
+      const written = await seed(appStore, clock);
       const github = createFakeGitHub();
       const env = { APP_DB: database, APP_ORIGIN: ORIGIN, APP_SEAL_KEY: 'fixture-seal-key-with-enough-length', GITHUB_OAUTH_CLIENT_ID: 'fixture-client', GITHUB_OAUTH_CLIENT_SECRET: 'fixture-secret-private', GITHUB_API_BASE: 'http://github.invalid', GITHUB_OAUTH_BASE: 'http://github.invalid' };
       const app = (entitlement, { premium, env: extra = {} } = {}) => { const composed = createAppRuntime({ ...env, ...(entitlement ? { APP_ENTITLEMENT_FIXTURE: JSON.stringify(entitlement) } : {}), ...extra }, { fetch: github.fetch, now: () => clock.value, ...(premium ? { premium } : {}) }); composed.cache.clear(); return composed; };

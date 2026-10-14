@@ -6,7 +6,7 @@ import { resolve } from 'node:path';
 import { Miniflare } from 'miniflare';
 import { analyzeChanges, analyzeDiff, unwrap } from '@wolfsblvt/diffdevil';
 import { createAnalyticalDataService, normalizeAnalyticalRecord, median, turnover, fileContinuity } from './analytical-data.mjs';
-import { collectAnalyticalPullRequest, observeFileSize, captureDefaultBranchSizes, recoverFinalComparison } from './analytical-collection.mjs';
+import { collectAnalyticalPullRequest, observeFileSize, captureDefaultBranchSizes, recoverFinalComparison, mergedCommit } from './analytical-collection.mjs';
 import { D1AppStore } from './storage.mjs';
 import { analyticalHttp } from './analytical-http.mjs';
 import { createGitHubAppWorker } from './app.mjs';
@@ -217,6 +217,21 @@ test('single-parent squash and rebase boundaries follow the current default-bran
   assert.deepEqual(await recoverFinalComparison(options()), { base, head });
   onDefault = false;
   assert.equal(await recoverFinalComparison(options()), null, 'a non-default-branch association does not prove the merged boundary');
+});
+
+test('current API merged identities require the matching timeline event, with pagination and no guessed head', async () => {
+  const pull = { number: 1, merged_at: at, head: { sha: other } };
+  let events = [{ event: 'merged', created_at: at, commit_id: head }];
+  const pages = [];
+  const client = { json: async route => { pages.push(route); return route.endsWith('page=1') ? Array(100).fill({ event: 'commented' }) : events; } };
+  assert.equal(await mergedCommit(client, 'owner/repo', pull), head);
+  assert.equal(pages.length, 2);
+  events = [];
+  assert.equal(await mergedCommit(client, 'owner/repo', pull), null);
+  events = [{ event: 'merged', created_at: from, commit_id: head }];
+  assert.equal(await mergedCommit(client, 'owner/repo', pull), null);
+  events = [{ event: 'merged', created_at: at, commit_id: head }, { event: 'merged', created_at: at, commit_id: other }];
+  assert.equal(await mergedCommit(client, 'owner/repo', pull), null);
 });
 
 test('path-bearing HTTP reads use same-origin bodies and every response suppresses referrers', async () => {

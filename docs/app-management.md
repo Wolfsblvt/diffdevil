@@ -57,6 +57,20 @@ Provide a scoped view of imports, enrichment and recalculation, with useful prog
 
 Show the job's purpose, repository/range, completed coverage, remaining scope when known, actual policy basis and reason for delay. Distinguish user pause, fair scheduling, provider rate limit, partial evidence, recoverable failure and completion. Do not give an exact total or completion estimate the service has not established.
 
+Explicit history consent permits collection, import and recalculation while repository
+execution, checks, labels and briefs stay off. Manage and the analytical navigation
+show that history independently. Private history-only repositories still occupy their
+private allowance; stopping or swapping out a repository stops collection explicitly
+and keeps already retained data. Installation interruption, revocation, deletion and
+the current operating allowance continue to govern collection and reads.
+
+Completing an import means its selected closed-PR listing ended or its plan limit was
+reached; it does not prove every comparison was recovered. Jobs retain the latest
+unrecovered PR number, boundary/acquisition reason, acquisition phase, stable error
+code and HTTP status when observed in their
+existing progress, without provider bodies or raw messages. Recalculation retries
+missing final comparisons through the same read-only collection.
+
 Live PR work has priority. Recent premium enrichment can lag while the base report remains useful. Older import and wide recalculation may be paused for sustained heavy use; a visible queue is not a guarantee that every account will eventually catch up.
 
 Actions can request an import, pause/resume optional processing, retry a recoverable failure, refresh history, export or delete. Pausing an import does not disable live labels or cancel billing. Resumption preserves the same progress and does not count service recovery as new customer work.
