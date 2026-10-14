@@ -244,7 +244,7 @@ export async function handleManageAction(request, { runtime, session, viewer }) 
   const allowanceAllows = async repository => (await allowanceRefusal(repository)) === null;
   const stopRepository = async (repository, { keepSelection = false } = {}) => {
     const current = await admission(repository.repositoryId);
-    if (current.state === 'active' || current.execution.reason === null || current.history.enabled) await update(repository.repositoryId, { revision: current.revision, execution: false, ...(current.history.enabled ? { history: { enabled: false } } : {}) });
+    if (current.state === 'active' || current.execution.reason === null) await update(repository.repositoryId, { revision: current.revision, execution: false });
     if (!keepSelection) await runtime.manage.deselect(repository.repositoryId);
   };
   try {
@@ -302,6 +302,9 @@ export async function handleManageAction(request, { runtime, session, viewer }) 
         await admission(incoming.repositoryId);
         const planRefusal = await allowanceRefusal({ ...incoming, private: false });
         if (planRefusal) return done(planRefusal);
+        // The swap explicitly displaces this private history place; generic execution Stop does not.
+        const outgoingAdmission = await admission(outgoing.repositoryId);
+        if (outgoing.private && outgoingAdmission.history.enabled) await update(outgoing.repositoryId, { revision: outgoingAdmission.revision, history: { enabled: false } });
         await stopRepository(outgoing);
         await runtime.manage.select(incoming.repositoryId, viewer.userId);
         return done('swapped');

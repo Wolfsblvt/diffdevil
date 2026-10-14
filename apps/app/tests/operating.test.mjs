@@ -77,7 +77,9 @@ test('a reduction applies the saved choice: the runtime holds what was not chose
   assert.deepEqual(await app.operating.maintain(), { applied: 0 }, 'an applied choice is applied once');
   const loaded = await manageModel(app, cookie);
   const dotfiles = loaded.namespaces.find(namespace => namespace.login === 'ada-sample').repositories.find(repository => repository.repositoryId === 1004);
-  assert.equal(dotfiles.state.kind, 'stoppedByYou'); assert.match(dotfiles.state.why, /when the plan changed/u);
+  assert.equal(dotfiles.state.kind, 'overAllowance');
+  assert.equal(dotfiles.standing.historyConsented, true, 'the lower allowance holds collection without revoking separate consent');
+  assert.match(dotfiles.state.why, /Not among/u);
   assert.equal(loaded.namespaces.find(namespace => namespace.login === 'parser-guild').repositories.find(repository => repository.repositoryId === 1001).state.kind, 'active');
 });
 
@@ -166,7 +168,9 @@ test('an import is a durable job: queued behind live work, run in steps through 
   assert.ok(records.every(record => record.revisions.length === 0 && !record.final), 'an import never invents an original App result or comparison');
   assert.ok(github.reads.every(route => !/labels|comments|check-runs|issues/u.test(route)), 'an import only reads pull requests');
   const view = describeJob(job);
-  assert.match(view.title, /nothing older is recoverable/u); assert.match(view.detail, /12 pull requests examined: 10 recorded, 0 already retained, 2 without a recoverable final comparison/u);
+  assert.equal(view.open, false);
+  assert.equal(view.tone, 'warn', 'finishing the listing does not make the unrecovered comparisons successful');
+  assert.deepEqual(view.actions, []);
   // A repeated import finds them retained: the same logical identity, not duplicated work.
   assert.equal(await act(app, cookie, { action: 'import', repository: 'ada-sample/dotfiles', back: '/manage' }), 'import-queued');
   await drain(worker, workerEnv, queue);

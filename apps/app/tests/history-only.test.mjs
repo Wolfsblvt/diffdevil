@@ -102,6 +102,9 @@ test('consented history imports and repairs three current-API comparisons with r
   assert.equal(view.historyRepositories.length, 1);
   assert.equal(view.current.mergedRecovered, 3);
   assert.ok(!reads.some(route => route.includes('undefined')));
+  assert.equal((await act('stop')).message, 'stopped');
+  assert.equal((await app.store.repositoryStandings([repositoryId])).get(repositoryId).historyEnabled, true, 'operation Stop keeps separate history consent');
+  assert.equal((await app.appStore.analyticalRecords(repositoryId)).length, 3);
   assert.equal((await act('history', 'off')).message, 'history-off');
   assert.equal((await app.store.repositoryStandings([repositoryId])).get(repositoryId).historyEnabled, false);
   assert.equal((await app.appStore.analyticalRecords(repositoryId)).length, 0, 'revoked consent prevents reads');

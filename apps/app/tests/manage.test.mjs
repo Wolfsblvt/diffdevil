@@ -293,13 +293,15 @@ test('on the hosted Free offer, selecting is bounded by the pooled allowance, an
   // dotfiles and parser-lab already run: the two pooled private slots are full, so grammar-fuzz must be swapped in.
   assert.deepEqual(guild.capacity.inSlot.map(repository => repository.fullName).sort(), ['ada-sample/dotfiles', 'parser-guild/parser-lab']);
   assert.equal((await act(app, cookie, { action: 'select', repository: 'parser-guild/grammar-fuzz', back: '/manage/repositories' })).message, 'allowance-full');
+  const retainedBeforeSwap = await app.appStore.statement('SELECT COUNT(*) AS n FROM analytical_pull_requests WHERE repository_id=?', 1001).first();
   assert.equal((await act(app, cookie, { action: 'swap', repository: 'parser-guild/grammar-fuzz', outgoing: 'parser-guild/parser-lab', back: '/manage/repositories' })).message, 'swapped');
+  assert.deepEqual(await app.appStore.statement('SELECT COUNT(*) AS n FROM analytical_pull_requests WHERE repository_id=?', 1001).first(), retainedBeforeSwap, 'the capacity swap keeps every retained record');
   ({ model: loaded } = await model(app, cookie));
   const states = Object.fromEntries(loaded.namespaces.flatMap(namespace => namespace.repositories.map(repository => [repository.fullName, repository.state.kind])));
   assert.equal(states['parser-guild/parser-lab'], 'stoppedByYou', 'the outgoing repository stopped and keeps its history');
   assert.equal(states['parser-guild/grammar-fuzz'], 'pending', 'the incoming repository holds the slot as Pending enable');
   assert.equal((await app.appStore.repositoryAdmission(1001)).execution.reason, 'explicitly-disabled');
-  assert.equal((await app.store.repositoryStandings([1001])).get(1001).historyEnabled, false, 'stopping ends collection with it; what exists is kept');
+  assert.equal((await app.store.repositoryStandings([1001])).get(1001).historyEnabled, false, 'the explicit private-capacity swap stops collection; retained data stays');
   // Enabling needs the one-writer declaration; with it the repository runs.
   assert.equal((await act(app, cookie, { action: 'enable', repository: 'parser-guild/grammar-fuzz', back: '/manage/repositories' })).message, 'writer-undeclared');
   assert.equal((await act(app, cookie, { action: 'enable', repository: 'parser-guild/grammar-fuzz', writer: 'declared', back: '/manage/repositories' })).message, 'enabled');

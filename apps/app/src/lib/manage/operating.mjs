@@ -98,15 +98,18 @@ export function createOperating({ database, store, appStore, manage, entitlement
     if (plan === 'free' && Number.isSafeInteger(choice.organisation)) outcome.connected = await manage.connectFree(userId, choice.organisation) ? choice.organisation : null;
     const accounts = [...new Set([userId, ...(choice.accounts ?? [])])];
     const inFreePool = account => account === userId || account === outcome.connected;
-    const stop = async repository => { await appStore.setRepositoryExecution(repository.repositoryId, { enabled: false, origin: 'plan-change' }); outcome.stopped.push(repository.repositoryId); };
+    const stop = async repository => {
+      await appStore.setRepositoryExecution(repository.repositoryId, { enabled: false, origin: 'plan-change' });
+      outcome.stopped.push(repository.repositoryId);
+    };
     const limit = plan === 'free' ? allowances.free.private : allowances.proOrganisation.private;
     // Private repositories counted per lower-plan scope: the Free pool, or each organisation on Pro (Pro personal has no limit).
     const scopes = new Map();
     for (const repository of await repositoriesOf(accounts)) {
       const standingNow = repository.standing;
-      if (!(standingNow.selected || standingNow.executionActive)) continue;
+      if (!(standingNow.selected || standingNow.executionActive || standingNow.historyEnabled)) continue;
       const account = standingNow.accountId;
-      if (plan === 'free' && !inFreePool(account)) { if (standingNow.executionActive) await stop(repository); continue; }
+      if (plan === 'free' && !inFreePool(account)) { if (standingNow.executionActive || standingNow.historyEnabled) await stop(repository); continue; }
       if (!repository.private || limit === null || (plan !== 'free' && account === userId)) continue;
       const key = plan === 'free' ? 'pool' : account;
       scopes.set(key, [...(scopes.get(key) ?? []), repository]);
@@ -116,7 +119,7 @@ export function createOperating({ database, store, appStore, manage, entitlement
       if (counted.length <= limit) continue;
       for (const repository of counted) {
         if (keep.has(repository.repositoryId)) { outcome.kept.push(repository.repositoryId); continue; }
-        if (repository.standing.executionActive) await stop(repository);
+        if (repository.standing.executionActive || repository.standing.historyEnabled) await stop(repository);
         await manage.deselect(repository.repositoryId);
         outcome.released.push(repository.repositoryId);
       }
