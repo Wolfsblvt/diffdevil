@@ -426,8 +426,9 @@ export class D1AppStore {
   }
   async removeHistoryLens(repositoryId, lensId) { await this.statement('DELETE FROM history_lenses WHERE repository_id=? AND lens_id=?', repositoryId, lensId).run(); }
 
-  async maintain() {
-    const now = this.now(), recoveryCutoff = new Date(Date.parse(now) - 7 * DAY).toISOString(), graceCutoff = new Date(Date.parse(now) - 30 * DAY).toISOString();
+  /** Expire retained measurements without pruning the original delivery/attempt evidence. */
+  async expireHistory() {
+    const now = this.now();
     let expiredAnalytical;
     do {
       expiredAnalytical = await this.statement(`DELETE FROM analytical_pull_requests WHERE rowid IN
@@ -435,25 +436,18 @@ export class D1AppStore {
     } while (expiredAnalytical.meta?.changes === 1000);
     await expireSizes(this, now);
     const expired = await this.statement('SELECT id FROM history_records WHERE expires_at IS NOT NULL AND expires_at <= ?', now).all();
-    const offboarding = await this.statement("SELECT repository_id, execution_consent_reason, history_consent_reason FROM repositories WHERE state='offboarding' AND updated_at <= ?", graceCutoff).all();
     const expiryStatements = (expired.results ?? []).flatMap(row => [this.statement('DELETE FROM history_file_rows WHERE history_id=?', row.id), this.statement('DELETE FROM history_effect_rows WHERE history_id=?', row.id), this.statement('DELETE FROM history_records WHERE id=?', row.id)]);
     for (const batch of batches(expiryStatements)) await this.database.batch(batch);
+  }
+
+  async maintain() {
+    const now = this.now(), recoveryCutoff = new Date(Date.parse(now) - 7 * DAY).toISOString(), graceCutoff = new Date(Date.parse(now) - 30 * DAY).toISOString();
+    await this.expireHistory();
+    const offboarding = await this.statement("SELECT repository_id, execution_consent_reason, history_consent_reason FROM repositories WHERE state='offboarding' AND updated_at <= ?", graceCutoff).all();
     const tombstoneUntil = new Date(Date.parse(now) + 37 * DAY).toISOString();
     for (const row of offboarding.results ?? []) {
-      await this.removeHistoryRecords(row.repository_id);
-      await this.database.batch([
-        this.statement('DELETE FROM history_lenses WHERE repository_id=?', row.repository_id),
-        this.statement('DELETE FROM app_checks WHERE repository_id=?', row.repository_id),
-        this.statement('DELETE FROM repairs WHERE repository_id=?', row.repository_id),
-        this.statement('DELETE FROM operational_results WHERE delivery_id IN (SELECT delivery_id FROM deliveries WHERE repository_id=?)', row.repository_id),
-        this.statement('DELETE FROM execution_attempts WHERE repository_id=?', row.repository_id),
-        this.statement('DELETE FROM deliveries WHERE repository_id=?', row.repository_id),
-        this.statement('DELETE FROM execution_leases WHERE repository_id=?', row.repository_id),
-        this.statement('DELETE FROM history_jobs WHERE repository_id=?', row.repository_id),
-        this.statement('DELETE FROM repository_default_adoptions WHERE repository_id=?', row.repository_id),
-        this.statement('INSERT INTO deletion_tombstones (scope, deleted_at, reapply_until, execution_consent_reason, history_consent_reason) VALUES (?, ?, ?, ?, ?) ON CONFLICT(scope) DO UPDATE SET deleted_at=excluded.deleted_at, reapply_until=excluded.reapply_until, execution_consent_reason=excluded.execution_consent_reason, history_consent_reason=excluded.history_consent_reason', `repository:${row.repository_id}`, now, tombstoneUntil, row.execution_consent_reason ?? 're-consent-required', row.history_consent_reason ?? 're-consent-required'),
-        this.statement('DELETE FROM repositories WHERE repository_id=?', row.repository_id)
-      ]);
+      await this.reapplyRepositoryDeletion(row.repository_id, { deletedAt: now, reapplyUntil: tombstoneUntil,
+        executionReason: row.execution_consent_reason ?? 're-consent-required', historyReason: row.history_consent_reason ?? 're-consent-required' });
     }
     await this.database.batch([
       this.statement('DELETE FROM execution_attempts WHERE delivery_id IN (SELECT delivery_id FROM deliveries WHERE received_at < ? AND state IN (\'complete\', \'rejected\', \'terminal\', \'repair\'))', recoveryCutoff),
@@ -463,12 +457,30 @@ export class D1AppStore {
     ]);
   }
 
-  async deleteHistory(repositoryId) {
-    const now = this.now(), until = new Date(Date.parse(now) + 37 * DAY).toISOString();
+  /** The same completed offboarding deletion, retaining its original later-duty lifetime on replay. */
+  async reapplyRepositoryDeletion(repositoryId, { deletedAt, reapplyUntil, executionReason = 're-consent-required', historyReason = 're-consent-required' }) {
+    await this.removeHistoryRecords(repositoryId);
+    await this.database.batch([
+      this.statement('DELETE FROM history_lenses WHERE repository_id=?', repositoryId),
+      this.statement('DELETE FROM app_checks WHERE repository_id=?', repositoryId),
+      this.statement('DELETE FROM repairs WHERE repository_id=?', repositoryId),
+      this.statement('DELETE FROM operational_results WHERE delivery_id IN (SELECT delivery_id FROM deliveries WHERE repository_id=?)', repositoryId),
+      this.statement('DELETE FROM execution_attempts WHERE repository_id=?', repositoryId),
+      this.statement('DELETE FROM deliveries WHERE repository_id=?', repositoryId),
+      this.statement('DELETE FROM execution_leases WHERE repository_id=?', repositoryId),
+      this.statement('DELETE FROM history_jobs WHERE repository_id=?', repositoryId),
+      this.statement('DELETE FROM repository_default_adoptions WHERE repository_id=?', repositoryId),
+      this.statement('INSERT INTO deletion_tombstones (scope, deleted_at, reapply_until, execution_consent_reason, history_consent_reason) VALUES (?, ?, ?, ?, ?) ON CONFLICT(scope) DO UPDATE SET deleted_at=excluded.deleted_at, reapply_until=excluded.reapply_until, execution_consent_reason=excluded.execution_consent_reason, history_consent_reason=excluded.history_consent_reason WHERE excluded.reapply_until >= deletion_tombstones.reapply_until', `repository:${repositoryId}`, deletedAt, reapplyUntil, executionReason, historyReason),
+      this.statement('DELETE FROM repositories WHERE repository_id=?', repositoryId)
+    ]);
+  }
+
+  async deleteHistory(repositoryId, { deletedAt = this.now(), reapplyUntil = new Date(Date.parse(deletedAt) + 37 * DAY).toISOString() } = {}) {
+    const now = deletedAt, until = reapplyUntil;
     await this.removeHistoryRecords(repositoryId);
     await this.database.batch([
       this.statement("UPDATE repositories SET history_enabled=0, history_consent_origin='history-deletion', history_consent_reason='explicitly-disabled', history_consent_actor_id=NULL, updated_at=? WHERE repository_id=?", now, repositoryId),
-       this.statement('INSERT INTO deletion_tombstones (scope, deleted_at, reapply_until) VALUES (?, ?, ?) ON CONFLICT(scope) DO UPDATE SET deleted_at=excluded.deleted_at, reapply_until=excluded.reapply_until', `history:${repositoryId}`, now, until),
+       this.statement('INSERT INTO deletion_tombstones (scope, deleted_at, reapply_until) VALUES (?, ?, ?) ON CONFLICT(scope) DO UPDATE SET deleted_at=excluded.deleted_at, reapply_until=excluded.reapply_until WHERE excluded.reapply_until >= deletion_tombstones.reapply_until', `history:${repositoryId}`, now, until),
       this.statement('DELETE FROM app_checks WHERE repository_id=?', repositoryId),
       this.statement('DELETE FROM repairs WHERE repository_id=?', repositoryId),
       this.statement('DELETE FROM analytical_pull_requests WHERE repository_id=?', repositoryId),
@@ -476,6 +488,16 @@ export class D1AppStore {
       this.statement('DELETE FROM analytical_size_facts WHERE repository_id=?', repositoryId),
       // Open imports and recalculation stop with the history they were filling; the deletion record keeps them from reviving it.
       this.statement("UPDATE history_jobs SET state='stopped', reason='history-deleted', lease_until=NULL, wake_at=NULL, updated_at=?, finished_at=? WHERE repository_id=? AND state IN ('queued', 'running', 'paused')", now, now, repositoryId)
+    ]);
+  }
+
+  /** Shorter post-point retention restricts old rows without enabling collection or extending an earlier expiry. */
+  async reapplyHistoryRetention(repositoryId, retentionDays) {
+    const expires = new Date(Date.parse(this.now()) + retentionDays * DAY).toISOString();
+    await this.database.batch([
+      this.statement('UPDATE repositories SET retention_days=? WHERE repository_id=? AND (retention_days IS NULL OR retention_days>?)', retentionDays, repositoryId, retentionDays),
+      ...['history_records', 'analytical_pull_requests', 'analytical_size_observations'].map(table =>
+        this.statement(`UPDATE ${table} SET expires_at=? WHERE repository_id=? AND (expires_at IS NULL OR expires_at>?)`, expires, repositoryId, expires))
     ]);
   }
 

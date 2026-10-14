@@ -38,6 +38,7 @@ capability does not become historical merely because it is not released.
 | How does an administrator operate the App: Manage, repository settings, Plan & funding, Account, and on Business the linked policies, people and record? | [The App experience](../apps/app/README.md), [D078](DECISIONS.md#d078-manage-is-one-console-with-sub-tabs-capacity-first-and-the-first-works-link-lands-on-the-plan-page) and [D079](DECISIONS.md#d079-business-coordination-is-published-into-repository-settings-delegated-within-githubs-ceiling-and-recorded-as-it-happened) |
 | What is retained, what remains transient, and what does import mean? | [Privacy and data](PRIVACY-AND-DATA.md) |
 | How does that product join authentication, execution and recovery? | [Managed App architecture](integration/github-app.md) |
+| How are later privacy and commercial duties reapplied to an isolated restored point? | [App recovery input, replay and checkpoint](integration/app-recovery.md) |
 | Why did named history and merged-PR metrics replace the earlier boundary? | [Analytical decisions D064–D073](DECISIONS.md#d064-make-the-app-activity-first-for-collaborators-as-well-as-administrators) |
 
 These sources describe selected capabilities and an accepted planned offer, not an
