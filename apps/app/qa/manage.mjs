@@ -315,6 +315,8 @@ export async function businessManage(ctx) {
   await page.waitForLoadState('networkidle');
   const saved = await page.evaluate(() => ({ message: document.querySelector('.m-msg')?.textContent ?? '', card: document.querySelector('[data-policy="Default"] header .d')?.textContent ?? '', behind: document.querySelector('[data-policy="Default"] [data-linked="parser-guild/parser-lab"] .m-st')?.textContent ?? '' }));
   check('saving a new revision keeps the linked repository at rev 1 and says rev 2 is not published there yet', /Saved as a new revision/u.test(saved.message) && /revision 2/u.test(saved.card) && /rev 1 · rev 2 not published here yet/u.test(saved.behind), JSON.stringify(saved));
+  await ctx.holdBusinessHistoryJob();
+  await go('/manage/policies?ns=parser-guild');
   await page.click('[data-policy="Default"] form input[value="policy-publish"] ~ button, [data-policy="Default"] header form button');
   await page.waitForLoadState('networkidle');
   const published = await page.evaluate(() => ({ message: document.querySelector('.m-msg')?.textContent ?? '', rows: [...document.querySelectorAll('[data-publication] tbody tr')].map(row => `${row.querySelector('.rn span')?.textContent}:${row.dataset.publicationResult}`), summary: document.querySelector('[data-publication] .m-gd')?.textContent ?? '', retry: Boolean(document.querySelector('[data-publication] input[value="policy-retry"]')), at: document.querySelector('[data-policy="Default"] [data-linked="parser-guild/parser-lab"] .m-st')?.textContent ?? '', reason: document.querySelector('[data-publication] tbody tr .why')?.textContent ?? '' }));
