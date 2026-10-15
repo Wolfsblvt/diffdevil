@@ -9,6 +9,7 @@
 import { plural } from '../format.mjs';
 
 const PAUSES = Object.freeze({
+  'recovery-rollback': 'Paused after restoring an older point. Progress was reset to match retained history; resume to reacquire missing work within the original scope.',
   person: 'Paused by an administrator. Live labels and checks are not affected.',
   'repository-stopped': 'Paused: repository operation was stopped. Consent and retained history stay; resume history within the allowance before resuming this job.',
   'provider-rate-limit': 'Paused: GitHub\'s rate limit for this installation. It continues by itself after the limit resets.',
