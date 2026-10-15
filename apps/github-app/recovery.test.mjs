@@ -299,13 +299,14 @@ test('healthy rollback rewinds jobs to retained data and ordinary continuation r
     await current.app.recordAnalyticalSizes([{ repositoryId: 17, path: 'later.ts', observedAt: at, revision: head, size: 7 }]);
     for (const [id, repo, kind, state, reason] of [
       ['older', 17, 'import', 'complete', 'all-recoverable'], ['import', 17, 'import', 'running', null],
+      ['older-open', 17, 'recalculate', 'paused', 'person'],
       ['recalculate', 17, 'recalculate', 'complete', 'interpreted'], ['paused', 19, 'import', 'paused', 'person'],
       ['stopped-repository', 19, 'recalculate', 'running', null],
       ['deleted', 20, 'import', 'queued', null], ['off', 18, 'import', 'queued', null]
     ]) await current.database.prepare(`INSERT INTO history_jobs(job_id,repository_id,installation_id,kind,state,reason,sequence,scope_limit,cursor_json,progress_json,policy_id,requested_by,requested_at,updated_at,lease_until)
       VALUES (?,?,9,?,?,?,4,100,?,?, 'selected-policy',77,?,?,?)`).bind(id, repo, kind, state, reason,
       JSON.stringify(kind === 'import' ? { page: 3, index: 7 } : { targets: [2], index: 1, capture: { revision: head, since: at } }),
-      JSON.stringify({ examined: 107, recorded: 107, records: 107, sizes: 7, interpretable: 107 }), id === 'older' ? point.capturedAt : at, through, until).run();
+      JSON.stringify({ examined: 107, recorded: 107, records: 107, sizes: 7, interpretable: 107 }), id.startsWith('older') ? point.capturedAt : at, through, until).run();
     await current.app.deleteHistory(20);
     await current.app.setRepositoryConsent(18, { enabled: false, origin: 'fixture-off' });
     await current.app.setRepositoryExecution(19, { enabled: false, origin: 'fixture-stop' });
@@ -332,6 +333,8 @@ test('healthy rollback rewinds jobs to retained data and ordinary continuation r
       assert.match(describeJob(job).title, /paused/iu);
     }
     assert.equal((await jobs.job('paused')).reason, 'person');
+    assert.equal((await jobs.job('older-open')).reason, 'person', 'an older explicit request can still be open after retry; age alone does not supersede it');
+    assert.equal((await jobs.job('older-open')).state, 'paused');
     assert.equal((await jobs.job('stopped-repository')).reason, 'repository-stopped');
     assert.equal((await jobs.job('recalculate')).reason, 'recovery-rollback');
     assert.equal((await jobs.job('deleted')).reason, 'history-deleted');

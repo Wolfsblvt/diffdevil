@@ -36,9 +36,9 @@ async function rewindHistoryJobs(database, store, through) {
     const key = `${job.repository_id}:${job.kind}`, isLatest = !latest.has(key);
     latest.add(key);
     let state = job.state, reason = job.reason, wakeAt = job.wake_at, finishedAt = job.finished_at;
-    if (!isLatest && ['queued', 'running', 'paused', 'complete'].includes(state)) {
+    if (!isLatest && state === 'complete') {
       state = 'stopped'; reason = 'recovery-rollback'; wakeAt = null; finishedAt = through;
-    } else if (isLatest && ['queued', 'running', 'paused', 'complete'].includes(state)) {
+    } else if (['queued', 'running', 'paused', 'complete'].includes(state)) {
       if (state === 'complete') {
         // Completion needs a new target-consistent run. Preserve the request, but do not start a rebuild on recovery.
         state = 'paused'; reason = 'recovery-rollback'; wakeAt = null;

@@ -237,8 +237,9 @@ Retained comparisons are skipped by ordinary duplicate-safe acquisition.
 The latest queued/running request returns to the ordinary queue; current person or
 service pauses remain. A latest completed request becomes `paused` with reason
 `recovery-rollback`, explained in Manage, and can use ordinary Resume. Recovery does
-not automatically start a completed unbounded import again. Older superseded runs
-become stopped; existing failed/stopped requests keep their terminal control state.
+not automatically start a completed unbounded import again. Older completed runs
+become stopped; older requests still open after a retry keep their current control
+state. Existing failed/stopped requests keep their terminal control state.
 All unsupported progress is cleared. Current history-off/deletion, repository Stop,
 selection and access still govern whether a request may run. No request is fabricated
 when none exists, and replay sends no Queue messages or provider reads for rebuilding
