@@ -144,6 +144,15 @@ async function stopWorker() {
   // The next pass must not be answered by a survivor.
   await freePort(APP_PORT);
 }
+async function releaseBusinessHistoryJob() {
+  await stopWorker();
+  const releasedAt = new Date().toISOString();
+  executeLocal(`UPDATE history_jobs SET state='complete', lease_until=NULL, updated_at='${releasedAt}', finished_at='${releasedAt}' WHERE job_id='qa-business-publication-history' AND state='running'`, STATE);
+  const state = executeLocal("SELECT state FROM history_jobs WHERE job_id='qa-business-publication-history'", STATE);
+  if (!state.includes('complete')) throw new Error('The seeded Business history job did not reach complete.');
+  await startWorker(undefined, STATE, { commercial: COMMERCIAL_BUSINESS });
+  await signIn();
+}
 
 const browser = await chromium.launch({ executablePath: process.env.PLAYWRIGHT_EXECUTABLE_PATH });
 const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, colorScheme: 'dark' });
@@ -157,7 +166,7 @@ context.on('page', page => {
 const page = await context.newPage();
 const go = (path, options = {}) => page.goto(/^https?:/u.test(path) ? path : `${ORIGIN}${path}`, { waitUntil: 'networkidle', ...options });
 const shot = name => page.screenshot({ path: join(OUT, `${name}.png`), fullPage: true });
-const ctx = { check, go, page, shot, ORIGIN, OUT, settled, qualifyFrame, qualifyCloud, premium: Boolean(premium), signIn: () => signIn() };
+const ctx = { check, go, page, shot, ORIGIN, OUT, settled, qualifyFrame, qualifyCloud, premium: Boolean(premium), signIn: () => signIn(), releaseBusinessHistoryJob };
 const overflow = () => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
 const offenders = () => page.evaluate(() => { const width = document.documentElement.clientWidth; return [...document.querySelectorAll('body *')].filter(element => element.getBoundingClientRect().right > width + 1).slice(0, 4).map(element => `${element.tagName.toLowerCase()}.${String(element.className).split(' ')[0]}@${Math.round(element.getBoundingClientRect().right)}`).join(', '); });
 const pageFacts = () => page.evaluate(() => ({
@@ -905,6 +914,14 @@ try {
     await settled();
     check('Business File detail resolves its opaque handle and mounts its comparison chart', businessFileResponse.status() === 200 && await page.locator('[data-chart-id="fvol"].is-mounted').count() === 1);
     await shot('business-file-detail');
+  }
+  if (premium) {
+    await stopWorker();
+    const requestedAt = new Date().toISOString();
+    // Hold one real D1 history-job row without starting provider work; the browser journey releases it between assertions.
+    executeLocal(`INSERT INTO history_jobs (job_id, repository_id, installation_id, kind, state, sequence, requested_by, requested_at, updated_at, lease_until) VALUES ('qa-business-publication-history', 1001, 10, 'import', 'running', 0, 123, '${requestedAt}', '${requestedAt}', '2099-01-01T00:00:00.000Z')`, STATE);
+    await startWorker(undefined, STATE, { commercial: COMMERCIAL_BUSINESS });
+    await signIn();
   }
   await businessManage(ctx);
   await manageAccess(ctx, { browser, label: 'business' });

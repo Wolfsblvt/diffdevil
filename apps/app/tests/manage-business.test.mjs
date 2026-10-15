@@ -170,6 +170,8 @@ test('on Business a named policy is created by revision, linking applies it as t
   assert.ok(whats.includes('Created the policy Default (revision 1) → applied'), whats.join('\n'));
   assert.ok(whats.some(what => /^Published Default revision 3 → queued$/u.test(what)), whats.join('\n'));
   assert.ok(whats.some(what => /^Publish Default revision 3 → queued$/u.test(what)), 'the queued repository has its own row');
+  assert.ok(whats.some(what => /^Retried publishing Default revision 3 → applied$/u.test(what)), whats.join('\n'));
+  assert.ok(whats.some(what => /^Publish Default revision 3 → applied$/u.test(what)), 'Audit keeps the repository result after retry');
   assert.ok(whats.includes('Linked to the policy Default (revision 2) → applied'));
   assert.ok(whats.includes('Removed the policy Default → applied'));
   assert.ok(events.every(event => event.actor.kind === 'person' && event.actor.id === 123 && event.actor.login === 'ada-sample'));
