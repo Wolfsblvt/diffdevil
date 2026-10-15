@@ -177,15 +177,15 @@ test('development deltas preserve bounded and unknown evidence instead of subtra
 
   assert.deepEqual(development.rows[1].changedFrom, { status: 'bounded', lower: -2095, upper: 2095 });
   const boundedReadout = readoutOf(development, 1);
-  assert.equal(boundedReadout.vals.find(value => value.label === 'Changed').value, '2240–4335');
-  assert.equal(boundedReadout.vals.find(value => value.label === 'vs previous').value, '−2095–+2095');
-  assert.equal(boundedReadout.vals.find(value => value.label === 'since opened').value, '−2095–+2095');
+  assert.equal(boundedReadout.vals.find(value => value.label === 'Changed').value, '2,240–4,335');
+  assert.equal(boundedReadout.vals.find(value => value.label === 'vs previous').value, '−2,095–+2,095');
+  assert.equal(boundedReadout.vals.find(value => value.label === 'since opened').value, '−2,095–+2,095');
   assert.equal(boundedReadout.vals.find(value => value.label === 'Changed').cls, 'sum range');
   assert.ok(boundedReadout.vals.filter(value => value.label === 'vs previous' || value.label === 'since opened').every(value => value.cls === 'range'));
   assert.equal(readoutOf(development, 0).vals.find(value => value.label === 'since opened').value, '±0', 'the first observed head is compared with the same measurement as its baseline');
 
   const asymmetric = { ...development, rows: development.rows.map((row, index) => index === 1 ? { ...row, changedFrom: { status: 'bounded', lower: -2095, upper: 1234 } } : row) };
-  assert.equal(readoutOf(asymmetric, 1).vals.find(value => value.label === 'vs previous').value, '−2095–+1234');
+  assert.equal(readoutOf(asymmetric, 1).vals.find(value => value.label === 'vs previous').value, '−2,095–+1,234');
 
   const unknownReadout = readoutOf(development, 2);
   assert.equal(unknownReadout.vals.find(value => value.label === 'vs previous').value, 'unknown');

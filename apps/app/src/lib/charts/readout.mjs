@@ -110,13 +110,8 @@ const READOUT = {
     if (row.color) tags.push({ cls: 'raw', html: chip(row.color, row.bandShort) });
     if (k === model.rows.length - 1) tags.push({ text: 'current' });
     if (row.transition) tags.push({ cls: 'warn', text: `${row.transition} here` });
-    const numberText = value => String(Math.round(value));
-    const signedText = value => `${value > 0 ? '+' : value < 0 ? '−' : '±'}${numberText(Math.abs(value))}`;
-    const intervalText = value => !value ? 'unknown' : value.status === 'unknown' && !value.lower ? 'unknown'
-      : value.upper === null ? `≥ ${numberText(value.lower)}`
-        : value.upper === value.lower ? numberText(value.lower) : `${numberText(value.lower)}–${numberText(value.upper)}`;
-    const deltaText = delta => delta === null ? '–' : delta.status === 'unknown' ? 'unknown' : delta.status === 'exact' ? signedText(delta.lower) : `${signedText(delta.lower)}–${signedText(delta.upper)}`;
-    return { when: `head ${k + 1} · ${row.sha} · ${agoText(row.at, model.now)}`, tags, vals: [{ cls: row.status === 'bounded' ? 'sum range' : 'sum', label: 'Changed', value: intervalText({ status: row.status, lower: row.changed, upper: row.upper }) }, { cls: row.changedFrom?.status === 'bounded' ? 'range' : undefined, label: 'vs previous', value: deltaText(row.changedFrom) }, { cls: row.sinceOpened?.status === 'bounded' ? 'range' : undefined, label: 'since opened', value: deltaText(row.sinceOpened) }] };
+    const deltaText = delta => delta === null ? '–' : delta.status === 'unknown' ? 'unknown' : delta.status === 'exact' ? signed(delta.lower) : `${signed(delta.lower)}–${signed(delta.upper)}`;
+    return { when: `head ${k + 1} · ${row.sha} · ${agoText(row.at, model.now)}`, tags, vals: [{ cls: row.status === 'bounded' ? 'sum range' : 'sum', label: 'Changed', value: boundText({ status: row.status, lower: row.changed, upper: row.upper }) }, { cls: row.changedFrom?.status === 'bounded' ? 'range' : undefined, label: 'vs previous', value: deltaText(row.changedFrom) }, { cls: row.sinceOpened?.status === 'bounded' ? 'range' : undefined, label: 'since opened', value: deltaText(row.sinceOpened) }] };
   },
 };
 

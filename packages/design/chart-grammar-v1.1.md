@@ -163,8 +163,12 @@ Against the ratified App layout (the owner reopened the structure for better cha
 | History | Change volume 12 (picks the bucket) → Merged PRs by size 12 (Pro and Free) → selected bucket 5 + growth and concentration 7 (Pro) or period comparison and See Pro (Free) → period comparison 12 (Pro). |
 | Files | filter → Where change lands 12 (selects the card in place) → Turnover map 12 → Ranked files 8 + selected-file card 4. The toolbar's metric and group controls are gone (the panel owns them). |
 | Pull requests | Pull-request flow 8 + Analysed heads 4 → PR lifecycle by size 6 + PR size mix 6 → list (unchanged). |
-| PR detail | result 5 + policy 7 (unchanged) → Recent activity 8 + Also in progress 4 → Files 7 + Development 5 → Often changed with 12. |
+| PR detail | result 5 + policy 7 (unchanged) → Recent activity 8 + Also in progress 4 → Files 6 + Development 6 at 1361 px and wider, Files 7 + Development 5 from 1181–1360 px, and the existing stacked full-width panels through 1180 px → Often changed with 12. |
 | File detail | tiles (unchanged) → Changed per merged PR with size strip 8 + Often changed with 4 → Contributing merged PRs 12. |
+
+The PR-detail row gives Development the width needed for complete bounded values. At 1361 px and wider both panels use six columns and Development uses canonical 17 px values / 21 px sum values. From 1181–1360 px the row remains seven/five, with uniform 13 px / 15 px compact Development type and dense value spacing. At 1180 px and below the existing stacked full-width layout and canonical type apply. Files keeps its full retained or pathless presentation in each layout; interval text, no-wrap behavior and the fixed 66 px readout (including its 40 px value line) do not change.
+
+**Source:** [Nyxara's PR116 design disposition](https://github.com/Wolfsblvt/emergency-meeting/issues/476#issuecomment-6182057713) selects this responsive composition and preserves the complete interval grammar.
 
 ## Interaction and state rules
 
