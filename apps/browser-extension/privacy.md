@@ -28,7 +28,7 @@ The extension uses the information above only to provide and improve its disclos
 
 The extension makes ordinary HTTPS requests to GitHub for GitHub resources and may use Chrome synchronization for the small preferences assigned to synchronized storage. It does not transmit source, reports, paths or policy to Wolfsblvt Works. A user-initiated export, copied support snapshot or public Issue attachment is a deliberate user action rather than background collection.
 
-This Limited Use affirmation concerns use and transfer, not compliance with every Store requirement or Store approval. The cache is not independently encrypted, as disclosed above. Store submission remains on hold pending provider clarification of the separate at-rest-encryption requirement; this affirmation does not resolve that requirement.
+This Limited Use affirmation concerns use and transfer, not compliance with every Store requirement or Store approval. The cache is not independently encrypted, as disclosed above. The current Store FAQ says personal or sensitive user data stored at rest should use strong encryption, so this notice does not claim that requirement is satisfied. Store review is the selected provider-interpretation route for this exact package: submission preserves this disclosure and uses deferred publishing, while review approval or rejection supplies package-specific evidence and public release remains a separate owner decision.
 
 ## Controls and deletion
 
