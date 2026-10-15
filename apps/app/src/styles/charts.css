@@ -48,6 +48,24 @@
 .fr-drill { margin-left: auto; align-self: center; flex: none; display: inline-flex; align-items: center; height: 28px; background: none; border: 1px solid var(--hair-strong); border-radius: var(--r-control); color: var(--fg); font: 600 12px var(--font-ui); padding: 0 10px; cursor: pointer; white-space: nowrap; }
 .fr-drill:hover { border-color: var(--accent); }
 
+/* Dense desktop Development values get tighter spacing independently of their viewport-sized type. */
+@media (min-width: 1181px) and (max-width: 1600px) {
+  .fr[data-chart="development"] .fr-vals { column-gap: 4px; }
+  .fr[data-chart="development"] .fr-vals .sum { padding-left: 10px; }
+}
+
+@media (min-width: 1181px) and (max-width: 1360px) {
+  .fr[data-chart="development"] .fr-vals dd { font-size: 13px; }
+  .fr[data-chart="development"] .fr-vals .sum dd { font-size: 15px; }
+  .a-grid > .pr-files { grid-column: span 7; }
+  .a-grid > .pr-development { grid-column: span 5; }
+}
+
+@media (max-width: 1180px) {
+  .a-grid > .pr-files,
+  .a-grid > .pr-development { grid-column: span 12; }
+}
+
 /* equivalent tables */
 .fr-tbl { width: 100%; border-collapse: collapse; font-size: 12.5px; }
 .fr-tbl th { text-align: left; font: 500 10.5px var(--font-mono); color: var(--fg-3); padding: 6px 8px; border-bottom: 1px solid var(--hair); white-space: nowrap; }

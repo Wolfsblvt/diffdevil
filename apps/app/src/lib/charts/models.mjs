@@ -156,12 +156,27 @@ export function lanesModel({ prs, period, from, to, range = null, hrefOf, repoOf
   return { kind: 'lanes', unit: 'pull request', period, rows, bands: used.map(band => ({ id: band.id, label: band.label, short: band.short, color: band.color, count: rows.filter(row => row.bandId === band.id).length })), from: Date.parse(from), to: Date.parse(to), range, rowH };
 }
 
+function difference(current, previous) {
+  if (!current || !previous) return null;
+  if (current === previous) return { status: 'exact', lower: 0, upper: 0 };
+  if (current.status === 'exact' && previous.status === 'exact' && Number.isFinite(current.lower) && Number.isFinite(previous.lower)) {
+    const value = current.lower - previous.lower;
+    return { status: 'exact', lower: value, upper: value };
+  }
+  if (!['exact', 'bounded'].includes(current.status) || !['exact', 'bounded'].includes(previous.status)
+    || !Number.isFinite(current.lower) || !Number.isFinite(current.upper)
+    || !Number.isFinite(previous.lower) || !Number.isFinite(previous.upper)) {
+    return { status: 'unknown', lower: null, upper: null };
+  }
+  return { status: 'bounded', lower: current.lower - previous.upper, upper: current.upper - previous.lower };
+}
+
 /** Development of one PR across its analysed heads, over the size zones of the active policy. */
 export function developmentModel({ heads, now }) {
   const rows = heads.map((head, index) => {
     const band = head.band ? bandOf(head.band.id) : null;
     return { index, sha: head.head ? String(head.head).slice(0, 7) : '—', at: Date.parse(head.observedAt), changed: head.changed.lower ?? 0, upper: head.changed.upper ?? null, status: head.changed.status,
-      bandId: band?.id ?? null, bandShort: band?.short ?? null, color: band?.color ?? null, changedFrom: index ? (head.changed.lower ?? 0) - (heads[index - 1].changed.lower ?? 0) : null, sinceOpened: (head.changed.lower ?? 0) - (heads[0].changed.lower ?? 0),
+      bandId: band?.id ?? null, bandShort: band?.short ?? null, color: band?.color ?? null, changedFrom: index ? difference(head.changed, heads[index - 1].changed) : null, sinceOpened: difference(head.changed, heads[0].changed),
       transition: index && heads[index - 1].band && head.band && heads[index - 1].band.id !== head.band.id ? `${bandOf(heads[index - 1].band.id).short} → ${band.short}` : null };
   });
   const top = Math.max(120, ...rows.map(row => row.upper ?? row.changed)) * 1.35;

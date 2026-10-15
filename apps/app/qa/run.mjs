@@ -40,7 +40,8 @@ const IDENTITY_ONLY = process.argv.includes('--identity');
 const AUTHORITY_ONLY = process.argv.includes('--authority');
 const HISTORY_ONLY = process.argv.includes('--history');
 const PR_SEARCH_DETAIL_ONLY = process.argv.includes('--pr-search-detail');
-const OUT = join(target.artifacts, 'qa', ...(PR_SEARCH_DETAIL_ONLY ? ['pr-search-detail'] : IDENTITY_ONLY ? ['identity'] : AUTHORITY_ONLY ? ['authority'] : HISTORY_ONLY ? ['history'] : []));
+const PR_CONFIDENCE_ONLY = process.argv.includes('--pr-confidence-state');
+const OUT = join(target.artifacts, 'qa', ...(PR_CONFIDENCE_ONLY ? ['pr-confidence-state'] : PR_SEARCH_DETAIL_ONLY ? ['pr-search-detail'] : IDENTITY_ONLY ? ['identity'] : AUTHORITY_ONLY ? ['authority'] : HISTORY_ONLY ? ['history'] : []));
 const APP_PORT = Number(process.env.DIFFDEVIL_APP_QA_PORT ?? (target.name === 'staging' ? 4512 : 4412));
 const GITHUB_PORT = Number(process.env.DIFFDEVIL_APP_QA_GITHUB_PORT ?? (target.name === 'staging' ? 4533 : 4433));
 // Chromium accepts Secure (__Host-) cookies from http://localhost, not from a loopback IP, so the browser origin is localhost; the Worker still binds 127.0.0.1.
@@ -438,11 +439,166 @@ async function qualifyPages(label, { pro }) {
   check(`${label} nav shows repository status vocabulary`, await page.evaluate(() => { const texts = [...document.querySelectorAll('.a-repos .a-st')].map(element => element.textContent); return texts.includes('History off') && texts.includes('Labels only'); }));
 }
 
+async function readPrDetailFacts() {
+  return page.evaluate(() => ({ lanes: document.querySelectorAll('.lane').length, result: document.querySelector('.a-result .big .n')?.textContent ?? '', snap: document.querySelector('.a-snap')?.textContent ?? '', files: document.querySelectorAll('#h-pf ~ * table tbody tr, .a-tbl tbody tr').length, github: Boolean(document.querySelector('a[href^="https://github.com/"]')), named: /src\/index\.ts/u.test(document.body.innerText), fileLinks: document.querySelectorAll('a[href^="/file/"]').length }));
+}
+
+async function qualifyPrConfidenceState(consumerReturn = null) {
+  const detail = await go('/pr/parser-guild/parser-lab/452');
+  await settled();
+  check('PR detail renders the Development chart for a retained merged pull request', detail.status() === 200 && await page.locator('[data-chart-id="dev"].is-mounted').count() === 1, `${detail.status()}`);
+  const inspectBoundedReadout = async width => {
+    await page.setViewportSize({ width, height: 900 });
+    return page.evaluate(() => {
+    const host = document.querySelector('[data-chart-id="dev"]');
+    const frame = host?.__frame;
+    if (!host || !frame) return null;
+    frame.setFocus(1, { announce: true });
+    const readout = host.querySelector('[data-readout]');
+    const strip = readout.querySelector('.fr-vals');
+    const stripBox = strip.getBoundingClientRect();
+    const values = [...strip.querySelectorAll('dd')].map(value => {
+      const range = document.createRange();
+      range.selectNodeContents(value);
+      const textBox = range.getBoundingClientRect();
+      return { label: value.previousElementSibling.textContent, value: value.textContent, fontSize: getComputedStyle(value).fontSize, left: textBox.left, right: textBox.right, clipped: value.scrollWidth > value.clientWidth + 1 };
+    });
+    const boxes = [...strip.children].map(value => { const box = value.getBoundingClientRect(); return { left: box.left, right: box.right }; });
+    const overlapping = boxes.some((box, index) => index > 0 && boxes[index - 1].right > box.left + 1);
+    return { viewport: innerWidth, readoutWidth: readout.clientWidth, readoutHeight: readout.getBoundingClientRect().height,
+      valuesHeight: strip.getBoundingClientRect().height, plotHeight: host.querySelector('[data-plot]').getBoundingClientRect().height,
+      rowSpans: ['.pr-files', '.pr-development'].map(selector => getComputedStyle(document.querySelector(selector)).gridColumn),
+      stripWidth: strip.clientWidth, stripScrollWidth: strip.scrollWidth,
+      overflowing: strip.scrollWidth > strip.clientWidth + 1, overlapping, valuesOutside: values.some(value => value.left < stripBox.left - 1 || value.right > stripBox.right + 1), values };
+    });
+  };
+  const now = await page.evaluate(() => document.querySelector('[data-chart-id="dev"]')?.__frame?.model.now);
+  await page.evaluate(now => {
+    const host = document.querySelector('[data-chart-id="dev"]');
+    const frame = host?.__frame;
+    if (!host || !frame) return;
+    const interval = { status: 'bounded', lower: 2240, upper: 4335 };
+    const delta = { status: 'bounded', lower: -2095, upper: 2095 };
+    frame.model = { ...frame.model, rows: [
+      { index: 0, sha: 'before1', at: now - 1, changed: interval.lower, upper: interval.upper, status: interval.status, bandShort: null, color: null, changedFrom: null, sinceOpened: { status: 'exact', lower: 0, upper: 0 }, transition: null },
+      { index: 1, sha: 'after01', at: now, changed: interval.lower, upper: interval.upper, status: interval.status, bandShort: null, color: null, changedFrom: delta, sinceOpened: delta, transition: null },
+    ] };
+    frame.setFocus(1, { announce: true });
+  }, now);
+  const boundedReadout = await inspectBoundedReadout(1280);
+  check('PR Development at 1280px keeps the 7/5 row, compact type, complete grouped bounds and fixed F1 geometry', boundedReadout?.viewport === 1280
+    && boundedReadout.rowSpans[0] === 'span 7' && boundedReadout.rowSpans[1] === 'span 5'
+    && boundedReadout.values.some(value => value.label === 'Changed' && value.value === '2,240–4,335')
+    && boundedReadout.values.filter(value => value.label === 'vs previous' || value.label === 'since opened').every(value => value.value === '−2,095–+2,095')
+    && boundedReadout.values.every(value => value.fontSize === (value.label === 'Changed' ? '15px' : '13px'))
+    && boundedReadout.readoutHeight === 66 && boundedReadout.valuesHeight === 40 && boundedReadout.plotHeight === 230
+    && !boundedReadout.overflowing && !boundedReadout.overlapping && !boundedReadout.valuesOutside && boundedReadout.values.every(value => !value.clipped), JSON.stringify(boundedReadout));
+  await page.locator('[data-chart-id="dev"] [data-readout]').screenshot({ path: join(OUT, 'pr-development-bounded-1280x900.png') });
+  for (const width of [1360, 1361, 1440]) {
+    const readout = await inspectBoundedReadout(width);
+    const compact = width === 1360;
+    const rowSpans = compact ? ['span 7', 'span 5'] : ['span 6', 'span 6'];
+    check(`PR Development at ${width}px keeps the ${compact ? '7/5 compact' : '6/6 canonical'} row, full grouped bounds and fixed F1 geometry`, readout?.viewport === width
+      && JSON.stringify(readout.rowSpans) === JSON.stringify(rowSpans)
+      && readout.values.some(value => value.label === 'Changed' && value.value === '2,240–4,335')
+      && readout.values.filter(value => value.label === 'vs previous' || value.label === 'since opened').every(value => value.value === '−2,095–+2,095')
+      && readout.values.every(value => value.fontSize === (value.label === 'Changed' ? (compact ? '15px' : '21px') : (compact ? '13px' : '17px')))
+      && readout.readoutHeight === 66 && readout.valuesHeight === 40 && readout.plotHeight === 230
+      && !readout.overflowing && !readout.overlapping && !readout.valuesOutside && readout.values.every(value => !value.clipped), JSON.stringify(readout));
+    if (width !== 1360) await page.locator('[data-chart-id="dev"] [data-readout]').screenshot({ path: join(OUT, `pr-development-bounded-${width}x900.png`) });
+  }
+  await page.evaluate(() => {
+    const host = document.querySelector('[data-chart-id="dev"]');
+    const frame = host?.__frame;
+    if (!frame) return;
+    frame.model = { ...frame.model, rows: frame.model.rows.map((row, index) => index === 1
+      ? { ...row, changedFrom: { status: 'bounded', lower: -2095, upper: 1234 } }
+      : row) };
+    frame.setFocus(null, { quiet: true });
+    frame.setFocus(1, { announce: true });
+  });
+  for (const width of [1361, 1440]) {
+    const readout = await inspectBoundedReadout(width);
+    check(`PR Development F1 readout preserves grouped asymmetric full bounds at ${width}px without clipping or overlap`, readout?.viewport === width
+      && readout.values.some(value => value.label === 'vs previous' && value.value === '−2,095–+1,234')
+      && readout.values.every(value => value.fontSize === (value.label === 'Changed' ? '21px' : '17px'))
+      && readout.readoutHeight === 66 && readout.valuesHeight === 40 && readout.plotHeight === 230
+      && !readout.overflowing && !readout.overlapping && !readout.valuesOutside && readout.values.every(value => !value.clipped), JSON.stringify(readout));
+  }
+  await page.locator('[data-chart-id="dev"] [data-readout]').screenshot({ path: join(OUT, 'pr-development-asymmetric-1440x900.png') });
+
+  for (const width of [1361, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    const inspectFilesLayout = async (label, pathless) => {
+      const response = await go('/pr/parser-guild/parser-lab/452?per=90d');
+      await settled();
+      const layout = await page.evaluate(() => {
+        const panel = document.querySelector('.pr-files');
+        const table = panel?.querySelector('.a-tbl');
+        const panelBox = panel?.getBoundingClientRect();
+        const cells = [...(table?.querySelectorAll('th, td') ?? [])].map(cell => {
+          const box = cell.getBoundingClientRect();
+          return { left: box.left, right: box.right };
+        });
+        return { width: innerWidth, column: panel && getComputedStyle(panel).gridColumn, rows: table?.querySelectorAll('tbody tr').length ?? 0,
+          tableOverflow: table ? table.scrollWidth > table.clientWidth + 1 : true,
+          cellsInside: Boolean(panelBox) && cells.every(cell => cell.left >= panelBox.left - 1 && cell.right <= panelBox.right + 1),
+          pageOverflow: document.documentElement.scrollWidth > innerWidth + 1, text: panel?.innerText ?? '' };
+      });
+      check(`PR detail ${label} Files presentation fits six columns at ${width}px`, response.status() === 200 && layout.width === width
+        && layout.column === 'span 6' && layout.rows > 0 && !layout.tableOverflow && layout.cellsInside && !layout.pageOverflow
+        && (pathless ? /path not retained/u.test(layout.text) : /src\/index\.ts/u.test(layout.text)), JSON.stringify(layout));
+    };
+
+    await inspectFilesLayout('retained', false);
+    executeLocal("INSERT INTO analytical_pull_requests(repository_id, pull_request, updated_at, expires_at, record_json) VALUES (1001, 999999, '2026-10-15T00:00:00.000Z', NULL, 'not-json')", STATE);
+    try { await inspectFilesLayout('pathless', true); }
+    finally { executeLocal('DELETE FROM analytical_pull_requests WHERE repository_id=1001 AND pull_request=999999', STATE); }
+  }
+  await go('/pr/parser-guild/parser-lab/452');
+  await settled();
+  await page.evaluate(() => {
+    const host = document.querySelector('[data-chart-id="dev"]');
+    const frame = host?.__frame;
+    if (host && frame) { frame.model = JSON.parse(host.querySelector('[data-chart-model]').textContent); frame.setFocus(null, { quiet: true }); }
+  });
+  await page.setViewportSize({ width: 1440, height: 900 });
+
+  const closedWithoutRevision = await go('/pr/parser-guild/parser-lab/74');
+  const closedWithoutRevisionText = await page.evaluate(() => document.body.innerText);
+  check('closed-unmerged PR with zero analysed revisions states that no revision or final comparison was retained', closedWithoutRevision.status() === 200
+    && /Closed unmerged; no analysed revision was retained, and no final merged comparison exists\./u.test(closedWithoutRevisionText)
+    && /No analysed revision retained/u.test(closedWithoutRevisionText), closedWithoutRevisionText.replace(/\s+/gu, ' ').slice(0, 500));
+  await shot('closed-unmerged-no-analysed-revision-pr74');
+
+  if (consumerReturn) {
+    const restored = await go(consumerReturn.href);
+    await settled();
+    const restoredFacts = await readPrDetailFacts();
+    const restoredUrl = new URL(page.url());
+    const expectedUrl = new URL(consumerReturn.href, page.url());
+    check('PR confidence qualification returns to the same PR detail and facts before its premium consumer runs', restored.status() === 200
+      && restoredUrl.pathname === expectedUrl.pathname && restoredUrl.search === expectedUrl.search
+      && JSON.stringify(restoredFacts) === JSON.stringify(consumerReturn.expectedFacts), JSON.stringify({ href: consumerReturn.href, restoredUrl: page.url(), restoredFacts, expectedFacts: consumerReturn.expectedFacts }));
+    return restoredFacts;
+  }
+}
+
 try {
   if (PR_SEARCH_DETAIL_ONLY) {
     await startWorker(undefined, STATE, { commercial: COMMERCIAL_FREE, allowances: { free: { private: 3, publicHistory: 10 }, proOrganisation: { private: 3 } } });
     await signIn();
     await qualifyAllRepositoriesSearchDetail();
+  } else if (PR_CONFIDENCE_ONLY) {
+    await startWorker(undefined, STATE, { commercial: COMMERCIAL_PRO });
+    await signIn();
+    await go('/prs?s=parser-guild%2Fparser-lab&per=90d&f=merged');
+    const href = await page.locator('.a-prs2 .a-pr').first().getAttribute('href');
+    const detailResponse = await go(href);
+    const detailFacts = await readPrDetailFacts();
+    check('focused PR detail reaches its retained analysis before confidence qualification', detailResponse.status() === 200 && detailFacts.lanes >= 3 && detailFacts.result !== '', JSON.stringify({ href, ...detailFacts }));
+    const consumerDetailFacts = await qualifyPrConfidenceState({ href, expectedFacts: detailFacts });
+    await premium?.prDetail?.(ctx, { detailFacts: consumerDetailFacts });
   } else if (AUTHORITY_ONLY) {
     for (const [name, status, role, state] of [
       ['unavailable', 403, 'admin', 'active'], ['pending', 200, 'admin', 'pending'],
@@ -622,13 +778,14 @@ try {
   const href = await firstRow.getAttribute('href');
   const detailResponse = await go(href);
   check('PR detail answers 200', detailResponse.status() === 200, `${detailResponse.status()} :: ${(await page.evaluate(() => document.body.innerText)).replace(/\s+/gu, ' ').slice(0, 400)}`);
-  const detailFacts = await page.evaluate(() => ({ lanes: document.querySelectorAll('.lane').length, result: document.querySelector('.a-result .big .n')?.textContent ?? '', snap: document.querySelector('.a-snap')?.textContent ?? '', files: document.querySelectorAll('#h-pf ~ * table tbody tr, .a-tbl tbody tr').length, github: Boolean(document.querySelector('a[href^="https://github.com/"]')), named: /src\/index\.ts/u.test(document.body.innerText), fileLinks: document.querySelectorAll('a[href^="/file/"]').length }));
+  const detailFacts = await readPrDetailFacts();
   check('PR detail shows the result, policy lanes, freshness, named file rows and the GitHub link', detailFacts.lanes >= 3 && detailFacts.result !== '' && /analysed head/u.test(detailFacts.snap) && detailFacts.files > 0 && detailFacts.github && detailFacts.named, JSON.stringify({ href, ...detailFacts }));
   await settled();
   check('PR detail draws development over the size zones', (await page.locator('[data-chart="development"].is-mounted').count()) === 1);
   await qualifyFrame('pro pr detail', '[data-chart-id="dev"]');
-  await qualifyAllRepositoriesSearchDetail(page.url(), detailFacts);
-  await premium?.prDetail?.(ctx, { detailFacts });
+  const consumerDetailFacts = await qualifyPrConfidenceState({ href, expectedFacts: detailFacts });
+  await qualifyAllRepositoriesSearchDetail(href, consumerDetailFacts);
+  await premium?.prDetail?.(ctx, { detailFacts: consumerDetailFacts });
   if (!premium) {
     check('without the premium extension PR detail keeps its named files as plain text and says file context is not part of this build', detailFacts.fileLinks === 0 && (await page.locator('#h-ctx1, #h-recent, #h-ow').count()) === 0 && (await page.evaluate(() => /File context is not part of this build/u.test(document.body.innerText))));
     await shot('community-pr-detail');
@@ -848,7 +1005,7 @@ try {
   githubServer.closeAllConnections?.();
   githubServer.close();
 }
-await writeFile(join(OUT, 'results.json'), JSON.stringify({ origin: ORIGIN, scope: PR_SEARCH_DETAIL_ONLY ? 'pr-search-detail' : AUTHORITY_ONLY ? 'authority' : HISTORY_ONLY ? 'history' : IDENTITY_ONLY ? 'identity' : PARTICIPATION_ONLY ? 'participation' : 'full', target: target.name, seeded: seeded.written, dense: DENSE && !PR_SEARCH_DETAIL_ONLY && !PARTICIPATION_ONLY && !IDENTITY_ONLY && !AUTHORITY_ONLY && !HISTORY_ONLY, charts: chartTelemetry, results, failures, consoleErrors, pageErrors, external }, null, 2));
+await writeFile(join(OUT, 'results.json'), JSON.stringify({ origin: ORIGIN, scope: PR_CONFIDENCE_ONLY ? 'pr-confidence-state' : PR_SEARCH_DETAIL_ONLY ? 'pr-search-detail' : AUTHORITY_ONLY ? 'authority' : HISTORY_ONLY ? 'history' : IDENTITY_ONLY ? 'identity' : PARTICIPATION_ONLY ? 'participation' : 'full', target: target.name, seeded: seeded.written, dense: DENSE && !PR_CONFIDENCE_ONLY && !PR_SEARCH_DETAIL_ONLY && !PARTICIPATION_ONLY && !IDENTITY_ONLY && !AUTHORITY_ONLY && !HISTORY_ONLY, charts: chartTelemetry, results, failures, consoleErrors, pageErrors, external }, null, 2));
 await writeFile(join(OUT, 'worker.log'), workerLog);
 console.log(`${PARTICIPATION_ONLY ? 'Participation: ' : ''}${results.filter(result => result.ok).length} of ${results.length} checks passed; screenshots and results in ${OUT}`);
 if (failures.length) { console.error(failures.map(failure => ` ✗ ${failure}`).join('\n')); process.exit(1); }
