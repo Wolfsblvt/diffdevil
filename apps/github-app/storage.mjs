@@ -6,6 +6,7 @@ import { sizeCaptureGroups } from './size-capture-groups.mjs';
 import { historyCollectionPause } from './history-standing.mjs';
 
 const DAY = 86_400_000;
+export const APP_TOMBSTONE_DAYS = 37;
 const leaseExpiry = (now, durationMs) => new Date(Date.parse(now) + durationMs).toISOString();
 const nextAttempt = () => crypto.randomUUID();
 const boundedDays = value => Number.isSafeInteger(value) && value >= 1 && value <= 3660 ? value : null;
@@ -444,7 +445,7 @@ export class D1AppStore {
     const now = this.now(), recoveryCutoff = new Date(Date.parse(now) - 7 * DAY).toISOString(), graceCutoff = new Date(Date.parse(now) - 30 * DAY).toISOString();
     await this.expireHistory();
     const offboarding = await this.statement("SELECT repository_id, execution_consent_reason, history_consent_reason FROM repositories WHERE state='offboarding' AND updated_at <= ?", graceCutoff).all();
-    const tombstoneUntil = new Date(Date.parse(now) + 37 * DAY).toISOString();
+    const tombstoneUntil = new Date(Date.parse(now) + APP_TOMBSTONE_DAYS * DAY).toISOString();
     for (const row of offboarding.results ?? []) {
       await this.reapplyRepositoryDeletion(row.repository_id, { deletedAt: now, reapplyUntil: tombstoneUntil,
         executionReason: row.execution_consent_reason ?? 're-consent-required', historyReason: row.history_consent_reason ?? 're-consent-required' });
@@ -475,7 +476,7 @@ export class D1AppStore {
     ]);
   }
 
-  async deleteHistory(repositoryId, { deletedAt = this.now(), reapplyUntil = new Date(Date.parse(deletedAt) + 37 * DAY).toISOString() } = {}) {
+  async deleteHistory(repositoryId, { deletedAt = this.now(), reapplyUntil = new Date(Date.parse(deletedAt) + APP_TOMBSTONE_DAYS * DAY).toISOString() } = {}) {
     const now = deletedAt, until = reapplyUntil;
     await this.removeHistoryRecords(repositoryId);
     await this.database.batch([
@@ -491,14 +492,9 @@ export class D1AppStore {
     ]);
   }
 
-  /** Shorter post-point retention restricts old rows without enabling collection or extending an earlier expiry. */
+  /** Match the live future-record setting. Existing observations retain their original expiry. */
   async reapplyHistoryRetention(repositoryId, retentionDays) {
-    const expires = new Date(Date.parse(this.now()) + retentionDays * DAY).toISOString();
-    await this.database.batch([
-      this.statement('UPDATE repositories SET retention_days=? WHERE repository_id=? AND (retention_days IS NULL OR retention_days>?)', retentionDays, repositoryId, retentionDays),
-      ...['history_records', 'analytical_pull_requests', 'analytical_size_observations'].map(table =>
-        this.statement(`UPDATE ${table} SET expires_at=? WHERE repository_id=? AND (expires_at IS NULL OR expires_at>?)`, expires, repositoryId, expires))
-    ]);
+    await this.statement('UPDATE repositories SET retention_days=? WHERE repository_id=?', retentionDays, repositoryId).run();
   }
 
   /** Atomic allowlisted publication, admitted only under current history consent. */

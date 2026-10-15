@@ -11,6 +11,8 @@ import { D1ManageStore } from '../app/src/lib/manage/store.mjs';
 import { D1ParticipationStore } from '../app/src/lib/participation/store.mjs';
 import { readRecoveryInput, replayRecoveryObligations } from './recovery.mjs';
 import { exportHealthyRecoveryInput } from './recovery-input.mjs';
+import { createAdmissionService } from './admission.mjs';
+import { RECOVERY_DUTIES } from './recovery-contract.mjs';
 
 const point = { id: 'sanitized-point', capturedAt: '2026-10-01T00:00:00.000Z', supportedUntil: '2026-10-31T00:00:00.000Z' };
 const through = '2026-10-05T00:00:00.000Z';
@@ -18,8 +20,8 @@ const at = '2026-10-02T00:00:00.000Z';
 const until = '2026-11-08T00:00:00.000Z';
 function input(events = []) {
   return { kind: 'diffdevil.app-recovery-input', version: 1, point,
-    coverage: { from: point.capturedAt, through,
-      sources: ['deletion-expiry', 'history-consent', 'service-disconnect', 'works-disconnect'].map(duty =>
+    coverage: { from: point.capturedAt, through, tombstoneRetentionDays: 37,
+      sources: RECOVERY_DUTIES.map(duty =>
         ({ duty, authority: `fixture:${duty}`, checkpoint: 'fixture-sequence-6', recoveryEvidence: 'sanitized-independent-fixture', through })) },
     events: events.map((event, index) => ({ id: `duty-${index}`, at, ...event })) };
 }
@@ -72,10 +74,12 @@ test('input refuses missing, partial, stale, wrong-point and unordered duties be
 test('real D1 replay removes later-deleted data, opt-out, expiry and grants while preserving point attempts', async () => {
   const f = await fixture();
   try {
+    await f.app.recordAnalyticalSizes([{ repositoryId: 20, path: 'expired.ts', observedAt: point.capturedAt,
+      revision: 'b'.repeat(40), size: 3, expiresAt: '2026-10-03T00:00:00.000Z' }]);
     const duties = input([
       { type: 'history-deleted', repositoryId: 17, reapplyUntil: until },
       { type: 'repository-deleted', repositoryId: 18, reapplyUntil: until },
-      { type: 'history-disabled', repositoryId: 19 },
+      { type: 'history-disabled', repositoryId: 19, deselect: false },
       { type: 'history-retention', repositoryId: 20, retentionDays: 1 },
       { type: 'service-disconnected', userId: 77 },
       { type: 'works-disconnected', linkId: 'link-1' }
@@ -87,7 +91,8 @@ test('real D1 replay removes later-deleted data, opt-out, expiry and grants whil
     assert.equal((await f.app.historySettings(17)).enabled, false);
     assert.equal(await f.app.repositoryAdmission(18), undefined);
     assert.equal((await f.app.historySettings(19)).enabled, false);
-    assert.equal((await f.database.prepare('SELECT count(*) AS n FROM analytical_file_sizes WHERE repository_id IN (17,18,20)').first()).n, 0);
+    assert.equal((await f.database.prepare('SELECT count(*) AS n FROM analytical_file_sizes WHERE repository_id IN (17,18)').first()).n, 0);
+    assert.equal((await f.database.prepare('SELECT count(*) AS n FROM analytical_file_sizes WHERE repository_id=20').first()).n, 1, 'only originally expired observations are removed; a future retention setting does not clamp existing rows');
     assert.equal((await f.database.prepare('SELECT count(*) AS n FROM analytical_file_sizes WHERE repository_id=19').first()).n, 1, 'opt-out stops collection without selecting deletion');
     assert.equal(await f.auth.serviceDisconnected(77), true);
     assert.ok((await f.auth.session('session')).revoked_at);
@@ -129,6 +134,10 @@ test('commercial unavailability and mere acknowledgements keep replay incomplete
     assert.equal((await f.replay(input())).code, 'E_RECOVERY_COMMERCIAL_UNAVAILABLE');
     const acknowledgement = { reconcileAfterRestore: async () => ({ current: 1, ended: 0, unavailable: 0 }) };
     assert.equal((await f.replay(input(), { commercial: acknowledgement })).phase, 'incomplete');
+    await assert.rejects(f.replay(input(), { commercial: { reconcileAfterRestore: async () => {
+      throw Object.assign(new Error('fixture commercial unavailable'), { code: 'E_COMMERCIAL_UNAVAILABLE' });
+    } } }), { code: 'E_RECOVERY_COMMERCIAL_UNAVAILABLE' });
+    assert.equal(f.receipts.at(-1).code, 'E_RECOVERY_COMMERCIAL_UNAVAILABLE');
     const current = { reconcileAfterRestore: async () => {
       const store = new D1CommercialStore(f.database, { now: () => through });
       await store.endLink('link-1', { source: 'fixture-current-answer', endedAt: through });
@@ -257,4 +266,71 @@ test('healthy-source export proves its output route before reads and refuses inc
   assert.equal(committed.length, 1);
   assert.equal(committed[0].phase, 'reading');
   assert.notEqual(committed[0].kind, 'diffdevil.app-recovery-input');
+});
+
+test('retention replay matches the live future-record setting without deleting existing observations', async () => {
+  const f = await fixture();
+  try {
+    const live = createAdmissionService({ store: f.app, authorize: async () => true });
+    await live.update(17, { revision: 0, origin: 'fixture', history: { enabled: true, retentionDays: 1 } });
+    await f.replay(input([{ type: 'history-retention', repositoryId: 18, retentionDays: 1 }]));
+    const rows = (await f.database.prepare('SELECT repository_id,expires_at FROM analytical_file_sizes WHERE repository_id IN (17,18) ORDER BY repository_id').all()).results;
+    assert.equal(rows.length, 2, 'both live and replay retain the observations at their original expiry');
+    assert.equal(rows[0].expires_at, rows[1].expires_at);
+    assert.equal((await f.app.repositoryAdmission(17)).history.retentionDays, (await f.app.repositoryAdmission(18)).history.retentionDays);
+  } finally { await f.runtime.dispose(); }
+});
+
+test('history-off replay matches stopCollecting consent and selection semantics', async () => {
+  const f = await fixture();
+  try {
+    const manage = new D1ManageStore(f.database, { now: () => at });
+    for (const repositoryId of [17, 18]) {
+      await f.app.setRepositoryExecution(repositoryId, { enabled: false, origin: 'fixture' });
+      await manage.select(repositoryId, 77);
+    }
+    const live = createAdmissionService({ store: f.app, authorize: async () => true });
+    await live.update(17, { revision: 0, origin: 'fixture', history: { enabled: false, stopCollecting: true } });
+    await manage.deselect(17); // The live history action deselects when execution is inactive.
+    await f.replay(input([{ type: 'history-disabled', repositoryId: 18, deselect: true }]));
+    assert.deepEqual((await f.app.repositoryAdmission(17)).history, (await f.app.repositoryAdmission(18)).history);
+    assert.equal((await f.app.repositoryAdmission(18)).history.reason, null, 'pausing collection does not withdraw retained history consent');
+    assert.equal(await manage.selection(18), null);
+    assert.equal((await f.database.prepare('SELECT count(*) AS n FROM analytical_file_sizes WHERE repository_id IN (17,18)').first()).n, 2);
+  } finally { await f.runtime.dispose(); }
+});
+
+test('stop, in-grace release, delegation removal and setup-off preserve their distinct live effects', async () => {
+  const f = await fixture();
+  try {
+    const manage = new D1ManageStore(f.database, { now: () => at });
+    for (const repositoryId of [17, 18]) await manage.select(repositoryId, 77);
+    await manage.grantDelegation({ accountId: 9001, userId: 77, login: 'fixture', role: 'account-admin' });
+    await manage.saveAutomaticSetup(9001, { enableExecution: true, writerDeclared: true, actorId: 77, actorRole: 'account-admin' });
+    await manage.saveAutomaticSetup(9002, { enableExecution: true, writerDeclared: true, actorId: 88, actorRole: 'owner' });
+    await f.replay(input([{ type: 'repository-stopped', repositoryId: 17 }, { type: 'repository-released', repositoryId: 18 },
+      { type: 'delegation-removed', accountId: 9001, userId: 77 }, { type: 'automatic-setup-disabled', accountId: 9002 }]));
+    assert.equal(await manage.selection(17), null);
+    assert.equal((await f.app.repositoryAdmission(17)).execution.reason, 'explicitly-disabled');
+    assert.equal(await manage.selection(18), null);
+    assert.equal((await f.app.repositoryAdmission(18)).execution.reason, null, 'release removes selection without inventing another consent withdrawal');
+    assert.equal((await f.database.prepare('SELECT count(*) AS n FROM analytical_file_sizes WHERE repository_id IN (17,18)').first()).n, 2);
+    assert.equal(await manage.delegation(9001, 77), null);
+    assert.ok(await manage.automaticSetup(9001), 'revoking its chooser disables authority without deleting the stored choice');
+    assert.equal(await manage.automaticSetup(9002), null);
+  } finally { await f.runtime.dispose(); }
+});
+
+test('restore support needs its actual duty guarantee plus seven days, without a staging-specific ceiling', () => {
+  const missing = input(); delete missing.coverage.tombstoneRetentionDays;
+  assert.throws(() => readRecoveryInput(missing, point, through), { code: 'E_RECOVERY_INPUT' });
+  const inadequate = input(); inadequate.coverage.tombstoneRetentionDays = 36;
+  assert.throws(() => readRecoveryInput(inadequate, point, through), { code: 'E_RECOVERY_INPUT' });
+  const longerPoint = { ...point, supportedUntil: '2026-11-15T00:00:00.000Z' };
+  const longer = input(); longer.point = longerPoint;
+  assert.throws(() => readRecoveryInput(longer, longerPoint, through), { code: 'E_RECOVERY_INPUT' });
+  longer.coverage.tombstoneRetentionDays = 52;
+  assert.equal(readRecoveryInput(longer, longerPoint, through).coverage.tombstoneRetentionDays, 52);
+  longer.events = [{ id: 'deletion', type: 'history-deleted', repositoryId: 17, at, reapplyUntil: until }];
+  assert.throws(() => readRecoveryInput(longer, longerPoint, through), { code: 'E_RECOVERY_INPUT' });
 });

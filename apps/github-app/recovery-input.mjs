@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
-import { D1AppStore } from './storage.mjs';
+import { APP_TOMBSTONE_DAYS, D1AppStore } from './storage.mjs';
+import { hasRecoveryCoverage, RECOVERY_DUTIES } from './recovery-contract.mjs';
 
 // Current privacy/authority/configuration state travels together. Measurements remain on the old point;
 // their complete current logical membership below prevents a rollback resurrecting removed observations.
@@ -45,7 +46,7 @@ export async function exportHealthyRecoveryInput({ database, point, source, chec
     || source?.mode !== 'immutable-current-copy' || source.databaseId !== point.databaseId
     || !iso(source.capturedAt) || source.capturedAt < point.capturedAt || source.capturedAt > point.supportedUntil
     || !text(source.snapshotId) || !text(source.healthEvidence) || !text(source.consistencyEvidence)
-    || !text(source.interpretation) || typeof checkpoint !== 'function') throw fail();
+    || !text(source.interpretation) || !hasRecoveryCoverage(point, APP_TOMBSTONE_DAYS) || typeof checkpoint !== 'function') throw fail();
   const selectedSource = structuredClone(source), tables = [], membership = {};
   // Establish the protected output path before reading credential-bearing current state.
   await checkpoint({ kind: 'diffdevil.healthy-source-export-checkpoint', version: 1, phase: 'reading', point: structuredClone(point), source: structuredClone(selectedSource) });
@@ -56,8 +57,8 @@ export async function exportHealthyRecoveryInput({ database, point, source, chec
   }
   for (const [name, selected] of Object.entries(MEMBERSHIP)) membership[name] = await readTable(database, name, selected);
   const input = { kind: 'diffdevil.app-recovery-input', version: 1, point: structuredClone(point),
-    coverage: { from: point.capturedAt, through: selectedSource.capturedAt, mode: 'healthy-source-rollback',
-      sources: ['deletion-expiry', 'history-consent', 'service-disconnect', 'works-disconnect'].map(duty => ({ duty,
+    coverage: { from: point.capturedAt, through: selectedSource.capturedAt, mode: 'healthy-source-rollback', tombstoneRetentionDays: APP_TOMBSTONE_DAYS,
+      sources: RECOVERY_DUTIES.map(duty => ({ duty,
         authority: selectedSource.snapshotId, checkpoint: selectedSource.capturedAt, recoveryEvidence: selectedSource.consistencyEvidence, through: selectedSource.capturedAt })) },
     events: [], currentState: { kind: 'diffdevil.healthy-recovery-state', version: 1, source: selectedSource, tables, membership } };
   await checkpoint(structuredClone(input));
@@ -68,7 +69,7 @@ export async function exportHealthyRecoveryInput({ database, point, source, chec
 export async function validateHealthyRecoveryState(database, input) {
   const state = input.currentState;
   if (!state || state.kind !== 'diffdevil.healthy-recovery-state' || state.version !== 1
-    || input.coverage.mode !== 'healthy-source-rollback' || !text(input.point.databaseId)
+    || input.coverage.mode !== 'healthy-source-rollback' || input.coverage.tombstoneRetentionDays !== APP_TOMBSTONE_DAYS || !text(input.point.databaseId)
     || state.source?.databaseId !== input.point.databaseId || state.source?.mode !== 'immutable-current-copy'
     || state.source?.capturedAt !== input.coverage.through || !text(state.source.snapshotId)
     || !text(state.source.healthEvidence) || !text(state.source.consistencyEvidence) || !text(state.source.interpretation)
