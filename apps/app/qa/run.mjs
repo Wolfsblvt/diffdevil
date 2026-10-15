@@ -461,7 +461,7 @@ async function qualifyPrConfidenceState(consumerReturn = null) {
       const range = document.createRange();
       range.selectNodeContents(value);
       const textBox = range.getBoundingClientRect();
-      return { label: value.previousElementSibling.textContent, value: value.textContent, left: textBox.left, right: textBox.right, clipped: value.scrollWidth > value.clientWidth + 1 };
+      return { label: value.previousElementSibling.textContent, value: value.textContent, fontSize: getComputedStyle(value).fontSize, left: textBox.left, right: textBox.right, clipped: value.scrollWidth > value.clientWidth + 1 };
     });
     const boxes = [...strip.children].map(value => { const box = value.getBoundingClientRect(); return { left: box.left, right: box.right }; });
     const overlapping = boxes.some((box, index) => index > 0 && boxes[index - 1].right > box.left + 1);
@@ -484,15 +484,38 @@ async function qualifyPrConfidenceState(consumerReturn = null) {
   }, now);
   const boundedReadout = await inspectBoundedReadout(1280);
   check('PR Development F1 readout shows the full signed bounded delta at 1280px without clipping or overlap', boundedReadout?.viewport === 1280
-    && boundedReadout.values.filter(value => value.label === 'vs previous' || value.label === 'since opened').every(value => value.value === '−2,095–+2,095')
+    && boundedReadout.values.some(value => value.label === 'Changed' && value.value === '2240–4335')
+    && boundedReadout.values.filter(value => value.label === 'vs previous' || value.label === 'since opened').every(value => value.value === '−2095–+2095')
+    && boundedReadout.values.every(value => value.fontSize === (value.label === 'Changed' ? '15px' : '13px'))
     && !boundedReadout.overflowing && !boundedReadout.overlapping && !boundedReadout.valuesOutside && boundedReadout.values.every(value => !value.clipped), JSON.stringify(boundedReadout));
   await page.locator('[data-chart-id="dev"] [data-readout]').screenshot({ path: join(OUT, 'pr-development-bounded-1280x900.png') });
   for (const width of [1361, 1440]) {
     const readout = await inspectBoundedReadout(width);
     check(`PR Development F1 readout preserves the full signed bounded delta at ${width}px without clipping or overlap`, readout?.viewport === width
-      && readout.values.filter(value => value.label === 'vs previous' || value.label === 'since opened').every(value => value.value === '−2,095–+2,095')
+      && readout.values.some(value => value.label === 'Changed' && value.value === '2240–4335')
+      && readout.values.filter(value => value.label === 'vs previous' || value.label === 'since opened').every(value => value.value === '−2095–+2095')
+      && readout.values.every(value => value.fontSize === (value.label === 'Changed' ? '21px' : '17px'))
+      && !readout.overflowing && !readout.overlapping && !readout.valuesOutside && readout.values.every(value => !value.clipped), JSON.stringify(readout));
+    await page.locator('[data-chart-id="dev"] [data-readout]').screenshot({ path: join(OUT, `pr-development-bounded-${width}x900.png`) });
+  }
+  await page.evaluate(() => {
+    const host = document.querySelector('[data-chart-id="dev"]');
+    const frame = host?.__frame;
+    if (!frame) return;
+    frame.model = { ...frame.model, rows: frame.model.rows.map((row, index) => index === 1
+      ? { ...row, changedFrom: { status: 'bounded', lower: -2095, upper: 1234 } }
+      : row) };
+    frame.setFocus(null, { quiet: true });
+    frame.setFocus(1, { announce: true });
+  });
+  for (const width of [1361, 1440]) {
+    const readout = await inspectBoundedReadout(width);
+    check(`PR Development F1 readout preserves asymmetric full bounds at ${width}px without clipping or overlap`, readout?.viewport === width
+      && readout.values.some(value => value.label === 'vs previous' && value.value === '−2095–+1234')
+      && readout.values.every(value => value.fontSize === (value.label === 'Changed' ? '21px' : '17px'))
       && !readout.overflowing && !readout.overlapping && !readout.valuesOutside && readout.values.every(value => !value.clipped), JSON.stringify(readout));
   }
+  await page.locator('[data-chart-id="dev"] [data-readout]').screenshot({ path: join(OUT, 'pr-development-asymmetric-1440x900.png') });
   await page.evaluate(() => {
     const host = document.querySelector('[data-chart-id="dev"]');
     const frame = host?.__frame;
