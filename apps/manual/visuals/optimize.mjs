@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 /** Compact the finite generated visual set without changing its editable Mermaid/Vega-Lite sources. */
 import { execFileSync } from 'node:child_process';
-import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -10,7 +9,6 @@ import { optimize } from 'svgo';
 const repositoryRoot = fileURLToPath(new URL('../../../', import.meta.url));
 const renderedRoot = join(repositoryRoot, 'docs/manual/assets/visuals/rendered');
 const receiptPath = join(renderedRoot, 'receipt.json');
-const sha256 = value => createHash('sha256').update(value).digest('hex');
 const escapeAttribute = value => value.replaceAll('&', '&amp;').replaceAll('"', '&quot;');
 const mode = process.argv[2] ?? '--write';
 if (mode !== '--write') throw new Error(`Unknown visual optimization mode: ${mode}`);
@@ -68,7 +66,6 @@ for (const output of receipt.outputs) {
   const path = join(repositoryRoot, output.path);
   const compact = optimizeSvg(readFileSync(path, 'utf8'), output);
   writeFileSync(path, compact, 'utf8');
-  output.sha256 = sha256(compact);
 }
 const pkg = JSON.parse(readFileSync(join(repositoryRoot, 'apps/manual/package.json'), 'utf8'));
 receipt.optimizer = { name: 'svgo', version: pkg.dependencies?.svgo };

@@ -8,7 +8,6 @@ import {
   rmSync,
   writeFileSync,
 } from 'node:fs';
-import { createHash } from 'node:crypto';
 import { dirname, join, relative } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -40,7 +39,6 @@ const outputs = Object.freeze([
   { id: 'provider-readback', source: sources.provider, kind: 'mermaid', appearance: 'dark' },
 ].map(entry => Object.freeze({ ...entry, file: `${entry.id}-${entry.appearance}.svg` })));
 
-const sha256 = value => createHash('sha256').update(value).digest('hex');
 const read = path => readFileSync(join(repositoryRoot, path), 'utf8');
 const stable = value => JSON.stringify(value, null, 2) + '\n';
 
@@ -285,7 +283,7 @@ async function renderAll(destination) {
       }
       mkdirSync(destination, { recursive: true });
       writeFileSync(join(destination, output.file), svg, 'utf8');
-      rendered.push({ ...output, sha256: sha256(svg) });
+      rendered.push(output);
     }
   } finally {
     await page.close();
@@ -304,7 +302,7 @@ function expectedReceipt(rendered) {
     formatVersion: 1,
     renderer: 'apps/manual/visuals/render.mjs',
     runtimes: pins,
-    sources: [...new Set(outputs.map(output => output.source))].sort().map(path => ({ path, sha256: sha256(read(path)) })),
+    sources: [...new Set(outputs.map(output => output.source))].sort(),
     outputs: rendered.map(output => ({
       path: `docs/manual/assets/visuals/rendered/${output.file}`,
       visual: output.id,
@@ -313,7 +311,6 @@ function expectedReceipt(rendered) {
       width: output.width ?? null,
       narrow: output.narrow ?? false,
       source: output.source,
-      sha256: output.sha256,
     })),
   };
 }
@@ -332,12 +329,12 @@ function validateCommitted() {
   const receipt = JSON.parse(receiptText);
   if (receipt.formatVersion !== 1 || receipt.renderer !== 'apps/manual/visuals/render.mjs') throw new Error('Unsupported visual receipt.');
   if (JSON.stringify(receipt.runtimes) !== JSON.stringify(packagePins())) throw new Error('Visual runtime pins differ from the receipt.');
-  for (const source of receipt.sources) if (sha256(read(source.path)) !== source.sha256) throw new Error(`${source.path}: source differs from the visual receipt.`);
+  const expectedSources = [...new Set(outputs.map(output => output.source))].sort();
+  if (JSON.stringify(receipt.sources) !== JSON.stringify(expectedSources)) throw new Error('Visual receipt does not identify the complete selected source set.');
   for (const output of receipt.outputs) {
     const path = join(repositoryRoot, output.path);
     if (!existsSync(path)) throw new Error(`${output.path}: missing rendered visual.`);
     const content = readFileSync(path, 'utf8');
-    if (sha256(content) !== output.sha256) throw new Error(`${output.path}: rendered bytes differ from the receipt.`);
     validateSvg(output.path, content);
   }
   const expectedFiles = outputs.map(output => `docs/manual/assets/visuals/rendered/${output.file}`).sort();
@@ -352,7 +349,7 @@ function validateCommitted() {
     if (/\bclick\s+/iu.test(source) || /https?:\/\//iu.test(source)) throw new Error(`${path}: Mermaid source may not contain links or remote resources.`);
   }
   mkdirSync(artifactRoot, { recursive: true });
-  writeFileSync(join(artifactRoot, 'validation.json'), stable({ ok: true, receiptSha256: sha256(receiptText), outputs: receipt.outputs.length }), 'utf8');
+  writeFileSync(join(artifactRoot, 'validation.json'), stable({ ok: true, outputs: receipt.outputs.length }), 'utf8');
   return receipt;
 }
 

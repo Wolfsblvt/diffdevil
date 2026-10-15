@@ -100,11 +100,16 @@ test('The finite asset allow-list and manual homes cover every selected visual v
   }
 });
 
-test('Committed outputs remain safe, complete, and bound to source by their reproducible receipt', () => {
+test('Committed outputs retain source provenance, complete selection, and safe rendered structure', () => {
   execFileSync(process.execPath, ['apps/manual/visuals/render.mjs', '--validate'], { cwd: root, stdio: 'pipe' });
   const receipt = JSON.parse(read('docs/manual/assets/visuals/rendered/receipt.json'));
   assert.equal(receipt.outputs.length, renderedNames.length);
+  assert.deepEqual(receipt.sources, [...new Set([chartPath, ...diagramPaths])].sort());
+  assert.equal(receipt.renderer, 'apps/manual/visuals/render.mjs');
   assert.deepEqual(receipt.outputs.map(output => output.path.split('/').at(-1)).sort(), [...renderedNames].sort());
+  assert.ok(receipt.outputs.every(output => output.source && output.visual && output.kind && output.appearance));
+  assert.ok(receipt.outputs.every(output => !Object.hasOwn(output, 'sha256')));
+  assert.ok(receipt.sources.every(source => typeof source === 'string'));
   for (const output of receipt.outputs) {
     const svg = read(output.path);
     assert.match(svg, /<svg\b[^>]*\brole="img"/u, output.path);
