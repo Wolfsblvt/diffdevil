@@ -13,11 +13,18 @@ import { readRecoveryInput, replayRecoveryObligations } from './recovery.mjs';
 import { exportHealthyRecoveryInput } from './recovery-input.mjs';
 import { createAdmissionService } from './admission.mjs';
 import { RECOVERY_DUTIES } from './recovery-contract.mjs';
+import { D1HistoryJobStore, runHistoryJob } from './history-jobs.mjs';
+import { record, patch, base, head } from './analytical-data.fixtures.mjs';
+import { describeJob } from '../app/src/lib/manage/jobs.mjs';
 
 const point = { id: 'sanitized-point', capturedAt: '2026-10-01T00:00:00.000Z', supportedUntil: '2026-10-31T00:00:00.000Z' };
 const through = '2026-10-05T00:00:00.000Z';
 const at = '2026-10-02T00:00:00.000Z';
 const until = '2026-11-08T00:00:00.000Z';
+const healthyPoint = { ...point, databaseId: 'fixture-db' };
+const healthySource = { mode: 'immutable-current-copy', databaseId: healthyPoint.databaseId, capturedAt: through,
+  snapshotId: 'fixture-current', healthEvidence: 'fixture-health', consistencyEvidence: 'fixture-immutable-copy', interpretation: 'fixture-0016' };
+const exportCurrent = database => exportHealthyRecoveryInput({ database, point: healthyPoint, source: healthySource, checkpoint: async () => {} });
 function input(events = []) {
   return { kind: 'diffdevil.app-recovery-input', version: 1, point,
     coverage: { from: point.capturedAt, through, tombstoneRetentionDays: 37,
@@ -246,6 +253,116 @@ test('the one-time healthy-source export supplies and checkpoints actual current
     await assert.rejects(exportHealthyRecoveryInput({ database: current.database, point: selectedPoint, source,
       checkpoint: async () => { throw new Error('fixture protected output unavailable'); } }), /protected output unavailable/u);
   } finally { await current.runtime.dispose(); await target?.runtime.dispose(); }
+});
+
+test('healthy replay preserves live deletion across every operational table and classifies the whole migrated schema', async () => {
+  const current = await fixture(), target = await fixture();
+  try {
+    const keys = { app_checks: 'repository_id', repairs: 'repository_id', deliveries: 'repository_id',
+      execution_attempts: 'repository_id', execution_leases: 'repository_id', operational_results: 'delivery_id' };
+    for (const f of [current, target]) for (const id of [17, 18, 19]) {
+      await f.database.batch([
+        f.database.prepare("INSERT INTO app_checks(repository_id,pull_request,head_sha,policy_id,check_run_id) VALUES (?,1,'head','policy',1)").bind(id),
+        f.database.prepare("INSERT INTO repairs(repair_id,repair_kind,repository_id,projection_json,state,code,created_at) VALUES (?,'analysis',?,'{\"private\":\"derived measurement\"}','open','fixture',?)").bind(`repair-${id}`, id, at),
+        f.database.prepare("INSERT INTO deliveries(delivery_id,installation_id,repository_id,state,received_at) VALUES (?,9,?,'complete',?)").bind(String(id), id, at),
+        f.database.prepare("INSERT INTO execution_attempts(attempt_id,delivery_id,repository_id,pull_request,started_at,state) VALUES (?,?,?,1,?,'complete')").bind(`attempt-${id}`, String(id), id, at),
+        f.database.prepare("INSERT INTO operational_results(delivery_id,status,recorded_at) VALUES (?,'complete',?)").bind(String(id), at),
+        f.database.prepare("INSERT INTO execution_leases(repository_id,pull_request,state,delivery_id) VALUES (?,1,'complete',?)").bind(id, String(id))
+      ]);
+    }
+    await current.app.deleteHistory(17);
+    await current.app.reapplyRepositoryDeletion(18, { deletedAt: at, reapplyUntil: until });
+    await new D1CommercialStore(current.database).endLink('link-1', { source: 'fixture-end', endedAt: at });
+    const exported = await exportCurrent(current.database);
+    const classified = [...exported.currentState.tables.map(table => table.name), ...Object.keys(exported.currentState.membership),
+      'history_file_rows', 'history_effect_rows', 'analytical_size_facts'];
+    const schema = (await current.database.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_cf_%'").all()).results.map(row => row.name);
+    assert.equal(new Set(classified).size, classified.length, 'each table has exactly one recovery disposition');
+    assert.deepEqual(classified.sort(), schema.sort(), 'new migrated tables need an explicit recovery disposition');
+    assert.equal((await target.replay(exported, { point: healthyPoint })).phase, 'replayed');
+    for (const [table, key] of Object.entries(keys)) for (const id of [17, 18, 19]) {
+      const sql = `SELECT count(*) AS n FROM ${table} WHERE ${key}=?`;
+      const value = key === 'delivery_id' ? String(id) : id;
+      const expected = await current.database.prepare(sql).bind(value).first();
+      assert.deepEqual(await target.database.prepare(sql).bind(value).first(), expected, `${table}, repository ${id}: live deletion parity`);
+      assert.equal(expected.n, id === 18 || (id === 17 && ['app_checks', 'repairs'].includes(table)) ? 0 : 1, `${table}, repository ${id}: seeded live outcome`);
+    }
+    assert.equal((await target.replay(exported, { point: healthyPoint })).phase, 'replayed', 'membership replay is repeatable');
+  } finally { await current.runtime.dispose(); await target.runtime.dispose(); }
+});
+
+test('healthy rollback rewinds jobs to retained data and ordinary continuation recovers missing comparisons', async () => {
+  const current = await fixture(), target = await fixture();
+  try {
+    for (const f of [current, target]) await f.app.recordAnalytical(record(1));
+    await current.app.recordAnalytical(record(2)); // This comparison was acquired after the point and is deliberately not imported.
+    await current.app.recordAnalyticalSizes([{ repositoryId: 17, path: 'later.ts', observedAt: at, revision: head, size: 7 }]);
+    for (const [id, repo, kind, state, reason] of [
+      ['older', 17, 'import', 'complete', 'all-recoverable'], ['import', 17, 'import', 'running', null],
+      ['recalculate', 17, 'recalculate', 'complete', 'interpreted'], ['paused', 19, 'import', 'paused', 'person'],
+      ['stopped-repository', 19, 'recalculate', 'running', null],
+      ['deleted', 20, 'import', 'queued', null], ['off', 18, 'import', 'queued', null]
+    ]) await current.database.prepare(`INSERT INTO history_jobs(job_id,repository_id,installation_id,kind,state,reason,sequence,scope_limit,cursor_json,progress_json,policy_id,requested_by,requested_at,updated_at,lease_until)
+      VALUES (?,?,9,?,?,?,4,100,?,?, 'selected-policy',77,?,?,?)`).bind(id, repo, kind, state, reason,
+      JSON.stringify(kind === 'import' ? { page: 3, index: 7 } : { targets: [2], index: 1, capture: { revision: head, since: at } }),
+      JSON.stringify({ examined: 107, recorded: 107, records: 107, sizes: 7, interpretable: 107 }), id === 'older' ? point.capturedAt : at, through, until).run();
+    await current.app.deleteHistory(20);
+    await current.app.setRepositoryConsent(18, { enabled: false, origin: 'fixture-off' });
+    await current.app.setRepositoryExecution(19, { enabled: false, origin: 'fixture-stop' });
+    await new D1CommercialStore(current.database).endLink('link-1', { source: 'fixture-end', endedAt: at });
+    const exported = await exportCurrent(current.database);
+    assert.equal((await target.replay(exported, { point: healthyPoint })).phase, 'replayed');
+    assert.equal((await target.replay(exported, { point: healthyPoint })).phase, 'replayed', 'a retry derives the same job standing from the committed input');
+    const jobs = new D1HistoryJobStore(target.database, { now: () => through });
+    const restored = await jobs.job('import');
+    assert.equal(restored.state, 'queued');
+    assert.deepEqual(restored.cursor, {});
+    assert.deepEqual(restored.progress, {});
+    assert.equal(restored.scopeLimit, 100);
+    assert.equal(restored.requestedBy, 77);
+    assert.equal(restored.requestedAt, at);
+    assert.equal(restored.sequence, 5, 'an old queued message cannot claim rewound work');
+    assert.equal(await jobs.claim('import', 4), null);
+    assert.equal((await jobs.job('older')).state, 'stopped', 'older completed runs cannot claim current coverage or become duplicate open work');
+    for (const id of ['paused', 'recalculate']) {
+      const job = await jobs.job(id);
+      assert.equal(job.state, 'paused');
+      assert.deepEqual(job.cursor, {});
+      assert.deepEqual(job.progress, {});
+      assert.match(describeJob(job).title, /paused/iu);
+    }
+    assert.equal((await jobs.job('paused')).reason, 'person');
+    assert.equal((await jobs.job('stopped-repository')).reason, 'repository-stopped');
+    assert.equal((await jobs.job('recalculate')).reason, 'recovery-rollback');
+    assert.equal((await jobs.job('deleted')).reason, 'history-deleted');
+    assert.equal((await jobs.job('off')).state, 'stopped');
+    assert.ok(!(await jobs.due()).some(job => job.jobId === 'recalculate'), 'a completed unbounded request is not automatically rebuilt on recovery');
+    assert.deepEqual((await target.app.analyticalRecords(17)).map(row => row.pullRequest), [1]);
+    assert.equal((await target.database.prepare('SELECT count(*) AS n FROM analytical_file_sizes WHERE repository_id=17').first()).n, 1, 'post-point size is not imported');
+    const requested = [];
+    const pull = { number: 2, state: 'closed', created_at: at, updated_at: at, closed_at: at, merged_at: at, head: { sha: head }, merge_commit_sha: head };
+    const client = { async json(route) {
+      requested.push(route);
+      if (route === '/repositories/17') return { id: 17, full_name: 'owner/repo', default_branch: 'main' };
+      if (route.endsWith('/branches/main')) return { commit: { sha: head } };
+      if (route.includes('state=closed')) return [{ ...pull }, { ...pull, number: 1 }];
+      if (route.endsWith('/pulls/2')) return pull;
+      if (route.includes('/git/commits/')) return { sha: head, parents: [{ sha: base }, { sha: 'c'.repeat(40) }] };
+      if (route.includes('/compare/')) return { merge_base_commit: { sha: base }, files: [{ filename: 'a.txt' }] };
+      throw new Error(`Unexpected fixture route ${route}`);
+    }, async request(route) { return { text: route.includes('/compare/') ? patch : 'line\n' }; } };
+    const dependencies = { jobs, store: target.app, clientFor: async () => client, now: () => through };
+    assert.equal((await runHistoryJob({ jobId: 'import', repositoryId: 17, action: 'import', sequence: 5 }, dependencies)).status, 'complete');
+    assert.ok(requested.some(route => route.endsWith('page=1')), 'the missing post-point page remains eligible');
+    assert.deepEqual((await target.app.analyticalRecords(17)).map(row => row.pullRequest), [1, 2]);
+    const completed = await jobs.job('import');
+    assert.equal(completed.progress.recorded, 1);
+    assert.equal(completed.progress.already, 1);
+    assert.ok((await target.app.analyticalRecords(17)).find(row => row.pullRequest === 2).final, 'ordinary acquisition restores actual numerical comparison');
+    const recalculation = await jobs.resume('recalculate');
+    assert.equal((await runHistoryJob({ jobId: recalculation.jobId, repositoryId: 17, action: 'recalculate', sequence: recalculation.sequence }, dependencies)).status, 'continued');
+    assert.deepEqual((await jobs.job('recalculate')).cursor.targets, [], 'recalculation rediscovers targets instead of skipping an old target list');
+  } finally { await current.runtime.dispose(); await target.runtime.dispose(); }
 });
 
 test('healthy-source export proves its output route before reads and refuses incomplete table reads', async () => {

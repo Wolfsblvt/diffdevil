@@ -9,6 +9,9 @@ The consumer and a one-time healthy-source input adapter are implemented. Recove
 after loss of the authoritative current source still has no independently complete
 input producer. A configuration export cannot supply missing later facts after loss
 of the same database. A coordinated healthy-source rollback is a separate claim.
+Its honest occasions are a drill of the real off-host point while a truthful healthy
+source still exists, or a logical rollback of corrupted measurements/state. Neither
+fulfills independent whole-D1 recovery after loss of the current source.
 
 ## Preserve the original point and isolation
 
@@ -152,6 +155,16 @@ stopped while reading it. An old point, a merely existing database, or independe
 GitHub/Works answers are not that source. The API does not perform provider capture
 or prove health from a caller's description.
 
+For a serving cutover, **live App writers remain stopped from the immutable
+current-source capture through restored cutover**. If the live source changes before
+cutover, discard that input and export a new complete barrier. Immutability of the
+captured copy does not establish continuity of the live App after capture. The
+operator must prove the held writer window or the newer complete export before
+serving; the supplied evidence strings and a green replay do not prove either.
+For an isolated, non-serving drill, the original service may resume after its
+bounded consistent capture. That drill remains as-of the capture barrier and gives
+no authority to serve the restored copy later.
+
 ```js
 import { exportHealthyRecoveryInput } from '../../apps/github-app/recovery-input.mjs';
 const input = await exportHealthyRecoveryInput({
@@ -203,11 +216,39 @@ and still-protected grants from their actual authority rather than inventing
 replacement consent or forcing routine reconfirmation. Every restored active
 commercial link is then held for current Works reconciliation.
 
+Current membership also reconciles all six point-retained operational tables:
+`app_checks`, `repairs`, `execution_attempts`, `operational_results`,
+`execution_leases` and `deliveries`. Child attempts are removed before deliveries.
+This preserves the actual live history-deletion and repository-deletion boundaries,
+including privacy-bearing repair projections, while retaining point rows still
+present in the current source. It imports no post-point operational payload.
+History file/effect children follow their retained history record; unreferenced size
+facts are removed. The focused schema test requires every migrated product table
+to have one explicit copied, membership-reconciled or child-cleanup disposition.
+
+Current history-job **purpose, scope, selected policy and request provenance survive**;
+cursor, counts, lease and completion cannot vouch for observations absent from the
+point. Replay resets cursor/progress for every current job and advances its sequence
+to refuse old step messages. A narrower safe rewind cannot be established from the
+current page/index and point membership, so imports restart at page one within their
+original scope; recalculation rediscovers targets and capture from the restored data.
+Retained comparisons are skipped by ordinary duplicate-safe acquisition.
+
+The latest queued/running request returns to the ordinary queue; current person or
+service pauses remain. A latest completed request becomes `paused` with reason
+`recovery-rollback`, explained in Manage, and can use ordinary Resume. Recovery does
+not automatically start a completed unbounded import again. Older superseded runs
+become stopped; existing failed/stopped requests keep their terminal control state.
+All unsupported progress is cleared. Current history-off/deletion, repository Stop,
+selection and access still govern whether a request may run. No request is fabricated
+when none exists, and replay sends no Queue messages or provider reads for rebuilding
+history. Ordinary admitted continuation rechecks consent, plan/allowance and access.
+
 The complete protected input is recoverable before target mutation. If publication
 is interrupted after table deletion or insertion, keep the target isolated and
 repeat with that same complete input. This route is not atomic across all target
-tables and cannot run alongside target consumers. Subsequent source changes need a
-new complete barrier before serving. `coverage.mode: healthy-source-rollback` stays
+tables and cannot run alongside target consumers. The live-writer cutover rule above
+still applies after a successful replay. `coverage.mode: healthy-source-rollback` stays
 in the replay receipt and never becomes source-loss recovery proof.
 
 ## What remains unavailable after database loss
@@ -245,6 +286,12 @@ writes, deletion/opt-out/expiry, revocation, preserved attempts, checkpoint fail
 replay and real commercial hold state. The twin-copy healthy-source specimen also
 exercises complete input commit, partial projection refusal, interrupted metadata
 publication and recovery, output refusal before source reads and count mismatch.
+Additional twin-copy regressions seed every operational table, compare actual live
+history/repository deletion with restored membership, classify the migrated schema,
+and exercise advanced import/recalculation progress over omitted post-point
+measurements. The rewound import reacquires a missing numerical comparison through
+the ordinary job/collection path; current pauses, off/deletion and scoped requests
+remain distinct. Provider traffic is synthetic and all D1 copies are disposable.
 Existing `commercial.test.mjs` separately
 qualifies the signed Works consumer's current/ended/unavailable answers. Neither
 proves independent production custody or a real restored HTTP App. Those remain

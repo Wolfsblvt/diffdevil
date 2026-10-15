@@ -12,6 +12,12 @@ const TABLES = ['installations', 'repositories', 'deletion_tombstones',
   'participation_responses', 'participation_deliveries', 'participation_previews', 'participation_prompts',
   'commercial_links', 'commercial_bindings', 'commercial_refusals', 'commercial_reports', 'commercial_nonces', 'commercial_link_attempts'];
 const MEMBERSHIP = {
+  app_checks: ['repository_id', 'pull_request', 'head_sha', 'policy_id'],
+  repairs: ['repair_id'],
+  execution_attempts: ['attempt_id'],
+  operational_results: ['delivery_id'],
+  execution_leases: ['repository_id', 'pull_request'],
+  deliveries: ['delivery_id'],
   history_records: ['repository_id', 'comparison_id', 'policy_id', 'schema_version', 'engine_version', 'report_version', 'metric_version'],
   analytical_pull_requests: ['repository_id', 'pull_request'],
   analytical_size_observations: ['repository_id', 'fact_key', 'observed_at', 'revision']
@@ -20,6 +26,36 @@ const iso = value => typeof value === 'string' && Number.isFinite(Date.parse(val
 const text = value => typeof value === 'string' && value.trim().length > 0;
 const fail = () => Object.assign(new TypeError('A complete immutable copy of the healthy current source is required.'), { code: 'E_RECOVERY_SOURCE' });
 const quote = value => `"${value}"`;
+
+/** Current requests survive rollback; their progress cannot vouch for numerical rows absent from the point. */
+async function rewindHistoryJobs(database, store, through) {
+  const result = await database.prepare('SELECT * FROM history_jobs ORDER BY requested_at DESC, job_id DESC').all();
+  if (!result.success || !Array.isArray(result.results)) throw fail();
+  const latest = new Set();
+  for (const job of result.results) {
+    const key = `${job.repository_id}:${job.kind}`, isLatest = !latest.has(key);
+    latest.add(key);
+    let state = job.state, reason = job.reason, wakeAt = job.wake_at, finishedAt = job.finished_at;
+    if (!isLatest && ['queued', 'running', 'paused', 'complete'].includes(state)) {
+      state = 'stopped'; reason = 'recovery-rollback'; wakeAt = null; finishedAt = through;
+    } else if (isLatest && ['queued', 'running', 'paused', 'complete'].includes(state)) {
+      if (state === 'complete') {
+        // Completion needs a new target-consistent run. Preserve the request, but do not start a rebuild on recovery.
+        state = 'paused'; reason = 'recovery-rollback'; wakeAt = null;
+      } else if (state !== 'paused') { state = 'queued'; reason = null; wakeAt = null; }
+      finishedAt = null;
+      const settings = await store.historySettings(job.repository_id, { independentExecution: true });
+      if (settings.pauseReason && reason !== 'person') {
+        state = 'paused'; reason = settings.pauseReason === 'capacity' ? 'over-allowance' : 'repository-stopped'; wakeAt = null;
+      } else if (!settings.enabled && !settings.pauseReason) {
+        state = 'stopped'; reason = 'history-off'; wakeAt = null; finishedAt = through;
+      }
+    }
+    await database.prepare(`UPDATE history_jobs SET state=?, reason=?, sequence=?, cursor_json='{}', progress_json='{}',
+      lease_until=NULL, wake_at=?, finished_at=?, updated_at=? WHERE job_id=?`)
+      .bind(state, reason, job.sequence + 1, wakeAt, finishedAt, through, job.job_id).run();
+  }
+}
 
 async function columns(database, table) {
   const result = await database.prepare(`PRAGMA table_info(${quote(table)})`).all();
@@ -111,4 +147,5 @@ export async function applyHealthyRecoveryState(database, state, through) {
   }
   await database.prepare(`DELETE FROM analytical_size_facts WHERE NOT EXISTS (SELECT 1 FROM analytical_size_observations o
     WHERE o.repository_id=analytical_size_facts.repository_id AND o.fact_key=analytical_size_facts.fact_key)`).run();
+  await rewindHistoryJobs(database, store, through);
 }
