@@ -927,6 +927,7 @@ try {
     await shot('business-file-detail');
   }
   if (premium) {
+    await stopWorker();
     await startWorker(undefined, STATE, { commercial: COMMERCIAL_BUSINESS });
     await signIn();
   }
