@@ -16,7 +16,9 @@
  * carries the same rows, the cloud packs (in its Worker), arranges, opens its Top column and
  * walks the rank order, the period switch morphs the live charts in place, and reduced motion
  * still draws. `DIFFDEVIL_APP_QA_DENSE=1` adds a pass over a denser fixture and records the
- * cloud's layout timings. Results and screenshots go to the selected target's qa/ directory. This proves local
+ * cloud's layout timings. Pass --pr-search-detail to qualify the Free search → PR detail return,
+ * including empty and unavailable read states.
+ * Results and screenshots go to the selected target's qa/ directory. This proves local
  * behaviour against a fixture; it proves no deployment, no live GitHub and no real data.
  */
 import { chromium } from '@playwright/test';
@@ -37,7 +39,8 @@ const target = appBuildTarget();
 const IDENTITY_ONLY = process.argv.includes('--identity');
 const AUTHORITY_ONLY = process.argv.includes('--authority');
 const HISTORY_ONLY = process.argv.includes('--history');
-const OUT = join(target.artifacts, 'qa', ...(IDENTITY_ONLY ? ['identity'] : AUTHORITY_ONLY ? ['authority'] : HISTORY_ONLY ? ['history'] : []));
+const PR_SEARCH_DETAIL_ONLY = process.argv.includes('--pr-search-detail');
+const OUT = join(target.artifacts, 'qa', ...(PR_SEARCH_DETAIL_ONLY ? ['pr-search-detail'] : IDENTITY_ONLY ? ['identity'] : AUTHORITY_ONLY ? ['authority'] : HISTORY_ONLY ? ['history'] : []));
 const APP_PORT = Number(process.env.DIFFDEVIL_APP_QA_PORT ?? (target.name === 'staging' ? 4512 : 4412));
 const GITHUB_PORT = Number(process.env.DIFFDEVIL_APP_QA_GITHUB_PORT ?? (target.name === 'staging' ? 4533 : 4433));
 // Chromium accepts Secure (__Host-) cookies from http://localhost, not from a loopback IP, so the browser origin is localhost; the Worker still binds 127.0.0.1.
@@ -168,6 +171,53 @@ const pageFacts = () => page.evaluate(() => ({
 async function settled(timeout = 25_000) {
   try { await page.waitForFunction(() => [...document.querySelectorAll('[data-chart]')].every(host => host.classList.contains('is-mounted') || host.classList.contains('is-failed')) && !document.body.classList.contains('is-drawing') && !document.querySelector('.cl.is-busy'), null, { timeout }); } catch { /* reported by the facts */ }
   await page.evaluate(() => new Promise(resolve => setTimeout(resolve, 150)));
+}
+
+async function qualifyAllRepositoriesSearchDetail(returnUrl, originalFacts) {
+  await go('/prs?per=90d');
+  await settled();
+  await page.fill('.a-search input', '452');
+  await page.press('.a-search input', 'Enter');
+  await page.waitForLoadState('networkidle');
+  const searchedHref = await page.locator('.a-prs2 .a-pr').first().getAttribute('href');
+  const searchedLink = searchedHref ? new URL(searchedHref, ORIGIN) : null;
+  check('all-repositories search keeps its query on the matching PR detail link without inventing a scope parameter', searchedLink?.pathname === '/pr/parser-guild/parser-lab/452' && searchedLink.searchParams.get('q') === '452' && searchedLink.searchParams.get('s') === null, String(searchedHref));
+  if (!searchedHref) return;
+
+  const searchedDetailResponse = await go(searchedHref);
+  const searchedDetail = await page.evaluate(() => ({ params: Object.fromEntries(new URLSearchParams(location.search)), result: document.querySelector('.a-result .big .n')?.textContent ?? '', unavailable: document.body.innerText.includes('The analytical read did not answer.') }));
+  check('opening a searched retained PR reads detail from the repository in its route and keeps the search for return', searchedDetailResponse.status() === 200 && searchedDetail.result !== '' && !searchedDetail.unavailable && searchedDetail.params.q === '452' && searchedDetail.params.s === undefined, JSON.stringify(searchedDetail));
+  const restoreUrl = returnUrl ?? searchedHref;
+  const restoreFacts = originalFacts ?? await page.evaluate(() => ({ result: document.querySelector('.a-result .big .n')?.textContent ?? '', lanes: document.querySelectorAll('.lane').length, files: document.querySelectorAll('#h-pf ~ * table tbody tr, .a-tbl tbody tr').length }));
+
+  await page.locator('.a-head nav.crumb').getByRole('link', { name: 'Pull requests', exact: true }).click();
+  await page.waitForLoadState('networkidle');
+  const returnedSearch = new URL(page.url());
+  check('returning from PR detail restores the all-repositories search and its query', returnedSearch.pathname === '/prs' && returnedSearch.searchParams.get('q') === '452' && returnedSearch.searchParams.get('per') === '90d' && returnedSearch.searchParams.get('s') === null && await page.locator('.a-search input').inputValue() === '452');
+
+  const directResponse = await go('/pr/parser-guild/parser-lab/452?per=90d');
+  const directDetail = await page.evaluate(() => ({ result: document.querySelector('.a-result .big .n')?.textContent ?? '', unavailable: document.body.innerText.includes('The analytical read did not answer.') }));
+  check('the ordinary direct PR detail route returns the same retained result as search-to-detail', directResponse.status() === 200 && directDetail.result === searchedDetail.result && !directDetail.unavailable, JSON.stringify(directDetail));
+
+  const noHistoryResponse = await go('/pr/parser-guild/parser-lab/999999?per=90d');
+  const noHistoryText = await page.locator('.a-pn-b').innerText();
+  check('a completed empty analytical read says no retained analysis', noHistoryResponse.status() === 200 && /No retained analysis/u.test(noHistoryText) && !/cannot confirm/u.test(noHistoryText), noHistoryText);
+
+  // This malformed row makes the repository's analytical service read fail; pathless PR452 history remains readable.
+  executeLocal("INSERT INTO analytical_pull_requests(repository_id, pull_request, updated_at, expires_at, record_json) VALUES (1001, 999999, '2026-10-15T00:00:00.000Z', NULL, 'not-json')", STATE);
+  try {
+    const unavailableResponse = await go('/pr/parser-guild/parser-lab/452?per=90d');
+    const unavailableFacts = await page.evaluate(() => ({ text: document.body.innerText, changed: document.querySelector('.a-result .big .n')?.textContent ?? '' }));
+    check('an unanswered retained read is explicit while the older pathless PR detail remains available', unavailableResponse.status() === 200 && unavailableFacts.changed !== '' && /retained read unanswered · showing pathless history/u.test(unavailableFacts.text) && /The retained analytical read did not answer/u.test(unavailableFacts.text) && /cannot confirm this pull request’s lifecycle or final merged comparison/u.test(unavailableFacts.text) && !/lifecycle not retained for this repository/u.test(unavailableFacts.text), JSON.stringify({ changed: unavailableFacts.changed, text: unavailableFacts.text.replace(/\s+/gu, ' ').slice(0, 500) }));
+  } finally {
+    executeLocal('DELETE FROM analytical_pull_requests WHERE repository_id=1001 AND pull_request=999999', STATE);
+  }
+
+  const restoredResponse = await go(restoreUrl);
+  const restoredFacts = await page.evaluate(() => ({ result: document.querySelector('.a-result .big .n')?.textContent ?? '', lanes: document.querySelectorAll('.lane').length, files: document.querySelectorAll('#h-pf ~ * table tbody tr, .a-tbl tbody tr').length }));
+  const restoredUrl = new URL(page.url());
+  const expectedUrl = new URL(restoreUrl, ORIGIN);
+  check('the all-repositories journey restores the original PR page before its existing consumer runs', restoredResponse.status() === 200 && restoredUrl.pathname + restoredUrl.search === expectedUrl.pathname + expectedUrl.search && restoredFacts.result === restoreFacts.result && restoredFacts.lanes === restoreFacts.lanes && restoredFacts.files === restoreFacts.files, JSON.stringify({ restoredUrl: page.url(), restoredFacts, restoreFacts }));
 }
 const geometry = selector => page.evaluate(selector => { const host = document.querySelector(selector); if (!host) return null; const readout = host.querySelector('[data-readout]'), plot = host.querySelector('[data-plot]'); return { readout: Math.round(readout.getBoundingClientRect().height), plotTop: Math.round(plot.getBoundingClientRect().top + window.scrollY), plotHeight: Math.round(plot.getBoundingClientRect().height), when: readout.querySelector('.fr-when b')?.textContent ?? '', vals: readout.querySelectorAll('.fr-vals dd').length, overflowing: readout.scrollWidth > readout.clientWidth + 1 }; }, selector);
 
@@ -389,7 +439,11 @@ async function qualifyPages(label, { pro }) {
 }
 
 try {
-  if (AUTHORITY_ONLY) {
+  if (PR_SEARCH_DETAIL_ONLY) {
+    await startWorker(undefined, STATE, { commercial: COMMERCIAL_FREE, allowances: { free: { private: 3, publicHistory: 10 }, proOrganisation: { private: 3 } } });
+    await signIn();
+    await qualifyAllRepositoriesSearchDetail();
+  } else if (AUTHORITY_ONLY) {
     for (const [name, status, role, state] of [
       ['unavailable', 403, 'admin', 'active'], ['pending', 200, 'admin', 'pending'],
       ['missing', 200, '', 'active'], ['member', 200, 'member', 'active'],
@@ -573,6 +627,7 @@ try {
   await settled();
   check('PR detail draws development over the size zones', (await page.locator('[data-chart="development"].is-mounted').count()) === 1);
   await qualifyFrame('pro pr detail', '[data-chart-id="dev"]');
+  await qualifyAllRepositoriesSearchDetail(page.url(), detailFacts);
   await premium?.prDetail?.(ctx, { detailFacts });
   if (!premium) {
     check('without the premium extension PR detail keeps its named files as plain text and says file context is not part of this build', detailFacts.fileLinks === 0 && (await page.locator('#h-ctx1, #h-recent, #h-ow').count()) === 0 && (await page.evaluate(() => /File context is not part of this build/u.test(document.body.innerText))));
@@ -793,7 +848,7 @@ try {
   githubServer.closeAllConnections?.();
   githubServer.close();
 }
-await writeFile(join(OUT, 'results.json'), JSON.stringify({ origin: ORIGIN, scope: AUTHORITY_ONLY ? 'authority' : HISTORY_ONLY ? 'history' : IDENTITY_ONLY ? 'identity' : PARTICIPATION_ONLY ? 'participation' : 'full', target: target.name, seeded: seeded.written, dense: DENSE && !PARTICIPATION_ONLY && !IDENTITY_ONLY && !AUTHORITY_ONLY && !HISTORY_ONLY, charts: chartTelemetry, results, failures, consoleErrors, pageErrors, external }, null, 2));
+await writeFile(join(OUT, 'results.json'), JSON.stringify({ origin: ORIGIN, scope: PR_SEARCH_DETAIL_ONLY ? 'pr-search-detail' : AUTHORITY_ONLY ? 'authority' : HISTORY_ONLY ? 'history' : IDENTITY_ONLY ? 'identity' : PARTICIPATION_ONLY ? 'participation' : 'full', target: target.name, seeded: seeded.written, dense: DENSE && !PR_SEARCH_DETAIL_ONLY && !PARTICIPATION_ONLY && !IDENTITY_ONLY && !AUTHORITY_ONLY && !HISTORY_ONLY, charts: chartTelemetry, results, failures, consoleErrors, pageErrors, external }, null, 2));
 await writeFile(join(OUT, 'worker.log'), workerLog);
 console.log(`${PARTICIPATION_ONLY ? 'Participation: ' : ''}${results.filter(result => result.ok).length} of ${results.length} checks passed; screenshots and results in ${OUT}`);
 if (failures.length) { console.error(failures.map(failure => ` ✗ ${failure}`).join('\n')); process.exit(1); }

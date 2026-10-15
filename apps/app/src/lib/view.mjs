@@ -69,6 +69,7 @@ async function selectedScope(scope, repositories, runtime) {
 }
 
 export async function loadView({ url, viewer, session, runtime, surface = 'prs', detail = {} }) {
+  const { repositoryId: detailRepositoryId, ...queryDetail } = detail;
   const state = readViewState(url);
   const scope = describeScope(state.s);
   const repositories = scopeRepositories(viewer, scope);
@@ -76,10 +77,16 @@ export async function loadView({ url, viewer, session, runtime, surface = 'prs',
   const period = periodOf(state);
   const nowMs = Date.parse(nowIso);
   const window = { from: new Date(nowMs - period.days * DAY).toISOString(), to: nowIso, previousFrom: new Date(nowMs - 2 * period.days * DAY).toISOString() };
-  const historyRepositories = repositories.filter(repository => repository.standing?.historyReadable);
+  const detailRepository = surface === 'pr' && Number.isSafeInteger(detailRepositoryId)
+    ? viewer.repositories.find(repository => repository.repositoryId === detailRepositoryId)
+    : undefined;
+  const historyRepositories = (detailRepository ? [detailRepository] : repositories).filter(repository => repository.standing?.historyReadable);
   const ids = historyRepositories.map(repository => repository.repositoryId);
   const actor = { userId: viewer.userId, authorizedRepositoryIds: viewer.repositories.map(repository => repository.repositoryId) };
-  const expected = entitlementFor(viewer, scope, repositories);
+  // Detail fallback follows the authorised route repository; its broader query scope is only navigation context.
+  const expectedScope = detailRepository ? { kind: 'namespace', namespace: detailRepository.owner } : scope;
+  const expectedRepositories = detailRepository ? [detailRepository] : repositories;
+  const expected = entitlementFor(viewer, expectedScope, expectedRepositories);
   const [coverage, bounds, titles] = await Promise.all([
     runtime.store.analyticalCoverage(ids),
     runtime.store.observationBounds(ids),
@@ -88,10 +95,12 @@ export async function loadView({ url, viewer, session, runtime, surface = 'prs',
   const retainedRepositories = historyRepositories.filter(repository => (coverage.counts.get(repository.repositoryId) ?? 0) > 0);
   const pathlessOnly = historyRepositories.filter(repository => (coverage.counts.get(repository.repositoryId) ?? 0) === 0);
   let data = null, dataStanding = 'none';
-  const contractScope = await selectedScope(scope, historyRepositories, runtime);
+  const contractScope = detailRepository && historyRepositories.length > 0
+    ? { kind: 'repository', repositoryId: detailRepository.repositoryId }
+    : await selectedScope(scope, historyRepositories, runtime);
   if (ids.length > 0) {
     try {
-      data = await runtime.analytics.query({ surface, repositoryIds: ids, from: window.from, to: window.to, scope: contractScope, ...detail }, actor);
+      data = await runtime.analytics.query({ surface, repositoryIds: ids, from: window.from, to: window.to, scope: contractScope, ...queryDetail }, actor);
       // A Free page answer carries its standing (`free`, `scope-unavailable`, `entitlement-unavailable`); a data answer carries none.
       dataStanding = data.standing === undefined ? 'available' : data.standing === 'free' ? 'plan-required' : data.standing;
     } catch (error) {
@@ -101,7 +110,7 @@ export async function loadView({ url, viewer, session, runtime, surface = 'prs',
   }
   const entitlement = entitlementFromData(viewer, scope, repositories, data, expected);
   entitlement.contractScope = contractScope;
-  entitlement.namespaceEstablished = scope.kind !== 'namespace' || contractScope.kind === 'namespace';
+  entitlement.namespaceEstablished = scope.kind !== 'namespace' || contractScope.kind === 'namespace' || Boolean(detailRepository);
   const retained = retainedRepositories.length > 0;
   const lifecycle = retained
     ? { standing: 'available', source: 'retained-analytical-records', coverageFrom: coverage.first, repositories: retainedRepositories.length, pathlessOnly }
