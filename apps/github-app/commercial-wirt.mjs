@@ -5,7 +5,7 @@
  * and the payload shapes diffdevil consumes. Wirt's adopted producer contract owns the grammar:
  * docs/commercial-projection-runtime.md and docs/commercial-projection.md at Wirt 04e253a8;
  * native beta_grants and commercial_timezone are candidate c33d5d9, pending producer/consumer acceptance.
- * The paired reward-only nullable commercial branch and component display facts follow Wirt c3e0671fa6e98e8835bfdbbaff7244ab27c7f892.
+ * Nullable commercial carries either confirmed empty coverage or queued/expired reward components.
  */
 
 export const WIRT_CLIENT = 'diffdevil';
@@ -188,12 +188,17 @@ export function readWirtMessage(value) {
     && Array.isArray(value.pending) && Array.isArray(value.bindings_seen));
   if (value.commercial !== null) readCommercial(value.commercial);
   const benefits = readBenefits(value.benefits);
-  // Wirt's explicit reward-only branch carries no base coverage, even when an additive reward is queued.
+  // Null commercial never supplies base coverage. Empty coverage requires explicit absence in every benefit family;
+  // missing or unreadable facts cannot turn an unavailable source into a confirmed empty answer.
   if (value.commercial === null) {
     const components = readProjectionFundedComponents(benefits);
     shape(benefits.organisation_capacity.length === 0 && benefits.grants.length === 0 && benefits.protection === null
-      && value.pending.length === 0 && components !== null && components.length > 0
+      && value.pending.length === 0 && components !== null
       && components.every(component => oneOf(component.state, ['queued', 'expired'])));
+    if (components.length === 0) {
+      shape(Array.isArray(benefits.beta_grants) && benefits.beta_grants.length === 0
+        && Array.isArray(benefits.participation_rewards) && benefits.participation_rewards.length === 0);
+    }
   }
   return { kind: 'projection', stream: readStream(value.stream), order: readOrder(value.order), lineage: value.account_lineage, projection: { ...value, benefits } };
 }

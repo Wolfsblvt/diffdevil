@@ -20,7 +20,8 @@ const APP = target.origin;
 const WORKS = target.name === 'staging' ? 'https://wirt-test.wolfsblvt.app' : 'https://works.example.test';
 const CALLBACK = `${APP}/integrations/wirt/link/callback`;
 const KEY = 'fixture-works-signing-material-at-least-32-bytes';
-const OUT = join(target.artifacts, 'qa', 'works-entry');
+const emptyCoverage = process.argv.includes('--empty-coverage');
+const OUT = join(target.artifacts, 'qa', 'works-entry', ...(emptyCoverage ? ['empty-coverage'] : []));
 const hash = body => createHash('sha256').update(body).digest('hex');
 const json = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
 const github = createFakeGitHub();
@@ -31,10 +32,11 @@ const projection = {
   schema: 'wirt.benefit-projection/v1', client: 'diffdevil',
   stream: { works_account: '77', link: { id: link, product_account: { github_user_id: USER.id } } },
   account_lineage: [], order: { epoch: 1, version: 1 }, generated_at: new Date().toISOString(), source_operation: null,
-  commercial: { standing: 'funded', tier: 'pro', cadence: 'monthly', period: { started_on: '2026-10-01', ends_on: '2026-11-01' },
+  commercial: emptyCoverage ? null : { standing: 'funded', tier: 'pro', cadence: 'monthly', period: { started_on: '2026-10-01', ends_on: '2026-11-01' },
     renewal_preference: 'automatic', cancellation_intent: 'none', grace: null, ended: null,
     next_renewal: { on: '2026-11-01', total_cents: 900, currency: 'EUR', tax_inclusive: true } },
-  benefits: { organisation_capacity: [], grants: [], protection: null }, pending: [], bindings_seen: []
+  benefits: { organisation_capacity: [], grants: [], protection: null,
+    ...(emptyCoverage ? { beta_grants: [], participation_rewards: [], funded_components: [] } : {}) }, pending: [], bindings_seen: []
 };
 
 /** Independent byte/signature and PKCE checks at the actual outgoing consumer boundary. */
@@ -200,6 +202,15 @@ try {
     return row.state === 'pending' && report.stream.link.id === link && report.stream.link.product_account.github_user_id === USER.id && report.applied.result === 'applied';
   }));
   await page.screenshot({ path: join(OUT, 'native-works-linked.png'), fullPage: true });
+  if (emptyCoverage) {
+    const standing = page.locator('[data-standing="no-coverage"]');
+    check('confirmed empty coverage renders linked Free with no invented funded plan', await standing.count() === 1
+      && (await standing.innerText()).includes('Free') && (await standing.innerText()).includes('No Works-funded benefits')
+      && await page.locator('[data-funds]').count() === 0 && await page.locator('[data-standing="linking"]').count() === 0);
+    await page.goto(`${APP}/manage`);
+    check('Manage overview names confirmed absence in information tone', (await page.locator('[data-plan-band]').innerText()).includes('No Works-funded benefits'));
+    await page.screenshot({ path: join(OUT, 'native-works-empty-overview.png'), fullPage: true });
+  }
 
   // A new isolated product session/account is unnecessary: remove only the disposable fixture link between refusal cases.
   await database.prepare('DELETE FROM commercial_links').run();

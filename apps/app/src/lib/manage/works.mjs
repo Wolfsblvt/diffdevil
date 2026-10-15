@@ -66,7 +66,12 @@ export function projectionKey(status) {
   if (!status?.linked) return 'free';
   if (status.reconciling) return 'reconciling';
   const commercial = status.commercial;
-  if (!commercial) return status.order ? 'reward-only' : 'linking';
+  if (!commercial) {
+    if (!status.order) return 'linking';
+    return Array.isArray(status.fundedComponents) && status.fundedComponents.length === 0
+      && Array.isArray(status.betaGrants) && status.betaGrants.length === 0
+      && Array.isArray(status.participationRewards) && status.participationRewards.length === 0 ? 'no-coverage' : 'reward-only';
+  }
   if (commercial.standing === 'first-payment-pending') return 'first-payment';
   if (commercial.standing === 'ended') return commercial.ended?.earlier_attempt === 'unresolved' ? 'ended-unresolved' : 'ended';
   if (commercial.standing === 'renewal-in-grace') return { 'payment-due': 'overdue', renewing: 'renewing', 'not-yet-invoiced': 'preparing', unresolved: 'checking' }[commercial.grace?.renewal] ?? 'checking';
@@ -97,6 +102,7 @@ export function presentProjection(status, { works, ended = false } = {}) {
   const planName = ['ended', 'ended-unresolved', 'free'].includes(key) ? 'Free' : tier;
   let planSub = commercial ? `${cadenceWord(commercial.cadence) ?? 'Subscription'}${paidSlots ? ` · with ${paidSlots} additional ${paidSlots === 1 ? 'organisation' : 'organisations'}` : ''}${total ? ` · ${total} ${perWord(commercial.cadence)}${commercial.nextRenewal?.tax_inclusive ? ', tax included' : ''}` : ''}` : '';
   switch (key) {
+    case 'no-coverage': head = banner('info', 'info', 'Linked to Wolfsblvt Works', 'Works has confirmed that this account has no commercial coverage or rewards. Free remains your plan.'); planSub = 'No Works-funded benefits'; rows.push({ term: 'Works benefits', value: 'None' }); break;
     case 'reward-only': head = banner('info', 'info', 'Works benefits are linked', 'Works has confirmed benefits without a funded subscription. Free remains your plan; a reward alone does not fund repository access or an organisation slot. Manage your gifts and benefits at Works.'); planSub = 'No funded subscription'; rows.push({ term: 'Subscription', value: 'None funded' }); break;
     case 'linking': head = banner('info', 'clock', 'Linked to Wolfsblvt Works', 'Works has not sent this account\'s plan yet. It appears here as soon as Works confirms it; you don\'t need to refresh.'); planSub = 'Waiting for Works'; rows.push({ term: 'Status', value: 'Waiting for Works\' first answer' }); break;
     case 'reconciling': head = banner('info', 'clock', 'Your plan is being checked with Works', 'The App was restored from a backup, so Works-funded benefits are held until Works confirms the current plan. Nothing is charged by this.'); rows.push({ term: 'Status', value: 'Reconciling', sub: 'Premium features pause until Works answers' }); break;
