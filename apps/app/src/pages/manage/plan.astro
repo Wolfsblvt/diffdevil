@@ -67,7 +67,7 @@ if (participation?.nextCharge) for (const row of presented.rows) if (row.term ==
           {presented.slotBanners.map((banner: any) => <Banner tone="warn" icon="info" title={banner.title} text={banner.text}>{banner.action && <a class="m-btn" href={depart(banner.action.destination ?? 'experience', banner.action.purpose)}>{banner.action.label} <Icon name="arrow-up-right" size={13} /></a>}</Banner>)}
           <section class="m-sec" data-standing={presented.key}><div class="m-standing"><div class="main"><div class="plan"><b>{presented.planName}</b><span>{presented.ended ? `${tier} has ended` : presented.planSub}</span></div>
             <dl class="m-dl">{presented.rows.map((row: any) => <><dt>{row.term}</dt><dd class:list={[row.tone]}>{row.value}{row.sub && <span class="sub">{row.sub}</span>}</dd></>)}</dl>
-            {presented.key === 'reward-only' && personal && <AllowanceGroups capacity={personal.capacity} model={model} />}</div>
+            {['reward-only', 'no-coverage'].includes(presented.key) && personal && <AllowanceGroups capacity={personal.capacity} model={model} />}</div>
             <div class="m-exits"><span class="m-k"><Icon name="arrow-up-right" size={12} />At Wolfsblvt Works</span>
               {WORKS_EXITS.map((exit: any) => (works as any)[exit.key] ? <a href={depart(exit.key, exit.purpose)}><Icon name={exit.icon} size={16} /><span>{exit.label}</span><Icon name="arrow-up-right" size={13} class="go" /></a> : <span class="off"><Icon name={exit.icon} size={16} /><span>{exit.label}</span></span>)}
               <span class="cap">{model.worksOrigin ? <>Opens at {model.commercialSource === 'fixture' ? 'a local stand-in for' : ''} account.wolfsblvt.works in a diffdevil frame. <b>Return to DiffDevil</b> brings you back to this page.</> : 'Works is not configured on this deployment, so its pages cannot be opened from here.'}</span></div></div></section>
@@ -76,7 +76,7 @@ if (participation?.nextCharge) for (const row of presented.rows) if (row.term ==
 
           <ChooseStays model={model} choosing={choosing} tier={tier} />
 
-          {!presented.ended && presented.key !== 'reward-only' && <section class="m-sec" data-funds><header><h2>What your plan funds</h2><span class="d">Your personal repositories, plus one organisation per slot</span></header><div class="b"><OrgSlots model={model} actions now={runtime.now()} /></div>
+          {!presented.ended && !['reward-only', 'no-coverage'].includes(presented.key) && <section class="m-sec" data-funds><header><h2>What your plan funds</h2><span class="d">Your personal repositories, plus one organisation per slot</span></header><div class="b"><OrgSlots model={model} actions now={runtime.now()} /></div>
             <footer><Icon name="info" size={13} /><span>Funding never grants GitHub access. A slot can be released, and an organisation's owner can disconnect or replace its funder. Organisations without a slot have no plan. Funding an organisation keeps your GitHub funding connection; sign-out keeps it too, and Account lets you disconnect it.</span></footer></section>}
 
           {presented.compareable && <section class="m-sec" data-compare><header><h2>Before you change plan</h2><span class="d">What would change in diffdevil, from your repositories today</span><span class="r"><div class="a-seg sm" role="group" aria-label="Compare with"><a href="/manage/plan?compare=" aria-current={compare !== 'free' ? 'true' : undefined}>{other}</a><a href="/manage/plan?compare=free" aria-current={compare === 'free' ? 'true' : undefined}>Free</a></div></span></header>

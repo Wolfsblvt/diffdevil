@@ -149,6 +149,24 @@ test('a Wirt projection presents as one of the designed states, without a grace 
   assert.equal(formatMoney({ total_cents: 4250, currency: 'EUR' }), '€42.50');
 });
 
+test('confirmed empty coverage is Free and distinct from reward-only, waiting and restore holds', () => {
+  const status = { linked: true, commercial: null, plan: 'free', order: { epoch: 1, version: 1 }, capacity: [], grants: [],
+    protection: null, betaGrants: [], participationRewards: [], fundedComponents: [], pending: [] };
+  const presented = presentProjection(status);
+  assert.equal(presented.key, 'no-coverage');
+  assert.equal(presented.planName, 'Free');
+  assert.equal(presented.banner.tone, 'info');
+  assert.deepEqual(presented.rows, [{ term: 'Works benefits', value: 'None' }]);
+  assert.equal(presented.compareable, false);
+  assert.equal(presented.choosing, null);
+  assert.equal(presented.ended, false);
+  assert.deepEqual(presented.slotBanners, []);
+  assert.equal(projectionKey({ ...status, order: null }), 'linking');
+  assert.equal(projectionKey({ ...status, reconciling: true }), 'reconciling');
+  assert.equal(projectionKey({ ...status, fundedComponents: null }), 'reward-only', 'unknown component facts cannot assert empty coverage');
+  assert.equal(projectionKey({ ...status, participationRewards: null }), 'reward-only');
+});
+
 test('an applied reward-only answer is Free with visible benefits, distinct from waiting for the first Works answer', () => {
   const status = { linked: true, commercial: null, plan: 'free', order: { epoch: 1, version: 1 }, capacity: [], grants: [], protection: null,
     fundedComponents: [{ id: 'reward-component:1', name: 'Additional organisation slot', reason: 'Community contribution', state: 'queued', startsOn: null, endsOn: null, applicationDeadline: '2027-04-08T00:00:00Z' }] };

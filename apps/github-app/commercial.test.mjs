@@ -315,7 +315,7 @@ test('component display facts preserve unknown versus empty and exclude producer
     state: 'unknown', startsOn: null, endsOn: null, applicationDeadline: null }]);
 });
 
-test('null commercial requires readable claimed queued or expired components, while full commercial keeps wider states', () => {
+test('null commercial requires confirmed empty coverage or readable queued or expired components', () => {
   const component = { component_id: 'reward-component:1', funding: 'participation-reward', component_kind: 'paid-subject', capacity_type: 'organisation',
     name: 'Additional organisation slot', reason: 'Community contribution', state: 'queued', starts_on: null, ends_on: null, application_deadline: '2027-04-08T00:00:00Z' };
   const base = projection({ linkId: 'nullable-contract', slots: [] });
@@ -326,6 +326,21 @@ test('null commercial requires readable claimed queued or expired components, wh
     assert.throws(() => readWirtMessage(message(components)), { code: 'E_COMMERCIAL_SHAPE' });
   }
   for (const state of ['queued', 'expired']) assert.equal(readWirtMessage(message([{ ...component, state }])).kind, 'projection');
+  const empty = message([]);
+  empty.benefits.beta_grants = [];
+  empty.benefits.participation_rewards = [];
+  assert.equal(readWirtMessage(empty).kind, 'projection');
+  for (const field of ['beta_grants', 'participation_rewards']) {
+    for (const value of [undefined, null, [{}]]) {
+      assert.throws(() => readWirtMessage({ ...empty, benefits: { ...empty.benefits, [field]: value } }), { code: 'E_COMMERCIAL_SHAPE' });
+    }
+  }
+  for (const changed of [
+    { ...empty, pending: [{ kind: 'plan-change' }] },
+    { ...empty, benefits: { ...empty.benefits, organisation_capacity: base.benefits.organisation_capacity.concat({ slot: 'slot-1', funding: 'paid', pending_end_on: null }) } },
+    { ...empty, benefits: { ...empty.benefits, grants: [{ kind: 'gift', until: '2027-04-01' }] } },
+    { ...empty, benefits: { ...empty.benefits, protection: { kind: 'beta' } } }
+  ]) assert.throws(() => readWirtMessage(changed), { code: 'E_COMMERCIAL_SHAPE' });
   for (const state of ['available', 'active', 'ended', 'corrected', 'withdrawn']) {
     const full = { ...base, benefits: { ...base.benefits, funded_components: [{ ...component, state }] } };
     const read = readWirtMessage(full);
@@ -750,6 +765,85 @@ async function restore(source, point) {
   });
   await source.database.batch(statements);
 }
+
+test('confirmed empty coverage applies and reports through the existing link without inventing access', async () => {
+  const source = await fixture({ realAuthorization: true });
+  try {
+    const { call, browser, wirt, store, commercial } = source;
+    const empty = (linkId, version = 1) => ({ ...projection({ linkId, version, slots: [] }), commercial: null,
+      benefits: { organisation_capacity: [], grants: [], beta_grants: [], participation_rewards: [], funded_components: [], protection: null } });
+    const status = async () => (await (await call(COMMERCIAL_ROUTES.status, { headers: browser() })).json());
+    wirt.state.seed = value => empty(value.id);
+    const linked = await link(source, { owner: 77 });
+    assert.equal(new URL(linked.callback.headers.get('location')).searchParams.get('works-link'), 'linked');
+    const linkId = (await store.activeLink(USER)).link_id;
+    const initial = await status();
+    assert.equal(initial.linked, true);
+    assert.deepEqual(initial.order, { epoch: 1, version: 1 });
+    assert.equal(initial.plan, 'free');
+    assert.equal(initial.commercial, null);
+    for (const field of ['capacity', 'grants', 'betaGrants', 'participationRewards', 'fundedComponents', 'pending']) assert.deepEqual(initial[field], []);
+    assert.equal(initial.protection, null);
+    assert.equal(presentProjection(initial).key, 'no-coverage');
+    assert.equal(presentProjection(initial).planName, 'Free');
+    assert.equal(presentProjection({ ...initial, order: null }).key, 'linking');
+    assert.equal(await commercial.entitlement({ repositoryId: null, actor: { userId: USER } }), 'free');
+    assert.equal(await source.authStore.serviceConnection(USER), 'not-retained');
+    assert.deepEqual(await commercial.flushReports(), ['sent']);
+    assert.deepEqual(wirt.state.reports.at(-1).applied, { epoch: 1, version: 1, result: 'applied', reason: null, at: source.clock.value });
+    assert.deepEqual(wirt.state.reports.at(-1).bindings, []);
+    const firstReportVersion = wirt.state.reports.at(-1).report_version;
+    assert.deepEqual(await (await push(source, empty(linkId))).json(), { ok: true, result: 'no-op' });
+    assert.equal((await status()).order.version, 1);
+    assert.equal(wirt.state.reports.at(-1).applied.version, 1);
+
+    const beforeInvalid = await store.link(linkId);
+    assert.equal((await push(source, empty(linkId, 2), { key: PREVIOUS })).status, 401);
+    assert.equal((await push(source, empty(linkId, 2), { account: String(OTHER_USER) })).status, 404);
+    assert.equal((await push(source, { ...empty(linkId, 2), client: 'other' })).status, 422);
+    assert.equal((await store.link(linkId)).revision, beforeInvalid.revision);
+
+    await source.appStore.recordLifecycle({ installationId: 11, action: 'created', addedRepositories: [21], removedRepositories: [] });
+    await source.appStore.recordInstallationAccount(11, ORG);
+    const funded = projection({ linkId, version: 2 });
+    assert.deepEqual(await (await push(source, funded)).json(), { ok: true, result: 'apply' });
+    assert.equal(await commercial.entitlement({ repositoryId: null, actor: { userId: USER } }), 'pro');
+    assert.equal((await bindRequest(source, { action: 'bind', slot: 'slot-included', organisationId: ORG })).status, 200);
+    assert.equal(await source.authStore.serviceConnection(USER), 'retained');
+    const fundedPoint = await snapshot(source);
+    assert.deepEqual(await (await push(source, empty(linkId, 3))).json(), { ok: true, result: 'apply' });
+    assert.equal((await status()).plan, 'free');
+    assert.equal(await store.binding(ORG), null);
+    assert.equal(await source.authStore.serviceConnection(USER), 'not-retained');
+    assert.equal(await commercial.entitlement({ repositoryId: 21, actor: { userId: OTHER_USER } }), 'free');
+    assert.deepEqual(await (await push(source, funded)).json(), { ok: true, result: 'not-applied' });
+    assert.equal(wirt.state.reports.at(-1).applied.version, 3);
+    assert.ok(wirt.state.reports.at(-1).report_version > firstReportVersion);
+
+    await restore(source, fundedPoint);
+    wirt.state.latest.delete(linkId);
+    wirt.state.seed = undefined;
+    assert.deepEqual(await commercial.reconcileAfterRestore(), { held: 1, current: 0, ended: 0, unavailable: 1 });
+    assert.equal(await commercial.entitlement({ repositoryId: null, actor: { userId: USER } }), 'unknown', 'source 409 does not replace the held state with empty coverage');
+    assert.equal(presentProjection(await status()).key, 'reconciling');
+    wirt.state.latest.set(linkId, empty(linkId, 3));
+    source.clock.value = '2027-03-01T06:10:00.000Z';
+    assert.deepEqual((await commercial.maintain()).restored, { current: 1, ended: 0, unavailable: 0 });
+    assert.equal(presentProjection(await status()).key, 'no-coverage');
+    assert.equal(wirt.state.reports.at(-1).applied.version, 3);
+    assert.deepEqual(wirt.state.reports.at(-1).bindings, []);
+    const reward = empty(linkId, 4);
+    reward.benefits.funded_components = [{ component_id: 'reward-component:1', funding: 'participation-reward', component_kind: 'paid-subject', capacity_type: 'organisation',
+      name: 'Additional organisation slot', reason: 'Community contribution', state: 'queued', starts_on: null, ends_on: null, application_deadline: null }];
+    assert.deepEqual(await (await push(source, reward)).json(), { ok: true, result: 'apply' });
+    assert.equal(presentProjection(await status()).key, 'reward-only');
+    assert.equal(wirt.state.reports.at(-1).applied.version, 4);
+    wirt.state.links.get(linkId).ended = true;
+    assert.deepEqual(await commercial.reconcileAfterRestore(), { held: 1, current: 0, ended: 1, unavailable: 0 });
+    assert.equal((await status()).linked, false, 'signed terminal 410 still ends the existing link');
+    assert.equal((await push(source, empty(linkId, 5))).status, 409);
+  } finally { await source.runtime.dispose(); }
+});
 
 test('reward-only commercial null survives pull, signed application, replay and restore without funding access', async () => {
   const source = await fixture({ realAuthorization: true });
