@@ -4,7 +4,7 @@
 
 This directory owns the editable sources and reproducible static outputs for the four selected visual explanations in the public manual. Mermaid owns relationship and sequence notation; Vega-Lite owns the quantitative chart. The surrounding manual remains authoritative for product behavior, and the retained example catalogue remains authoritative for the chart's observations and source identity.
 
-`apps/manual/visuals/render.mjs` renders every light, dark, and narrow output. Files under `rendered/` are derived and must not be edited by hand. `rendered/receipt.json` binds each committed output to its editable source, appearance, size, and SHA-256.
+`apps/manual/visuals/render.mjs` renders every light, dark, and narrow output. Files under `rendered/` are derived and must not be edited by hand. `rendered/receipt.json` records the renderer, pinned runtimes, editable source paths, and each selected output's source, appearance, and size. The renderer directly reproduces committed SVGs and checks their safe accessible structure and complete selection; it does not record file hashes.
 
 | Visual | Reader question | Editable source | Canonical manual home |
 | --- | --- | --- | --- |
