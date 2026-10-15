@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "renderer": "apps/manual/visuals/render.mjs",
   "runtimes": {
-    "mermaid": "12.0.0",
+    "mermaid": "12.1.0",
     "vega": "6.4.0",
     "vega-lite": "6.4.3"
   },
@@ -93,7 +93,7 @@
       "width": null,
       "narrow": false,
       "source": "docs/manual/assets/visuals/selection-boundaries.mmd",
-      "sha256": "167bfd63a3fb088cfdd5cd2ace4c82f1d51b47ff108c0d70bfba31c0fadf9107"
+      "sha256": "fc59f4ac0b8c5f8f688ffe867e1679720709317243d270f1d78843320b3b82f4"
     },
     {
       "path": "docs/manual/assets/visuals/rendered/selection-boundaries-dark.svg",
@@ -103,7 +103,7 @@
       "width": null,
       "narrow": false,
       "source": "docs/manual/assets/visuals/selection-boundaries.mmd",
-      "sha256": "6a5ed8d4fd7a0b4312a7df3687e62606d2695e06e170584bd18e2364143ff2d6"
+      "sha256": "b797e0dd29e1a5663fbd04394cea863fb4c77aaf2158f8b2cf121a6ab1538e2c"
     },
     {
       "path": "docs/manual/assets/visuals/rendered/provider-readback-light.svg",
