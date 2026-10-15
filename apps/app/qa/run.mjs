@@ -39,9 +39,10 @@ const target = appBuildTarget();
 const IDENTITY_ONLY = process.argv.includes('--identity');
 const AUTHORITY_ONLY = process.argv.includes('--authority');
 const HISTORY_ONLY = process.argv.includes('--history');
+const THUMB_ONLY = process.argv.includes('--thumb');
 const PR_SEARCH_DETAIL_ONLY = process.argv.includes('--pr-search-detail');
 const PR_CONFIDENCE_ONLY = process.argv.includes('--pr-confidence-state');
-const OUT = join(target.artifacts, 'qa', ...(PR_CONFIDENCE_ONLY ? ['pr-confidence-state'] : PR_SEARCH_DETAIL_ONLY ? ['pr-search-detail'] : IDENTITY_ONLY ? ['identity'] : AUTHORITY_ONLY ? ['authority'] : HISTORY_ONLY ? ['history'] : []));
+const OUT = join(target.artifacts, 'qa', ...(PR_CONFIDENCE_ONLY ? ['pr-confidence-state'] : PR_SEARCH_DETAIL_ONLY ? ['pr-search-detail'] : IDENTITY_ONLY ? ['identity'] : AUTHORITY_ONLY ? ['authority'] : HISTORY_ONLY ? ['history'] : THUMB_ONLY ? ['thumb'] : []));
 const APP_PORT = Number(process.env.DIFFDEVIL_APP_QA_PORT ?? (target.name === 'staging' ? 4512 : 4412));
 const GITHUB_PORT = Number(process.env.DIFFDEVIL_APP_QA_GITHUB_PORT ?? (target.name === 'staging' ? 4533 : 4433));
 // Chromium accepts Secure (__Host-) cookies from http://localhost, not from a loopback IP, so the browser origin is localhost; the Worker still binds 127.0.0.1.
@@ -241,6 +242,21 @@ async function qualifyAllRepositoriesSearchDetail(returnUrl, originalFacts) {
   check('the all-repositories journey restores the original PR page before its existing consumer runs', restoredResponse.status() === 200 && restoredUrl.pathname + restoredUrl.search === expectedUrl.pathname + expectedUrl.search && restoredFacts.result === restoreFacts.result && restoredFacts.lanes === restoreFacts.lanes && restoredFacts.files === restoreFacts.files, JSON.stringify({ restoredUrl: page.url(), restoredFacts, restoreFacts }));
 }
 const geometry = selector => page.evaluate(selector => { const host = document.querySelector(selector); if (!host) return null; const readout = host.querySelector('[data-readout]'), plot = host.querySelector('[data-plot]'); return { readout: Math.round(readout.getBoundingClientRect().height), plotTop: Math.round(plot.getBoundingClientRect().top + window.scrollY), plotHeight: Math.round(plot.getBoundingClientRect().height), when: readout.querySelector('.fr-when b')?.textContent ?? '', vals: readout.querySelectorAll('.fr-vals dd').length, overflowing: readout.scrollWidth > readout.clientWidth + 1 }; }, selector);
+async function thumbPosition(selector, view) {
+  await page.waitForFunction(({ selector, view }) => {
+    const segment = document.querySelector(`${selector} .fr-view`), thumb = segment?.querySelector('.seg-thumb'), selected = segment?.querySelector('[aria-pressed="true"]');
+    if (!thumb || !selected || selected.dataset.view !== view) return false;
+    const thumbRect = thumb.getBoundingClientRect(), selectedRect = selected.getBoundingClientRect();
+    return Math.abs(thumbRect.left - selectedRect.left) < 1 && Math.abs(thumbRect.width - selectedRect.width) < 1;
+  }, { selector, view }, { timeout: 1500 }).catch(() => {});
+  return page.evaluate(({ selector, view }) => {
+    const segment = document.querySelector(`${selector} .fr-view`), thumb = segment?.querySelector('.seg-thumb'), selected = segment?.querySelector('[aria-pressed="true"]');
+    if (!thumb || !selected) return null;
+    const thumbRect = thumb.getBoundingClientRect(), selectedRect = selected.getBoundingClientRect();
+    return { aligned: selected.dataset.view === view && Math.abs(thumbRect.left - selectedRect.left) < 1 && Math.abs(thumbRect.width - selectedRect.width) < 1,
+      selected: selected.dataset.view, leftDelta: Math.round((thumbRect.left - selectedRect.left) * 100) / 100, widthDelta: Math.round((thumbRect.width - selectedRect.width) * 100) / 100 };
+  }, { selector, view });
+}
 
 /** The F1 contract on one frame: the readout stays 66 px and the plot never moves under keyboard focus, pin and clear; the table view carries rows; the live region speaks on keyboard moves. */
 async function qualifyFrame(label, selector) {
@@ -264,7 +280,11 @@ async function qualifyFrame(label, selector) {
   await page.click(`${selector} [data-view="table"]`);
   const table = await page.evaluate(selector => { const host = document.querySelector(selector); const table = host.querySelector('[data-table]'); return { hidden: table.hidden, rows: table.querySelectorAll('tbody tr').length, caption: table.querySelector('caption')?.textContent ?? '', plotHidden: getComputedStyle(host.querySelector('[data-plot]')).display === 'none' }; }, selector);
   check(`${label}: ${kind} table view shows the equivalent rows (${table.rows}) with a caption`, !table.hidden && table.rows > 0 && table.caption.length > 0 && table.plotHidden, JSON.stringify(table));
+  const tableThumb = await thumbPosition(selector, 'table');
+  check(`${label}: ${kind} selection thumb follows the chosen table view`, tableThumb?.aligned && tableThumb.selected === 'table', JSON.stringify(tableThumb));
   await page.click(`${selector} [data-view="chart"]`);
+  const chartThumb = await thumbPosition(selector, 'chart');
+  check(`${label}: ${kind} selection thumb follows the chosen chart view`, chartThumb?.aligned && chartThumb.selected === 'chart', JSON.stringify(chartThumb));
   return { pin };
 }
 
@@ -605,7 +625,13 @@ async function qualifyPrConfidenceState(consumerReturn = null) {
 }
 
 try {
-  if (PR_SEARCH_DETAIL_ONLY) {
+  if (THUMB_ONLY) {
+    await startWorker(undefined, STATE, { commercial: COMMERCIAL_PRO });
+    await signIn();
+    await go('/');
+    await settled();
+    await qualifyFrame('pro overview', '[data-chart-id="volume"]');
+  } else if (PR_SEARCH_DETAIL_ONLY) {
     await startWorker(undefined, STATE, { commercial: COMMERCIAL_FREE, allowances: { free: { private: 3, publicHistory: 10 }, proOrganisation: { private: 3 } } });
     await signIn();
     await qualifyAllRepositoriesSearchDetail();
@@ -622,7 +648,7 @@ try {
   } else if (AUTHORITY_ONLY) {
     for (const [name, status, role, state] of [
       ['unavailable', 403, 'admin', 'active'], ['pending', 200, 'admin', 'pending'],
-      ['missing', 200, '', 'active'], ['member', 200, 'member', 'active'],
+      ['omitted-unconfirmed', 200, '', 'active'], ['member', 200, 'member', 'active'],
       ['billing-manager', 200, 'billing_manager', 'active'], ['administrator', 200, 'admin', 'active']
     ]) {
       github.state.membershipStatus = status;
@@ -637,7 +663,7 @@ try {
         ? await reader.count() === 0 && await page.locator('[data-namespace-row="parser-guild"]').count() === 1
         : name === 'unavailable' ? /HTTP 403/u.test(text) && /Administration is unconfirmed/u.test(text)
         : name === 'pending' ? /membership is pending/u.test(text)
-        : name === 'missing' ? /list did not include/u.test(text)
+        : name === 'omitted-unconfirmed' ? /HTTP 403/u.test(text) && /Administration is unconfirmed/u.test(text)
         : name === 'billing-manager' ? /active billing manager role/u.test(text)
         : /active member role/u.test(text), text);
       const groups = await page.evaluate(() => ({
@@ -650,7 +676,7 @@ try {
       check(`${name}: known readers retain their orientation and only failed role reads enter the unconfirmed group`,
         groups.knownHeading === 'Read-only for you' && /Someone else manages them/u.test(groups.knownOrientation ?? '')
         && groups.knownRoles.length > 0 && !groups.knownRoles.includes('unknown')
-        && (name === 'unavailable' ? groups.unknownHeading === 'Read access · administration unconfirmed'
+        && (name === 'unavailable' || name === 'omitted-unconfirmed' ? groups.unknownHeading === 'Read access · administration unconfirmed'
           && groups.unknownRoles.length > 0 && groups.unknownRoles.every(role => role === 'unknown') : groups.unknownRoles.length === 0), JSON.stringify(groups));
       check(`${name}: authority explanation fits the existing desktop layout`, await overflow() <= 0, await offenders());
       await shot(`authority-${name}`);
@@ -1030,7 +1056,7 @@ try {
   githubServer.closeAllConnections?.();
   githubServer.close();
 }
-await writeFile(join(OUT, 'results.json'), JSON.stringify({ origin: ORIGIN, scope: PR_CONFIDENCE_ONLY ? 'pr-confidence-state' : PR_SEARCH_DETAIL_ONLY ? 'pr-search-detail' : AUTHORITY_ONLY ? 'authority' : HISTORY_ONLY ? 'history' : IDENTITY_ONLY ? 'identity' : PARTICIPATION_ONLY ? 'participation' : 'full', target: target.name, seeded: seeded.written, dense: DENSE && !PR_CONFIDENCE_ONLY && !PR_SEARCH_DETAIL_ONLY && !PARTICIPATION_ONLY && !IDENTITY_ONLY && !AUTHORITY_ONLY && !HISTORY_ONLY, charts: chartTelemetry, results, failures, consoleErrors, pageErrors, external }, null, 2));
+await writeFile(join(OUT, 'results.json'), JSON.stringify({ origin: ORIGIN, scope: THUMB_ONLY ? 'thumb' : PR_CONFIDENCE_ONLY ? 'pr-confidence-state' : PR_SEARCH_DETAIL_ONLY ? 'pr-search-detail' : AUTHORITY_ONLY ? 'authority' : HISTORY_ONLY ? 'history' : IDENTITY_ONLY ? 'identity' : PARTICIPATION_ONLY ? 'participation' : 'full', target: target.name, seeded: seeded.written, dense: DENSE && !THUMB_ONLY && !PR_CONFIDENCE_ONLY && !PR_SEARCH_DETAIL_ONLY && !PARTICIPATION_ONLY && !IDENTITY_ONLY && !AUTHORITY_ONLY && !HISTORY_ONLY, charts: chartTelemetry, results, failures, consoleErrors, pageErrors, external }, null, 2));
 await writeFile(join(OUT, 'worker.log'), workerLog);
 console.log(`${PARTICIPATION_ONLY ? 'Participation: ' : ''}${results.filter(result => result.ok).length} of ${results.length} checks passed; screenshots and results in ${OUT}`);
 if (failures.length) { console.error(failures.map(failure => ` ✗ ${failure}`).join('\n')); process.exit(1); }
