@@ -542,7 +542,10 @@ export async function handleManageAction(request, { runtime, session, viewer }) 
         if (refusal) return done(refusal, { accountId: policy.accountId, where: viewer.login });
         const retried = await retryPublication({ runtime, cookie, origin, publication });
         const summary = summarizePublication(retried);
-        await recordAction(runtime, { viewer, accountId: policy.accountId, where: `${namespace.login} · ${policy.name}`, what: `Retried publishing ${policy.name} revision ${publication.revision}`, result: summary.result, reason: summary.text, detail: { publicationId: retried.publicationId } });
+        await recordAction(runtime, { viewer, accountId: policy.accountId, where: `${namespace.login} · ${policy.name}`, what: `Retried publishing ${policy.name} revision ${publication.revision}`, result: summary.result, reason: summary.text, detail: { publicationId: retried.publicationId, results: retried.results.map(result => ({ repositoryId: result.repositoryId, state: result.state })) } });
+        for (const result of retried.results.filter(result => publication.results.some(previous => previous.repositoryId === result.repositoryId && previous.state !== 'applied' && previous.state !== 'partly'))) {
+          await recordAction(runtime, { viewer, accountId: policy.accountId, repositoryId: result.repositoryId, where: viewer.repositories.find(candidate => candidate.repositoryId === result.repositoryId)?.fullName ?? `repository ${result.repositoryId}`, what: `Publish ${policy.name} revision ${publication.revision}`, result: result.state, reason: result.reason, detail: { ...result.detail, publicationId: retried.publicationId } });
+        }
         runtime.cache.clear();
         return redirect(withMessage(`/manage/policies?ns=${encodeURIComponent(namespace.login)}&policy=${policy.policyId}&publication=${retried.publicationId}`, 'policy-retried'));
       }
