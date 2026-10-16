@@ -346,7 +346,6 @@ try {
   await refused;
   check('an arbitrary first external form destination stays blocked by CSP', violations.length === 1 && new URL(page.url()).origin === APP && !requests.some(url => url.startsWith('https://unadmitted.example.test')));
   check('all browser and backend provider traffic stays in the doubles', transportErrors.length === 0 && calls.every(call => ['http://github.invalid', WORKS].includes(call.origin)));
-<<<<<<< HEAD
   await writeFile(join(OUT, 'results.json'), JSON.stringify({ target: target.name, build: built.main, browser: browser.version(), viewport: '1440x900', javaScript: !noJavaScript, authenticationHops, abortedResources,
     results, violations, calls, planPolicies,
     nativeResponses: nativeResponses.map(({ location, ...answer }) => ({ ...answer, destination: new URL(location, APP).origin === WORKS ? 'configured-works' : 'same-app' })) }, null, 2));
