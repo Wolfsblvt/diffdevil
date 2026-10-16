@@ -682,10 +682,13 @@ export async function handleManageAction(request, { runtime, session, viewer }) 
   } catch (error) {
     const code = typeof error?.code === 'string' ? error.code : '';
     runtime.cache.clear();
-    if (code === 'E_COMMERCIAL_ALREADY_LINKED') return redirect(withMessage(back, 'already-linked'));
-    if (code === 'E_COMMERCIAL_LINK_PENDING') return redirect(withMessage(back, 'link-pending'));
-    if (code === 'E_COMMERCIAL_NOT_FUNDED') return redirect(withMessage(back, 'not-funded'));
-    if (code.startsWith('E_COMMERCIAL_') || code === 'E_SERVICE_RECONNECT_UNCONFIRMED') return redirect(withMessage(back, code === 'E_SERVICE_RECONNECT_UNCONFIRMED' ? 'reconnect-unconfirmed' : 'commercial-unavailable'));
+    if (code.startsWith('E_COMMERCIAL_') || code === 'E_SERVICE_RECONNECT_UNCONFIRMED') {
+      const refused = ({ E_COMMERCIAL_ALREADY_LINKED: 'already-linked', E_COMMERCIAL_LINK_PENDING: 'link-pending',
+        E_COMMERCIAL_NOT_FUNDED: 'not-funded', E_SERVICE_RECONNECT_UNCONFIRMED: 'reconnect-unconfirmed' })[code] ?? 'commercial-unavailable';
+      // Even a retained pending link is an unfinished request, not an applied action. Keep only fixed product copy;
+      // commercial exceptions can contain authorization destinations or provider payloads.
+      return done(refused, { result: 'failed', reason: MESSAGES[refused].text });
+    }
     if (code === 'E_UNKNOWN_REPOSITORY') return new Response('Not in your repositories.', { status: 404, headers: documentHeaders({ 'content-type': 'text/plain; charset=utf-8' }) });
     const refused = action === 'close-account' ? 'close-incomplete' : action === 'admit' && code === 'E_ADMISSION_STALE' ? 'admission-stale' : admissionMessage(error);
     // A refused request is kept as it happened: who asked for what, and why it did not happen.

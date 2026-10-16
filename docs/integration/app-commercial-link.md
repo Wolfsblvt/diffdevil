@@ -26,6 +26,13 @@ App document `form-action` still admits only self, GitHub and the single configu
 provider-returned URL selects that allowlist. Missing/refused configuration adds
 no external form destination; the local stand-in stays same-origin.
 
+Refused Manage commercial requests append a failed-request event through the existing
+administrative Audit path before returning their visible message. A retained pending
+link remains unfinished; its retry does not record an applied link. These events carry
+the authenticated actor and fixed product reason, never exception text, arbitrary
+provider codes, authorization destinations or raw payloads. The existing best-effort
+Audit write does not change the commercial result if the record store is unavailable.
+
 New link intents include `product_account_label` in the existing signed
 `POST /api/wirt/diffdevil/link-intents` JSON alongside `product_account`, `challenge`
 and `state`. The commercial service uses the authorization service's existing
