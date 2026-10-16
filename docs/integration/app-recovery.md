@@ -57,10 +57,37 @@ request identity for retry and replay.
 No schema, recovery-input format or original-point interpretation changes here.
 Migration-0016 points remain compatible. An old source's capture from between its
 separate deletion commits still has the diagnosed missing-intent gap; newer source
-cannot invent that lost request. Account closure benefits at its history-deletion
-leg, but its other local and authorization steps remain separate commits with an
-ordinary incomplete/retry response. This is not durable continuation of an entire
-closure, nor unconditional recovery of every in-flight App command.
+cannot invent that lost request.
+
+## Personal account closure at the database boundary
+
+The supported personal account-closure route also commits its complete local
+transition in one APP_DB batch: personal history/children/checks/repairs and open
+history jobs, repository stops and deselection, Manage and participation erasure,
+and local grant/session/artifact revocation. Organisation history and settings
+remain. Confirmation and the linked-Works-account refusal still precede closure.
+Current GitHub update authority is checked for every personal target; the batch
+checks the entire admitted revision/ownership/reach set and active-link refusal
+before erasing anything. A changed target refuses the complete set. Repository
+revisions advance once for the joined execution/history withdrawal.
+
+The closure statement count is fixed, using JSON-bound targets and set-based
+policy-child removal rather than one transaction per repository or policy.
+[D1's query, binding, memory and whole-batch duration limits](https://developers.cloudflare.com/d1/platform/limits/)
+still apply; a limit/error rolls back the whole closure and produces the existing
+incomplete response. A lost commit response may also produce that response, but
+the committed closure has already ended its sessions and cannot run again through
+the spent session. A new sign-in and later explicit reconsent remain new choices.
+No background completion job or general command journal is introduced.
+
+The healthy-current-source input carries this complete committed state through
+the unchanged migration-0016 interpretation. Repeated isolated replay preserves
+the original deletion time/lifetime; a later current sign-in/reconsent is carried
+as current state. The separately supplied `account-closed` duty retains its
+existing input/replay contract: that durable input already owns the complete
+intent, so interrupted replay stays isolated and retries the same original event.
+This is not unconditional recovery of every in-flight App command, a capacity
+benchmark, or independent custody of later duties after loss of the current source.
 
 ## Complete input through an exact barrier
 

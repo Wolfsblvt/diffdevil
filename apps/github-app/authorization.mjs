@@ -34,7 +34,7 @@ function cookie(name, value, maxAge) {
 export function protectedHeaders() { return { 'Cache-Control': 'private, no-store', 'Vary': 'Cookie', 'Referrer-Policy': 'no-referrer' }; }
 
 /** Route-neutral GitHub-user authorization; the router chooses paths and visible language later. */
-export function createAuthorizationService({ store, admission, history, analytics, provider, protector, returnContexts, allowedOrigins, allowedCallbackUrls, sessionLifetimeMs, delegatedAdministration, now = () => new Date().toISOString() }) {
+export function createAuthorizationService({ store, admission, history, analytics, provider, protector, returnContexts, allowedOrigins, allowedCallbackUrls, sessionLifetimeMs, delegatedAdministration, closeAccount, now = () => new Date().toISOString() }) {
   if (!store || !admission || !provider || !protector || !returnContexts || !allowedOrigins || !allowedCallbackUrls) throw new TypeError('Authorization adapters and allowlists are required.');
   if (!Number.isSafeInteger(sessionLifetimeMs) || sessionLifetimeMs <= 0 || sessionLifetimeMs % 1000 !== 0
     || !Number.isFinite(new Date(Date.parse(now()) + sessionLifetimeMs).getTime())) throw new TypeError('A selected session lifetime is required.');
@@ -248,6 +248,23 @@ export function createAuthorizationService({ store, admission, history, analytic
       const actor = await principal(session);
       try { await store.revokeAuthorization(actor.userId, { disconnectService: true }); }
       catch { throw refusal('E_AUTHORIZATION_REVOKE_UNCONFIRMED'); }
+      return { ...actor, headers: { ...protectedHeaders(), 'Set-Cookie': cookie(SESSION_COOKIE_NAME, '', 0) } };
+    },
+
+    /** The App's personal closure: prove current update authority for every target before its one local commit. */
+    async closeAccount({ session, method, origin, repositoryIds }) {
+      validOrigin(origin, origins, method);
+      if (typeof closeAccount !== 'function') throw refusal('E_AUTHORIZATION_REVOKE_UNCONFIRMED');
+      if (!Array.isArray(repositoryIds) || repositoryIds.some(id => !Number.isSafeInteger(id) || id < 1)
+        || new Set(repositoryIds).size !== repositoryIds.length) throw refusal('E_ADMISSION_UNAUTHORIZED');
+      const actor = await principal(session), repositories = [];
+      for (const repositoryId of repositoryIds) {
+        const authorized = await authorizedAdmission(session, repositoryId, 'update');
+        const current = await admissionCall(() => admission.read(repositoryId, authorized));
+        repositories.push({ repositoryId, revision: current.revision });
+      }
+      await principal(session);
+      await closeAccount({ userId: actor.userId, repositories });
       return { ...actor, headers: { ...protectedHeaders(), 'Set-Cookie': cookie(SESSION_COOKIE_NAME, '', 0) } };
     },
 

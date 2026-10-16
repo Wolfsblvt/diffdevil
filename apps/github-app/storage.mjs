@@ -361,14 +361,19 @@ export class D1AppStore {
 
   /** Repository-scoped SQL keeps child removal in the caller's privacy transaction. */
   historyRemovalStatements(repositoryId, guard = { sql: '1', values: [] }) {
+    return this.historyRemovalStatementsForRepositories({ sql: 'SELECT ?', values: [repositoryId] }, guard);
+  }
+
+  /** A fixed-size set deletion also serves whole-account closure without one batch per repository. */
+  historyRemovalStatementsForRepositories(targets, guard = { sql: '1', values: [] }) {
     return [
-      'DELETE FROM analytical_pull_requests WHERE repository_id=?',
-      'DELETE FROM analytical_size_observations WHERE repository_id=?',
-      'DELETE FROM analytical_size_facts WHERE repository_id=?',
-      'DELETE FROM history_file_rows WHERE history_id IN (SELECT id FROM history_records WHERE repository_id=?)',
-      'DELETE FROM history_effect_rows WHERE history_id IN (SELECT id FROM history_records WHERE repository_id=?)',
-      'DELETE FROM history_records WHERE repository_id=?'
-    ].map(sql => this.statement(`${sql} AND (${guard.sql})`, repositoryId, ...guard.values));
+      `DELETE FROM analytical_pull_requests WHERE repository_id IN (${targets.sql})`,
+      `DELETE FROM analytical_size_observations WHERE repository_id IN (${targets.sql})`,
+      `DELETE FROM analytical_size_facts WHERE repository_id IN (${targets.sql})`,
+      `DELETE FROM history_file_rows WHERE history_id IN (SELECT id FROM history_records WHERE repository_id IN (${targets.sql}))`,
+      `DELETE FROM history_effect_rows WHERE history_id IN (SELECT id FROM history_records WHERE repository_id IN (${targets.sql}))`,
+      `DELETE FROM history_records WHERE repository_id IN (${targets.sql})`
+    ].map(sql => this.statement(`${sql} AND (${guard.sql})`, ...targets.values, ...guard.values));
   }
 
   async removeHistoryRecords(repositoryId) {

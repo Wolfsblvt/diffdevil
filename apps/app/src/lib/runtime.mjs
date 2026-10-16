@@ -24,6 +24,7 @@ import { createAnalytics } from './analytics.mjs';
 import { createLocator } from './locator.mjs';
 import { createContextCache } from './viewer.mjs';
 import { D1ManageStore } from './manage/store.mjs';
+import { closeLocalAccount } from './manage/account-closure.mjs';
 import { readAllowances } from './manage/allowances.mjs';
 import { createCommercialFixture, readCommercialFixture } from './manage/commercial-fixture.mjs';
 import { delegationReaches } from './manage/people.mjs';
@@ -153,7 +154,8 @@ export function createAppRuntime(env, { fetch = globalThis.fetch, now, premium =
     if (!delegationReaches(delegation, repositoryId)) return false;
     return (await entitlement.planOfRepository(repositoryId, null)) === 'business';
   };
-  auth = createAuthorizationService({ store: authStore, admission, analytics: analytics.service, provider, protector, returnContexts: [RETURN_CONTEXT], allowedOrigins, allowedCallbackUrls: [callbackUrl], sessionLifetimeMs: sessionDays * DAY, delegatedAdministration, now: clock });
+  auth = createAuthorizationService({ store: authStore, admission, analytics: analytics.service, provider, protector, returnContexts: [RETURN_CONTEXT], allowedOrigins, allowedCallbackUrls: [callbackUrl], sessionLifetimeMs: sessionDays * DAY, delegatedAdministration,
+    closeAccount: ({ userId, repositories }) => closeLocalAccount({ database: env.APP_DB, userId, repositories, now: clock }), now: clock });
   // Automatic setup (Business) for repositories a lifecycle delivery newly grants; the managed runtime calls it. It reads
   // the chooser's current permission on each repository through the App installation; without App credentials it holds.
   const permissionOf = env.GITHUB_APP_ID && env.GITHUB_APP_PRIVATE_KEY ? createRepositoryPermissionReader(env, { fetch }) : undefined;

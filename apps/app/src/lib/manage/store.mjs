@@ -127,18 +127,26 @@ export class D1ManageStore {
 
   /** Closing an account removes its own Manage facts; repositories and organisations keep theirs (including the record of what this person did there). */
   async forgetAccount(userId) {
-    const personal = (await this.statement('SELECT policy_id FROM linked_policies WHERE account_id=?', userId).all()).results ?? [];
-    await this.database.batch([
-      this.statement('DELETE FROM free_connections WHERE user_id=?', userId),
-      this.statement('DELETE FROM works_departures WHERE user_id=?', userId),
-      this.statement('DELETE FROM plan_change_choices WHERE user_id=?', userId),
-      this.statement('DELETE FROM namespace_defaults WHERE account_id=?', userId),
-      this.statement('DELETE FROM delegations WHERE user_id=? OR account_id=?', userId, userId),
-      this.statement('DELETE FROM automatic_setup WHERE account_id=?', userId),
-      ...personal.flatMap(row => [this.statement('DELETE FROM policy_links WHERE policy_id=?', row.policy_id), this.statement('DELETE FROM policy_publication_results WHERE publication_id IN (SELECT publication_id FROM policy_publications WHERE policy_id=?)', row.policy_id), this.statement('DELETE FROM policy_publications WHERE policy_id=?', row.policy_id)]),
-      this.statement('DELETE FROM linked_policies WHERE account_id=?', userId),
-      this.statement('DELETE FROM administrative_events WHERE account_id=?', userId)
-    ]);
+    await this.database.batch(this.forgetAccountStatements(userId));
+  }
+
+  /** Join account facts to the caller's closure transaction; policy children use the same live set. */
+  forgetAccountStatements(userId, guard = { sql: '1', values: [] }) {
+    const statement = (sql, ...values) => this.statement(`${sql} AND (${guard.sql})`, ...values, ...guard.values);
+    const policies = 'SELECT policy_id FROM linked_policies WHERE account_id=?';
+    return [
+      statement('DELETE FROM free_connections WHERE user_id=?', userId),
+      statement('DELETE FROM works_departures WHERE user_id=?', userId),
+      statement('DELETE FROM plan_change_choices WHERE user_id=?', userId),
+      statement('DELETE FROM namespace_defaults WHERE account_id=?', userId),
+      statement('DELETE FROM delegations WHERE (user_id=? OR account_id=?)', userId, userId),
+      statement('DELETE FROM automatic_setup WHERE account_id=?', userId),
+      statement(`DELETE FROM policy_links WHERE policy_id IN (${policies})`, userId),
+      statement(`DELETE FROM policy_publication_results WHERE publication_id IN (SELECT publication_id FROM policy_publications WHERE policy_id IN (${policies}))`, userId),
+      statement(`DELETE FROM policy_publications WHERE policy_id IN (${policies})`, userId),
+      statement('DELETE FROM linked_policies WHERE account_id=?', userId),
+      statement('DELETE FROM administrative_events WHERE account_id=?', userId)
+    ];
   }
 
   // ── Business: named linked policies (migration 0013) ──
