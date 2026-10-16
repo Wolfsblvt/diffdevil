@@ -264,7 +264,7 @@ export function createAuthorizationService({ store, admission, history, analytic
         repositories.push({ repositoryId, revision: current.revision });
       }
       await principal(session);
-      await closeAccount({ userId: actor.userId, repositories });
+      await closeAccount({ userId: actor.userId, repositories, sessionHash: await digest(session) });
       return { ...actor, headers: { ...protectedHeaders(), 'Set-Cookie': cookie(SESSION_COOKIE_NAME, '', 0) } };
     },
 

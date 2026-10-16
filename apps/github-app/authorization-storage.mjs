@@ -84,13 +84,13 @@ export class D1AuthorizationStore {
   }
 
   /** Prepared revocation lets account closure end grants and sessions in its own local transaction. */
-  revokeAuthorizationStatements(userId, { disconnectService = false, expectedMaterial, guard = { sql: '1', values: [] } } = {}) {
+  revokeAuthorizationStatements(userId, { disconnectService = false, expectedMaterial, guard = { sql: '1', values: [] }, sessionGuard = guard } = {}) {
     const now = this.now();
     const statement = (sql, ...values) => this.statement(`${sql} AND (${guard.sql})`, ...values, ...guard.values);
     const matches = expectedMaterial === undefined ? '' : ' AND EXISTS (SELECT 1 FROM user_authorizations WHERE user_id=? AND protected_material=?)';
     const lease = expectedMaterial === undefined ? [] : [userId, expectedMaterial];
     const statements = [
-      statement(`UPDATE browser_sessions SET revoked_at=? WHERE user_id=? AND revoked_at IS NULL${matches}`, now, userId, ...lease),
+      this.statement(`UPDATE browser_sessions SET revoked_at=? WHERE user_id=? AND revoked_at IS NULL${matches} AND (${sessionGuard.sql})`, now, userId, ...lease, ...sessionGuard.values),
       statement(`UPDATE authorization_artifacts SET consumed_at=? WHERE user_id=? AND consumed_at IS NULL${matches}`, now, userId, ...lease),
       statement(`UPDATE user_authorizations SET revoked_at=?, protected_material='' WHERE user_id=?${expectedMaterial === undefined ? '' : ' AND protected_material=?'}`, now, userId, ...(expectedMaterial === undefined ? [] : [expectedMaterial]))
     ];

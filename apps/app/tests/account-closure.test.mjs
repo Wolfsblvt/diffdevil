@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
 import assert from 'node:assert/strict';
 import { after, test } from 'node:test';
+import { createHash } from 'node:crypto';
 import { handleManageAction } from '../src/lib/manage/actions.mjs';
 import { openSession, SESSION_COOKIE } from '../src/lib/routes.mjs';
 import { resolveViewer } from '../src/lib/viewer.mjs';
@@ -36,6 +37,7 @@ test('a late account-closure failure retains the whole account; retry commits ev
   const { app: compose } = await fixture({ seed: seedClosure });
   const app = compose(), database = app.appStore.database;
   const { cookie } = await signIn(app);
+  const { cookie: otherSession } = await signIn(app);
   await app.manage.select(1004, 123);
   await app.manage.connectFree(123, 7001);
   await app.manage.recordDeparture(123, { purpose: 'fixture' });
@@ -87,6 +89,7 @@ test('a late account-closure failure retains the whole account; retry commits ev
   assert.equal((await database.prepare('SELECT count(*) AS count FROM participation_prompts WHERE user_id=123').first()).count, 0);
   assert.equal((await app.appStore.repositoryAdmission(1001)).history.enabled, true, 'organisation history stays');
   assert.equal((await openSession(new Request(`${ORIGIN}/`, { headers: { cookie: `${SESSION_COOKIE}=${cookie}` } }), app)).refusal, 'E_SESSION_UNAVAILABLE');
+  assert.equal((await openSession(new Request(`${ORIGIN}/`, { headers: { cookie: `${SESSION_COOKIE}=${otherSession}` } }), app)).refusal, 'E_SESSION_UNAVAILABLE', 'closure ends every current session, including after updating its initiating session');
 });
 
 test('closure checks every current update grant and its request origin before destructive writes', async () => {
@@ -109,7 +112,8 @@ test('stale revisions, foreign targets and a newly linked plan refuse the entire
   const { cookie } = await signIn(app);
   await app.manage.select(1004, 123);
   const targets = await Promise.all([1004, 1005].map(async repositoryId => ({ repositoryId, revision: (await app.appStore.repositoryAdmission(repositoryId)).revision })));
-  const attempt = repositories => closeLocalAccount({ database, userId: 123, repositories, now: app.now });
+  const sessionHash = createHash('sha256').update(cookie).digest('hex');
+  const attempt = repositories => closeLocalAccount({ database, userId: 123, repositories, sessionHash, now: app.now });
   for (const targetsToRefuse of [targets.map((r, i) => i === 1 ? { ...r, revision: r.revision - 1 } : r), [...targets, { repositoryId: 1001, revision: 0 }]]) {
     await assert.rejects(attempt(targetsToRefuse), { code: 'E_ADMISSION_STALE' });
     assert.ok(await app.manage.selection(1004));
@@ -125,15 +129,16 @@ test('stale revisions, foreign targets and a newly linked plan refuse the entire
 test('closure handles a personal set beyond one hundred SQL parameters without partial batches', async () => {
   const { app: compose } = await fixture();
   const app = compose(), database = app.appStore.database;
+  const { cookie } = await signIn(app), sessionHash = createHash('sha256').update(cookie).digest('hex');
   const ids = Array.from({ length: 120 }, (_, index) => 2000 + index);
   await app.appStore.recordLifecycle({ installationId: 9, action: 'created', addedRepositories: ids, removedRepositories: [] });
   const repositories = ids.map(repositoryId => ({ repositoryId, revision: 0 }));
-  await closeLocalAccount({ database, userId: 123, repositories, now: app.now });
+  await closeLocalAccount({ database, userId: 123, repositories, sessionHash, now: app.now });
   const rows = (await database.prepare('SELECT settings_revision,history_consent_reason,execution_consent_reason FROM repositories WHERE repository_id>=2000').all()).results;
   assert.equal(rows.length, ids.length);
   assert.ok(rows.every(r => r.settings_revision === 1 && r.history_consent_reason === 'explicitly-disabled' && r.execution_consent_reason === 'explicitly-disabled'));
   const original = await database.prepare("SELECT deleted_at,reapply_until FROM deletion_tombstones WHERE scope='history:2000'").first();
-  await assert.rejects(closeLocalAccount({ database, userId: 123, repositories, now: () => '2026-10-10T00:00:00.000Z' }), { code: 'E_ADMISSION_STALE' });
+  await assert.rejects(closeLocalAccount({ database, userId: 123, repositories, sessionHash, now: () => '2026-10-10T00:00:00.000Z' }), { code: 'E_ADMISSION_STALE' });
   assert.deepEqual(await database.prepare("SELECT deleted_at,reapply_until FROM deletion_tombstones WHERE scope='history:2000'").first(), original, 'the spent request does not move deletion time or lifetime');
 });
 
@@ -166,4 +171,30 @@ test('a lost closure response leaves a complete commit and the spent session can
   await assert.rejects(original.auth.closeAccount({ session: cookie, method: 'POST', origin: ORIGIN, repositoryIds: [1004,1005] }), { code: 'E_SESSION_UNAVAILABLE' });
   assert.equal((await original.appStore.repositoryAdmission(1004)).history.enabled, true);
   assert.deepEqual(await database.prepare("SELECT deleted_at,reapply_until FROM deletion_tombstones WHERE scope='history:1004'").first(), deletion);
+});
+
+test('a delayed closure with no personal targets cannot revoke a later sign-in after its session ended', async () => {
+  const { app: compose } = await fixture({ seed: seedClosure });
+  const original = compose(), database = original.appStore.database;
+  const { cookie } = await signIn(original);
+  let enter, release, closurePrepared = false;
+  const entered = new Promise(resolve => { enter = resolve; });
+  const resume = new Promise(resolve => { release = resolve; });
+  const delayed = {
+    prepare(sql) { if (sql.includes('AS admitted')) closurePrepared = true; return database.prepare(sql); },
+    async batch(statements) {
+      if (closurePrepared) { closurePrepared = false; enter(); await resume; }
+      return database.batch(statements);
+    }
+  };
+  const app = compose(undefined, { env: { APP_DB: delayed } });
+  const pending = app.auth.closeAccount({ session: cookie, method: 'POST', origin: ORIGIN, repositoryIds: [] });
+  // Observe rejection immediately too, so the controlled await never creates an unhandled rejection.
+  const outcome = pending.then(() => null, error => error);
+  await entered;
+  await original.auth.revokeAuthorization({ session: cookie, method: 'POST', origin: ORIGIN });
+  const { cookie: later } = await signIn(original);
+  release();
+  assert.equal((await outcome)?.code, 'E_ADMISSION_STALE');
+  assert.ok((await original.auth.authenticate(later)).userId === 123, 'the newer authorization and session stay usable');
 });

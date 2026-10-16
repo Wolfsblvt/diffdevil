@@ -155,7 +155,7 @@ export function createAppRuntime(env, { fetch = globalThis.fetch, now, premium =
     return (await entitlement.planOfRepository(repositoryId, null)) === 'business';
   };
   auth = createAuthorizationService({ store: authStore, admission, analytics: analytics.service, provider, protector, returnContexts: [RETURN_CONTEXT], allowedOrigins, allowedCallbackUrls: [callbackUrl], sessionLifetimeMs: sessionDays * DAY, delegatedAdministration,
-    closeAccount: ({ userId, repositories }) => closeLocalAccount({ database: env.APP_DB, userId, repositories, now: clock }), now: clock });
+    closeAccount: ({ userId, repositories, sessionHash }) => closeLocalAccount({ database: env.APP_DB, userId, repositories, sessionHash, now: clock }), now: clock });
   // Automatic setup (Business) for repositories a lifecycle delivery newly grants; the managed runtime calls it. It reads
   // the chooser's current permission on each repository through the App installation; without App credentials it holds.
   const permissionOf = env.GITHUB_APP_ID && env.GITHUB_APP_PRIVATE_KEY ? createRepositoryPermissionReader(env, { fetch }) : undefined;
