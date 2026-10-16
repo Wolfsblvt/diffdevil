@@ -526,8 +526,8 @@ async function qualifyPrConfidenceState(consumerReturn = null) {
     frame.setFocus(1, { announce: true });
   }, now);
   const boundedReadout = await inspectBoundedReadout(1280);
-  check('PR Development at 1280px keeps the 7/5 row, compact type, complete grouped bounds and fixed F1 geometry', boundedReadout?.viewport === 1280
-    && boundedReadout.rowSpans[0] === 'span 7' && boundedReadout.rowSpans[1] === 'span 5'
+  check('PR Development at 1280px follows Files in the full-width layout, with compact type, complete grouped bounds and fixed F1 geometry', boundedReadout?.viewport === 1280
+    && boundedReadout.rowSpans[0] === 'span 12' && boundedReadout.rowSpans[1] === 'span 12'
     && boundedReadout.values.some(value => value.label === 'Changed' && value.value === '2,240–4,335')
     && boundedReadout.values.filter(value => value.label === 'vs previous' || value.label === 'since opened').every(value => value.value === '−2,095–+2,095')
     && boundedReadout.values.every(value => value.fontSize === (value.label === 'Changed' ? '15px' : '13px'))
@@ -537,8 +537,8 @@ async function qualifyPrConfidenceState(consumerReturn = null) {
   for (const width of [1360, 1361, 1440]) {
     const readout = await inspectBoundedReadout(width);
     const compact = width === 1360;
-    const rowSpans = compact ? ['span 7', 'span 5'] : ['span 6', 'span 6'];
-    check(`PR Development at ${width}px keeps the ${compact ? '7/5 compact' : '6/6 canonical'} row, full grouped bounds and fixed F1 geometry`, readout?.viewport === width
+    const rowSpans = compact ? ['span 12', 'span 12'] : ['span 6', 'span 6'];
+    check(`PR Development at ${width}px keeps the ${compact ? 'full-width compact' : '6/6 canonical'} composition, full grouped bounds and fixed F1 geometry`, readout?.viewport === width
       && JSON.stringify(readout.rowSpans) === JSON.stringify(rowSpans)
       && readout.values.some(value => value.label === 'Changed' && value.value === '2,240–4,335')
       && readout.values.filter(value => value.label === 'vs previous' || value.label === 'since opened').every(value => value.value === '−2,095–+2,095')
@@ -567,7 +567,7 @@ async function qualifyPrConfidenceState(consumerReturn = null) {
   }
   await page.locator('[data-chart-id="dev"] [data-readout]').screenshot({ path: join(OUT, 'pr-development-asymmetric-1440x900.png') });
 
-  for (const width of [1361, 1440]) {
+  for (const width of [1280, 1361, 1440]) {
     await page.setViewportSize({ width, height: 900 });
     const inspectFilesLayout = async (label, pathless) => {
       const response = await go('/pr/parser-guild/parser-lab/452?per=90d');
@@ -585,8 +585,9 @@ async function qualifyPrConfidenceState(consumerReturn = null) {
           cellsInside: Boolean(panelBox) && cells.every(cell => cell.left >= panelBox.left - 1 && cell.right <= panelBox.right + 1),
           pageOverflow: document.documentElement.scrollWidth > innerWidth + 1, text: panel?.innerText ?? '' };
       });
+      const expectedColumn = width === 1280 ? 'span 12' : 'span 6';
       check(`PR detail ${label} Files presentation fits six columns at ${width}px`, response.status() === 200 && layout.width === width
-        && layout.column === 'span 6' && layout.rows > 0 && !layout.tableOverflow && layout.cellsInside && !layout.pageOverflow
+        && layout.column === expectedColumn && layout.rows > 0 && !layout.tableOverflow && layout.cellsInside && !layout.pageOverflow
         && (pathless ? /path not retained/u.test(layout.text) : /src\/index\.ts/u.test(layout.text)), JSON.stringify(layout));
     };
 
