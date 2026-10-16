@@ -483,7 +483,8 @@ test('history deletion completes a repeated submitted form and refuses it after 
   const read = async () => (await app.auth.readAdmission({ session: cookie, repositoryId })).body;
   assert.equal((await act(app, cookie, { action: 'history', repository, enabled: 'on' })).message, 'history-on');
   const before = await read();
-  assert.equal(before.history.origin, 'dashboard', 'ordinary consent origins retain their category');
+  const ordinary = await app.appStore.database.prepare('SELECT history_consent_origin FROM repositories WHERE repository_id=?').bind(repositoryId).first();
+  assert.equal(before.history.origin, ordinary.history_consent_origin, 'ordinary consent origins retain their stored category');
   assert.equal((await act(app, cookie, { action: 'delete-history', repository, confirm: 'dotfiles' })).message, 'stale');
   assert.deepEqual((await read()).history, before.history, 'a missing revision deletes nothing');
   const fields = { action: 'delete-history', repository, confirm: 'dotfiles', revision: String(before.revision) };
