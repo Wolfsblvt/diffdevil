@@ -5,6 +5,18 @@ import { createAppRuntime } from '../src/lib/runtime.mjs';
 import { securityHeaders, pageHeaders } from '../src/lib/routes.mjs';
 import { returnOutcome, presentProjection } from '../src/lib/manage/works.mjs';
 import { commercialStatus } from '../src/lib/manage/model.mjs';
+import { handleManageAction } from '../src/lib/manage/actions.mjs';
+
+test('Works initiation refuses a foreign Origin before creating any attempt or continuation', async () => {
+  let starts = 0;
+  const runtime = { config: { allowedOrigins: ['https://app.example.test'] }, commercial: { beginLink() { starts++; } } };
+  const response = await handleManageAction(new Request('https://app.example.test/manage/do', { method: 'POST',
+    headers: { origin: 'https://unadmitted.example.test' }, body: new URLSearchParams({ action: 'link' }) }),
+  { runtime, session: {}, viewer: {} });
+  assert.equal(response.status, 403);
+  assert.equal(starts, 0);
+  assert.doesNotMatch(await response.text(), /http-equiv|href=/u);
+});
 
 test('document form policy admits only the successfully configured Works origin, keeping every other protection', () => {
   // Composition validates configuration without reading the database or contacting a provider.

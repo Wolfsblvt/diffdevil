@@ -437,8 +437,20 @@ test('the loopback Works stand-in carries the slots, the first link, the return 
   assert.equal((await act(app, cookie, { action: 'unlink', back: '/manage/plan' })).message, 'unlinked');
   ({ model: loaded } = await model(app, cookie));
   assert.equal(loaded.commercial.status.linked, false); assert.equal(loaded.viewerPlan, 'Free');
-  const begun = await act(app, cookie, { action: 'link', back: '/manage/plan' });
-  assert.match(begun.location.pathname, /works-stand-in$/u);
+  const begun = await handleManageAction(new Request(`${ORIGIN}/manage/do`, { method: 'POST',
+    headers: { origin: ORIGIN, 'content-type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ action: 'link', back: '/manage/plan' }) }), await locals(app, cookie));
+  assert.equal(begun.status, 200, 'commit a document before the external navigation');
+  assert.equal(begun.headers.get('location'), null);
+  assert.equal(begun.headers.get('cache-control'), 'private, no-store');
+  assert.match(begun.headers.get('content-type'), /^text\/html/u);
+  const continuation = await begun.text();
+  assert.match(continuation, /http-equiv="refresh" content="0;url=[^"]*works-stand-in/u);
+  const fallback = continuation.match(/<a\b[^>]*href="([^"]+)"[^>]*>(.*?)<\/a>/u);
+  assert.ok(fallback, 'the continuation keeps an ordinary link');
+  assert.match(fallback[1], /works-stand-in/u);
+  assert.match(fallback[2].trim(), /\S/u, 'the fallback link has a non-empty name');
+  assert.doesNotMatch(continuation, /<script|<form/u, 'automatic navigation needs no script or second form submission');
   assert.equal((await model(app, cookie)).model.departure.purpose, 'link');
   assert.equal(app.commercial.simulate('link-complete'), 'linked');
   ({ model: loaded } = await model(app, cookie));
