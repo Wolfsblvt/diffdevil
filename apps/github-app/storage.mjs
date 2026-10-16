@@ -485,10 +485,14 @@ export class D1AppStore {
     // A lost response retries the completed transaction, not a new 37-day deletion.
     // Explicit replay still cleans point rows when its tombstone arrived via an import.
     if (previous && deletedAt === undefined && revision === undefined) return;
-    const consent = previous ? await this.statement('SELECT history_enabled, history_consent_reason FROM repositories WHERE repository_id=?', repositoryId).first() : null;
+    const consent = previous ? await this.statement('SELECT history_enabled, history_consent_reason, history_consent_origin FROM repositories WHERE repository_id=?', repositoryId).first() : null;
     const retry = previous && deletedAt === undefined && consent?.history_enabled !== 1;
     const now = deletedAt ?? (retry ? previous.deleted_at : this.now());
     const until = reapplyUntil ?? (retry ? previous.reapply_until : new Date(Date.parse(now) + APP_TOMBSTONE_DAYS * DAY).toISOString());
+    const requestOrigin = revision === undefined ? 'history-deletion' : `history-deletion-revision-${revision}`;
+    // Preserve the live request identity when replaying that same recorded event.
+    const deletionOrigin = revision === undefined && previous?.deleted_at === now && consent?.history_consent_origin?.startsWith('history-deletion-revision-')
+      ? consent.history_consent_origin : requestOrigin;
     if (previous && deletedAt !== undefined && previous.deleted_at > now) return;
     // All statements see the same revision until the final update, within one D1 transaction.
     // Replaying an already recorded event also cannot revoke a later explicit positive choice.
@@ -505,9 +509,9 @@ export class D1AppStore {
       this.statement(`INSERT INTO deletion_tombstones (scope, deleted_at, reapply_until) SELECT ?, ?, ? WHERE (${guard.sql})
         ON CONFLICT(scope) DO UPDATE SET deleted_at=excluded.deleted_at, reapply_until=MAX(deletion_tombstones.reapply_until, excluded.reapply_until)
         WHERE excluded.deleted_at>=deletion_tombstones.deleted_at`, scope, now, until, ...guard.values),
-      guarded(`UPDATE repositories SET history_enabled=0, history_consent_origin='history-deletion', history_consent_reason='explicitly-disabled', history_consent_actor_id=NULL,
-        settings_revision=settings_revision+CASE WHEN ?=1 OR history_consent_origin IS NOT 'history-deletion' OR history_enabled<>0 THEN 1 ELSE 0 END,
-        updated_at=? WHERE repository_id=?`, revision === undefined ? 0 : 1, now, repositoryId)
+      guarded(`UPDATE repositories SET history_enabled=0, history_consent_origin=?, history_consent_reason='explicitly-disabled', history_consent_actor_id=NULL,
+        settings_revision=settings_revision+CASE WHEN ?=1 OR history_consent_origin IS NOT ? OR history_enabled<>0 THEN 1 ELSE 0 END,
+        updated_at=? WHERE repository_id=?`, deletionOrigin, revision === undefined ? 0 : 1, deletionOrigin, now, repositoryId)
     ]);
     if (revision !== undefined && results.at(-1)?.meta?.changes !== 1) {
       // The same submitted form can lose its first response after committing. Recognise
@@ -515,7 +519,7 @@ export class D1AppStore {
       const completed = deletedAt === undefined && await this.statement(`SELECT 1 AS completed FROM repositories r
         JOIN deletion_tombstones t ON t.scope=? AND t.deleted_at=r.updated_at
         WHERE r.repository_id=? AND r.settings_revision=? AND r.history_enabled=0
-          AND r.history_consent_origin='history-deletion' AND r.history_consent_reason='explicitly-disabled'`, scope, repositoryId, revision + 1).first();
+          AND r.history_consent_origin=? AND r.history_consent_reason='explicitly-disabled'`, scope, repositoryId, revision + 1, requestOrigin).first();
       if (!completed) throw Object.assign(new Error('Repository settings changed before deletion.'), { code: 'E_ADMISSION_STALE' });
     }
   }

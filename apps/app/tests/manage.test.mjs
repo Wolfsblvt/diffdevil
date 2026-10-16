@@ -510,6 +510,8 @@ test('history deletion completes a repeated submitted form and refuses it after 
   const laterSettings = await deletionState();
   assert.equal((await act(app, cookie, fields)).message, 'stale');
   assert.deepEqual(await deletionState(), laterSettings, 'even a later settings commit without reconsent keeps the old request stale');
+  assert.equal((await act(app, cookie, { ...fields, revision: String(committed.repository.settings_revision) })).message, 'stale', 'a form rendered after the deletion cannot claim success from that earlier deletion when a same-time settings commit intervenes');
+  assert.deepEqual(await deletionState(), laterSettings);
   assert.equal((await act(app, cookie, { action: 'history', repository, enabled: 'on' })).message, 'history-on');
   const reconsented = await read();
   const afterReconsent = await deletionState();
