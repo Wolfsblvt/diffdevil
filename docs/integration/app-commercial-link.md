@@ -8,14 +8,23 @@ The service-connection lifecycle below separates actual funded purpose, browser 
 
 ## Trust boundary
 
-The native Manage link form posts to the App before redirecting to Works' exact
-intent-specific consent route. Chromium applies `form-action` to that redirect
-chain. App document headers therefore admit the single `WIRT_ORIGIN` validated by
-a successfully composed commercial consumer, alongside the App itself and GitHub.
-Missing or refused commercial configuration adds no external form destination;
-the local stand-in stays same-origin. The client still validates the returned
-intent ID, exact Works origin and consent path before creating the local attempt.
-No request parameter or provider-returned URL selects the browser allowlist.
+The native Manage link form initiates through an Origin-checked POST to the App.
+The client validates the returned intent ID, exact Works origin and consent path
+before creating the browser-bound local attempt. A successful initiation commits
+a private, no-store 200 HTML document with an immediate native refresh and a
+fallback link to that validated consent URL. It adds no routine click and works
+without JavaScript. Refusals keep their existing local redirects and messages.
+
+Committing the document ends the form-submission redirect chain before navigating
+to Works. Chromium otherwise applies `form-action` to later authentication hops
+and can block a legitimate Works sign-in on another origin. After the handoff,
+Works owns its authentication redirects, as with an ordinary top-level link; the
+App does not constrain those later destinations. The exact first consent-origin
+and path validation, state, browser binding, PKCE and callback protections remain.
+App document `form-action` still admits only self, GitHub and the single configured
+`WIRT_ORIGIN` from a successfully composed consumer. No request parameter or
+provider-returned URL selects that allowlist. Missing/refused configuration adds
+no external form destination; the local stand-in stays same-origin.
 
 New link intents include `product_account_label` in the existing signed
 `POST /api/wirt/diffdevil/link-intents` JSON alongside `product_account`, `challenge`

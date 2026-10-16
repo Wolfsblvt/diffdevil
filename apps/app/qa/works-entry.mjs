@@ -18,15 +18,20 @@ import { createFakeGitHub, CODE, USER } from './fixture.mjs';
 const target = appBuildTarget();
 const APP = target.origin;
 const WORKS = target.name === 'staging' ? 'https://wirt-test.wolfsblvt.app' : 'https://works.example.test';
+const ACCESS = 'https://access.example.test';
+const authenticatedIntents = new Set();
+let authenticationHops = 0;
 const CALLBACK = `${APP}/integrations/wirt/link/callback`;
 const KEY = 'fixture-works-signing-material-at-least-32-bytes';
 const emptyCoverage = process.argv.includes('--empty-coverage');
-const OUT = join(target.artifacts, 'qa', 'works-entry', ...(emptyCoverage ? ['empty-coverage'] : []));
+const noJavaScript = process.argv.includes('--no-javascript');
+const OUT = join(target.artifacts, 'qa', 'works-entry', ...(emptyCoverage ? ['empty-coverage'] : []), ...(noJavaScript ? ['no-javascript'] : []));
 const hash = body => createHash('sha256').update(body).digest('hex');
 const json = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
 const github = createFakeGitHub();
 const intents = new Map(), calls = [];
 let failure = null;
+let holdContinuation = false;
 const link = randomUUID();
 const projection = {
   schema: 'wirt.benefit-projection/v1', client: 'diffdevil',
@@ -61,7 +66,7 @@ async function outbound(request) {
     assert.match(input.state, /^[A-Za-z0-9_-]{43}$/u);
     assert.match(input.challenge, /^[A-Za-z0-9_-]{43}$/u);
     intents.set(id, input);
-    return json({ intent: id, authorization_url: `${failure === 'foreign' ? 'https://unadmitted.example.test' : WORKS}/wirt/products/diffdevil/link/${id}` }, 201);
+    return json({ intent: id, authorization_url: `${failure === 'foreign' ? 'https://unadmitted.example.test' : WORKS}/${failure === 'wrong-path' ? 'unadmitted' : 'wirt/products/diffdevil/link'}/${id}` }, 201);
   }
   if (url.pathname === '/api/oauth/token') {
     const form = new URLSearchParams(body), input = intents.get(form.get('code'));
@@ -97,7 +102,10 @@ const local = new Miniflare(convertV4MiniflareOptions({ ...workerOptions, name: 
     WIRT_ORIGIN: WORKS, WIRT_OAUTH_CLIENT_ID: 'fixture-works-client', WIRT_LINK_CALLBACK_URL: CALLBACK,
     WIRT_LINK_CONTINUATION_URL: `${APP}/manage/plan`, WIRT_SIGNING_KEY_CURRENT: KEY }
 }));
-let browser;
+let browser, wire, closing = false;
+const inFlight = new Set();
+const networkFailures = new Map();
+let abortedResources = 0;
 const results = [], violations = [], transportErrors = [], nativeResponses = [];
 const check = (name, condition) => { assert.ok(condition, name); results.push(name); console.log(`✓ ${name}`); };
 try {
@@ -106,19 +114,31 @@ try {
   for (const name of await migrationNames()) await store.migrate(await readFile(resolve('apps/github-app/migrations', name), 'utf8'));
   await mkdir(OUT, { recursive: true });
   browser = await chromium.launch({ executablePath: process.env.PLAYWRIGHT_EXECUTABLE_PATH });
-  const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, javaScriptEnabled: !noJavaScript });
   const page = await context.newPage();
   page.setDefaultTimeout(10_000);
   // CDP intercepts every redirect hop. Playwright routing alone handles only the initial request of a redirect chain.
-  const wire = await context.newCDPSession(page);
-  wire.on('Fetch.requestPaused', async ({ requestId, request }) => {
+  wire = await context.newCDPSession(page);
+  wire.on('Network.loadingFailed', event => networkFailures.set(event.requestId, event.errorText));
+  await wire.send('Network.enable');
+  const handlePaused = async ({ requestId, request, networkId, resourceType }) => {
     const url = new URL(request.url);
     const fulfill = async answer => wire.send('Fetch.fulfillRequest', { requestId, responseCode: answer.status,
       responseHeaders: [...answer.headers].map(([name, value]) => ({ name, value })), body: Buffer.from(await answer.arrayBuffer()).toString('base64') });
     try {
       if (url.origin === APP) {
         const answer = await local.dispatchFetch(request.url, { method: request.method, headers: request.headers, body: request.postData, redirect: 'manual' });
-        if (url.pathname === '/manage/do') nativeResponses.push({ status: answer.status, location: answer.headers.get('location') });
+        if (url.pathname === '/manage/do') nativeResponses.push({ status: answer.status, method: request.method,
+          action: new URLSearchParams(request.postData).get('action'), location: answer.headers.get('location'),
+          body: answer.status === 200 ? await answer.clone().text() : null,
+          private: answer.headers.get('cache-control') === 'private, no-store',
+          bound: Boolean(answer.headers.get('set-cookie')?.includes('__Host-diffdevil-works-link')) });
+        if (url.pathname === '/manage/do' && answer.status === 200 && holdContinuation) {
+          // Suppress only the automatic refresh to exercise the actual document's ordinary-link fallback.
+          const body = (await answer.text()).replace(/<meta http-equiv="refresh"[^>]*>/u, '');
+          await fulfill(new Response(body, { status: answer.status, headers: answer.headers }));
+          return;
+        }
         await fulfill(answer);
         return;
       }
@@ -129,36 +149,75 @@ try {
       if (url.origin === WORKS && url.pathname.startsWith('/wirt/products/diffdevil/link/')) {
         const id = url.pathname.split('/').at(-1), input = intents.get(id);
         assert.ok(input);
-        if (failure === 'redirect') {
-          await fulfill(new Response(null, { status: 303, headers: { location: 'https://unadmitted.example.test/collect' } }));
+        if (!authenticatedIntents.has(id)) {
+          await fulfill(new Response(null, { status: 302, headers: { location: `${ACCESS}/login?intent=${id}` } }));
           return;
         }
+        assert.equal(request.method, 'GET');
+        assert.ok(!request.postData, 'the App form body is never forwarded to Works');
         await fulfill(new Response(`<h1>Fixture Works consent</h1><p>Product account ${input.product_account}</p><form method="get" action="${CALLBACK}"><input name="state" type="hidden" value="${input.state}"><input name="code" type="hidden" value="${id}"><button>Approve fixture Works link</button></form><a href="${APP}/manage/plan">Return without approving</a>`, { headers: { 'content-type': 'text/html' } }));
+        return;
+      }
+      if (url.origin === ACCESS && url.pathname === '/login') {
+        assert.equal(request.method, 'GET');
+        assert.ok(!request.postData, 'the App form body is never forwarded to authentication');
+        assert.ok(!request.headers.Cookie && !request.headers.cookie, 'App cookies never reach the authentication double');
+        const id = url.searchParams.get('intent');
+        assert.ok(intents.has(id));
+        authenticatedIntents.add(id);
+        authenticationHops++;
+        await fulfill(new Response(null, { status: 302, headers: { location: `${WORKS}/wirt/products/diffdevil/link/${id}` } }));
         return;
       }
       throw new Error(`Unexpected browser destination: ${url.origin}${url.pathname}`);
     } catch (error) {
+      if (closing) return; // Fetch.disable deliberately cancels remaining resource interceptions during teardown.
+      // A new document can discard an in-flight stylesheet/image. Count only a CDP-confirmed browser abort;
+      // navigation failures and any uncorroborated interception error still fail the transport check.
+      if (resourceType !== 'Document' && String(error).includes('Invalid InterceptionId')
+        && networkFailures.get(networkId) === 'net::ERR_ABORTED') { abortedResources++; return; }
       transportErrors.push(String(error));
       console.error(String(error));
       await wire.send('Fetch.failRequest', { requestId, errorReason: 'BlockedByClient' }).catch(() => {});
     }
+  };
+  wire.on('Fetch.requestPaused', event => {
+    const pending = handlePaused(event).finally(() => inFlight.delete(pending));
+    inFlight.add(pending);
   });
   await wire.send('Fetch.enable', { patterns: [{ urlPattern: '*', requestStage: 'Request' }] });
   page.on('console', message => { if (/form-action/u.test(message.text())) violations.push(message.text()); });
   await page.goto(`${APP}/sign-in`);
+  await page.evaluate(() => document.fonts.ready);
   await page.getByRole('link', { name: 'Continue with GitHub', exact: true }).click();
   await page.getByRole('link', { name: 'Approve fixture GitHub sign-in' }).click();
+  if (noJavaScript) {
+    await page.waitForLoadState('load');
+    await page.getByRole('button', { name: 'Continue to the App', exact: true }).click();
+  }
   await page.waitForURL(APP + '/');
+  await page.evaluate(() => document.fonts.ready);
   await page.goto(`${APP}/manage/plan`);
+  await page.evaluate(() => document.fonts.ready);
   const pro = page.getByRole('button', { name: 'Pro · €9 a month or €90 a year', exact: true });
   check('the built native Pro button posts link to same-origin /manage/do', await pro.evaluate(button => button.form.method === 'post' && button.form.getAttribute('action') === '/manage/do' && button.form.elements.action.value === 'link'));
   await pro.click();
-  try { await page.waitForURL(`${WORKS}/wirt/products/diffdevil/link/*`, { timeout: 5000 }); }
+  try { await page.getByRole('heading', { name: 'Fixture Works consent' }).waitFor({ timeout: 5000 }); }
   catch { throw new Error(`Native entry did not reach consent; stayed at ${page.url()}; POST: ${JSON.stringify(nativeResponses)}; form-action violations: ${JSON.stringify(violations)}; transport errors: ${JSON.stringify(transportErrors)}`); }
   const response = nativeResponses[0];
-  check('native POST returns 303 to the exact admitted intent route', response.status === 303 && intents.has(new URL(response.location).pathname.split('/').at(-1)));
-  check('configured Works consent is reached without a CSP violation', violations.length === 0);
+  const continuationLink = response.body.match(/<a\b[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/u);
+  const initialIntent = [...intents.keys()][0];
+  const expectedAuthorizationUrl = `${WORKS}/wirt/products/diffdevil/link/${initialIntent}`;
+  check('native POST commits a private bound document before automatically opening the admitted intent', response.status === 200
+    && response.method === 'POST' && response.action === 'link' && response.location === null && response.private && response.bound
+    && response.body.includes(`http-equiv="refresh" content="0;url=${expectedAuthorizationUrl}"`)
+    && continuationLink?.[1] === expectedAuthorizationUrl && continuationLink[2].trim().length > 0);
+  check('Works authentication redirects return to recognizable consent without a CSP violation or extra click', authenticationHops === 1 && violations.length === 0);
   await page.screenshot({ path: join(OUT, 'native-works-consent.png'), fullPage: true });
+  await page.goBack();
+  check('Back returns to Plan without repeating the initiation POST', new URL(page.url()).pathname === '/manage/plan' && intents.size === 1 && nativeResponses.length === 1);
+  await page.goForward();
+  await page.getByRole('heading', { name: 'Fixture Works consent' }).waitFor();
   await page.getByRole('link', { name: 'Return without approving' }).click();
   check('an unapproved return stays open without claiming the Works step occurred', await page.locator('[data-link-standing="open"]').count() === 1 && await page.locator('.m-return .m-steps3').count() === 0 && intents.size === 1);
   // A contained storage-read refusal proves the existing unavailable presentation without losing the disposable attempt.
@@ -176,7 +235,8 @@ try {
   await page.reload();
   check('the pre-repair departure also reads the actual expired attempt', await page.locator('[data-link-standing="expired"]').count() === 1 && intents.size === 1);
   await page.getByRole('button', { name: 'Try again', exact: true }).click();
-  await page.waitForURL(`${WORKS}/wirt/products/diffdevil/link/*`);
+  await page.getByRole('heading', { name: 'Fixture Works consent' }).waitFor();
+  check('expired native retry reaches consent through authentication with one fresh intent', authenticationHops === 2 && intents.size === 2 && violations.length === 0);
   const approvedIntent = new URL(page.url()).pathname.split('/').at(-1);
   failure = 'pending';
   await page.getByRole('button', { name: 'Approve fixture Works link' }).click();
@@ -215,7 +275,7 @@ try {
   // A new isolated product session/account is unnecessary: remove only the disposable fixture link between refusal cases.
   await database.prepare('DELETE FROM commercial_links').run();
   await database.prepare('DELETE FROM works_departures').run();
-  for (const kind of ['unavailable', 'foreign']) {
+  for (const kind of ['unavailable', 'foreign', 'wrong-path']) {
     failure = kind;
     await page.goto(`${APP}/manage/plan`);
     const before = (await database.prepare('SELECT count(*) AS n FROM commercial_link_attempts').first()).n;
@@ -226,18 +286,41 @@ try {
   }
   await page.screenshot({ path: join(OUT, 'native-works-unavailable.png'), fullPage: true });
 
-  // The admitted Works hop must not open the rest of the form redirect chain to unadmitted destinations.
-  failure = 'redirect';
+  failure = null;
+  holdContinuation = true;
+  const beforeFallback = intents.size;
+  await pro.click();
+  const fallback = page.getByRole('link', { name: /\S/u });
+  await fallback.waitFor();
+  const fallbackIntent = [...intents.keys()].at(-1);
+  const expectedFallbackUrl = `${WORKS}/wirt/products/diffdevil/link/${fallbackIntent}`;
+  check('a suppressed automatic refresh leaves an accessible fallback to the same created intent', intents.size === beforeFallback + 1
+    && await fallback.count() === 1 && await fallback.getAttribute('href') === expectedFallbackUrl);
+  await page.screenshot({ path: join(OUT, 'native-works-continuation.png'), fullPage: true });
+  await fallback.click();
+  await page.getByRole('heading', { name: 'Fixture Works consent' }).waitFor();
+  check('the fallback reaches consent through authentication without another attempt', intents.size === beforeFallback + 1);
+  holdContinuation = false;
+
+  // The form policy is unchanged: an arbitrary first external form destination remains blocked.
   await page.goto(`${APP}/manage/plan`);
   const requests = [];
   page.on('request', request => requests.push(request.url()));
   const refused = page.waitForEvent('console', { predicate: message => /form-action/u.test(message.text()) });
-  await pro.click({ noWaitAfter: true });
+  await page.evaluate(() => {
+    const form = document.createElement('form');
+    form.method = 'post'; form.action = 'https://unadmitted.example.test/collect';
+    document.body.append(form); form.submit();
+  });
   await refused;
-  check('an unadmitted continuation after the Works hop stays blocked by CSP', violations.length > 0 && new URL(page.url()).origin === APP && !requests.some(url => url.startsWith('https://unadmitted.example.test')));
+  check('an arbitrary first external form destination stays blocked by CSP', violations.length === 1 && new URL(page.url()).origin === APP && !requests.some(url => url.startsWith('https://unadmitted.example.test')));
   check('all browser and backend provider traffic stays in the doubles', transportErrors.length === 0 && calls.every(call => ['http://github.invalid', WORKS].includes(call.origin)));
-  await writeFile(join(OUT, 'results.json'), JSON.stringify({ target: target.name, build: built.main, browser: browser.version(), viewport: '1440x900', results, violations, calls }, null, 2));
+  await writeFile(join(OUT, 'results.json'), JSON.stringify({ target: target.name, build: built.main, browser: browser.version(), viewport: '1440x900', javaScript: !noJavaScript, authenticationHops, abortedResources, results, violations, calls }, null, 2));
 } finally {
+  closing = true;
+  wire?.removeAllListeners('Fetch.requestPaused');
+  await wire?.send('Fetch.disable').catch(() => {});
+  await Promise.allSettled([...inFlight]);
   await browser?.close();
   await local.dispose();
 }

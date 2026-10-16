@@ -24,8 +24,8 @@ export function cookieValue(request, name) {
 
 /** Browser security headers; only the runtime's successfully configured Works consumer adds an external form destination. */
 export function securityHeaders(runtime) {
-  // Chromium checks a form's redirect chain too: /manage/do creates the bound intent, then returns its Works URL.
-  // Use the same exact origin already admitted by the commercial client, never a request or provider-returned URL.
+  // Only the exact origin admitted by the commercial client may be an external form destination.
+  // Link initiation commits a continuation document before Works' separate authentication navigation.
   const formSources = ["'self'", 'https://github.com'];
   if (runtime?.commercialSource === 'commercial' && runtime.config.worksOrigin) formSources.push(runtime.config.worksOrigin);
   return {

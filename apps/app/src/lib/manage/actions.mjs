@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
 /**
- * Every Manage mutation, as one same-origin form post to `/manage/do` that answers with a redirect and a short
- * message code. Each action goes through the contract that owns its consequence: repository admission through the
+ * Every Manage mutation, as one same-origin form post to `/manage/do`. Local outcomes redirect with a short
+ * message code; Works authorization commits a document before external navigation. Each action goes through the contract that owns its consequence: repository admission through the
  * authorization service (which proves current GitHub administration at every call), funding through the commercial
  * consumer, the funding connection through the authorization service, and the console's own facts (selection, the
  * Free connection, departures, the choice of what stays) through the Manage store after the same admission check.
@@ -10,6 +10,7 @@
 import { readBriefSettings, BRIEF_MODES, HISTORY_WINDOWS } from '../../../../shared/pr-brief/settings.mjs';
 import { CONTEXT_MODULES } from '../../../../shared/pr-brief/contract.mjs';
 import { documentHeaders } from '../routes.mjs';
+import { escapeHtml } from '../format.mjs';
 import { commercialStatus, loadManage, coordinatesNamespace } from './model.mjs';
 import { readAnswers } from '../participation/survey.mjs';
 import { holdsSlot, isRemoved } from './states.mjs';
@@ -142,6 +143,12 @@ export function withMessage(path, code) {
   return `${url.pathname}${url.search}`;
 }
 const redirect = (location, headers = {}) => new Response(null, { status: 303, headers: documentHeaders({ location, ...headers }) });
+/** End the POST navigation before Works' own authentication redirects; the commercial consumer validates this URL. */
+function worksContinuation(begun) {
+  const destination = escapeHtml(begun.authorizationUrl);
+  const body = `<!doctype html><html lang="en" data-theme="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="refresh" content="0;url=${destination}"><title>Opening Works · diffdevil App</title><link rel="stylesheet" href="/auth/continue.css"></head><body><main class="continue"><p>Opening Wolfsblvt Works to link your account.</p><a class="btn btn-primary" href="${destination}">Continue to Works</a></main></body></html>`;
+  return new Response(body, { status: 200, headers: documentHeaders({ 'content-type': 'text/html; charset=utf-8', ...begun.headers }) });
+}
 const actionError = (code, status = 400) => Object.assign(new Error(code), { code, status });
 const integer = value => { const number = Number(value); return Number.isSafeInteger(number) && number > 0 ? number : undefined; };
 const sameOrigin = (request, runtime) => runtime.config.allowedOrigins.includes(request.headers.get('origin'));
@@ -365,7 +372,7 @@ export async function handleManageAction(request, { runtime, session, viewer }) 
           await runtime.manage.recordDeparture(viewer.userId, { purpose: 'link', fromPath: back,
             snapshot: begun.attemptStateHash ? { attemptStateHash: begun.attemptStateHash } : null });
           runtime.cache.clear();
-          return redirect(begun.authorizationUrl, begun.headers);
+          return worksContinuation(begun);
         }
         return done(begun.outcome === 'linked' ? 'linked' : 'link-pending');
       }
