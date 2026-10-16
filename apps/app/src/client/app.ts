@@ -68,6 +68,19 @@ function wirePage(): void {
       for (const row of document.querySelectorAll<HTMLElement>('[data-file-row]')) row.hidden = needle !== '' && !row.dataset.fileRow!.includes(needle);
     });
   }
+  for (const scroller of document.querySelectorAll<HTMLElement>('.pr-files-scroll')) {
+    if (scroller.dataset.keyboardWired) continue;
+    scroller.dataset.keyboardWired = '1';
+    scroller.addEventListener('keydown', event => {
+      const step = Math.max(40, Math.round(scroller.clientWidth * 0.8));
+      if (event.key === 'ArrowRight') scroller.scrollLeft += step;
+      else if (event.key === 'ArrowLeft') scroller.scrollLeft -= step;
+      else if (event.key === 'Home') scroller.scrollLeft = 0;
+      else if (event.key === 'End') scroller.scrollLeft = scroller.scrollWidth;
+      else return;
+      event.preventDefault();
+    });
+  }
   placeThumbs();
 }
 
