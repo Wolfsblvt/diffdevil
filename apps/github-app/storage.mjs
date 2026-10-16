@@ -509,7 +509,15 @@ export class D1AppStore {
         settings_revision=settings_revision+CASE WHEN ?=1 OR history_consent_origin IS NOT 'history-deletion' OR history_enabled<>0 THEN 1 ELSE 0 END,
         updated_at=? WHERE repository_id=?`, revision === undefined ? 0 : 1, now, repositoryId)
     ]);
-    if (revision !== undefined && results.at(-1)?.meta?.changes !== 1) throw Object.assign(new Error('Repository settings changed before deletion.'), { code: 'E_ADMISSION_STALE' });
+    if (revision !== undefined && results.at(-1)?.meta?.changes !== 1) {
+      // The same submitted form can lose its first response after committing. Recognise
+      // only that immediately preceding deletion; any later settings revision stays stale.
+      const completed = deletedAt === undefined && await this.statement(`SELECT 1 AS completed FROM repositories r
+        JOIN deletion_tombstones t ON t.scope=? AND t.deleted_at=r.updated_at
+        WHERE r.repository_id=? AND r.settings_revision=? AND r.history_enabled=0
+          AND r.history_consent_origin='history-deletion' AND r.history_consent_reason='explicitly-disabled'`, scope, repositoryId, revision + 1).first();
+      if (!completed) throw Object.assign(new Error('Repository settings changed before deletion.'), { code: 'E_ADMISSION_STALE' });
+    }
   }
 
   /** Match the live future-record setting. Existing observations retain their original expiry. */

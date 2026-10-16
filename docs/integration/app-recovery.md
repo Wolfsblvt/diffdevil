@@ -40,9 +40,11 @@ It does not make external provider effects transactional.
 
 The ordinary history-deletion form carries the displayed settings revision.
 Deletion checks that revision on every destructive statement and advances it only
-within the same commit. A stale or retried form cannot erase a later explicit
-history choice; it uses the existing stale-settings response. A caller retrying a
-completed deletion without a new revision reuses the completed event. Recovery
+within the same commit. Repeating that same form recognises the immediately
+preceding committed deletion and returns success without changing its time,
+lifetime, revision or later rows. Any later settings commit, including explicit
+history reconsent, keeps the old form stale and untouched. A caller retrying a
+completed deletion without a new revision also reuses the completed event. Recovery
 replay supplies the original `deletedAt` and `reapplyUntil`, preserves any longer
 retained lifetime and does not overwrite a known later explicit positive choice.
 A fresh current-revision form can still deliberately delete again.

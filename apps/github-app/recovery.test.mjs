@@ -120,7 +120,7 @@ test('history deletion rolls back every destructive row on failure, retries the 
     deleted.checks.n = 1;
     clock = through;
     await store.deleteHistory(17); // Lost completion response, retried after restart with a later clock.
-    await assert.rejects(store.deleteHistory(17, { revision: before.consent.settings_revision }), { code: 'E_ADMISSION_STALE' });
+    await store.deleteHistory(17, { revision: before.consent.settings_revision });
     assert.deepEqual(await snapshot(current.database), deleted, 'retries do not manufacture another event or extend its lifetime');
 
     await new D1CommercialStore(current.database).endLink('link-1', { source: 'fixture-end', endedAt: at });
