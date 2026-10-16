@@ -80,17 +80,23 @@ export class D1AuthorizationStore {
   }
 
   async revokeAuthorization(userId, { disconnectService = false, expectedMaterial } = {}) {
+    await this.database.batch(this.revokeAuthorizationStatements(userId, { disconnectService, expectedMaterial }));
+  }
+
+  /** Prepared revocation lets account closure end grants and sessions in its own local transaction. */
+  revokeAuthorizationStatements(userId, { disconnectService = false, expectedMaterial, guard = { sql: '1', values: [] } } = {}) {
     const now = this.now();
+    const statement = (sql, ...values) => this.statement(`${sql} AND (${guard.sql})`, ...values, ...guard.values);
     const matches = expectedMaterial === undefined ? '' : ' AND EXISTS (SELECT 1 FROM user_authorizations WHERE user_id=? AND protected_material=?)';
     const lease = expectedMaterial === undefined ? [] : [userId, expectedMaterial];
     const statements = [
-      this.statement(`UPDATE browser_sessions SET revoked_at=? WHERE user_id=? AND revoked_at IS NULL${matches}`, now, userId, ...lease),
-      this.statement(`UPDATE authorization_artifacts SET consumed_at=? WHERE user_id=? AND consumed_at IS NULL${matches}`, now, userId, ...lease),
-      this.statement(`UPDATE user_authorizations SET revoked_at=?, protected_material='' WHERE user_id=?${expectedMaterial === undefined ? '' : ' AND protected_material=?'}`, now, userId, ...(expectedMaterial === undefined ? [] : [expectedMaterial]))
+      statement(`UPDATE browser_sessions SET revoked_at=? WHERE user_id=? AND revoked_at IS NULL${matches}`, now, userId, ...lease),
+      statement(`UPDATE authorization_artifacts SET consumed_at=? WHERE user_id=? AND consumed_at IS NULL${matches}`, now, userId, ...lease),
+      statement(`UPDATE user_authorizations SET revoked_at=?, protected_material='' WHERE user_id=?${expectedMaterial === undefined ? '' : ' AND protected_material=?'}`, now, userId, ...(expectedMaterial === undefined ? [] : [expectedMaterial]))
     ];
     if (disconnectService) statements.push(this.statement(`INSERT INTO user_service_connections (user_id, disconnected_at, updated_at)
-      VALUES (?, ?, ?) ON CONFLICT(user_id) DO UPDATE SET disconnected_at=excluded.disconnected_at, updated_at=excluded.updated_at`, userId, now, now));
-    await this.database.batch(statements);
+      SELECT ?, ?, ? WHERE (${guard.sql}) ON CONFLICT(user_id) DO UPDATE SET disconnected_at=excluded.disconnected_at, updated_at=excluded.updated_at`, userId, now, now, ...guard.values));
+    return statements;
   }
 
   async artifactUser(hash, returnContext) {

@@ -473,17 +473,8 @@ export async function handleManageAction(request, { runtime, session, viewer }) 
         if (model.commercial?.status?.linked) return done('close-linked');
         // Personal repositories: stop, deselect and delete their history; organisations keep their own data.
         const personal = model.namespaces.find(namespace => namespace.kind === 'user');
-        for (const repository of personal?.repositories ?? []) {
-          if (!repository.standing || isRemoved(repository)) continue;
-          await stopRepository(repository);
-          const current = await runtime.appStore.repositoryAdmission(repository.repositoryId);
-          await runtime.appStore.deleteHistory(repository.repositoryId, { revision: current.revision });
-        }
-        await runtime.manage.forgetAccount(viewer.userId);
-        // Survey answers, completions and invitation records go too; Wirt keeps its own commercial record of any reward.
-        await runtime.participationStore.forgetAccount(viewer.userId);
-        const revoked = await runtime.auth.revokeAuthorization(mutation);
-        await runtime.manage.forgetPreference(viewer.userId);
+        const repositoryIds = (personal?.repositories ?? []).filter(repository => repository.standing && !isRemoved(repository)).map(repository => repository.repositoryId);
+        const revoked = await runtime.auth.closeAccount({ ...mutation, repositoryIds });
         runtime.cache.clear();
         return redirect('/sign-in?reason=E_ACCOUNT_CLOSED', revoked.headers);
       }

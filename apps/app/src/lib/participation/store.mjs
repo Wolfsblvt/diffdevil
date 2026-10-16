@@ -173,11 +173,12 @@ export class D1ParticipationStore {
 
   /** Closing the account forgets every participation fact; Wirt keeps its own commercial record. */
   async forgetAccount(userId) {
-    await this.database.batch([
-      this.statement('DELETE FROM participation_deliveries WHERE user_id=?', userId),
-      this.statement('DELETE FROM participation_responses WHERE user_id=?', userId),
-      this.statement('DELETE FROM participation_prompts WHERE user_id=?', userId),
-      this.statement('DELETE FROM participation_previews WHERE user_id=?', userId)
-    ]);
+    await this.database.batch(this.forgetAccountStatements(userId));
+  }
+
+  /** Prepared erasure joins the account's single local closure commit. */
+  forgetAccountStatements(userId, guard = { sql: '1', values: [] }) {
+    return ['participation_deliveries', 'participation_responses', 'participation_prompts', 'participation_previews']
+      .map(table => this.statement(`DELETE FROM ${table} WHERE user_id=? AND (${guard.sql})`, userId, ...guard.values));
   }
 }

@@ -1,0 +1,169 @@
+// SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
+import assert from 'node:assert/strict';
+import { after, test } from 'node:test';
+import { handleManageAction } from '../src/lib/manage/actions.mjs';
+import { openSession, SESSION_COOKIE } from '../src/lib/routes.mjs';
+import { resolveViewer } from '../src/lib/viewer.mjs';
+import { fixture, disposeFixture, signIn, ORIGIN } from './support.mjs';
+import { INSTALLATIONS, REPOSITORIES } from '../qa/fixture.mjs';
+import { closeLocalAccount } from '../src/lib/manage/account-closure.mjs';
+
+after(disposeFixture);
+
+// Closure needs populated ownership/control and a few retained rows, not the full analytical chart population.
+async function seedClosure(store) {
+  for (const installation of INSTALLATIONS) {
+    await store.recordLifecycle({ installationId: installation.id, action: 'created', addedRepositories: REPOSITORIES.filter(r => r.installationId === installation.id).map(r => r.repositoryId), removedRepositories: [] });
+    await store.recordInstallationAccount(installation.id, installation.account.id, installation.account.type === 'Organization' ? 'organization' : 'user');
+  }
+  for (const repository of REPOSITORIES) {
+    await store.setRepositoryExecution(repository.repositoryId, { enabled: true, origin: 'fixture' });
+    await store.setRepositoryConsent(repository.repositoryId, { enabled: true, retentionDays: 30, origin: 'fixture' });
+  }
+  for (const repositoryId of [1001, 1004, 1005]) await store.database.prepare(`INSERT INTO history_records
+    (repository_id,pull_request,comparison_id,policy_id,schema_version,engine_version,report_version,metric_version,observed_at,projection_json,coverage_json,results_json,gaps_json,state)
+    VALUES (?,1,'fixture','fixture',1,'fixture','fixture','fixture',?,'{}','{}','{}','[]','published')`).bind(repositoryId, store.now()).run();
+}
+
+async function close(app, cookie, confirm = 'ada-sample') {
+  const session = await openSession(new Request(`${ORIGIN}/manage/account`, { headers: { cookie: `${SESSION_COOKIE}=${cookie}` } }), app);
+  const viewer = await resolveViewer({ reads: session.reads, actor: session.actor, store: app.store, entitlement: app.entitlement, cache: app.cache });
+  return handleManageAction(new Request(`${ORIGIN}/manage/do`, { method: 'POST', headers: { origin: ORIGIN },
+    body: new URLSearchParams({ action: 'close-account', confirm, back: '/manage/account' }) }), { runtime: app, session, viewer });
+}
+
+test('a late account-closure failure retains the whole account; retry commits every local consequence', async () => {
+  const { app: compose } = await fixture({ seed: seedClosure });
+  const app = compose(), database = app.appStore.database;
+  const { cookie } = await signIn(app);
+  await app.manage.select(1004, 123);
+  await app.manage.connectFree(123, 7001);
+  await app.manage.recordDeparture(123, { purpose: 'fixture' });
+  await app.manage.savePlanChoice(123, { target: 'free' });
+  await app.manage.saveNamespaceDefault(123, { configuration: {}, expectedRevision: 0 });
+  const personalPolicy = await app.manage.createLinkedPolicy({ accountId: 123, name: 'Personal', configuration: {} });
+  const organisationPolicy = await app.manage.createLinkedPolicy({ accountId: 7001, name: 'Organisation', configuration: {} });
+  await database.prepare('INSERT INTO policy_links(repository_id,policy_id,linked_at) VALUES (1004,?,?)').bind(personalPolicy, app.now()).run();
+  const publication = await app.manage.createPublication({ policyId: personalPolicy, revision: 1, repositoryIds: [1004] });
+  await database.prepare("INSERT INTO participation_prompts(user_id,campaign_key,campaign_version) VALUES (123,'fixture',1)").run();
+  const before = await app.appStore.repositoryAdmission(1004);
+  const history = await database.prepare('SELECT count(*) AS count FROM history_records WHERE repository_id=1004').first();
+  assert.ok(history.count > 0);
+  // A real SQLite failure at the late participation leg, after history and Manage work in the old route.
+  await database.exec("CREATE TRIGGER fixture_closure_failure BEFORE DELETE ON participation_prompts BEGIN SELECT RAISE(ABORT,'fixture interruption'); END");
+  try {
+    const failed = await close(app, cookie);
+    assert.equal(new URL(failed.headers.get('location'), ORIGIN).searchParams.get('m'), 'close-incomplete');
+    assert.deepEqual(await app.appStore.repositoryAdmission(1004), before, 'failed closure cannot leave a stopped/deleted personal repository');
+    assert.deepEqual(await database.prepare('SELECT count(*) AS count FROM history_records WHERE repository_id=1004').first(), history);
+    assert.ok(await app.manage.selection(1004));
+    assert.equal((await app.manage.freeConnection(123)).organisationId, 7001);
+    assert.ok(!(await database.prepare('SELECT revoked_at FROM user_authorizations WHERE user_id=123').first()).revoked_at);
+  } finally { await database.exec('DROP TRIGGER fixture_closure_failure'); }
+  await database.exec("CREATE TRIGGER fixture_closure_failure BEFORE UPDATE OF revoked_at ON user_authorizations BEGIN SELECT RAISE(ABORT,'fixture revocation interruption'); END");
+  try {
+    assert.equal(new URL((await close(app, cookie)).headers.get('location'), ORIGIN).searchParams.get('m'), 'close-incomplete');
+    assert.deepEqual(await app.appStore.repositoryAdmission(1004), before);
+    assert.ok(await app.manage.selection(1004));
+    assert.equal((await database.prepare('SELECT count(*) AS n FROM participation_prompts WHERE user_id=123').first()).n, 1, 'even a revocation failure restores the participation rows');
+  } finally { await database.exec('DROP TRIGGER fixture_closure_failure'); }
+  const completed = await close(app, cookie);
+  assert.equal(completed.headers.get('location'), '/sign-in?reason=E_ACCOUNT_CLOSED');
+  for (const id of [1004, 1005]) {
+    assert.equal((await app.appStore.repositoryAdmission(id)).history.enabled, false);
+    assert.equal((await app.appStore.repositoryAdmission(id)).revision, 1, 'each personal target advances in the same commit');
+  }
+  assert.equal((await app.appStore.repositoryAdmission(1004)).execution.reason, 'explicitly-disabled');
+  assert.equal((await database.prepare('SELECT count(*) AS count FROM history_records WHERE repository_id=1004').first()).count, 0);
+  assert.equal(await app.manage.selection(1004), null);
+  assert.equal(await app.manage.freeConnection(123), null);
+  assert.equal(await app.manage.departure(123), null);
+  assert.equal(await app.manage.planChoice(123), null);
+  assert.equal(await app.manage.namespaceDefault(123), null);
+  assert.equal(await app.manage.linkedPolicy(personalPolicy), null);
+  assert.ok(await app.manage.linkedPolicy(organisationPolicy), 'the organisation policy remains');
+  assert.equal((await database.prepare('SELECT count(*) AS n FROM policy_links WHERE policy_id=?').bind(personalPolicy).first()).n, 0);
+  assert.equal((await database.prepare('SELECT count(*) AS n FROM policy_publication_results WHERE publication_id=?').bind(publication).first()).n, 0);
+  assert.equal((await database.prepare('SELECT count(*) AS count FROM participation_prompts WHERE user_id=123').first()).count, 0);
+  assert.equal((await app.appStore.repositoryAdmission(1001)).history.enabled, true, 'organisation history stays');
+  assert.equal((await openSession(new Request(`${ORIGIN}/`, { headers: { cookie: `${SESSION_COOKIE}=${cookie}` } }), app)).refusal, 'E_SESSION_UNAVAILABLE');
+});
+
+test('closure checks every current update grant and its request origin before destructive writes', async () => {
+  const { app: compose, github } = await fixture();
+  const app = compose();
+  const { cookie } = await signIn(app);
+  const request = { session: cookie, method: 'POST', origin: ORIGIN, repositoryIds: [1004,1005] };
+  const before = await app.appStore.repositoryAdmission(1004);
+  await assert.rejects(app.auth.closeAccount({ ...request, method: 'GET' }), { code: 'E_AUTH_METHOD' });
+  await assert.rejects(app.auth.closeAccount({ ...request, origin: 'https://foreign.invalid' }), { code: 'E_AUTH_ORIGIN' });
+  github.state.admin.set(1005, false);
+  try { await assert.rejects(app.auth.closeAccount(request), { code: 'E_ADMISSION_UNAUTHORIZED' }); }
+  finally { github.state.admin.delete(1005); }
+  assert.deepEqual(await app.appStore.repositoryAdmission(1004), before, 'an earlier admitted target is not stopped when another target is refused');
+});
+
+test('stale revisions, foreign targets and a newly linked plan refuse the entire closure set', async () => {
+  const { app: compose } = await fixture();
+  const app = compose(), database = app.appStore.database;
+  const { cookie } = await signIn(app);
+  await app.manage.select(1004, 123);
+  const targets = await Promise.all([1004, 1005].map(async repositoryId => ({ repositoryId, revision: (await app.appStore.repositoryAdmission(repositoryId)).revision })));
+  const attempt = repositories => closeLocalAccount({ database, userId: 123, repositories, now: app.now });
+  for (const targetsToRefuse of [targets.map((r, i) => i === 1 ? { ...r, revision: r.revision - 1 } : r), [...targets, { repositoryId: 1001, revision: 0 }]]) {
+    await assert.rejects(attempt(targetsToRefuse), { code: 'E_ADMISSION_STALE' });
+    assert.ok(await app.manage.selection(1004));
+    assert.equal((await database.prepare('SELECT revoked_at FROM user_authorizations WHERE user_id=123').first()).revoked_at, null);
+  }
+  await database.prepare("INSERT INTO commercial_links(link_id,product_account,works_account,state,established_at,protected_grant,updated_at) VALUES ('closure-link',123,'fixture','active',?,'fixture',?)").bind(app.now(), app.now()).run();
+  try { await assert.rejects(attempt(targets), { code: 'E_ADMISSION_STALE' }); }
+  finally { await database.prepare("DELETE FROM commercial_links WHERE link_id='closure-link'").run(); }
+  assert.ok(await app.manage.selection(1004));
+  assert.equal(new URL((await close(app, cookie, 'wrong')).headers.get('location'), ORIGIN).searchParams.get('m'), 'confirm-mismatch');
+});
+
+test('closure handles a personal set beyond one hundred SQL parameters without partial batches', async () => {
+  const { app: compose } = await fixture();
+  const app = compose(), database = app.appStore.database;
+  const ids = Array.from({ length: 120 }, (_, index) => 2000 + index);
+  await app.appStore.recordLifecycle({ installationId: 9, action: 'created', addedRepositories: ids, removedRepositories: [] });
+  const repositories = ids.map(repositoryId => ({ repositoryId, revision: 0 }));
+  await closeLocalAccount({ database, userId: 123, repositories, now: app.now });
+  const rows = (await database.prepare('SELECT settings_revision,history_consent_reason,execution_consent_reason FROM repositories WHERE repository_id>=2000').all()).results;
+  assert.equal(rows.length, ids.length);
+  assert.ok(rows.every(r => r.settings_revision === 1 && r.history_consent_reason === 'explicitly-disabled' && r.execution_consent_reason === 'explicitly-disabled'));
+  const original = await database.prepare("SELECT deleted_at,reapply_until FROM deletion_tombstones WHERE scope='history:2000'").first();
+  await assert.rejects(closeLocalAccount({ database, userId: 123, repositories, now: () => '2026-10-10T00:00:00.000Z' }), { code: 'E_ADMISSION_STALE' });
+  assert.deepEqual(await database.prepare("SELECT deleted_at,reapply_until FROM deletion_tombstones WHERE scope='history:2000'").first(), original, 'the spent request does not move deletion time or lifetime');
+});
+
+test('a lost closure response leaves a complete commit and the spent session cannot erase later reconsent', async () => {
+  const { app: compose, clock } = await fixture();
+  const original = compose(), database = original.appStore.database;
+  let revocationPrepared = false;
+  const interrupted = {
+    prepare(sql) { if (sql.startsWith('UPDATE browser_sessions SET revoked_at=')) revocationPrepared = true; return database.prepare(sql); },
+    async batch(statements) {
+      const loseResponse = revocationPrepared; revocationPrepared = false;
+      const result = await database.batch(statements);
+      if (loseResponse) throw new Error('fixture lost committed response');
+      return result;
+    }
+  };
+  const app = compose(undefined, { env: { APP_DB: interrupted } });
+  const { cookie } = await signIn(app);
+  clock.value = '2026-10-11T00:00:00.000Z';
+  assert.equal(new URL((await close(app, cookie)).headers.get('location'), ORIGIN).searchParams.get('m'), 'close-incomplete');
+  const deletion = await database.prepare("SELECT deleted_at,reapply_until FROM deletion_tombstones WHERE scope='history:1004'").first();
+  assert.equal(deletion.deleted_at, clock.value);
+  assert.equal((await original.appStore.repositoryAdmission(1004)).history.enabled, false);
+  assert.equal((await database.prepare('SELECT protected_material FROM user_authorizations WHERE user_id=123').first()).protected_material, '');
+  await assert.rejects(original.auth.closeAccount({ session: cookie, method: 'POST', origin: ORIGIN, repositoryIds: [1004,1005] }), { code: 'E_SESSION_UNAVAILABLE' });
+  const { cookie: later } = await signIn(original);
+  const current = await original.appStore.repositoryAdmission(1004);
+  await original.auth.updateAdmission({ session: later, method: 'POST', origin: ORIGIN, repositoryId: 1004,
+    settings: { revision: current.revision, history: { enabled: true, retentionDays: 30 } } });
+  await assert.rejects(original.auth.closeAccount({ session: cookie, method: 'POST', origin: ORIGIN, repositoryIds: [1004,1005] }), { code: 'E_SESSION_UNAVAILABLE' });
+  assert.equal((await original.appStore.repositoryAdmission(1004)).history.enabled, true);
+  assert.deepEqual(await database.prepare("SELECT deleted_at,reapply_until FROM deletion_tombstones WHERE scope='history:1004'").first(), deletion);
+});

@@ -16,6 +16,7 @@ import { RECOVERY_DUTIES } from './recovery-contract.mjs';
 import { D1HistoryJobStore, runHistoryJob } from './history-jobs.mjs';
 import { record, patch, base, head } from './analytical-data.fixtures.mjs';
 import { describeJob } from '../app/src/lib/manage/jobs.mjs';
+import { closeLocalAccount } from '../app/src/lib/manage/account-closure.mjs';
 
 const point = { id: 'sanitized-point', capturedAt: '2026-10-01T00:00:00.000Z', supportedUntil: '2026-10-31T00:00:00.000Z' };
 const through = '2026-10-05T00:00:00.000Z';
@@ -159,6 +160,44 @@ test('history deletion rolls back every destructive row on failure, retries the 
     clock = through;
     await store.deleteHistory(17, { revision: reconsented.consent.settings_revision });
     assert.equal((await snapshot(current.database)).consent.history_enabled, 0);
+  } finally { await current.runtime.dispose(); await target.runtime.dispose(); }
+});
+
+test('a completed atomic account closure survives current-source rollback and preserves later explicit reconsent', async () => {
+  const current = await fixture(), target = await fixture();
+  try {
+    await current.app.recordInstallationAccount(9, 77, 'user');
+    await new D1CommercialStore(current.database).endLink('link-1', { source: 'fixture-unlink', endedAt: at });
+    await current.database.prepare("INSERT INTO participation_prompts(user_id,campaign_key,campaign_version) VALUES (77,'fixture',1)").run();
+    await current.database.prepare('INSERT INTO repository_selections(repository_id,selected_at,actor_id) VALUES (17,?,77)').bind(at).run();
+    const repositories = await Promise.all([17,18,19,20].map(async repositoryId => ({ repositoryId, revision: (await current.app.repositoryAdmission(repositoryId)).revision })));
+    await closeLocalAccount({ database: current.database, userId: 77, repositories, now: () => at });
+    const deletion = await current.database.prepare("SELECT deleted_at,reapply_until FROM deletion_tombstones WHERE scope='history:17'").first();
+    assert.equal(deletion.deleted_at, at);
+    assert.equal(deletion.reapply_until, until);
+    const exported = await exportCurrent(current.database);
+    for (let retry = 0; retry < 2; retry++) {
+      assert.equal((await target.replay(exported, { point: healthyPoint })).phase, 'replayed');
+      assert.deepEqual(await target.database.prepare("SELECT deleted_at,reapply_until FROM deletion_tombstones WHERE scope='history:17'").first(), deletion);
+      assert.equal((await target.app.repositoryAdmission(17)).history.enabled, false);
+      assert.equal(await target.app.executionAllowed(17), false);
+      assert.equal((await target.database.prepare('SELECT count(*) AS n FROM repository_selections WHERE repository_id=17').first()).n, 0);
+      assert.equal((await target.database.prepare('SELECT count(*) AS n FROM participation_prompts WHERE user_id=77').first()).n, 0);
+      const authorization = await target.auth.authorization(77), session = await target.auth.session('session');
+      assert.ok(!authorization || authorization.revoked_at, 'maintenance may remove an ended grant');
+      assert.ok(!session || session.revoked_at, 'the old session is unavailable after replay');
+      assert.equal((await target.database.prepare('SELECT count(*) AS n FROM analytical_size_observations WHERE repository_id=17').first()).n, 0);
+    }
+    // A later deliberate sign-in/consent is current state, not another invocation of the old closure.
+    await current.auth.saveAuthorizationWithArtifact(77, 'new-synthetic-grant', point.supportedUntil, 'later-artifact', 'app', point.supportedUntil);
+    await current.auth.exchangeArtifact('later-artifact', 'app', 'later-session', point.supportedUntil);
+    const store = new D1AppStore(current.database, { now: () => through });
+    await createAdmissionService({ store, authorize: async () => true }).update(17, { revision: (await store.repositoryAdmission(17)).revision,
+      actor: { userId: 77 }, origin: 'dashboard', history: { enabled: true, retentionDays: 30 } });
+    assert.equal((await target.replay(await exportCurrent(current.database), { point: healthyPoint })).phase, 'replayed');
+    assert.equal((await target.app.repositoryAdmission(17)).history.enabled, true);
+    assert.equal((await target.app.repositoryAdmission(17)).history.actorId, 77);
+    assert.equal((await target.auth.authorization(77)).revoked_at, null);
   } finally { await current.runtime.dispose(); await target.runtime.dispose(); }
 });
 
