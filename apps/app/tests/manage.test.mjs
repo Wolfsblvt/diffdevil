@@ -474,3 +474,24 @@ test('disconnecting the funding connection ends the sessions and stays off until
   assert.equal((await model(app, fresh)).model.serviceConnection, 'not-retained');
   assert.ok(Object.values(MESSAGES).every(message => typeof message.text === 'string' && message.text.length > 0));
 });
+
+test('history deletion refuses a stale submitted revision after explicit reconsent and accepts a fresh request', async () => {
+  const { app: compose } = await fixture();
+  const app = compose();
+  const { cookie } = await signIn(app);
+  const repository = 'ada-sample/dotfiles', repositoryId = 1004;
+  const read = async () => (await app.auth.readAdmission({ session: cookie, repositoryId })).body;
+  assert.equal((await act(app, cookie, { action: 'history', repository, enabled: 'on' })).message, 'history-on');
+  const before = await read();
+  assert.equal((await act(app, cookie, { action: 'delete-history', repository, confirm: 'dotfiles' })).message, 'stale');
+  assert.deepEqual((await read()).history, before.history, 'a missing revision deletes nothing');
+  const fields = { action: 'delete-history', repository, confirm: 'dotfiles', revision: String(before.revision) };
+  assert.equal((await act(app, cookie, fields)).message, 'history-deleted');
+  assert.equal((await read()).history.enabled, false);
+  assert.equal((await act(app, cookie, { action: 'history', repository, enabled: 'on' })).message, 'history-on');
+  const reconsented = await read();
+  assert.equal((await act(app, cookie, fields)).message, 'stale');
+  assert.deepEqual((await read()).history, reconsented.history, 'the old request cannot revoke current consent');
+  assert.equal((await act(app, cookie, { ...fields, revision: String(reconsented.revision) })).message, 'history-deleted');
+  assert.equal((await read()).history.enabled, false);
+});

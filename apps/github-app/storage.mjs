@@ -359,19 +359,20 @@ export class D1AppStore {
     ]);
   }
 
+  /** Repository-scoped SQL keeps child removal in the caller's privacy transaction. */
+  historyRemovalStatements(repositoryId, guard = { sql: '1', values: [] }) {
+    return [
+      'DELETE FROM analytical_pull_requests WHERE repository_id=?',
+      'DELETE FROM analytical_size_observations WHERE repository_id=?',
+      'DELETE FROM analytical_size_facts WHERE repository_id=?',
+      'DELETE FROM history_file_rows WHERE history_id IN (SELECT id FROM history_records WHERE repository_id=?)',
+      'DELETE FROM history_effect_rows WHERE history_id IN (SELECT id FROM history_records WHERE repository_id=?)',
+      'DELETE FROM history_records WHERE repository_id=?'
+    ].map(sql => this.statement(`${sql} AND (${guard.sql})`, repositoryId, ...guard.values));
+  }
+
   async removeHistoryRecords(repositoryId) {
-    await this.database.batch([
-      this.statement('DELETE FROM analytical_pull_requests WHERE repository_id=?', repositoryId),
-      this.statement('DELETE FROM analytical_size_observations WHERE repository_id=?', repositoryId),
-      this.statement('DELETE FROM analytical_size_facts WHERE repository_id=?', repositoryId)
-    ]);
-    const records = await this.statement('SELECT id FROM history_records WHERE repository_id=?', repositoryId).all();
-    const statements = (records.results ?? []).flatMap(row => [
-      this.statement('DELETE FROM history_file_rows WHERE history_id=?', row.id),
-      this.statement('DELETE FROM history_effect_rows WHERE history_id=?', row.id),
-      this.statement('DELETE FROM history_records WHERE id=?', row.id)
-    ]);
-    for (const batch of batches(statements)) await this.database.batch(batch);
+    await this.database.batch(this.historyRemovalStatements(repositoryId));
   }
 
   /** Read only currently retained, published projections from one repository. */
@@ -460,8 +461,8 @@ export class D1AppStore {
 
   /** The same completed offboarding deletion, retaining its original later-duty lifetime on replay. */
   async reapplyRepositoryDeletion(repositoryId, { deletedAt, reapplyUntil, executionReason = 're-consent-required', historyReason = 're-consent-required' }) {
-    await this.removeHistoryRecords(repositoryId);
     await this.database.batch([
+      ...this.historyRemovalStatements(repositoryId),
       this.statement('DELETE FROM history_lenses WHERE repository_id=?', repositoryId),
       this.statement('DELETE FROM app_checks WHERE repository_id=?', repositoryId),
       this.statement('DELETE FROM repairs WHERE repository_id=?', repositoryId),
@@ -476,20 +477,39 @@ export class D1AppStore {
     ]);
   }
 
-  async deleteHistory(repositoryId, { deletedAt = this.now(), reapplyUntil = new Date(Date.parse(deletedAt) + APP_TOMBSTONE_DAYS * DAY).toISOString() } = {}) {
-    const now = deletedAt, until = reapplyUntil;
-    await this.removeHistoryRecords(repositoryId);
-    await this.database.batch([
-      this.statement("UPDATE repositories SET history_enabled=0, history_consent_origin='history-deletion', history_consent_reason='explicitly-disabled', history_consent_actor_id=NULL, updated_at=? WHERE repository_id=?", now, repositoryId),
-       this.statement('INSERT INTO deletion_tombstones (scope, deleted_at, reapply_until) VALUES (?, ?, ?) ON CONFLICT(scope) DO UPDATE SET deleted_at=excluded.deleted_at, reapply_until=excluded.reapply_until WHERE excluded.reapply_until >= deletion_tombstones.reapply_until', `history:${repositoryId}`, now, until),
-      this.statement('DELETE FROM app_checks WHERE repository_id=?', repositoryId),
-      this.statement('DELETE FROM repairs WHERE repository_id=?', repositoryId),
-      this.statement('DELETE FROM analytical_pull_requests WHERE repository_id=?', repositoryId),
-      this.statement('DELETE FROM analytical_size_observations WHERE repository_id=?', repositoryId),
-      this.statement('DELETE FROM analytical_size_facts WHERE repository_id=?', repositoryId),
+  /** Commit deletion with its control state; a rendered revision identifies a fresh live request, original times an offline replay. */
+  async deleteHistory(repositoryId, { deletedAt, reapplyUntil, revision } = {}) {
+    if (revision !== undefined && (!Number.isSafeInteger(revision) || revision < 0)) throw Object.assign(new TypeError('Invalid deletion revision.'), { code: 'E_ADMISSION_REVISION' });
+    const scope = `history:${repositoryId}`;
+    const previous = await this.statement('SELECT deleted_at, reapply_until FROM deletion_tombstones WHERE scope=?', scope).first();
+    // A lost response retries the completed transaction, not a new 37-day deletion.
+    // Explicit replay still cleans point rows when its tombstone arrived via an import.
+    if (previous && deletedAt === undefined && revision === undefined) return;
+    const consent = previous ? await this.statement('SELECT history_enabled, history_consent_reason FROM repositories WHERE repository_id=?', repositoryId).first() : null;
+    const retry = previous && deletedAt === undefined && consent?.history_enabled !== 1;
+    const now = deletedAt ?? (retry ? previous.deleted_at : this.now());
+    const until = reapplyUntil ?? (retry ? previous.reapply_until : new Date(Date.parse(now) + APP_TOMBSTONE_DAYS * DAY).toISOString());
+    if (previous && deletedAt !== undefined && previous.deleted_at > now) return;
+    // All statements see the same revision until the final update, within one D1 transaction.
+    // Replaying an already recorded event also cannot revoke a later explicit positive choice.
+    if (previous && revision === undefined && previous.deleted_at >= now && consent?.history_enabled === 1 && consent.history_consent_reason === null) return;
+    const guard = revision === undefined ? { sql: '1', values: [] }
+      : { sql: 'EXISTS (SELECT 1 FROM repositories WHERE repository_id=? AND settings_revision=?)', values: [repositoryId, revision] };
+    const guarded = (sql, ...values) => this.statement(`${sql} AND (${guard.sql})`, ...values, ...guard.values);
+    const results = await this.database.batch([
+      ...this.historyRemovalStatements(repositoryId, guard),
+      guarded('DELETE FROM app_checks WHERE repository_id=?', repositoryId),
+      guarded('DELETE FROM repairs WHERE repository_id=?', repositoryId),
       // Open imports and recalculation stop with the history they were filling; the deletion record keeps them from reviving it.
-      this.statement("UPDATE history_jobs SET state='stopped', reason='history-deleted', lease_until=NULL, wake_at=NULL, updated_at=?, finished_at=? WHERE repository_id=? AND state IN ('queued', 'running', 'paused')", now, now, repositoryId)
+      guarded("UPDATE history_jobs SET state='stopped', reason='history-deleted', lease_until=NULL, wake_at=NULL, updated_at=?, finished_at=? WHERE repository_id=? AND state IN ('queued', 'running', 'paused')", now, now, repositoryId),
+      this.statement(`INSERT INTO deletion_tombstones (scope, deleted_at, reapply_until) SELECT ?, ?, ? WHERE (${guard.sql})
+        ON CONFLICT(scope) DO UPDATE SET deleted_at=excluded.deleted_at, reapply_until=MAX(deletion_tombstones.reapply_until, excluded.reapply_until)
+        WHERE excluded.deleted_at>=deletion_tombstones.deleted_at`, scope, now, until, ...guard.values),
+      guarded(`UPDATE repositories SET history_enabled=0, history_consent_origin='history-deletion', history_consent_reason='explicitly-disabled', history_consent_actor_id=NULL,
+        settings_revision=settings_revision+CASE WHEN ?=1 OR history_consent_origin IS NOT 'history-deletion' OR history_enabled<>0 THEN 1 ELSE 0 END,
+        updated_at=? WHERE repository_id=?`, revision === undefined ? 0 : 1, now, repositoryId)
     ]);
+    if (revision !== undefined && results.at(-1)?.meta?.changes !== 1) throw Object.assign(new Error('Repository settings changed before deletion.'), { code: 'E_ADMISSION_STALE' });
   }
 
   /** Match the live future-record setting. Existing observations retain their original expiry. */

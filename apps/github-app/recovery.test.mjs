@@ -63,6 +63,96 @@ async function fixture() {
   } catch (error) { await runtime.dispose(); throw error; }
 }
 
+test('history deletion rolls back every destructive row on failure, retries the original event, and survives healthy replay', async () => {
+  const current = await fixture(), target = await fixture();
+  try {
+    await current.app.recordAnalytical(record(1));
+    await target.app.recordAnalytical(record(1));
+    const projection = { schemaVersion: 3, engineVersion: 'engine-v1', reportVersion: 'report-v1', metricVersion: 'metrics-v1',
+      source: { base, head }, evidence: 'exact', fileSet: { complete: true }, totals: {}, configuredResults: [], gaps: [],
+      files: [{ ordinal: 0 }], effects: [{ kind: 'label.add', outcome: 'changed' }] };
+    for (const f of [current, target]) {
+      await f.app.recordHistory({ repositoryId: 17, pullRequest: 1, comparisonId: 'deletion-fixture', policyId: 'policy' }, projection);
+      await f.database.batch([
+        f.database.prepare("INSERT INTO app_checks(repository_id,pull_request,head_sha,policy_id,check_run_id) VALUES (17,1,'head','policy',1)"),
+        f.database.prepare("INSERT INTO repairs(repair_id,repair_kind,repository_id,projection_json,state,code,created_at) VALUES ('delete-repair','analysis',17,'{}','open','fixture',?)").bind(at)
+      ]);
+      await f.database.prepare(`INSERT INTO history_jobs(job_id,repository_id,installation_id,kind,state,sequence,scope_limit,cursor_json,progress_json,requested_by,requested_at,updated_at)
+        VALUES ('delete-import',17,9,'import','queued',1,100,'{}','{}',77,?,?)`).bind(at, at).run();
+    }
+    const snapshot = async database => ({
+      history: await database.prepare('SELECT count(*) AS n FROM history_records WHERE repository_id=17').first(),
+      files: await database.prepare('SELECT count(*) AS n FROM history_file_rows').first(),
+      effects: await database.prepare('SELECT count(*) AS n FROM history_effect_rows').first(),
+      analytics: await database.prepare('SELECT count(*) AS n FROM analytical_pull_requests WHERE repository_id=17').first(),
+      sizes: await database.prepare('SELECT count(*) AS n FROM analytical_file_sizes WHERE repository_id=17').first(),
+      consent: await database.prepare('SELECT history_enabled,history_consent_reason,settings_revision FROM repositories WHERE repository_id=17').first(),
+      deletion: await database.prepare("SELECT deleted_at,reapply_until FROM deletion_tombstones WHERE scope='history:17'").first(),
+      checks: await database.prepare('SELECT count(*) AS n FROM app_checks WHERE repository_id=17').first(),
+      repairs: await database.prepare('SELECT count(*) AS n FROM repairs WHERE repository_id=17').first(),
+      job: await database.prepare("SELECT state,reason FROM history_jobs WHERE job_id='delete-import'").first()
+    });
+    const before = await snapshot(current.database);
+    for (const name of ['history', 'files', 'effects', 'analytics', 'sizes', 'checks', 'repairs']) assert.equal(before[name].n, 1, `seeded ${name}`);
+    let deletionBatch = false;
+    const broken = new D1AppStore({ prepare: sql => {
+      if (sql.includes('INSERT INTO deletion_tombstones')) deletionBatch = true;
+      return current.database.prepare(sql);
+    },
+    batch: statements => current.database.batch(deletionBatch ? [...statements, current.database.prepare('SELECT * FROM fixture_missing_table')] : statements)
+    }, { now: () => at });
+    await assert.rejects(broken.deleteHistory(17), /fixture_missing_table/u);
+    assert.deepEqual(await snapshot(current.database), before, 'failure after removal SQL rolls back measurements, consent, tombstone and jobs together');
+    await assert.rejects(broken.reapplyRepositoryDeletion(18, { deletedAt: at, reapplyUntil: until }), /fixture_missing_table/u);
+    assert.ok(await current.app.repositoryAdmission(18), 'failed offboarding preserves the repository');
+    assert.equal((await current.database.prepare('SELECT count(*) AS n FROM analytical_file_sizes WHERE repository_id=18').first()).n, 1);
+
+    let clock = at;
+    const store = new D1AppStore(current.database, { now: () => clock });
+    await store.deleteHistory(17, { revision: before.consent.settings_revision });
+    const deleted = await snapshot(current.database);
+    for (const name of ['history', 'files', 'effects', 'analytics', 'sizes', 'checks', 'repairs']) assert.equal(deleted[name].n, 0, name);
+    assert.equal(deleted.consent.history_enabled, 0);
+    assert.deepEqual(deleted.job, { state: 'stopped', reason: 'history-deleted' });
+    assert.deepEqual(deleted.deletion, { deleted_at: at, reapply_until: until });
+    assert.equal(await store.executionAllowed(17), true, 'history deletion leaves repository execution admitted');
+    await current.database.prepare("INSERT INTO app_checks(repository_id,pull_request,head_sha,policy_id,check_run_id) VALUES (17,2,'later-head','policy',2)").run();
+    deleted.checks.n = 1;
+    clock = through;
+    await store.deleteHistory(17); // Lost completion response, retried after restart with a later clock.
+    await assert.rejects(store.deleteHistory(17, { revision: before.consent.settings_revision }), { code: 'E_ADMISSION_STALE' });
+    assert.deepEqual(await snapshot(current.database), deleted, 'retries do not manufacture another event or extend its lifetime');
+
+    await new D1CommercialStore(current.database).endLink('link-1', { source: 'fixture-end', endedAt: at });
+    const exported = await exportCurrent(current.database);
+    assert.equal((await target.replay(exported, { point: healthyPoint })).phase, 'replayed');
+    assert.equal((await target.app.historySettings(17)).enabled, false);
+    assert.equal((await target.database.prepare('SELECT count(*) AS n FROM history_records WHERE repository_id=17').first()).n, 0);
+    const restoredJobs = new D1HistoryJobStore(target.database, { now: () => through });
+    let providerRead = false;
+    const result = await runHistoryJob({ jobId: 'delete-import', repositoryId: 17, action: 'import', sequence: 2 }, {
+      jobs: restoredJobs, store: target.app, clientFor: async () => { providerRead = true; throw new Error('deleted import must not read a provider'); }, now: () => through
+    });
+    assert.equal(providerRead, false);
+    assert.notEqual(result.status, 'complete');
+
+    // A later explicit choice is current authority; an old form or replay cannot erase it.
+    clock = at; // Equal wall-clock timestamps do not undo the actual later consent commit.
+    const admission = createAdmissionService({ store, authorize: async () => true });
+    await admission.update(17, { revision: (await store.repositoryAdmission(17)).revision,
+      actor: { userId: 77 }, origin: 'dashboard', history: { enabled: true, retentionDays: 30 } });
+    const reconsented = await snapshot(current.database);
+    await store.deleteHistory(17);
+    await store.deleteHistory(17, { deletedAt: at, reapplyUntil: until });
+    await assert.rejects(store.deleteHistory(17, { revision: before.consent.settings_revision }), { code: 'E_ADMISSION_STALE' });
+    assert.deepEqual(await snapshot(current.database), reconsented);
+    // A newly rendered, current-revision deletion is still a supported deliberate operation.
+    clock = through;
+    await store.deleteHistory(17, { revision: reconsented.consent.settings_revision });
+    assert.equal((await snapshot(current.database)).consent.history_enabled, 0);
+  } finally { await current.runtime.dispose(); await target.runtime.dispose(); }
+});
+
 test('input refuses missing, partial, stale, wrong-point and unordered duties before target writes', async () => {
   for (const mutate of [() => undefined, value => ({ ...value, version: 2 }),
     value => ({ ...value, point: { ...point, id: 'another-point' } }),
