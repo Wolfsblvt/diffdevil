@@ -446,6 +446,40 @@ test('the loopback Works stand-in carries the slots, the first link, the return 
   assert.equal(projectionKey(loaded.commercial.status), 'first-payment');
 });
 
+test('commercial refusals keep a safe failed-request Audit event before returning to Plan', async () => {
+  const { app: compose } = await fixture();
+  const app = compose();
+  const { cookie } = await signIn(app);
+  const { viewer } = await locals(app, cookie);
+  const cases = [
+    ['E_COMMERCIAL_LINK_PENDING', 'link-pending'],
+    ['E_COMMERCIAL_UNAVAILABLE', 'commercial-unavailable'],
+    ['E_COMMERCIAL_ALREADY_LINKED', 'already-linked'],
+    ['E_COMMERCIAL_NOT_FUNDED', 'not-funded'],
+    ['E_SERVICE_RECONNECT_UNCONFIRMED', 'reconnect-unconfirmed'],
+    ['E_COMMERCIAL_provider-payload-must-not-be-retained', 'commercial-unavailable']
+  ];
+  for (const [code, message] of cases) {
+    const before = await app.manage.events({ accountIds: [viewer.userId] });
+    const fail = async () => { throw Object.assign(new Error('https://works.example.test/authorize?code=fixture-private'), { code }); };
+    app.commercial = { beginLink: fail, reconnectFundingAuthorization: fail };
+    const action = code === 'E_SERVICE_RECONNECT_UNCONFIRMED' ? 'reconnect' : 'link';
+    const answer = await act(app, cookie, { action, back: '/manage/plan', namespace: String(ACCOUNTS['parser-guild']),
+      organisation: String(ACCOUNTS['parser-guild']), repository: 'parser-guild/grammar-fuzz' });
+    assert.equal(answer.message, message);
+    const events = await app.manage.events({ accountIds: [viewer.userId] });
+    assert.equal(events.length, before.length + 1, `${code}: the refused request is recorded`);
+    const event = events[0];
+    assert.deepEqual(event.actor, { kind: 'person', id: viewer.userId, login: viewer.login });
+    assert.equal(event.what, action === 'link' ? 'Started the Wolfsblvt Works link' : 'Reconnected the funding connection');
+    assert.equal(event.result, 'failed');
+    assert.equal(event.reason, MESSAGES[message].text, 'only fixed product copy is retained, never exception text or an arbitrary code');
+    assert.equal(event.detail, null);
+    assert.equal(event.repositoryId, null);
+    assert.equal(event.where, viewer.login, 'account operations cannot be filed against a submitted repository or namespace');
+  }
+});
+
 test('disconnecting the funding connection ends the sessions and stays off until the explicit reconnect; closure refuses a linked plan and otherwise removes the account', async () => {
   const { app: compose } = await fixture();
   const app = compose(undefined, { env: { APP_COMMERCIAL_FIXTURE: COMMERCIAL_PRO } });

@@ -98,7 +98,8 @@ const local = new Miniflare(convertV4MiniflareOptions({ ...workerOptions, name: 
     WIRT_LINK_CONTINUATION_URL: `${APP}/manage/plan`, WIRT_SIGNING_KEY_CURRENT: KEY }
 }));
 let browser;
-const results = [], violations = [], transportErrors = [], nativeResponses = [];
+const results = [], violations = [], transportErrors = [], nativeResponses = [], planPolicies = [];
+const formAction = headers => headers.get('content-security-policy')?.split(';').map(part => part.trim()).find(part => part.startsWith('form-action '));
 const check = (name, condition) => { assert.ok(condition, name); results.push(name); console.log(`✓ ${name}`); };
 try {
   const database = await local.getD1Database('APP_DB');
@@ -118,7 +119,9 @@ try {
     try {
       if (url.origin === APP) {
         const answer = await local.dispatchFetch(request.url, { method: request.method, headers: request.headers, body: request.postData, redirect: 'manual' });
-        if (url.pathname === '/manage/do') nativeResponses.push({ status: answer.status, location: answer.headers.get('location') });
+        if (url.pathname === '/manage/do') nativeResponses.push({ method: request.method, action: new URLSearchParams(request.postData).get('action'),
+          status: answer.status, location: answer.headers.get('location'), formAction: formAction(answer.headers) });
+        if (url.pathname === '/manage/plan' && answer.status === 200) planPolicies.push(formAction(answer.headers));
         await fulfill(answer);
         return;
       }
@@ -175,8 +178,14 @@ try {
   await database.prepare('UPDATE works_departures SET snapshot_json=NULL').run();
   await page.reload();
   check('the pre-repair departure also reads the actual expired attempt', await page.locator('[data-link-standing="expired"]').count() === 1 && intents.size === 1);
+  const beforeRetry = nativeResponses.length;
   await page.getByRole('button', { name: 'Try again', exact: true }).click();
   await page.waitForURL(`${WORKS}/wirt/products/diffdevil/link/*`);
+  const retryResponse = nativeResponses[beforeRetry];
+  const expectedPolicy = `form-action 'self' https://github.com ${WORKS}`;
+  check('expired Try again really posts link and returns 303 to a fresh admitted Works intent', retryResponse.method === 'POST' && retryResponse.action === 'link'
+    && retryResponse.status === 303 && new URL(retryResponse.location).origin === WORKS && intents.size === 2);
+  check('both the form document and Manage response retain the exact configured Works form policy', planPolicies.at(-1) === expectedPolicy && retryResponse.formAction === expectedPolicy && violations.length === 0);
   const approvedIntent = new URL(page.url()).pathname.split('/').at(-1);
   failure = 'pending';
   await page.getByRole('button', { name: 'Approve fixture Works link' }).click();
@@ -185,6 +194,17 @@ try {
   const pendingReturn = await page.evaluate(() => ({ headline: document.querySelector('.m-return[data-link-standing="pending"] b')?.textContent ?? '', text: document.querySelector('.m-return[data-link-standing="pending"]')?.textContent ?? '', waiting: Boolean(document.querySelector('.m-return.wait')) }));
   check('the server-owned unfinished return stays neutral, uncharged and retryable', /didn't finish/u.test(pendingReturn.headline) && /Nothing was charged/u.test(pendingReturn.text) && !pendingReturn.wait && await page.getByRole('button', { name: 'Try again', exact: true }).count() === 1);
   const intentCount = intents.size;
+  const auditCount = async () => (await database.prepare('SELECT count(*) AS n FROM administrative_events WHERE account_id=?').bind(USER.id).first()).n;
+  const pendingAuditCount = await auditCount();
+  await page.getByRole('button', { name: 'Try again', exact: true }).click();
+  await page.waitForURL(url => url.origin === APP && url.searchParams.get('m') === 'link-pending');
+  check('a still-pending retry is visible and keeps its approved intent and a safe failed-request Audit event',
+    await page.locator('[data-link-standing="pending"]').count() === 1 && (await page.locator('.m-msg').innerText()).includes('continues the same link')
+    && intents.size === intentCount && await auditCount() === pendingAuditCount + 1);
+  const pendingEvent = await database.prepare('SELECT result, reason, detail_json FROM administrative_events WHERE account_id=? ORDER BY event_id DESC LIMIT 1').bind(USER.id).first();
+  check('the pending Audit entry describes the unfinished request without provider material', pendingEvent.result === 'failed'
+    && pendingEvent.reason === "The link didn't finish: Works didn't answer after you approved. Nothing was charged. Trying again continues the same link." && pendingEvent.detail_json === null);
+  await page.screenshot({ path: join(OUT, 'native-works-pending.png'), fullPage: true });
   failure = null;
   await page.getByRole('button', { name: 'Try again', exact: true }).click();
   await page.waitForURL(url => url.origin === APP && url.searchParams.get('m') === 'linked');
@@ -216,15 +236,27 @@ try {
   await database.prepare('DELETE FROM commercial_links').run();
   await database.prepare('DELETE FROM works_departures').run();
   for (const kind of ['unavailable', 'foreign']) {
-    failure = kind;
+    failure = null;
     await page.goto(`${APP}/manage/plan`);
+    await pro.click();
+    await page.waitForURL(`${WORKS}/wirt/products/diffdevil/link/*`);
+    await page.getByRole('link', { name: 'Return without approving' }).click();
+    await database.prepare('UPDATE commercial_link_attempts SET expires_at=? WHERE consumed_at IS NULL').bind(new Date(Date.now() - 1000).toISOString()).run();
+    await page.reload();
+    check(`${kind} refusal starts at the real expired-attempt Try again control`, await page.locator('[data-link-standing="expired"]').count() === 1);
+    failure = kind;
     const before = (await database.prepare('SELECT count(*) AS n FROM commercial_link_attempts').first()).n;
-    await page.getByRole('button', { name: 'Pro · €9 a month or €90 a year', exact: true }).click();
+    const beforeAudit = await auditCount();
+    await page.getByRole('button', { name: 'Try again', exact: true }).click();
     await page.waitForURL(url => url.origin === APP && url.searchParams.get('m') === 'commercial-unavailable');
-    check(`${kind} Works answer returns a visible refusal with no local attempt`,
+    check(`${kind} Works answer returns a visible refusal with no new local attempt`,
       (await page.locator('body').innerText()).includes('Works is not reachable') && (await database.prepare('SELECT count(*) AS n FROM commercial_link_attempts').first()).n === before);
+    const event = await database.prepare('SELECT actor_id, what, result, reason, detail_json FROM administrative_events WHERE account_id=? ORDER BY event_id DESC LIMIT 1').bind(USER.id).first();
+    check(`${kind} refusal appends the safe account Audit event before answering`, await auditCount() === beforeAudit + 1 && event.actor_id === USER.id
+      && event.what === 'Started the Wolfsblvt Works link' && event.result === 'failed'
+      && event.reason === 'Works is not reachable from this deployment right now, so nothing was changed.' && event.detail_json === null);
+    await page.screenshot({ path: join(OUT, `native-works-${kind}.png`), fullPage: true });
   }
-  await page.screenshot({ path: join(OUT, 'native-works-unavailable.png'), fullPage: true });
 
   // The admitted Works hop must not open the rest of the form redirect chain to unadmitted destinations.
   failure = 'redirect';
@@ -236,7 +268,8 @@ try {
   await refused;
   check('an unadmitted continuation after the Works hop stays blocked by CSP', violations.length > 0 && new URL(page.url()).origin === APP && !requests.some(url => url.startsWith('https://unadmitted.example.test')));
   check('all browser and backend provider traffic stays in the doubles', transportErrors.length === 0 && calls.every(call => ['http://github.invalid', WORKS].includes(call.origin)));
-  await writeFile(join(OUT, 'results.json'), JSON.stringify({ target: target.name, build: built.main, browser: browser.version(), viewport: '1440x900', results, violations, calls }, null, 2));
+  await writeFile(join(OUT, 'results.json'), JSON.stringify({ target: target.name, build: built.main, browser: browser.version(), viewport: '1440x900', results, violations, calls, planPolicies,
+    nativeResponses: nativeResponses.map(({ location, ...answer }) => ({ ...answer, destination: new URL(location, APP).origin === WORKS ? 'configured-works' : 'same-app' })) }, null, 2));
 } finally {
   await browser?.close();
   await local.dispose();
