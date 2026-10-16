@@ -254,8 +254,10 @@ test('the admission service validates settings, keeps history independent, and r
     assert.equal(admitted.writer.confidence, 'administrator-declared');
     await source.store.deleteHistory(17);
     assert.equal(await source.store.executionAllowed(17), true, 'history deletion does not stop enabled execution');
-    assert.equal((await service.read(17, actor)).reach.tombstoned, false, 'a history tombstone does not block the admission control plane');
-    const configured = await service.update(17, { actor, origin: 'dashboard', revision: admitted.revision, configuration: { repository: { presets: ['size@1'] } } });
+    const afterDeletion = await service.read(17, actor);
+    assert.equal(afterDeletion.reach.tombstoned, false, 'a history tombstone does not block the admission control plane');
+    await assert.rejects(service.update(17, { actor, origin: 'dashboard', revision: admitted.revision, configuration: { repository: { presets: ['size@1'] } } }), { code: 'E_ADMISSION_STALE' });
+    const configured = await service.update(17, { actor, origin: 'dashboard', revision: afterDeletion.revision, configuration: { repository: { presets: ['size@1'] } } });
     assert.equal(configured.policy.source, 'trusted-base');
     assert.equal(configured.policy.provenance['/presets'], 'supplied', 'the trusted base overrides stored configuration in effective readback');
     assert.deepEqual(configured.policy.configuredEffects.rules, ['size', 'xlTransition']);

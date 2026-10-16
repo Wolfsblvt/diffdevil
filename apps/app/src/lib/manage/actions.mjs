@@ -330,7 +330,9 @@ export async function handleManageAction(request, { runtime, session, viewer }) 
         const repository = repositoryOf();
         if (String(form.get('confirm') ?? '') !== repository.name) return done('repository-mismatch');
         await admission(repository.repositoryId);
-        await runtime.appStore.deleteHistory(repository.repositoryId);
+        const revision = form.get('revision');
+        if (revision === null || !/^\d+$/u.test(String(revision))) return done('stale');
+        await runtime.appStore.deleteHistory(repository.repositoryId, { revision: Number(revision) });
         return done('history-deleted');
       }
       case 'brief': {
@@ -474,7 +476,8 @@ export async function handleManageAction(request, { runtime, session, viewer }) 
         for (const repository of personal?.repositories ?? []) {
           if (!repository.standing || isRemoved(repository)) continue;
           await stopRepository(repository);
-          await runtime.appStore.deleteHistory(repository.repositoryId);
+          const current = await runtime.appStore.repositoryAdmission(repository.repositoryId);
+          await runtime.appStore.deleteHistory(repository.repositoryId, { revision: current.revision });
         }
         await runtime.manage.forgetAccount(viewer.userId);
         // Survey answers, completions and invitation records go too; Wirt keeps its own commercial record of any reward.

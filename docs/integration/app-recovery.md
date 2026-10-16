@@ -27,6 +27,41 @@ Works calls and reports under the operator's actual grant. The entry is an offli
 product API, not a public endpoint or an automatic serving interlock. It neither
 imports a point nor starts a Worker. A failed or incomplete replay stays isolated.
 
+## History deletion at the database boundary
+
+History deletion commits repository-scoped measurement/child removal, owned check
+and repair removal, history withdrawal, stopped open history jobs and its deletion
+tombstone in one D1 batch transaction. Completed repository offboarding likewise
+joins its measurement removal to its existing final deletion batch. A failed
+statement rolls back that whole transition; a capture can retain the unchanged
+state or the completed deletion, rather than partially erased history with no
+deletion fact. This uses D1's [transactional batch contract](https://developers.cloudflare.com/d1/worker-api/d1-database/#batch).
+It does not make external provider effects transactional.
+
+The ordinary history-deletion form carries the displayed settings revision.
+Deletion checks that revision on every destructive statement and advances it only
+within the same commit. Repeating that same form recognises the immediately
+preceding committed deletion and returns success without changing its time,
+lifetime, revision or later rows. Any later settings commit, including explicit
+history reconsent, keeps the old form stale and untouched. A caller retrying a
+completed deletion without a new revision also reuses the completed event. Recovery
+replay supplies the original `deletedAt` and `reapplyUntil`, preserves any longer
+retained lifetime and does not overwrite a known later explicit positive choice.
+A fresh current-revision form can still deliberately delete again.
+The existing deletion-consent origin records the live submitted revision, so a
+different settings commit cannot impersonate that request even at the same time.
+Ordinary admission, consent and App readbacks project the `history-deletion`
+category. Raw configuration exports and recovery snapshots retain the exact
+request identity for retry and replay.
+
+No schema, recovery-input format or original-point interpretation changes here.
+Migration-0016 points remain compatible. An old source's capture from between its
+separate deletion commits still has the diagnosed missing-intent gap; newer source
+cannot invent that lost request. Account closure benefits at its history-deletion
+leg, but its other local and authorization steps remain separate commits with an
+ordinary incomplete/retry response. This is not durable continuation of an entire
+closure, nor unconditional recovery of every in-flight App command.
+
 ## Complete input through an exact barrier
 
 The trusted recovery custodian supplies this versioned contract:
