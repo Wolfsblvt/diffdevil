@@ -496,7 +496,7 @@ export class D1AppStore {
     const until = reapplyUntil ?? (retry ? previous.reapply_until : new Date(Date.parse(now) + APP_TOMBSTONE_DAYS * DAY).toISOString());
     const requestOrigin = revision === undefined ? 'history-deletion' : `history-deletion-revision-${revision}`;
     // Preserve the live request identity when replaying that same recorded event.
-    const deletionOrigin = revision === undefined && previous?.deleted_at === now && consent?.history_consent_origin?.startsWith('history-deletion-revision-')
+    const deletionOrigin = revision === undefined && previous?.deleted_at === now && (consent?.history_consent_origin?.startsWith('history-deletion-revision-') || consent?.history_consent_origin?.startsWith('history-deletion-account-'))
       ? consent.history_consent_origin : requestOrigin;
     if (previous && deletedAt !== undefined && previous.deleted_at > now) return;
     // All statements see the same revision until the final update, within one D1 transaction.

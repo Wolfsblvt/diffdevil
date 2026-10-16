@@ -70,6 +70,11 @@ Current GitHub update authority is checked for every personal target; the batch
 checks the entire admitted revision/ownership/reach set and active-link refusal
 before erasing anything. A changed target refuses the complete set. Repository
 revisions advance once for the joined execution/history withdrawal.
+The initiating session must also still be active at commit, including for an
+account with no personal repositories. It ends last in that same transaction;
+the raw deletion origin identifies this closure's settings commit so a refused
+request cannot end sessions belonging to a later sign-in. Ordinary readers still
+see the `history-deletion` category; raw exports and recovery retain the origin.
 
 The closure statement count is fixed, using JSON-bound targets and set-based
 policy-child removal rather than one transaction per repository or policy.

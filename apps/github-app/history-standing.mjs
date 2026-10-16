@@ -12,5 +12,5 @@ export function historyCollectionPause(row) {
  * @returns {string}
  */
 export function historyOriginCategory(origin) {
-  return origin?.startsWith('history-deletion-revision-') ? 'history-deletion' : origin ?? 'unknown';
+  return origin?.startsWith('history-deletion-revision-') || origin?.startsWith('history-deletion-account-') ? 'history-deletion' : origin ?? 'unknown';
 }
