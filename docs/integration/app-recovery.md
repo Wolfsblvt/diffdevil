@@ -50,6 +50,9 @@ retained lifetime and does not overwrite a known later explicit positive choice.
 A fresh current-revision form can still deliberately delete again.
 The existing deletion-consent origin records the live submitted revision, so a
 different settings commit cannot impersonate that request even at the same time.
+Ordinary admission, consent and App readbacks project the `history-deletion`
+category. Raw configuration exports and recovery snapshots retain the exact
+request identity for retry and replay.
 
 No schema, recovery-input format or original-point interpretation changes here.
 Migration-0016 points remain compatible. An old source's capture from between its

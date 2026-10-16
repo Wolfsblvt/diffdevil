@@ -3,7 +3,7 @@ import { normalizeHistoryLens } from './history-analytics.mjs';
 import { normalizeAnalyticalRecord } from './analytical-data.mjs';
 import { expireSizes, publishSizeSet, sizesAt, sizesIn } from './analytical-size-storage.mjs';
 import { sizeCaptureGroups } from './size-capture-groups.mjs';
-import { historyCollectionPause } from './history-standing.mjs';
+import { historyCollectionPause, historyOriginCategory } from './history-standing.mjs';
 
 const DAY = 86_400_000;
 export const APP_TOMBSTONE_DAYS = 37;
@@ -313,7 +313,7 @@ export class D1AppStore {
       reach: { repository: await this.repositoryAdmitted(repositoryId) ? row.access_state : 'unavailable', installation: row.installation_state, tombstoned: Boolean(tombstone?.blocked) },
       revision: Number.isSafeInteger(row.settings_revision) ? row.settings_revision : 0,
       execution: { origin: row.execution_consent_origin ?? 'unknown', reason: row.execution_consent_reason ?? null, actorId: row.execution_consent_actor_id ?? null },
-      history: { enabled: row.history_enabled === 1, retentionDays: boundedDays(row.retention_days), origin: row.history_consent_origin ?? 'unknown', reason: row.history_consent_reason ?? null, actorId: row.history_consent_actor_id ?? null },
+      history: { enabled: row.history_enabled === 1, retentionDays: boundedDays(row.retention_days), origin: historyOriginCategory(row.history_consent_origin), reason: row.history_consent_reason ?? null, actorId: row.history_consent_actor_id ?? null },
       configuration: { origin: row.configuration_origin ?? 'unknown', policyId: row.configuration_policy_id ?? 'unknown', value: configuration },
       writer: { confidence: row.writer_standing ?? 'unverified', origin: row.writer_origin ?? 'unknown' },
       lastDelivery: delivery ? { receivedAt: delivery.received_at, state: delivery.state, code: delivery.code ?? undefined } : undefined
@@ -346,7 +346,7 @@ export class D1AppStore {
     if (!row) return undefined;
     return {
       execution: { origin: row.execution_consent_origin ?? 'unknown', reason: row.execution_consent_reason === null ? null : row.execution_consent_reason ?? 'unknown' },
-      history: { origin: row.history_consent_origin ?? 'unknown', reason: row.history_consent_reason === null ? null : row.history_consent_reason ?? 'unknown' },
+      history: { origin: historyOriginCategory(row.history_consent_origin), reason: row.history_consent_reason === null ? null : row.history_consent_reason ?? 'unknown' },
       configuration: { origin: row.configuration_origin ?? 'unknown' }
     };
   }

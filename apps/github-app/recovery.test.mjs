@@ -115,6 +115,8 @@ test('history deletion rolls back every destructive row on failure, retries the 
     assert.equal(deleted.consent.history_enabled, 0);
     assert.deepEqual(deleted.job, { state: 'stopped', reason: 'history-deleted' });
     assert.deepEqual(deleted.deletion, { deleted_at: at, reapply_until: until });
+    const requestOrigin = `history-deletion-revision-${before.consent.settings_revision}`;
+    assert.equal((await store.exportState()).configurations.find(row => row.repository_id === 17).history_consent_origin, requestOrigin, 'the raw configuration snapshot retains the retry identity');
     assert.equal(await store.executionAllowed(17), true, 'history deletion leaves repository execution admitted');
     await current.database.prepare("INSERT INTO app_checks(repository_id,pull_request,head_sha,policy_id,check_run_id) VALUES (17,2,'later-head','policy',2)").run();
     deleted.checks.n = 1;
@@ -125,7 +127,14 @@ test('history deletion rolls back every destructive row on failure, retries the 
 
     await new D1CommercialStore(current.database).endLink('link-1', { source: 'fixture-end', endedAt: at });
     const exported = await exportCurrent(current.database);
+    const repositories = exported.currentState.tables.find(table => table.name === 'repositories');
+    const repositoryIdColumn = repositories.columns.indexOf('repository_id');
+    const originColumn = repositories.columns.indexOf('history_consent_origin');
+    assert.equal(repositories.rows.find(row => row[repositoryIdColumn] === 17)[originColumn], requestOrigin, 'the raw healthy-source snapshot retains the exact identity');
     assert.equal((await target.replay(exported, { point: healthyPoint })).phase, 'replayed');
+    assert.equal((await target.app.exportState()).configurations.find(row => row.repository_id === 17).history_consent_origin, requestOrigin, 'replay preserves the raw request identity');
+    assert.equal((await target.app.repositoryAdmission(17)).history.origin, 'history-deletion');
+    assert.equal((await target.app.repositoryConsentState(17)).history.origin, 'history-deletion', 'ordinary readback projects the replayed category');
     assert.equal((await target.app.historySettings(17)).enabled, false);
     assert.equal((await target.database.prepare('SELECT count(*) AS n FROM history_records WHERE repository_id=17').first()).n, 0);
     const restoredJobs = new D1HistoryJobStore(target.database, { now: () => through });

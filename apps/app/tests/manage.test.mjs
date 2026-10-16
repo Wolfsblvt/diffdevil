@@ -483,11 +483,16 @@ test('history deletion completes a repeated submitted form and refuses it after 
   const read = async () => (await app.auth.readAdmission({ session: cookie, repositoryId })).body;
   assert.equal((await act(app, cookie, { action: 'history', repository, enabled: 'on' })).message, 'history-on');
   const before = await read();
+  assert.equal(before.history.origin, 'dashboard', 'ordinary consent origins retain their category');
   assert.equal((await act(app, cookie, { action: 'delete-history', repository, confirm: 'dotfiles' })).message, 'stale');
   assert.deepEqual((await read()).history, before.history, 'a missing revision deletes nothing');
   const fields = { action: 'delete-history', repository, confirm: 'dotfiles', revision: String(before.revision) };
   assert.equal((await act(app, cookie, fields)).message, 'history-deleted');
-  assert.equal((await read()).history.enabled, false);
+  const deletedAdmission = await read();
+  assert.equal(deletedAdmission.history.enabled, false);
+  assert.equal(deletedAdmission.history.origin, 'history-deletion', 'admission exposes the consent category, not the request identity');
+  assert.equal((await app.appStore.repositoryConsentState(repositoryId)).history.origin, 'history-deletion');
+  assert.equal((await app.store.repositoryStandings([repositoryId])).get(repositoryId).historyOrigin, 'history-deletion', 'the App readback exposes the same category');
   const database = app.appStore.database;
   const deletionState = async () => ({
     repository: await database.prepare('SELECT * FROM repositories WHERE repository_id=?').bind(repositoryId).first(),
@@ -497,6 +502,7 @@ test('history deletion completes a repeated submitted form and refuses it after 
   await database.prepare("INSERT INTO app_checks(repository_id,pull_request,head_sha,policy_id,check_run_id) VALUES (?,2,'later-head','policy',2)").bind(repositoryId).run();
   const committed = await deletionState();
   assert.equal(committed.repository.settings_revision, before.revision + 1);
+  assert.equal(committed.repository.history_consent_origin, `history-deletion-revision-${before.revision}`, 'the stored request identity remains exact');
   assert.ok(committed.tombstone);
   const originalClock = clock.value;
   try {

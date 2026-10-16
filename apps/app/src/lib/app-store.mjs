@@ -6,7 +6,7 @@
  * infers names, authors or merge facts from numeric rows. History consent governs collection.
  */
 
-import { historyCollectionPause } from '../../../github-app/history-standing.mjs';
+import { historyCollectionPause, historyOriginCategory } from '../../../github-app/history-standing.mjs';
 const batches = (values, size = 100) => Array.from({ length: Math.ceil(values.length / size) }, (_, index) => values.slice(index * size, (index + 1) * size));
 const boundedDays = value => Number.isSafeInteger(value) && value >= 1 && value <= 3660 ? value : null;
 const parse = text => { try { return JSON.parse(text); } catch { return undefined; } };
@@ -51,7 +51,7 @@ export class D1AppReadStore {
           repositoryId: row.repository_id, installationId: row.installation_id, state: row.state, accessState: row.access_state, installationState: row.installation_state,
           executionActive, executionReason: row.execution_consent_reason ?? null, executionOrigin: row.execution_consent_origin ?? null, historyEnabled, historyReason: row.history_consent_reason ?? null,
           historyConsented, historyCollectionEnabled: row.history_enabled === 1, historyReadable, historyPauseReason: pauseReason,
-          historyOrigin: row.history_consent_origin ?? 'unknown', historyActorId: row.history_consent_actor_id ?? null,
+          historyOrigin: historyOriginCategory(row.history_consent_origin), historyActorId: row.history_consent_actor_id ?? null,
           retentionDays: boundedDays(row.retention_days), tombstoned: Boolean(row.tombstoned), writerStanding: row.writer_standing ?? 'unverified', revision: row.settings_revision ?? 0,
           selected: Boolean(row.selected_at) && !removed, selectedAt: row.selected_at ?? null,
           // Recorded visibility and account kind: what the runtime's own allowance check can see without a viewer.
