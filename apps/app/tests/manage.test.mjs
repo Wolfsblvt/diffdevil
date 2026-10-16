@@ -464,7 +464,8 @@ test('commercial refusals keep a safe failed-request Audit event before returnin
     const fail = async () => { throw Object.assign(new Error('https://works.example.test/authorize?code=fixture-private'), { code }); };
     app.commercial = { beginLink: fail, reconnectFundingAuthorization: fail };
     const action = code === 'E_SERVICE_RECONNECT_UNCONFIRMED' ? 'reconnect' : 'link';
-    const answer = await act(app, cookie, { action, back: '/manage/plan' });
+    const answer = await act(app, cookie, { action, back: '/manage/plan', namespace: String(ACCOUNTS['parser-guild']),
+      organisation: String(ACCOUNTS['parser-guild']), repository: 'parser-guild/grammar-fuzz' });
     assert.equal(answer.message, message);
     const events = await app.manage.events({ accountIds: [viewer.userId] });
     assert.equal(events.length, before.length + 1, `${code}: the refused request is recorded`);
@@ -475,6 +476,7 @@ test('commercial refusals keep a safe failed-request Audit event before returnin
     assert.equal(event.reason, MESSAGES[message].text, 'only fixed product copy is retained, never exception text or an arbitrary code');
     assert.equal(event.detail, null);
     assert.equal(event.repositoryId, null);
+    assert.equal(event.where, viewer.login, 'account operations cannot be filed against a submitted repository or namespace');
   }
 });
 

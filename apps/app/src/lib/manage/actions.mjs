@@ -192,6 +192,10 @@ export async function handleManageAction(request, { runtime, session, viewer }) 
   const audit = async (code, event = {}) => {
     const words = event.what ?? ACTION_WORDS[action];
     if (!words) return;
+    // These operations act on the signed-in account. Unrelated submitted selectors cannot move their record.
+    if (['link', 'unlink', 'reconnect', 'disconnect'].includes(action)) {
+      event = { ...event, accountId: viewer.userId, repositoryId: null, where: viewer.login };
+    }
     const repository = event.repositoryId !== undefined ? null : viewer.repositories.find(candidate => candidate.fullName === String(form.get('repository') ?? ''));
     const repositoryId = event.repositoryId ?? repository?.repositoryId ?? null;
     let accountId = event.accountId ?? null;
