@@ -46,6 +46,18 @@ export const REPOSITORIES = [
 
 const TITLES = ['Parse trailing commas in policy lists', 'Split tokenizer into lexer module', 'Report bounded ranges in JSON output', 'Handle CRLF in fixture diffs', 'Teach bands about open upper bounds', 'Drop legacy AST walker', 'Add size band docs', 'Cache scope globs per run', 'Explain unknown evidence in human output', 'Tighten rename detection threshold', 'Move policy evaluation into its own module', 'Fix off-by-one in hunk header parsing', 'Accept YAML anchors in policy files', 'Keep raw churn visible in CLI summary', 'Upgrade test runner', 'Refuse binary files with clear status', 'Support excluded paths in report', 'Document query arithmetic', 'Normalise path separators on Windows', 'Pin Node 24 in release workflow'];
 const BASE_PATHS = ['src/parser.ts', 'tests/parser.test.ts', 'src/ast.ts', 'docs/policy.md', 'src/index.ts', 'src/policy/bands.ts', 'README.md', 'package.json', 'src/report/format.ts', 'src/cli/main.ts'];
+// Retained names from the real PR127 desktop failure, kept as exact path specimens for Files layout qualification.
+export const LONG_RETAINED_PATHS = Object.freeze([
+  'apps/app/src/lib/app-store.mjs',
+  'apps/app/src/lib/manage/actions.mjs',
+  'apps/app/src/pages/manage/repositories/[owner]/[repo].astro',
+  'apps/app/tests/manage.test.mjs',
+  'apps/github-app/d1-state.test.mjs',
+  'apps/github-app/history-standing.mjs',
+  'apps/github-app/recovery.test.mjs',
+  'apps/github-app/storage.mjs',
+  'docs/integration/app-recovery.md',
+]);
 /** A denser population for performance qualification: more pull requests per repository and more files (`setScale`). */
 let SCALE = 1;
 let PATHS = BASE_PATHS;
@@ -122,7 +134,9 @@ export function pullRequests() {
       const revisions = [];
       for (let h = 0; h < heads; h++) {
         const growth = 0.55 + (h / Math.max(1, heads - 1)) * 0.45;
-        const files = Array.from({ length: fileCount }, (_, f) => ({ path: f === 0 ? SPINE : OTHERS[(i * 7 + f * 3) % OTHERS.length], modified: Math.round(scale * growth * 0.4 / fileCount), added: Math.round(scale * growth * 0.4 / fileCount), deleted: Math.round(scale * growth * 0.2 / fileCount) }));
+        const files = repository.repositoryId === 1001 && number === 452
+          ? [...LONG_RETAINED_PATHS, SPINE].map(path => ({ path, modified: 1, added: 1, deleted: 0 }))
+          : Array.from({ length: fileCount }, (_, f) => ({ path: f === 0 ? SPINE : OTHERS[(i * 7 + f * 3) % OTHERS.length], modified: Math.round(scale * growth * 0.4 / fileCount), added: Math.round(scale * growth * 0.4 / fileCount), deleted: Math.round(scale * growth * 0.2 / fileCount) }));
         revisions.push({ head: sha(number * 10 + h), observedAt: at(ageDays + (heads - 1 - h) * 0.6, 1), files });
       }
       const analysed = !(repository.repositoryId === 1006 && i % 5 === 4) && repository.history;

@@ -22,6 +22,9 @@
 .fr-table { max-height: 380px; overflow: auto; }
 .fr-teach { margin: 6px 0 0; font: 500 11px/1.45 var(--font-mono); color: var(--fg-3); }
 .fr.is-table .fr-plot, .fr.is-table .fr-readout { display: none; }
+.pr-files-scroll { width: 100%; min-width: 0; overflow-x: auto; }
+.pr-files-scroll:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 4px; }
+.pr-files-scroll > .a-tbl { width: max-content; min-width: 100%; }
 
 /* A readout never changes height: fixed line boxes, values never wrap, tags and chips share one height. */
 .fr-readout { height: var(--ch-readout-h); min-height: 0; overflow: hidden; margin: 0 0 6px; display: grid; gap: 6px; align-content: start; }

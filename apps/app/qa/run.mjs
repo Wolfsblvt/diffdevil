@@ -29,7 +29,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { once } from 'node:events';
 import { dirname, join, resolve } from 'node:path';
-import { createFakeGitHub, CODE, ENTITLEMENT_FIXTURE, INSTALLATIONS, setScale } from './fixture.mjs';
+import { createFakeGitHub, CODE, ENTITLEMENT_FIXTURE, INSTALLATIONS, LONG_RETAINED_PATHS, setScale } from './fixture.mjs';
 import { seedLocalState, executeLocal, recordLocalDelivery } from './seed.mjs';
 import { proManage, historyOnlyManage, planChoiceReturn, freeManage, businessManage, delegateManage, setupRecovery, manageAccess, COMMERCIAL_PRO, COMMERCIAL_FREE, COMMERCIAL_BUSINESS } from './manage.mjs';
 import { participationJourney, rewardOnlyJourney, nullableReceiverJourney, COMMERCIAL_BETA, COMMERCIAL_REWARD_ONLY, NULLABLE_LINK, NULLABLE_SIGNING_KEY, QA_CAMPAIGN } from './participation.mjs';
@@ -526,7 +526,7 @@ async function qualifyPrConfidenceState(consumerReturn = null) {
     frame.setFocus(1, { announce: true });
   }, now);
   const boundedReadout = await inspectBoundedReadout(1280);
-  check('PR Development at 1280px keeps the 7/5 row, compact type, complete grouped bounds and fixed F1 geometry', boundedReadout?.viewport === 1280
+  check('PR Development at 1280px preserves the adjacent 7/5 composition, compact type, complete grouped bounds and fixed F1 geometry', boundedReadout?.viewport === 1280
     && boundedReadout.rowSpans[0] === 'span 7' && boundedReadout.rowSpans[1] === 'span 5'
     && boundedReadout.values.some(value => value.label === 'Changed' && value.value === '2,240–4,335')
     && boundedReadout.values.filter(value => value.label === 'vs previous' || value.label === 'since opened').every(value => value.value === '−2,095–+2,095')
@@ -538,7 +538,7 @@ async function qualifyPrConfidenceState(consumerReturn = null) {
     const readout = await inspectBoundedReadout(width);
     const compact = width === 1360;
     const rowSpans = compact ? ['span 7', 'span 5'] : ['span 6', 'span 6'];
-    check(`PR Development at ${width}px keeps the ${compact ? '7/5 compact' : '6/6 canonical'} row, full grouped bounds and fixed F1 geometry`, readout?.viewport === width
+    check(`PR Development at ${width}px keeps the ${compact ? '7/5 compact' : '6/6 canonical'} composition, full grouped bounds and fixed F1 geometry`, readout?.viewport === width
       && JSON.stringify(readout.rowSpans) === JSON.stringify(rowSpans)
       && readout.values.some(value => value.label === 'Changed' && value.value === '2,240–4,335')
       && readout.values.filter(value => value.label === 'vs previous' || value.label === 'since opened').every(value => value.value === '−2,095–+2,095')
@@ -567,30 +567,52 @@ async function qualifyPrConfidenceState(consumerReturn = null) {
   }
   await page.locator('[data-chart-id="dev"] [data-readout]').screenshot({ path: join(OUT, 'pr-development-asymmetric-1440x900.png') });
 
-  for (const width of [1361, 1440]) {
+  for (const width of [1181, 1280, 1360, 1361, 1440]) {
     await page.setViewportSize({ width, height: 900 });
     const inspectFilesLayout = async (label, pathless) => {
       const response = await go('/pr/parser-guild/parser-lab/452?per=90d');
       await settled();
-      const layout = await page.evaluate(() => {
+      const layout = await page.evaluate(expectedPaths => {
         const panel = document.querySelector('.pr-files');
+        const scroller = panel?.querySelector('.pr-files-scroll');
         const table = panel?.querySelector('.a-tbl');
         const panelBox = panel?.getBoundingClientRect();
-        const cells = [...(table?.querySelectorAll('th, td') ?? [])].map(cell => {
-          const box = cell.getBoundingClientRect();
-          return { left: box.left, right: box.right };
-        });
-        return { width: innerWidth, column: panel && getComputedStyle(panel).gridColumn, rows: table?.querySelectorAll('tbody tr').length ?? 0,
-          tableOverflow: table ? table.scrollWidth > table.clientWidth + 1 : true,
-          cellsInside: Boolean(panelBox) && cells.every(cell => cell.left >= panelBox.left - 1 && cell.right <= panelBox.right + 1),
-          pageOverflow: document.documentElement.scrollWidth > innerWidth + 1, text: panel?.innerText ?? '' };
-      });
-      check(`PR detail ${label} Files presentation fits six columns at ${width}px`, response.status() === 200 && layout.width === width
-        && layout.column === 'span 6' && layout.rows > 0 && !layout.tableOverflow && layout.cellsInside && !layout.pageOverflow
-        && (pathless ? /path not retained/u.test(layout.text) : /src\/index\.ts/u.test(layout.text)), JSON.stringify(layout));
+        const scrollBox = scroller?.getBoundingClientRect();
+        const tableBox = table?.getBoundingClientRect();
+        const text = panel?.innerText ?? '';
+        const rowSpans = ['.pr-files', '.pr-development'].map(selector => { const node = document.querySelector(selector); return node && getComputedStyle(node).gridColumn; });
+        return { width: innerWidth, rowSpans, rows: table?.querySelectorAll('tbody tr').length ?? 0,
+          scroller: Boolean(scroller), scrollerTabIndex: scroller?.tabIndex ?? -1,
+          scrollWidth: scroller?.scrollWidth ?? 0, clientWidth: scroller?.clientWidth ?? 0,
+          panelContainsScroller: Boolean(panelBox && scrollBox) && scrollBox.left >= panelBox.left - 1 && scrollBox.right <= panelBox.right + 1,
+          tableFitsScrollableContent: Boolean(scrollBox && tableBox) && tableBox.left >= scrollBox.left - 1 && tableBox.right <= scrollBox.left + (scroller?.scrollWidth ?? 0) + 1,
+          pageOverflow: document.documentElement.scrollWidth > innerWidth + 1, text,
+          missingPaths: expectedPaths.filter(path => !text.includes(path)) };
+      }, pathless ? [] : LONG_RETAINED_PATHS);
+      const compact = width >= 1181 && width <= 1360;
+      const expectedSpans = compact ? ['span 7', 'span 5'] : ['span 6', 'span 6'];
+      const pathsPresent = pathless ? /path not retained/u.test(layout.text) : layout.rows === LONG_RETAINED_PATHS.length + 1 && layout.missingPaths.length === 0;
+      check(`PR detail ${label} Files table stays in its panel at ${width}px with the accepted ${compact ? '7/5' : '6/6'} composition`, response.status() === 200 && layout.width === width
+        && JSON.stringify(layout.rowSpans) === JSON.stringify(expectedSpans) && layout.rows > 0 && layout.scroller && layout.scrollerTabIndex === 0
+        && layout.panelContainsScroller && layout.tableFitsScrollableContent && layout.scrollWidth >= layout.clientWidth && !layout.pageOverflow && pathsPresent, JSON.stringify(layout));
+      return layout;
     };
 
-    await inspectFilesLayout('retained', false);
+    const retainedLayout = await inspectFilesLayout('retained long-path', false);
+    if (width === 1280) {
+      const scroller = page.locator('.pr-files-scroll');
+      await page.screenshot({ path: join(OUT, 'pr-files-long-paths-1280x900.png'), fullPage: true });
+      await scroller.press('End');
+      const rightState = await scroller.evaluate(element => ({ focused: document.activeElement === element, scrollLeft: element.scrollLeft, maximum: element.scrollWidth - element.clientWidth }));
+      const reachedLastColumn = rightState.scrollLeft >= rightState.maximum - 1;
+      check('PR detail retained Files lets keyboard users reach the last column inside the panel at 1280px', retainedLayout.scrollWidth > retainedLayout.clientWidth && rightState.focused && reachedLastColumn, JSON.stringify({ width, ...rightState, reachedLastColumn }));
+      await page.screenshot({ path: join(OUT, 'pr-files-long-paths-last-columns-1280x900.png'), fullPage: true });
+      await scroller.press('Home');
+      const leftState = await scroller.evaluate(element => ({ focused: document.activeElement === element, scrollLeft: element.scrollLeft }));
+      const returnedToFirstColumn = leftState.scrollLeft <= 1;
+      check('PR detail retained Files returns to the full path column with the keyboard at 1280px', leftState.focused && returnedToFirstColumn, JSON.stringify(leftState));
+    }
+    if (width === 1361) await page.screenshot({ path: join(OUT, 'pr-files-long-paths-1361x900.png'), fullPage: true });
     executeLocal("INSERT INTO analytical_pull_requests(repository_id, pull_request, updated_at, expires_at, record_json) VALUES (1001, 999999, '2026-10-15T00:00:00.000Z', NULL, 'not-json')", STATE);
     try { await inspectFilesLayout('pathless', true); }
     finally { executeLocal('DELETE FROM analytical_pull_requests WHERE repository_id=1001 AND pull_request=999999', STATE); }
