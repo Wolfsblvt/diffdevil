@@ -74,4 +74,11 @@ function wirePage(): void {
 wireNavigationFeedback();
 wirePage();
 document.addEventListener('diffdevil:page', wirePage);
+document.addEventListener('click', event => {
+  const target = event.target;
+  if (!(target instanceof Element)) return;
+  const control = target.closest('.a-seg > [aria-pressed], .a-seg > [aria-current]');
+  const segment = control?.closest<HTMLElement>('.a-seg');
+  if (segment) requestAnimationFrame(() => placeThumbs(segment.parentElement ?? document));
+});
 mountCharts();

@@ -80,6 +80,7 @@ npm ci --ignore-scripts --no-audit --no-fund
 npm run app:build        # engine, website provenance, icon projection, Astro build → artifacts/app/dist
 npm run test:app         # derivations, URL state, and the Community sign-in/viewer/service/locator journey against local D1 (premium cases: premium/tests)
 npm run qa:app           # seeds local D1, serves a GitHub double, runs the built joined Worker in workerd, drives Chromium (Community journeys always; premium journeys when the build joined the extension)
+node apps/app/qa/run.mjs --thumb # focused browser qualification of chart/table selection movement on the built App
 npm run check:app        # the build plus a Wrangler dry-run of the generated Worker configuration
 npm run app:dev          # Astro dev with local bindings (needs apps/app/.dev.vars, see below)
 ```
