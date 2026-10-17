@@ -272,7 +272,7 @@ export function createFakeGitHub({ user = USER, token = TOKEN, code = CODE, clie
   const calls = [];
   // Narrow the signed-in person's GitHub access for a case: `push` and `admin` per repository (repositoryId → boolean,
   // default write and the fixture's admin flag), `roles` per organisation login (default ROLES).
-  const state = { rateLimited: false, tokenValid: true, tokenCheckResponse: null, refreshResponse: null, membershipStatus: 200, targetedMembershipStatus: 403, omittedMemberships: new Set(), push: new Map(), admin: new Map(), roles: new Map(), membershipStates: new Map(), collaborators: new Map(), installationTokens: [], extraRepositories: [], logins: new Map() };
+  const state = { rateLimited: false, tokenValid: true, tokenCheckResponse: null, refreshResponse: null, membershipStatus: 200, targetedMembershipStatus: 403, omittedMemberships: new Set(), push: new Map(), admin: new Map(), roles: new Map(), membershipStates: new Map(), collaborators: new Map(), installationTokens: [], extraRepositories: [], logins: new Map(), policyHead: 'a'.repeat(40), policyFiles: new Map() };
   async function fetch(input, init = {}) {
     const url = new URL(String(input)), method = init.method ?? 'GET', path = url.pathname;
     const authorization = new Headers(init.headers).get('authorization') ?? '';
@@ -299,6 +299,21 @@ export function createFakeGitHub({ user = USER, token = TOKEN, code = CODE, clie
     if (installation) {
       const scope = installation[2] ? installation[2].split('_').map(Number) : null;
       const reachable = [...REPOSITORIES, ...state.extraRepositories].filter(repository => repository.installationId === Number(installation[1]) && (!scope || scope.includes(repository.repositoryId)));
+      const identity = /^\/repositories\/(\d+)$/u.exec(path);
+      if (identity) {
+        const repository = reachable.find(value => value.repositoryId === Number(identity[1]));
+        return repository ? json({ id: repository.repositoryId, full_name: repository.fullName, default_branch: 'main' }) : json({ message: 'Not Found' }, 404);
+      }
+      const policyRead = /^\/repos\/([^/]+\/[^/]+)\/(commits|contents)\/(.+)$/u.exec(path);
+      if (policyRead) {
+        const repository = reachable.find(value => value.fullName === policyRead[1]);
+        if (!repository) return json({ message: 'Not Found' }, 404);
+        if (policyRead[2] === 'commits') return json({ sha: state.policyHead });
+        const contents = state.policyFiles.get(repository.fullName);
+        if (contents === undefined) return json({ message: 'Not Found' }, 404);
+        if (typeof contents === 'number') return json({ message: 'unavailable' }, contents);
+        return json({ type: 'file', encoding: 'base64', content: btoa(contents), size: contents.length, sha: 'b'.repeat(40), path: '.diffdevil.yml' });
+      }
       const account = /^\/user\/(\d+)$/u.exec(path);
       if (account) {
         // `logins` renames (id → login) or deletes (id → null) an account; otherwise the fixture's own login answers.
