@@ -20,6 +20,7 @@ import { ROLE_KEYS, LOGIN, WRITE_CEILING, coordinates } from './people.mjs';
 import { adoptedConfiguration } from './defaults.mjs';
 import { sendJobStep } from '../../../../github-app/history-jobs.mjs';
 import { SETUP_ROLES, SETUP_BELONGS } from './setup.mjs';
+import { sha256Hex } from '../../../../github-app/commercial-wirt.mjs';
 
 /** Plain words for the message codes a redirect carries in `m`. */
 export const MESSAGES = Object.freeze({
@@ -76,7 +77,7 @@ export const MESSAGES = Object.freeze({
   'not-pro-default': { tone: 'err', text: 'Applying a reusable default is Pro. Business repositories follow their linked policy from Policies.' },
   'return-dismissed': { tone: 'ok', text: 'Noted.' },
   'close-linked': { tone: 'err', text: 'Your account is linked to a Works plan. Whether closure may end or unlink the plan is not settled yet, so unlink it at Works first.' },
-  'close-incomplete': { tone: 'err', text: 'Account closure did not finish. Some repositories may already be stopped or their history deleted. Reload Account and retry.' },
+  'close-incomplete': { tone: 'err', text: 'Account closure could not be confirmed. Reload Account to check its current state before trying again.' },
   'confirm-mismatch': { tone: 'err', text: 'Type your account name exactly to confirm.' },
   'repository-mismatch': { tone: 'err', text: 'Type the repository name exactly to confirm.' },
   'default-saved': { tone: 'ok', text: 'Default saved as a new revision. A repository adopts it from its own settings.' },
@@ -176,6 +177,7 @@ export async function handleManageAction(request, { runtime, session, viewer }) 
   const back = backOf(form);
   const cookie = session.session, origin = request.headers.get('origin');
   const mutation = { session: cookie, method: 'POST', origin };
+  const sessionHash = await sha256Hex(cookie);
   const repositoryOf = () => {
     const fullName = String(form.get('repository') ?? '');
     const repository = viewer.repositories.find(candidate => candidate.fullName === fullName);
@@ -198,7 +200,7 @@ export async function handleManageAction(request, { runtime, session, viewer }) 
     if (accountId === null && repositoryId !== null) { try { accountId = (await runtime.namespaceOf({ repositoryId })) ?? null; } catch { accountId = null; } }
     if (accountId === null) accountId = integer(form.get('namespace')) ?? integer(form.get('organisation')) ?? viewer.userId;
     const qualifier = action === 'operate' ? ({ run: 'Set to run', labels: 'Set to labels only', 'labels-history': 'Set to labels and history', stop: 'Stopped operating' })[String(form.get('mode') ?? '')] : action === 'history' ? (form.get('enabled') === 'on' ? 'Turned history on' : 'Stopped history collection') : action === 'swap' ? `Swapped in instead of ${String(form.get('outgoing') ?? '')}` : null;
-    await recordAction(runtime, { viewer, accountId, repositoryId, where: event.where ?? repository?.fullName ?? String(form.get('namespaceLogin') || viewer.login), what: qualifier ?? words, ...(event.result ? { result: event.result, reason: event.reason ?? null } : resultOfMessage(MESSAGES, code)), detail: event.detail ?? null });
+    await recordAction(runtime, { viewer, sessionHash, accountId, repositoryId, where: event.where ?? repository?.fullName ?? String(form.get('namespaceLogin') || viewer.login), what: qualifier ?? words, ...(event.result ? { result: event.result, reason: event.reason ?? null } : resultOfMessage(MESSAGES, code)), detail: event.detail ?? null });
   };
   const done = async (code, event, to) => { runtime.cache.clear(); await audit(code, event); return redirect(withMessage(to ?? back, code)); };
   const fresh = () => loadManage({ viewer, session, runtime, fresh: true });
@@ -246,7 +248,7 @@ export async function handleManageAction(request, { runtime, session, viewer }) 
   const stopRepository = async (repository, { keepSelection = false } = {}) => {
     const current = await admission(repository.repositoryId);
     await update(repository.repositoryId, { revision: current.revision, execution: false });
-    if (!keepSelection) await runtime.manage.deselect(repository.repositoryId);
+    if (!keepSelection) await runtime.manage.deselect(repository.repositoryId, sessionHash);
   };
   try {
     switch (action) {
@@ -255,7 +257,7 @@ export async function handleManageAction(request, { runtime, session, viewer }) 
         await admission(repository.repositoryId);
         const refusal = await allowanceRefusal(repository);
         if (refusal) return done(refusal);
-        await runtime.manage.select(repository.repositoryId, viewer.userId);
+        await runtime.manage.select(repository.repositoryId, viewer.userId, sessionHash);
         return done('selected');
       }
       case 'enable': {
@@ -264,7 +266,7 @@ export async function handleManageAction(request, { runtime, session, viewer }) 
         if (!holdsSlot(repository) && !repository.standing?.selected) {
           const refusal = await allowanceRefusal(repository);
           if (refusal) return done(refusal);
-          await runtime.manage.select(repository.repositoryId, viewer.userId);
+          await runtime.manage.select(repository.repositoryId, viewer.userId, sessionHash);
         }
         const declared = form.get('writer') === 'declared';
         if (!declared && !['detected', 'administrator-declared'].includes(current.writer.confidence)) return done('writer-undeclared');
@@ -280,7 +282,7 @@ export async function handleManageAction(request, { runtime, session, viewer }) 
         if (!['run', 'labels', 'labels-history'].includes(mode)) return done('invalid');
         const current = await admission(repository.repositoryId);
         if (current.state !== 'active' || current.execution.reason !== null) {
-          if (!holdsSlot(repository) && !repository.standing?.selected) { const refusal = await allowanceRefusal(repository); if (refusal) return done(refusal); await runtime.manage.select(repository.repositoryId, viewer.userId); }
+          if (!holdsSlot(repository) && !repository.standing?.selected) { const refusal = await allowanceRefusal(repository); if (refusal) return done(refusal); await runtime.manage.select(repository.repositoryId, viewer.userId, sessionHash); }
           if (!['detected', 'administrator-declared'].includes(current.writer.confidence)) return done('writer-undeclared');
           await update(repository.repositoryId, { revision: current.revision, execution: true });
         }
@@ -295,7 +297,7 @@ export async function handleManageAction(request, { runtime, session, viewer }) 
         if (mode === 'labels' && current.history.enabled) { const latest = await admission(repository.repositoryId); await update(repository.repositoryId, { revision: latest.revision, history: { enabled: false, stopCollecting: true } }); return done('history-off'); }
         return done('enabled');
       }
-      case 'release': { const repository = repositoryOf(); await admission(repository.repositoryId); await runtime.manage.deselect(repository.repositoryId); return done('released'); }
+      case 'release': { const repository = repositoryOf(); await admission(repository.repositoryId); await runtime.manage.deselect(repository.repositoryId, sessionHash); return done('released'); }
       case 'swap': {
         const incoming = repositoryOf();
         const outgoing = viewer.repositories.find(candidate => candidate.fullName === String(form.get('outgoing') ?? ''));
@@ -304,7 +306,7 @@ export async function handleManageAction(request, { runtime, session, viewer }) 
         const planRefusal = await allowanceRefusal({ ...incoming, private: false });
         if (planRefusal) return done(planRefusal);
         await stopRepository(outgoing);
-        await runtime.manage.select(incoming.repositoryId, viewer.userId);
+        await runtime.manage.select(incoming.repositoryId, viewer.userId, sessionHash);
         return done('swapped');
       }
       case 'history': {
@@ -321,9 +323,9 @@ export async function handleManageAction(request, { runtime, session, viewer }) 
           const places = namespace?.capacity.publicHistory;
           if (places?.of !== null && places?.of !== undefined && !repository.standing?.historyEnabled && places.used >= places.of) return done('history-allowance-full');
         }
-        if (enabled) await runtime.manage.select(repository.repositoryId, viewer.userId);
+        if (enabled) await runtime.manage.select(repository.repositoryId, viewer.userId, sessionHash);
         await update(repository.repositoryId, { revision: current.revision, history: enabled ? { enabled: true, retentionDays: runtime.config.retentionDays } : { enabled: false, stopCollecting: true } });
-        if (!enabled && !repository.standing?.executionActive) await runtime.manage.deselect(repository.repositoryId);
+        if (!enabled && !repository.standing?.executionActive) await runtime.manage.deselect(repository.repositoryId, sessionHash);
         return done(enabled ? 'history-on' : 'history-off');
       }
       case 'delete-history': {
@@ -362,7 +364,7 @@ export async function handleManageAction(request, { runtime, session, viewer }) 
         if (!runtime.commercial) return done('commercial-unavailable');
         const begun = await runtime.commercial.beginLink(mutation);
         if (begun.outcome === 'authorize') {
-          await runtime.manage.recordDeparture(viewer.userId, { purpose: 'link', fromPath: back,
+          await runtime.manage.recordDeparture(viewer.userId, { purpose: 'link', fromPath: back, sessionHash,
             snapshot: begun.attemptStateHash ? { attemptStateHash: begun.attemptStateHash } : null });
           runtime.cache.clear();
           return redirect(begun.authorizationUrl, begun.headers);
@@ -386,7 +388,7 @@ export async function handleManageAction(request, { runtime, session, viewer }) 
         runtime.cache.clear();
         return redirect(`/sign-in?reason=E_FUNDING_DISCONNECTED${result.body.authorityReconciliation === 'required' ? '&reconcile=required' : ''}`, result.headers);
       }
-      case 'dismiss-return': { await runtime.manage.clearDeparture(viewer.userId); return done('return-dismissed'); }
+      case 'dismiss-return': { await runtime.manage.clearDeparture(viewer.userId, sessionHash); return done('return-dismissed'); }
       case 'free-connect': {
         const organisationId = integer(form.get('organisation'));
         const model = await fresh();
@@ -394,13 +396,13 @@ export async function handleManageAction(request, { runtime, session, viewer }) 
         if (!namespace || model.viewerPlan !== 'Free') return done('invalid');
         // The organisation it replaces stops running; its history and settings stay, and its selections wait for a connection.
         if (model.freeConnected && model.freeConnected.accountId !== organisationId) for (const repository of model.freeConnected.repositories) if (repository.standing?.executionActive) await stopRepository(repository, { keepSelection: true });
-        if (!await runtime.manage.connectFree(viewer.userId, organisationId)) return done('free-taken');
+        if (!await runtime.manage.connectFree(viewer.userId, organisationId, sessionHash)) return done('free-taken');
         return done('free-connected');
       }
       case 'free-disconnect': {
         const model = await fresh();
         if (model.freeConnected) for (const repository of model.freeConnected.repositories) if (repository.standing?.executionActive) await stopRepository(repository, { keepSelection: true });
-        await runtime.manage.disconnectFree(viewer.userId);
+        await runtime.manage.disconnectFree(viewer.userId, sessionHash);
         return done('free-disconnected');
       }
       case 'plan-choice': {
@@ -419,7 +421,7 @@ export async function handleManageAction(request, { runtime, session, viewer }) 
           if (target === 'free' && kept.filter(({ namespace }) => namespace.kind === 'user' || namespace.accountId === organisation).length > limit) return done('choice-over');
           if (target === 'pro') for (const namespace of model.namespaces.filter(candidate => candidate.kind === 'org')) if (kept.filter(entry => entry.namespace === namespace).length > limit) return done('choice-over');
         }
-        await runtime.manage.savePlanChoice(viewer.userId, { organisation, keep: kept.map(({ repository }) => repository.repositoryId), target, from, on: String(form.get('on') ?? '') || null, accounts });
+        await runtime.manage.savePlanChoice(viewer.userId, { organisation, keep: kept.map(({ repository }) => repository.repositoryId), target, from, on: String(form.get('on') ?? '') || null, accounts }, sessionHash);
         // When the reduction has already taken effect, the choice applies now rather than at a date that has passed.
         const applied = runtime.operating ? await runtime.operating.applyDueChoice(viewer.userId) : null;
         return done(applied ? 'choice-applied' : 'choice-saved');
@@ -463,7 +465,7 @@ export async function handleManageAction(request, { runtime, session, viewer }) 
         return done('default-applied');
       }
       case 'sign-out-everywhere': {
-        await runtime.manage.revokeUserSessions(viewer.userId);
+        await runtime.manage.revokeUserSessions(viewer.userId, sessionHash);
         runtime.cache.clear();
         return redirect('/sign-in?reason=E_SIGNED_OUT_EVERYWHERE', { 'Set-Cookie': '__Host-diffdevil-session=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax' });
       }
@@ -471,10 +473,8 @@ export async function handleManageAction(request, { runtime, session, viewer }) 
         if (String(form.get('confirm') ?? '') !== viewer.login) return done('confirm-mismatch');
         const model = await fresh();
         if (model.commercial?.status?.linked) return done('close-linked');
-        // Personal repositories: stop, deselect and delete their history; organisations keep their own data.
-        const personal = model.namespaces.find(namespace => namespace.kind === 'user');
-        const repositoryIds = (personal?.repositories ?? []).filter(repository => repository.standing && !isRemoved(repository)).map(repository => repository.repositoryId);
-        const revoked = await runtime.auth.closeAccount({ ...mutation, repositoryIds });
+        // The database supplies the complete personal population, including rows absent from this viewer.
+        const revoked = await runtime.auth.closeAccount(mutation);
         runtime.cache.clear();
         return redirect('/sign-in?reason=E_ACCOUNT_CLOSED', revoked.headers);
       }
@@ -484,11 +484,11 @@ export async function handleManageAction(request, { runtime, session, viewer }) 
         const namespace = model.namespaces.find(candidate => candidate.accountId === accountId);
         if (!namespace) return done('invalid');
         if (!['Pro', 'Business'].includes(namespace.plan)) return done('not-pro');
-        if (action === 'default-remove') { await runtime.manage.removeNamespaceDefault(accountId); return done('default-removed'); }
+        if (action === 'default-remove') { await runtime.manage.removeNamespaceDefault(accountId, sessionHash); return done('default-removed'); }
         const { readNamespaceDefault } = await import('./defaults.mjs');
         let parsed;
         try { parsed = readNamespaceDefault(String(form.get('document') ?? '')); } catch { return done('invalid'); }
-        const saved = await runtime.manage.saveNamespaceDefault(accountId, { configuration: parsed.configuration, policyId: parsed.policyId, actorId: viewer.userId, expectedRevision: Number(form.get('revision') ?? 0) });
+        const saved = await runtime.manage.saveNamespaceDefault(accountId, { configuration: parsed.configuration, policyId: parsed.policyId, actorId: viewer.userId, expectedRevision: Number(form.get('revision') ?? 0), sessionHash });
         return done(saved === undefined ? 'stale' : 'default-saved');
       }
       // ── Business: named linked policies, publishing, automatic setup, delegated administration ──
@@ -500,7 +500,7 @@ export async function handleManageAction(request, { runtime, session, viewer }) 
         if (!POLICY_NAME.test(name)) return done('invalid', { accountId, where: namespace.login });
         let parsed;
         try { parsed = readLinkedPolicy(String(form.get('document') ?? '')); } catch { return done('policy-invalid', { accountId, where: namespace.login }); }
-        const policyId = await runtime.manage.createLinkedPolicy({ accountId, name, configuration: parsed.configuration, enginePolicyId: parsed.policyId, actorId: viewer.userId });
+        const policyId = await runtime.manage.createLinkedPolicy({ accountId, name, configuration: parsed.configuration, enginePolicyId: parsed.policyId, actorId: viewer.userId, sessionHash });
         if (!policyId) return done('policy-name-taken', { accountId, where: namespace.login });
         return done('policy-created', { accountId, where: namespace.login, what: `Created the policy ${name} (revision 1)` }, `/manage/policies?ns=${encodeURIComponent(namespace.login)}&policy=${policyId}`);
       }
@@ -550,11 +550,11 @@ export async function handleManageAction(request, { runtime, session, viewer }) 
         const model = await fresh();
         const namespace = model.namespaces.find(candidate => candidate.accountId === accountId);
         if (!namespace || namespace.plan !== 'Business') return done('not-business');
-        if (action === 'policy-unlink') { await runtime.manage.unlinkRepository(repository.repositoryId); return done('policy-unlinked'); }
+        if (action === 'policy-unlink') { await runtime.manage.unlinkRepository(repository.repositoryId, sessionHash); return done('policy-unlinked'); }
         const policy = await runtime.manage.linkedPolicy(String(form.get('policy') ?? ''));
         if (!policy) return done('policy-unknown');
         if (policy.accountId !== accountId) return done('policy-mismatch');
-        await runtime.manage.linkRepository(repository.repositoryId, policy.policyId, viewer.userId);
+        await runtime.manage.linkRepository(repository.repositoryId, policy.policyId, viewer.userId, sessionHash);
         const result = await applyRevision({ runtime, cookie, origin, policy, repositoryId: repository.repositoryId });
         const code = { applied: 'policy-linked', partly: 'policy-linked-partly', queued: 'policy-link-queued', failed: 'policy-link-failed' }[result.state] ?? 'policy-linked';
         return done(code, { what: `Linked to the policy ${policy.name} (revision ${policy.revision})`, result: result.state, reason: result.reason, detail: result.detail });
@@ -571,14 +571,14 @@ export async function handleManageAction(request, { runtime, session, viewer }) 
         const previous = await runtime.manage.automaticSetup(accountId);
         const before = previous ? `the setting chosen by ${previous.actorLogin ?? `GitHub user ${previous.actorId}`}${SETUP_ROLES[previous.actorRole] ? ` as ${SETUP_ROLES[previous.actorRole]}` : ''} on ${fmtDay(previous.savedAt) ?? 'an unrecorded date'}` : null;
         const off = () => done('setup-off', { ...place, ...(before ? { result: 'applied', reason: `Turned off ${before}. Newly granted repositories wait for a person.` } : {}) }, home);
-        if (action === 'setup-off') { await runtime.manage.removeAutomaticSetup(accountId); return off(); }
+        if (action === 'setup-off') { await runtime.manage.removeAutomaticSetup(accountId, sessionHash); return off(); }
         const policyId = String(form.get('policy') ?? '') || null;
         const policy = policyId ? await runtime.manage.linkedPolicy(policyId) : null;
         if (policyId && (!policy || policy.accountId !== accountId)) return done('policy-unknown', place, home);
         const enableExecution = form.get('enable') === 'on', writerDeclared = form.get('writer') === 'declared';
         if (enableExecution && !writerDeclared) return done('writer-undeclared', place, home);
-        if (!policy && !enableExecution) { await runtime.manage.removeAutomaticSetup(accountId); return off(); }
-        await runtime.manage.saveAutomaticSetup(accountId, { policyId: policy?.policyId ?? null, enableExecution, writerDeclared, actorId: viewer.userId, actorLogin: viewer.login, actorRole: role });
+        if (!policy && !enableExecution) { await runtime.manage.removeAutomaticSetup(accountId, sessionHash); return off(); }
+        await runtime.manage.saveAutomaticSetup(accountId, { policyId: policy?.policyId ?? null, enableExecution, writerDeclared, actorId: viewer.userId, actorLogin: viewer.login, actorRole: role, sessionHash });
         const standing = SETUP_BELONGS[role] === 'namespace'
           ? `It is ${namespace.login}'s setting: it keeps applying after ${viewer.login} leaves or stops administering, until a current administrator or Account administrator changes it or turns it off.`
           : `It acts for ${viewer.login} as Account administrator, on each new repository only while they are one and GitHub gives them write there.`;
@@ -595,7 +595,7 @@ export async function handleManageAction(request, { runtime, session, viewer }) 
           const userId = integer(form.get('user'));
           const existing = userId ? await runtime.manage.delegation(accountId, userId) : null;
           if (!existing) return done('invalid', place, home);
-          await runtime.manage.revokeDelegation(accountId, userId);
+          await runtime.manage.revokeDelegation(accountId, userId, sessionHash);
           // Automatic setup they chose as Account administrator stops acting with the delegation; say so where it happened.
           const setup = await runtime.manage.automaticSetup(accountId);
           const setupStops = setup?.actorId === userId && setup.actorRole === 'account-admin';
@@ -608,7 +608,7 @@ export async function handleManageAction(request, { runtime, session, viewer }) 
         const user = await session.reads.userByLogin(login).catch(() => null);
         if (!user) return done('delegate-unknown', place, home);
         if (user.id === viewer.userId) return done('delegate-self', place, home);
-        await runtime.manage.grantDelegation({ accountId, userId: user.id, login: user.login, role, repositories: role === 'repository-admin' ? repositories : null, grantedBy: viewer.userId });
+        await runtime.manage.grantDelegation({ accountId, userId: user.id, login: user.login, role, repositories: role === 'repository-admin' ? repositories : null, grantedBy: viewer.userId, sessionHash });
         return done('delegate-added', { ...place, what: `Named ${user.login} ${role === 'account-admin' ? 'Account administrator' : `Repository administrator of ${repositories.map(id => namespace.repositories.find(repository => repository.repositoryId === id)?.name ?? id).join(', ')}`}`, result: 'applied', reason: WRITE_CEILING }, home);
       }
       case 'survey-save': case 'survey-complete': {
@@ -616,8 +616,8 @@ export async function handleManageAction(request, { runtime, session, viewer }) 
         if (!participation) return done('survey-unavailable');
         const answers = readAnswers(participation.survey, form);
         const commercialStanding = await commercialStatus({ session, runtime, fresh: true });
-        const result = action === 'survey-save' ? await participation.saveDraft({ userId: viewer.userId, commercial: commercialStanding, answers })
-          : await participation.complete({ userId: viewer.userId, commercial: commercialStanding, answers });
+        const result = action === 'survey-save' ? await participation.saveDraft({ userId: viewer.userId, sessionHash, commercial: commercialStanding, answers })
+          : await participation.complete({ userId: viewer.userId, sessionHash, commercial: commercialStanding, answers });
         // Delivery is tried once right away; an unanswered attempt stays in the outbox for the next visit and maintenance.
         if (result === 'completed') await participation.flush({ userId: viewer.userId }).catch(() => undefined);
         return done({ saved: 'survey-saved', completed: 'survey-completed', 'already-completed': 'survey-already-completed', incomplete: 'survey-incomplete', closed: 'survey-closed', 'not-eligible': 'survey-not-eligible' }[result] ?? 'unknown');
@@ -633,12 +633,12 @@ export async function handleManageAction(request, { runtime, session, viewer }) 
       }
       case 'survey-delete': {
         if (!runtime.participation) return done('survey-unavailable');
-        await runtime.participation.deleteAnswers(viewer.userId);
+        await runtime.participation.deleteAnswers(viewer.userId, sessionHash);
         return done('survey-deleted');
       }
       case 'survey-dismiss': {
         if (!runtime.participation) return done('survey-unavailable');
-        await runtime.participation.dismiss(viewer.userId);
+        await runtime.participation.dismiss(viewer.userId, sessionHash);
         runtime.cache.clear();
         return redirect(withMessage(appBackOf(form), 'survey-dismissed'));
       }
@@ -679,7 +679,7 @@ export async function handleDeparture(request, { runtime, session, viewer }) {
   const from = url.searchParams.get('from');
   let snapshot = null;
   try { const status = runtime.commercial ? (await runtime.commercial.status({ session: session.session })).body : null; snapshot = status ? { order: status.order ?? null, capacity: (status.capacity ?? []).length, standing: status.commercial?.standing ?? null, tier: status.commercial?.tier ?? null, plan: status.plan } : null; } catch { snapshot = null; }
-  await runtime.manage.recordDeparture(viewer.userId, { purpose, fromPath: typeof from === 'string' && MANAGE_PATH.test(from) ? from : null, snapshot });
+  await runtime.manage.recordDeparture(viewer.userId, { purpose, fromPath: typeof from === 'string' && MANAGE_PATH.test(from) ? from : null, snapshot, sessionHash: await sha256Hex(session.session) });
   runtime.cache.clear();
   return redirect(destination);
 }

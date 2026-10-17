@@ -9,6 +9,7 @@ import Icon from '../Icon.astro';
 import { MESSAGES } from '../../lib/manage/actions.mjs';
 import { commercialStatus } from '../../lib/manage/model.mjs';
 import { fmtDay } from '../../lib/manage/works.mjs';
+import { sha256Hex } from '../../../../github-app/commercial-wirt.mjs';
 
 const runtime = Astro.locals.app, viewer = Astro.locals.viewer, session = Astro.locals.session;
 let view = null;
@@ -16,8 +17,8 @@ if (runtime?.participation && viewer && session && !Astro.url.pathname.startsWit
   try {
     const commercial = await commercialStatus({ session, runtime });
     view = await runtime.participation.view({ userId: viewer.userId, commercial, repositories: viewer.repositories });
-    if (view.invitation === 'invite' && !view.prompt?.invitedAt) await runtime.participation.noteShown(viewer.userId, 'invite');
-    if (view.invitation === 'remind' && !view.prompt?.remindedAt) await runtime.participation.noteShown(viewer.userId, 'remind');
+    if (view.invitation === 'invite' && !view.prompt?.invitedAt) await runtime.participation.noteShown(viewer.userId, 'invite', await sha256Hex(session.session));
+    if (view.invitation === 'remind' && !view.prompt?.remindedAt) await runtime.participation.noteShown(viewer.userId, 'remind', await sha256Hex(session.session));
   } catch (error) {
     // The invitation never breaks a page, but its failure is reported rather than silently read as "nothing to show".
     console.error('participation invitation unavailable', error);

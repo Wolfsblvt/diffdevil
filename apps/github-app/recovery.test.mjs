@@ -170,7 +170,7 @@ test('a completed atomic account closure survives current-source rollback and pr
     await new D1CommercialStore(current.database).endLink('link-1', { source: 'fixture-unlink', endedAt: at });
     await current.database.prepare("INSERT INTO participation_prompts(user_id,campaign_key,campaign_version) VALUES (77,'fixture',1)").run();
     await current.database.prepare('INSERT INTO repository_selections(repository_id,selected_at,actor_id) VALUES (17,?,77)').bind(at).run();
-    const repositories = await Promise.all([17,18,19,20].map(async repositoryId => ({ repositoryId, revision: (await current.app.repositoryAdmission(repositoryId)).revision })));
+    const repositories = await current.app.personalClosureRepositories(77);
     await closeLocalAccount({ database: current.database, userId: 77, repositories, sessionHash: 'session', now: () => at });
     const deletion = await current.database.prepare("SELECT deleted_at,reapply_until FROM deletion_tombstones WHERE scope='history:17'").first();
     assert.equal(deletion.deleted_at, at);

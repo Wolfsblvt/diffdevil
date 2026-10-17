@@ -292,6 +292,15 @@ export class D1AppStore {
     catch { throw new TypeError('Stored repository configuration is invalid.'); }
   }
 
+  /** Every locally retained repository owned by this numeric GitHub user, including unavailable/offboarding rows. */
+  async personalClosureRepositories(userId) {
+    return (await this.statement(`SELECT r.repository_id AS repositoryId,r.settings_revision AS revision,
+      (r.access_state='available' AND r.state NOT IN ('removed','offboarding') AND i.state='active'
+        AND NOT EXISTS (SELECT 1 FROM deletion_tombstones WHERE scope='repository:' || r.repository_id AND reapply_until>?)) AS requiresAuthority
+      FROM repositories r JOIN installations i ON i.installation_id=r.installation_id
+      WHERE i.account_id=? ORDER BY r.repository_id`, this.now(), userId).all()).results ?? [];
+  }
+
   /** Read persisted admission facts without inferring live provider reach or dashboard authorization. */
   async repositoryAdmission(repositoryId) {
     const row = await this.statement(`SELECT r.repository_id, r.installation_id, r.state, r.access_state, r.settings_revision,
