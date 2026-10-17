@@ -19,15 +19,29 @@ export async function admissionJourney({ check, go, page, shot }, github) {
   await page.locator(`[data-repository-row="${repository}"] form button`).click();
   await page.waitForLoadState('networkidle');
   await go(path);
-  await page.getByRole('link', { name: 'Inspect trusted policy', exact: true }).click();
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.getByRole('link', { name: 'Inspect trusted policy', exact: true }).press('Enter');
   await page.waitForLoadState('networkidle');
   const review = page.locator('[data-admission-review]');
+  if (!await review.count()) {
+    await shot('admission-inspection-unavailable');
+    throw new Error(`Trusted-policy review did not render: ${await page.locator('main').innerText()}\nProvider requests: ${JSON.stringify(github.calls.slice(-20))}`);
+  }
   const before = await review.innerText();
   check('the real inspection shows the pinned policy, running service version and unchanged consent',
     before.includes(github.state.policyHead) && before.includes('trusted-base') && before.includes('History off')
       && before.includes('not-attempted') && !before.includes('version unobserved'), before.slice(0, 650));
   check('an authoritative empty preset is reflected in the actual inspected effects',
     await review.locator('details').first().innerText().then(text => /"presets": \[\]/u.test(text)));
+  check('the explicit trusted-policy view avoids the stored-layer summary and retains a settings return',
+    await page.locator('[data-operation], [data-configuration]').count() === 0
+      && await page.getByRole('link', { name: 'Repository settings', exact: true }).count() === 1);
+  const disclosure = review.locator('details').first();
+  await disclosure.locator('summary').press('Enter');
+  check('reduced-motion inspection keeps the native disclosure operable from the keyboard',
+    await page.evaluate(() => matchMedia('(prefers-reduced-motion: reduce)').matches) && await disclosure.getAttribute('open') === null);
+  await disclosure.locator('summary').press('Enter');
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
   await shot('admission-inspection-1440');
   const expected = JSON.parse(await review.locator('input[name="inspection"]').inputValue());
   check('the form binds repository, installation, revision, policy, host and running version',
@@ -43,7 +57,7 @@ export async function admissionJourney({ check, go, page, shot }, github) {
   check('policy drift refuses admission through the actual same-origin form', /changed since inspection/u.test(await page.locator('.m-msg').innerText()));
   await go(`${path}?admission=review`);
   await page.locator('[data-admission-review] input[name="writer"]').check();
-  await page.getByRole('button', { name: 'Admit execution', exact: true }).click();
+  await page.getByRole('button', { name: 'Admit execution', exact: true }).press('Enter');
   await page.waitForLoadState('networkidle');
   const after = await page.locator('[data-admission-review]').innerText();
   check('admission returns the recorded actor and new revision, with history off and GitHub effects unobserved',

@@ -33,6 +33,11 @@ carries the inspected basis and operation outcome. Audit failure does not roll
 back consent. This operation neither applies nor observes labels, comments or
 checks. Subsequent PR execution resolves its own trusted base again.
 
+The explicit review shows the observed policy separately from the ordinary
+stored-layer settings summary. **Repository settings** returns to that unchanged
+console, including its existing enable controls; those controls do not claim the
+reviewed policy/version binding.
+
 A changed basis needs another review. An unconfirmed response may follow a
 committed change: inspect current consent/revision before retrying. The old
 revision cannot repeat the update. There is no additional credential or
