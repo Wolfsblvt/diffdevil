@@ -2,8 +2,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
 // A repository-relative path: directory quiet, file name plain. With `repository`, the short
 // repository name precedes it so a multi-repository scope stays unambiguous.
-interface Props { path: string; repository?: string | undefined; wrap?: boolean }
-const { path, repository, wrap = false } = Astro.props;
+interface Props { path: string; repository?: string | undefined; wrap?: boolean; middleEllipsis?: boolean | undefined; title?: string | undefined }
+const { path, repository, wrap = false, middleEllipsis = false, title } = Astro.props;
 const cut = path.lastIndexOf('/');
+const directory = cut >= 0 ? path.slice(0, cut + 1) : '';
+const name = cut >= 0 ? path.slice(cut + 1) : path;
 ---
-{repository && <span class="a-repo">{repository}</span>}<span class:list={['a-path', { wrap }]}><span class="dir">{cut >= 0 ? path.slice(0, cut + 1) : ''}</span>{cut >= 0 ? path.slice(cut + 1) : path}</span>
+{repository && <span class="a-repo">{repository}</span>}<span class:list={['a-path', { wrap }]} title={title}><span class="dir">{directory}</span>{middleEllipsis ? <span class="name">{name}</span> : name}</span>

@@ -25,6 +25,19 @@
 .pr-files-scroll { width: 100%; min-width: 0; overflow-x: auto; }
 .pr-files-scroll:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 4px; }
 .pr-files-scroll > .a-tbl { width: max-content; min-width: 100%; }
+.pr-files-scroll > .a-tbl.named { width: 100%; min-width: min-content; table-layout: auto; }
+.pr-files-scroll > .a-tbl.named th:nth-child(2),
+.pr-files-scroll > .a-tbl.named td:nth-child(2) { width: 72px; min-width: 72px; }
+.pr-files-scroll > .a-tbl.named th:nth-child(3),
+.pr-files-scroll > .a-tbl.named td:nth-child(3) { width: 88px; min-width: 88px; }
+.pr-files-scroll > .a-tbl.named th:nth-child(4),
+.pr-files-scroll > .a-tbl.named td:nth-child(4) { width: 88px; min-width: 88px; }
+.pr-files-scroll > .a-tbl.named td:first-child { overflow: hidden; }
+.pr-files-scroll > .a-tbl.named td:first-child > a { display: block; min-width: 0; overflow: hidden; }
+.pr-files-scroll > .a-tbl.named .a-path { display: grid; grid-template-columns: minmax(0, 1fr) max-content; min-width: 0; overflow: hidden; }
+.pr-files-scroll > .a-tbl.named .a-path .dir { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pr-files-scroll > .a-tbl.named .a-path .name { white-space: nowrap; }
+.pr-files-scroll > .a-tbl.named a:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 2px; }
 
 /* A readout never changes height: fixed line boxes, values never wrap, tags and chips share one height. */
 .fr-readout { height: var(--ch-readout-h); min-height: 0; overflow: hidden; margin: 0 0 6px; display: grid; gap: 6px; align-content: start; }
