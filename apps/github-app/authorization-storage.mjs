@@ -11,6 +11,14 @@ const SERVICE_DISCONNECTED = `EXISTS (SELECT 1 FROM user_service_connections c
   WHERE c.user_id=user_authorizations.user_id AND c.disconnected_at IS NOT NULL)`;
 const NO_SERVICE_PURPOSE = `(${SERVICE_DISCONNECTED} OR ${NO_ORGANISATION_FUNDING})`;
 
+/** A browser-owned insert must not recreate erased account facts after that browser's session ends. */
+export function browserWriteGuard(userId, sessionHash, at) {
+  return sessionHash === undefined ? { sql: '1', values: [] } : {
+    sql: `EXISTS (SELECT 1 FROM browser_sessions WHERE session_hash=? ${userId === undefined ? '' : 'AND user_id=?'} AND revoked_at IS NULL AND expires_at>?)`,
+    values: [sessionHash, ...(userId === undefined ? [] : [userId]), at]
+  };
+}
+
 /** D1 adapter for one-time user authorization and opaque browser sessions. */
 export class D1AuthorizationStore {
   constructor(database, { now = () => new Date().toISOString() } = {}) {
@@ -79,18 +87,28 @@ export class D1AuthorizationStore {
     ]);
   }
 
-  async revokeAuthorization(userId, { disconnectService = false, expectedMaterial } = {}) {
+  async revokeAuthorization(userId, { disconnectService = false, expectedMaterial, sessionHash } = {}) {
+    const guard = sessionHash === undefined ? undefined : browserWriteGuard(userId, sessionHash, this.now());
+    const [sessions, ...authorization] = this.revokeAuthorizationStatements(userId, { disconnectService, expectedMaterial, guard });
+    // A browser lease stays live until all guarded effects commit. Provider lease revocation keeps its original order.
+    await this.database.batch(guard ? [...authorization, sessions] : [sessions, ...authorization]);
+  }
+
+  /** Prepared revocation lets account closure end grants and sessions in its own local transaction. */
+  revokeAuthorizationStatements(userId, { disconnectService = false, expectedMaterial, guard = { sql: '1', values: [] }, sessionGuard = guard } = {}) {
     const now = this.now();
+    const statement = (sql, ...values) => this.statement(`${sql} AND (${guard.sql})`, ...values, ...guard.values);
     const matches = expectedMaterial === undefined ? '' : ' AND EXISTS (SELECT 1 FROM user_authorizations WHERE user_id=? AND protected_material=?)';
     const lease = expectedMaterial === undefined ? [] : [userId, expectedMaterial];
     const statements = [
-      this.statement(`UPDATE browser_sessions SET revoked_at=? WHERE user_id=? AND revoked_at IS NULL${matches}`, now, userId, ...lease),
-      this.statement(`UPDATE authorization_artifacts SET consumed_at=? WHERE user_id=? AND consumed_at IS NULL${matches}`, now, userId, ...lease),
-      this.statement(`UPDATE user_authorizations SET revoked_at=?, protected_material='' WHERE user_id=?${expectedMaterial === undefined ? '' : ' AND protected_material=?'}`, now, userId, ...(expectedMaterial === undefined ? [] : [expectedMaterial]))
+      this.statement(`WITH admitted AS MATERIALIZED (SELECT 1 WHERE ${sessionGuard.sql})
+        UPDATE browser_sessions SET revoked_at=? WHERE user_id=? AND revoked_at IS NULL${matches} AND EXISTS (SELECT 1 FROM admitted)`, ...sessionGuard.values, now, userId, ...lease),
+      statement(`UPDATE authorization_artifacts SET consumed_at=? WHERE user_id=? AND consumed_at IS NULL${matches}`, now, userId, ...lease),
+      statement(`UPDATE user_authorizations SET revoked_at=?, protected_material='' WHERE user_id=?${expectedMaterial === undefined ? '' : ' AND protected_material=?'}`, now, userId, ...(expectedMaterial === undefined ? [] : [expectedMaterial]))
     ];
     if (disconnectService) statements.push(this.statement(`INSERT INTO user_service_connections (user_id, disconnected_at, updated_at)
-      VALUES (?, ?, ?) ON CONFLICT(user_id) DO UPDATE SET disconnected_at=excluded.disconnected_at, updated_at=excluded.updated_at`, userId, now, now));
-    await this.database.batch(statements);
+      SELECT ?, ?, ? WHERE (${guard.sql}) ON CONFLICT(user_id) DO UPDATE SET disconnected_at=excluded.disconnected_at, updated_at=excluded.updated_at`, userId, now, now, ...guard.values));
+    return statements;
   }
 
   async artifactUser(hash, returnContext) {

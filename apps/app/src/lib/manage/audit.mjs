@@ -28,9 +28,9 @@ export function resultOfMessage(messages, code) {
  * Record one action of the signed-in person. `namespace` carries the account the event belongs to; a repository
  * event also names the repository. Recording never fails the action it describes.
  */
-export async function recordAction(runtime, { viewer, accountId = null, repositoryId = null, where, what, result, reason = null, detail = null, actor = null }) {
+export async function recordAction(runtime, { viewer, accountId = null, repositoryId = null, where, what, result, reason = null, detail = null, actor = null, sessionHash }) {
   try {
-    await runtime.manage.recordEvent({ accountId, repositoryId, where, actor: actor ?? { kind: 'person', id: viewer.userId, login: viewer.login }, what, result, reason, detail });
+    await runtime.manage.recordEvent({ accountId, repositoryId, where, actor: actor ?? { kind: 'person', id: viewer.userId, login: viewer.login }, what, result, reason, detail, sessionHash });
   } catch { /* the record is evidence, not the effect */ }
 }
 

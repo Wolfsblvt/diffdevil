@@ -22,25 +22,27 @@ export class D1CommercialStore {
     return changed(await this.statement('INSERT OR IGNORE INTO commercial_nonces (nonce_hash, expires_at) VALUES (?, ?)', hash, expiresAt).run());
   }
 
-  async createLinkAttempt({ stateHash, browserHash, userId, intentId, protectedVerifier, expiresAt }) {
-    await this.statement(`INSERT INTO commercial_link_attempts (state_hash, browser_hash, user_id, intent_id, protected_verifier, expires_at)
-      VALUES (?, ?, ?, ?, ?, ?)`, stateHash, browserHash, userId, intentId, protectedVerifier, expiresAt).run();
+  async createLinkAttempt({ stateHash, browserHash, userId, intentId, protectedVerifier, expiresAt, sessionHash }) {
+    return changed(await this.statement(`INSERT INTO commercial_link_attempts (state_hash, browser_hash, user_id, intent_id, protected_verifier, expires_at)
+      SELECT ?, ?, ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM browser_sessions
+        WHERE session_hash=? AND user_id=? AND revoked_at IS NULL AND expires_at>?)`, stateHash, browserHash, userId, intentId, protectedVerifier, expiresAt, sessionHash, userId, this.now()).run());
   }
 
   /** One browser, one signed-in product account and one unexpired attempt may continue a link callback once. */
-  async consumeLinkAttempt(stateHash, browserHash, userId) {
+  async consumeLinkAttempt(stateHash, browserHash, userId, sessionHash) {
     const now = this.now();
     const row = await this.statement(`SELECT intent_id, protected_verifier FROM commercial_link_attempts
-      WHERE state_hash=? AND browser_hash=? AND user_id=? AND consumed_at IS NULL AND expires_at > ?`, stateHash, browserHash, userId, now).first();
+      WHERE state_hash=? AND browser_hash=? AND user_id=? AND consumed_at IS NULL AND finished_at IS NULL AND expires_at > ?`, stateHash, browserHash, userId, now).first();
     if (!row) return undefined;
     const result = await this.statement(`UPDATE commercial_link_attempts SET consumed_at=?, protected_verifier=''
-      WHERE state_hash=? AND browser_hash=? AND user_id=? AND consumed_at IS NULL AND expires_at > ?`, now, stateHash, browserHash, userId, now).run();
+      WHERE state_hash=? AND browser_hash=? AND user_id=? AND consumed_at IS NULL AND finished_at IS NULL AND expires_at > ?
+        AND EXISTS (SELECT 1 FROM browser_sessions WHERE session_hash=? AND user_id=? AND revoked_at IS NULL AND expires_at>?)`, now, stateHash, browserHash, userId, now, sessionHash, userId, now).run();
     return changed(result) ? { intentId: row.intent_id, protectedVerifier: row.protected_verifier } : undefined;
   }
 
   /** Persist the exchanged owner grant before establishment, so a lost establishment response can be retried. */
   async holdExchangedGrant(stateHash, protectedGrant, expiresAt) {
-    await this.statement('UPDATE commercial_link_attempts SET protected_grant=?, expires_at=? WHERE state_hash=? AND finished_at IS NULL', protectedGrant, expiresAt, stateHash).run();
+    return changed(await this.statement('UPDATE commercial_link_attempts SET protected_grant=?, expires_at=? WHERE state_hash=? AND finished_at IS NULL', protectedGrant, expiresAt, stateHash).run());
   }
 
   /** A refreshed grant replaces exactly the grant it was refreshed from, before its first use. */
@@ -69,7 +71,7 @@ export class D1CommercialStore {
 
   async unfinishedEstablishment(userId) {
     return this.statement(`SELECT state_hash, intent_id, protected_grant FROM commercial_link_attempts WHERE user_id=? AND protected_grant IS NOT NULL
-      AND finished_at IS NULL AND expires_at > ? ORDER BY expires_at DESC LIMIT 1`, userId, this.now()).first();
+      AND finished_at IS NULL ORDER BY expires_at DESC LIMIT 1`, userId).first();
   }
 
   async finishAttempt(stateHash, outcome = null) {
@@ -86,13 +88,20 @@ export class D1CommercialStore {
   async binding(organisationId) { return this.statement('SELECT * FROM commercial_bindings WHERE organisation_id=?', organisationId).first(); }
 
   /** A retried establishment of the same Wirt stream refreshes only its owner grant. */
-  async saveEstablishedLink({ linkId, productAccount, worksAccount, intentId, protectedGrant }) {
+  async saveEstablishedLink({ linkId, productAccount, worksAccount, intentId, protectedGrant, stateHash }) {
     const now = this.now();
     try {
-      await this.statement(`INSERT INTO commercial_links (link_id, product_account, works_account, state, intent_id, protected_grant, established_at, updated_at)
-        VALUES (?, ?, ?, 'active', ?, ?, ?, ?)
+      const insert = this.statement(`INSERT INTO commercial_links (link_id, product_account, works_account, state, intent_id, protected_grant, established_at, updated_at)
+        SELECT ?, ?, ?, 'active', ?, ?, ?, ? WHERE ${stateHash ? `EXISTS (SELECT 1 FROM commercial_link_attempts WHERE state_hash=? AND user_id=? AND intent_id=? AND consumed_at IS NOT NULL AND finished_at IS NULL AND protected_grant IS NOT NULL)` : '1'}
         ON CONFLICT(link_id) DO UPDATE SET protected_grant=excluded.protected_grant, updated_at=excluded.updated_at, revision=commercial_links.revision + 1
-        WHERE commercial_links.state='active' AND commercial_links.product_account=excluded.product_account`, linkId, productAccount, worksAccount, intentId, protectedGrant, now, now).run();
+        WHERE commercial_links.state='active' AND commercial_links.product_account=excluded.product_account`, linkId, productAccount, worksAccount, intentId, protectedGrant, now, now, ...(stateHash ? [stateHash, productAccount, intentId] : []));
+      // Moving the grant from an attempt to its confirmed local link is one commit, so no abandoned pending leg remains.
+      const [result] = stateHash ? await this.database.batch([insert,
+        this.statement(`UPDATE commercial_link_attempts SET finished_at=?,protected_grant=NULL,protected_verifier=''
+          WHERE state_hash=? AND user_id=? AND intent_id=? AND EXISTS (SELECT 1 FROM commercial_links
+            WHERE link_id=? AND product_account=? AND intent_id=? AND state='active')`, now, stateHash, productAccount, intentId, linkId, productAccount, intentId)
+      ]) : [await insert.run()];
+      if (!changed(result)) throw conflict();
     } catch { throw conflict(); }
     const row = await this.link(linkId);
     if (!row || row.state !== 'active' || row.product_account !== productAccount) throw conflict();
@@ -240,7 +249,8 @@ export class D1CommercialStore {
     const now = this.now(), reportCutoff = new Date(Date.parse(now) - 30 * 86_400_000).toISOString();
     await this.database.batch([
       this.statement('DELETE FROM commercial_nonces WHERE expires_at <= ?', now),
-      this.statement('DELETE FROM commercial_link_attempts WHERE expires_at <= ?', now),
+      // An uncertain establishment may already exist remotely. Expiry cannot erase its reconciliation handle/grant.
+      this.statement('DELETE FROM commercial_link_attempts WHERE expires_at <= ? AND (protected_grant IS NULL OR finished_at IS NOT NULL)', now),
       this.statement(`DELETE FROM commercial_reports WHERE state IN ('sent', 'superseded') AND created_at < ?
         AND report_version < (SELECT MAX(r.report_version) FROM commercial_reports r WHERE r.link_id=commercial_reports.link_id)`, reportCutoff),
       this.statement(`DELETE FROM commercial_reports WHERE created_at < ?

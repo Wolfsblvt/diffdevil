@@ -81,17 +81,21 @@ Works header, desktop layout and keyboard navigation. It records its focused sco
 under the selected target's `qa/identity/`, separately from full journey evidence.
 
 After the matching App build, `npm run qa:app:works-entry` qualifies the native
-Manage Pro form through an external Works consent double and the real callback.
+Manage Pro form through an external Works authentication/consent double and the real callback.
 It loads the emitted Worker and middleware in local Miniflare, uses disposable D1,
 and intercepts every Chromium navigation hop and outgoing provider call. Set
 `DIFFDEVIL_APP_TARGET=staging` after `app:build:staging` to exercise the distinct
 staging consumer. It checks the bound numeric actor, signed intent, PKCE,
 application and queued report, visible unavailable/foreign-answer refusals, and
-CSP refusal of an unadmitted redirect after the Works hop. Screenshots and results
+CSP refusal of an arbitrary first external form destination. The successful POST
+commits a private continuation document before automatic navigation through the
+synthetic Works → authentication → Works redirect chain. `--no-javascript` qualifies
+the same journey with scripts disabled (GitHub's existing session-exchange button
+is then explicit; the Works handoff still needs no extra click). Screenshots and results
 also cover an unapproved return, the actual expired attempt (including an older
 departure), a refused attempt read, approved-pending same-intent recovery and a
 spent-callback replay without a second establishment. Existing copy is used.
-Results go to the selected target's `qa/works-entry/`. No live sign-in, Works consent,
+Results go to the selected target's `qa/works-entry/` (`no-javascript/` for that variant). No live sign-in, Works consent,
 report delivery, deployment or private composition is proved by this local pass.
 
 | Command | What it proves |

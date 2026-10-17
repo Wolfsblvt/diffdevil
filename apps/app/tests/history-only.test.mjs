@@ -138,15 +138,15 @@ test('consented history imports and repairs three current-API comparisons with r
     assert.equal((await app.appStore.historySettings(repositoryId, { independentExecution: true })).enabled, false);
   });
   await t.test('failed personal history deletion refuses account closure and keeps the session recoverable', async () => {
-    const deleteHistory = app.appStore.deleteHistory;
-    app.appStore.deleteHistory = async () => { throw new Error('fixture deletion unavailable'); };
+    // Fail the actual shared D1 boundary; closure no longer calls the standalone history-deletion method.
+    await database.exec("CREATE TRIGGER fixture_closure_deletion BEFORE DELETE ON analytical_pull_requests BEGIN SELECT RAISE(ABORT,'fixture deletion unavailable'); END");
     try {
       const refused = await act('close-account', 'off', { confirm: viewer.login, back: '/manage/account' });
       assert.equal(refused.message, 'close-incomplete');
       assert.equal(refused.reason, null);
       assert.equal(await rawCount(repositoryId), 3);
       assert.equal((await openSession(new Request(`${ORIGIN}/manage/account`, { headers: { cookie: `${SESSION_COOKIE}=${cookie}` } }), app)).refusal, undefined);
-    } finally { app.appStore.deleteHistory = deleteHistory; }
+    } finally { await database.exec('DROP TRIGGER fixture_closure_deletion'); }
   });
   assert.equal((await act('history')).message, 'history-on', 'explicit history readmission is independent of execution');
   assert.equal((await app.appStore.historySettings(repositoryId, { independentExecution: true })).enabled, true);

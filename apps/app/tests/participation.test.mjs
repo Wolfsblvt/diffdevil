@@ -630,6 +630,9 @@ test('the invitation waits for observed use (failed included), keeps that observ
 
 test('a preview is created only by the Origin-checked POST; any GET, including a cross-site one, renders without creating a quote', async () => {
   const owner = 610;
+  // This specimen uses a fake authentication adapter; its browser-owned persistence still needs a real local lease.
+  await db.prepare('INSERT INTO browser_sessions(session_hash,user_id,return_context,expires_at) VALUES (?,?,?,?)')
+    .bind(createHash('sha256').update(session(owner)).digest('hex'), owner, 'app', '2027-05-01T00:00:00.000Z').run();
   const quotes = () => double.state.requests.filter(request => request.path.endsWith('/reward-quotes')).length;
   const runtime = { participation, commercial, now: () => clock.value, config: { allowedOrigins: [APP] }, cache: { clear() {} } };
   const viewer = { userId: owner, repositories: [] };

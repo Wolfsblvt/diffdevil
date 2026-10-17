@@ -292,6 +292,15 @@ export class D1AppStore {
     catch { throw new TypeError('Stored repository configuration is invalid.'); }
   }
 
+  /** Every locally retained repository owned by this numeric GitHub user, including unavailable/offboarding rows. */
+  async personalClosureRepositories(userId) {
+    return (await this.statement(`SELECT r.repository_id AS repositoryId,r.settings_revision AS revision,
+      (r.access_state='available' AND r.state NOT IN ('removed','offboarding') AND i.state='active'
+        AND NOT EXISTS (SELECT 1 FROM deletion_tombstones WHERE scope='repository:' || r.repository_id AND reapply_until>?)) AS requiresAuthority
+      FROM repositories r JOIN installations i ON i.installation_id=r.installation_id
+      WHERE i.account_id=? ORDER BY r.repository_id`, this.now(), userId).all()).results ?? [];
+  }
+
   /** Read persisted admission facts without inferring live provider reach or dashboard authorization. */
   async repositoryAdmission(repositoryId) {
     const row = await this.statement(`SELECT r.repository_id, r.installation_id, r.state, r.access_state, r.settings_revision,
@@ -361,14 +370,19 @@ export class D1AppStore {
 
   /** Repository-scoped SQL keeps child removal in the caller's privacy transaction. */
   historyRemovalStatements(repositoryId, guard = { sql: '1', values: [] }) {
+    return this.historyRemovalStatementsForRepositories({ sql: 'SELECT ?', values: [repositoryId] }, guard);
+  }
+
+  /** A fixed-size set deletion also serves whole-account closure without one batch per repository. */
+  historyRemovalStatementsForRepositories(targets, guard = { sql: '1', values: [] }) {
     return [
-      'DELETE FROM analytical_pull_requests WHERE repository_id=?',
-      'DELETE FROM analytical_size_observations WHERE repository_id=?',
-      'DELETE FROM analytical_size_facts WHERE repository_id=?',
-      'DELETE FROM history_file_rows WHERE history_id IN (SELECT id FROM history_records WHERE repository_id=?)',
-      'DELETE FROM history_effect_rows WHERE history_id IN (SELECT id FROM history_records WHERE repository_id=?)',
-      'DELETE FROM history_records WHERE repository_id=?'
-    ].map(sql => this.statement(`${sql} AND (${guard.sql})`, repositoryId, ...guard.values));
+      `DELETE FROM analytical_pull_requests WHERE repository_id IN (${targets.sql})`,
+      `DELETE FROM analytical_size_observations WHERE repository_id IN (${targets.sql})`,
+      `DELETE FROM analytical_size_facts WHERE repository_id IN (${targets.sql})`,
+      `DELETE FROM history_file_rows WHERE history_id IN (SELECT id FROM history_records WHERE repository_id IN (${targets.sql}))`,
+      `DELETE FROM history_effect_rows WHERE history_id IN (SELECT id FROM history_records WHERE repository_id IN (${targets.sql}))`,
+      `DELETE FROM history_records WHERE repository_id IN (${targets.sql})`
+    ].map(sql => this.statement(`${sql} AND (${guard.sql})`, ...targets.values, ...guard.values));
   }
 
   async removeHistoryRecords(repositoryId) {
@@ -491,7 +505,7 @@ export class D1AppStore {
     const until = reapplyUntil ?? (retry ? previous.reapply_until : new Date(Date.parse(now) + APP_TOMBSTONE_DAYS * DAY).toISOString());
     const requestOrigin = revision === undefined ? 'history-deletion' : `history-deletion-revision-${revision}`;
     // Preserve the live request identity when replaying that same recorded event.
-    const deletionOrigin = revision === undefined && previous?.deleted_at === now && consent?.history_consent_origin?.startsWith('history-deletion-revision-')
+    const deletionOrigin = revision === undefined && previous?.deleted_at === now && (consent?.history_consent_origin?.startsWith('history-deletion-revision-') || consent?.history_consent_origin?.startsWith('history-deletion-account-'))
       ? consent.history_consent_origin : requestOrigin;
     if (previous && deletedAt !== undefined && previous.deleted_at > now) return;
     // All statements see the same revision until the final update, within one D1 transaction.

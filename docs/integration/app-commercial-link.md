@@ -8,14 +8,23 @@ The service-connection lifecycle below separates actual funded purpose, browser 
 
 ## Trust boundary
 
-The native Manage link form posts to the App before redirecting to Works' exact
-intent-specific consent route. Chromium applies `form-action` to that redirect
-chain. App document headers therefore admit the single `WIRT_ORIGIN` validated by
-a successfully composed commercial consumer, alongside the App itself and GitHub.
-Missing or refused commercial configuration adds no external form destination;
-the local stand-in stays same-origin. The client still validates the returned
-intent ID, exact Works origin and consent path before creating the local attempt.
-No request parameter or provider-returned URL selects the browser allowlist.
+The native Manage link form initiates through an Origin-checked POST to the App.
+The client validates the returned intent ID, exact Works origin and consent path
+before creating the browser-bound local attempt. A successful initiation commits
+a private, no-store 200 HTML document with an immediate native refresh and a
+fallback link to that validated consent URL. It adds no routine click and works
+without JavaScript. Refusals keep their existing local redirects and messages.
+
+Committing the document ends the form-submission redirect chain before navigating
+to Works. Chromium otherwise applies `form-action` to later authentication hops
+and can block a legitimate Works sign-in on another origin. After the handoff,
+Works owns its authentication redirects, as with an ordinary top-level link; the
+App does not constrain those later destinations. The exact first consent-origin
+and path validation, state, browser binding, PKCE and callback protections remain.
+App document `form-action` still admits only self, GitHub and the single configured
+`WIRT_ORIGIN` from a successfully composed consumer. No request parameter or
+provider-returned URL selects that allowlist. Missing/refused configuration adds
+no external form destination; the local stand-in stays same-origin.
 
 New link intents include `product_account_label` in the existing signed
 `POST /api/wirt/diffdevil/link-intents` JSON alongside `product_account`, `challenge`
@@ -132,6 +141,34 @@ All routes live on the App Worker. The receiver needs only D1 and the signing ke
 
 Callback outcomes are `linked`, `pending`, `denied`, `expired`, `conflict`, `ended`, `invalid`, `session-required` and `failed`. `pending` means Wirt's answer was lost or unavailable after consent; the next link request resumes the same intent. The continuation URL is deployment configuration; the App defaults it to its one admitted manage-plan destination, `/manage/plan`, where [Plan & funding](../../apps/app/README.md) reads the outcome and the departure it recorded before the person left.
 
+## Closure and in-flight establishment
+
+Personal account closure refuses an active link and an unfinished consumed link
+attempt. Consuming a callback and creating its attempt both compare the initiating
+browser session at their D1 commit. If closure commits first, it retires unconsumed
+attempts and ends sessions; the delayed continuation cannot exchange/establish
+through that attempt. If callback consumption wins, closure remains unchanged
+while code exchange and establishment resolve. An expired attempt with no retained
+exchanged grant can be retired; a delayed exchange then cannot retain its result
+or proceed to establishment through the retired attempt.
+
+An exchanged owner grant is persisted before the remote establishment call. That
+attempt and grant remain until an authoritative outcome, including across the old
+retry expiry, maintenance, a lost remote response or a failed local link commit.
+Retry resumes the same intent and association. A refused refresh alone cannot
+prove that the remote association never existed: its fact remains pending, holds
+closure and does not silently begin another consent. Such an unrecoverable grant
+needs authoritative remote association reconciliation; this source does not invent
+a provider action or claim that local erasure ended it. Definite intent refusal
+or an authoritative ended answer can still finish the attempt normally.
+
+The local established-link commit compares the consumed unfinished attempt and
+moves its retained grant to the active link while finishing that attempt atomically.
+These are the existing session/attempt/link boundaries, without a command journal,
+new recurring worker or whole-App lock. New sign-in and deliberate later consent
+remain ordinary new operations. Source fixtures qualify the local conflict and
+independent wire double; actual Wirt/customer adoption remains separate.
+
 ## Configuration
 
 Each deployment consumes one Wirt producer. The [persistent staging configuration and activation handoff](app-staging.md) separate its callbacks, signing set, sessions and retained application state from production. The existing controlled TEST callback into production remains valid until a separately qualified replacement is activated.
@@ -172,7 +209,7 @@ Every application, binding change, refusal or changed authority observation writ
 
 Stored report bodies never hold a display label. A pending report carries the labels it may disclose separately and sends them only for bindings whose authority was last observed present; when the report is sent, superseded, failed or its link ends, those labels are dropped. Retained report evidence keeps order, delivery and refusal facts, not labels.
 
-The PKCE verifier and owner access/refresh grant are sealed by the injected protector. A rotated grant is persisted before its next use. If the establishment response is lost after Wirt committed it, the exchanged grant is kept for a day and the next link request re-establishes the same intent without a second consent: an expired access token is refreshed and durably stored first, and a `401` forces one refresh. While Wirt's outcome stays unknown the link request answers `503 E_COMMERCIAL_LINK_PENDING` and starts no new intent. Only a definite refusal — a refused refresh grant, `403`, `409` or a terminal answer — finishes the attempt and lets a fresh consent begin. The attempt row keeps the latest typed outcome (`outcome-unknown`, `grant-unavailable`, `grant-refreshed`, `grant-refused` or `status-<code>`) until it expires.
+The PKCE verifier and owner access/refresh grant are sealed by the injected protector. A rotated grant is persisted before its next use. If the establishment response is lost after Wirt committed it, the exchanged grant and original intent remain for reconciliation beyond the old one-day retry expiry. The next link request re-establishes that same intent without a second consent: an expired access token is refreshed and durably stored first, and a `401` forces one refresh. While Wirt's outcome stays unknown the link request answers `503 E_COMMERCIAL_LINK_PENDING` and starts no new intent. Definite intent refusal (`403`, `409`) or an authoritative terminal answer can finish the attempt. A refused refresh alone cannot establish the remote association's state, so its retained attempt stays pending. The row preserves the latest typed outcome (`outcome-unknown`, `grant-unavailable`, `grant-refreshed`, `grant-refused` or `status-<code>`) until authoritative reconciliation finishes it.
 
 ## Restore occasion
 

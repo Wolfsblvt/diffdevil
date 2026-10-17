@@ -57,10 +57,58 @@ request identity for retry and replay.
 No schema, recovery-input format or original-point interpretation changes here.
 Migration-0016 points remain compatible. An old source's capture from between its
 separate deletion commits still has the diagnosed missing-intent gap; newer source
-cannot invent that lost request. Account closure benefits at its history-deletion
-leg, but its other local and authorization steps remain separate commits with an
-ordinary incomplete/retry response. This is not durable continuation of an entire
-closure, nor unconditional recovery of every in-flight App command.
+cannot invent that lost request.
+
+## Personal account closure at the database boundary
+
+The supported personal account-closure route also commits its complete local
+transition in one APP_DB batch: personal history/children/checks/repairs and open
+history jobs, repository stops and deselection, Manage and participation erasure,
+and local grant/session/artifact revocation. Organisation history and settings
+remain. Confirmation and the linked-Works-account refusal still precede closure.
+APP_DB supplies every locally retained repository whose installation belongs to
+the numeric user, including unavailable, removed and offboarding rows omitted by
+a cached GitHub/viewer projection. Current GitHub update authority is checked for
+live reachable controls; unavailable/offboarding personal history still receives
+immediate local erasure without restoring provider reach or waiting for grace.
+The batch proves the supplied set equals that complete local population and checks
+each revision, ownership and authority-requiring reach before erasing anything.
+A changed or omitted target refuses the complete set. Repository
+revisions advance once for the joined execution/history withdrawal.
+The initiating session must also still be active at commit, including for an
+account with no personal repositories. It ends last in that same transaction;
+the raw deletion origin identifies this closure's settings commit so a refused
+request cannot end sessions belonging to a later sign-in. Ordinary readers still
+see the `history-deletion` category; raw exports and recovery retain the origin.
+
+Closure and Works establishment share the existing attempt's database boundary.
+An active link or consumed unfinished attempt refuses closure. An expired attempt
+without an exchanged grant can be retired; an attempt holding a grant/unknown
+remote outcome cannot expire away. Closure retires unconsumed attempts in its own
+transaction; a delayed callback or intent creation cannot cross the ended session.
+The [commercial contract](app-commercial-link.md#closure-and-in-flight-establishment)
+owns same-intent reconciliation. Browser-owned Manage/participation inserts carry
+the initiating session predicate, so an old request cannot recreate erased facts
+even after a new sign-in. Existing-row updates and policy-child inserts require
+their surviving parent; organisation-owned audit facts remain.
+
+The closure statement count is fixed, using JSON-bound targets and set-based
+policy-child removal rather than one transaction per repository or policy.
+[D1's query, binding, memory and whole-batch duration limits](https://developers.cloudflare.com/d1/platform/limits/)
+still apply; a limit/error rolls back the whole closure and produces the existing
+indeterminate acknowledgement. It asserts no partial deletion. A lost commit response may also produce it, but
+the committed closure has already ended its sessions and cannot run again through
+the spent session. A new sign-in and later explicit reconsent remain new choices.
+No background completion job or general command journal is introduced.
+
+The healthy-current-source input carries this complete committed state through
+the unchanged migration-0016 interpretation. Repeated isolated replay preserves
+the original deletion time/lifetime; a later current sign-in/reconsent is carried
+as current state. The separately supplied `account-closed` duty retains its
+existing input/replay contract: that durable input already owns the complete
+intent, so interrupted replay stays isolated and retries the same original event.
+This is not unconditional recovery of every in-flight App command, a capacity
+benchmark, or independent custody of later duties after loss of the current source.
 
 ## Complete input through an exact barrier
 

@@ -8,6 +8,7 @@
  * consent and history consent stay in the managed App's own store; nothing here changes them.
  */
 
+import { browserWriteGuard } from '../../../../github-app/authorization-storage.mjs';
 const DEPARTURE_MS = 2 * 60 * 60_000;
 const parse = text => { try { return JSON.parse(text); } catch { return undefined; } };
 
@@ -17,12 +18,17 @@ export class D1ManageStore {
     this.now = now;
   }
   statement(sql, ...values) { return this.database.prepare(sql).bind(...values); }
+  browserStatement(sql, values, sessionHash) {
+    const guard = browserWriteGuard(undefined, sessionHash, this.now());
+    return this.statement(`${sql} AND (${guard.sql})`, ...values, ...guard.values);
+  }
 
   /** Selecting a reachable repository holds an allowance slot before execution is enabled; it writes nothing to GitHub. */
-  async select(repositoryId, actorId = null) {
-    await this.statement('INSERT INTO repository_selections (repository_id, selected_at, actor_id) VALUES (?, ?, ?) ON CONFLICT(repository_id) DO NOTHING', repositoryId, this.now(), actorId).run();
+  async select(repositoryId, actorId = null, sessionHash) {
+    const guard = browserWriteGuard(actorId, sessionHash, this.now());
+    await this.statement(`INSERT INTO repository_selections (repository_id, selected_at, actor_id) SELECT ?, ?, ? WHERE ${guard.sql} ON CONFLICT(repository_id) DO NOTHING`, repositoryId, this.now(), actorId, ...guard.values).run();
   }
-  async deselect(repositoryId) { await this.statement('DELETE FROM repository_selections WHERE repository_id=?', repositoryId).run(); }
+  async deselect(repositoryId, sessionHash) { await this.browserStatement('DELETE FROM repository_selections WHERE repository_id=?', [repositoryId], sessionHash).run(); }
   async selection(repositoryId) { return this.statement('SELECT selected_at, actor_id FROM repository_selections WHERE repository_id=?', repositoryId).first(); }
 
   /** A Free account connects one organisation to its pooled allowance; an organisation is connected on one account at a time. */
@@ -34,25 +40,27 @@ export class D1ManageStore {
     const row = await this.statement('SELECT user_id, since FROM free_connections WHERE organisation_id=?', organisationId).first();
     return row ? { userId: row.user_id, since: row.since } : null;
   }
-  async connectFree(userId, organisationId) {
+  async connectFree(userId, organisationId, sessionHash) {
     const taken = await this.freeConnectionOf(organisationId);
     if (taken && taken.userId !== userId) return false;
-    await this.statement('INSERT INTO free_connections (user_id, organisation_id, since) VALUES (?, ?, ?) ON CONFLICT(user_id) DO UPDATE SET organisation_id=excluded.organisation_id, since=excluded.since', userId, organisationId, this.now()).run();
+    const guard = browserWriteGuard(userId, sessionHash, this.now());
+    await this.statement(`INSERT INTO free_connections (user_id, organisation_id, since) SELECT ?, ?, ? WHERE ${guard.sql} ON CONFLICT(user_id) DO UPDATE SET organisation_id=excluded.organisation_id, since=excluded.since`, userId, organisationId, this.now(), ...guard.values).run();
     return true;
   }
-  async disconnectFree(userId) { await this.statement('DELETE FROM free_connections WHERE user_id=?', userId).run(); }
+  async disconnectFree(userId, sessionHash) { await this.browserStatement('DELETE FROM free_connections WHERE user_id=?', [userId], sessionHash).run(); }
 
   /** What the person was doing when they left for Works, kept for two hours so the return can say what it is waiting for. */
-  async recordDeparture(userId, { purpose, fromPath = null, snapshot = null }) {
+  async recordDeparture(userId, { purpose, fromPath = null, snapshot = null, sessionHash }) {
     const now = this.now();
-    await this.statement('INSERT INTO works_departures (user_id, purpose, from_path, snapshot_json, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(user_id) DO UPDATE SET purpose=excluded.purpose, from_path=excluded.from_path, snapshot_json=excluded.snapshot_json, created_at=excluded.created_at, expires_at=excluded.expires_at',
-      userId, purpose, fromPath, snapshot === null ? null : JSON.stringify(snapshot), now, new Date(Date.parse(now) + DEPARTURE_MS).toISOString()).run();
+    const guard = browserWriteGuard(userId, sessionHash, now);
+    await this.statement(`INSERT INTO works_departures (user_id, purpose, from_path, snapshot_json, created_at, expires_at) SELECT ?, ?, ?, ?, ?, ? WHERE ${guard.sql} ON CONFLICT(user_id) DO UPDATE SET purpose=excluded.purpose, from_path=excluded.from_path, snapshot_json=excluded.snapshot_json, created_at=excluded.created_at, expires_at=excluded.expires_at`,
+      userId, purpose, fromPath, snapshot === null ? null : JSON.stringify(snapshot), now, new Date(Date.parse(now) + DEPARTURE_MS).toISOString(), ...guard.values).run();
   }
   async departure(userId) {
     const row = await this.statement('SELECT purpose, from_path, snapshot_json, created_at FROM works_departures WHERE user_id=? AND expires_at > ?', userId, this.now()).first();
     return row ? { purpose: row.purpose, fromPath: row.from_path, snapshot: row.snapshot_json ? parse(row.snapshot_json) ?? null : null, at: row.created_at } : null;
   }
-  async clearDeparture(userId) { await this.statement('DELETE FROM works_departures WHERE user_id=?', userId).run(); }
+  async clearDeparture(userId, sessionHash) { await this.browserStatement('DELETE FROM works_departures WHERE user_id=?', [userId], sessionHash).run(); }
 
   /** The administrator's choice of what stays on the lower plan; applied by the lifecycle, never guessed. */
   async planChoice(userId) {
@@ -60,8 +68,9 @@ export class D1ManageStore {
     return row ? { ...(parse(row.choice_json) ?? {}), savedAt: row.saved_at, appliedAt: row.applied_at ?? null, outcome: row.applied_at ? parse(row.outcome_json) ?? null : null } : null;
   }
   /** Saving a new choice replaces an earlier one, including one already applied: it applies at the next reduction. */
-  async savePlanChoice(userId, choice) {
-    await this.statement('INSERT INTO plan_change_choices (user_id, choice_json, saved_at) VALUES (?, ?, ?) ON CONFLICT(user_id) DO UPDATE SET choice_json=excluded.choice_json, saved_at=excluded.saved_at, applied_at=NULL, outcome_json=NULL', userId, JSON.stringify(choice), this.now()).run();
+  async savePlanChoice(userId, choice, sessionHash) {
+    const guard = browserWriteGuard(userId, sessionHash, this.now());
+    await this.statement(`INSERT INTO plan_change_choices (user_id, choice_json, saved_at) SELECT ?, ?, ? WHERE ${guard.sql} ON CONFLICT(user_id) DO UPDATE SET choice_json=excluded.choice_json, saved_at=excluded.saved_at, applied_at=NULL, outcome_json=NULL`, userId, JSON.stringify(choice), this.now(), ...guard.values).run();
   }
   /** The reduction took effect and the choice became durable state; what it did is kept so Plan & funding can say so. */
   async markPlanChoiceApplied(userId, outcome) {
@@ -79,16 +88,17 @@ export class D1ManageStore {
     for (const accountId of accountIds) { const value = await this.namespaceDefault(accountId); if (value) out.set(accountId, value); }
     return out;
   }
-  async saveNamespaceDefault(accountId, { configuration, policyId = null, actorId = null, expectedRevision }) {
+  async saveNamespaceDefault(accountId, { configuration, policyId = null, actorId = null, expectedRevision, sessionHash }) {
     const now = this.now();
+    const guard = browserWriteGuard(actorId, sessionHash, now);
     if (expectedRevision === 0) {
-      const result = await this.statement('INSERT INTO namespace_defaults (account_id, revision, configuration_json, policy_id, saved_at, actor_id) VALUES (?, 1, ?, ?, ?, ?) ON CONFLICT(account_id) DO NOTHING', accountId, JSON.stringify(configuration), policyId, now, actorId).run();
+      const result = await this.statement(`INSERT INTO namespace_defaults (account_id, revision, configuration_json, policy_id, saved_at, actor_id) SELECT ?, 1, ?, ?, ?, ? WHERE ${guard.sql} ON CONFLICT(account_id) DO NOTHING`, accountId, JSON.stringify(configuration), policyId, now, actorId, ...guard.values).run();
       return (result.meta?.changes ?? 0) === 1 ? 1 : undefined;
     }
-    const result = await this.statement('UPDATE namespace_defaults SET revision=revision + 1, configuration_json=?, policy_id=?, saved_at=?, actor_id=? WHERE account_id=? AND revision=?', JSON.stringify(configuration), policyId, now, actorId, accountId, expectedRevision).run();
+    const result = await this.statement(`UPDATE namespace_defaults SET revision=revision + 1, configuration_json=?, policy_id=?, saved_at=?, actor_id=? WHERE account_id=? AND revision=? AND (${guard.sql})`, JSON.stringify(configuration), policyId, now, actorId, accountId, expectedRevision, ...guard.values).run();
     return (result.meta?.changes ?? 0) === 1 ? expectedRevision + 1 : undefined;
   }
-  async removeNamespaceDefault(accountId) { await this.statement('DELETE FROM namespace_defaults WHERE account_id=?', accountId).run(); }
+  async removeNamespaceDefault(accountId, sessionHash) { await this.browserStatement('DELETE FROM namespace_defaults WHERE account_id=?', [accountId], sessionHash).run(); }
 
   /** A repository's explicit adoption of its namespace's Pro default: which revision, when and by whom. */
   async adoption(repositoryId) {
@@ -118,8 +128,9 @@ export class D1ManageStore {
     const row = await this.statement('SELECT COUNT(*) AS sessions FROM browser_sessions WHERE user_id=? AND revoked_at IS NULL AND expires_at > ?', userId, this.now()).first();
     return row?.sessions ?? 0;
   }
-  async revokeUserSessions(userId) {
-    await this.statement('UPDATE browser_sessions SET revoked_at=? WHERE user_id=? AND revoked_at IS NULL', this.now(), userId).run();
+  async revokeUserSessions(userId, sessionHash) {
+    const guard = browserWriteGuard(userId, sessionHash, this.now());
+    await this.statement(`WITH admitted AS MATERIALIZED (SELECT 1 WHERE ${guard.sql}) UPDATE browser_sessions SET revoked_at=? WHERE user_id=? AND revoked_at IS NULL AND EXISTS (SELECT 1 FROM admitted)`, ...guard.values, this.now(), userId).run();
   }
 
   /** A closed account keeps no disconnect preference either; the row exists only to keep service checks off for a living account. */
@@ -127,18 +138,26 @@ export class D1ManageStore {
 
   /** Closing an account removes its own Manage facts; repositories and organisations keep theirs (including the record of what this person did there). */
   async forgetAccount(userId) {
-    const personal = (await this.statement('SELECT policy_id FROM linked_policies WHERE account_id=?', userId).all()).results ?? [];
-    await this.database.batch([
-      this.statement('DELETE FROM free_connections WHERE user_id=?', userId),
-      this.statement('DELETE FROM works_departures WHERE user_id=?', userId),
-      this.statement('DELETE FROM plan_change_choices WHERE user_id=?', userId),
-      this.statement('DELETE FROM namespace_defaults WHERE account_id=?', userId),
-      this.statement('DELETE FROM delegations WHERE user_id=? OR account_id=?', userId, userId),
-      this.statement('DELETE FROM automatic_setup WHERE account_id=?', userId),
-      ...personal.flatMap(row => [this.statement('DELETE FROM policy_links WHERE policy_id=?', row.policy_id), this.statement('DELETE FROM policy_publication_results WHERE publication_id IN (SELECT publication_id FROM policy_publications WHERE policy_id=?)', row.policy_id), this.statement('DELETE FROM policy_publications WHERE policy_id=?', row.policy_id)]),
-      this.statement('DELETE FROM linked_policies WHERE account_id=?', userId),
-      this.statement('DELETE FROM administrative_events WHERE account_id=?', userId)
-    ]);
+    await this.database.batch(this.forgetAccountStatements(userId));
+  }
+
+  /** Join account facts to the caller's closure transaction; policy children use the same live set. */
+  forgetAccountStatements(userId, guard = { sql: '1', values: [] }) {
+    const statement = (sql, ...values) => this.statement(`${sql} AND (${guard.sql})`, ...values, ...guard.values);
+    const policies = 'SELECT policy_id FROM linked_policies WHERE account_id=?';
+    return [
+      statement('DELETE FROM free_connections WHERE user_id=?', userId),
+      statement('DELETE FROM works_departures WHERE user_id=?', userId),
+      statement('DELETE FROM plan_change_choices WHERE user_id=?', userId),
+      statement('DELETE FROM namespace_defaults WHERE account_id=?', userId),
+      statement('DELETE FROM delegations WHERE (user_id=? OR account_id=?)', userId, userId),
+      statement('DELETE FROM automatic_setup WHERE account_id=?', userId),
+      statement(`DELETE FROM policy_links WHERE policy_id IN (${policies})`, userId),
+      statement(`DELETE FROM policy_publication_results WHERE publication_id IN (SELECT publication_id FROM policy_publications WHERE policy_id IN (${policies}))`, userId),
+      statement(`DELETE FROM policy_publications WHERE policy_id IN (${policies})`, userId),
+      statement('DELETE FROM linked_policies WHERE account_id=?', userId),
+      statement('DELETE FROM administrative_events WHERE account_id=?', userId)
+    ];
   }
 
   // ── Business: named linked policies (migration 0013) ──
@@ -153,9 +172,10 @@ export class D1ManageStore {
     return row ? policyRow(row) : null;
   }
   /** Create a named policy as revision 1; `undefined` when the namespace already has a policy of that name. */
-  async createLinkedPolicy({ accountId, name, configuration, enginePolicyId = null, actorId = null }) {
+  async createLinkedPolicy({ accountId, name, configuration, enginePolicyId = null, actorId = null, sessionHash }) {
     const now = this.now(), policyId = opaqueId();
-    const result = await this.statement('INSERT INTO linked_policies (policy_id, account_id, name, revision, configuration_json, engine_policy_id, created_at, saved_at, actor_id) SELECT ?, ?, ?, 1, ?, ?, ?, ?, ? WHERE NOT EXISTS (SELECT 1 FROM linked_policies WHERE account_id=? AND name=?)', policyId, accountId, name, JSON.stringify(configuration), enginePolicyId, now, now, actorId, accountId, name).run();
+    const guard = browserWriteGuard(actorId, sessionHash, now);
+    const result = await this.statement(`INSERT INTO linked_policies (policy_id, account_id, name, revision, configuration_json, engine_policy_id, created_at, saved_at, actor_id) SELECT ?, ?, ?, 1, ?, ?, ?, ?, ? WHERE NOT EXISTS (SELECT 1 FROM linked_policies WHERE account_id=? AND name=?) AND ${guard.sql}`, policyId, accountId, name, JSON.stringify(configuration), enginePolicyId, now, now, actorId, accountId, name, ...guard.values).run();
     return (result.meta?.changes ?? 0) === 1 ? policyId : undefined;
   }
   /** Save the next revision, compare-and-set on the revision the editor loaded; `undefined` when it moved. */
@@ -191,17 +211,19 @@ export class D1ManageStore {
     const rows = (await this.statement('SELECT repository_id, linked_at, actor_id, applied_revision FROM policy_links WHERE policy_id=? ORDER BY linked_at', policyId).all()).results ?? [];
     return rows.map(row => ({ repositoryId: row.repository_id, linkedAt: row.linked_at, actorId: row.actor_id ?? null, appliedRevision: row.applied_revision ?? null }));
   }
-  async linkRepository(repositoryId, policyId, actorId = null) {
-    await this.statement('INSERT INTO policy_links (repository_id, policy_id, linked_at, actor_id, applied_revision) VALUES (?, ?, ?, ?, NULL) ON CONFLICT(repository_id) DO UPDATE SET policy_id=excluded.policy_id, linked_at=excluded.linked_at, actor_id=excluded.actor_id, applied_revision=NULL', repositoryId, policyId, this.now(), actorId).run();
+  async linkRepository(repositoryId, policyId, actorId = null, sessionHash) {
+    const guard = browserWriteGuard(actorId, sessionHash, this.now());
+    await this.statement(`INSERT INTO policy_links (repository_id, policy_id, linked_at, actor_id, applied_revision) SELECT ?, ?, ?, ?, NULL WHERE ${guard.sql}
+      AND EXISTS (SELECT 1 FROM linked_policies WHERE policy_id=?) ON CONFLICT(repository_id) DO UPDATE SET policy_id=excluded.policy_id, linked_at=excluded.linked_at, actor_id=excluded.actor_id, applied_revision=NULL`, repositoryId, policyId, this.now(), actorId, ...guard.values, policyId).run();
   }
-  async unlinkRepository(repositoryId) { await this.statement('DELETE FROM policy_links WHERE repository_id=?', repositoryId).run(); }
+  async unlinkRepository(repositoryId, sessionHash) { await this.browserStatement('DELETE FROM policy_links WHERE repository_id=?', [repositoryId], sessionHash).run(); }
 
   /** One publication of one revision to its linked repositories; every repository starts as `requested`. */
   async createPublication({ policyId, revision, actorId = null, repositoryIds }) {
     const now = this.now(), publicationId = opaqueId();
     await this.database.batch([
-      this.statement('INSERT INTO policy_publications (publication_id, policy_id, revision, requested_at, actor_id) VALUES (?, ?, ?, ?, ?)', publicationId, policyId, revision, now, actorId),
-      ...repositoryIds.map(repositoryId => this.statement("INSERT INTO policy_publication_results (publication_id, repository_id, state, attempts, updated_at) VALUES (?, ?, 'requested', 0, ?)", publicationId, repositoryId, now))
+      this.statement('INSERT INTO policy_publications (publication_id, policy_id, revision, requested_at, actor_id) SELECT ?, ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM linked_policies WHERE policy_id=?)', publicationId, policyId, revision, now, actorId, policyId),
+      ...repositoryIds.map(repositoryId => this.statement("INSERT INTO policy_publication_results (publication_id, repository_id, state, attempts, updated_at) SELECT ?, ?, 'requested', 0, ? WHERE EXISTS (SELECT 1 FROM policy_publications WHERE publication_id=?)", publicationId, repositoryId, now, publicationId))
     ]);
     return publicationId;
   }
@@ -226,8 +248,9 @@ export class D1ManageStore {
     const row = await this.statement('SELECT * FROM automatic_setup WHERE account_id=?', accountId).first();
     return row ? { accountId, policyId: row.policy_id ?? null, enableExecution: row.enable_execution === 1, writerDeclared: row.writer_declared === 1, savedAt: row.saved_at, actorId: row.actor_id ?? null, actorLogin: row.actor_login ?? null, actorRole: row.actor_role ?? null } : null;
   }
-  async saveAutomaticSetup(accountId, { policyId = null, enableExecution = false, writerDeclared = false, actorId = null, actorLogin = null, actorRole = null }) {
-    await this.statement('INSERT INTO automatic_setup (account_id, policy_id, enable_execution, writer_declared, saved_at, actor_id, actor_login, actor_role) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(account_id) DO UPDATE SET policy_id=excluded.policy_id, enable_execution=excluded.enable_execution, writer_declared=excluded.writer_declared, saved_at=excluded.saved_at, actor_id=excluded.actor_id, actor_login=excluded.actor_login, actor_role=excluded.actor_role', accountId, policyId, enableExecution ? 1 : 0, writerDeclared ? 1 : 0, this.now(), actorId, actorLogin, actorRole).run();
+  async saveAutomaticSetup(accountId, { policyId = null, enableExecution = false, writerDeclared = false, actorId = null, actorLogin = null, actorRole = null, sessionHash }) {
+    const guard = browserWriteGuard(actorId, sessionHash, this.now());
+    await this.statement(`INSERT INTO automatic_setup (account_id, policy_id, enable_execution, writer_declared, saved_at, actor_id, actor_login, actor_role) SELECT ?, ?, ?, ?, ?, ?, ?, ? WHERE ${guard.sql} ON CONFLICT(account_id) DO UPDATE SET policy_id=excluded.policy_id, enable_execution=excluded.enable_execution, writer_declared=excluded.writer_declared, saved_at=excluded.saved_at, actor_id=excluded.actor_id, actor_login=excluded.actor_login, actor_role=excluded.actor_role`, accountId, policyId, enableExecution ? 1 : 0, writerDeclared ? 1 : 0, this.now(), actorId, actorLogin, actorRole, ...guard.values).run();
   }
   /** Keep the chooser's shown login current when GitHub reports a rename for the same account id. */
   async renameSetupChooser(accountId, actorId, login) { await this.statement('UPDATE automatic_setup SET actor_login=? WHERE account_id=? AND actor_id=?', login, accountId, actorId).run(); }
@@ -238,7 +261,7 @@ export class D1ManageStore {
     const latest = await this.statement("SELECT reason FROM administrative_events WHERE account_id=? AND at=? AND json_extract(detail_json, '$.held')='chooser-authority' ORDER BY event_id DESC LIMIT 1", accountId, row.latest).first();
     return { count: row.held, latestAt: row.latest, reason: latest?.reason ?? null };
   }
-  async removeAutomaticSetup(accountId) { await this.statement('DELETE FROM automatic_setup WHERE account_id=?', accountId).run(); }
+  async removeAutomaticSetup(accountId, sessionHash) { await this.browserStatement('DELETE FROM automatic_setup WHERE account_id=?', [accountId], sessionHash).run(); }
 
   // ── Business: delegated administration ──
 
@@ -255,17 +278,20 @@ export class D1ManageStore {
     const row = await this.statement('SELECT * FROM delegations WHERE account_id=? AND user_id=?', accountId, userId).first();
     return row ? delegationRow(row) : null;
   }
-  async grantDelegation({ accountId, userId, login, role, repositories = null, grantedBy = null }) {
-    await this.statement('INSERT INTO delegations (account_id, user_id, login, role, repositories_json, granted_at, granted_by) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(account_id, user_id) DO UPDATE SET login=excluded.login, role=excluded.role, repositories_json=excluded.repositories_json, granted_at=excluded.granted_at, granted_by=excluded.granted_by', accountId, userId, login, role, repositories === null ? null : JSON.stringify(repositories), this.now(), grantedBy).run();
+  async grantDelegation({ accountId, userId, login, role, repositories = null, grantedBy = null, sessionHash }) {
+    const guard = browserWriteGuard(grantedBy, sessionHash, this.now());
+    await this.statement(`INSERT INTO delegations (account_id, user_id, login, role, repositories_json, granted_at, granted_by) SELECT ?, ?, ?, ?, ?, ?, ? WHERE ${guard.sql} ON CONFLICT(account_id, user_id) DO UPDATE SET login=excluded.login, role=excluded.role, repositories_json=excluded.repositories_json, granted_at=excluded.granted_at, granted_by=excluded.granted_by`, accountId, userId, login, role, repositories === null ? null : JSON.stringify(repositories), this.now(), grantedBy, ...guard.values).run();
   }
-  async revokeDelegation(accountId, userId) { await this.statement('DELETE FROM delegations WHERE account_id=? AND user_id=?', accountId, userId).run(); }
+  async revokeDelegation(accountId, userId, sessionHash) { await this.browserStatement('DELETE FROM delegations WHERE account_id=? AND user_id=?', [accountId, userId], sessionHash).run(); }
 
   // ── Business: the administrative record ──
 
   /** One administrative event as it happened. `actor` is `{ kind: 'person' | 'automation' | 'github', id?, login? }`; an unknown actor is recorded as such. */
-  async recordEvent({ at = this.now(), accountId = null, repositoryId = null, where, actor, what, result, reason = null, detail = null }) {
-    await this.statement('INSERT INTO administrative_events (at, account_id, repository_id, where_text, actor_kind, actor_id, actor_login, what, result, reason, detail_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      at, accountId, repositoryId, where, actor?.kind ?? 'unknown', actor?.id ?? null, actor?.login ?? null, what, result, reason, detail === null ? null : JSON.stringify(detail)).run();
+  async recordEvent({ at = this.now(), accountId = null, repositoryId = null, where, actor, what, result, reason = null, detail = null, sessionHash }) {
+    // Organisation-owned audit facts remain; an old browser must not recreate its erased personal audit.
+    const guard = browserWriteGuard(actor?.id, accountId === actor?.id ? sessionHash : undefined, this.now());
+    await this.statement(`INSERT INTO administrative_events (at, account_id, repository_id, where_text, actor_kind, actor_id, actor_login, what, result, reason, detail_json) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE ${guard.sql}`,
+      at, accountId, repositoryId, where, actor?.kind ?? 'unknown', actor?.id ?? null, actor?.login ?? null, what, result, reason, detail === null ? null : JSON.stringify(detail), ...guard.values).run();
   }
   /** The newest events of these namespaces, newest first. */
   async events({ accountIds, limit = 200 }) {
