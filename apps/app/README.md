@@ -4,6 +4,66 @@
 
 This application is the signed-in diffdevil App: the analytical and operating experience of the managed GitHub App, served at `app.diffdevil.dev`. It renders the ratified Overview, Pull requests, History, Files, PR detail and File detail destinations from the managed App's own D1 state through the managed App's analytical data contract, under the signed-in person's current GitHub reach and the server-selected plan of each namespace, and the ratified Manage console (D080): what the plan allows, which repositories run and why, each repository's settings, the plan and its funding as the product-facing Wirt seam, and the account's four relationships. Its Worker also carries the managed App's runtime routes (webhook ingress, Queue consumer, scheduled maintenance, the protected analytics read and the Wirt commercial routes) on the same host and bindings. It is not the public website, not a claim that the hosted App is deployed, that any plan can be bought, or that named history has been collected for a real repository.
 
+## Inspect and admit a repository
+
+On the intended deployment, sign in, open **Manage → Repositories**, select the
+repository if necessary, open its settings and choose **Inspect trusted policy**.
+The entry is `/manage/repositories/<owner>/<repo>?admission=review` on that
+deployment's origin. Current GitHub administration, including the existing
+Business delegation ceiling, is checked through the person's own authorization.
+Installation credentials never identify the operator.
+
+The read-only review shows repository/installation IDs, settings revision,
+recorded execution consent and actor, writer standing, history choice, running
+Worker version, trusted default-branch commit, complete effective policy,
+declaration origins and configured label/comment rules. It uses the execution
+policy resolver with a repository-scoped Contents-read credential. Only a missing
+policy file (404) falls back to stored settings and the bundled preset; unreadable
+policy is unavailable evidence. Inspecting does not change consent or apply
+GitHub effects.
+
+Compare the running version with the accepted deployment/source record, then
+choose **Admit execution**. The same-origin form rechecks current authority,
+host/version, repository/installation, revision and trusted policy before
+recording execution consent. An unresolved writer needs a sole-writer declaration;
+that records the operator's statement and does not detect or stop another writer.
+History and configuration stay unchanged. The result returns to the review with
+current stored consent, actor and revision; the existing administrative record
+carries the inspected basis and operation outcome. Audit failure does not roll
+back consent. This operation neither applies nor observes labels, comments or
+checks. Subsequent PR execution resolves its own trusted base again.
+
+The explicit review shows the observed policy separately from the ordinary
+stored-layer settings summary. **Repository settings** returns to that unchanged
+console, including its existing enable controls; those controls do not claim the
+reviewed policy/version binding.
+
+A changed basis needs another review. An unconfirmed response may follow a
+committed change: inspect current consent/revision before retrying. The old
+revision cannot repeat the update. There is no additional credential or
+age-based expiry. The inspection does not attest every open PR's policy or
+physical in-flight work.
+
+Wrangler's [version metadata binding](https://developers.cloudflare.com/workers/runtime-apis/bindings/version-metadata/)
+supplies `CF_VERSION_METADATA`. Without its running version, inspection remains
+available but reviewed admission is unavailable. A provider version ID does not
+attest source bytes; the accepted deployment record owns that correspondence.
+
+This source path is **not a production deployment**. The standalone webhook
+Worker does not serve these pages. Delivering this caller to production needs an
+accepted deployment of the composed App on the intended host, D1 and Queue
+bindings, with its GitHub-user OAuth callback, seal and App credentials configured.
+A separate staging deployment does not supply those facts. Database editing or an
+Action bridge does not substitute for this management operation.
+
+After `npm run app:build`, run `node apps/app/qa/run.mjs --admission` for the
+built-browser journey against disposable local D1 and a loopback GitHub double.
+It exercises trusted-policy inspection, changed-policy refusal, deliberate
+admission, recorded consent and unreadable-policy presentation, with screenshots
+under `artifacts/app/qa/admission/`. Generated fixture keys never contact GitHub;
+the loopback-only installation-fetch adapter keeps those policy reads local.
+This is local qualification, not live production reach or admission.
+
 ## What it is made of
 
 The same complete App can be built as a [separate persistent staging consumer](../../docs/integration/app-staging.md), with its own Worker/D1/Queues, build output, local state and Wirt configuration. Its committed activation coordinates are placeholders; production and the existing controlled TEST callback are unchanged.

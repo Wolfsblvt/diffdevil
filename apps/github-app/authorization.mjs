@@ -313,6 +313,17 @@ export function createAuthorizationService({ store, admission, history, analytic
       return { body: await admissionCall(() => admission.read(repositoryId, actor)), headers: protectedHeaders() };
     },
 
+    async inspectAdmission({ session, repositoryId }) {
+      const actor = await authorizedAdmission(session, repositoryId, 'read');
+      return { body: await admissionCall(() => admission.inspect(repositoryId, actor)), headers: protectedHeaders() };
+    },
+
+    async admitRepository({ session, repositoryId, method, origin, basis, writerDeclared }) {
+      validOrigin(origin, origins, method);
+      const actor = await authorizedAdmission(session, repositoryId, 'update');
+      return { body: await admissionCall(() => admission.admit(repositoryId, { basis, writerDeclared, actor, origin: 'dashboard' })), headers: protectedHeaders() };
+    },
+
     /** Current GitHub organisation administration is checked through the viewer's own authorization at every use. */
     async organisationAuthority({ session, organisationId }) {
       const actor = await principal(session);

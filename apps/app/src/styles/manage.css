@@ -199,6 +199,8 @@
 /* ── machine panels ── */
 .m-code { background: var(--bg-machine); border: 1px solid var(--hair); border-radius: var(--r-block); padding: 12px 14px; font: 500 12.5px/1.65 var(--font-mono); color: #c9ccd3; white-space: pre; overflow-x: auto; margin: 0; }
 .m-code .c { color: var(--syn-comment); }
+.m-admission code { overflow-wrap: anywhere; }
+.m-admission .m-code { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 480px; overflow: auto; }
 .m-code .k { color: var(--syn-key); }
 .m-code .s { color: var(--syn-string); }
 .m-code-edit { width: 100%; min-height: 220px; box-sizing: border-box; background: var(--bg-machine); border: 1px solid var(--hair); border-radius: var(--r-block); padding: 12px 14px; font: 500 12.5px/1.65 var(--font-mono); color: #c9ccd3; resize: vertical; }
