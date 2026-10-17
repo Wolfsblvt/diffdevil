@@ -6,6 +6,13 @@ This is the source-owned Cloudflare Worker, Queue, and D1 adapter for the option
 
 ## Boundary
 
+The [signed-in App's inspection and admission route](../app/README.md#inspect-and-admit-a-repository)
+is the maintained caller of this runtime's authorization and admission services.
+Its read-only trusted-policy review and same-origin admission form use the existing
+GitHub session and bind the inspected repository, policy, revision and running
+version. The standalone webhook Worker below does not serve that router. Source
+delivery does not establish its production deployment or authorise admission.
+
 [Recovery replay](../../docs/integration/app-recovery.md) owns the isolated restored
 point's one-time healthy-source input adapter, later-duty application and durable
 checkpoint. Healthy-source rollback does not establish input after loss of that

@@ -11,7 +11,7 @@ import { stagingInstallationAccounts } from '../../../github-app/staging-admissi
 import { D1AuthorizationStore } from '../../../github-app/authorization-storage.mjs';
 import { D1CommercialStore } from '../../../github-app/commercial-storage.mjs';
 import { createAuthorizationService } from '../../../github-app/authorization.mjs';
-import { createAdmissionService } from '../../../github-app/admission.mjs';
+import { createAdmissionService, admissionServiceIdentity } from '../../../github-app/admission.mjs';
 import { commercialFromEnv } from '../../../github-app/commercial.mjs';
 import { createAnalyticalPremiumHost, createBriefRefresher, createPolicyResolver, createRepositoryPermissionReader } from '../../../github-app/app.mjs';
 import { COMMUNITY } from '../premium/registry.mjs';
@@ -66,6 +66,18 @@ export function createAppRuntime(env, { fetch = globalThis.fetch, now, premium =
   const callbackUrl = `${origin}/auth/callback`;
   const clock = now ?? (() => new Date().toISOString());
   const installationAccounts = stagingInstallationAccounts(env);
+  // A local qualification deployment already routes user reads to its loopback GitHub double. Keep installation
+  // policy reads on that same double; never redirect an installation credential on a deployed HTTPS App.
+  let installationFetch = fetch;
+  if (loopback && env.GITHUB_API_BASE) {
+    const testApi = new URL(env.GITHUB_API_BASE);
+    if (testApi.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]'].includes(testApi.hostname)) {
+      installationFetch = (input, init) => {
+        const url = new URL(String(input));
+        return fetch(url.origin === 'https://api.github.com' ? `${testApi.origin}${url.pathname}${url.search}` : input, init);
+      };
+    }
+  }
   const appStore = new D1AppStore(env.APP_DB, { now: clock, installationAccounts });
   const authStore = new D1AuthorizationStore(env.APP_DB, { now: clock });
   const commercialStore = new D1CommercialStore(env.APP_DB, { now: clock });
@@ -86,7 +98,7 @@ export function createAppRuntime(env, { fetch = globalThis.fetch, now, premium =
   const appCredential = typeof env.GITHUB_APP_ID === 'string' && env.GITHUB_APP_ID && typeof env.GITHUB_APP_PRIVATE_KEY === 'string' && env.GITHUB_APP_PRIVATE_KEY;
   const admission = createAdmissionService({ store: appStore, authorize: async request => ['repository-admin', 'delegated-admin'].includes(request.actor?.role),
     entitlement: ({ repositoryId, actor }) => entitlement.planOfRepository(repositoryId, actor), briefProvider: premium.brief, appAuthor: env.GITHUB_APP_BOT_LOGIN ?? 'diffdevil[bot]',
-    refreshBriefs: createBriefRefresher(env, { now: clock }), ...(appCredential ? { previewPolicy: createPolicyResolver(env, { fetch }) } : {}) });
+    refreshBriefs: createBriefRefresher(env, { now: clock }), ...(appCredential ? { previewPolicy: createPolicyResolver(env, { fetch: installationFetch }) } : {}) });
   // A loopback origin is reached as localhost or 127.0.0.1 through local proxies; a deployed https origin is exact.
   const port = new URL(origin).port;
   const allowedOrigins = loopback ? [...new Set([origin, `http://localhost:${port}`, `http://127.0.0.1:${port}`])] : [origin];
@@ -163,7 +175,8 @@ export function createAppRuntime(env, { fetch = globalThis.fetch, now, premium =
   const automaticSetup = createAutomaticSetup({ appStore, manage, namespaceOf, entitlement, permissionOf });
   if (!caches.has(env.APP_DB)) caches.set(env.APP_DB, createContextCache());
   return {
-    config: { origin, loopback, sessionDays, callbackUrl, siteOrigin: env.SITE_ORIGIN ?? 'https://diffdevil.dev', worksOrigin, retentionDays, allowedOrigins },
+    config: { origin, loopback, sessionDays, callbackUrl, siteOrigin: env.SITE_ORIGIN ?? 'https://diffdevil.dev', worksOrigin, retentionDays, allowedOrigins,
+      admissionService: admissionServiceIdentity(origin, env.CF_VERSION_METADATA) },
     now: clock, store, appStore, commercialStore, auth, provider, entitlement, policies, analytics, locator, commercial, commercialSource, namespaceOf, premium, manage, participation, participationStore, allowances, automaticSetup,
     operating, jobs, importScope, queue: env.APP_QUEUE, cache: caches.get(env.APP_DB)
   };

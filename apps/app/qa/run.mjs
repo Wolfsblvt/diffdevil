@@ -28,21 +28,26 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { existsSync, readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { once } from 'node:events';
+import { generateKeyPairSync } from 'node:crypto';
 import { dirname, join, resolve } from 'node:path';
 import { createFakeGitHub, CODE, ENTITLEMENT_FIXTURE, INSTALLATIONS, LONG_RETAINED_PATHS, setScale } from './fixture.mjs';
 import { seedLocalState, executeLocal, recordLocalDelivery } from './seed.mjs';
 import { proManage, historyOnlyManage, planChoiceReturn, freeManage, businessManage, delegateManage, setupRecovery, manageAccess, COMMERCIAL_PRO, COMMERCIAL_FREE, COMMERCIAL_BUSINESS } from './manage.mjs';
 import { participationJourney, rewardOnlyJourney, nullableReceiverJourney, COMMERCIAL_BETA, COMMERCIAL_REWARD_ONLY, NULLABLE_LINK, NULLABLE_SIGNING_KEY, QA_CAMPAIGN } from './participation.mjs';
 import { appBuildTarget } from '../build-target.mjs';
+import { admissionJourney } from './admission.mjs';
 
 const target = appBuildTarget();
 const IDENTITY_ONLY = process.argv.includes('--identity');
 const AUTHORITY_ONLY = process.argv.includes('--authority');
+const ADMISSION_ONLY = process.argv.includes('--admission');
+// Generated specimen material for the local double, never an external App credential.
+const admissionKey = ADMISSION_ONLY ? generateKeyPairSync('rsa', { modulusLength: 2048 }).privateKey.export({ type: 'pkcs8', format: 'pem' }) : null;
 const HISTORY_ONLY = process.argv.includes('--history');
 const THUMB_ONLY = process.argv.includes('--thumb');
 const PR_SEARCH_DETAIL_ONLY = process.argv.includes('--pr-search-detail');
 const PR_CONFIDENCE_ONLY = process.argv.includes('--pr-confidence-state');
-const OUT = join(target.artifacts, 'qa', ...(PR_CONFIDENCE_ONLY ? ['pr-confidence-state'] : PR_SEARCH_DETAIL_ONLY ? ['pr-search-detail'] : IDENTITY_ONLY ? ['identity'] : AUTHORITY_ONLY ? ['authority'] : HISTORY_ONLY ? ['history'] : THUMB_ONLY ? ['thumb'] : []));
+const OUT = join(target.artifacts, 'qa', ...(ADMISSION_ONLY ? ['admission'] : PR_CONFIDENCE_ONLY ? ['pr-confidence-state'] : PR_SEARCH_DETAIL_ONLY ? ['pr-search-detail'] : IDENTITY_ONLY ? ['identity'] : AUTHORITY_ONLY ? ['authority'] : HISTORY_ONLY ? ['history'] : THUMB_ONLY ? ['thumb'] : []));
 const APP_PORT = Number(process.env.DIFFDEVIL_APP_QA_PORT ?? (target.name === 'staging' ? 4512 : 4412));
 const GITHUB_PORT = Number(process.env.DIFFDEVIL_APP_QA_GITHUB_PORT ?? (target.name === 'staging' ? 4533 : 4433));
 // Chromium accepts Secure (__Host-) cookies from http://localhost, not from a loopback IP, so the browser origin is localhost; the Worker still binds 127.0.0.1.
@@ -94,6 +99,7 @@ console.log(`Seeded ${seeded.written.written} analyses, ${seeded.written.retaine
 /** Local Worker variables as --var flags: fixture values only, never real credentials. `commercial` is the loopback Works stand-in's spec. */
 function workerVars(entitlement, { commercial, allowances, participation, signingKey } = {}) {
   const vars = { APP_ORIGIN: ORIGIN, GITHUB_API_BASE: `http://127.0.0.1:${GITHUB_PORT}`, GITHUB_OAUTH_BASE: `http://127.0.0.1:${GITHUB_PORT}`, GITHUB_OAUTH_CLIENT_ID: 'fixture-client', GITHUB_OAUTH_CLIENT_SECRET: 'fixture-secret-private', APP_SEAL_KEY: 'fixture-seal-key-with-enough-length', APP_SESSION_DAYS: '30', GITHUB_WEBHOOK_SECRET: 'fixture-webhook-secret',
+    ...(admissionKey ? { GITHUB_APP_ID: '1', GITHUB_APP_PRIVATE_KEY: admissionKey } : {}),
     ...(target.name === 'staging' ? { APP_STAGING_INSTALLATION_ACCOUNT_IDS: JSON.stringify(INSTALLATIONS.map(value => value.account.id)) } : {}),
     ...(entitlement ? { APP_ENTITLEMENT_FIXTURE: JSON.stringify(entitlement) } : {}), ...(commercial ? { APP_COMMERCIAL_FIXTURE: JSON.stringify(commercial) } : {}), ...(allowances ? { APP_PLAN_ALLOWANCES: JSON.stringify(allowances) } : {}), ...(participation ? { APP_PARTICIPATION_CAMPAIGN: JSON.stringify(participation) } : {}), ...(signingKey ? { WIRT_SIGNING_KEY_CURRENT: signingKey, WIRT_LINK_CONTINUATION_URL: 'https://app.example.test/manage/plan' } : {}) };
   return Object.entries(vars).flatMap(([key, value]) => ['--var', `${key}:${value}`]);
@@ -647,7 +653,11 @@ async function qualifyPrConfidenceState(consumerReturn = null) {
 }
 
 try {
-  if (THUMB_ONLY) {
+  if (ADMISSION_ONLY) {
+    await startWorker(ENTITLEMENT_FIXTURE);
+    await signIn();
+    await admissionJourney(ctx, github);
+  } else if (THUMB_ONLY) {
     await startWorker(undefined, STATE, { commercial: COMMERCIAL_PRO });
     await signIn();
     await go('/');
@@ -1079,7 +1089,7 @@ try {
   githubServer.closeAllConnections?.();
   githubServer.close();
 }
-await writeFile(join(OUT, 'results.json'), JSON.stringify({ origin: ORIGIN, scope: THUMB_ONLY ? 'thumb' : PR_CONFIDENCE_ONLY ? 'pr-confidence-state' : PR_SEARCH_DETAIL_ONLY ? 'pr-search-detail' : AUTHORITY_ONLY ? 'authority' : HISTORY_ONLY ? 'history' : IDENTITY_ONLY ? 'identity' : PARTICIPATION_ONLY ? 'participation' : 'full', target: target.name, seeded: seeded.written, dense: DENSE && !THUMB_ONLY && !PR_CONFIDENCE_ONLY && !PR_SEARCH_DETAIL_ONLY && !PARTICIPATION_ONLY && !IDENTITY_ONLY && !AUTHORITY_ONLY && !HISTORY_ONLY, charts: chartTelemetry, results, failures, consoleErrors, pageErrors, external }, null, 2));
+await writeFile(join(OUT, 'results.json'), JSON.stringify({ origin: ORIGIN, scope: ADMISSION_ONLY ? 'admission' : THUMB_ONLY ? 'thumb' : PR_CONFIDENCE_ONLY ? 'pr-confidence-state' : PR_SEARCH_DETAIL_ONLY ? 'pr-search-detail' : AUTHORITY_ONLY ? 'authority' : HISTORY_ONLY ? 'history' : IDENTITY_ONLY ? 'identity' : PARTICIPATION_ONLY ? 'participation' : 'full', target: target.name, seeded: seeded.written, dense: DENSE && !ADMISSION_ONLY && !THUMB_ONLY && !PR_CONFIDENCE_ONLY && !PR_SEARCH_DETAIL_ONLY && !PARTICIPATION_ONLY && !IDENTITY_ONLY && !AUTHORITY_ONLY && !HISTORY_ONLY, charts: chartTelemetry, results, failures, consoleErrors, pageErrors, external }, null, 2));
 await writeFile(join(OUT, 'worker.log'), workerLog);
 console.log(`${PARTICIPATION_ONLY ? 'Participation: ' : ''}${results.filter(result => result.ok).length} of ${results.length} checks passed; screenshots and results in ${OUT}`);
 if (failures.length) { console.error(failures.map(failure => ` ✗ ${failure}`).join('\n')); process.exit(1); }

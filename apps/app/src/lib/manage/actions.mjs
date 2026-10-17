@@ -22,11 +22,16 @@ import { adoptedConfiguration } from './defaults.mjs';
 import { sendJobStep } from '../../../../github-app/history-jobs.mjs';
 import { SETUP_ROLES, SETUP_BELONGS } from './setup.mjs';
 import { sha256Hex } from '../../../../github-app/commercial-wirt.mjs';
+import { assertAdmissionService } from '../../../../github-app/admission.mjs';
 
 /** Plain words for the message codes a redirect carries in `m`. */
 export const MESSAGES = Object.freeze({
   selected: { tone: 'ok', text: 'Selected. It holds a slot and isn\'t running yet: review its policy, then enable it.' },
   enabled: { tone: 'ok', text: 'Enabled. Size labels and the check run on its pull requests from now on. History stays a separate choice.' },
+  admitted: { tone: 'ok', text: 'Execution consent recorded for the reviewed policy. History is unchanged. This operation did not apply or observe labels, comments or checks on GitHub.' },
+  'admission-unconfirmed': { tone: 'warn', text: 'Admission could not be confirmed. Inspect the recorded execution consent and settings revision before trying again; the request may have committed.' },
+  'admission-stale': { tone: 'err', text: 'The repository, policy or service changed since inspection. This request did not admit execution. Inspect the current basis and try again.' },
+  'admission-version-unavailable': { tone: 'err', text: 'This deployment did not supply its running version. Its operator must deliver the version-metadata binding before reviewed admission is available.' },
   stopped: { tone: 'ok', text: 'Stopped. Nothing runs or collects; its place is free. Consent, retained history and settings stay.' },
   released: { tone: 'ok', text: 'Released. It no longer holds a slot.' },
   swapped: { tone: 'ok', text: 'Swapped. The repository you picked stopped; the incoming one holds the slot as Pending enable.' },
@@ -129,7 +134,7 @@ export const MESSAGES = Object.freeze({
 });
 
 /** What each action is called in the administrative record. */
-const ACTION_WORDS = Object.freeze({ select: 'Selected to operate', enable: 'Enabled labels and the check', stop: 'Stopped operating', release: 'Released the slot', swap: 'Swapped in', 'delete-history': 'Deleted history', brief: 'Saved the pull-request message settings',
+const ACTION_WORDS = Object.freeze({ select: 'Selected to operate', enable: 'Enabled labels and the check', admit: 'Requested admission for the reviewed policy', stop: 'Stopped operating', release: 'Released the slot', swap: 'Swapped in', 'delete-history': 'Deleted history', brief: 'Saved the pull-request message settings',
   fund: 'Funded with a slot', 'release-slot': 'Released the funding slot', link: 'Started the Wolfsblvt Works link', unlink: 'Unlinked Wolfsblvt Works', reconnect: 'Reconnected the funding connection', disconnect: 'Disconnected the funding connection', 'free-connect': 'Connected as the Free organisation', 'free-disconnect': 'Disconnected the Free organisation', 'plan-choice': 'Saved what stays on the lower plan',
   'default-save': 'Saved the namespace default', 'default-remove': 'Removed the namespace default', 'policy-create': 'Created a policy', 'policy-save': 'Saved a policy revision', 'policy-remove': 'Removed a policy', 'policy-link': 'Linked to a policy', 'policy-unlink': 'Unlinked from its policy', 'policy-publish': 'Published a policy revision', 'policy-retry': 'Retried a publication', 'setup-save': 'Chose automatic setup', 'setup-off': 'Turned automatic setup off', 'delegate-add': 'Named an administrator', 'delegate-remove': 'Removed an administrator' });
 
@@ -160,6 +165,9 @@ function admissionMessage(error) {
   if (code === 'E_ADMISSION_UNAUTHORIZED' || code === 'E_SESSION_UNAVAILABLE') return 'unauthorized';
   if (code === 'E_ADMISSION_WRITE_REQUIRED') return 'write-required';
   if (code === 'E_ADMISSION_STALE') return 'stale';
+  if (code === 'E_ADMISSION_UNCONFIRMED') return 'admission-unconfirmed';
+  if (code === 'E_ADMISSION_VERSION_UNAVAILABLE') return 'admission-version-unavailable';
+  if (code === 'E_ADMISSION_POLICY_UNAVAILABLE') return 'unavailable';
   if (code === 'E_ADMISSION_WRITER_UNRESOLVED') return 'writer-undeclared';
   if (['E_ADMISSION_UNAVAILABLE', 'E_ADMISSION_TOMBSTONED', 'E_ADMISSION_UNKNOWN_REPOSITORY'].includes(code)) return 'unavailable';
   return 'invalid';
@@ -266,6 +274,18 @@ export async function handleManageAction(request, { runtime, session, viewer }) 
         if (refusal) return done(refusal);
         await runtime.manage.select(repository.repositoryId, viewer.userId, sessionHash);
         return done('selected');
+      }
+      case 'admit': {
+        const repository = repositoryOf();
+        let expected;
+        try { expected = JSON.parse(String(form.get('inspection') ?? '')); } catch { return done('invalid'); }
+        assertAdmissionService(expected?.service, runtime.config.admissionService);
+        if (!holdsSlot(repository) && !repository.standing?.selected) return done('not-selected');
+        const result = await runtime.auth.admitRepository({ ...mutation, repositoryId: repository.repositoryId,
+          basis: expected.basis, writerDeclared: form.get('writer') === 'declared' });
+        return done('admitted', { what: 'Admitted execution for the reviewed policy', result: 'applied',
+          reason: `Settings revision ${result.body.operation.revision}; GitHub effects unobserved`,
+          detail: JSON.stringify({ ...result.body.operation, service: runtime.config.admissionService }) }, `${back}?admission=review`);
       }
       case 'enable': {
         const repository = repositoryOf();
@@ -665,9 +685,10 @@ export async function handleManageAction(request, { runtime, session, viewer }) 
     if (code === 'E_COMMERCIAL_NOT_FUNDED') return redirect(withMessage(back, 'not-funded'));
     if (code.startsWith('E_COMMERCIAL_') || code === 'E_SERVICE_RECONNECT_UNCONFIRMED') return redirect(withMessage(back, code === 'E_SERVICE_RECONNECT_UNCONFIRMED' ? 'reconnect-unconfirmed' : 'commercial-unavailable'));
     if (code === 'E_UNKNOWN_REPOSITORY') return new Response('Not in your repositories.', { status: 404, headers: documentHeaders({ 'content-type': 'text/plain; charset=utf-8' }) });
-    const refused = action === 'close-account' ? 'close-incomplete' : admissionMessage(error);
+    const refused = action === 'close-account' ? 'close-incomplete' : action === 'admit' && code === 'E_ADMISSION_STALE' ? 'admission-stale' : admissionMessage(error);
     // A refused request is kept as it happened: who asked for what, and why it did not happen.
-    await audit(refused, { result: 'failed', reason: `${MESSAGES[refused]?.text ?? refused}${code ? ` (${code})` : ''}` });
+    await audit(refused, { what: action === 'admit' ? 'Requested admission for the reviewed policy' : undefined,
+      result: code === 'E_ADMISSION_UNCONFIRMED' ? 'requested' : 'failed', reason: `${MESSAGES[refused]?.text ?? refused}${code ? ` (${code})` : ''}` });
     return redirect(withMessage(back, refused));
   }
 }
