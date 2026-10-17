@@ -38,7 +38,7 @@ function wrangler(args, persist) {
 export function executeLocal(command, persist) { return wrangler(['d1', 'execute', 'APP_DB', '--command', command], persist); }
 
 /** Write the fixture through the real store, then dump it as grouped INSERT statements. */
-export async function fixtureSql() {
+export async function fixtureSql({ seed = seedStore } = {}) {
   const runtime = new Miniflare({ workers: [{
     config: { name: 'app-seed', type: 'worker', compatibilityDate: '2026-09-17', env: { APP_DB: { type: 'd1', id: `seed-${crypto.randomUUID()}` } }, manifest: { mainModule: 'worker.mjs', modulesRoot: resolve('.'), modules: { 'worker.mjs': { type: 'esm', contents: 'export default { fetch() { return new Response("ok"); } };' } } } }
   }] });
@@ -47,7 +47,7 @@ export async function fixtureSql() {
     const clock = { value: NOW };
     const appStore = new D1AppStore(database, { now: () => clock.value });
     for (const name of await migrationNames()) await appStore.migrate(await readFile(resolve('apps/github-app/migrations', name), 'utf8'));
-    const written = await seedStore(appStore, clock);
+    const written = await seed(appStore, clock);
     const statements = CLEARED.map(table => `DELETE FROM ${table};`);
     for (const table of TABLES) {
       const rows = (await database.prepare(`SELECT ${table === 'analytical_size_observations' ? 'rowid,' : ''}* FROM ${table}`).all()).results ?? [];
@@ -69,9 +69,9 @@ export async function fixtureSql() {
   } finally { await runtime.dispose(); }
 }
 
-export async function seedLocalState(persist = resolve(target.artifacts, 'state')) {
+export async function seedLocalState(persist = resolve(target.artifacts, 'state'), options) {
   await mkdir(persist, { recursive: true });
-  const { sql, written } = await fixtureSql();
+  const { sql, written } = await fixtureSql(options);
   const file = resolve(target.artifacts, 'seed.sql');
   await writeFile(file, sql);
   wrangler(['d1', 'migrations', 'apply', 'APP_DB'], persist);

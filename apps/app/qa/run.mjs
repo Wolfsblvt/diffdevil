@@ -35,7 +35,7 @@ import { seedLocalState, executeLocal, recordLocalDelivery } from './seed.mjs';
 import { proManage, historyOnlyManage, planChoiceReturn, freeManage, businessManage, delegateManage, setupRecovery, manageAccess, COMMERCIAL_PRO, COMMERCIAL_FREE, COMMERCIAL_BUSINESS } from './manage.mjs';
 import { participationJourney, rewardOnlyJourney, nullableReceiverJourney, COMMERCIAL_BETA, COMMERCIAL_REWARD_ONLY, NULLABLE_LINK, NULLABLE_SIGNING_KEY, QA_CAMPAIGN } from './participation.mjs';
 import { appBuildTarget } from '../build-target.mjs';
-import { admissionJourney } from './admission.mjs';
+import { admissionJourney, seedAdmissionStore } from './admission.mjs';
 
 const target = appBuildTarget();
 const IDENTITY_ONLY = process.argv.includes('--identity');
@@ -93,7 +93,7 @@ const githubServer = createServer(async (request, response) => {
 });
 githubServer.listen(GITHUB_PORT, '127.0.0.1'); await once(githubServer, 'listening');
 
-const seeded = await seedLocalState(STATE);
+const seeded = await seedLocalState(STATE, ADMISSION_ONLY ? { seed: seedAdmissionStore } : undefined);
 console.log(`Seeded ${seeded.written.written} analyses, ${seeded.written.retained} analytical records and ${seeded.written.observations} size observations into local D1 state.`);
 
 /** Local Worker variables as --var flags: fixture values only, never real credentials. `commercial` is the loopback Works stand-in's spec. */

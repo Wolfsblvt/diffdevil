@@ -1,10 +1,21 @@
 // SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
+import { INSTALLATIONS, REPOSITORIES } from './fixture.mjs';
+
+/** Admission needs real installation/repository state, not the analytical fixture's historical population. */
+export async function seedAdmissionStore(store) {
+  for (const installation of INSTALLATIONS) {
+    await store.recordLifecycle({ installationId: installation.id, accountId: installation.account.id, action: 'created',
+      addedRepositories: REPOSITORIES.filter(repository => repository.installationId === installation.id).map(repository => repository.repositoryId), removedRepositories: [] });
+  }
+  return { written: 0, retained: 0, observations: 0 };
+}
+
 /** The maintained operator journey against the built App, disposable local D1 and the GitHub wire double. */
 export async function admissionJourney({ check, go, page, shot }, github) {
-  const repository = 'parser-guild/grammar-fuzz';
+  const repository = 'ada-sample/notes-site';
   const path = `/manage/repositories/${repository}`;
   github.state.policyFiles.set(repository, 'version: 1\npresets: []\n');
-  await go('/manage/repositories?ns=parser-guild');
+  await go('/manage/repositories?ns=ada-sample');
   await page.locator(`[data-repository-row="${repository}"] form button`).click();
   await page.waitForLoadState('networkidle');
   await go(path);
