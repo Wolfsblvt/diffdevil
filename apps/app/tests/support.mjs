@@ -24,7 +24,7 @@ export async function fixture({ seed = seedStore } = {}) {
   shared ??= (async () => {
     const clock = { value: NOW };
     const runtime = new Miniflare({ workers: [{
-      config: { name: 'app-test', type: 'worker', compatibilityDate: '2026-09-17', env: { APP_DB: { type: 'd1', id: `app-${crypto.randomUUID()}` } }, manifest: { mainModule: 'worker.mjs', modulesRoot: resolve('.'), modules: { 'worker.mjs': { type: 'esm', contents: 'export default { fetch() { return new Response("ok"); } };' } } } }
+      config: { name: 'app-test', compatibilityDate: '2026-09-17', env: { APP_DB: { type: 'd1', id: `app-${crypto.randomUUID()}` } }, manifest: { mainModule: 'worker.mjs', modulesRoot: resolve('.'), modules: { 'worker.mjs': { type: 'esm', contents: 'export default { fetch() { return new Response("ok"); } };' } } } }
     }] });
     try {
       const database = await runtime.getD1Database('APP_DB');

@@ -68,7 +68,7 @@ test('the selected staging build has distinct Worker, D1, queues, artifacts and 
 });
 
 test('staging admits installation accounts and collaborators but refuses outside execution and history before acquisition', async () => {
-  const local = new Miniflare({ workers: [{ config: { name: 'stage-estate', type: 'worker', compatibilityDate: '2026-09-17',
+  const local = new Miniflare({ workers: [{ config: { name: 'stage-estate', compatibilityDate: '2026-09-17',
     env: { APP_DB: { type: 'd1', id: `stage-estate-${randomUUID()}` } },
     manifest: { mainModule: 'worker.mjs', modulesRoot: resolve('.'), modules: { 'worker.mjs': { type: 'esm', contents: 'export default { fetch() { return new Response("ok"); } };' } } }
   } }] });
@@ -231,7 +231,7 @@ async function signIn(app) {
 
 test('staging sessions, callbacks, projections and product state cannot enter the production consumer', async () => {
   const local = new Miniflare({ workers: ['production', 'staging'].map(name => ({ config: {
-    name, type: 'worker', compatibilityDate: '2026-09-17', env: { APP_DB: { type: 'd1', id: `staging-boundary-${name}-${randomUUID()}` } },
+    name, compatibilityDate: '2026-09-17', env: { APP_DB: { type: 'd1', id: `staging-boundary-${name}-${randomUUID()}` } },
     manifest: { mainModule: 'worker.mjs', modulesRoot: resolve('.'), modules: { 'worker.mjs': { type: 'esm', contents: 'export default { fetch() { return new Response("ok"); } };' } } }
   } })) });
   try {
