@@ -251,7 +251,7 @@ test('path-bearing HTTP reads use same-origin bodies and every response suppress
 
 test('local D1 writes, reads, exports, expiry, consent loss and restore-resistant deletion', async () => {
   const clock = { value: at };
-  const runtime = new Miniflare({ workers: [{ config: { name: 'analytics-test', type: 'worker', compatibilityDate: '2026-09-17',
+  const runtime = new Miniflare({ workers: [{ config: { name: 'analytics-test', compatibilityDate: '2026-09-17',
     env: { APP_DB: { type: 'd1', id: `analytics-${crypto.randomUUID()}` } }, manifest: { mainModule: 'worker.mjs', modulesRoot: resolve('.'),
       modules: { 'worker.mjs': { type: 'esm', contents: 'export default { fetch() { return new Response("ok"); } };' } } } } }] });
   try {

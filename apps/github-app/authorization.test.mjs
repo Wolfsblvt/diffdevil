@@ -36,7 +36,7 @@ function oauthBinding(beginResult) {
 async function fixture() {
   const clock = { value: '2026-09-23T00:00:00.000Z' };
   const runtime = new Miniflare({ workers: [{
-    config: { name: 'auth-test', type: 'worker', compatibilityDate: '2026-09-17', env: { APP_DB: { type: 'd1', id: `auth-${crypto.randomUUID()}` } }, manifest: { mainModule: 'worker.mjs', modulesRoot: resolve('.'), modules: { 'worker.mjs': { type: 'esm', contents: 'export default { fetch() { return new Response("ok"); } };' } } } }
+    config: { name: 'auth-test', compatibilityDate: '2026-09-17', env: { APP_DB: { type: 'd1', id: `auth-${crypto.randomUUID()}` } }, manifest: { mainModule: 'worker.mjs', modulesRoot: resolve('.'), modules: { 'worker.mjs': { type: 'esm', contents: 'export default { fetch() { return new Response("ok"); } };' } } } }
   }] });
   const database = await runtime.getD1Database('APP_DB');
   const appStore = new D1AppStore(database, { now: () => clock.value });

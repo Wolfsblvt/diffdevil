@@ -18,7 +18,7 @@ const projection = {
 async function localStore(clock, attemptIds = [], schema = migrations) {
   const databaseId = `diffdevil-test-${crypto.randomUUID()}`;
   const runtime = new Miniflare({ workers: [{
-    config: { name: 'diffdevil-test', type: 'worker', compatibilityDate: '2026-09-17', env: { APP_DB: { type: 'd1', id: databaseId } }, manifest: { mainModule: 'worker.mjs', modulesRoot: resolve('.'), modules: { 'worker.mjs': { type: 'esm', contents: 'export default { fetch() { return new Response("ok"); } };' } } } }
+    config: { name: 'diffdevil-test', compatibilityDate: '2026-09-17', env: { APP_DB: { type: 'd1', id: databaseId } }, manifest: { mainModule: 'worker.mjs', modulesRoot: resolve('.'), modules: { 'worker.mjs': { type: 'esm', contents: 'export default { fetch() { return new Response("ok"); } };' } } } }
   }] });
   const database = await runtime.getD1Database('APP_DB');
   const store = new D1AppStore(database, { now: () => clock.value, leaseMs: 60_000, attemptId: () => attemptIds.shift() ?? 'attempt-default' });

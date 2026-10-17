@@ -174,7 +174,7 @@ async function fixture({ Store = D1CommercialStore, realAuthorization = false } 
   const clock = { value: '2027-03-01T06:00:20.000Z' };
   const now = () => clock.value;
   const runtime = new Miniflare({ workers: [{
-    config: { name: 'commercial-test', type: 'worker', compatibilityDate: '2026-09-17', env: { APP_DB: { type: 'd1', id: `commercial-${randomUUID()}` } }, manifest: { mainModule: 'worker.mjs', modulesRoot: resolve('.'), modules: { 'worker.mjs': { type: 'esm', contents: 'export default { fetch() { return new Response("ok"); } };' } } } }
+    config: { name: 'commercial-test', compatibilityDate: '2026-09-17', env: { APP_DB: { type: 'd1', id: `commercial-${randomUUID()}` } }, manifest: { mainModule: 'worker.mjs', modulesRoot: resolve('.'), modules: { 'worker.mjs': { type: 'esm', contents: 'export default { fetch() { return new Response("ok"); } };' } } } }
   }] });
   const database = await runtime.getD1Database('APP_DB');
   const appStore = new D1AppStore(database, { now });

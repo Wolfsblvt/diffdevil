@@ -35,7 +35,7 @@ function input(events = []) {
 }
 
 async function fixture() {
-  const runtime = new Miniflare({ workers: [{ config: { name: 'recovery-test', type: 'worker', compatibilityDate: '2026-09-17',
+  const runtime = new Miniflare({ workers: [{ config: { name: 'recovery-test', compatibilityDate: '2026-09-17',
     env: { APP_DB: { type: 'd1', id: crypto.randomUUID() } }, manifest: { mainModule: 'worker.mjs', modulesRoot: resolve('.'),
       modules: { 'worker.mjs': { type: 'esm', contents: 'export default { fetch() { return new Response("ok"); } };' } } } } }] });
   try {

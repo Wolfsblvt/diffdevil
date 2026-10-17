@@ -63,7 +63,7 @@ export default {
   runtime = new Miniflare({ workers: [{
     config: {
       name: 'diffdevil-github-app-runtime-smoke',
-      type: 'worker',
+     
       compatibilityDate: sourceConfig.compatibility_date,
       compatibilityFlags: sourceConfig.compatibility_flags,
       manifest: {

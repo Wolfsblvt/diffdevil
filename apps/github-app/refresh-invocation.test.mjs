@@ -32,7 +32,7 @@ function countingDatabase(database, tally) {
 }
 
 async function localDatabase() {
-  const runtime = new Miniflare({ workers: [{ config: { name: 'invocation', type: 'worker', compatibilityDate: '2026-09-17', env: { APP_DB: { type: 'd1', id: `invocation-${crypto.randomUUID()}` } },
+  const runtime = new Miniflare({ workers: [{ config: { name: 'invocation', compatibilityDate: '2026-09-17', env: { APP_DB: { type: 'd1', id: `invocation-${crypto.randomUUID()}` } },
     manifest: { mainModule: 'worker.mjs', modulesRoot: resolve('.'), modules: { 'worker.mjs': { type: 'esm', contents: 'export default { fetch() { return new Response("ok"); } };' } } } } }] });
   const database = await runtime.getD1Database('APP_DB');
   const store = new D1AppStore(database);
