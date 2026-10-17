@@ -42,7 +42,7 @@ const IDENTITY_ONLY = process.argv.includes('--identity');
 const AUTHORITY_ONLY = process.argv.includes('--authority');
 const ADMISSION_ONLY = process.argv.includes('--admission');
 // Generated specimen material for the local double, never an external App credential.
-const admissionKey = ADMISSION_ONLY ? generateKeyPairSync('rsa', { modulusLength: 2048 }).privateKey.export({ type: 'pkcs8', format: 'pem' }) : null;
+const admissionKey = ADMISSION_ONLY ? generateKeyPairSync('rsa', { modulusLength: 2048 }).privateKey.export({ type: 'pkcs1', format: 'pem' }) : null;
 const HISTORY_ONLY = process.argv.includes('--history');
 const THUMB_ONLY = process.argv.includes('--thumb');
 const PR_SEARCH_DETAIL_ONLY = process.argv.includes('--pr-search-detail');
