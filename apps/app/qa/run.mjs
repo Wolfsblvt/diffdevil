@@ -653,6 +653,7 @@ try {
     await go('/');
     await settled();
     await qualifyFrame('pro overview', '[data-chart-id="volume"]');
+    await qualifyFrame('pro overview', '[data-chart-id="ttm"]');
   } else if (PR_SEARCH_DETAIL_ONLY) {
     await startWorker(undefined, STATE, { commercial: COMMERCIAL_FREE, allowances: { free: { private: 3, publicHistory: 10 }, proOrganisation: { private: 3 } } });
     await signIn();
