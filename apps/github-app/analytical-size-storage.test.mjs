@@ -39,7 +39,7 @@ function metered(database, tally) {
 }
 
 test('shared snapshots preserve migration, every window row, turnover, first-writer identity and deletion while removing repeated facts', async t => {
-  const runtime = new Miniflare({ workers: [{ config: { name: 'shared-sizes', type: 'worker', compatibilityDate: '2026-09-17',
+  const runtime = new Miniflare({ workers: [{ config: { name: 'shared-sizes', compatibilityDate: '2026-09-17',
     env: { APP_DB: { type: 'd1', id: `sizes-${crypto.randomUUID()}` } }, manifest: { mainModule: 'worker.mjs', modulesRoot: resolve('.'),
       modules: { 'worker.mjs': { type: 'esm', contents: 'export default { fetch() { return new Response("ok"); } };' } } } } }] });
   try {
