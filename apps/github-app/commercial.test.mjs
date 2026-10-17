@@ -15,6 +15,8 @@ import { D1AppStore } from './storage.mjs';
 import { D1AuthorizationStore } from './authorization-storage.mjs';
 import { createAuthorizationService } from './authorization.mjs';
 import { presentProjection } from '../app/src/lib/manage/works.mjs';
+import { closeLocalAccount } from '../app/src/lib/manage/account-closure.mjs';
+import { migrationNames } from '../app/qa/seed.mjs';
 
 const migrations = ['0001_initial.sql', '0002_consent-provenance.sql', '0003_preserve-active-consent.sql', '0004_admission-settings.sql',
   '0005_offboarding-consent-tombstones.sql', '0006_user-authorization.sql', '0007_consent-actors.sql', '0010_commercial-links.sql', '0011_service-connection.sql'];
@@ -122,6 +124,7 @@ function wirtDouble(clock) {
     const token = state.tokens.get((headers.get('authorization') ?? '').replace(/^Bearer /u, ''));
     const owner = token && token.expiresAt > Date.parse(clock.value) ? token.userId : undefined;
     if (path === '/api/wirt/diffdevil/links' && method === 'POST') {
+      await state.beforeEstablish?.();
       const intent = state.intents.get(JSON.parse(text).intent);
       if (!owner) return respond(401, {});
       if (!intent?.approved || intent.owner !== owner) return respond(403, {});
@@ -209,6 +212,10 @@ async function fixture({ Store = D1CommercialStore, realAuthorization = false } 
     observeOrganisationAuthority: async ({ userId, organisationId }) => retained.has(userId) ? observe(userId)(organisationId) : { userId, authority: 'unknown', display: null }
   };
   const authStore = new D1AuthorizationStore(database, { now });
+  if (!realAuthorization) for (const [session, userId] of sessions) {
+    await database.prepare('INSERT INTO browser_sessions(session_hash,user_id,return_context,expires_at) VALUES (?,?,?,?)')
+      .bind(createHash('sha256').update(session).digest('hex'), userId, 'account', '2027-04-01T00:00:00.000Z').run();
+  }
   const browserSessions = new Map();
   let signIn;
   if (realAuthorization) {
@@ -269,6 +276,63 @@ async function link(source, { session = SESSION, owner = USER } = {}) {
   const callback = await source.call(`${COMMERCIAL_ROUTES.callback}?code=${approved.code}&state=${approved.state}`, { headers: source.browser(session, `__Host-diffdevil-works-link=${binding}`) });
   return { callback, intent, binding, approved };
 }
+
+test('account closure and in-flight Works establishment have one local conflict boundary', async () => {
+  for (const order of ['closure-first', 'establishment-first', 'outcome-unknown', 'local-commit-unknown']) {
+    let enter, release;
+    const entered = new Promise(resolve => { enter = resolve; });
+    const resumed = new Promise(resolve => { release = resolve; });
+    class DelayedStore extends D1CommercialStore {
+      failCommit = order === 'local-commit-unknown';
+      async consumeLinkAttempt(...args) {
+        if (order === 'closure-first') { enter(); await resumed; }
+        return super.consumeLinkAttempt(...args);
+      }
+      async saveEstablishedLink(value) {
+        if (this.failCommit) { this.failCommit = false; throw new Error('fixture local commit unavailable'); }
+        return super.saveEstablishedLink(value);
+      }
+    }
+    const source = await fixture({ Store: DelayedStore });
+    try {
+      for (const name of await migrationNames()) if (!migrations.includes(name)) await source.appStore.migrate(await readFile(resolve('apps/github-app/migrations', name), 'utf8'));
+      const close = () => closeLocalAccount({ database: source.database, userId: USER, repositories: [],
+        sessionHash: createHash('sha256').update(SESSION).digest('hex'), now: () => source.clock.value });
+      const begun = await source.commercial.beginLink({ session: SESSION, method: 'POST', origin: APP });
+      const intent = new URL(begun.authorizationUrl).pathname.split('/').at(-1);
+      const approved = source.wirt.approve(intent, 77);
+      if (order !== 'closure-first') source.wirt.state.beforeEstablish = async () => { enter(); await resumed; };
+      if (order === 'outcome-unknown') source.wirt.state.establishmentLost = 1;
+      const pending = source.commercial.completeLink({ session: SESSION, ...approved,
+        browserBinding: begun.headers['Set-Cookie'].match(/^__Host-diffdevil-works-link=([^;]+)/u)[1] });
+      await entered;
+      if (order === 'closure-first') await close();
+      else await assert.rejects(close(), { code: 'E_ADMISSION_STALE' }, 'a consumed establishment preserves its remote reconciliation before closure');
+      release();
+      const completed = await pending;
+      if (order === 'closure-first') {
+        assert.equal(completed.outcome, 'invalid');
+        assert.equal(source.wirt.state.links.size, 0);
+        assert.equal(await source.store.activeLink(USER), null);
+        const attempt = await source.store.attempt(begun.attemptStateHash);
+        assert.equal(attempt.last_establish, 'account-closed');
+        assert.equal(attempt.protected_grant, null);
+      } else if (order === 'establishment-first') {
+        assert.equal(completed.outcome, 'linked');
+        await assert.rejects(close(), { code: 'E_ADMISSION_STALE' });
+      } else {
+        assert.equal(completed.outcome, 'pending');
+        source.clock.value = '2027-03-03T06:00:20.000Z';
+        await source.store.maintain();
+        assert.ok((await source.store.attempt(begun.attemptStateHash)).protected_grant, 'expiry retains the unknown remote outcome and grant');
+        await assert.rejects(close(), { code: 'E_ADMISSION_STALE' });
+        source.wirt.state.beforeEstablish = undefined;
+        assert.equal((await source.commercial.beginLink({ session: SESSION, method: 'POST', origin: APP })).outcome, 'linked');
+        assert.equal(source.wirt.state.links.size, 1, 'reconciliation resumes the original association');
+      }
+    } finally { release(); await source.runtime.dispose(); }
+  }
+});
 
 async function push(source, value, { account = String(value.stream.link.product_account.github_user_id), key = KEY, keyId = 'current', path = COMMERCIAL_ROUTES.projection, body = JSON.stringify(value), nonce } = {}) {
   return source.call(path, { method: 'POST', headers: { 'content-type': 'application/json', ...wirtHeaders(key, { method: 'POST', path: path.split('?')[0], account, body, clock: source.clock, keyId, nonce }) }, body });
@@ -1377,13 +1441,16 @@ test('an interrupted link recovers its committed association with a refreshed re
     assert.equal(finished.protected_grant, null, 'the retained grant moves to the link and leaves the attempt');
     assert.equal(await commercial.entitlement({ repositoryId: null, actor: { userId: USER } }), 'pro');
 
-    // A refresh grant Wirt refuses cannot recover the attempt; only then does a fresh consent begin.
+    // A refused refresh does not establish that the earlier remote association never committed.
     wirt.state.establishmentLost = 1;
     await link(source, { session: OTHER_SESSION, owner: 88 });
     wirt.state.refresh.clear();
     clock.value = '2027-03-01T10:00:20.000Z';
     const fresh = await call(COMMERCIAL_ROUTES.link, { method: 'POST', headers: browser(OTHER_SESSION) });
-    assert.equal((await fresh.json()).result, 'authorize');
-    assert.equal((await rows(source, 'commercial_link_attempts')).filter(row => row.user_id === OTHER_USER && row.last_establish === 'grant-refused').length, 1);
+    assert.equal(fresh.status, 503);
+    assert.equal((await fresh.json()).code, 'E_COMMERCIAL_LINK_PENDING');
+    const refused = (await rows(source, 'commercial_link_attempts')).find(row => row.user_id === OTHER_USER && row.last_establish === 'grant-refused');
+    assert.ok(refused.protected_grant);
+    assert.equal(refused.finished_at, null, 'the original association remains attributable instead of silently starting a second consent');
   } finally { await source.runtime.dispose(); }
 });

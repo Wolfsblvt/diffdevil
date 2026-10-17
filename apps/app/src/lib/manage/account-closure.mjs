@@ -22,11 +22,16 @@ export async function closeLocalAccount({ database, userId, repositories, sessio
       LEFT JOIN installations i ON i.installation_id=r.installation_id
       WHERE r.repository_id IS NULL OR r.settings_revision<>json_extract(t.value,'$.revision')${completed ? '+1' : ''}
         ${completed ? 'OR r.history_consent_origin IS NOT ?' : ''} OR i.account_id IS NOT ?
-        OR r.access_state<>'available' OR r.state IN ('removed','offboarding') OR i.state<>'active'
-        OR EXISTS (SELECT 1 FROM deletion_tombstones WHERE scope='repository:' || r.repository_id AND reapply_until>?))
+        ${completed ? '' : `OR COALESCE(json_extract(t.value,'$.requiresAuthority'),1)<>(r.access_state='available'
+          AND r.state NOT IN ('removed','offboarding') AND i.state='active'
+          AND NOT EXISTS (SELECT 1 FROM deletion_tombstones WHERE scope='repository:' || r.repository_id AND reapply_until>?))`})
+    AND NOT EXISTS (SELECT 1 FROM repositories r JOIN installations i ON i.installation_id=r.installation_id
+      WHERE i.account_id=? AND r.repository_id NOT IN (${selected.sql}))
     AND NOT EXISTS (SELECT 1 FROM commercial_links WHERE product_account=? AND state='active')
+    AND NOT EXISTS (SELECT 1 FROM commercial_link_attempts WHERE user_id=? AND consumed_at IS NOT NULL AND finished_at IS NULL
+      AND (protected_grant IS NOT NULL OR expires_at>?))
     AND EXISTS (SELECT 1 FROM browser_sessions WHERE session_hash=? AND user_id=? AND revoked_at IS NULL AND expires_at>?)`,
-    values: [targets, ...(completed ? [closureOrigin] : []), userId, at, userId, sessionHash, userId, at] });
+    values: [targets, ...(completed ? [closureOrigin] : []), userId, ...(completed ? [] : [at]), userId, targets, userId, userId, at, sessionHash, userId, at] });
   const guard = guardFor(false);
   const app = new D1AppStore(database, { now: () => at });
   const manage = new D1ManageStore(database, { now: () => at });
@@ -38,6 +43,8 @@ export async function closeLocalAccount({ database, userId, repositories, sessio
   const statement = (sql, ...values) => database.prepare(`${sql} AND (${guard.sql})`).bind(...values, ...guard.values);
   const results = await database.batch([
     database.prepare(`SELECT (${guard.sql}) AS admitted`).bind(...guard.values),
+    statement(`UPDATE commercial_link_attempts SET finished_at=?,last_establish='account-closed',last_establish_at=?,protected_verifier='',protected_grant=NULL
+      WHERE user_id=? AND finished_at IS NULL AND protected_grant IS NULL AND (consumed_at IS NULL OR expires_at<=?)`, at, at, userId, at),
     ...app.historyRemovalStatementsForRepositories(selected, guard),
     statement(`DELETE FROM app_checks WHERE repository_id IN (${selected.sql})`, targets),
     statement(`DELETE FROM repairs WHERE repository_id IN (${selected.sql})`, targets),
@@ -55,7 +62,7 @@ export async function closeLocalAccount({ database, userId, repositories, sessio
     // One settings commit withdraws both consents; ordinary later explicit consent remains a newer revision.
     database.prepare(`WITH admitted AS MATERIALIZED (SELECT json_extract(value,'$.repositoryId') AS repository_id
       FROM json_each(?) WHERE (${guard.sql}))
-      UPDATE repositories SET state='pending-enable', execution_consent_origin='dashboard',
+      UPDATE repositories SET state=CASE WHEN state IN ('removed','offboarding') THEN state ELSE 'pending-enable' END, execution_consent_origin='dashboard',
       execution_consent_reason='explicitly-disabled', execution_consent_actor_id=?, history_enabled=0,
       history_consent_origin=?, history_consent_reason='explicitly-disabled', history_consent_actor_id=NULL,
       settings_revision=settings_revision+1, updated_at=? WHERE repository_id IN (SELECT repository_id FROM admitted)`)

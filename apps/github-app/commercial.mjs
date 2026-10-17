@@ -334,7 +334,8 @@ export function createCommercialService({ store, wirt, signing, authorization, p
   async function establish(userId, { stateHash, intentId, sealedGrant }) {
     let held = await attemptGrant(stateHash, sealedGrant);
     for (let attempt = 0; ; attempt++) {
-      if (held.kind === 'refused') { await store.recordEstablishment(stateHash, 'grant-refused'); await store.finishAttempt(stateHash); return 'failed'; }
+      // A refused refresh cannot prove whether an earlier establish committed remotely. Keep its reconciliation fact.
+      if (held.kind === 'refused') { await store.recordEstablishment(stateHash, 'grant-refused'); return 'pending'; }
       if (held.kind !== 'grant') { await store.recordEstablishment(stateHash, 'grant-unavailable'); return 'pending'; }
       let result;
       try { result = await wirt.establish({ intent: intentId, accessToken: held.grant.accessToken, productAccount: userId }); }
@@ -351,9 +352,8 @@ export function createCommercialService({ store, wirt, signing, authorization, p
       let link;
       try {
         link = await store.saveEstablishedLink({ linkId: result.stream.linkId, productAccount: userId, worksAccount: result.stream.worksAccount,
-          intentId, protectedGrant: await protector.seal(held.grant) });
-      } catch { await store.finishAttempt(stateHash, 'conflict'); return 'conflict'; }
-      await store.finishAttempt(stateHash);
+          intentId, stateHash, protectedGrant: await protector.seal(held.grant) });
+      } catch { await store.recordEstablishment(stateHash, 'outcome-unknown'); return 'pending'; }
       // The pull fallback gives a fresh link its current state without waiting for the next push.
       await pullCurrent(link);
       return 'linked';
@@ -413,8 +413,8 @@ export function createCommercialService({ store, wirt, signing, authorization, p
       try { intent = await wirt.intent({ productAccount: userId, productAccountLabel, challenge: await s256(verifier), state }); }
       catch { throw refusal('E_COMMERCIAL_UNAVAILABLE', 503); }
       const stateHash = await sha256Hex(state), expiresAt = later(ATTEMPT_MS);
-      await store.createLinkAttempt({ stateHash, browserHash: await sha256Hex(browserBinding), userId, intentId: intent.intent,
-        protectedVerifier: await protector.seal({ verifier }), expiresAt });
+      if (!await store.createLinkAttempt({ stateHash, browserHash: await sha256Hex(browserBinding), userId, intentId: intent.intent,
+        protectedVerifier: await protector.seal({ verifier }), expiresAt, sessionHash: await sha256Hex(session) })) throw refusal('E_SESSION_UNAVAILABLE', 401);
       return { outcome: 'authorize', authorizationUrl: intent.authorizationUrl, attemptStateHash: stateHash,
         headers: { ...protectedHeaders(), 'Set-Cookie': cookie(browserBinding, ATTEMPT_MS / 1000) } };
     },
@@ -430,7 +430,7 @@ export function createCommercialService({ store, wirt, signing, authorization, p
       let userId;
       try { ({ userId } = await actor(session)); } catch { return finish('session-required'); }
       const [stateHash, browserHash] = await Promise.all([opaqueDigest(state), opaqueDigest(browserBinding)]);
-      const attempt = stateHash && browserHash ? await store.consumeLinkAttempt(stateHash, browserHash, userId) : undefined;
+      const attempt = stateHash && browserHash ? await store.consumeLinkAttempt(stateHash, browserHash, userId, await sha256Hex(session)) : undefined;
       if (!attempt) return finish('invalid');
       if (error !== undefined && error !== null) {
         const outcome = error === 'access_denied' ? 'denied' : 'expired';
@@ -445,7 +445,7 @@ export function createCommercialService({ store, wirt, signing, authorization, p
       try { grant = await wirt.exchangeCode({ code, verifier: (await protector.open(attempt.protectedVerifier)).verifier }); }
       catch { await store.finishAttempt(stateHash, 'failed'); return finish('failed'); }
       const sealedGrant = await protector.seal(grant);
-      await store.holdExchangedGrant(stateHash, sealedGrant, later(ESTABLISHMENT_RETRY_MS));
+      if (!await store.holdExchangedGrant(stateHash, sealedGrant, later(ESTABLISHMENT_RETRY_MS))) return finish('invalid');
       return finish(await establish(userId, { stateHash, intentId: attempt.intentId, sealedGrant }));
     },
 
@@ -575,8 +575,8 @@ export function createCommercialService({ store, wirt, signing, authorization, p
         let standing = 'unknown';
         if (attempt?.link_state === 'ended') standing = 'ended';
         else if (attempt?.finished_at) standing = ({ denied: 'denied', expired: 'expired', invalid: 'invalid', failed: 'failed', conflict: 'conflict', 'grant-refused': 'failed', 'status-403': 'failed', 'status-409': 'conflict' })[attempt.last_establish] ?? 'unknown';
-        else if (attempt && attempt.expires_at <= now()) standing = 'expired';
         else if (attempt?.approved) standing = 'pending';
+        else if (attempt && attempt.expires_at <= now()) standing = 'expired';
         else if (attempt && await opaqueDigest(linkAttempt.browserBinding) === attempt.browser_hash) {
           standing = attempt.consumed_at ? 'unknown' : 'open';
         }

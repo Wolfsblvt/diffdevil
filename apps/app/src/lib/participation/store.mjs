@@ -7,6 +7,7 @@
  */
 
 import { operationDate } from './calendar.mjs';
+import { browserWriteGuard } from '../../../../github-app/authorization-storage.mjs';
 
 const parse = text => { try { return JSON.parse(text); } catch { return undefined; } };
 
@@ -34,12 +35,13 @@ export class D1ParticipationStore {
   }
 
   /** Save a draft. A completed response is never reopened by a draft write. Returns false when it was already complete. */
-  async saveDraft(userId, campaign, answers) {
+  async saveDraft(userId, campaign, answers, sessionHash) {
     const now = this.now();
+    const guard = browserWriteGuard(userId, sessionHash, now);
     const result = await this.statement(`INSERT INTO participation_responses (user_id, campaign_key, campaign_version, response_id, survey, state, answers_json, started_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, 'draft', ?, ?, ?)
+      SELECT ?, ?, ?, ?, ?, 'draft', ?, ?, ? WHERE ${guard.sql}
       ON CONFLICT(user_id, campaign_key, campaign_version) DO UPDATE SET answers_json=excluded.answers_json, updated_at=excluded.updated_at WHERE participation_responses.state='draft'`,
-    userId, campaign.key, campaign.version, crypto.randomUUID(), campaign.survey, JSON.stringify(answers), now, now).run();
+    userId, campaign.key, campaign.version, crypto.randomUUID(), campaign.survey, JSON.stringify(answers), now, now, ...guard.values).run();
     return (result.meta?.changes ?? 0) === 1;
   }
 
@@ -47,28 +49,30 @@ export class D1ParticipationStore {
    * Complete: the draft becomes the completion and its outbound delivery is written in the same batch. Concurrent or
    * repeated completion changes nothing (`already-completed`); the completion time is whole seconds, as Wirt admits it.
    */
-  async complete(userId, campaign, answers) {
-    if (!await this.saveDraft(userId, campaign, answers)) return { result: 'already-completed' };
+  async complete(userId, campaign, answers, sessionHash) {
+    if (!await this.saveDraft(userId, campaign, answers, sessionHash)) return { result: 'already-completed' };
     const now = this.now();
+    const guard = browserWriteGuard(userId, sessionHash, now);
     const completedAt = `${now.slice(0, 19)}Z`;
     const [updated] = await this.database.batch([
-      this.statement(`UPDATE participation_responses SET state='completed', answers_json=?, completed_at=?, updated_at=? WHERE user_id=? AND campaign_key=? AND campaign_version=? AND state='draft'`,
-        JSON.stringify(answers), completedAt, now, userId, campaign.key, campaign.version),
+      this.statement(`UPDATE participation_responses SET state='completed', answers_json=?, completed_at=?, updated_at=? WHERE user_id=? AND campaign_key=? AND campaign_version=? AND state='draft' AND (${guard.sql})`,
+        JSON.stringify(answers), completedAt, now, userId, campaign.key, campaign.version, ...guard.values),
       this.statement(`INSERT INTO participation_deliveries (response_id, event_id, user_id, campaign_key, campaign_version, completed_at, state, attempts, next_attempt_at, created_at, updated_at)
         SELECT response_id, ?, user_id, campaign_key, campaign_version, completed_at, 'pending', 0, ?, ?, ? FROM participation_responses
-        WHERE user_id=? AND campaign_key=? AND campaign_version=? AND state='completed' AND completed_at=? ON CONFLICT(response_id) DO NOTHING`,
-      crypto.randomUUID(), now, now, now, userId, campaign.key, campaign.version, completedAt)
+        WHERE user_id=? AND campaign_key=? AND campaign_version=? AND state='completed' AND completed_at=? AND (${guard.sql}) ON CONFLICT(response_id) DO NOTHING`,
+      crypto.randomUUID(), now, now, now, userId, campaign.key, campaign.version, completedAt, ...guard.values)
     ]);
     return (updated.meta?.changes ?? 0) === 1 ? { result: 'completed', completedAt } : { result: 'already-completed' };
   }
 
   /** Remove the answers and keep the completion identity and time. The earned reward is not touched. */
-  async deleteAnswers(userId, campaign) {
+  async deleteAnswers(userId, campaign, sessionHash) {
     const now = this.now();
-    await this.statement(`UPDATE participation_responses SET answers_json=NULL, answers_deleted_at=COALESCE(answers_deleted_at, ?), updated_at=? WHERE user_id=? AND campaign_key=? AND campaign_version=?`,
-      now, now, userId, campaign.key, campaign.version).run();
+    const guard = browserWriteGuard(userId, sessionHash, now);
+    await this.statement(`UPDATE participation_responses SET answers_json=NULL, answers_deleted_at=COALESCE(answers_deleted_at, ?), updated_at=? WHERE user_id=? AND campaign_key=? AND campaign_version=? AND (${guard.sql})`,
+      now, now, userId, campaign.key, campaign.version, ...guard.values).run();
     // A draft without answers is nothing: it goes entirely.
-    await this.statement(`DELETE FROM participation_responses WHERE user_id=? AND campaign_key=? AND campaign_version=? AND state='draft'`, userId, campaign.key, campaign.version).run();
+    await this.statement(`DELETE FROM participation_responses WHERE user_id=? AND campaign_key=? AND campaign_version=? AND state='draft' AND (${guard.sql})`, userId, campaign.key, campaign.version, ...guard.values).run();
   }
 
   async delivery(responseId) { return delivery(await this.statement('SELECT * FROM participation_deliveries WHERE response_id=?', responseId).first()); }
@@ -98,9 +102,10 @@ export class D1ParticipationStore {
     return row ? { useObservedAt: row.use_observed_at ?? null, invitedAt: row.invited_at ?? null, dismissedAt: row.dismissed_at ?? null, remindedAt: row.reminded_at ?? null, reminderDismissedAt: row.reminder_dismissed_at ?? null } : null;
   }
   /** One qualifying managed-operation timestamp; kept because the delivery ledger is pruned. */
-  async recordUse(userId, campaign, at = this.now()) {
-    await this.statement(`INSERT INTO participation_prompts (user_id, campaign_key, campaign_version, use_observed_at) VALUES (?, ?, ?, ?)
-      ON CONFLICT(user_id, campaign_key, campaign_version) DO UPDATE SET use_observed_at=COALESCE(participation_prompts.use_observed_at, excluded.use_observed_at)`, userId, campaign.key, campaign.version, at).run();
+  async recordUse(userId, campaign, at = this.now(), linkId) {
+    await this.statement(`INSERT INTO participation_prompts (user_id, campaign_key, campaign_version, use_observed_at) SELECT ?, ?, ?, ?
+      WHERE EXISTS (SELECT 1 FROM commercial_links WHERE product_account=? AND state='active' ${linkId === undefined ? '' : 'AND link_id=?'})
+      ON CONFLICT(user_id, campaign_key, campaign_version) DO UPDATE SET use_observed_at=COALESCE(participation_prompts.use_observed_at, excluded.use_observed_at)`, userId, campaign.key, campaign.version, at, userId, ...(linkId === undefined ? [] : [linkId])).run();
   }
   /** Applied, unreconciled funding facts only; this read never opens an owner grant. */
   async *fundedLinks() {
@@ -133,30 +138,34 @@ export class D1ParticipationStore {
     }
     return first;
   }
-  async recordInvitation(userId, campaign) {
+  async recordInvitation(userId, campaign, sessionHash) {
     const now = this.now();
-    await this.statement(`INSERT INTO participation_prompts (user_id, campaign_key, campaign_version, invited_at) VALUES (?, ?, ?, ?)
-      ON CONFLICT(user_id, campaign_key, campaign_version) DO UPDATE SET invited_at=COALESCE(participation_prompts.invited_at, excluded.invited_at)`, userId, campaign.key, campaign.version, now).run();
+    const guard = browserWriteGuard(userId, sessionHash, now);
+    await this.statement(`INSERT INTO participation_prompts (user_id, campaign_key, campaign_version, invited_at) SELECT ?, ?, ?, ? WHERE ${guard.sql}
+      ON CONFLICT(user_id, campaign_key, campaign_version) DO UPDATE SET invited_at=COALESCE(participation_prompts.invited_at, excluded.invited_at)`, userId, campaign.key, campaign.version, now, ...guard.values).run();
   }
-  async recordReminder(userId, campaign) {
-    await this.statement('UPDATE participation_prompts SET reminded_at=? WHERE user_id=? AND campaign_key=? AND campaign_version=? AND dismissed_at IS NOT NULL AND reminded_at IS NULL', this.now(), userId, campaign.key, campaign.version).run();
+  async recordReminder(userId, campaign, sessionHash) {
+    const guard = browserWriteGuard(userId, sessionHash, this.now());
+    await this.statement(`UPDATE participation_prompts SET reminded_at=? WHERE user_id=? AND campaign_key=? AND campaign_version=? AND dismissed_at IS NOT NULL AND reminded_at IS NULL AND (${guard.sql})`, this.now(), userId, campaign.key, campaign.version, ...guard.values).run();
   }
   /** Dismissing closes whichever appearance is showing: the invitation, then the one reminder. */
-  async dismiss(userId, campaign) {
+  async dismiss(userId, campaign, sessionHash) {
     const now = this.now();
+    const guard = browserWriteGuard(userId, sessionHash, now);
     await this.database.batch([
-      this.statement('INSERT INTO participation_prompts (user_id, campaign_key, campaign_version, invited_at, dismissed_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT DO NOTHING', userId, campaign.key, campaign.version, now, now),
-      this.statement('UPDATE participation_prompts SET invited_at=COALESCE(invited_at, ?) WHERE user_id=? AND campaign_key=? AND campaign_version=?', now, userId, campaign.key, campaign.version),
+      this.statement(`INSERT INTO participation_prompts (user_id, campaign_key, campaign_version, invited_at, dismissed_at) SELECT ?, ?, ?, ?, ? WHERE ${guard.sql} ON CONFLICT DO NOTHING`, userId, campaign.key, campaign.version, now, now, ...guard.values),
+      this.statement(`UPDATE participation_prompts SET invited_at=COALESCE(invited_at, ?) WHERE user_id=? AND campaign_key=? AND campaign_version=? AND (${guard.sql})`, now, userId, campaign.key, campaign.version, ...guard.values),
       this.statement(`UPDATE participation_prompts SET dismissed_at=COALESCE(dismissed_at, ?), reminder_dismissed_at=CASE WHEN reminded_at IS NOT NULL THEN COALESCE(reminder_dismissed_at, ?) ELSE reminder_dismissed_at END
-        WHERE user_id=? AND campaign_key=? AND campaign_version=?`, now, now, userId, campaign.key, campaign.version)
+        WHERE user_id=? AND campaign_key=? AND campaign_version=? AND (${guard.sql})`, now, now, userId, campaign.key, campaign.version, ...guard.values)
     ]);
   }
 
   /** The preview a person asked for by POST, kept as Wirt quoted it until that quote lapses. Reading it writes nothing. */
-  async savePreview(userId, cadence, quote, expiresAt) {
-    await this.statement(`INSERT INTO participation_previews (user_id, cadence, quote_json, created_at, expires_at) VALUES (?, ?, ?, ?, ?)
+  async savePreview(userId, cadence, quote, expiresAt, sessionHash) {
+    const guard = browserWriteGuard(userId, sessionHash, this.now());
+    await this.statement(`INSERT INTO participation_previews (user_id, cadence, quote_json, created_at, expires_at) SELECT ?, ?, ?, ?, ? WHERE ${guard.sql}
       ON CONFLICT(user_id, cadence) DO UPDATE SET quote_json=excluded.quote_json, created_at=excluded.created_at, expires_at=excluded.expires_at`,
-    userId, cadence, JSON.stringify(quote), this.now(), expiresAt).run();
+    userId, cadence, JSON.stringify(quote), this.now(), expiresAt, ...guard.values).run();
   }
   async preview(userId, cadence) {
     const row = await this.statement('SELECT quote_json, created_at FROM participation_previews WHERE user_id=? AND cadence=? AND expires_at > ?', userId, cadence, this.now()).first();

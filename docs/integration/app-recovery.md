@@ -66,9 +66,14 @@ transition in one APP_DB batch: personal history/children/checks/repairs and ope
 history jobs, repository stops and deselection, Manage and participation erasure,
 and local grant/session/artifact revocation. Organisation history and settings
 remain. Confirmation and the linked-Works-account refusal still precede closure.
-Current GitHub update authority is checked for every personal target; the batch
-checks the entire admitted revision/ownership/reach set and active-link refusal
-before erasing anything. A changed target refuses the complete set. Repository
+APP_DB supplies every locally retained repository whose installation belongs to
+the numeric user, including unavailable, removed and offboarding rows omitted by
+a cached GitHub/viewer projection. Current GitHub update authority is checked for
+live reachable controls; unavailable/offboarding personal history still receives
+immediate local erasure without restoring provider reach or waiting for grace.
+The batch proves the supplied set equals that complete local population and checks
+each revision, ownership and authority-requiring reach before erasing anything.
+A changed or omitted target refuses the complete set. Repository
 revisions advance once for the joined execution/history withdrawal.
 The initiating session must also still be active at commit, including for an
 account with no personal repositories. It ends last in that same transaction;
@@ -76,11 +81,22 @@ the raw deletion origin identifies this closure's settings commit so a refused
 request cannot end sessions belonging to a later sign-in. Ordinary readers still
 see the `history-deletion` category; raw exports and recovery retain the origin.
 
+Closure and Works establishment share the existing attempt's database boundary.
+An active link or consumed unfinished attempt refuses closure. An expired attempt
+without an exchanged grant can be retired; an attempt holding a grant/unknown
+remote outcome cannot expire away. Closure retires unconsumed attempts in its own
+transaction; a delayed callback or intent creation cannot cross the ended session.
+The [commercial contract](app-commercial-link.md#closure-and-in-flight-establishment)
+owns same-intent reconciliation. Browser-owned Manage/participation inserts carry
+the initiating session predicate, so an old request cannot recreate erased facts
+even after a new sign-in. Existing-row updates and policy-child inserts require
+their surviving parent; organisation-owned audit facts remain.
+
 The closure statement count is fixed, using JSON-bound targets and set-based
 policy-child removal rather than one transaction per repository or policy.
 [D1's query, binding, memory and whole-batch duration limits](https://developers.cloudflare.com/d1/platform/limits/)
 still apply; a limit/error rolls back the whole closure and produces the existing
-incomplete response. A lost commit response may also produce that response, but
+indeterminate acknowledgement. It asserts no partial deletion. A lost commit response may also produce it, but
 the committed closure has already ended its sessions and cannot run again through
 the spent session. A new sign-in and later explicit reconsent remain new choices.
 No background completion job or general command journal is introduced.

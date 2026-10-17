@@ -7,7 +7,7 @@
  */
 import { windowOf } from './campaign.mjs';
 import { missingForCompletion, surveyOf } from './survey.mjs';
-import { readProjectionBetaGrants, readProjectionCommercialTimeZone } from '../../../../github-app/commercial-wirt.mjs';
+import { readProjectionBetaGrants, readProjectionCommercialTimeZone, sha256Hex } from '../../../../github-app/commercial-wirt.mjs';
 import { operationDate } from './calendar.mjs';
 
 const DAY = 86_400_000;
@@ -111,33 +111,33 @@ export function createParticipation({ store, commercial, campaign, now = () => n
         const access = betaAccessWindows({ linked: true, reconciling: false, commercial: projection.commercial, betaGrants: readProjectionBetaGrants(projection.benefits), betaTimeZone: timeZone });
         if (!access) continue;
         const at = await store.qualifyingUse(link.product_account, access, timeZone);
-        if (at) await store.recordUse(link.product_account, campaign, at);
+        if (at) await store.recordUse(link.product_account, campaign, at, link.link_id);
       }
     },
     /** Record that the invitation or its reminder was shown. */
-    async noteShown(userId, stage) {
-      if (stage === 'invite') await store.recordInvitation(userId, campaign);
-      if (stage === 'remind') await store.recordReminder(userId, campaign);
+    async noteShown(userId, stage, sessionHash) {
+      if (stage === 'invite') await store.recordInvitation(userId, campaign, sessionHash);
+      if (stage === 'remind') await store.recordReminder(userId, campaign, sessionHash);
     },
-    dismiss(userId) { return store.dismiss(userId, campaign); },
+    dismiss(userId, sessionHash) { return store.dismiss(userId, campaign, sessionHash); },
 
-    async saveDraft({ userId, commercial: commercialStanding, answers }) {
+    async saveDraft({ userId, commercial: commercialStanding, answers, sessionHash }) {
       if (eligibilityOf(commercialStanding) !== 'participant') return 'not-eligible';
       if (windowOf(campaign, now()) !== 'open') return 'closed';
-      return await store.saveDraft(userId, campaign, answers) ? 'saved' : 'already-completed';
+      return await store.saveDraft(userId, campaign, answers, sessionHash) ? 'saved' : 'already-completed';
     },
 
     /** Complete the survey: the response and its outbound completion fact commit together. The caller then tries delivery. */
-    async complete({ userId, commercial: commercialStanding, answers }) {
+    async complete({ userId, commercial: commercialStanding, answers, sessionHash }) {
       if (eligibilityOf(commercialStanding) !== 'participant') return 'not-eligible';
       if (windowOf(campaign, now()) !== 'open') return 'closed';
       if ((await store.response(userId, campaign))?.state === 'completed') return 'already-completed';
-      if (missingForCompletion(survey, answers).length > 0) { await store.saveDraft(userId, campaign, answers); return 'incomplete'; }
-      const { result } = await store.complete(userId, campaign, answers);
+      if (missingForCompletion(survey, answers).length > 0) { await store.saveDraft(userId, campaign, answers, sessionHash); return 'incomplete'; }
+      const { result } = await store.complete(userId, campaign, answers, sessionHash);
       return result;
     },
 
-    deleteAnswers(userId) { return store.deleteAnswers(userId, campaign); },
+    deleteAnswers(userId, sessionHash) { return store.deleteAnswers(userId, campaign, sessionHash); },
 
     /**
      * The person's explicit preview request, from the Origin-checked POST only: Wirt quotes the continuation and the
@@ -147,7 +147,7 @@ export function createParticipation({ store, commercial, campaign, now = () => n
       const answer = await commercial.rewardQuote({ session, cadence }).catch(() => ({ available: false, reason: 'unavailable' }));
       if (!answer.available) return answer.reason === 'not-quotable' ? 'not-quotable' : 'unavailable';
       const lapses = answer.quote.expiresOn ? new Date(Date.parse(`${answer.quote.expiresOn}T00:00:00Z`) + DAY).toISOString() : later(3600);
-      await store.savePreview(userId, cadence, answer.quote, lapses);
+      await store.savePreview(userId, cadence, answer.quote, lapses, await sha256Hex(session));
       return 'ready';
     },
     /** A preview already requested, read without any Wirt call. */

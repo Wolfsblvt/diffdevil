@@ -132,6 +132,34 @@ All routes live on the App Worker. The receiver needs only D1 and the signing ke
 
 Callback outcomes are `linked`, `pending`, `denied`, `expired`, `conflict`, `ended`, `invalid`, `session-required` and `failed`. `pending` means Wirt's answer was lost or unavailable after consent; the next link request resumes the same intent. The continuation URL is deployment configuration; the App defaults it to its one admitted manage-plan destination, `/manage/plan`, where [Plan & funding](../../apps/app/README.md) reads the outcome and the departure it recorded before the person left.
 
+## Closure and in-flight establishment
+
+Personal account closure refuses an active link and an unfinished consumed link
+attempt. Consuming a callback and creating its attempt both compare the initiating
+browser session at their D1 commit. If closure commits first, it retires unconsumed
+attempts and ends sessions; the delayed continuation cannot exchange/establish
+through that attempt. If callback consumption wins, closure remains unchanged
+while code exchange and establishment resolve. An expired attempt with no retained
+exchanged grant can be retired; a delayed exchange then cannot retain its result
+or proceed to establishment through the retired attempt.
+
+An exchanged owner grant is persisted before the remote establishment call. That
+attempt and grant remain until an authoritative outcome, including across the old
+retry expiry, maintenance, a lost remote response or a failed local link commit.
+Retry resumes the same intent and association. A refused refresh alone cannot
+prove that the remote association never existed: its fact remains pending, holds
+closure and does not silently begin another consent. Such an unrecoverable grant
+needs authoritative remote association reconciliation; this source does not invent
+a provider action or claim that local erasure ended it. Definite intent refusal
+or an authoritative ended answer can still finish the attempt normally.
+
+The local established-link commit compares the consumed unfinished attempt and
+moves its retained grant to the active link while finishing that attempt atomically.
+These are the existing session/attempt/link boundaries, without a command journal,
+new recurring worker or whole-App lock. New sign-in and deliberate later consent
+remain ordinary new operations. Source fixtures qualify the local conflict and
+independent wire double; actual Wirt/customer adoption remains separate.
+
 ## Configuration
 
 Each deployment consumes one Wirt producer. The [persistent staging configuration and activation handoff](app-staging.md) separate its callbacks, signing set, sessions and retained application state from production. The existing controlled TEST callback into production remains valid until a separately qualified replacement is activated.
@@ -172,7 +200,7 @@ Every application, binding change, refusal or changed authority observation writ
 
 Stored report bodies never hold a display label. A pending report carries the labels it may disclose separately and sends them only for bindings whose authority was last observed present; when the report is sent, superseded, failed or its link ends, those labels are dropped. Retained report evidence keeps order, delivery and refusal facts, not labels.
 
-The PKCE verifier and owner access/refresh grant are sealed by the injected protector. A rotated grant is persisted before its next use. If the establishment response is lost after Wirt committed it, the exchanged grant is kept for a day and the next link request re-establishes the same intent without a second consent: an expired access token is refreshed and durably stored first, and a `401` forces one refresh. While Wirt's outcome stays unknown the link request answers `503 E_COMMERCIAL_LINK_PENDING` and starts no new intent. Only a definite refusal — a refused refresh grant, `403`, `409` or a terminal answer — finishes the attempt and lets a fresh consent begin. The attempt row keeps the latest typed outcome (`outcome-unknown`, `grant-unavailable`, `grant-refreshed`, `grant-refused` or `status-<code>`) until it expires.
+The PKCE verifier and owner access/refresh grant are sealed by the injected protector. A rotated grant is persisted before its next use. If the establishment response is lost after Wirt committed it, the exchanged grant and original intent remain for reconciliation beyond the old one-day retry expiry. The next link request re-establishes that same intent without a second consent: an expired access token is refreshed and durably stored first, and a `401` forces one refresh. While Wirt's outcome stays unknown the link request answers `503 E_COMMERCIAL_LINK_PENDING` and starts no new intent. Definite intent refusal (`403`, `409`) or an authoritative terminal answer can finish the attempt. A refused refresh alone cannot establish the remote association's state, so its retained attempt stays pending. The row preserves the latest typed outcome (`outcome-unknown`, `grant-unavailable`, `grant-refreshed`, `grant-refused` or `status-<code>`) until authoritative reconciliation finishes it.
 
 ## Restore occasion
 
