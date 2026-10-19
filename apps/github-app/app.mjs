@@ -107,9 +107,11 @@ async function mintInstallationClient(env, installationId, body, options = {}) {
   const store = new D1AppStore(env.APP_DB, { installationAccounts: stagingInstallationAccounts(env) });
   if (!await store.installationAdmitted(installationId)) throw appError('E_ACCESS_DISABLED');
   const jwt = await (options.createJwt ?? createAppJwt)({ appId: env.GITHUB_APP_ID, privateKey: env.GITHUB_APP_PRIVATE_KEY, ...(options.now === undefined ? {} : { now: options.now }) });
-  const app = new GitHubClient({ token: jwt, ...(options.fetch === undefined ? {} : { fetch: options.fetch }), responseBytes: WORKER_RESULT_LIMIT, readRetries: 0 });
+  // createAppRuntime passes the Worker platform fetch explicitly; keep its global receiver when GitHubClient calls it as a method.
+  const fetch = options.fetch === globalThis.fetch ? globalThis.fetch.bind(globalThis) : options.fetch;
+  const app = new GitHubClient({ token: jwt, ...(fetch === undefined ? {} : { fetch }), responseBytes: WORKER_RESULT_LIMIT, readRetries: 0 });
   const token = installationToken(await app.json(`/app/installations/${installationId}/access_tokens`, { method: 'POST', phase: 'apply', body }));
-  return budgetedClient({ token, ...(options.fetch === undefined ? {} : { fetch: options.fetch }), responseBytes: WORKER_RESULT_LIMIT, readRetries: 0 });
+  return budgetedClient({ token, ...(fetch === undefined ? {} : { fetch }), responseBytes: WORKER_RESULT_LIMIT, readRetries: 0 });
 }
 
 /** A repository-scoped credential is minted only after a delivery and execution lease are claimed. */

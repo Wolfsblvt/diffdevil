@@ -55,6 +55,36 @@ test('inspection uses the production trusted resolver, returns policy and effect
   assert.equal(fake.writes().length, 0);
 });
 
+test('the production trusted resolver keeps the Worker platform fetch receiver when it is injected explicitly', async () => {
+  const fake = new FakeGitHub();
+  fake.contents.set(`${fake.defaultBranch}:.diffdevil.yml`, 'version: 1\npresets: []\n');
+  const originalFetch = globalThis.fetch;
+  let receiver;
+  Object.defineProperty(globalThis, 'fetch', {
+    configurable: true,
+    writable: true,
+    value: async function (input, init) {
+      receiver = this;
+      assert.equal(this, globalThis, 'Worker platform fetch must be called with its global receiver');
+      const path = new URL(String(input)).pathname;
+      if (path === '/app/installations/9/access_tokens') return Response.json({ token: 'fixture-installation', expires_at: '2999-01-01T00:00:00Z' }, { status: 201 });
+      if (path === '/repositories/17') return Response.json({ id: 17, full_name: 'example/repository', default_branch: 'main' });
+      return fake.fetch(input, init);
+    }
+  });
+  try {
+    const resolver = createPolicyResolver({ GITHUB_APP_ID: '1', GITHUB_APP_PRIVATE_KEY: 'unused' }, {
+      createJwt: async () => 'fixture-jwt', fetch: globalThis.fetch
+    });
+    const result = await resolver({ repositoryId: 17, installationId: 9 });
+    assert.equal(result.source, 'trusted-base');
+    assert.equal(result.expectedPolicyBase, fake.defaultBranch);
+    assert.equal(receiver, globalThis);
+  } finally {
+    Object.defineProperty(globalThis, 'fetch', { configurable: true, writable: true, value: originalFetch });
+  }
+});
+
 test('admission records the acting administrator and inspected basis, changing execution alone', async () => {
   const f = fixture();
   const before = structuredClone(f.row());
