@@ -42,7 +42,8 @@ const HISTORY_ONLY = process.argv.includes('--history');
 const THUMB_ONLY = process.argv.includes('--thumb');
 const PR_SEARCH_DETAIL_ONLY = process.argv.includes('--pr-search-detail');
 const PR_CONFIDENCE_ONLY = process.argv.includes('--pr-confidence-state');
-const OUT = join(target.artifacts, 'qa', ...(PR_CONFIDENCE_ONLY ? ['pr-confidence-state'] : PR_SEARCH_DETAIL_ONLY ? ['pr-search-detail'] : IDENTITY_ONLY ? ['identity'] : AUTHORITY_ONLY ? ['authority'] : HISTORY_ONLY ? ['history'] : THUMB_ONLY ? ['thumb'] : []));
+const PR_FILES_ONLY = process.argv.includes('--pr-files-table');
+const OUT = join(target.artifacts, 'qa', ...(PR_FILES_ONLY ? ['pr-files-table'] : PR_CONFIDENCE_ONLY ? ['pr-confidence-state'] : PR_SEARCH_DETAIL_ONLY ? ['pr-search-detail'] : IDENTITY_ONLY ? ['identity'] : AUTHORITY_ONLY ? ['authority'] : HISTORY_ONLY ? ['history'] : THUMB_ONLY ? ['thumb'] : []));
 const APP_PORT = Number(process.env.DIFFDEVIL_APP_QA_PORT ?? (target.name === 'staging' ? 4512 : 4412));
 const GITHUB_PORT = Number(process.env.DIFFDEVIL_APP_QA_GITHUB_PORT ?? (target.name === 'staging' ? 4533 : 4433));
 // Chromium accepts Secure (__Host-) cookies from http://localhost, not from a loopback IP, so the browser origin is localhost; the Worker still binds 127.0.0.1.
@@ -483,6 +484,62 @@ async function readPrDetailFacts() {
   return page.evaluate(() => ({ lanes: document.querySelectorAll('.lane').length, result: document.querySelector('.a-result .big .n')?.textContent ?? '', snap: document.querySelector('.a-snap')?.textContent ?? '', files: document.querySelectorAll('#h-pf ~ * table tbody tr, .a-tbl tbody tr').length, github: Boolean(document.querySelector('a[href^="https://github.com/"]')), named: /src\/index\.ts/u.test(document.body.innerText), fileLinks: document.querySelectorAll('a[href^="/file/"]').length }));
 }
 
+async function qualifyPrFilesMinimum() {
+  const inspectAt = async width => {
+    await page.setViewportSize({ width, height: 900 });
+    return page.locator('.pr-files-scroll').evaluate(scroller => {
+      const table = scroller.querySelector('.a-tbl.named');
+      const paths = [...(table?.querySelectorAll('tbody tr td:first-child .a-path') ?? [])];
+      const clippedNames = paths.flatMap(path => {
+        const name = path.querySelector('.name');
+        if (!name) return ['<missing filename>'];
+        const pathBox = path.getBoundingClientRect();
+        const nameBox = name.getBoundingClientRect();
+        return nameBox.left < pathBox.left - 1 || nameBox.right > pathBox.right + 1 ? [name.textContent] : [];
+      });
+      return { viewport: innerWidth, scrollWidth: scroller.scrollWidth, clientWidth: scroller.clientWidth,
+        pageWidth: document.documentElement.scrollWidth, pathCount: paths.length,
+        filenameCount: table?.querySelectorAll('tbody tr td:first-child .a-path .name').length ?? 0,
+        columnWidths: [...(table?.querySelectorAll('tbody tr:first-child td') ?? [])].map(cell => Math.round(cell.getBoundingClientRect().width)), clippedNames };
+    });
+  };
+  let narrow = 320, wide = 1180;
+  while (narrow < wide) {
+    const middle = Math.floor((narrow + wide) / 2);
+    const layout = await inspectAt(middle);
+    if (layout.scrollWidth > layout.clientWidth + 1 || layout.pageWidth > layout.viewport + 1 || layout.clippedNames.length > 0) narrow = middle + 1;
+    else wide = middle;
+  }
+  const fitWidth = narrow;
+  const fitLayout = await inspectAt(fitWidth);
+  check(`PR detail Files keeps every complete filename visible at its measured minimum width ${fitWidth}px`,
+    fitLayout.pathCount === LONG_RETAINED_PATHS.length + 1 && fitLayout.filenameCount === fitLayout.pathCount && fitLayout.clippedNames.length === 0
+      && fitLayout.scrollWidth <= fitLayout.clientWidth + 1 && fitLayout.pageWidth <= fitLayout.viewport + 1, JSON.stringify(fitLayout));
+  await page.screenshot({ path: join(OUT, `pr-files-minimum-fit-${fitWidth}px.png`), fullPage: true });
+
+  const scrollWidth = Math.max(320, fitWidth - 1);
+  const scrollLayout = await inspectAt(scrollWidth);
+  const scroller = page.locator('.pr-files-scroll');
+  await scroller.focus();
+  await scroller.press('End');
+  const rightState = await scroller.evaluate(element => ({ focused: document.activeElement === element, scrollLeft: element.scrollLeft, maximum: element.scrollWidth - element.clientWidth }));
+  check(`PR detail Files keeps the complete table horizontally accessible just below ${fitWidth}px`,
+    scrollLayout.scrollWidth > scrollLayout.clientWidth + 1 && scrollLayout.pageWidth <= scrollLayout.viewport + 1
+      && rightState.focused && rightState.scrollLeft >= rightState.maximum - 1, JSON.stringify({ width: scrollWidth, ...scrollLayout, ...rightState }));
+  await page.screenshot({ path: join(OUT, `pr-files-minimum-scroll-${scrollWidth}px.png`), fullPage: true });
+  await scroller.press('Home');
+  const leftState = await scroller.evaluate(element => ({ focused: document.activeElement === element, scrollLeft: element.scrollLeft }));
+  check('PR detail Files returns to the full path column with the keyboard', leftState.focused && leftState.scrollLeft <= 1, JSON.stringify(leftState));
+
+  for (const width of [1180, 1181, 1280, 1360, 1361, 1440]) {
+    const layout = await inspectAt(width);
+    check(`PR detail Files keeps all filenames visible without a table or page scrollbar at ${width}px`,
+      layout.pathCount === LONG_RETAINED_PATHS.length + 1 && layout.filenameCount === layout.pathCount
+        && layout.clippedNames.length === 0 && layout.scrollWidth <= layout.clientWidth + 1
+        && layout.pageWidth <= layout.viewport + 1, JSON.stringify(layout));
+  }
+}
+
 async function qualifyPrConfidenceState(consumerReturn = null) {
   const detail = await go('/pr/parser-guild/parser-lab/452');
   await settled();
@@ -567,7 +624,7 @@ async function qualifyPrConfidenceState(consumerReturn = null) {
   }
   await page.locator('[data-chart-id="dev"] [data-readout]').screenshot({ path: join(OUT, 'pr-development-asymmetric-1440x900.png') });
 
-  for (const width of [1181, 1280, 1360, 1361, 1440]) {
+  for (const width of [1180, 1181, 1280, 1360, 1361, 1440]) {
     await page.setViewportSize({ width, height: 900 });
     const inspectFilesLayout = async (label, pathless) => {
       const response = await go('/pr/parser-guild/parser-lab/452?per=90d');
@@ -581,42 +638,55 @@ async function qualifyPrConfidenceState(consumerReturn = null) {
         const tableBox = table?.getBoundingClientRect();
         const text = panel?.innerText ?? '';
         const rowSpans = ['.pr-files', '.pr-development'].map(selector => { const node = document.querySelector(selector); return node && getComputedStyle(node).gridColumn; });
+        const named = table?.classList.contains('named') ?? false;
+        const headers = [...(table?.querySelectorAll('thead th') ?? [])].map(header => header.textContent.trim()).join('|');
+        const pathCells = [...(table?.querySelectorAll('tbody tr td:first-child') ?? [])];
+        const longestPath = expectedPaths.reduce((longest, candidate) => candidate.length > longest.length ? candidate : longest, '');
+        const pathCell = pathCells.find(cell => cell.getAttribute('aria-label') === longestPath);
+        const path = pathCell?.querySelector('.a-path');
+        const directory = path?.querySelector('.dir');
+        const fileName = path?.querySelector('.name');
+        const includedIcon = table?.querySelector('[aria-label="Included in policy scope"]');
         return { width: innerWidth, rowSpans, rows: table?.querySelectorAll('tbody tr').length ?? 0,
           scroller: Boolean(scroller), scrollerTabIndex: scroller?.tabIndex ?? -1,
           scrollWidth: scroller?.scrollWidth ?? 0, clientWidth: scroller?.clientWidth ?? 0,
+          hasScrollbar: Boolean(scroller && scroller.scrollWidth > scroller.clientWidth + 1), named, headers,
+          pathText: path?.textContent ?? '', pathCellLabel: pathCell?.getAttribute('aria-label') ?? '',
+          pathTitle: path?.getAttribute('title') ?? '', directoryClipped: Boolean(directory && directory.scrollWidth > directory.clientWidth + 1),
+          fileNameVisible: Boolean(fileName && fileName.getBoundingClientRect().right <= path.getBoundingClientRect().right + 1),
+          includedLabel: includedIcon?.getAttribute('aria-label') ?? '',
           panelContainsScroller: Boolean(panelBox && scrollBox) && scrollBox.left >= panelBox.left - 1 && scrollBox.right <= panelBox.right + 1,
           tableFitsScrollableContent: Boolean(scrollBox && tableBox) && tableBox.left >= scrollBox.left - 1 && tableBox.right <= scrollBox.left + (scroller?.scrollWidth ?? 0) + 1,
           pageOverflow: document.documentElement.scrollWidth > innerWidth + 1, text,
-          missingPaths: expectedPaths.filter(path => !text.includes(path)) };
+          missingPaths: expectedPaths.filter(expectedPath => !pathCells.some(cell => cell.getAttribute('aria-label') === expectedPath
+            && cell.querySelector('.a-path')?.getAttribute('title') === expectedPath)) };
       }, pathless ? [] : LONG_RETAINED_PATHS);
       const compact = width >= 1181 && width <= 1360;
-      const expectedSpans = compact ? ['span 7', 'span 5'] : ['span 6', 'span 6'];
+      const stacked = width <= 1180;
+      const expectedSpans = stacked ? ['span 12', 'span 12'] : compact ? ['span 7', 'span 5'] : ['span 6', 'span 6'];
       const pathsPresent = pathless ? /path not retained/u.test(layout.text) : layout.rows === LONG_RETAINED_PATHS.length + 1 && layout.missingPaths.length === 0;
+      const namedContract = pathless || (layout.named && layout.headers === 'Path|Policy|Changed|Raw'
+        && layout.pathCellLabel === layout.pathTitle && layout.pathText === layout.pathTitle
+          && (width <= 1180 || layout.directoryClipped) && layout.fileNameVisible && layout.includedLabel === 'Included in policy scope'
+        && !layout.hasScrollbar);
       check(`PR detail ${label} Files table stays in its panel at ${width}px with the accepted ${compact ? '7/5' : '6/6'} composition`, response.status() === 200 && layout.width === width
         && JSON.stringify(layout.rowSpans) === JSON.stringify(expectedSpans) && layout.rows > 0 && layout.scroller && layout.scrollerTabIndex === 0
-        && layout.panelContainsScroller && layout.tableFitsScrollableContent && layout.scrollWidth >= layout.clientWidth && !layout.pageOverflow && pathsPresent, JSON.stringify(layout));
+        && layout.panelContainsScroller && layout.tableFitsScrollableContent && layout.scrollWidth >= layout.clientWidth && !layout.pageOverflow && pathsPresent && namedContract, JSON.stringify(layout));
       return layout;
     };
 
-    const retainedLayout = await inspectFilesLayout('retained long-path', false);
+    await inspectFilesLayout('retained long-path', false);
     if (width === 1280) {
-      const scroller = page.locator('.pr-files-scroll');
       await page.screenshot({ path: join(OUT, 'pr-files-long-paths-1280x900.png'), fullPage: true });
-      await scroller.press('End');
-      const rightState = await scroller.evaluate(element => ({ focused: document.activeElement === element, scrollLeft: element.scrollLeft, maximum: element.scrollWidth - element.clientWidth }));
-      const reachedLastColumn = rightState.scrollLeft >= rightState.maximum - 1;
-      check('PR detail retained Files lets keyboard users reach the last column inside the panel at 1280px', retainedLayout.scrollWidth > retainedLayout.clientWidth && rightState.focused && reachedLastColumn, JSON.stringify({ width, ...rightState, reachedLastColumn }));
-      await page.screenshot({ path: join(OUT, 'pr-files-long-paths-last-columns-1280x900.png'), fullPage: true });
-      await scroller.press('Home');
-      const leftState = await scroller.evaluate(element => ({ focused: document.activeElement === element, scrollLeft: element.scrollLeft }));
-      const returnedToFirstColumn = leftState.scrollLeft <= 1;
-      check('PR detail retained Files returns to the full path column with the keyboard at 1280px', leftState.focused && returnedToFirstColumn, JSON.stringify(leftState));
     }
     if (width === 1361) await page.screenshot({ path: join(OUT, 'pr-files-long-paths-1361x900.png'), fullPage: true });
     executeLocal("INSERT INTO analytical_pull_requests(repository_id, pull_request, updated_at, expires_at, record_json) VALUES (1001, 999999, '2026-10-15T00:00:00.000Z', NULL, 'not-json')", STATE);
     try { await inspectFilesLayout('pathless', true); }
     finally { executeLocal('DELETE FROM analytical_pull_requests WHERE repository_id=1001 AND pull_request=999999', STATE); }
   }
+  await go('/pr/parser-guild/parser-lab/452?per=90d');
+  await settled();
+  await qualifyPrFilesMinimum();
   await go('/pr/parser-guild/parser-lab/452');
   await settled();
   await page.evaluate(() => {
@@ -658,6 +728,14 @@ try {
     await startWorker(undefined, STATE, { commercial: COMMERCIAL_FREE, allowances: { free: { private: 3, publicHistory: 10 }, proOrganisation: { private: 3 } } });
     await signIn();
     await qualifyAllRepositoriesSearchDetail();
+  } else if (PR_FILES_ONLY) {
+    await startWorker(undefined, STATE, { commercial: COMMERCIAL_PRO });
+    await signIn();
+    const detail = await go('/pr/parser-guild/parser-lab/452?per=90d');
+    await settled();
+    check('focused PR Files route reaches a retained analysis with named files', detail.status() === 200
+      && await page.locator('.pr-files-scroll > .a-tbl.named tbody tr .a-path .name').count() === LONG_RETAINED_PATHS.length + 1, `${detail.status()}`);
+    await qualifyPrFilesMinimum();
   } else if (PR_CONFIDENCE_ONLY) {
     await startWorker(undefined, STATE, { commercial: COMMERCIAL_PRO });
     await signIn();
@@ -1079,7 +1157,7 @@ try {
   githubServer.closeAllConnections?.();
   githubServer.close();
 }
-await writeFile(join(OUT, 'results.json'), JSON.stringify({ origin: ORIGIN, scope: THUMB_ONLY ? 'thumb' : PR_CONFIDENCE_ONLY ? 'pr-confidence-state' : PR_SEARCH_DETAIL_ONLY ? 'pr-search-detail' : AUTHORITY_ONLY ? 'authority' : HISTORY_ONLY ? 'history' : IDENTITY_ONLY ? 'identity' : PARTICIPATION_ONLY ? 'participation' : 'full', target: target.name, seeded: seeded.written, dense: DENSE && !THUMB_ONLY && !PR_CONFIDENCE_ONLY && !PR_SEARCH_DETAIL_ONLY && !PARTICIPATION_ONLY && !IDENTITY_ONLY && !AUTHORITY_ONLY && !HISTORY_ONLY, charts: chartTelemetry, results, failures, consoleErrors, pageErrors, external }, null, 2));
+await writeFile(join(OUT, 'results.json'), JSON.stringify({ origin: ORIGIN, scope: PR_FILES_ONLY ? 'pr-files-table' : THUMB_ONLY ? 'thumb' : PR_CONFIDENCE_ONLY ? 'pr-confidence-state' : PR_SEARCH_DETAIL_ONLY ? 'pr-search-detail' : AUTHORITY_ONLY ? 'authority' : HISTORY_ONLY ? 'history' : IDENTITY_ONLY ? 'identity' : PARTICIPATION_ONLY ? 'participation' : 'full', target: target.name, seeded: seeded.written, dense: DENSE && !PR_FILES_ONLY && !THUMB_ONLY && !PR_CONFIDENCE_ONLY && !PR_SEARCH_DETAIL_ONLY && !PARTICIPATION_ONLY && !IDENTITY_ONLY && !AUTHORITY_ONLY && !HISTORY_ONLY, charts: chartTelemetry, results, failures, consoleErrors, pageErrors, external }, null, 2));
 await writeFile(join(OUT, 'worker.log'), workerLog);
 console.log(`${PARTICIPATION_ONLY ? 'Participation: ' : ''}${results.filter(result => result.ok).length} of ${results.length} checks passed; screenshots and results in ${OUT}`);
 if (failures.length) { console.error(failures.map(failure => ` ✗ ${failure}`).join('\n')); process.exit(1); }
