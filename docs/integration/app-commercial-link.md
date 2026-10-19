@@ -171,7 +171,7 @@ independent wire double; actual Wirt/customer adoption remains separate.
 
 ## Configuration
 
-Each deployment consumes one Wirt producer. The [persistent staging configuration and activation handoff](app-staging.md) separate its callbacks, signing set, sessions and retained application state from production. The existing controlled TEST callback into production remains valid until a separately qualified replacement is activated.
+Each deployment consumes one Wirt producer. The [persistent staging configuration and activation handoff](app-staging.md) separate its callbacks, signing set, sessions and retained application state from production. Preserve the original production-origin Wirt TEST client and callback registration, history and exchange/refresh/replay compatibility until their explicit admitted disposition. Registration alone does not establish a deployed commercial App consumer or App-held relationship; any actual retained state follows the [preservation contract](app-staging.md#recovery-and-retained-test-state) at production admission.
 
 | Binding | Meaning |
 | --- | --- |

@@ -16,8 +16,9 @@ a later activation prerequisite. Ops returned a protected signing-key custody
 reference and confirmed its active key matches retained custody, but the installer's
 consumer binding has not been read back. Protected reference and key material stay
 in Ops custody and are not repeated in this public source document.
-The existing controlled TEST callback into production remains valid until a
-separately admitted successor replaces it.
+The original production-origin Wirt TEST client and callback registration remain
+preserved. Registration alone does not establish a deployed commercial App
+consumer or an App-held relationship; the dedicated staging tuple is distinct.
 Only a staging build adds a small neutral Staging mark beside the analytical and
 Manage page headings and the `Staging ·` browser-title prefix. Both project the
 existing selected build target; the fixed Works header and production appearance
@@ -231,8 +232,9 @@ its actual credential/data assignment. Source acceptance is not activation.
    entitlement. Follow the [participation contract](app-commercial-link.md#participation-reward-campaigns):
    answers stay in diffdevil, a preview reserves nothing, and an HTTP acknowledgement
    is not reward issuance or application. Verify production account/data and
-   controlled TEST callback remain intact during staging admission, then perform
-   their preserved disposition below before production Wirt admission.
+   original Wirt TEST registration remain intact during staging admission. Before
+   production Wirt admission, resolve any actual App-held TEST state and its
+   preservation at the admission seam described below.
    Wirt payment/login/mail receipts do not prove DiffDevil
    application, and HTTP acceptance does not prove projected entitlement.
 
@@ -600,11 +602,24 @@ with the current database must be established.
 Commercial state restored from an older snapshot requires the existing Wirt
 restore reconciliation; stale funding or a later disconnect must not be asserted
 current from a database restore. See [the commercial recovery contract](app-commercial-link.md#restore-occasion).
-Production's TEST-funded links, projections, benefits and staging application
-state are transitional. They must leave production D1 before production Wirt
-admission, through a preserved migration to staging or deliberate preserved
-retirement. The responsible delivery owner admits that disposition with its exact
-state, destination and recovery owner; this source Work neither deletes state nor
-copies production sessions/authorizations. Retain the current controlled route
-and valuable TEST state until the replacement and preservation are qualified,
-then complete that disposition at the existing admission seam.
+
+Preserve the original production-origin Wirt TEST client, registered callbacks
+and redirects, valuable Wirt history, and its exchange, refresh and replay
+compatibility obligations until their explicit admitted disposition. These are
+distinct from the dedicated staging producer/client/receiver/Manage tuple.
+A registered callback does not establish that production holds TEST-funded App
+links, projections, benefits or other commercial application state. Failure to
+recover an operational consumer proves neither an existing relationship nor an
+empty production database.
+
+At production Wirt admission, the responsible delivery owner establishes what
+App-held TEST state, if any, actually exists and identifies its key, authority
+and consumer dependencies. Before changing that state or its route, admit its
+preserved disposition with the exact state, destination, recovery owner and
+qualified replacement where needed. Preserve actual valuable state and its
+dependencies until that preservation and replacement are qualified; this is no
+blanket instruction to move or retire production D1 contents, copy production
+sessions/authorizations, or invent a customer/token migration. If no App-held
+relationship is established, retain the real Wirt registration, history and
+compatibility obligations without inventing one. Dated operator observations
+remain evidence of their observed boundary, not current database-emptiness proof.
