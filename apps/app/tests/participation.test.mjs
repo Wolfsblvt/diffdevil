@@ -173,7 +173,7 @@ const rows = async (table, where = '1=1', ...values) => (await db.prepare(`SELEC
 const completions = () => double.state.requests.filter(request => request.path.endsWith('/participation-completions'));
 
 before(async () => {
-  mf = new Miniflare({ workers: [{ config: { name: 'participation-test', type: 'worker', compatibilityDate: '2026-09-17', env: { APP_DB: { type: 'd1', id: `participation-${randomUUID()}` } },
+  mf = new Miniflare({ workers: [{ config: { name: 'participation-test', compatibilityDate: '2026-09-17', env: { APP_DB: { type: 'd1', id: `participation-${randomUUID()}` } },
     manifest: { mainModule: 'worker.mjs', modulesRoot: resolve('.'), modules: { 'worker.mjs': { type: 'esm', contents: 'export default { fetch() { return new Response("ok"); } };' } } } } }] });
   db = await mf.getD1Database('APP_DB');
   clock = { value: '2027-03-12T09:30:15.250Z' };

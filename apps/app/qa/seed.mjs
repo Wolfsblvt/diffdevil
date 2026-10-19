@@ -40,7 +40,7 @@ export function executeLocal(command, persist) { return wrangler(['d1', 'execute
 /** Write the fixture through the real store, then dump it as grouped INSERT statements. */
 export async function fixtureSql() {
   const runtime = new Miniflare({ workers: [{
-    config: { name: 'app-seed', type: 'worker', compatibilityDate: '2026-09-17', env: { APP_DB: { type: 'd1', id: `seed-${crypto.randomUUID()}` } }, manifest: { mainModule: 'worker.mjs', modulesRoot: resolve('.'), modules: { 'worker.mjs': { type: 'esm', contents: 'export default { fetch() { return new Response("ok"); } };' } } } }
+    config: { name: 'app-seed', compatibilityDate: '2026-09-17', env: { APP_DB: { type: 'd1', id: `seed-${crypto.randomUUID()}` } }, manifest: { mainModule: 'worker.mjs', modulesRoot: resolve('.'), modules: { 'worker.mjs': { type: 'esm', contents: 'export default { fetch() { return new Response("ok"); } };' } } } }
   }] });
   try {
     const database = await runtime.getD1Database('APP_DB');
