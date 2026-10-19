@@ -190,6 +190,7 @@ export function createAdmissionService({ store, authorize = async () => false, r
     if (typeof writerDeclared !== 'boolean') throw admissionError('E_ADMISSION_WRITER');
     const current = await inspect(repositoryId, actor);
     if (!basis || Object.entries(current.basis).some(([key, value]) => basis[key] !== value)) throw admissionError('E_ADMISSION_STALE');
+    if (current.next.action === 'disable-execution') throw admissionError('E_ADMISSION_ALREADY_ACTIVE');
     let after;
     try {
       after = await update(repositoryId, { revision: current.revision, execution: true, actor, origin,

@@ -33,6 +33,11 @@ carries the inspected basis and operation outcome. Audit failure does not roll
 back consent. This operation neither applies nor observes labels, comments or
 checks. Subsequent PR execution resolves its own trusted base again.
 
+For an already-active repository, the review shows the recorded admission and
+links to repository settings to stop execution. Another admission is refused
+before mutation: revision and consent actor/origin remain unchanged. Inspecting a
+new policy neither renews consent nor requires re-attestation.
+
 The explicit review shows the observed policy separately from the ordinary
 stored-layer settings summary. **Repository settings** returns to that unchanged
 console, including its existing enable controls; those controls do not claim the

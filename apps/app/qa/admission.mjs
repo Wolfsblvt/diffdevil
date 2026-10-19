@@ -63,12 +63,29 @@ export async function admissionJourney({ check, go, page, shot }, github) {
   check('admission returns the recorded actor and new revision, with history off and GitHub effects unobserved',
     /Execution consent recorded/u.test(await page.locator('.m-msg').innerText()) && /consent: enabled; actor 123/u.test(after)
       && after.includes('History off') && after.includes(`settings revision ${expected.basis.revision + 1}`));
+  check('an active review shows current consent and the settings next step without an admission form',
+    await page.locator('[data-admission-active]').count() === 1
+      && await review.getByRole('link', { name: 'Repository settings', exact: true }).count() === 1
+      && await review.locator('form').count() === 0);
   await shot('admission-recorded-1440');
   await page.setViewportSize({ width: 1024, height: 900 });
   check('the dense policy review stays within the established narrow desktop viewport',
     await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth));
   await shot('admission-recorded-1024');
   await page.setViewportSize({ width: 1440, height: 900 });
+
+  // A caller may still submit directly; hiding the form is not the mutation boundary.
+  const repeated = await page.request.post(new URL('/manage/do', page.url()).href, {
+    headers: { origin: new URL(page.url()).origin },
+    form: { action: 'admit', repository, back: path, writer: 'declared', inspection: JSON.stringify({
+      service: expected.service, basis: { ...expected.basis, revision: expected.basis.revision + 1, policyBase: github.state.policyHead }
+    }) }
+  });
+  check('a fresh active-basis POST is explicitly refused by the built route',
+    new URL(repeated.url()).searchParams.get('m') === 'admission-already-active');
+  await go(`${path}?admission=review`);
+  check('a refused repeated POST leaves the visible durable consent and revision unchanged',
+    await review.innerText() === after && await review.locator('form').count() === 0);
 
   github.state.policyFiles.set(repository, 503);
   await go(`${path}?admission=review`);

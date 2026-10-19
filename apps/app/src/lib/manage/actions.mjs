@@ -29,6 +29,7 @@ export const MESSAGES = Object.freeze({
   selected: { tone: 'ok', text: 'Selected. It holds a slot and isn\'t running yet: review its policy, then enable it.' },
   enabled: { tone: 'ok', text: 'Enabled. Size labels and the check run on its pull requests from now on. History stays a separate choice.' },
   admitted: { tone: 'ok', text: 'Execution consent recorded for the reviewed policy. History is unchanged. This operation did not apply or observe labels, comments or checks on GitHub.' },
+  'admission-already-active': { tone: 'err', text: 'Execution is already admitted. No admission was recorded and the existing consent and settings revision are unchanged. Open repository settings to stop execution.' },
   'admission-unconfirmed': { tone: 'warn', text: 'Admission could not be confirmed. Inspect the recorded execution consent and settings revision before trying again; the request may have committed.' },
   'admission-stale': { tone: 'err', text: 'The repository, policy or service changed since inspection. This request did not admit execution. Inspect the current basis and try again.' },
   'admission-version-unavailable': { tone: 'err', text: 'This deployment did not supply its running version. Its operator must deliver the version-metadata binding before reviewed admission is available.' },
@@ -166,6 +167,7 @@ function admissionMessage(error) {
   if (code === 'E_ADMISSION_WRITE_REQUIRED') return 'write-required';
   if (code === 'E_ADMISSION_STALE') return 'stale';
   if (code === 'E_ADMISSION_UNCONFIRMED') return 'admission-unconfirmed';
+  if (code === 'E_ADMISSION_ALREADY_ACTIVE') return 'admission-already-active';
   if (code === 'E_ADMISSION_VERSION_UNAVAILABLE') return 'admission-version-unavailable';
   if (code === 'E_ADMISSION_POLICY_UNAVAILABLE') return 'unavailable';
   if (code === 'E_ADMISSION_WRITER_UNRESOLVED') return 'writer-undeclared';

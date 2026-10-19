@@ -89,7 +89,7 @@ async function fixture() {
   entitlement: async () => 'pro', namespace: async () => 9, currentPolicy: async () => null });
   const service = createAuthorizationService({ store, admission, history, analytics, provider, protector, returnContexts: [CONTEXT, 'account-home'], allowedOrigins: [ORIGIN], allowedCallbackUrls: [CALLBACK], sessionLifetimeMs: TEST_SESSION_MS,
     delegatedAdministration: async ({ userId, repositoryId }) => providerState.delegated === true && userId === 123 && repositoryId === 17, now: () => clock.value });
-  return { runtime, database, appStore, store, service, clock, providerState, protector, historyQueries };
+  return { runtime, database, appStore, store, service, admission, clock, providerState, protector, historyQueries };
 }
 
 async function signIn(service) {
@@ -127,6 +127,29 @@ test('inspected admission uses current session authority, same-origin POST and t
     assert.equal(stored.history.enabled, false);
     assert.equal(stored.writer.confidence, 'administrator-declared');
     await assert.rejects(f.service.admitRepository(request), { code: 'E_ADMISSION_STALE' });
+  } finally { await f.runtime.dispose(); }
+});
+
+test('a fresh second-actor admission refuses without changing the first actor’s durable consent or revision', async () => {
+  const f = await fixture();
+  try {
+    const first = { role: 'repository-admin', userId: 123 };
+    const second = { role: 'repository-admin', userId: 456 };
+    const initial = await f.admission.inspect(17, first);
+    await f.admission.admit(17, { basis: initial.basis, actor: first, origin: 'dashboard', writerDeclared: true });
+    const stored = await f.database.prepare('SELECT * FROM repositories WHERE repository_id=17').first();
+    assert.equal(stored.settings_revision, 1);
+    assert.equal(stored.execution_consent_actor_id, first.userId);
+    assert.equal(stored.execution_consent_origin, 'dashboard');
+
+    f.clock.value = '2026-09-23T00:01:00.000Z';
+    const current = await f.admission.inspect(17, second);
+    assert.equal(current.next.action, 'disable-execution');
+    assert.equal(current.execution.actorId, first.userId);
+    await assert.rejects(f.admission.admit(17, { basis: current.basis, actor: second, origin: 'second-operator', writerDeclared: true }),
+      { code: 'E_ADMISSION_ALREADY_ACTIVE' });
+    assert.deepEqual(await f.database.prepare('SELECT * FROM repositories WHERE repository_id=17').first(), stored,
+      'refusal preserves the complete durable row, including revision, consent actor/origin, history, configuration and update time');
   } finally { await f.runtime.dispose(); }
 });
 
