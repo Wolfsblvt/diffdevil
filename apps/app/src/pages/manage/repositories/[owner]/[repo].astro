@@ -63,6 +63,14 @@ const historyPauseText = state.historyHeld || state.overLimit ? state.why
 const confirm = Astro.url.searchParams.get('confirm') ?? '';
 const premiumPlan = ['Pro', 'Business'].includes(namespace?.plan ?? '');
 const writerResolved = ['detected', 'administrator-declared'].includes(admission.writer.confidence);
+// Deliberate operator inspection: use the real trusted-policy resolver, never the locally compiled settings view.
+let inspection: any = null, inspectionFailure = false;
+const reviewingAdmission = Astro.url.searchParams.get('admission') === 'review';
+if (reviewingAdmission) {
+  try { inspection = (await runtime.auth.inspectAdmission({ session: session.session, repositoryId: found.repositoryId })).body; }
+  catch { inspectionFailure = true; }
+}
+const admissionService = runtime.config.admissionService;
 const capacity = namespace?.capacity;
 const publicPlaces = capacity?.publicHistory;
 const consent = standing?.historyOrigin ?? 'unknown';
@@ -78,8 +86,26 @@ const importScopeText = runtime.commercial ? (namespace?.plan === 'Free' ? `up t
 ---
 <ManagePage model={model} tab="repositories" title={found.name} crumbs={[{ label: found.owner, href: namespacePath(found.owner) }]} sub={undefined} documentTitle={found.name}>
   <Fragment slot="sub"><StatePill tone={state.tone} icon={state.icon} label={state.label} /><span class="a-dot">·</span>{found.private ? 'private' : 'public'}<span class="a-dot">·</span>{namespace?.plan === 'Pro' || namespace?.plan === 'Business' ? <PlanChip plan={namespace.plan} /> : (namespace?.plan ?? 'Free')}</Fragment>
-  <Fragment slot="tools"><a class="m-btn sm ghost" href={`/?s=${encodeURIComponent(fullName)}`}><Icon name="overview" size={14} />View activity</a></Fragment>
+  <Fragment slot="tools"><a class="m-btn sm ghost" href={reviewingAdmission ? repositoryPath(repository) : `${repositoryPath(repository)}?admission=review`}>{reviewingAdmission ? 'Repository settings' : 'Inspect trusted policy'}</a><a class="m-btn sm ghost" href={`/?s=${encodeURIComponent(fullName)}`}><Icon name="overview" size={14} />View activity</a></Fragment>
   <div class="m-stack">
+    {inspectionFailure && <Banner tone="err" icon="circle-alert" title="Trusted policy inspection unavailable" text="The App could not observe the current trusted policy through its installation. Nothing was admitted. Check this deployment's App credentials and current repository access, then review again." />}
+    {inspection && <section class="m-sec m-admission" data-admission-review>
+      <header><h2>Review admission</h2><span class="d">Read-only inspection · no GitHub effects attempted</span></header>
+      <div class="b">
+        <p>Repository <b>{fullName}</b> · ID {inspection.repositoryId} · installation {inspection.installationId} · settings revision {inspection.revision}.</p>
+        <p>Recorded execution consent: {inspection.execution.reason === null ? 'enabled' : inspection.execution.reason}; actor {inspection.execution.actorId ?? 'unobserved'}; origin {inspection.execution.origin ?? 'unknown'}. Writer standing: {inspection.writer.confidence}. History {inspection.history.enabled ? 'enabled' : 'off'}.</p>
+        <p>Service <code>{admissionService.origin}</code> · running version <code>{admissionService.versionId ?? 'unobserved'}</code>. Match this version to the operator's accepted source/deployment record. A version identifier alone does not attest source bytes.</p>
+        <p>Trusted default-branch commit <code>{inspection.basis.policyBase}</code> · policy <code>{inspection.basis.policyId}</code> · {inspection.policy.source}.</p>
+        <details open><summary>Effective policy and declaration origins</summary><pre class="m-code">{JSON.stringify({ document: inspection.policy.document, provenance: inspection.policy.provenance }, null, 2)}</pre></details>
+        <details open><summary>Requested effects when execution is enabled</summary><pre class="m-code">{JSON.stringify(inspection.requestedEffects, null, 2)}</pre></details>
+        <p>The native check accompanies execution. Rules above select labels and comments; missing declared labels may be created, existing definitions and unrelated labels stay. This is policy inspection, not a result for a particular pull request. Each pull request resolves its own trusted base again. History, configuration and other writers stay as they are.</p>
+        <p>Admission rechecks your current GitHub authority, this running version, settings revision and trusted policy. If any basis changed, review again. Declaring a sole writer records your statement; it does not inspect or stop an Action or bot.</p>
+        {inspection.next.action === 'disable-execution' ? <p class="m-note" data-admission-active>Execution is already admitted. The recorded consent above remains current; inspecting policy does not renew it. To stop execution, open <a href={repositoryPath(repository)}>Repository settings</a>.</p> : admissionService.versionId ? <ActionForm action="admit" fields={{ repository: fullName, inspection: JSON.stringify({ basis: inspection.basis, service: admissionService }) }} label="Admit execution" class="pri" back={repositoryPath(repository)}>
+          {!['detected', 'administrator-declared'].includes(inspection.writer.confidence) && <label class="m-note"><input type="checkbox" name="writer" value="declared" required /> No other writer manages these labels or comments here</label>}
+        </ActionForm> : <p class="m-note">This deployment has no running-version binding, so admission through this review is unavailable. Its operator must deliver the maintained version-metadata configuration.</p>}
+      </div>
+    </section>}
+    {!reviewingAdmission && <>
     {state.kind === 'held' && <Banner tone="err" icon="circle-alert" title="Held: the policy could not be read on the last pull request" text={`${state.why} Fix the file on the default branch; diffdevil re-reads it on the next push.`}><a class="m-btn sm" href={`https://github.com/${fullName}/blob/HEAD/.diffdevil.yml`}>Open .diffdevil.yml <Icon name="arrow-up-right" size={13} /></a></Banner>}
     {state.kind === 'stopped' && <Banner tone="err" icon="circle-alert" title="Stopped: installation suspended" text={state.why}><a class="m-btn sm" href="https://github.com/settings/installations">Review on GitHub <Icon name="arrow-up-right" size={13} /></a></Banner>}
     {state.kind === 'removed' && <Banner tone="info" icon="info" title={`${found.name} left the GitHub App installation`} text={`Nothing runs and nothing new is collected. Its history is kept until ${standing?.retainedUntil ? fmtDay(standing.retainedUntil) : 'the offboarding period ends'} so an administrator can export or delete it; then it's removed. Adding the repository back on GitHub doesn't restart collection by itself.`}><a class="m-btn sm" href={`/manage/export?repository=${encodeURIComponent(fullName)}`}><Icon name="download" size={14} />Export history</a><a class="m-btn sm dng" href="?confirm=delete">Delete now</a></Banner>}
@@ -164,5 +190,6 @@ const importScopeText = runtime.commercial ? (namespace?.plan === 'Free' ? `up t
       <div><Icon name="pause" /><span><b>Stop operating {found.name}</b><span class="d">Labels and the check stop, history collection pauses and its place frees up. Consent, retained history and settings stay. Resume history separately to collect with repository effects off.</span></span>{running || state.holdsSlot || historyOn ? <ActionForm action="stop" fields={{ repository: fullName }} label="Stop" class="sm" back={repositoryPath(repository)} /> : <StatePill tone="off" label="Not running" />}</div>
       <div><Icon name="git-fork" /><span><b>Remove from the GitHub App installation</b><span class="d">Done on GitHub. diffdevil loses access, keeps history for the offboarding period, then removes it.</span></span><a class="m-btn sm ghost" href="https://github.com/settings/installations">On GitHub <Icon name="arrow-up-right" size={13} /></a></div>
     </div></div></section>}
+    </>}
   </div>
 </ManagePage>

@@ -9,6 +9,7 @@ import { D1AppStore } from './storage.mjs';
 import { D1AuthorizationStore } from './authorization-storage.mjs';
 import { createAuthorizationService, protectedHeaders } from './authorization.mjs';
 import { createAdmissionService } from './admission.mjs';
+import { DEFAULT_SIZE_POLICY, resolveEffectivePolicy } from './configuration.mjs';
 import { createHistoryAnalyticsService } from './history-analytics.mjs';
 import { createAnalyticalDataService } from './analytical-data.mjs';
 import { createGitHubAppWorker } from './app.mjs';
@@ -78,7 +79,8 @@ async function fixture() {
       return providerState.organisation(organisationId);
     }
   };
-  const admission = createAdmissionService({ store: appStore, authorize: async request => ['repository-admin', 'delegated-admin'].includes(request.actor?.role) });
+  const admission = createAdmissionService({ store: appStore, authorize: async request => ['repository-admin', 'delegated-admin'].includes(request.actor?.role),
+    previewPolicy: async () => ({ ...resolveEffectivePolicy({ preset: DEFAULT_SIZE_POLICY }), source: 'default', expectedPolicyBase: 'a'.repeat(40) }) });
   const historyQueries = [];
   const history = createHistoryAnalyticsService({ store: { historyWindow: async repositoryId => { historyQueries.push(repositoryId); return []; },
     historySettings: async () => ({ enabled: true }) }, authorize: async ({ actor }) => actor?.userId === 123 });
@@ -87,7 +89,7 @@ async function fixture() {
   entitlement: async () => 'pro', namespace: async () => 9, currentPolicy: async () => null });
   const service = createAuthorizationService({ store, admission, history, analytics, provider, protector, returnContexts: [CONTEXT, 'account-home'], allowedOrigins: [ORIGIN], allowedCallbackUrls: [CALLBACK], sessionLifetimeMs: TEST_SESSION_MS,
     delegatedAdministration: async ({ userId, repositoryId }) => providerState.delegated === true && userId === 123 && repositoryId === 17, now: () => clock.value });
-  return { runtime, database, appStore, store, service, clock, providerState, protector, historyQueries };
+  return { runtime, database, appStore, store, service, admission, clock, providerState, protector, historyQueries };
 }
 
 async function signIn(service) {
@@ -99,6 +101,57 @@ async function signIn(service) {
   assert.ok(session);
   return { state: begun.state, browserBinding: oauthBinding(begun), artifact, session, result };
 }
+
+test('inspected admission uses current session authority, same-origin POST and the real D1 consent path', async () => {
+  const f = await fixture();
+  try {
+    const { session } = await signIn(f.service);
+    const inspected = await f.service.inspectAdmission({ session, repositoryId: 17 });
+    assert.deepEqual(inspected.headers, protectedHeaders());
+    assert.equal((await f.appStore.repositoryAdmission(17)).state, 'pending-enable');
+    const request = { session, repositoryId: 17, basis: inspected.body.basis, writerDeclared: true, method: 'POST', origin: ORIGIN };
+    await assert.rejects(f.service.admitRepository({ ...request, method: 'GET' }), { code: 'E_AUTH_METHOD' });
+    await assert.rejects(f.service.admitRepository({ ...request, origin: 'https://elsewhere.test' }), { code: 'E_AUTH_ORIGIN' });
+    f.providerState.canAdminister = false;
+    await assert.rejects(f.service.inspectAdmission({ session, repositoryId: 17 }), { code: 'E_ADMISSION_UNAUTHORIZED' });
+    await assert.rejects(f.service.admitRepository(request), { code: 'E_ADMISSION_UNAUTHORIZED' });
+    f.providerState.delegated = true; f.providerState.canWrite = false;
+    await assert.rejects(f.service.admitRepository(request), { code: 'E_ADMISSION_WRITE_REQUIRED' });
+    f.providerState.canAdminister = true;
+    const result = await f.service.admitRepository(request);
+    assert.equal(result.body.operation.actorId, 123);
+    assert.equal(result.body.operation.outcome, 'recorded');
+    const stored = await f.appStore.repositoryAdmission(17);
+    assert.equal(stored.state, 'active');
+    assert.equal(stored.execution.actorId, 123);
+    assert.equal(stored.history.enabled, false);
+    assert.equal(stored.writer.confidence, 'administrator-declared');
+    await assert.rejects(f.service.admitRepository(request), { code: 'E_ADMISSION_STALE' });
+  } finally { await f.runtime.dispose(); }
+});
+
+test('a fresh second-actor admission refuses without changing the first actor’s durable consent or revision', async () => {
+  const f = await fixture();
+  try {
+    const first = { role: 'repository-admin', userId: 123 };
+    const second = { role: 'repository-admin', userId: 456 };
+    const initial = await f.admission.inspect(17, first);
+    await f.admission.admit(17, { basis: initial.basis, actor: first, origin: 'dashboard', writerDeclared: true });
+    const stored = await f.database.prepare('SELECT * FROM repositories WHERE repository_id=17').first();
+    assert.equal(stored.settings_revision, 1);
+    assert.equal(stored.execution_consent_actor_id, first.userId);
+    assert.equal(stored.execution_consent_origin, 'dashboard');
+
+    f.clock.value = '2026-09-23T00:01:00.000Z';
+    const current = await f.admission.inspect(17, second);
+    assert.equal(current.next.action, 'disable-execution');
+    assert.equal(current.execution.actorId, first.userId);
+    await assert.rejects(f.admission.admit(17, { basis: current.basis, actor: second, origin: 'second-operator', writerDeclared: true }),
+      { code: 'E_ADMISSION_ALREADY_ACTIVE' });
+    assert.deepEqual(await f.database.prepare('SELECT * FROM repositories WHERE repository_id=17').first(), stored,
+      'refusal preserves the complete durable row, including revision, consent actor/origin, history, configuration and update time');
+  } finally { await f.runtime.dispose(); }
+});
 
 test('analytical HTTP uses the real session path for an ordinary reader, with current access and private refusals', async () => {
   const source = await fixture();

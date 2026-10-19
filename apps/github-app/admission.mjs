@@ -8,6 +8,17 @@ import { readBriefSettings } from '../shared/pr-brief/settings.mjs';
 const originPattern = /^[A-Za-z0-9._-]{1,100}$/u;
 const boundedDays = value => Number.isSafeInteger(value) && value >= 1 && value <= 3660 ? value : undefined;
 
+/** Running provider version; the operator's accepted deployment record supplies its source correspondence. */
+export function admissionServiceIdentity(origin, metadata) {
+  return { origin, versionId: typeof metadata?.id === 'string' && /^[A-Za-z0-9-]{1,100}$/u.test(metadata.id) ? metadata.id : null };
+}
+
+/** Bind a deliberate admission to the host/version inspected, without adding a second credential or expiry. */
+export function assertAdmissionService(expected, current) {
+  if (!current?.versionId) throw admissionError('E_ADMISSION_VERSION_UNAVAILABLE');
+  if (expected?.origin !== current.origin || expected?.versionId !== current.versionId) throw admissionError('E_ADMISSION_STALE');
+}
+
 function admissionError(code, message = code) { return Object.assign(new Error(message), { code }); }
 function validatedConfiguration(value) {
   try { return validateRepositoryConfiguration(value); }
@@ -155,5 +166,44 @@ export function createAdmissionService({ store, authorize = async () => false, r
       // Current neighbours need only an eligible plan; history consent gates the history-backed modules inside the provider.
       eligibility: { history: historyOn ? { standing: 'available' } : { standing: 'consent-required', reason: 'history-off' }, premium } });
   }
-  return { read, update, previewBrief };
+  /** Inspect the actual default-branch policy through the same resolver execution uses. No settings or effects change. */
+  async function inspect(repositoryId, actor = {}) {
+    await authorizeRequest({ kind: 'read', repositoryId, actor });
+    const admission = await store.repositoryAdmission(repositoryId);
+    if (!admission) throw admissionError('E_ADMISSION_UNKNOWN_REPOSITORY');
+    const selected = await selectedPolicy(admission, previewPolicy);
+    if (!selected || typeof selected.expectedPolicyBase !== 'string') throw admissionError('E_ADMISSION_POLICY_UNAVAILABLE');
+    return {
+      ...await projectAdmission(admission, async () => selected, appAuthor),
+      policy: { ...policyProjection(selected), base: selected.expectedPolicyBase, document: selected.document },
+      basis: { repositoryId, installationId: admission.installationId, revision: admission.revision,
+        policyId: selected.policy.id, policyBase: selected.expectedPolicyBase },
+      requestedEffects: { check: 'native-pull-request-summary', labels: selected.document.labelGroups ?? {},
+        rules: selected.document.rules ?? {}, brief: briefProjection(admission, selected, appAuthor),
+        history: 'unchanged', providerEffects: 'not-attempted' }
+    };
+  }
+
+  /** Deliberately enable only the inspected repository and policy. History and configuration are separate operations. */
+  async function admit(repositoryId, { basis, writerDeclared = false, actor, origin }) {
+    await authorizeRequest({ kind: 'update', repositoryId, actor, origin });
+    if (typeof writerDeclared !== 'boolean') throw admissionError('E_ADMISSION_WRITER');
+    const current = await inspect(repositoryId, actor);
+    if (!basis || Object.entries(current.basis).some(([key, value]) => basis[key] !== value)) throw admissionError('E_ADMISSION_STALE');
+    if (current.next.action === 'disable-execution') throw admissionError('E_ADMISSION_ALREADY_ACTIVE');
+    let after;
+    try {
+      after = await update(repositoryId, { revision: current.revision, execution: true, actor, origin,
+        ...(writerDeclared ? { writer: { confidence: 'administrator-declared' } } : {}) });
+    } catch (error) {
+      if (['E_ADMISSION_STALE', 'E_ADMISSION_UNAUTHORIZED', 'E_ADMISSION_UNAVAILABLE', 'E_ADMISSION_TOMBSTONED',
+        'E_ADMISSION_UNKNOWN_REPOSITORY', 'E_ADMISSION_WRITER_UNRESOLVED', 'E_ADMISSION_CONFIGURATION', 'E_ADMISSION_ACTOR', 'E_ADMISSION_ORIGIN'].includes(error?.code)) throw error;
+      // A failed response/readback after the batch is not proof that consent was not recorded.
+      throw admissionError('E_ADMISSION_UNCONFIRMED');
+    }
+    if (after.revision !== current.revision + 1 || after.state !== 'active' || after.execution.reason !== null) throw admissionError('E_ADMISSION_UNCONFIRMED');
+    return { admission: after, operation: { kind: 'enable-execution', actorId: actor.userId, basis: current.basis,
+      revision: after.revision, outcome: 'recorded', providerEffects: 'not-attempted', history: 'unchanged' } };
+  }
+  return { read, update, previewBrief, inspect, admit };
 }
