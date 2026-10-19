@@ -1,9 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
 import { test } from 'node:test';
+import { convertV4MiniflareOptions, Miniflare } from 'miniflare';
 import { createAdmissionService, admissionServiceIdentity, assertAdmissionService } from './admission.mjs';
 import { createPolicyResolver } from './app.mjs';
 import { resolveEffectivePolicy, DEFAULT_SIZE_POLICY } from './configuration.mjs';
+import { bindPlatformFetch } from './platform-fetch.mjs';
 import { FakeGitHub } from '../../src/diffdevil/tests/helpers/github.mjs';
 
 const actor = { role: 'repository-admin', userId: 123 };
@@ -83,6 +87,35 @@ test('the production trusted resolver keeps the Worker platform fetch receiver w
   } finally {
     Object.defineProperty(globalThis, 'fetch', { configurable: true, writable: true, value: originalFetch });
   }
+});
+
+test('the Worker platform fetch remains callable when passed through a client method', async () => {
+  const fetchModule = await readFile(resolve('apps/github-app/platform-fetch.mjs'), 'utf8');
+  const runtime = new Miniflare(convertV4MiniflareOptions({
+    name: 'platform-fetch-receiver', compatibilityDate: '2026-09-17', modulesRoot: resolve('.'),
+    modules: [
+      { type: 'ESModule', path: 'apps/github-app/worker.mjs', contents: `import { bindPlatformFetch } from './platform-fetch.mjs';
+export default { async fetch() {
+  const unboundClient = { fetch: globalThis.fetch, async read(url) { return this.fetch(url); } };
+  let unboundFailure;
+  try { await unboundClient.read('https://api.github.com/'); } catch (error) { unboundFailure = error.message; }
+  const client = { fetch: bindPlatformFetch(globalThis.fetch), async read(url) { return this.fetch(url); } };
+  const response = await client.read('https://api.github.com/');
+  return Response.json({ unboundFailure, status: response.status, body: await response.json() });
+} };` },
+      { type: 'ESModule', path: 'apps/github-app/platform-fetch.mjs', contents: fetchModule }
+    ],
+    outboundService: async request => Response.json({ url: request.url })
+  }));
+  try {
+    const worker = await runtime.getWorker('platform-fetch-receiver');
+    const response = await worker.fetch(new Request('http://worker.test/'));
+    assert.equal(response.status, 200);
+    const result = await response.json();
+    assert.match(result.unboundFailure, /^Illegal invocation:/u);
+    assert.equal(result.status, 200);
+    assert.deepEqual(result.body, { url: 'https://api.github.com/' });
+  } finally { await runtime.dispose(); }
 });
 
 test('admission records the acting administrator and inspected basis, changing execution alone', async () => {

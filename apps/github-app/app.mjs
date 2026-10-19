@@ -14,6 +14,7 @@ import { collectAnalyticalPullRequest, captureDefaultBranchSizes, defaultBranch,
 import { analyticalKit } from './analytical-data.mjs';
 import { D1HistoryJobStore, resumeHistoryJobs, runHistoryJob } from './history-jobs.mjs';
 import { COMMERCIAL_LINK_COOKIE, commercialFromEnv } from './commercial.mjs';
+import { bindPlatformFetch } from './platform-fetch.mjs';
 import { BRIEF_LIFECYCLE, BRIEF_RULE, HISTORY_WITHDRAWN, briefComposer, briefLinks, briefPolicyLayer, gatherBriefInputs, historyPublicationGuard, openPullRequests, openPullRequestsAfter, policyNameOf,
   postFinalSummary, rateReserveReached, readNeighbourContext, readOpenFileIndex, resolveBriefRoute, storedBriefSettings } from './brief.mjs';
 
@@ -107,8 +108,7 @@ async function mintInstallationClient(env, installationId, body, options = {}) {
   const store = new D1AppStore(env.APP_DB, { installationAccounts: stagingInstallationAccounts(env) });
   if (!await store.installationAdmitted(installationId)) throw appError('E_ACCESS_DISABLED');
   const jwt = await (options.createJwt ?? createAppJwt)({ appId: env.GITHUB_APP_ID, privateKey: env.GITHUB_APP_PRIVATE_KEY, ...(options.now === undefined ? {} : { now: options.now }) });
-  // createAppRuntime passes the Worker platform fetch explicitly; keep its global receiver when GitHubClient calls it as a method.
-  const fetch = options.fetch === globalThis.fetch ? globalThis.fetch.bind(globalThis) : options.fetch;
+  const fetch = bindPlatformFetch(options.fetch);
   const app = new GitHubClient({ token: jwt, ...(fetch === undefined ? {} : { fetch }), responseBytes: WORKER_RESULT_LIMIT, readRetries: 0 });
   const token = installationToken(await app.json(`/app/installations/${installationId}/access_tokens`, { method: 'POST', phase: 'apply', body }));
   return budgetedClient({ token, ...(fetch === undefined ? {} : { fetch }), responseBytes: WORKER_RESULT_LIMIT, readRetries: 0 });
