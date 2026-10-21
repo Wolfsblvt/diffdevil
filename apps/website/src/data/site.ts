@@ -19,7 +19,11 @@ export const PLAYGROUND_API: string = (import.meta.env.PUBLIC_PLAYGROUND_API ?? 
 export const APP_INSTALL_URL: string | undefined = import.meta.env.PUBLIC_APP_INSTALL_URL || undefined;
 export const DISCORD_URL: string | undefined = import.meta.env.PUBLIC_DISCORD_URL || undefined;
 export const BLUESKY_URL: string | undefined = import.meta.env.PUBLIC_BLUESKY_URL || undefined;
-export const SPONSOR_URL: string | undefined = import.meta.env.PUBLIC_SPONSOR_URL || undefined;
+/** The Wolfsblvt Works sponsor routes the shared Works sponsor section links, as .github/FUNDING.yml declares them. */
+export const WORKS_SPONSORS = Object.freeze([
+  { label: 'GitHub Sponsors', href: 'https://github.com/sponsors/Wolfsblvt' },
+  { label: 'Ko-fi', href: 'https://ko-fi.com/wolfsblvt' },
+] as const);
 export const CHROME_WEB_STORE_URL: string | undefined = import.meta.env.PUBLIC_CHROME_WEB_STORE_URL || undefined;
 export const DASHBOARD_URL: string | undefined = import.meta.env.PUBLIC_DASHBOARD_URL || undefined;
 export const PACKAGE_VERSION: string = packageJson.version;

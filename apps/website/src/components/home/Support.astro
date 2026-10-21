@@ -1,41 +1,40 @@
 ---
 // SPDX-License-Identifier: AGPL-3.0-only
-// `#support`: the quiet closing banner — anchor, title, one short paragraph, two actions
-// with icon slots, and an art slot on the right.
-//
-// STRUCTURE ONLY. The sponsor visual is an open owner design seam. This component fixes
-// the semantics, layout, responsive behaviour and the interfaces the final design plugs
-// into, and deliberately uses the ordinary surface tokens and ordinary buttons:
-//   · art      → `--support-art` (a CSS image; the slot is empty and takes no space in the
-//                reading order until it is set) on `[data-support-art]`
-//   · ground   → `--support-ground` (defaults to a plain raised surface gradient)
-//   · icons    → the `sponsor` and `star` slots of the shared icon adapter
-//   · sponsor  → PUBLIC_SPONSOR_URL, a configured live destination like every other action link
-import ActionLink from '../ActionLink.astro';
+// `#support`: the shared Wolfsblvt Works sponsor section, vendored from the Works bundle and bound by
+// apps/website/works-sponsor.mjs. Works owns its words, artwork, corners and motion; diffdevil supplies the
+// placement, the GitHub Sponsors and Ko-fi routes, the heading level, a unique id and the admitted host variables
+// (the approved specimen's diffdevil values, mapped onto the site tokens so light and dark both hold).
+// Common words only: no product-context line. A quiet star link stays outside the Works panel.
+import template from '../../../../../vendor/brand/works/components/works-sponsor.html?raw';
+import '../../../../../vendor/brand/works/css/works-sponsor.css';
 import Icon from '../Icon.astro';
-import SectionHead from '../SectionHead.astro';
+import { renderWorksSponsor } from '../../../works-sponsor.mjs';
 import { copy } from '../../data/copy';
-import { GITHUB, SPONSOR_URL } from '../../data/site';
+import { GITHUB, WORKS_SPONSORS } from '../../data/site';
 const c = copy.support;
+const html = renderWorksSponsor(template, { id: 'support-works', heading: 2, links: [...WORKS_SPONSORS] });
 ---
-<section class="section" data-section="support">
+<section class="section" id="support" data-section="support" aria-label={c.label}>
   <div class="wrap">
-    <div class="support">
-      <div class="support-text">
-        <SectionHead id="support" title={c.h2} body={c.body} small />
-        <div class="support-actions">
-          <ActionLink class="btn btn-primary" href={SPONSOR_URL} data-support-action="sponsor"><Icon name="sponsor" size={15} />{c.sponsor}</ActionLink>
-          <a class="btn btn-secondary" href={GITHUB} rel="noopener" data-support-action="star"><Icon name="star" size={15} />{c.star}</a>
-        </div>
-      </div>
-      <div class="support-art" data-support-art aria-hidden="true"></div>
-    </div>
+    <div class="support-host" set:html={html} />
+    <a class="support-star" href={GITHUB} rel="noopener" data-support-action="star"><Icon name="star" size={14} />{c.star}</a>
   </div>
 </section>
+<script>
+  import { mountWorksSponsors } from '../../../../../vendor/brand/works/components/works-sponsor.mjs';
+  mountWorksSponsors();
+</script>
 <style>
-  .support { position: relative; display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); border: 1px solid var(--hair); border-radius: var(--r-card); overflow: hidden; background: var(--support-ground, linear-gradient(100deg, var(--bg-raised), var(--bg-raised-2))); }
-  .support-text { padding: 28px 32px; display: flex; flex-direction: column; gap: 16px; }
-  .support-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
-  .support-art { background-image: var(--support-art, none); background-repeat: no-repeat; background-position: right center; background-size: contain; min-height: 100%; }
-  @media (max-width: 900px) { .support { grid-template-columns: minmax(0, 1fr); } .support-art { display: none; } .support-text { padding: 24px; } }
+  .support-host {
+    --works-sponsor-background: #151922; --works-sponsor-border: 1px solid #484d58; --works-sponsor-text: #f0f2f5;
+    --works-sponsor-font: var(--font-ui); --works-sponsor-heading-font: 600 28px/1.15 var(--font-ui);
+    --works-sponsor-button-background: var(--accent); --works-sponsor-button-text: var(--on-accent);
+    --works-sponsor-radius-top-right: var(--r-card); --works-sponsor-radius-bottom-left: var(--r-card);
+  }
+  .support-host :global(.works-sponsor p) { color: #aab0bb; font-size: 15px; }
+  .support-host :global(.works-sponsor .actions a) { border-radius: var(--r-control); font-size: 13.5px; min-height: 38px; }
+  :global([data-theme="light"]) .support-host { --works-sponsor-background: var(--bg-raised); --works-sponsor-border: 1px solid var(--hair-strong); --works-sponsor-text: var(--fg); }
+  :global([data-theme="light"]) .support-host :global(.works-sponsor p) { color: var(--fg-2); }
+  .support-star { display: inline-flex; align-items: center; gap: 6px; margin-top: 14px; font-size: 13.5px; color: var(--fg-2); }
+  .support-star:hover { color: var(--fg); text-decoration: underline; text-underline-offset: 3px; }
 </style>

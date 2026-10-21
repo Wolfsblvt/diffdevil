@@ -1,6 +1,6 @@
 ---
 // SPDX-License-Identifier: AGPL-3.0-only
-// /app/: the public GitHub App page. Same engine, less plumbing. The head is the same
+// /app/: the public GitHub App page: diffdevil, with a memory. The head is the same
 // AppPanel the homepage shows, then the real Overview, a tour of the destinations in actual
 // App captures, why, plans, history, permissions, hosted versus self-hosted, and migration
 // from an existing Action writer. Each chapter is a short lead, its blocks
@@ -87,7 +87,7 @@ const migration = `# 1. Turn off the Action writer. A read-only step may stay.
 # 2. Install the App and pick the same preset.
 # 3. Your .diffdevil.yml keeps winning.`;
 ---
-<Base title="GitHub App" image={{ path: '/og-app.png', alt: 'diffdevil: The App runs for the repository. Same diffdevil, less plumbing. Beside it, the App Overview across several repositories.' }} description="The diffdevil GitHub App runs the same engine and .diffdevil.yml as the Action for the repositories you choose: native checks and size labels, then Overview, pull-request flow, history and Manage across your repositories. Hosted or self-hosted." surface="GitHub App" current="app">
+<Base title="GitHub App" image={{ path: '/og-app.png', alt: 'diffdevil, with a memory: history for every repository you choose. Beside it, the App Overview across several repositories.' }} description="The diffdevil GitHub App runs the same engine and .diffdevil.yml as the Action for the repositories you choose: native checks and size labels, then Overview, pull-request flow, history and Manage across your repositories. Hosted or self-hosted." surface="GitHub App" current="app">
   <section class="section section-first" data-section="app">
     <div class="wrap">
       <AppPanel as="h1" secondaryHref="#tour" selfHostHref="#self-host" />

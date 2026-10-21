@@ -174,8 +174,8 @@ export const copy = {
   },
 
   app: {
-    eyebrowTail: 'diffdevil GitHub App', h2: 'Same diffdevil. Less plumbing.', h2Lines: ['Same diffdevil.', 'Less plumbing.'] as const,
-    body: 'See how your repositories actually change: pull-request flow, size and history across every repository you choose, with native checks and size labels on every pull request. Same engine and same .diffdevil.yml as the Action, without a workflow file, a token or a runner to babysit.',
+    eyebrowTail: 'diffdevil GitHub App', h2: 'diffdevil, with a memory.', h2Lines: ['diffdevil,', 'with a memory.'] as const,
+    body: 'Every pull request in every repository you choose, remembered: what merged, how big it was, how long it took, and how this period compares with the last. Native checks and size labels run on every pull request with the same engine and .diffdevil.yml as the Action, and nothing to maintain.',
     ctaPrimary: 'Install on GitHub', ctaSecondary: 'How the App works', ctaTertiary: 'Self-host it',
     foot: 'Free, Pro and Business plans. The Community App is open source (AGPL-3.0-only) and self-hostable.',
     /** Selling order: what the App shows you first, then what it does on the PR, then how little it asks. */
@@ -227,9 +227,7 @@ export const copy = {
   },
 
   support: {
-    h2: 'Support diffdevil',
-    body: 'diffdevil is open source and built in the open. If it saves your team time, a sponsorship or a star helps keep it maintained.',
-    sponsor: 'Sponsor', star: 'Star us on GitHub',
+    label: 'Support diffdevil', star: 'Star diffdevil on GitHub',
   },
 
   playground: {

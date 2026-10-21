@@ -27,7 +27,7 @@ Object.assign(process.env, {
   DIFFDEVIL_EDIT_REF: 'main',
   PUBLIC_PLAYGROUND_API: 'https://diffdevil-playground.wolfsblvt.workers.dev',
   PUBLIC_APP_INSTALL_URL: appInstall, PUBLIC_DASHBOARD_URL: '', PUBLIC_CHROME_WEB_STORE_URL: store,
-  PUBLIC_DISCORD_URL: '', PUBLIC_BLUESKY_URL: '', PUBLIC_SPONSOR_URL: '',
+  PUBLIC_DISCORD_URL: '', PUBLIC_BLUESKY_URL: '',
 });
 delete process.env.DIFFDEVIL_DOCS_QA;
 // A local candidate is not an immutable published download manifest.
