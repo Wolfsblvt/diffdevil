@@ -18,6 +18,8 @@ import { authSession, authLogout, briefPreview, openSession, cookieValue, SESSIO
 import { scopeRepositories, loadTitles, resolveViewer } from '../src/lib/viewer.mjs';
 import { loadView, entitlementFor } from '../src/lib/view.mjs';
 import { describeScope } from '../src/lib/scope.mjs';
+import { composePremium } from '../src/premium/registry.mjs';
+import { openAnalyticalShell } from '../src/lib/analytical-request.mjs';
 import { REPOSITORIES, ENTITLEMENT_FIXTURE, CODE, USER, createFakeGitHub } from '../qa/fixture.mjs';
 import { fixture, disposeFixture, signIn, viewerFor, ORIGIN, NOW } from './support.mjs';
 
@@ -328,6 +330,32 @@ test('the brief preview route serves an administrator an effect-free synthetic p
   assert.equal((await post({ repositoryId: 1006 })).status, 403, 'a non-administrator cannot preview');
   assert.equal((await post({ repositoryId: 1001 }, { origin: 'https://evil.example' })).status, 403);
   assert.equal((await post({ repositoryId: 1001, settings: { mode: 'llm' } })).status, 400);
+});
+
+test('the local-session shell and common history answer while provider, D1 and premium work are held', async () => {
+  const { app: compose } = await fixture();
+  let release;
+  const gate = new Promise(resolve => { release = resolve; });
+  let fileCalls = 0;
+  const premium = composePremium({ service: () => ({ files: async () => { fileCalls++; await gate; return { files: [], sizeObservation: [] }; } }) });
+  const app = compose(ENTITLEMENT_FIXTURE, { premium });
+  const { cookie } = await signIn(app);
+  const request = new Request(`${ORIGIN}/`, { headers: { cookie: `${SESSION_COOKIE}=${cookie}` } });
+  const opened = await openSession(request, app);
+  const viewer = await resolveViewer({ reads: opened.reads, actor: opened.actor, store: app.store, entitlement: app.entitlement, cache: app.cache });
+  const query = { surface: 'history', repositoryIds: [1001], scope: { kind: 'repository', repositoryId: 1001 }, from: '2026-07-01T00:00:00.000Z', to: NOW };
+  const actor = { userId: viewer.userId, authorizedRepositoryIds: [1001] };
+  const enriched = app.analytics.query(query, actor);
+  const common = await app.baseAnalytics.query(query, actor);
+  assert.ok(common.result.buckets.some(bucket => bucket.pullRequests.length > 0), 'the common response is populated retained history');
+  assert.equal(fileCalls, 1, 'only the enriched request entered the held extension');
+  // A second viewer load and page load are held at their actual provider and analytical-D1 seams.
+  const providerRead = resolveViewer({ reads: { ...opened.reads, profile: async () => { await gate; return opened.reads.profile(); } }, actor: opened.actor, store: app.store, entitlement: app.entitlement, cache: { get: (_key, load) => load() } });
+  const dataRead = loadView({ url: new URL(`${ORIGIN}/history`), viewer, session: opened, runtime: { ...app, store: { ...app.store,
+    analyticalCoverage: async (...args) => { await gate; return app.store.analyticalCoverage(...args); }, observationBounds: (...args) => app.store.observationBounds(...args) } }, surface: 'history' });
+  assert.equal(await openAnalyticalShell(request, app, cookieValue, SESSION_COOKIE), null, 'the protected generic shell does not await those held reads');
+  release();
+  await Promise.all([enriched, providerRead, dataRead]);
 });
 
 test('a withdrawn consent stops serving that repository on both bases', async () => {

@@ -4,6 +4,24 @@
 
 This application is the signed-in diffdevil App: the analytical and operating experience of the managed GitHub App, served at `app.diffdevil.dev`. It renders the ratified Overview, Pull requests, History, Files, PR detail and File detail destinations from the managed App's own D1 state through the managed App's analytical data contract, under the signed-in person's current GitHub reach and the server-selected plan of each namespace, and the ratified Manage console (D080): what the plan allows, which repositories run and why, each repository's settings, the plan and its funding as the product-facing Wirt seam, and the account's four relationships. Its Worker also carries the managed App's runtime routes (webhook ingress, Queue consumer, scheduled maintenance, the protected analytics read and the Wirt commercial routes) on the same host and bindings. It is not the public website, not a claim that the hosted App is deployed, that any plan can be bought, or that named history has been collected for a real repository.
 
+## Analytical loading
+
+The six analytical destinations first return the protected shell and navigation links after a local session check.
+No repository name, plan or measurement is included in that generic shell. Navigation then reads the current viewer
+independently of the analytical population. Every acquisition opens the current authorization again; HTML fragments
+are private and not cached. Common analytical panels can finish before premium file regions and optional Manage
+notifications. A failed read stays in its region with a keyboard-operable retry and explicit unavailable standing.
+Late replies cannot replace a newer selected scope or period. With JavaScript disabled, the shell links to the complete
+server-rendered document using `render=document`.
+
+The ordinary read consumes the analytical record already normalized by ingestion/import. Current-policy interpretation
+still happens at read time, once per measurement in that query; populations, policy changes and coverage keep their
+meaning. This does not add a persistent analytical cache or a new job system.
+
+`node apps/app/qa/run.mjs --loading` qualifies the built Community Worker with the retained local fixture and held/failed
+data replies: prompt shell, independent navigation, populated rendering, retry, superseded replies and reduced motion.
+It does not prove the joined private extension, provider CPU/memory, staging recovery or ordinary live use.
+
 ## Inspect and admit a repository
 
 On the intended deployment, sign in, open **Manage → Repositories**, select the

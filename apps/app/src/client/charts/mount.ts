@@ -87,23 +87,39 @@ let swapping: AbortController | null = null;
  * both pages keeps its instance and morphs to the new model; everything else is replaced. Used
  * for the period switch, the History bucket pick and the Files card selection.
  */
-export async function swapTo(url: string, { reason }: { reason: 'period' | 'bucket' | 'select' | 'metric' }): Promise<void> {
+export async function swapTo(url: string, { reason }: { reason: 'period' | 'bucket' | 'select' | 'metric' | 'initial' }): Promise<boolean> {
   swapping?.abort();
   const controller = (swapping = new AbortController());
   const frame = document.querySelector<HTMLElement>('.a-frame');
-  if (!frame) { location.href = url; return; }
+  if (!frame) return false;
   document.body.classList.add('is-drawing');
   if (reason === 'period') document.body.classList.add('is-leaving');
   let html: string;
   try {
-    const response = await fetch(url, { credentials: 'same-origin', headers: { accept: 'text/html' }, signal: controller.signal });
-    if (!response.ok || response.redirected) { location.href = url; return; }
+    const response = await fetch(url, { credentials: 'same-origin', headers: { accept: 'text/html', 'x-diffdevil-render': 'page' }, signal: controller.signal });
+    if (response.redirected && new URL(response.url).pathname === '/sign-in') { location.href = response.url; return false; }
+    // A 404 can carry the authorised, useful not-found/Free state of a detail page.
+    if (!response.ok && response.status !== 404) throw new Error('E_ANALYTICAL_READ');
     html = await response.text();
-  } catch (error) { if ((error as Error).name !== 'AbortError') location.href = url; return; }
-  if (controller.signal.aborted) return;
+  } catch (error) {
+    if (!controller.signal.aborted) {
+      document.body.classList.remove('is-drawing', 'is-leaving');
+      document.dispatchEvent(new CustomEvent('diffdevil:load-failed', { detail: { url, reason } }));
+    }
+    return false;
+  }
+  if (controller.signal.aborted) return false;
   const next = new DOMParser().parseFromString(html, 'text/html');
   const nextFrame = next.querySelector<HTMLElement>('.a-frame');
-  if (!nextFrame) { location.href = url; return; }
+  if (!nextFrame) {
+    document.body.classList.remove('is-drawing', 'is-leaving');
+    document.dispatchEvent(new CustomEvent('diffdevil:load-failed', { detail: { url, reason } }));
+    return false;
+  }
+  const focusedNav = document.activeElement instanceof HTMLElement && document.activeElement.closest('[data-nav]') ? document.activeElement : null;
+  const navHref = focusedNav instanceof HTMLAnchorElement ? focusedNav.getAttribute('href') : null;
+  const navLabel = focusedNav?.getAttribute('aria-label');
+  const filterValue = document.querySelector<HTMLInputElement>('[data-nav-filter]')?.value ?? '';
   // Keep the live chart instances whose panel survives: move the node, then feed it the next model. A person may be
   // inside a kept panel with the keyboard when the swap lands (a metric click, then arrows in the Turnover map):
   // moving the node blurs it and restarts its entrance animation, so the keyboard's place is remembered, the
@@ -127,7 +143,7 @@ export async function swapTo(url: string, { reason }: { reason: 'period' | 'buck
   const scroll = window.scrollY;
   frame.replaceWith(nextFrame);
   document.title = next.title;
-  history.pushState(null, '', url);
+  if (reason !== 'initial') history.pushState(null, '', url);
   window.scrollTo(0, scroll);
   document.body.classList.remove('is-leaving');
   for (const entry of kept) {
@@ -148,8 +164,16 @@ export async function swapTo(url: string, { reason }: { reason: 'period' | 'buck
     entry.focused.focus({ preventScroll: true });
   }
   document.dispatchEvent(new CustomEvent('diffdevil:page', { detail: { reason } }));
+  if (reason === 'initial') {
+    const filter = document.querySelector<HTMLInputElement>('[data-nav-filter]');
+    if (filter && filterValue) { filter.value = filterValue; filter.dispatchEvent(new Event('input')); }
+    const target = navHref ? document.querySelector<HTMLElement>(`[data-nav] a[href="${CSS.escape(navHref)}"]`)
+      : navLabel ? document.querySelector<HTMLElement>(`[data-nav] [aria-label="${CSS.escape(navLabel)}"]`) : null;
+    target?.focus({ preventScroll: true });
+  }
   mountCharts(nextFrame);
   placeThumbs(nextFrame);
+  return true;
 }
 
 /** The hero keeps only its plot: the lead figure, delta line and legend around it are the incoming page's. */

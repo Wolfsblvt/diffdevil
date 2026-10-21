@@ -20,7 +20,7 @@ const { title, nav, view, description = 'The diffdevil App: understand change ac
 const header = await siteHeader(Astro.locals, Astro.locals.app?.config?.origin ?? Astro.url.origin);
 const viewer = Astro.locals.viewer;
 // The Manage badge counts the same decisions the console's Overview lists, from a per-isolate copy of the model.
-const badge = viewer && nav ? await manageBadge({ viewer, session: Astro.locals.session, runtime: Astro.locals.app }) : null;
+const badge = viewer && nav && !Astro.locals.deferChrome ? await manageBadge({ viewer, session: Astro.locals.session, runtime: Astro.locals.app }) : null;
 ---
 <!doctype html>
 <html lang="en" data-theme="dark" data-theme-pref="dark" data-theme-next="light" data-theme-locked>
@@ -40,8 +40,9 @@ const badge = viewer && nav ? await manageBadge({ viewer, session: Astro.locals.
     <div class="a-page">
       <div class="a-frame">
         {viewer && nav && <Nav viewer={viewer} nav={nav} view={view} badge={badge} />}
+        <slot name="navigation" />
         <main class="a-main" id="main">
-          {viewer && nav && <Invitation />}
+          <div data-analytical-notifications>{viewer && nav && !Astro.locals.deferChrome && <Invitation />}</div>
           <slot />
         </main>
       </div>

@@ -8,6 +8,7 @@
 // pathless analyses bucket by analysis time, and the page says so. The file panels and the
 // selected bucket's files come from the premium extension for an entitled reader.
 import AppShell from '../layouts/AppShell.astro';
+import DeferredRegion from '../components/DeferredRegion.astro';
 import PageHead from '../components/PageHead.astro';
 import Panel from '../components/Panel.astro';
 import PeriodComparisonTable from '../components/PeriodComparisonTable.astro';
@@ -108,13 +109,13 @@ const comp = (parts: { k: string; v: number }[], height = 8) => compositionBar(p
           <dl class="fr-vals"><div class="sum"><dt>Changed</dt><dd class={bucketCoverage === 'none' ? 'unk' : ''}>{q('changed')}</dd></div><div><dt><i class="sw mod"></i>~ modified</dt><dd class={bucketCoverage === 'none' ? 'unk' : ''}>{q('modified')}</dd></div><div><dt><i class="sw add"></i>+ added-only</dt><dd class={bucketCoverage === 'none' ? 'unk' : ''}>{q('added')}</dd></div><div><dt><i class="sw del"></i>− deleted-only</dt><dd class={bucketCoverage === 'none' ? 'unk' : ''}>{q('deleted')}</dd></div><div><dt>raw churn</dt><dd class={bucketCoverage === 'none' ? 'unk' : ''}>{q('rawChurn')}</dd></div></dl></div>
         <div class="hb-k">Changed per {population} PR <span>ranked · bar = Changed, colour = composition, hatch = bounded</span></div>
         <div class="hb-rows">{members.map((pr: any) => { const changed = pr.latest.changed, lo = changed.lower ?? 0, hi = changed.upper, exact = changed.status === 'exact'; return <a class="hb-row" href={prHref(pr)}><span class="hb-t"><span class="hb-n">{multi && <b>{repoShort(pr.repositoryId)} · </b>}#{pr.number}</span>{pr.title ?? ''}</span><span class="fr-chip" style={`--c:${pr.latest.band.color}`}>{pr.latest.band.short}</span><span class="hb-bar"><span class="hb-fill" style={`width:${(lo / maxChanged) * 100}%`}><Fragment set:html={exact ? comp([{ k: 'mod', v: pr.latest.modified.lower }, { k: 'add', v: pr.latest.added.lower }, { k: 'del', v: pr.latest.deleted.lower }]) : comp([{ k: 'unres', v: 1 }])} /></span>{hi !== null && hi > lo && <span class="hb-range" style={`width:${((hi - lo) / maxChanged) * 100}%`}></span>}</span><span class="hb-v">{describeBound(changed)}</span></a>; })}{members.length === 0 && <p class="a-mini">{bucketCoverage === 'none' ? `No recovered comparison in this ${unitWord}; its ${population} PRs are listed below as not recovered.` : `No ${population} PRs in this ${unitWord}.`}</p>}</div>
-        {pro && BucketFiles && <BucketFiles view={view} bucket={bucket} unitWord={unitWord} />}
+        {pro && BucketFiles && <DeferredRegion name="history-bucket-files" title="Files in this bucket"><BucketFiles view={view} bucket={bucket} unitWord={unitWord} /></DeferredRegion>}
         {missing.length > 0 && <><div class="hb-k">Not recovered · {missing.length} <span>counted, not measured · nothing interpolated</span></div><div class="hb-rows">{missing.map((pr: any) => <a class="hb-row miss" href={prHref(pr)}><span class="hb-t"><span class="hb-n">{multi && <b>{repoShort(pr.repositoryId)} · </b>}#{pr.number}</span>{pr.title ?? ''}</span><span class="hb-bar"><span class="hb-range" style="width:100%"></span></span><span class="hb-v">unknown</span></a>)}</div></>}
       </Panel>}
       {!bucket && <Panel id="bucket" span={12} class="a-fill" title="Selected bucket"><Unavailable what="No buckets for this period" compact /></Panel>}
     </div>
     <div class="s7 a-col">
-      {pro ? <Panels view={view} list={list} unit={unit} unitWord={unitWord} life={life} labelOf={labelOf} nameOf={nameOf} selected={selected} />
+      {pro ? <DeferredRegion name="history-panels" title="Growth and concentration"><Panels view={view} list={list} unit={unit} unitWord={unitWord} life={life} labelOf={labelOf} nameOf={nameOf} selected={selected} /></DeferredRegion>
  : <>
         <Panel id="cmp" span={12} class="a-fill" title="Period comparison" meta={`selected ${period} vs previous ${period}`}>
           <PeriodComparisonTable rows={rows} comparable={comparable} currentCovered={cur.windowCovered} previousCovered={prev.windowCovered} period={period} />

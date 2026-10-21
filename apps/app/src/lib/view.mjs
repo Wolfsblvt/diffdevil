@@ -105,6 +105,9 @@ export async function loadView({ url, viewer, session, runtime, surface = 'prs',
       dataStanding = data.standing === undefined ? 'available' : data.standing === 'free' ? 'plan-required' : data.standing;
     } catch (error) {
       dataStanding = typeof error?.code === 'string' && error.code === 'E_APP_DATA_NOT_FOUND' ? 'not-found' : 'unavailable';
+      // The document loader owns a retryable unavailable region. Do not feed an empty population
+      // into charts and counters after a failed analytical read.
+      if (dataStanding === 'unavailable' && surface !== 'pr') throw Object.assign(new Error('E_ANALYTICAL_UNAVAILABLE'), { code: 'E_ANALYTICAL_UNAVAILABLE' });
       data = null;
     }
   }

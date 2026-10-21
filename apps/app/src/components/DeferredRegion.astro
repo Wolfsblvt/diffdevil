@@ -1,0 +1,12 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
+interface Props { name: string; title: string; span?: number; compact?: boolean }
+const { name, title, span = 12, compact = false } = Astro.props;
+const pending = Astro.locals.deferPremium;
+---
+<div class="a-deferred-slot" data-premium-region={name} data-pending={pending ? 'true' : undefined} aria-busy={pending ? 'true' : undefined}>
+  {pending ? <section class:list={['a-pn', `s${span}`, { 'a-loading-panel': !compact }]}>
+    <div class="a-pn-b"><h2>{title}</h2><p class="a-mini" role="status" data-region-status>Loading {title.toLowerCase()}…</p><button class="btn btn-quiet" type="button" data-premium-retry hidden>Retry {title.toLowerCase()}</button></div>
+    {!compact && <div class="a-loading-plot" aria-hidden="true"><i></i><i></i><i></i><i></i></div>}
+  </section> : <slot />}
+</div>

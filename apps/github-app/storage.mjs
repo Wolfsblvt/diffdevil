@@ -587,7 +587,10 @@ export class D1AppStore {
     const result = await this.statement(`SELECT record_json FROM analytical_pull_requests WHERE repository_id=?
       AND (expires_at IS NULL OR expires_at>?) ORDER BY pull_request`, repositoryId, this.now()).all();
     if (!(await this.historySettings(repositoryId, { independentExecution: true })).readable) return [];
-    return (result.results ?? []).map(row => normalizeAnalyticalRecord(JSON.parse(row.record_json)));
+    // recordAnalytical (also used by importAnalytical) validates and normalizes this exact v1
+    // representation before publication. Reading must not rebuild every retained report and
+    // revision again; current-policy evaluation still validates the measurements it consumes.
+    return (result.results ?? []).map(row => JSON.parse(row.record_json));
   }
 
   /** Independent default-branch snapshots anchor file-size intervals; sizes are observed, never reconstructed from churn. */
