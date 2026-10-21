@@ -115,18 +115,22 @@ export function createCommercialFixture(spec, { authorization, namespaceOf, allo
       const slot = state.capacity.find(candidate => candidate.slot === slotId);
       if (!slot) throw refusal('E_COMMERCIAL_SLOT_UNAVAILABLE', 409);
       const authority = await authorization.observeOrganisationAuthority({ userId: viewer.userId, organisationId });
-      if (authority.authority !== 'present') return { body: { ok: false, result: 'refused', code: 'organisation-authority-not-present' }, headers: protectedHeaders() };
-      if (state.capacity.some(candidate => candidate !== slot && candidate.binding?.organisationId === organisationId)) return { body: { ok: false, result: 'refused', code: 'organisation-already-bound' }, headers: protectedHeaders() };
+      if (authority.authority !== 'present') return { organisation: null, body: { ok: false, result: 'refused', code: 'organisation-authority-not-present' }, headers: protectedHeaders() };
+      const organisation = authority.display ? { id: organisationId, display: authority.display } : null;
+      if (state.capacity.some(candidate => candidate !== slot && candidate.binding?.organisationId === organisationId)) return { organisation, body: { ok: false, result: 'refused', code: 'organisation-already-bound' }, headers: protectedHeaders() };
       slot.binding = { organisationId, authority: 'present', authorityCheckedAt: now(), display: authority.display ?? null };
       state.order++;
-      return { body: { ok: true, result: 'bound' }, headers: protectedHeaders() };
+      return { organisation, body: { ok: true, result: 'bound' }, headers: protectedHeaders() };
     },
     async unbind({ session, method, origin: requestOrigin, organisationId }) {
       validOrigin(requestOrigin, origins, method);
       await actor(session);
+      const binding = state.capacity.find(slot => slot.binding?.organisationId === organisationId)?.binding;
+      if (!binding) return { changed: false, organisation: null, body: { ok: true, result: 'unbound' }, headers: protectedHeaders() };
       for (const slot of state.capacity) if (slot.binding?.organisationId === organisationId) slot.binding = null;
       state.order++;
-      return { body: { ok: true, result: 'unbound' }, headers: protectedHeaders() };
+      return { changed: true, organisation: { id: binding.organisationId, display: binding.display ?? null },
+        body: { ok: true, result: 'unbound' }, headers: protectedHeaders() };
     },
     async revokeFundingAuthorization({ session, method, origin: requestOrigin }) {
       const revoked = await authorization.revokeAuthorization({ session, method, origin: requestOrigin });

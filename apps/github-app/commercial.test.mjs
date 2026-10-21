@@ -659,6 +659,14 @@ test('organisation bindings need current authority, one funder and purchased cap
     assert.deepEqual(await (await bind({ action: 'unbind', organisationId: ORG }, OTHER_SESSION)).json(), { ok: true, result: 'unbound' });
     assert.equal(await source.commercial.entitlement({ repositoryId: 21, actor: { userId: USER } }), 'free');
     await bind({ action: 'bind', slot: 'slot-1', organisationId: ORG });
+    // The funder's own withdrawal needs no retained name or current GitHub administration.
+    administers.get(USER).delete(ORG);
+    await source.commercial.status({ session: SESSION });
+    assert.equal((await store.binding(ORG)).display, null);
+    assert.deepEqual(await (await bind({ action: 'unbind', organisationId: ORG })).json(), { ok: true, result: 'unbound' }, 'server-only target facts do not enter the HTTP body');
+    assert.equal(await store.binding(ORG), null);
+    administers.get(USER).add(ORG);
+    await bind({ action: 'bind', slot: 'slot-1', organisationId: ORG });
     // A slot removed from the applied capacity no longer funds its organisation.
     await push(source, projection({ linkId, version: 2, tier: 'business', slots: ['slot-included'] }));
     assert.equal(await store.binding(ORG), null);

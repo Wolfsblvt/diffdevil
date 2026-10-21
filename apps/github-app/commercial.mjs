@@ -466,7 +466,9 @@ export function createCommercialService({ store, wirt, signing, authorization, p
       return { body: { ok: true, result: 'unlinked' }, headers: protectedHeaders() };
     },
 
-    /** Bind one purchased slot to an organisation the funder currently administers. Refusals are reported to Wirt. */
+    /** Bind one purchased slot to an organisation the funder currently administers. Refusals are reported to Wirt.
+     * Server-only `organisation` identifies a target whose administration and name were established for this action.
+     */
     async bind({ session, method, origin, slot, organisationId }) {
       requireLinkRoute();
       validOrigin(origin, origins, method);
@@ -500,25 +502,34 @@ export function createCommercialService({ store, wirt, signing, authorization, p
           change = { unbindSlot: replaced?.slot, binding, report: report(link, stream, lastApplied(link), next, refusals) };
           outcome = 'bound';
         }
-        if (await store.transition(link, change)) return { body: { ok: outcome === 'bound', result: outcome, ...(reason ? { code: reason } : {}) }, headers: protectedHeaders() };
+        if (await store.transition(link, change)) return { organisation: authority.authority === 'present' && authority.display ? { id: organisationId, display: authority.display } : null,
+          body: { ok: outcome === 'bound', result: outcome, ...(reason ? { code: reason } : {}) }, headers: protectedHeaders() };
       }
       throw refusal('E_COMMERCIAL_CONFLICT', 409);
     },
 
-    /** The funder may withdraw a binding, and a current organisation administrator may disconnect it. */
+    /** The funder may withdraw a binding, and a current organisation administrator may disconnect it.
+     * Server-only `changed` and `organisation` distinguish a performed release and its established target from a no-op.
+     * The established identity survives an unavailable or scrubbed display name without a new name lookup.
+     */
     async unbind({ session, method, origin, organisationId }) {
       requireLinkRoute();
       validOrigin(origin, origins, method);
       const viewer = await actor(session);
       for (let attempt = 0; attempt < 3; attempt++) {
         const existing = await store.binding(organisationId);
-        if (!existing) return { body: { ok: true, result: 'unbound' }, headers: protectedHeaders() };
+        if (!existing) return { changed: false, organisation: null, body: { ok: true, result: 'unbound' }, headers: protectedHeaders() };
         const link = await store.link(existing.link_id);
-        if (link.product_account !== viewer.userId && (await authorization.organisationAuthority({ session, organisationId })).authority !== 'present') throw refusal('E_COMMERCIAL_BINDING_UNAUTHORIZED');
+        const authority = link.product_account === viewer.userId ? null : await authorization.organisationAuthority({ session, organisationId });
+        if (link.product_account !== viewer.userId && authority?.authority !== 'present') throw refusal('E_COMMERCIAL_BINDING_UNAUTHORIZED');
         const [bindings, refusals] = await Promise.all([store.bindings(link.link_id), store.refusals(link.link_id)]);
         const remaining = bindings.filter(value => value.organisation_id !== organisationId);
         const change = { unbindSlot: existing.slot, ...(orderOf(link) ? { report: report(link, { worksAccount: link.works_account }, lastApplied(link), remaining, refusals) } : {}) };
-        if (await store.transition(link, change)) return { body: { ok: true, result: 'unbound' }, headers: protectedHeaders() };
+        if (await store.transition(link, change)) {
+          const display = authority?.display ?? existing.display ?? null;
+          return { changed: true, organisation: { id: existing.organisation_id, display },
+            body: { ok: true, result: 'unbound' }, headers: protectedHeaders() };
+        }
       }
       throw refusal('E_COMMERCIAL_CONFLICT', 409);
     },

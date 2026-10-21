@@ -194,6 +194,7 @@ export async function handleManageAction(request, { runtime, session, viewer }) 
   const back = backOf(form);
   const cookie = session.session, origin = request.headers.get('origin');
   const mutation = { session: cookie, method: 'POST', origin };
+  let fundingTarget = null;
   const sessionHash = await sha256Hex(cookie);
   const repositoryOf = () => {
     const fullName = String(form.get('repository') ?? '');
@@ -211,6 +212,12 @@ export async function handleManageAction(request, { runtime, session, viewer }) 
   const audit = async (code, event = {}) => {
     const words = event.what ?? ACTION_WORDS[action];
     if (!words) return;
+    // Funding names another account only when the commercial service established the target and relevant authority.
+    // A refusal before that point belongs to the signed-in account, regardless of submitted selectors.
+    if (['link', 'unlink', 'reconnect', 'disconnect', 'fund', 'release-slot'].includes(action)) {
+      const where = fundingTarget ? fundingTarget.display ?? `organisation ${fundingTarget.id}` : viewer.login;
+      event = { ...event, accountId: fundingTarget?.id ?? viewer.userId, repositoryId: null, where };
+    }
     const repository = event.repositoryId !== undefined ? null : viewer.repositories.find(candidate => candidate.fullName === String(form.get('repository') ?? ''));
     const repositoryId = event.repositoryId ?? repository?.repositoryId ?? null;
     let accountId = event.accountId ?? null;
@@ -380,13 +387,17 @@ export async function handleManageAction(request, { runtime, session, viewer }) 
         const organisationId = integer(form.get('organisation')), slot = String(form.get('slot') ?? '');
         if (!organisationId || !slot) return done('invalid');
         const result = await runtime.commercial.bind({ ...mutation, slot, organisationId });
+        fundingTarget = result.organisation ?? null;
         return done(result.body.ok ? 'bound' : 'bind-refused');
       }
       case 'release-slot': {
         if (!runtime.commercial) return done('commercial-unavailable');
         const organisationId = integer(form.get('organisation'));
         if (!organisationId) return done('invalid');
-        await runtime.commercial.unbind({ ...mutation, organisationId });
+        const result = await runtime.commercial.unbind({ ...mutation, organisationId });
+        // The idempotent no-binding answer changes nothing and must not invent an applied release record.
+        if (!result.changed) { runtime.cache.clear(); return redirect(withMessage(back, 'unbound')); }
+        fundingTarget = result.organisation ?? null;
         return done('unbound');
       }
       case 'link': {
@@ -682,10 +693,13 @@ export async function handleManageAction(request, { runtime, session, viewer }) 
   } catch (error) {
     const code = typeof error?.code === 'string' ? error.code : '';
     runtime.cache.clear();
-    if (code === 'E_COMMERCIAL_ALREADY_LINKED') return redirect(withMessage(back, 'already-linked'));
-    if (code === 'E_COMMERCIAL_LINK_PENDING') return redirect(withMessage(back, 'link-pending'));
-    if (code === 'E_COMMERCIAL_NOT_FUNDED') return redirect(withMessage(back, 'not-funded'));
-    if (code.startsWith('E_COMMERCIAL_') || code === 'E_SERVICE_RECONNECT_UNCONFIRMED') return redirect(withMessage(back, code === 'E_SERVICE_RECONNECT_UNCONFIRMED' ? 'reconnect-unconfirmed' : 'commercial-unavailable'));
+    if (code.startsWith('E_COMMERCIAL_') || code === 'E_SERVICE_RECONNECT_UNCONFIRMED') {
+      const refused = ({ E_COMMERCIAL_ALREADY_LINKED: 'already-linked', E_COMMERCIAL_LINK_PENDING: 'link-pending',
+        E_COMMERCIAL_NOT_FUNDED: 'not-funded', E_SERVICE_RECONNECT_UNCONFIRMED: 'reconnect-unconfirmed' })[code] ?? 'commercial-unavailable';
+      // Even a retained pending link is an unfinished request, not an applied action. Keep only fixed product copy;
+      // commercial exceptions can contain authorization destinations or provider payloads.
+      return done(refused, { result: 'failed', reason: MESSAGES[refused].text });
+    }
     if (code === 'E_UNKNOWN_REPOSITORY') return new Response('Not in your repositories.', { status: 404, headers: documentHeaders({ 'content-type': 'text/plain; charset=utf-8' }) });
     const refused = action === 'close-account' ? 'close-incomplete' : action === 'admit' && code === 'E_ADMISSION_STALE' ? 'admission-stale' : admissionMessage(error);
     // A refused request is kept as it happened: who asked for what, and why it did not happen.

@@ -18,6 +18,7 @@ import { readNamespaceDefault } from '../src/lib/manage/defaults.mjs';
 import { SESSION_COOKIE, openSession } from '../src/lib/routes.mjs';
 import { resolveViewer } from '../src/lib/viewer.mjs';
 import { ACCOUNTS } from '../qa/fixture.mjs';
+import { presentEvent } from '../src/lib/manage/audit.mjs';
 import { fixture, disposeFixture, signIn, viewerFor, ORIGIN } from './support.mjs';
 
 after(disposeFixture);
@@ -255,6 +256,11 @@ async function locals(app, cookie) {
 }
 async function model(app, cookie) { const context = await locals(app, cookie); return { ...context, model: await loadManage({ viewer: context.viewer, session: context.session, runtime: app }) }; }
 const COMMERCIAL_PRO = JSON.stringify({ account: 123, linked: true, since: '2026-10-02', commercial: { standing: 'funded', tier: 'pro', cadence: 'annual', period: { started_on: '2026-03-14', ends_on: '2027-03-14' }, renewal_preference: 'automatic', cancellation_intent: 'none', grace: null, ended: null, next_renewal: { on: '2027-03-14', total_cents: 18000, currency: 'EUR', tax_inclusive: true } }, protection: { kind: 'beta' }, capacity: [{ slot: 'slot-included', funding: 'included', binding: { organisationId: 7001, authority: 'present', display: 'parser-guild' } }, { slot: 'slot-2', funding: 'paid', binding: null }], others: { 7002: 'business' } });
+// The actual commercial service, with the existing GitHub wire double and disposable D1. These funding operations
+// do not call Works; an unexpected provider request still goes only to the fixture's fetch boundary.
+const WORKS_ENV = { WIRT_ORIGIN: 'https://works.example.test', WIRT_OAUTH_CLIENT_ID: 'fixture-works-client',
+  WIRT_LINK_CALLBACK_URL: 'https://app.example.test/integrations/wirt/link/callback',
+  WIRT_LINK_CONTINUATION_URL: 'https://app.example.test/manage/plan', WIRT_SIGNING_KEY_CURRENT: 'fixture-works-signing-material-at-least-32-bytes' };
 const COMMERCIAL_FREE = JSON.stringify({ account: 123, linked: false, others: { 7002: 'business' } });
 
 test('without a subscription source the console is Free and unlimited, with the same count in the badge and in Needs you', async () => {
@@ -456,6 +462,144 @@ test('the loopback Works stand-in carries the slots, the first link, the return 
   ({ model: loaded } = await model(app, cookie));
   assert.equal(returnOutcome({ departure: loaded.departure, status: loaded.commercial.status, outcome: 'linked' }), 'done');
   assert.equal(projectionKey(loaded.commercial.status), 'first-payment');
+});
+
+test('commercial refusals keep a safe failed-request Audit event before returning to Plan', async () => {
+  const { app: compose } = await fixture();
+  const app = compose();
+  const { cookie } = await signIn(app);
+  const { viewer } = await locals(app, cookie);
+  const cases = [
+    ['E_COMMERCIAL_LINK_PENDING', 'link-pending'],
+    ['E_COMMERCIAL_UNAVAILABLE', 'commercial-unavailable'],
+    ['E_COMMERCIAL_ALREADY_LINKED', 'already-linked'],
+    ['E_COMMERCIAL_NOT_FUNDED', 'not-funded'],
+    ['E_SERVICE_RECONNECT_UNCONFIRMED', 'reconnect-unconfirmed'],
+    ['E_COMMERCIAL_provider-payload-must-not-be-retained', 'commercial-unavailable']
+  ];
+  for (const [code, message] of cases) {
+    const before = await app.manage.events({ accountIds: [viewer.userId] });
+    const fail = async () => { throw Object.assign(new Error('https://works.example.test/authorize?code=fixture-private'), { code }); };
+    app.commercial = { beginLink: fail, reconnectFundingAuthorization: fail };
+    const action = code === 'E_SERVICE_RECONNECT_UNCONFIRMED' ? 'reconnect' : 'link';
+    const answer = await act(app, cookie, { action, back: '/manage/plan', namespace: String(ACCOUNTS['parser-guild']),
+      organisation: String(ACCOUNTS['parser-guild']), repository: 'parser-guild/grammar-fuzz' });
+    assert.equal(answer.message, message);
+    const events = await app.manage.events({ accountIds: [viewer.userId] });
+    assert.equal(events.length, before.length + 1, `${code}: the refused request is recorded`);
+    const event = events[0];
+    assert.deepEqual(event.actor, { kind: 'person', id: viewer.userId, login: viewer.login });
+    assert.equal(event.what, action === 'link' ? 'Started the Wolfsblvt Works link' : 'Reconnected the funding connection');
+    assert.equal(event.result, 'failed');
+    assert.equal(event.reason, MESSAGES[message].text, 'only fixed product copy is retained, never exception text or an arbitrary code');
+    assert.equal(event.detail, null);
+    assert.equal(event.repositoryId, null);
+    assert.equal(event.where, viewer.login, 'account operations cannot be filed against a submitted repository or namespace');
+  }
+});
+
+test('a pre-authority commercial funding refusal stays in the signed-in account Audit', async () => {
+  const { app: compose } = await fixture();
+  const app = compose(undefined, { env: WORKS_ENV });
+  assert.equal(app.commercialSource, 'commercial');
+  const { cookie } = await signIn(app);
+  const { viewer } = await locals(app, cookie);
+  const foreign = ACCOUNTS['northwind-tools'];
+  const before = await app.manage.events({ accountIds: [foreign] });
+  const personalBefore = await app.manage.events({ accountIds: [viewer.userId] });
+  const answer = await act(app, cookie, { action: 'fund', slot: 'review-slot', organisation: String(foreign),
+    namespace: String(foreign), namespaceLogin: 'submitted-false-name', repository: 'submitted/repository', back: '/manage/plan' });
+  assert.equal(answer.message, 'commercial-unavailable', 'the real unlinked consumer throws before organisation authority');
+  assert.deepEqual(await app.manage.events({ accountIds: [foreign] }), before, 'the foreign tenant gets no event');
+  const personal = await app.manage.events({ accountIds: [viewer.userId] });
+  assert.equal(personal.length, personalBefore.length + 1);
+  assert.equal(personal[0].where, viewer.login);
+  assert.equal(personal[0].repositoryId, null);
+  assert.deepEqual(personal[0].actor, { kind: 'person', id: viewer.userId, login: viewer.login });
+  assert.equal(personal[0].result, 'failed');
+  assert.equal(personal[0].reason, MESSAGES['commercial-unavailable'].text);
+  assert.equal(personal[0].detail, null);
+});
+
+test('a release without a binding keeps its existing response and appends no invented applied Audit event', async () => {
+  const { app: compose } = await fixture();
+  const app = compose(undefined, { env: WORKS_ENV });
+  const { cookie } = await signIn(app);
+  const { viewer } = await locals(app, cookie);
+  const foreign = ACCOUNTS['northwind-tools'];
+  const before = await app.manage.events({ accountIds: [foreign, viewer.userId] });
+  assert.equal((await act(app, cookie, { action: 'release-slot', organisation: String(foreign), namespace: String(foreign),
+    namespaceLogin: 'submitted-false-name', back: '/manage/plan' })).message, 'unbound');
+  assert.deepEqual(await app.manage.events({ accountIds: [foreign, viewer.userId] }), before);
+});
+
+test('real funding and release record server-owned targets and preserve a former administrator funder\'s withdrawal', async () => {
+  const { app: compose, github } = await fixture();
+  const app = compose(undefined, { env: WORKS_ENV });
+  const { cookie } = await signIn(app);
+  const { viewer } = await locals(app, cookie);
+  const store = app.commercialStore, organisationId = ACCOUNTS['parser-guild'], foreign = ACCOUNTS['northwind-tools'];
+  const linkId = crypto.randomUUID();
+  try {
+    const link = await store.saveEstablishedLink({ linkId, productAccount: viewer.userId, worksAccount: '77',
+      intentId: crypto.randomUUID(), protectedGrant: 'unused-fixture-grant' });
+    assert.equal(await store.transition(link, { applied: { epoch: 1, version: 1, result: 'applied', at: app.now(),
+      projectionJson: JSON.stringify({ commercial: JSON.parse(COMMERCIAL_PRO).commercial,
+        benefits: { organisation_capacity: [{ slot: 'review-slot', funding: 'paid', pending_end_on: null }] } }) } }), true);
+    const fields = { slot: 'review-slot', organisation: String(organisationId), namespace: String(foreign),
+      namespaceLogin: 'submitted-false-name', back: '/manage/plan' };
+    const foreignBefore = await app.manage.events({ accountIds: [foreign] });
+    assert.equal((await act(app, cookie, { ...fields, action: 'fund', organisation: String(foreign) })).message, 'bind-refused');
+    assert.deepEqual(await app.manage.events({ accountIds: [foreign] }), foreignBefore);
+    const refused = (await app.manage.events({ accountIds: [viewer.userId] }))[0];
+    assert.equal(refused.where, viewer.login);
+    assert.equal(refused.result, 'failed');
+    assert.equal(refused.reason, MESSAGES['bind-refused'].text);
+    for (const action of ['fund', 'release-slot', 'fund']) {
+      assert.equal((await act(app, cookie, { ...fields, action })).message, action === 'fund' ? 'bound' : 'unbound');
+      const event = (await app.manage.events({ accountIds: [organisationId] }))[0];
+      assert.equal(event.where, 'parser-guild');
+      assert.equal(event.result, 'applied');
+      assert.equal(event.what, action === 'fund' ? 'Funded with a slot' : 'Released the funding slot');
+      assert.equal(event.repositoryId, null);
+      assert.deepEqual(event.actor, { kind: 'person', id: viewer.userId, login: viewer.login });
+      assert.equal(event.detail, null);
+    }
+    github.state.roles.set('parser-guild', 'member');
+    app.cache.clear();
+    await app.commercial.status({ session: cookie });
+    assert.equal((await store.binding(organisationId)).authority_observed, 'absent');
+    assert.equal((await store.binding(organisationId)).display, null);
+    const orgBefore = await app.manage.events({ accountIds: [organisationId] });
+    const personalBefore = await app.manage.events({ accountIds: [viewer.userId] });
+    const withdrawalContext = await locals(app, cookie);
+    const githubCallsBefore = github.calls.length;
+    const withdrawn = await handleManageAction(new Request(`${ORIGIN}/manage/do`, { method: 'POST', headers: { origin: ORIGIN,
+      'content-type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ ...fields, action: 'release-slot' }) }), withdrawalContext);
+    assert.equal(withdrawn.status, 303);
+    assert.equal(new URL(withdrawn.headers.get('location'), ORIGIN).searchParams.get('m'), 'unbound');
+    assert.equal(await store.binding(organisationId), null, 'the funder can withdraw without current GitHub administration');
+    const orgAfter = await app.manage.events({ accountIds: [organisationId] });
+    assert.equal(orgAfter.length, orgBefore.length + 1, 'the verified withdrawal remains in the organisation Audit');
+    assert.ok(github.calls.slice(githubCallsBefore).every(call => call.method === 'POST' && /^\/applications\/[^/]+\/token$/u.test(call.path)),
+      'the withdrawal permits session authentication but performs no protected organisation lookup');
+    const released = orgAfter[0];
+    assert.equal(released.accountId, organisationId);
+    assert.equal(released.where, `organisation ${organisationId}`, 'unknown names use the server-established identity');
+    assert.equal(released.what, 'Released the funding slot');
+    assert.equal(released.result, 'applied');
+    assert.equal(released.reason, null);
+    assert.equal(released.detail, null);
+    assert.equal(released.repositoryId, null);
+    assert.deepEqual(released.actor, { kind: 'person', id: viewer.userId, login: viewer.login });
+    assert.equal(presentEvent(released).where, `organisation ${organisationId}`, 'the existing Audit presenter retains the identity label');
+    assert.deepEqual(await app.manage.events({ accountIds: [viewer.userId] }), personalBefore, 'the event is not moved to or duplicated on the personal account');
+    assert.deepEqual(await app.manage.events({ accountIds: [foreign] }), foreignBefore);
+  } finally {
+    github.state.roles.delete('parser-guild');
+    app.cache.clear();
+    await app.appStore.database.prepare('DELETE FROM commercial_links WHERE link_id=?').bind(linkId).run();
+  }
 });
 
 test('disconnecting the funding connection ends the sessions and stays off until the explicit reconnect; closure refuses a linked plan and otherwise removes the account', async () => {

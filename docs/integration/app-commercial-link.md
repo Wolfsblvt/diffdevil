@@ -26,6 +26,24 @@ App document `form-action` still admits only self, GitHub and the single configu
 provider-returned URL selects that allowlist. Missing/refused configuration adds
 no external form destination; the local stand-in stays same-origin.
 
+Refused Manage link, funding and connection requests append a failed-request event
+through the existing administrative Audit path before returning their visible message. A retained pending
+link remains unfinished; its retry does not record an applied link. These events carry
+the authenticated actor and fixed product reason, never exception text, arbitrary
+provider codes, authorization destinations or raw payloads. The existing best-effort
+Audit write does not change the commercial result if the record store is unavailable.
+Account-level link and connection events belong to the authenticated account;
+submitted repository or namespace selectors cannot redirect their record.
+Funding and release events use an organisation target only when the commercial
+service established its identity and the relevant authority. Names are server-owned.
+Failures before that point stay on the signed-in account. A release with no binding
+keeps its existing response and records no applied effect. A funder can still
+withdraw their own funding after losing GitHub administration. That performed release
+stays in the organisation's Audit even when its name is no longer retained: the record
+uses `organisation N` with its established numeric identity, without fetching or
+restoring the protected name. These server-only effect facts do not change the
+commercial HTTP response.
+
 New link intents include `product_account_label` in the existing signed
 `POST /api/wirt/diffdevil/link-intents` JSON alongside `product_account`, `challenge`
 and `state`. The commercial service uses the authorization service's existing
