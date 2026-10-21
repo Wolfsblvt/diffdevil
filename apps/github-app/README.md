@@ -73,6 +73,72 @@ The scheduled Worker maintenance path performs recovery pruning, expiry-derived 
 
 ## Registration and credential helper
 
+Start either helper through the repository's clean launch entry, before Node
+starts. On Windows use PowerShell 7 without profiles; on Unix use Bash protected
+mode (which ignores `BASH_ENV` and imported functions):
+
+```powershell
+pwsh -NoProfile -NonInteractive -File apps/github-app/operator-launch.ps1 manifest --help
+pwsh -NoProfile -NonInteractive -File apps/github-app/operator-launch.ps1 operator registration --webhook-url https://example.invalid/webhooks/github
+```
+
+```sh
+bash -p apps/github-app/operator-launch.sh manifest --help
+bash -p apps/github-app/operator-launch.sh operator registration --webhook-url https://example.invalid/webhooks/github
+```
+
+Keep these scripts beside the helpers in an installed source tree. They resolve
+Node from the trusted operator PATH and preserve caller-relative file paths,
+arguments, exit status and redirected streams. Windows starts Node without a new
+window; an explicitly interactive console retains its TTY. A background caller
+must also hide its own PowerShell process at creation. Do not start a Node wrapper
+to invoke this entry: `NODE_OPTIONS` could execute before that wrapper's code.
+Direct Node/library entry remains usable only from an already-clean runtime.
+
+The launchers allow only OS paths and the selected Cloudflare authentication
+inputs: `CLOUDFLARE_API_TOKEN` takes precedence, otherwise API key/email, otherwise
+Wrangler's retained OAuth configuration under the selected home. They forward
+only explicitly named seal/Wirt sources into fixed private environment slots;
+values never become command arguments. The helper's native children independently
+allow only OS/authentication inputs and fixed account/logging controls. Ambient
+Node options/module paths, proxy/CA overrides, alternate API endpoints and
+unrelated variables do not reach Node or its credential-bearing children. This
+qualifies a trusted operator installation with hostile incidental Node/transport
+settings, not an untrusted host, executable, dependency tree or credential store.
+
+Credential attachment consumes a **qualified artifact**, with its independently
+selected SHA-256, rather than deriving code from mutable `latest`. The existing
+script's Upload Version API receives all native modules, versioned settings,
+selected static assets and credential bindings in one new undeployed version.
+The contained upload child uses pinned Wrangler's native `auth token --json`
+internally; its credential-valued response never reaches helper output. The
+version POST is attempted once. No inherited binding/asset selector, deployment,
+resource provisioning or non-versioned settings write is part of that POST.
+
+Prepare the artifact from the **complete built target config**, including the
+joined App's generated server, modules and assets, before protected input:
+
+```powershell
+$artifactPath = 'D:\operator-custody\qualified-app-artifact.json'
+$artifact = pwsh -NoProfile -NonInteractive -File apps/github-app/operator-launch.ps1 operator prepare-artifact --config path/to/built-target/wrangler.json --account-id account-id --artifact-file $artifactPath | ConvertFrom-Json
+if ($LASTEXITCODE -ne 0) { throw 'Artifact preparation refused.' }
+```
+
+Preparation uses pinned Wrangler's `versions upload --dry-run --outfile` and
+freezes the actual multipart modules/settings plus the complete selected assets.
+It applies `.assetsignore`, retains `_headers`/`_redirects` and asset routing, and
+binds the original config hash. Source symlinks and unresolved inherited bindings
+refuse before protected input. The artifact contains executable code/assets and
+no credential bindings; private composites keep their private custody. Qualify
+its returned digest against the intended source/composition and retain that
+selection through install. Do not silently regenerate the artifact at upload time.
+
+Pass `--artifact-file <retained-artifact>` and `--artifact-sha256 <qualified-digest>`
+to `check` and `install` (or the manifest install handoff). Existing consumers add
+this preparation/selection; omitting it refuses before protected input. Existing
+receipt files remain readable through read-only `resume`, including legacy
+receipts without artifact lineage. No raw values need manual transport.
+
 The preferred initial setup is `manifest-helper.mjs`: a local native manifest
 form for personal/organisation registration and explicit visibility, with
 state-checked callback, contained conversion, encrypted capture and a direct
@@ -80,7 +146,7 @@ in-memory handoff to the existing installer. It opens no browser and deploys
 nothing. [The maintained invocation and recovery route](../../docs/integration/app-staging.md#native-manifest-registration-and-capture)
 explain retained seal custody, the one-hour handshake, interruption checkpoints,
 the separate installation receipt, and the unobserved real GitHub redirect seam.
-Use `node apps/github-app/manifest-helper.mjs --help` for its CLI options and
+Use the clean entry with `manifest --help` for its CLI options and
 `npm run qa:app:manifest` for isolated local-browser/synthetic-provider proof.
 The explicit seal file or named-environment input is shared by capture, resume
 and installation. A managed environment consumer needs no plaintext seal file.
@@ -99,10 +165,10 @@ before reading protected files or prompting for input. Use a derived operational
 config or the admitted built App config, with its relative paths kept valid.
 
 ```sh
-node apps/github-app/operator-helper.mjs registration --webhook-url https://example.invalid/webhooks/github
-node apps/github-app/operator-helper.mjs check --app-id 123 --private-key-file path/to/retained-app-key.pem --account-id account-id --config path/to/derived-qualification.jsonc --receipt-file path/to/new-credential-receipt.json
-node apps/github-app/operator-helper.mjs install --app-id 123 --private-key-file path/to/retained-app-key.pem --account-id account-id --config path/to/derived-qualification.jsonc --receipt-file path/to/new-credential-receipt.json
-node apps/github-app/operator-helper.mjs resume --account-id account-id --config path/to/derived-qualification.jsonc --receipt-file path/to/existing-credential-receipt.json
+bash -p apps/github-app/operator-launch.sh operator registration --webhook-url https://example.invalid/webhooks/github
+bash -p apps/github-app/operator-launch.sh operator check --artifact-file path/to/qualified-artifact.json --artifact-sha256 qualified-64-hex-sha256 --app-id 123 --private-key-file path/to/retained-app-key.pem --account-id account-id --config path/to/derived-qualification.jsonc --receipt-file path/to/new-credential-receipt.json
+bash -p apps/github-app/operator-launch.sh operator install --artifact-file path/to/qualified-artifact.json --artifact-sha256 qualified-64-hex-sha256 --app-id 123 --private-key-file path/to/retained-app-key.pem --account-id account-id --config path/to/derived-qualification.jsonc --receipt-file path/to/new-credential-receipt.json
+bash -p apps/github-app/operator-launch.sh operator resume --account-id account-id --config path/to/derived-qualification.jsonc --receipt-file path/to/existing-credential-receipt.json
 ```
 
 Registration selects Contents read, Pull requests write, Checks write, and
@@ -130,17 +196,19 @@ For a joined App, select `--base-version-id <qualified-version>` and either
 `--seal-key-previous-receipt <durable-receipt>` for an established target. The
 initial mode refuses an existing `APP_SEAL_KEY` secret binding in the qualified
 version's metadata without reading its value; absence is not empty-D1 or custody
-evidence. The
-latest uploaded version must equal that qualified bootstrap/base before input
-and again before the write. The base's actual source, included engine and
-Community/private composition are qualified separately by the activation operator.
+evidence. The selected base is an identity/seal-continuity checkpoint. The artifact
+supplies the uploaded source independently of a concurrent latest upload. Initial
+mode also inspects the actual latest seal-binding state. The artifact's source,
+included engine and Community/private composition are qualified by the activation
+operator before its digest is admitted.
 The exact configuration selects `GITHUB_APP_BOT_LOGIN` (the standalone runtime's
 existing default is `diffdevil[bot]`); configure the actual registered bot.
 
 A manifest-capture caller can supply the five matching GitHub values through
 `installCredentials({ readGitHubInputs, ... })` instead of creating plaintext
 credential files. The callback runs after the durable checkpoint; its App/client
-IDs must match the selected IDs. That caller also passes `baseVersionId` and
+IDs must match the selected IDs. That caller also passes `artifactPath`,
+`artifactSha256`, `baseVersionId` and
 either `sealKeyInitial` or `sealKeyPreviousReceiptPath`, plus the same retained
 seal/Wirt file or named-environment inputs. Capture and installation receipts
 remain separate recovery artifacts.
@@ -155,13 +223,14 @@ contents are validated only after preflight. `check` exercises target readback,
 file metadata and a same-directory atomic receipt probe; it does not read protected
 contents, create the real checkpoint or write a Worker version.
 
-Bulk installation sends JSON directly to Wrangler's private stdin. No temporary
+Installation sends JSON directly to the contained upload child's private stdin. No temporary
 secret file is created, including on failure; `carrier: not-created` records that
 fact. Native stdout/stderr are contained, Wrangler disk logs and telemetry are
 disabled for these children, and only allowlisted receipt fields reach output.
 Named seal/Wirt environment values are read only after the flushed receipt exists,
 removed from the Wrangler child environment and sent through that same private
-stdin. The helper leaves operator-owned input files intact. Their access controls
+stdin. The immutable artifact is a separate source package. The helper leaves
+operator-owned input files intact. Their access controls
 and retention remain the custodian's responsibility; Node's Unix file mode is not
 a Windows custody/ACL guarantee.
 
@@ -194,7 +263,7 @@ After a custodian has established an appropriate protected recovery destination,
 the contained file-generation specimen is:
 
 ```sh
-node apps/github-app/operator-helper.mjs generate-seal --seal-key-file path/to/new-custody-owned-seal.txt --seal-key-recovery-ref admitted-custody-reference
+bash -p apps/github-app/operator-launch.sh operator generate-seal --seal-key-file path/to/new-custody-owned-seal.txt --seal-key-recovery-ref admitted-custody-reference
 ```
 
 It generates 32 random bytes once, exclusively creates and flushes the selected
@@ -205,12 +274,14 @@ off-workstation recovery or a store binding. An environment-only custodian keeps
 generation/admission inside its existing contained route.
 
 The non-secret receipt is created exclusively and flushed before protected input.
-A durable `attempted-unknown` marker precedes the provider write. Command acceptance,
-the single newly observed version, its secret-binding names/database, and the latest
-deployment comparison are separate facts. `version-created` means a complete
-readback of an undeployed version with an unchanged active deployment; it does not
-prove secret values, registration correctness, exposure, runtime behavior or a
-deployment. `partial`/`unknown` never count as success. `resume` requires the same
+A durable `attempted-unknown` marker precedes asset staging and version creation.
+Command acceptance, the exact returned version ID, its operation tag/artifact SHA,
+secret-binding names/database, observed script ETag and active-deployment comparison
+remain separate facts. `version-created` requires matching artifact/operation
+lineage on that undeployed version and an unchanged deployment. This is request-bound
+source identity through the atomic API, not a provider byte-for-byte download or
+secret-value readback. It proves no registration correctness, exposure, runtime
+behavior or deployment. `partial`/`unknown` never count as success. `resume` requires the same
 exact config hash/account/Worker/database and a usable receipt, performs only
 provider reads, and never rereads inputs or repeats installation. Missing or
 foreign receipts refuse. A lost write acknowledgement remains partial even when
@@ -225,11 +296,14 @@ Select a durable operation-receipt path outside disposable worktrees from the
 start, or preserve the non-secret receipt in the operation's durable handback
 before retiring the checkout. Repository `artifacts/` is only a working copy.
 
-Wrangler's secret operation inherits the latest uploaded version, which can differ
-from the active deployment. Keep one operator as this Worker's writer until the
-receipt is reconciled, and qualify the returned version's source/engine/composition
-before activation. The staging packet separates its unexposed bootstrap from
-credential preparation and version-specific activation.
+Static assets are staged with their exact native content identities before the
+single version POST. A failure can leave staged immutable assets. `not-attempted`
+attests that no credential-version request was attempted; it is not an asset
+rollback claim. A failed child exit without that before-effect fact stays unknown
+even if a matching version is not yet listed. Recovery never
+repeats staging or version creation. The staging packet keeps artifact qualification,
+credential attachment and version-specific activation distinct. The former
+`versions secret bulk`/`latest` path is not used for installation.
 
 `--fake` selects disposable in-process provider responses and labels its receipts
 `mode: fixture`; they cannot be resumed as live receipts. The registered

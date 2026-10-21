@@ -444,6 +444,39 @@ not perform or qualify a production migration.
 [shared-size implementation](../apps/github-app/analytical-size-storage.mjs) and
 [actual D1 equivalence tests](../apps/github-app/analytical-size-storage.test.mjs).
 
+## D088: Attach credentials to a qualified artifact in one existing-Worker version
+
+**Status:** Maintainer-selected operator contract; the 2026-10-21 source candidate
+does not authorize live credentials, provider writes, deployment or publication.
+
+**Decision.** Establish a clean runtime before Node starts, then pass credential
+children only required OS paths, selected native authentication and fixed controls.
+Prepare one source artifact from pinned Wrangler's native dry-run modules/settings
+and the complete selected static assets. Qualify its SHA-256 before protected input.
+Use native Wrangler authentication inside the contained upload child and create
+one undeployed version on the existing script with the artifact and secret bindings
+together. Keep the original Worker, App/OAuth identities, D1/Queues, seal, valued
+state and operating custody. Preserve legacy receipts through read-only recovery.
+
+**Why and alternatives.** A latest-version check followed by `versions secret bulk`
+does not bind the write: a foreign upload can become latest before attachment.
+Post-write binding names cannot prevent that effect. Pinned Wrangler 4.150.0's full
+upload command also retries creation and preserves unspecified secrets; those
+behaviors do not supply this exact operation. The focused upload child instead
+uses the existing-script Upload Version API once, with complete modules, settings,
+staged assets and credentials, without inherited selectors, resource provisioning,
+deployment or a non-versioned settings write. It retains the established native
+authentication route rather than creating a credential store or owner courier job.
+The returned version ID, unique operation tag, artifact SHA, observed script ETag
+and unchanged deployment establish request-bound lineage; they are not a provider
+byte download, secret-value equality or live runtime proof. Ambiguous completion
+remains partial/unknown and never earns a repeated write.
+
+**Sources.** [Operator contract](../apps/github-app/README.md#registration-and-credential-helper),
+[staging operation and recovery](integration/app-staging.md#protected-input-operation),
+and the pinned provider route qualified by the native-bundle, asset-protocol,
+foreign-upload and lost-response specimens in `apps/github-app/`.
+
 ## Earlier decisions and retained fragments
 
 The headings below preserve earlier links. Their full text remains in the exact predecessor record; follow its references for D001–D043. Later decisions above supersede only the stated portions. Historical source is not automatically current implementation.

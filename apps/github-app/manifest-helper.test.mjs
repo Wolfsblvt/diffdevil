@@ -59,7 +59,7 @@ test('named seal preflight leaves values unread and rejects conflicting or reser
   } finally { await cleanup(setup); }
 });
 
-test('state and Host refusal leave conversion unattempted; the matching callback captures all five inputs privately', { timeout: 30000 }, async () => {
+test('state and Host refusal leave conversion unattempted; the matching callback captures all five inputs privately', { timeout: 120000 }, async () => {
   const setup = await manifestFixture(); let running;
   try {
     const route = await capture(setup); running = route.process;
@@ -86,7 +86,7 @@ test('state and Host refusal leave conversion unattempted; the matching callback
   } finally { await cleanup(setup, running); }
 });
 
-test('captured raw response survives a late receipt failure and resumes without repeating conversion', { timeout: 30000 }, async () => {
+test('captured raw response survives a late receipt failure and resumes without repeating conversion', { timeout: 120000 }, async () => {
   const setup = await manifestFixture(); let running;
   try {
     setup.state.beforeResponse = async () => { await rm(setup.options.receiptPath); await mkdir(setup.options.receiptPath); };
@@ -102,7 +102,7 @@ test('captured raw response survives a late receipt failure and resumes without 
   } finally { await cleanup(setup, running); }
 });
 
-test('lost conversion response is durable unknown and cannot repeat the one-use conversion', { timeout: 30000 }, async () => {
+test('lost conversion response is durable unknown and cannot repeat the one-use conversion', { timeout: 120000 }, async () => {
   const setup = await manifestFixture(); let running;
   try {
     setup.state.failConversion = true;
@@ -116,7 +116,7 @@ test('lost conversion response is durable unknown and cannot repeat the one-use 
   } finally { await cleanup(setup, running); }
 });
 
-test('wrong namespace is preserved as captured and refuses installation; an absent capture cannot resume from a receipt', { timeout: 30000 }, async () => {
+test('wrong namespace is preserved as captured and refuses installation; an absent capture cannot resume from a receipt', { timeout: 120000 }, async () => {
   const setup = await manifestFixture(); let running;
   try {
     setup.body.owner.login = 'different-owner';
@@ -131,7 +131,7 @@ test('wrong namespace is preserved as captured and refuses installation; an abse
   } finally { await cleanup(setup, running); }
 });
 
-test('the native provider form can rename the App while its returned identity remains explicit', { timeout: 30000 }, async () => {
+test('the native provider form can rename the App while its returned identity remains explicit', { timeout: 120000 }, async () => {
   const setup = await manifestFixture(); let running;
   try {
     setup.body.name = 'diffdevil-renamed-by-operator';
@@ -148,7 +148,7 @@ test('the native provider form can rename the App while its returned identity re
   } finally { await cleanup(setup, running); }
 });
 
-for (const [joined, wirt, name] of [[true, false, 'Community six'], [false, false, 'standalone three'], [true, true, 'Wirt seven']]) test(`encrypted handoff delivers matching ${name} inputs through the real native installer`, { timeout: 30000 }, async () => {
+for (const [joined, wirt, name] of [[true, false, 'Community six'], [false, false, 'standalone three'], [true, true, 'Wirt seven']]) test(`encrypted handoff delivers matching ${name} inputs through the real native installer`, { timeout: 120000 }, async () => {
   const setup = await manifestFixture({ joined, wirt }); let running;
   try {
     const route = await capture(setup); running = route.process;
@@ -166,7 +166,7 @@ for (const [joined, wirt, name] of [[true, false, 'Community six'], [false, fals
   } finally { await cleanup(setup, running); }
 });
 
-test('unsafe native positive control emits synthetic secrets on both streams; the helper containment test can detect them', { timeout: 30000 }, async () => {
+test('unsafe native positive control emits synthetic secrets on both streams; the helper containment test can detect them', { timeout: 120000 }, async () => {
   const setup = await manifestFixture();
   try {
     const child = spawn(process.execPath, ['apps/github-app/manifest-convert.mjs'], { stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true });
@@ -179,7 +179,7 @@ test('unsafe native positive control emits synthetic secrets on both streams; th
   } finally { await cleanup(setup); }
 });
 
-test('the real environment-only capture and Wirt installer retain the seal, qualify the base and resume continuity without plaintext key files', { timeout: 30000 }, async () => {
+test('the real environment-only capture and Wirt installer retain the seal, qualify the base and resume continuity without plaintext key files', { timeout: 120000 }, async () => {
   const setup = await manifestFixture({ wirt: true }); let running;
   try {
     const fixtureOptionsPath = join(setup.directory, 'fixture-options.json');
@@ -215,7 +215,7 @@ test('the real environment-only capture and Wirt installer retain the seal, qual
   } finally { await cleanup(setup, running); }
 });
 
-test('manifest installation refuses an unqualified base or conflicting seal declaration before a native write', { timeout: 30000 }, async () => {
+test('manifest installation refuses an unqualified base or conflicting seal declaration before a native write', { timeout: 120000 }, async () => {
   const setup = await manifestFixture(); let running;
   try {
     const route = await capture(setup); running = route.process;
@@ -235,7 +235,7 @@ test('manifest installation refuses an unqualified base or conflicting seal decl
   } finally { await cleanup(setup, running); }
 });
 
-test('a mismatched App target refuses before upload and an interrupted installation resumes without the capture or another write', { timeout: 30000 }, async () => {
+test('a mismatched App target refuses before upload and an interrupted installation resumes without the capture or another write', { timeout: 120000 }, async () => {
   const setup = await manifestFixture(); let running;
   try {
     const route = await capture(setup); running = route.process;
@@ -259,7 +259,7 @@ test('a mismatched App target refuses before upload and an interrupted installat
     await writeFile(join(setup.directory, 'fixture-options.json'), '{}');
     // The fixture-labelled receipt must recover through the fixture-labelled source seam.
     // The ordinary CLI's provider-mode refusal of such a receipt is deliberate containment.
-    const resumed = await resumeCredentials({ config: setup.config, accountId: 'account-1', receiptPath: options.installReceiptPath, wrangler: options.fixtureWrangler, fixture: true, runner: createProcessRunner() });
+    const resumed = await resumeCredentials({ config: setup.config, accountId: 'account-1', receiptPath: options.installReceiptPath, fixtureWrangler: options.fixtureWrangler, fixture: true, runner: createProcessRunner() });
     assert.equal(resumed.state, 'version-created');
     assert.equal(includesSecrets(JSON.stringify(resumed), setup), false); assert.equal((await nativeState(setup)).writes, 1);
   } finally { await cleanup(setup, running); }

@@ -7,6 +7,7 @@ import { once } from 'node:events';
 import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
+import { syntheticArtifact } from './operator-artifact.mjs';
 
 const pem = generateKeyPairSync('rsa', { modulusLength: 2048 }).privateKey.export({ type: 'pkcs1', format: 'pem' });
 export async function manifestFixture({ ownerType = 'personal', visibility = 'public', joined = true, wirt = false, policyRefresh = true } = {}) {
@@ -49,10 +50,10 @@ export async function manifestFixture({ ownerType = 'personal', visibility = 'pu
   await new Promise(resolveListen => portProbe.listen(0, '127.0.0.1', resolveListen));
   const port = portProbe.address().port;
   await new Promise(resolveClose => portProbe.close(resolveClose));
-  const options = { capturePath: join(directory, 'capture.enc'), receiptPath: join(directory, 'capture-receipt.json'), sealKeyPath, sealKeyRecoveryRef: 'fixture-retained-custody', owner: 'fixture-owner', ownerType, visibility, appName: body.name, webhookUrl: 'https://staging.example/webhooks/github', ...(joined ? { oauthCallbackUrl: 'https://staging.example/auth/callback' } : {}), policyRefresh, port, fixtureOrigin: `http://127.0.0.1:${server.address().port}` };
+  const options = { ...await syntheticArtifact(config), capturePath: join(directory, 'capture.enc'), receiptPath: join(directory, 'capture-receipt.json'), sealKeyPath, sealKeyRecoveryRef: 'fixture-retained-custody', owner: 'fixture-owner', ownerType, visibility, appName: body.name, webhookUrl: 'https://staging.example/webhooks/github', ...(joined ? { oauthCallbackUrl: 'https://staging.example/auth/callback' } : {}), policyRefresh, port, fixtureOrigin: `http://127.0.0.1:${server.address().port}` };
   return { directory, seal, body, values, config, options, state, wirtSigningKeyPath, close: () => new Promise(resolveClose => { server.close(resolveClose); server.closeAllConnections(); }) };
 }
-const flags = { capturePath: 'capture-file', receiptPath: 'receipt-file', sealKeyPath: 'seal-key-file', sealKeyEnv: 'seal-key-env', sealKeyRecoveryRef: 'seal-key-recovery-ref', owner: 'owner', ownerType: 'owner-type', visibility: 'visibility', appName: 'app-name', webhookUrl: 'webhook-url', oauthCallbackUrl: 'oauth-callback-url', port: 'port', fixtureOrigin: 'fixture-provider', config: 'config', accountId: 'account-id', installReceiptPath: 'install-receipt-file', fixtureWrangler: 'fixture-wrangler', wirtSigningKeyPath: 'wirt-signing-key-file', wirtSigningKeyEnv: 'wirt-signing-key-env', baseVersionId: 'base-version-id', sealKeyPreviousReceiptPath: 'seal-key-previous-receipt' };
+const flags = { artifactPath: 'artifact-file', artifactSha256: 'artifact-sha256', capturePath: 'capture-file', receiptPath: 'receipt-file', sealKeyPath: 'seal-key-file', sealKeyEnv: 'seal-key-env', sealKeyRecoveryRef: 'seal-key-recovery-ref', owner: 'owner', ownerType: 'owner-type', visibility: 'visibility', appName: 'app-name', webhookUrl: 'webhook-url', oauthCallbackUrl: 'oauth-callback-url', port: 'port', fixtureOrigin: 'fixture-provider', config: 'config', accountId: 'account-id', installReceiptPath: 'install-receipt-file', fixtureWrangler: 'fixture-wrangler', wirtSigningKeyPath: 'wirt-signing-key-file', wirtSigningKeyEnv: 'wirt-signing-key-env', baseVersionId: 'base-version-id', sealKeyPreviousReceiptPath: 'seal-key-previous-receipt' };
 export function manifestCli(command, options) {
   const args = ['apps/github-app/manifest-helper.mjs', command];
   for (const [key, value] of Object.entries(options)) {

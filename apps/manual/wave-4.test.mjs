@@ -81,10 +81,13 @@ test('all read-only troubleshooting commands execute with distinct invalid and u
 
 test('registration specimen is a non-secret read-only operation with the selected permission boundary',()=>{
  const page='docs/manual/use/managed-app/self-hosting.md';
- const command=blocks(page).flatMap(([,language,body])=>language==='sh'?body.split('\n'):[]).find(line=>line.includes('operator-helper.mjs registration '));
+ const command=blocks(page).flatMap(([,language,body])=>language==='sh'?body.split('\n'):[]).find(line=>line.includes('operator-launch.sh operator registration '));
  assert.ok(command);
- const args=command.split(' ').slice(1);
- const result=spawnSync(process.execPath,args,{cwd:root,encoding:'utf8',windowsHide:true});
+ const tokens=command.split(' ');
+ const windows=process.platform==='win32';
+ const executable=windows?'pwsh':tokens[0];
+ const args=windows?['-NoProfile','-NonInteractive','-File',join(root,'apps/github-app/operator-launch.ps1'),...tokens.slice(3)]:tokens.slice(1);
+ const result=spawnSync(executable,args,{cwd:root,encoding:'utf8',windowsHide:true});
  assert.ifError(result.error);assert.equal(result.status,0,result.stderr);
  const output=JSON.parse(result.stdout);
  assert.equal(output.permissions.contents,'read');
