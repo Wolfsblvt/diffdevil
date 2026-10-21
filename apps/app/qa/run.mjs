@@ -59,7 +59,7 @@ const ORIGIN = `http://localhost:${APP_PORT}`;
 const PROBE = `http://127.0.0.1:${APP_PORT}`;
 const CONFIG = join(target.artifacts, 'dist/server/wrangler.json');
 const DENSE = process.env.DIFFDEVIL_APP_QA_DENSE === '1';
-const STATE = join(target.artifacts, 'state');
+const STATE = join(target.artifacts, BUSINESS_MANAGE_ONLY ? 'state-business-manage' : 'state');
 const DENSE_STATE = join(target.artifacts, 'state-dense');
 const chartTelemetry = [];
 

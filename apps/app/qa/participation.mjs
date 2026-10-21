@@ -13,6 +13,7 @@ const addUtcDays = (day, days) => {
   date.setUTCDate(date.getUTCDate() + days);
   return date.toISOString().slice(0, 10);
 };
+const utcDaysBetween = (start, end) => (Date.parse(`${end}T00:00:00.000Z`) - Date.parse(`${start}T00:00:00.000Z`)) / 86_400_000;
 const today = new Date().toISOString().slice(0, 10);
 const betaStartsOn = addUtcDays(today, -15);
 const betaEndsOn = addUtcDays(today, 15);
@@ -25,7 +26,7 @@ export const COMMERCIAL_BETA = Object.freeze({ account: 123, linked: true, since
   betaTimeZone: 'UTC', // Explicit local stand-in for c33d5d9's native commercial_timezone.
   betaGrants: [{ id: 265, kind: 'beta', product: 'diffdevil', tier: 'pro', promised_units: 30,
     original_window: { started_on: betaStartsOn, until: betaEndsOn }, access_windows: [{ started_on: betaStartsOn, until: betaEndsOn }],
-    current_access: { started_on: betaStartsOn, until: betaEndsOn }, remaining_units: 9 }],
+    current_access: { started_on: betaStartsOn, until: betaEndsOn }, remaining_units: utcDaysBetween(today, betaEndsOn) }],
   grants: [{ kind: 'beta', until: betaEndsOn }], protection: { kind: 'beta' }, capacity: [{ slot: 'slot-included', funding: 'included', binding: null }],
   participation: { campaign: { key: 'qa-beta-survey', version: 1, name: 'DiffDevil beta survey', reason: 'Participation reward · DiffDevil beta survey', claim_closes_at: campaignClosesAt, valid_until: `${addUtcDays(today, 44)}T00:00:00Z`,
     rewards: [{ key: 'monthly', kind: 'discount', tier: 'Pro', cadence: 'monthly', unit: 'percent', value: 50, uses: 3, charge_classes: ['first-purchase', 'renewal'], combinable: false }, { key: 'annual', kind: 'discount', tier: 'Pro', cadence: 'annual', unit: 'percent', value: 20, uses: 1, charge_classes: ['first-purchase', 'renewal'], combinable: false }] } } });
@@ -74,9 +75,9 @@ export async function nullableReceiverJourney({ page, go, check, shot, ORIGIN })
   await go('/manage/plan');
   check('native expired component remains visible as Free', await page.locator('[data-standing="reward-only"] .plan b').textContent() === 'Free'
     && /Expired/u.test(await page.locator('[data-standing="reward-only"]').innerText()));
-  const active = { ...component, state: 'active', starts_on: '2026-10-01', ends_on: '2026-11-01', application_deadline: null };
+  const active = { ...component, state: 'active', starts_on: betaStartsOn, ends_on: betaEndsOn, application_deadline: null };
   const full = projection(3, [active]);
-  full.commercial = { standing: 'funded', tier: 'pro', cadence: 'monthly', period: { started_on: '2026-10-01', ends_on: '2026-11-01' },
+  full.commercial = { standing: 'funded', tier: 'pro', cadence: 'monthly', period: { started_on: betaStartsOn, ends_on: betaEndsOn },
     renewal_preference: 'manual', cancellation_intent: 'none', grace: null, ended: null, next_renewal: null };
   full.benefits.organisation_capacity = [{ slot: component.component_id, funding: 'grant', pending_end_on: active.ends_on }];
   check('native receiver admits active component facts with a compatible full base', (await push(full)).status === 200);
