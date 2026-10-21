@@ -58,7 +58,7 @@ async function generateSourceAssets() {
     await copyFile(join(qa, source), join(sourceRoot, path));
     entries.push({ path, ...info, sha256: sha256(bytes), generatedFrom: `artifacts/browser-extension/qa/${source}`, caption, standing: 'Actual production UI in an explicitly authored fixture; not a live or installed-extension capture.' });
   }
-  const wordmark = await readFile('packages/design/assets/identity/diffdevil-wordmark-dark.svg');
+  const wordmark = await readFile('brand/source/diffdevil/diffdevil-wordmark-dark.svg');
   const mark = `data:image/svg+xml;base64,${wordmark.toString('base64')}`;
   const screenshot = `data:image/png;base64,${(await readFile(join(qa, 'github-dark.png'))).toString('base64')}`;
   const header = (width, height) => `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><rect width="100%" height="100%" fill="#151922"/><g font-family="DejaVu Sans,Arial,sans-serif">`;

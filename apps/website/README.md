@@ -166,8 +166,9 @@ release attachments and a successful installation are separate observations.
 
 ## Assets and legal surfaces
 
-The canonical identity SVGs remain under `packages/design/assets/identity/`; the asset builder
-produces ignored icons/rasters with its checked framing. Reuse the accepted icon family
+The identity masters live under `brand/source/diffdevil/` and their exported bundle under
+`brand/bundle/diffdevil/`; site CSS reads the bundle, and the asset builder produces ignored
+icons/rasters from the masters with the framing it shares with the exporter. Reuse the accepted icon family
 and existing shared imports instead of drawing feature-local substitutes. Rendered
 Store/source imagery retains its provenance and does not become live-use evidence.
 

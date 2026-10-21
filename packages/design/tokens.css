@@ -89,10 +89,10 @@
   --on-inverse: #0c0f17;
   --focus: #f061ba;
   --hatch: repeating-linear-gradient(45deg, #2c303a 0 3px, #151922 3px 7px);
-  --logo-lockup: url("assets/identity/diffdevil-lockup-dark.svg");
-  --logo-symbol: url("assets/identity/diffdevil-symbol-master-dark.svg");
-  --logo-micro: url("assets/identity/diffdevil-symbol-micro-dark.svg");
-  --logo-wordmark-tail: url("assets/identity/diffdevil-wordmark-tail-dark.svg");
+  --logo-lockup: url("../../brand/source/diffdevil/diffdevil-lockup-dark.svg");
+  --logo-symbol: url("../../brand/source/diffdevil/diffdevil-symbol-master-dark.svg");
+  --logo-micro: url("../../brand/source/diffdevil/diffdevil-symbol-micro-dark.svg");
+  --logo-wordmark-tail: url("../../brand/source/diffdevil/diffdevil-wordmark-tail-dark.svg");
 }
 
 /* ────────────────────────────── LIGHT (authored) ────────────────────────────── */
@@ -115,10 +115,10 @@
   --on-inverse: #f0f2f5;
   --focus: #e54eaf;
   --hatch: repeating-linear-gradient(45deg, #e9ebef 0 3px, #ffffff 3px 7px);
-  --logo-lockup: url("assets/identity/diffdevil-lockup-light.svg");
-  --logo-symbol: url("assets/identity/diffdevil-symbol-master-light.svg");
-  --logo-micro: url("assets/identity/diffdevil-symbol-micro-light.svg");
-  --logo-wordmark-tail: url("assets/identity/diffdevil-wordmark-tail-light.svg");
+  --logo-lockup: url("../../brand/source/diffdevil/diffdevil-lockup-light.svg");
+  --logo-symbol: url("../../brand/source/diffdevil/diffdevil-symbol-master-light.svg");
+  --logo-micro: url("../../brand/source/diffdevil/diffdevil-symbol-micro-light.svg");
+  --logo-wordmark-tail: url("../../brand/source/diffdevil/diffdevil-wordmark-tail-light.svg");
 }
 @media (prefers-color-scheme: light) {
   :root:not([data-theme]) {
@@ -129,10 +129,10 @@
     --accent: #e54eaf; --accent-hover: #d43d9e; --accent-text: #aa167d; --on-accent: #161b24;
     --inverse: #161b24; --on-inverse: #f0f2f5; --focus: #e54eaf;
     --hatch: repeating-linear-gradient(45deg, #e9ebef 0 3px, #ffffff 3px 7px);
-    --logo-lockup: url("assets/identity/diffdevil-lockup-light.svg");
-    --logo-symbol: url("assets/identity/diffdevil-symbol-master-light.svg");
-    --logo-micro: url("assets/identity/diffdevil-symbol-micro-light.svg");
-    --logo-wordmark-tail: url("assets/identity/diffdevil-wordmark-tail-light.svg");
+    --logo-lockup: url("../../brand/source/diffdevil/diffdevil-lockup-light.svg");
+    --logo-symbol: url("../../brand/source/diffdevil/diffdevil-symbol-master-light.svg");
+    --logo-micro: url("../../brand/source/diffdevil/diffdevil-symbol-micro-light.svg");
+    --logo-wordmark-tail: url("../../brand/source/diffdevil/diffdevil-wordmark-tail-light.svg");
   }
 }
 /* In dark theme --accent-text equals --accent (6.5:1 on --bg). */

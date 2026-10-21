@@ -15,3 +15,7 @@ actions/runtime/node_modules/** -whitespace linguist-vendored=true
 actions/analyze/index.mjs linguist-generated=true
 actions/apply/index.mjs linguist-generated=true
 actions/sync-labels/index.mjs linguist-generated=true
+
+# Brand Bundle Contract: exported and vendored brand bytes travel unchanged (brand-assets).
+brand/bundle/** -text -filter -ident -working-tree-encoding
+vendor/brand/** -text -filter -ident -working-tree-encoding
