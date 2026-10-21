@@ -1,11 +1,17 @@
 ---
 // SPDX-License-Identifier: AGPL-3.0-only
-// Homepage `#app`: the branded interruption. The panel itself is the shared AppPanel.
+// Homepage `#app`: the branded interruption, then the App itself. The panel is the shared
+// AppPanel; the capture below it is the real signed-in Overview on the App's sample fixture.
 import AppPanel from '../AppPanel.astro';
+import ProductShot from '../ProductShot.astro';
+import overview from '../../assets/app/overview.png';
+import { copy } from '../../data/copy';
 import { paths } from '../../data/site';
+const c = copy.app.shots.overview;
 ---
 <section class="section" data-section="app">
   <div class="wrap">
     <AppPanel secondaryHref={paths.app} selfHostHref={`${paths.app}#self-host`} />
+    <ProductShot src={overview} alt={c.alt} title={copy.app.shotTitle} caption={`${c.caption} ${copy.app.shotStanding}`} />
   </div>
 </section>

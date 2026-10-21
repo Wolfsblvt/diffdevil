@@ -1,25 +1,26 @@
 ---
 // SPDX-License-Identifier: AGPL-3.0-only
 // `#extension`, directly after `#measure`: here is what Changed means → here is that exact
-// meaning inside GitHub. One broad fixture-backed pull-request scene with the report shown
-// open, three short explanatory blocks, and two actions: Add to Chrome goes straight to
-// the Store, the product wording goes to /extension/.
-import ActionLink from '../ActionLink.astro';
-import Scene from '../extension/Scene.astro';
+// meaning inside GitHub. The extension's own report, captured from its production UI for the
+// Store kit, three short explanatory blocks, and two actions: the availability-switched Store
+// action, and the product wording, which goes to /extension/.
+import AvailabilityAction from '../AvailabilityAction.astro';
+import ProductShot from '../ProductShot.astro';
+import report from '../../../../browser-extension/store/assets/screenshots/02-inspect-the-report.png';
 import SectionHead from '../SectionHead.astro';
 import { copy } from '../../data/copy';
-import { CHROME_WEB_STORE_URL, paths } from '../../data/site';
+import { paths } from '../../data/site';
 const c = copy.extension;
 ---
 <section class="section" data-section="extension">
   <div class="wrap">
     <SectionHead id="extension" title={c.h2} body={c.body} />
-    <Scene />
+    <ProductShot src={report} alt={c.shots.report.alt} title={c.shotTitle} caption={`${c.shots.report.caption} ${c.shotStanding}`} />
     <ul class="ext-columns">
       {c.columns.map(([title, body]) => <li><strong>{title}</strong><span>{body}</span></li>)}
     </ul>
     <div class="ext-actions">
-      <ActionLink class="btn btn-primary" href={CHROME_WEB_STORE_URL} data-cta="add-to-chrome">{c.add}</ActionLink>
+      <AvailabilityAction surface="extension" class="btn btn-primary" label={c.add} />
       <a class="ext-explore" href={paths.extension}>{c.explore} →</a>
       <span class="ext-trust">{c.trust}</span>
     </div>

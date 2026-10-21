@@ -78,11 +78,16 @@ The publication command explicitly selects:
 | `DIFFDEVIL_SOURCE_REF` | exact clean checkout HEAD, observed by the command |
 | `DIFFDEVIL_EDIT_REF` | `main` |
 | `PUBLIC_PLAYGROUND_API` | `https://diffdevil-playground.wolfsblvt.workers.dev` |
-| `PUBLIC_APP_INSTALL_URL`, `PUBLIC_DASHBOARD_URL` | empty: hosted actions unavailable |
-| `PUBLIC_CHROME_WEB_STORE_URL` | empty: Store installation unavailable |
+| `PUBLIC_CHROME_WEB_STORE_URL` | `DIFFDEVIL_PUBLICATION_STORE_URL` when supplied (must be a `https://chromewebstore.google.com/detail/` listing); otherwise empty, and every extension action shows **Coming to the Chrome Web Store** |
+| `PUBLIC_APP_INSTALL_URL` | `DIFFDEVIL_PUBLICATION_APP_INSTALL_URL` when supplied (must be a `https://github.com/apps/` installation page); otherwise empty, and every App action shows **Public access is coming** |
+| `PUBLIC_DASHBOARD_URL` | empty: no signed-in App entry in the header |
 | Optional Discord/Bluesky/Sponsor destinations | empty until separately accepted |
 | Published release manifest | omitted: no guessed download assets |
 | `DIFFDEVIL_DOCS_QA` | removed: no reading-qualification route |
+
+The extension and App switches are independent: the Store listing can open while the
+App stays private, or the reverse. Opening one is that one input plus a rebuild of the
+publication pair; `publication.json` records the resulting `availability`.
 
 Ordinary `website:build` remains a local/CI build, uses the obvious legal fixture
 when no projection is supplied and retains the loopback API default. **Its output

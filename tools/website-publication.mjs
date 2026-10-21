@@ -12,12 +12,21 @@ legalOperator();
 const git = args => execFileSync('git', args, { encoding: 'utf8', windowsHide: true }).trim();
 if (git(['status', '--porcelain', '--untracked-files=normal'])) throw new Error('Commit the exact source candidate before building publication artifacts.');
 const source = git(['rev-parse', 'HEAD']);
+// The two availability switches (apps/website/src/data/availability.ts) are independent explicit inputs: a surface
+// opens only when its real public destination is supplied here, and an unexpected destination refuses the build.
+function destination(name, prefix) {
+  const value = (process.env[name] ?? '').trim();
+  if (value && !value.startsWith(prefix)) throw new Error(`${name} must be a ${prefix}… destination, or empty while the surface is coming.`);
+  return value;
+}
+const store = destination('DIFFDEVIL_PUBLICATION_STORE_URL', 'https://chromewebstore.google.com/detail/');
+const appInstall = destination('DIFFDEVIL_PUBLICATION_APP_INSTALL_URL', 'https://github.com/apps/');
 Object.assign(process.env, {
   DIFFDEVIL_SOURCE_REF: source,
   DIFFDEVIL_SITE_ORIGIN: 'https://diffdevil.dev',
   DIFFDEVIL_EDIT_REF: 'main',
   PUBLIC_PLAYGROUND_API: 'https://diffdevil-playground.wolfsblvt.workers.dev',
-  PUBLIC_APP_INSTALL_URL: '', PUBLIC_DASHBOARD_URL: '', PUBLIC_CHROME_WEB_STORE_URL: '',
+  PUBLIC_APP_INSTALL_URL: appInstall, PUBLIC_DASHBOARD_URL: '', PUBLIC_CHROME_WEB_STORE_URL: store,
   PUBLIC_DISCORD_URL: '', PUBLIC_BLUESKY_URL: '', PUBLIC_SPONSOR_URL: '',
 });
 delete process.env.DIFFDEVIL_DOCS_QA;
@@ -33,6 +42,7 @@ function files(directory, prefix = '') {
   }).sort((a, b) => a.path.localeCompare(b.path));
 }
 writeFileSync('artifacts/website/publication.json', JSON.stringify({ source,
+  availability: { extension: store ? 'open' : 'coming', app: appInstall ? 'open' : 'coming' },
   site: files('artifacts/website/dist'), docs: files('artifacts/manual/dist'),
 }, null, 2) + '\n');
 console.log('Publication build complete; exact output hashes: artifacts/website/publication.json. No upload performed.');

@@ -1,0 +1,28 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only
+// A real product capture in a quiet window frame: a slim title bar naming the surface, the
+// image, and a caption that says what the picture is (actual UI, sample data). The frame stays
+// dark in both site themes because both captured surfaces are dark. Captures are regenerated
+// from source (apps/app/qa/website-captures.mjs, the extension Store kit), never hand-edited.
+import { Image } from 'astro:assets';
+import type { ImageMetadata } from 'astro';
+interface Props { src: ImageMetadata; alt: string; title: string; caption?: string | undefined; sizes?: string | undefined; eager?: boolean | undefined; class?: string | undefined }
+const { src, alt, title, caption, sizes = '(max-width: 1240px) 100vw, 1180px', eager = false, class: className } = Astro.props;
+---
+<figure class:list={['shot', className]}>
+  <div class="shot-window">
+    <div class="shot-bar" aria-hidden="true"><span class="shot-dots"><i></i><i></i><i></i></span><span class="shot-title">{title}</span></div>
+    <Image src={src} alt={alt} widths={[640, 960, 1440, 2048]} sizes={sizes} loading={eager ? 'eager' : 'lazy'} fetchpriority={eager ? 'high' : undefined} />
+  </div>
+  {caption && <figcaption class="caption shot-caption">{caption}</figcaption>}
+</figure>
+<style>
+  .shot { margin: 0; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+  .shot-window { border: 1px solid #2c303a; border-radius: 12px; overflow: hidden; background: #151922; box-shadow: 0 18px 50px -24px rgb(0 0 0 / .55); }
+  .shot-bar { display: flex; align-items: center; gap: 12px; height: 30px; padding: 0 12px; border-bottom: 1px solid #2c303a; background: #10131a; }
+  .shot-dots { display: inline-flex; gap: 6px; }
+  .shot-dots i { width: 9px; height: 9px; border-radius: 50%; background: #2c303a; }
+  .shot-title { font-family: var(--font-mono); font-size: 11.5px; color: #828690; }
+  .shot-window :global(img) { display: block; width: 100%; height: auto; }
+  .shot-caption { margin: 0; }
+</style>

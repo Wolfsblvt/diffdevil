@@ -4,11 +4,10 @@
 // the head of /app/, so the two can never drift. Midnight ground in both themes, 1.1fr /
 // 1fr, six benefits in two columns. The GitHub mark sits before the `#app` anchor and is
 // not part of it. The install action links to the configured installation URL; while the
-// hosted App is not open, the button says so instead of pretending.
-import ActionLink from './ActionLink.astro';
+// hosted App is not open, its place carries the "Public access is coming" status instead.
+import AvailabilityAction from './AvailabilityAction.astro';
 import Icon from './Icon.astro';
 import { copy } from '../data/copy';
-import { APP_INSTALL_URL } from '../data/site';
 interface Props { as?: 'h1' | 'h2' | undefined; secondaryHref: string; selfHostHref: string }
 const { as: Tag = 'h2', secondaryHref, selfHostHref } = Astro.props;
 const c = copy.app;
@@ -20,7 +19,7 @@ const [line1, line2] = c.h2Lines;
     <div class="heading"><Tag class="app-title">{line1}<br />{line2}</Tag><a class="permalink" href="#app" tabindex="-1" aria-hidden="true">#</a></div>
     <p class="app-body">{c.body}</p>
     <div class="app-ctas">
-      <ActionLink class="btn btn-l btn-primary" href={APP_INSTALL_URL} data-cta="install-app">{c.ctaPrimary}</ActionLink>
+      <AvailabilityAction surface="app" class="btn btn-l btn-primary" label={c.ctaPrimary} tone="machine" />
       <a class="btn btn-l btn-secondary" href={secondaryHref}>{c.ctaSecondary}</a>
       <a class="app-tertiary" href={selfHostHref}>{c.ctaTertiary} →</a>
     </div>

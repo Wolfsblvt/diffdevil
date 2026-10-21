@@ -39,12 +39,26 @@ export const copy = {
   },
   a11y: { copied: 'Copied to clipboard.', menu: 'Menu' },
 
+  /** The hosted surfaces' availability switch (data/availability.ts): action once open, status until then. */
+  availability: {
+    app: { action: 'Install on GitHub', status: 'Public access is coming',
+      note: 'The App runs in private preview. Public installation and paid plans open here when the hosted service does.' },
+    extension: { action: 'Add to Chrome', status: 'Coming to the Chrome Web Store',
+      note: 'The extension is built and in Store preparation. Installation opens here when its listing is public.' },
+  },
+
   hero: {
     eyebrow: 'Composable diff analysis and automation for GitHub and the CLI',
     h1: 'The devil is in the diff.',
     strap: 'Measure changes. Match rules. Act on the result.',
     why: 'Git gives you a patch and a pair of raw counters. diffdevil turns the details inside that diff into facts you can see in GitHub, query locally, evaluate in workflows, and hand to agents.',
-    ctaPrimary: 'Add to Chrome', ctaSecondary: 'Use the CLI / Actions', ctaTertiary: 'Try a public PR',
+    ctaPrimary: 'Add to Chrome', ctaSecondary: 'Use the CLI / Actions', ctaTertiary: 'Try a public PR', ctaExtension: 'See the extension',
+    /** What a reader can use today, from the two availability switches. */
+    standing: (storeOpen: boolean, appOpen: boolean) => [
+      storeOpen ? 'The CLI, library, Actions and browser extension are released.' : 'The CLI, library and Actions are released.',
+      !storeOpen && 'The browser extension is coming to the Chrome Web Store.',
+      appOpen ? 'The GitHub App is open for installation.' : 'The GitHub App is in private preview; public access is coming.',
+    ].filter(Boolean).join(' '),
     specimenHead: 'src/Foo.cs · one edit block', specimenSemantics: 'replacement-lines-v1',
     leftLabel: 'Replacement-aware · what a size policy counts',
     rightLabel: 'Raw counters · what the patch shows',
@@ -163,7 +177,7 @@ export const copy = {
     eyebrowTail: 'diffdevil GitHub App', h2: 'Same diffdevil. Less plumbing.', h2Lines: ['Same diffdevil.', 'Less plumbing.'] as const,
     body: 'Install for the repositories you choose, inspect the effective policy and enable the intended effects. The App runs the same engine and the same .diffdevil.yml as the Action, and stays up to date without a workflow file, a token, or a runner to babysit.',
     ctaPrimary: 'Install on GitHub', ctaSecondary: 'How the App works', ctaTertiary: 'Self-host it',
-    foot: 'Community is open source (AGPL-3.0-only). The official hosted service is not generally available; Free, Pro and Business remain a planned offer.',
+    foot: 'Community is open source (AGPL-3.0-only) and self-hostable. Free, Pro and Business are the planned hosted offer.',
     benefits: [
       ['Install once', 'No workflow file for ordinary use, no personal token assembly, no runner minutes or upgrades.'],
       ['Native check summaries', 'Evidence, raw and replacement-aware facts, rule results and observed effects on the PR itself.'],
@@ -172,6 +186,20 @@ export const copy = {
       ['Deliberate effects', 'Labels only in declared groups, comments only when opted in, readback after every write.'],
       ['History if you want it', 'Opt-in measurements with repository names and file paths, never source or patches.'],
     ] as const,
+    shotTitle: 'diffdevil App',
+    shotStanding: 'Actual App UI on its sample accounts; every figure is fixture data.',
+    shots: {
+      overview: { alt: 'The diffdevil App Overview across seven repositories: 20 merged pull requests in 30 days against 19 before, opened, open, time to merge, median Changed and raw churn, then the change-volume chart split into modified, added-only and deleted-only lines.',
+        caption: 'Overview: every repository you can read, merged, opened and open work, time to merge and replacement-aware change volume over the period.' },
+      prs: { alt: 'The Pull requests destination: a thirteen-week chart of opened, merged and closed-unmerged pull requests with the open backlog as a line, and analysed heads per pull request beside it.',
+        caption: 'Pull requests: flow, backlog, lifecycle by size and how often a pull request is revised before it merges.' },
+      history: { alt: 'The History destination: change volume per two days with bounded buckets hatched, merged pull requests plotted by size band, the selected bucket’s pull requests and a period comparison.',
+        caption: 'History: what merged, how big it was and how that compares with the previous period, with bounded and unknown evidence kept visible.' },
+      prDetail: { alt: 'A pull request in the App: 28 replacement-aware changed lines, exact, beside raw additions and deletions, then the policy result, the desired size label, the label observed on GitHub and the size of each analysed head.',
+        caption: 'Pull request detail: the measurement, the policy that judged it, the label it wanted and what GitHub actually shows.' },
+      manage: { alt: 'Manage, Repositories: each account’s repositories with their plan, whether execution is running or labels-only, and whether history is on.',
+        caption: 'Manage: which repositories run, what each one does and whether it keeps history, per account and organisation.' },
+    },
   },
 
   extension: {
@@ -184,7 +212,16 @@ export const copy = {
       ['Open the evidence', 'Inspect the complete report, policy origin, exclusions, and evidence quality without leaving the pull request.'],
     ] as const,
     explore: 'Explore diffdevil for GitHub', trust: 'Local analysis by default. Raw patches are not persisted.',
-    specimenNote: 'Authored pull-request scene in the visual language of GitHub. This is a source/design specimen, not live-use proof or an approved final extension layout. Every figure is the engine result for',
+    shotTitle: 'github.com · diffdevil for GitHub',
+    shotStanding: 'Actual extension UI on an authored pull-request fixture, captured for the Store listing.',
+    shots: {
+      changed: { alt: 'A GitHub pull request with diffdevil for GitHub: Changed 178 with +60, −18 and ~100 beside the size/M chip and band rail at the top, the same figure in the Files changed bar, and each file with its own Changed.',
+        caption: 'Changed takes GitHub’s own diffstat seats: the pull request, the files bar and every file.' },
+      report: { alt: 'The diffdevil analysis report open on a GitHub pull request: 178 changed, exact, its decomposition, raw additions and deletions, files and coverage, the personal size policy selecting M, and the desired size/M label with readback not observed.',
+        caption: 'The report opens in place: the number, its evidence, raw churn, coverage, the policy in effect and the label it would choose.' },
+      coverage: { alt: 'A large pull request in diffdevil for GitHub: the report names measured, bounded and provider-declined files and offers one action to analyze the remaining files.',
+        caption: 'Large pull requests stay honest: measured, bounded and declined files are named, never rounded into an exact number.' },
+    },
     distinction: 'The extension changes your view. The App runs for the repository.',
   },
 

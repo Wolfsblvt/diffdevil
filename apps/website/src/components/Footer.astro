@@ -8,7 +8,8 @@ import ActionLink from './ActionLink.astro';
 import Icon from './Icon.astro';
 import { copy } from '../data/copy';
 import { footerSocials } from '../data/destinations';
-import { APP_INSTALL_URL, CHROME_WEB_STORE_URL, COMPANY, GITHUB, MARKETPLACE, NPM, docPaths, paths } from '../data/site';
+import { availability } from '../data/availability';
+import { COMPANY, GITHUB, MARKETPLACE, NPM, docPaths, paths } from '../data/site';
 import { extensionDocsPresent } from '../lib/sources';
 type Item = readonly [label: string, href: string | undefined];
 const c = copy.footer;
@@ -36,8 +37,8 @@ const rel = (href: string) => (href.startsWith('http') ? 'noopener' : undefined)
         <li class="mono"><a href={NPM} rel="noopener">@wolfsblvt/diffdevil</a></li>
         <li class="mono"><a href={MARKETPLACE} rel="noopener">Wolfsblvt/diffdevil@v1</a></li>
         <li><a href={MARKETPLACE} rel="noopener">GitHub Marketplace</a></li>
-        <li class="footer-row"><a href={paths.extension}>Browser extension</a><span aria-hidden="true"> · </span><ActionLink href={CHROME_WEB_STORE_URL} data-footer-action="store">Chrome Web Store<Icon name="external" size={10} class="footer-arrow" /></ActionLink></li>
-        <li class="footer-row"><a href={paths.app}>GitHub App</a><span aria-hidden="true"> · </span><ActionLink href={APP_INSTALL_URL} data-footer-action="app">Install on GitHub<Icon name="external" size={10} class="footer-arrow" /></ActionLink></li>
+        <li class="footer-row"><a href={paths.extension}>Browser extension</a><span aria-hidden="true"> · </span>{availability.extension.open ? <ActionLink href={availability.extension.href} data-footer-action="store">Chrome Web Store<Icon name="external" size={10} class="footer-arrow" /></ActionLink> : <span class="footer-coming" data-footer-action="store">Store listing coming</span>}</li>
+        <li class="footer-row"><a href={paths.app}>GitHub App</a><span aria-hidden="true"> · </span>{availability.app.open ? <ActionLink href={availability.app.href} data-footer-action="app">Install on GitHub<Icon name="external" size={10} class="footer-arrow" /></ActionLink> : <span class="footer-coming" data-footer-action="app">Public access coming</span>}</li>
       </ul></nav>
       <nav aria-label={c.learn}><h4>{c.learn}</h4><ul>{learn.map(row => (
         <li class="footer-row">{row.map(([label, href], index) => <>{index > 0 && <span aria-hidden="true"> · </span>}<ActionLink href={href} external={false}>{label}</ActionLink></>)}</li>

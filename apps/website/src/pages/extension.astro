@@ -1,26 +1,32 @@
 ---
 // SPDX-License-Identifier: AGPL-3.0-only
 // /extension/: the trust and detail surface for diffdevil for GitHub. It shows the
-// selected projection and report as design specimens and its source-owned settings
-// application as rendered UI, then states exactly what the extension reads, stores and
+// extension's production UI as captured for the Store kit (an authored pull-request fixture)
+// and its source-owned settings application, then states exactly what it reads, stores and
 // never does. Those statements follow the extension's own privacy notice, manifest
 // (`storage`; content script on github.com; host access to api.github.com; Incognito not
 // allowed) and listing copy; when that source changes, this page follows it, not the other
-// way round. Store actions have no href until an actual destination is configured;
-// fixture scenes and Store-kit captures are not live-use proof or final visual authority.
+// way round. Store actions follow the extension's own availability switch
+// (data/availability.ts), independent of the App's; Store-kit captures are not live-use proof.
 import { Image } from 'astro:assets';
 import Base from '../layouts/Base.astro';
 import ActionLink from '../components/ActionLink.astro';
-import Icon from '../components/Icon.astro';
-import Scene from '../components/extension/Scene.astro';
+import AvailabilityAction from '../components/AvailabilityAction.astro';
+import ProductShot from '../components/ProductShot.astro';
+import shotChanged from '../../../browser-extension/store/assets/screenshots/01-changed-on-github.png';
+import shotReport from '../../../browser-extension/store/assets/screenshots/02-inspect-the-report.png';
+import shotCoverage from '../../../browser-extension/store/assets/screenshots/03-large-pr-coverage.png';
 import SectionHead from '../components/SectionHead.astro';
 import SectionLinks from '../components/SectionLinks.astro';
 import settingsBands from '../assets/extension/settings-policy-bands-light.png';
 import settingsDisplay from '../assets/extension/settings-display-dark.png';
 import { copy } from '../data/copy';
-import { APP_INSTALL_URL, CHROME_WEB_STORE_URL, GITHUB, docPaths, paths } from '../data/site';
+import { availability } from '../data/availability';
+import { GITHUB, docPaths, paths } from '../data/site';
 
 const c = copy.extension;
+const store = availability.extension;
+const caption = (shot: { caption: string }) => `${shot.caption} ${c.shotStanding}`;
 
 const standings = [
   ['=', 'exact', 'exact', 'Every included edit block was observed. The band is selected.'],
@@ -66,22 +72,22 @@ const routes = [
   { title: 'GitHub App', body: 'Managed repository operation, native checks, effects, configuration, and history.', href: paths.app, link: 'How the App works' },
 ] as const;
 ---
-<Base title="Browser extension" description="diffdevil for GitHub adds replacement-aware Changed, personal or repository size bands and inspectable reports directly to pull requests. No workflow, App installation or write access required." surface="Extension" current="extension">
+<Base title="Browser extension" image={{ path: '/og-extension.png', alt: 'diffdevil for GitHub: Changed, directly in GitHub. Beside it, a pull request with the diffdevil report open.' }} description="diffdevil for GitHub adds replacement-aware Changed, personal or repository size bands and inspectable reports directly to pull requests. No workflow, App installation or write access required." surface="Extension" current="extension">
   <section class="section section-first" data-section="extension">
     <div class="wrap">
       <div class="ext-hero anchor-group">
         <div class="ext-hero-text">
           <p class="eyebrow eyebrow-caps"><a class="eyebrow-link" id="extension" href="#extension">Browser extension</a><span>· {c.name}</span></p>
           <h1 class="ext-h1">Changed, directly in GitHub</h1>
-          <aside class="notice-proposed" role="note"><strong>In development</strong> The extension has implemented browser UI, settings, data controls and GitHub acquisition. Chrome Web Store installation is unavailable until its listing is public. The scenes and captures below illustrate the product; they are not proof of live use or final Store imagery.</aside>
+          {!store.open && <aside class="notice-proposed" role="note"><strong>{store.status}</strong> {store.note}</aside>}
           <p class="lede">See replacement-aware Changed, per-file decomposition, personal or repository size bands, and inspectable reports on pull requests. No workflow, App installation, or write access required.</p>
           <div class="ext-cta">
-            <ActionLink class="btn btn-l btn-primary" href={CHROME_WEB_STORE_URL} data-cta="add-to-chrome">{c.add}</ActionLink>
+            <AvailabilityAction surface="extension" class="btn btn-l btn-primary" label={c.add} />
             <a class="ext-cta-link" href="#data">What it reads and stores →</a>
           </div>
           <p class="ext-assurance">No account, token or telemetry. It reads pull-request pages on github.com, analyzes them in your browser, and caches measured reports and policy, not raw patches.</p>
         </div>
-        <Scene files={false} report={false} caption={false} />
+        <ProductShot src={shotReport} alt={c.shots.report.alt} title={c.shotTitle} sizes="(max-width: 1000px) 100vw, 640px" eager />
       </div>
     </div>
   </section>
@@ -89,7 +95,7 @@ const routes = [
   <section class="section" data-section="changed">
     <div class="wrap">
       <SectionHead id="changed" title="Aggregate and per-file Changed" body="A replaced line is one changed position, not two units of churn. The extension shows Changed for the whole pull request and for every file GitHub renders, with added-only, deleted-only and modified kept apart, and keeps raw churn as its own fact in the report." />
-      <Scene report={false} />
+      <ProductShot src={shotChanged} alt={c.shots.changed.alt} title={c.shotTitle} caption={caption(c.shots.changed)} />
       <div class="ext-two">
         <div class="panel">
           <p class="label">GitHub’s numbers give way, not disappear</p>
@@ -131,12 +137,15 @@ const routes = [
 
   <section class="section" data-section="report">
     <div class="wrap">
-      <SectionHead id="report" title="The full report, anchored in place" body="The Changed projection opens a persistent report right where you are. Inspection stays on the pull request rather than sending ordinary reading to a dashboard. The source scene below illustrates that experience; installed behavior has its own qualification." />
-      <Scene />
+      <SectionHead id="report" title="The full report, anchored in place" body="The Changed projection opens a persistent report right where you are. Inspection stays on the pull request rather than sending ordinary reading to a dashboard, and a large pull request says exactly which files it measured." />
+      <div class="ext-shots">
+        <ProductShot src={shotReport} alt={c.shots.report.alt} title={c.shotTitle} caption={caption(c.shots.report)} sizes="(max-width: 900px) 100vw, 590px" />
+        <ProductShot src={shotCoverage} alt={c.shots.coverage.alt} title={c.shotTitle} caption={caption(c.shots.coverage)} sizes="(max-width: 900px) 100vw, 590px" />
+      </div>
       <ul class="ext-columns">
         <li><strong>Aggregate and file-focused</strong><span>The aggregate trigger opens the whole-comparison report. A file trigger opens that file with the same terms and the same evidence semantics.</span></li>
         <li><strong>Policy and evidence, explained</strong><span>Revisions, measurement standing, files, metrics, scopes, bands, rules and the origin of the policy in effect. Missing source never becomes a reassuring exact zero.</span></li>
-        <li><strong>Keyboard and focus</strong><span>The report must be keyboard-operable, preserve useful focus and fit the viewport. Final triggers, dismissal sequence and layout come from the accepted in-place design, not this fixture.</span></li>
+        <li><strong>Keyboard and focus</strong><span>The report is keyboard-operable. Escape closes it and returns focus to the trigger you used, and it fits narrow windows.</span></li>
       </ul>
     </div>
   </section>
@@ -182,14 +191,14 @@ const routes = [
       <div class="ext-routes">
         {routes.map(route => <div class="panel ext-route"><strong>{route.title}</strong><p class="small ext-muted">{route.body}</p><a class="link" href={route.href}>{route.link}</a></div>)}
       </div>
-      <p class="small ext-muted ext-note">The three routes run the same open engine and the same policy language. The extension does not need the App, and the App does not need the extension. <ActionLink class="link-quiet" href={APP_INSTALL_URL}>Install on GitHub</ActionLink> for the repository-level route.</p>
+      <p class="small ext-muted ext-note">The three routes run the same open engine and the same policy language. The extension does not need the App, and the App does not need the extension. <a class="link-quiet" href={paths.app}>See the GitHub App</a> for the repository-level route.</p>
     </div>
   </section>
 
   <section class="section" data-section="add">
     <div class="wrap ext-final">
       <h2 class="h2">Changed, where you already review.</h2>
-      <ActionLink class="btn btn-l btn-primary" href={CHROME_WEB_STORE_URL} data-cta="add-to-chrome">{c.add}</ActionLink>
+      <AvailabilityAction surface="extension" class="btn btn-l btn-primary" label={c.add} />
     </div>
   </section>
 </Base>

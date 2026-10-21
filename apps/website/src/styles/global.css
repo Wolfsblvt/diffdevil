@@ -91,6 +91,13 @@ button { cursor: pointer; }
 .btn:disabled { opacity: .45; cursor: not-allowed; }
 .btn.is-unconfigured { cursor: default; }
 .btn .icon { flex: none; }
+
+/* ── availability status: where a hosted surface's action will be (components/AvailabilityAction) ── */
+.availability { display: inline-flex; align-items: center; gap: 9px; padding: 8px 13px 8px 11px; border-radius: var(--r-pill); border: 1px solid var(--hair-strong); background: var(--bg-raised); color: var(--fg); font-size: 13px; font-weight: 600; line-height: 1.2; white-space: nowrap; cursor: default; }
+.availability-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 55%, transparent); animation: availability-pulse 2.4s var(--ease) infinite; flex: none; }
+.availability-machine { border-color: #484d58; background: #1d222c; color: #f0f2f5; }
+@keyframes availability-pulse { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 55%, transparent); } 70%, 100% { box-shadow: 0 0 0 7px color-mix(in srgb, var(--accent) 0%, transparent); } }
+@media (prefers-reduced-motion: reduce) { .availability-dot { animation: none; } }
 .machine .btn-secondary, .on-machine .btn-secondary { border-color: #f0f2f5; color: #f0f2f5; }
 .machine .btn-secondary:hover, .on-machine .btn-secondary:hover { background: #1d222c; }
 
@@ -350,6 +357,7 @@ html[data-theme-pref="auto"][data-theme="light"] .theme-dot { color: #161b24; }
 .footer-social { display: inline-flex; padding: 5px; border-radius: var(--r-control); color: var(--fg-3); transition: color var(--dur) var(--ease); }
 .site-footer a.footer-social:hover { color: var(--fg); text-decoration: none; }
 .footer-arrow { margin-left: 3px; color: var(--fg-3); }
+.footer-coming { color: var(--fg-3); }
 @media (max-width: 900px) { .site-footer .grid { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 640px) { .site-footer .grid { grid-template-columns: 1fr; } .site-footer .footer-row { white-space: normal; } }
 

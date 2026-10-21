@@ -1,12 +1,22 @@
 ---
 // SPDX-License-Identifier: AGPL-3.0-only
 // /app/: the public GitHub App page. Same engine, less plumbing. The head is the same
-// AppPanel the homepage shows. Then why, history, permissions, hosted versus self-hosted,
-// and migration from an existing Action writer. Each chapter is a short lead, its blocks
-// on the page grid below it, and its cross-links as the closing row. No dashboard, billing
-// or account UI; the App contract in the manual is authoritative.
+// AppPanel the homepage shows, then the real Overview, a tour of the destinations in actual
+// App captures, why, plans, history, permissions, hosted versus self-hosted, and migration
+// from an existing Action writer. Each chapter is a short lead, its blocks
+// on the page grid below it, and its cross-links as the closing row. The captures are the
+// real signed-in App on its sample fixture; plans follow docs/app-plans.md; the App contract
+// in the manual is authoritative.
 import Base from '../layouts/Base.astro';
 import AppPanel from '../components/AppPanel.astro';
+import ProductShot from '../components/ProductShot.astro';
+import overview from '../assets/app/overview.png';
+import prs from '../assets/app/prs.png';
+import historyShot from '../assets/app/history.png';
+import prDetail from '../assets/app/pr-detail.png';
+import manage from '../assets/app/manage-repositories.png';
+import { availability } from '../data/availability';
+import { copy } from '../data/copy';
 import CodeBlock from '../components/CodeBlock.astro';
 import SectionHead from '../components/SectionHead.astro';
 import SectionLinks from '../components/SectionLinks.astro';
@@ -22,16 +32,58 @@ const history = [
   ['Retention', 'Thirty rolling days on the free hosted allowance, counted from the analysis. You can choose a shorter period. Opt-in dates and collection gaps stay visible beside every trend.'],
   ['Export and delete', 'Export the retained numbers in a documented, versioned format. Stopping collection and deleting what exists are separate controls, and deleted ranges are not recreated by retries.'],
 ];
+const shots = copy.app.shots;
+/** A tour stop is already named by its label; its lead is the caption without the "Name: " prefix. */
+const lead = (caption: string): string => caption.replace(/^[^:]+:\s*/u, '').replace(/^./u, letter => letter.toUpperCase());
+const tour = [
+  { id: 'prs', name: 'Pull requests', src: prs, shot: shots.prs, points: ['Opened against merged and closed per week, with the open backlog', 'Lifecycle by size: draft, review and merge time', 'Size mix under the policy you run today'] },
+  { id: 'history', name: 'History', src: historyShot, shot: shots.history, points: ['Change volume split into modified, added-only and deleted-only', 'Every merged pull request placed by size band', 'Period against period, with bounded evidence kept visible'] },
+  { id: 'pr', name: 'Pull request detail', src: prDetail, shot: shots.prDetail, points: ['Replacement-aware Changed beside raw churn', 'The policy result, the label it wants and the label GitHub shows', 'How the size moved across analysed heads'] },
+  { id: 'manage', name: 'Manage', src: manage, shot: shots.manage, points: ['Choose which repositories run, label-only or with history', 'Account defaults, linked policies, people and audit', 'Plan and funding for each account and organisation'] },
+] as const;
+// The planned hosted offer as docs/app-plans.md selects it; not a checkout.
+const plans = [
+  { name: 'Free', price: '€0', cadence: '', lead: 'Managed pull-request operation and useful basic history.',
+    items: ['Checks, size labels and owned size replies', 'Up to 3 private repositories, unlimited public labelling', 'PR size, lifecycle and basic history, 30 rolling days', 'History on up to 10 public repositories'] },
+  { name: 'Pro', price: '€9', cadence: '/month or €90/year', lead: 'File-level memory and richer exploration.',
+    items: ['Everything in Free, without a personal repository limit', 'File history, clouds, Turnover and co-change', 'One connected organisation with 3 private repositories', 'Personal and organisation default policies'] },
+  { name: 'Business', price: '€42', cadence: '/month or €400/year', lead: 'Coordinated policy and delegated operation.',
+    items: ['Everything in Pro, without repository limits', 'Shared named policies, linking and bulk application', 'Automatic setup of eligible repositories', 'Delegated administration and the full audit'] },
+] as const;
 const migration = `# 1. Turn off the Action writer. A read-only step may stay.
 - uses: Wolfsblvt/diffdevil/actions/analyze@v1
 # 2. Install the App and pick the same preset.
 # 3. Your .diffdevil.yml keeps winning.`;
 ---
-<Base title="GitHub App" description="The diffdevil GitHub App runs the same engine and the same .diffdevil.yml as the Action, with native check summaries, org defaults and opt-in history. Hosted or self-hosted." surface="GitHub App" current="app">
+<Base title="GitHub App" image={{ path: '/og-app.png', alt: 'diffdevil: The App runs for the repository. Same diffdevil, less plumbing. Beside it, the App Overview across several repositories.' }} description="The diffdevil GitHub App runs the same engine and .diffdevil.yml as the Action for the repositories you choose: native checks and size labels, then Overview, pull-request flow, history and Manage across your repositories. Hosted or self-hosted." surface="GitHub App" current="app">
   <section class="section section-first" data-section="app">
     <div class="wrap">
-      <AppPanel as="h1" secondaryHref={docPaths.app} selfHostHref="#self-host" />
-      <aside class="notice-proposed" role="note"><strong>In development</strong> The analytical App and Manage console are implemented and privately qualified. The hosted service is not generally available, and public installation and paid plans are unavailable. The website and Lens Studio can be used independently of that service.</aside>
+      <AppPanel as="h1" secondaryHref="#tour" selfHostHref="#self-host" />
+      <ProductShot src={overview} alt={shots.overview.alt} title={copy.app.shotTitle} caption={`${shots.overview.caption} ${copy.app.shotStanding}`} eager />
+      {!availability.app.open && <aside class="notice-proposed" role="note"><strong>{availability.app.status}</strong> {availability.app.note} Everything on this page describes the implemented App. The CLI, Actions and Playground work today without it.</aside>}
+    </div>
+  </section>
+
+  <section class="section" data-section="tour">
+    <div class="wrap">
+      <SectionHead id="tour" title="Read your repositories, not just one pull request" body="Six destinations over the same retained facts: Overview, Pull requests, History, Files, and the detail of a single pull request or file. Every view is a URL, every chart has a table view, and every number says whether it is exact, bounded or unknown." />
+      <ol class="tour">
+        {tour.map((stop, index) => (
+          <li class:list={['tour-stop', { 'tour-flip': index % 2 === 1 }]} id={`tour-${stop.id}`}>
+            <div class="tour-text">
+              <p class="label">{stop.name}</p>
+              <p class="tour-lead">{lead(stop.shot.caption)}</p>
+              <ul class="small plain-list">{stop.points.map(point => <li>{point}</li>)}</ul>
+            </div>
+            <ProductShot src={stop.src} alt={stop.shot.alt} title={copy.app.shotTitle} sizes="(max-width: 1000px) 100vw, 760px" />
+          </li>
+        ))}
+      </ol>
+      <div class="panel tour-files">
+        <p class="label">Files <span class="plan-chip">Pro</span></p>
+        <p class="small tour-files-body">File history, clouds, Turnover and co-change: which files keep changing, grow, or change together. It reads the same retained measurements, never source contents, and is part of Pro and Business.</p>
+      </div>
+      <SectionLinks links={[['App architecture', docPaths.app], ['Managed service', docPaths.service]]} />
     </div>
   </section>
 
@@ -63,13 +115,30 @@ const migration = `# 1. Turn off the Action writer. A read-only step may stay.
     </div>
   </section>
 
+  <section class="section" data-section="plans">
+    <div class="wrap">
+      <SectionHead id="plans" title="Free, Pro and Business" body="A plan belongs to one person and can fund organisations they connect. Everyone with GitHub access to a connected repository can read what its plan includes; there are no reader seats." />
+      <div class="plans">
+        {plans.map(plan => (
+          <div class:list={['panel', 'plan', { 'plan-mid': plan.name === 'Pro' }]}>
+            <p class="label">{plan.name}</p>
+            <p class="plan-price"><strong>{plan.price}</strong>{plan.cadence && <span>{plan.cadence}</span>}</p>
+            <p class="small plan-lead">{plan.lead}</p>
+            <ul class="small plain-list">{plan.items.map(item => <li>{item}</li>)}</ul>
+          </div>
+        ))}
+      </div>
+      <p class="caption plans-foot">Planned hosted offer, in EUR including applicable tax. Not available to buy yet: paid plans open with public access. Each additional organisation is €9/month or €90/year on either paid plan. The open-source Community App gives you the Free capabilities on your own hosting, without the hosted quotas.</p>
+    </div>
+  </section>
+
   <section class="section" data-section="history">
     <div class="wrap">
       <SectionHead id="history" title="History, if you want it" body="See how change size and evidence move over time in the repositories you choose. History is off until an installation administrator turns it on, and turning it on never makes it an archive of your code." />
       <div class="history-grid">
         {history.map(([title, body]) => <div class="panel"><p class="label">{title}</p><p class="small history-body">{body}</p></div>)}
       </div>
-      <p class="history-standing">The implemented App includes Overview, Pull requests, History, Files and their detail views, plus Manage. The planned offer has useful basic Free history, richer Pro file exploration and Business coordination. Pro is €9/month or €90/year; Business is €42/month or €400/year, including applicable tax. These are planned terms, not a service available to purchase. Paid history has no automatic age expiry while its entitlement and service remain active, subject to deletion and disclosed limits.</p>
+      <p class="history-standing small">Paid history has no automatic age expiry while its entitlement and the service remain active, subject to deletion and disclosed limits.</p>
       <SectionLinks links={[['Privacy and data', docPaths.privacyAndData]]} />
     </div>
   </section>
@@ -144,6 +213,26 @@ const migration = `# 1. Turn off the Action writer. A read-only step may stay.
     :global(:root:not([data-theme])) .choice-app { border-left-color: var(--status-success-light); }
     :global(:root:not([data-theme])) .choice-tag { color: var(--status-success-light); }
   }
+  .section-first .wrap { display: flex; flex-direction: column; gap: 20px; }
+  .tour { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 40px; }
+  .tour-stop { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 32px; align-items: center; }
+  .tour-flip { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
+  .tour-flip .tour-text { order: 2; }
+  .tour-text { display: flex; flex-direction: column; gap: 10px; }
+  .tour-text .label { margin: 0; }
+  .tour-lead { margin: 0; font-size: 16px; line-height: 1.5; color: var(--fg); }
+  .tour-text ul { margin: 0; color: var(--fg-2); display: flex; flex-direction: column; gap: 4px; }
+  .tour-files-body { margin: 0; color: var(--fg-2); max-width: 80ch; }
+  .plan-chip { font-family: var(--font-mono); font-size: 10.5px; border: 1px solid var(--hair-strong); border-radius: 4px; padding: 1px 6px; color: var(--fg-2); }
+  .plans { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+  .plan { display: flex; flex-direction: column; gap: 10px; }
+  .plan .label { margin: 0; }
+  .plan-mid { border-color: var(--accent); }
+  .plan-price { margin: 0; display: flex; align-items: baseline; gap: 6px; color: var(--fg-2); font-size: 13px; }
+  .plan-price strong { font-size: 30px; line-height: 1; color: var(--fg); letter-spacing: -.01em; }
+  .plan-lead { margin: 0; color: var(--fg); }
+  .plan ul { margin: 0; color: var(--fg-2); display: flex; flex-direction: column; gap: 4px; }
+  .plans-foot { margin: 0; max-width: 90ch; }
   .history-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
   .history-body, .data-body { margin: 0; color: var(--fg-2); }
   .history-standing { margin: 0; }
@@ -154,7 +243,7 @@ const migration = `# 1. Turn off the Action writer. A read-only step may stay.
   .perms td:first-child { font-weight: 600; color: var(--fg); white-space: nowrap; }
   .perms-foot { margin: 4px 0 0; }
   .migrate-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 32px; align-items: start; }
-  @media (max-width: 1000px) { .history-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 1000px) { .history-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .tour-stop, .tour-flip { grid-template-columns: minmax(0, 1fr); gap: 16px; } .tour-flip .tour-text { order: 0; } .plans { grid-template-columns: minmax(0, 1fr); } }
   @media (max-width: 900px) { .migrate-grid { grid-template-columns: minmax(0, 1fr); gap: 20px; } }
   @media (max-width: 640px) { .history-grid { grid-template-columns: minmax(0, 1fr); } }
 </style>

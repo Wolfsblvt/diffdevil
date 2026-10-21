@@ -26,6 +26,8 @@ apps/website/public/apple-touch-icon.png
 apps/website/public/app-logo-512.png
 apps/website/public/github-app-logo-512.png
 apps/website/public/og.png
+apps/website/public/og-app.png
+apps/website/public/og-extension.png
 apps/website/public/manifest.webmanifest
 .wrangler/
 .DS_Store

@@ -1,0 +1,20 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only
+// The primary action of a hosted surface, decided by its availability switch. Open: the real
+// install destination, as an external link in the given button style. Coming: a status in the
+// same position ("Public access is coming"), not a disabled button and never an invented URL.
+// `fallback` names a real page action to keep in the button's place while the surface is coming,
+// so a section never loses its primary route; the status then sits beside it.
+import ActionLink from './ActionLink.astro';
+import { availability, type Surface } from '../data/availability';
+interface Props { surface: Surface; class?: string | undefined; fallback?: { href: string; label: string } | undefined; label?: string | undefined; tone?: 'page' | 'machine' | undefined }
+const { surface, class: className, fallback, label, tone = 'page' } = Astro.props;
+const state = availability[surface];
+const cta = surface === 'app' ? 'install-app' : 'add-to-chrome';
+---
+{state.open
+  ? <ActionLink class={className} href={state.href} data-cta={cta}>{label ?? state.action}</ActionLink>
+  : <>
+      {fallback && <a class={className} href={fallback.href} data-cta-fallback={cta}>{fallback.label}</a>}
+      <span class:list={['availability', `availability-${tone}`]} data-availability={surface} data-cta={cta} title={state.note}><span class="availability-dot" aria-hidden="true"></span>{state.status}</span>
+    </>}

@@ -10,7 +10,8 @@
  *
  * Outputs: favicon.ico (16 + 32 from the micro drawing), favicon.svg (micro, theme-aware),
  * mask-icon.svg (mono), apple-touch-icon.png 180, app-logo-512.png (web manifest frame),
- * github-app-logo-512.png (GitHub App badge frame), og.png 1200×630, manifest.webmanifest.
+ * github-app-logo-512.png (GitHub App badge frame), og.png 1200×630, the /app/ and /extension/ cards
+ * og-app.png and og-extension.png 1200×630 from their committed product captures, manifest.webmanifest.
  *
  * Framing: one master mark, several consumer-specific frames. Each frame declares its
  * outer pad and the occupancy range (visible mark bounds as a share of the canvas) it
@@ -123,6 +124,13 @@ for (const [name, frame] of Object.entries(FRAMES)) {
 // Open Graph 1200 × 630: midnight ground, stacked lockup left, hero slogan in Plex Sans 700 off-white, strapline in Plex Mono muted.
 const og = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630"><rect width="1200" height="630" fill="#151922"/>${stacked.replace(/^<\?xml[^>]*>\s*/u, '').replace(/<svg\b/u, '<svg x="96" y="175" width="330" height="280"')}<text x="500" y="300" font-family="IBM Plex Sans" font-weight="700" font-size="72" fill="#f0f2f5">The devil is</text><text x="500" y="380" font-family="IBM Plex Sans" font-weight="700" font-size="72" fill="#f0f2f5">in the diff.</text><text x="500" y="450" font-family="IBM Plex Mono" font-size="21" fill="#b4b7be">Measure changes. Match rules. Act on the result.</text></svg>`;
 writeFileSync(`${OUT}og.png`, render(og, 1200).asPng());
+// Surface cards 1200 × 630 for /app/ and /extension/: the horizontal lockup, the surface's own line, and its real
+// product capture bleeding off the right and bottom edges. The captures are the committed website/Store-kit sources.
+const lockup = svg('diffdevil-lockup-dark.svg').replace(/^<\?xml[^>]*>\s*/u, '').replace(/<svg\b/u, '<svg x="72" y="72" width="194" height="48"');
+const capture = path => `data:image/png;base64,${readFileSync(path).toString('base64')}`;
+const surfaceCard = ({ lines, strap, image, width, height, place = { x: 560, y: 150, width, height } }) => `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1200" height="630" viewBox="0 0 1200 630"><rect width="1200" height="630" fill="#151922"/>${lockup}${lines.map((line, i) => `<text x="72" y="${250 + i * 64}" font-family="IBM Plex Sans" font-weight="700" font-size="54" fill="#f0f2f5">${line}</text>`).join('')}<text x="72" y="${250 + lines.length * 64 + 18}" font-family="IBM Plex Mono" font-size="19" fill="#b4b7be">${strap}</text><clipPath id="c"><rect x="560" y="150" width="${width}" height="${height}" rx="14"/></clipPath><rect x="559" y="149" width="${width + 2}" height="${height + 2}" rx="15" fill="#2c303a"/><image x="${place.x}" y="${place.y}" width="${place.width}" height="${place.height}" clip-path="url(#c)" preserveAspectRatio="xMinYMin slice" xlink:href="${image}"/></svg>`;
+writeFileSync(`${OUT}og-app.png`, render(surfaceCard({ lines: ['The App runs', 'for the repository.'], strap: 'Same diffdevil. Less plumbing.', image: capture('apps/website/src/assets/app/overview.png'), width: 860, height: 500 }), 1200).asPng());
+writeFileSync(`${OUT}og-extension.png`, render(surfaceCard({ lines: ['Changed,', 'directly in GitHub.'], strap: 'diffdevil for GitHub', image: capture('apps/browser-extension/store/assets/screenshots/02-inspect-the-report.png'), width: 800, height: 500, place: { x: 320, y: 96, width: 1000, height: 625 } }), 1200).asPng());
 writeFileSync(`${OUT}manifest.webmanifest`, JSON.stringify({ name: 'diffdevil', short_name: 'diffdevil', description: 'The devil is in the diff. Measure changes, evaluate rules, and automate what follows.', start_url: '/', display: 'browser', background_color: '#151922', theme_color: '#151922', icons: [{ src: '/app-logo-512.png', sizes: '512x512', type: 'image/png' }, { src: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }] }, null, 2) + '\n');
 
 if (process.argv.includes('--report')) console.log(JSON.stringify(report, null, 2));
