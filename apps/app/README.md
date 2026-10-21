@@ -14,6 +14,10 @@ notifications. A failed read stays in its region with a keyboard-operable retry 
 Late replies cannot replace a newer selected scope or period. With JavaScript disabled, the shell links to the complete
 server-rendered document using `render=document`.
 
+A 200 shell establishes only a valid local session and a rendered frame. It does not establish provider, plan or
+analytical health. An inaccessible detail returns 404 from its independently authorized data read and renders the
+existing not-found state; the generic document itself contains no protected detail.
+
 The ordinary read consumes the analytical record already normalized by ingestion/import. Current-policy interpretation
 still happens at read time, once per measurement in that query; populations, policy changes and coverage keep their
 meaning. This does not add a persistent analytical cache or a new job system.

@@ -60,12 +60,16 @@ export async function loadingJourney({ page, check, shot, ORIGIN, settled }) {
     await page.goto(`${ORIGIN}${path}`, { waitUntil: 'networkidle' });
     await settled();
     check(`${title} completes the protected progressive route without invented premium results`, await page.locator('[data-analytical-loading]').count() === 0 && await page.locator('h1').count() === 1 && await page.locator('[data-nav]').count() === 1);
+    if (title === 'Pull request') check('the retained file exposes its complete path independently of visual line wrapping', await page.locator('.a-tbl.named td[aria-label="src/index.ts"] .a-path').textContent() === 'src/index.ts');
   }
   const document = await page.request.get(`${ORIGIN}/?s=%40parser-guild&per=90d&render=document`);
   const documentHtml = await document.text();
   check('the complete server document remains available without client acquisition', document.status() === 200 && documentHtml.includes('data-hero-plot') && !documentHtml.includes('data-analytical-loading'));
   const internal = await page.request.get(`${ORIGIN}/render/analytical-navigation`);
   check('direct internal fragments cannot bypass middleware authorization', internal.status() === 404);
+  const deniedRead = page.waitForResponse(response => new URL(response.url()).pathname === '/pr/someone/else/1' && response.request().headers()['x-diffdevil-render'] === 'page');
+  const generic = await page.goto(`${ORIGIN}/pr/someone/else/1`, { waitUntil: 'networkidle' });
+  check('an inaccessible detail returns a generic shell then an authorised 404 without protected detail', generic.status() === 200 && (await deniedRead).status() === 404 && await page.locator('.a-result').count() === 0 && /Not in your repositories/u.test(await page.locator('#main').innerText()));
   const anonymous = await page.context().browser().newContext();
   try {
     const denied = await anonymous.request.get(`${ORIGIN}/`, { maxRedirects: 0 });

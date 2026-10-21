@@ -499,7 +499,7 @@ async function qualifyPages(label, { pro }) {
 }
 
 async function readPrDetailFacts() {
-  return page.evaluate(() => ({ lanes: document.querySelectorAll('.lane').length, result: document.querySelector('.a-result .big .n')?.textContent ?? '', snap: document.querySelector('.a-snap')?.textContent ?? '', files: document.querySelectorAll('#h-pf ~ * table tbody tr, .a-tbl tbody tr').length, github: Boolean(document.querySelector('a[href^="https://github.com/"]')), named: /src\/index\.ts/u.test(document.body.innerText), fileLinks: document.querySelectorAll('a[href^="/file/"]').length }));
+  return page.evaluate(() => ({ lanes: document.querySelectorAll('.lane').length, result: document.querySelector('.a-result .big .n')?.textContent ?? '', snap: document.querySelector('.a-snap')?.textContent ?? '', files: document.querySelectorAll('#h-pf ~ * table tbody tr, .a-tbl tbody tr').length, github: Boolean(document.querySelector('a[href^="https://github.com/"]')), named: document.querySelector('.a-tbl.named td[aria-label="src/index.ts"] .a-path')?.textContent === 'src/index.ts', fileLinks: document.querySelectorAll('a[href^="/file/"]').length }));
 }
 
 async function qualifyPrFilesMinimum() {
@@ -970,8 +970,9 @@ try {
   }
   const badHandle = await go('/file/parser-guild/parser-lab/not-a-locator');
   check('a malformed file handle is refused with 404', badHandle.status() === 404);
+  const deniedRead = page.waitForResponse(response => new URL(response.url()).pathname === '/pr/someone/else/1' && response.request().headers()['x-diffdevil-render'] === 'page');
   const denied = await go('/pr/someone/else/1');
-  check('a repository outside the authorised set is refused with 404, not rendered', denied.status() === 404 && (await page.evaluate(() => /Not in your repositories/u.test(document.body.innerText))));
+  check('a generic shell carries no foreign data and the authorised detail read refuses an inaccessible repository with 404', denied.status() === 200 && (await deniedRead).status() === 404 && await page.locator('.a-result').count() === 0 && (await page.evaluate(() => /Not in your repositories/u.test(document.body.innerText))));
 
   await premium?.files?.(ctx);
   if (!premium) {
