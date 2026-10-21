@@ -56,8 +56,7 @@ export async function publishSizeSet(store, repositoryId, rows) {
   return { status: 'published', published };
 }
 
-/** Decode each shared fact set once, then reconstruct the exact logical rows named by the markers. */
-async function expand(store, repositoryId, markers) {
+async function readFacts(store, repositoryId, markers) {
   const keys = [...new Set(markers.map(row => row.fact_key))], facts = new Map();
   for (let offset = 0; offset < keys.length; offset += FACT_PAGE) {
     const part = keys.slice(offset, offset + FACT_PAGE);
@@ -65,6 +64,12 @@ async function expand(store, repositoryId, markers) {
       WHERE repository_id=? AND fact_key IN (${part.map(() => '?').join(',')})`, repositoryId, ...part).all();
     for (const row of result.results ?? []) facts.set(row.fact_key, JSON.parse(row.facts_json));
   }
+  return facts;
+}
+
+/** Decode each shared fact set once, then reconstruct the exact logical rows named by the markers. */
+async function expand(store, repositoryId, markers) {
+  const facts = await readFacts(store, repositoryId, markers);
   return markers.flatMap(row => {
     const positions = row.order_json ? JSON.parse(row.order_json) : [];
     return (facts.get(row.fact_key) ?? []).map(({ path, size }, index) => ({ repositoryId, path, size,
@@ -130,10 +135,14 @@ export async function expireSizes(store, now) {
   }
 }
 
-/** Exact window observations and the nearest retained boundary anchors for every path. */
-export async function sizesIn(store, repositoryId, from, to, now) {
+/** The same exact window and per-path boundary anchors, without expanding shared sets into repeated row objects. */
+export async function sizeHistoryIn(store, repositoryId, from, to, now) {
   const markers = await markersIn(store, repositoryId, from, to, now);
-  const rows = await expand(store, repositoryId, markers);
+  const facts = await readFacts(store, repositoryId, markers);
+  const groups = new Map([...facts].map(([factKey, values]) => [factKey, { facts: values, observations: [] }]));
+  for (const row of markers) groups.get(row.fact_key)?.observations.push({ observedAt: row.observed_at, revision: row.revision,
+    expiresAt: row.expires_at, sequence: row.sequence, positions: row.order_json ? JSON.parse(row.order_json) : null });
+  const boundaries = [];
   for (const [operator, aggregate, boundary] of [['<=', 'MAX', from], ['>=', 'MIN', to]]) {
     // Seek once per shared set inside D1, then choose per-path bounds from its JSON there.
     // Old fact JSON never crosses into the Worker to choose a nearer boundary observation.
@@ -150,11 +159,27 @@ export async function sizesIn(store, repositoryId, from, to, now) {
       FROM candidates c JOIN bounds b ON b.path=c.path AND b.observed_at=c.observed_at
       JOIN analytical_size_observations o ON o.repository_id=? AND o.fact_key=c.fact_key AND o.observed_at=c.observed_at
       WHERE o.expires_at IS NULL OR o.expires_at>?`, repositoryId, boundary, now, repositoryId, repositoryId, now).all();
-    rows.push(...(result.results ?? []).map(row => ({ repositoryId, path: row.path, size: row.size,
+    boundaries.push(...(result.results ?? []).map(row => ({ repositoryId, path: row.path, size: row.size,
       observedAt: row.observed_at, revision: row.revision, sequence: row.sequence })));
   }
+  return { repositoryId, groups: [...groups.values()], boundaries };
+}
+
+/** Iterate all exact logical observations; grouping conveys no claim of a complete repository snapshot. */
+export function* sizeHistoryRows(history) {
+  for (const group of history.groups) for (const observation of group.observations) {
+    for (const [index, { path, size }] of group.facts.entries()) yield { repositoryId: history.repositoryId, path, size,
+      observedAt: observation.observedAt, revision: observation.revision, expiresAt: observation.expiresAt,
+      sequence: observation.positions?.[index] ?? observation.sequence };
+  }
+  yield* history.boundaries;
+}
+
+/** Compatibility projection retains every intermediate observation, deduplication and original same-time order. */
+export async function sizesIn(store, repositoryId, from, to, now) {
+  const history = await sizeHistoryIn(store, repositoryId, from, to, now);
   const unique = new Map();
-  for (const row of rows) {
+  for (const row of sizeHistoryRows(history)) {
     unique.set(JSON.stringify([row.path, row.observedAt, row.revision]), row);
   }
   return [...unique.values()].sort((a, b) => a.observedAt.localeCompare(b.observedAt)

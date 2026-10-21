@@ -8,6 +8,7 @@ import { D1AppStore } from './storage.mjs';
 import { turnoverEvidence, fileContinuity } from './turnover-v1.mjs';
 import { record, base, head, at } from './analytical-data.fixtures.mjs';
 import { sizeCaptureGroups } from './size-capture-groups.mjs';
+import { sizeHistoryRows } from './analytical-size-storage.mjs';
 
 const order = rows => rows.toSorted((a, b) => JSON.stringify([a.path, a.observedAt, a.revision, a.size])
   .localeCompare(JSON.stringify([b.path, b.observedAt, b.revision, b.size])));
@@ -74,6 +75,10 @@ test('shared snapshots preserve migration, every window row, turnover, first-wri
         const old = (await database.prepare(oldWindow).bind(17, window.from, window.to, window.from, clock.value, window.to, clock.value, clock.value).all()).results
           .map(row => ({ repositoryId: 17, path: row.path, observedAt: row.observed_at, revision: row.revision, size: row.size }));
         const current = await store.analyticalSizes(17, window.from, window.to);
+        const shared = await store.analyticalSizeHistory(17, window.from, window.to);
+        const compactRows = new Map();
+        for (const { expiresAt, sequence, ...row } of sizeHistoryRows(shared)) compactRows.set(JSON.stringify([row.path, row.observedAt, row.revision]), row);
+        assert.deepEqual(order([...compactRows.values()]), order(old), 'the compact reader preserves every window/boundary observation including null, zero and same-time revisions');
         assert.deepEqual(order(current), order(old), `complete sizeHistory for ${start}..${end}`);
         assert.deepEqual(current.filter(row => row.path === 'a.txt'), old.filter(row => row.path === 'a.txt'), 'same-time revisions retain their original order');
         const changes = [contribution].filter(row => row.mergedAt >= window.from && row.mergedAt < window.to);
@@ -110,6 +115,7 @@ test('shared snapshots preserve migration, every window row, turnover, first-wri
       assert.equal((await store.importAnalytical(original)).published, 0);
       assert.equal((await database.prepare('SELECT COUNT(*) AS n FROM analytical_size_facts WHERE repository_id=18').first()).n, 0);
       assert.deepEqual(await store.analyticalSizesAt(18, head, { latest: true }), []);
+      assert.deepEqual(await store.analyticalSizeHistory(18, stamp(2), stamp(11)), { repositoryId: 18, groups: [], boundaries: [] });
     });
 
     await t.test('concurrent overlapping sets retain each identity once and withdrawal before the batch writes no representation', async () => {

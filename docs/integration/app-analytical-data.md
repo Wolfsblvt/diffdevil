@@ -364,6 +364,19 @@ The extension is composed from a host, `{ kit, github, store, clientFor }`, so i
 turnover-v1 definition and its evidence rules stay public in `turnover-v1.mjs`; the file rows and exploration built
 on them are the extension's.
 
+The host store also supplies `analyticalSizeHistory(repositoryId, from, to)` for a consumer that needs to index a large
+history without first allocating every repeated row. It reads current retained state under the same before/after
+history-consent checks as `analyticalSizes`, returning a query-local `{ repositoryId, groups, boundaries }`:
+each group has shared `facts: [{ path, size }]` and exact `observations: [{ observedAt, revision, expiresAt, sequence,
+positions }]`; boundaries retain the nearest unexpired per-path observations on either side of the window. A null
+`positions` uses the marker's `sequence`; otherwise each fact's position supplies its original same-time order.
+Groups are not chronological and are not a complete repository snapshot. A consumer combines a group's facts with
+each observation, unions the boundary anchors and deduplicates by `(path, observedAt, revision)`. Null sizes, zero,
+intermediate timestamps, revisions and ties remain distinct facts. The existing flat `analyticalSizes` projection keeps
+its complete result and ordering. This shared form is not a persistent view cache and grants no authority by itself;
+the extension still operates inside the current authorized/entitled query. Matching consumer adoption and its actual
+resource evidence remain separate from providing this source boundary.
+
 Without the extension an entitled reader's Files and File detail answer `standing: "premium-not-provided"` with
 `entitlements.premium.provided: false` and no files, never an empty list standing in for a computation; the
 pull-request surface returns `alsoInProgress: null` and omits `recentFileActivity` and `cochange`. A Free reader's

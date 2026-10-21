@@ -26,6 +26,11 @@ The unreleased source declaration in `apps/github-app/release.json` names two in
 
 No registration lifecycle or generic plugin API is introduced. Premium loaders receive the public runtime and authorized view rather than importing runtime construction. The existing service host keeps GitHub acquisition, storage and interval rules public while private algorithms receive that host explicitly. Premium browser and server tests exercise the same bridge as the production consumer.
 
+For large size histories, the host store's optional compact read is documented in
+[the analytical contract](../../../../docs/integration/app-analytical-data.md#community-service-and-premium-extension).
+It preserves shared facts, every exact observation and per-path boundary anchors without requiring an expanded row
+array. Consumers select and qualify that representation explicitly; existing flat readers keep their full contract.
+
 The declaration is source-only: no `app-vX.Y.Z` release has published it. The separately maintained private consumer must accept version 1 only after importing this matching premium subtree and qualifying its actual composition route. Its generated lock records the exact Community candidate; it does not pin the local composite containing premium ancestry.
 
 ## The join

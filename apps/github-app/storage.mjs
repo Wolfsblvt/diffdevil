@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
 import { normalizeHistoryLens } from './history-analytics.mjs';
 import { normalizeAnalyticalRecord } from './analytical-data.mjs';
-import { expireSizes, publishSizeSet, sizesAt, sizesIn } from './analytical-size-storage.mjs';
+import { expireSizes, publishSizeSet, sizesAt, sizesIn, sizeHistoryIn } from './analytical-size-storage.mjs';
 import { sizeCaptureGroups } from './size-capture-groups.mjs';
 import { historyCollectionPause, historyOriginCategory } from './history-standing.mjs';
 
@@ -649,6 +649,14 @@ export class D1AppStore {
     const result = await sizesIn(this, repositoryId, from, to, this.now());
     if (!(await this.historySettings(repositoryId, { independentExecution: true })).readable) return [];
     return result;
+  }
+
+  /** Query-local shared facts and exact observation markers for consumers that index history without expanding every row. */
+  async analyticalSizeHistory(repositoryId, from, to) {
+    const empty = () => ({ repositoryId, groups: [], boundaries: [] });
+    if (!(await this.historySettings(repositoryId, { independentExecution: true })).readable) return empty();
+    const result = await sizeHistoryIn(this, repositoryId, from, to, this.now());
+    return (await this.historySettings(repositoryId, { independentExecution: true })).readable ? result : empty();
   }
 
   async exportAnalytical(repositoryId) {
