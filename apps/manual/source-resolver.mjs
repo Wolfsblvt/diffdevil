@@ -4,12 +4,12 @@ import { fileURLToPath } from 'node:url';
 import { pages } from './manifest.mjs';
 import { migrations, migratedSource, isRetired } from './migration.mjs';
 export function sourceRef(root = fileURLToPath(new URL('../../', import.meta.url))) {
- const ref = process.env.DIFFDEVIL_SOURCE_REF ?? execFileSync('git', ['rev-parse','HEAD'], { cwd: root, encoding: 'utf8' }).trim();
+ const ref = process.env.DIFFDEVIL_SOURCE_REF ?? execFileSync('git', ['rev-parse','HEAD'], { cwd: root, encoding: 'utf8', windowsHide: true }).trim();
  if (!/^[a-f0-9]{40}$/u.test(ref)) throw new Error('DIFFDEVIL_SOURCE_REF must be an exact commit SHA.');
  return ref;
 }
 export function editRef(root) {
- const ref = process.env.DIFFDEVIL_EDIT_REF || process.env.GITHUB_HEAD_REF || execFileSync('git',['branch','--show-current'],{cwd:root,encoding:'utf8'}).trim() || 'main';
+ const ref = process.env.DIFFDEVIL_EDIT_REF || process.env.GITHUB_HEAD_REF || execFileSync('git',['branch','--show-current'],{cwd:root,encoding:'utf8',windowsHide:true}).trim() || 'main';
  if (!/^[a-zA-Z0-9_./-]+$/u.test(ref) || ref.includes('..')) throw new Error('Invalid edit branch.');
  return ref;
 }
@@ -17,11 +17,11 @@ export const repositorySources = Object.freeze([
  'docs/language/parser-architecture.md','src/diffdevil/contracts/detail/v1/README.md',
  'README.md','docs/README.md','docs/VISION.md','docs/DIRECTION.md','docs/DECISIONS.md',
  'docs/ARCHITECTURE.md','docs/DEVELOPMENT.md','docs/PROJECT-MAP.md','docs/qualification.md',
- 'docs/publication-boundary.md','docs/documentation.md','docs/presentation.md',
+ 'docs/publication-boundary.md','docs/integration/website-publication.md','docs/documentation.md','docs/presentation.md',
  'docs/integration/github-api.md','docs/integration/github-app.md','docs/integration/app-staging.md','docs/integration/action-distribution.md',
  'docs/integration/example-catalogue.md','docs/PRIVACY-AND-DATA.md','SECURITY.md','LICENSES/README.md',
  'apps/manual/README.md','apps/browser-extension/README.md','apps/browser-extension/privacy.md','docs/releases/v1.0.0.md',
- 'apps/playground/README.md','apps/github-app/README.md','apps/website/README.md',
+ 'apps/playground/README.md','apps/github-app/README.md','apps/app/README.md','apps/website/README.md',
  'skills/diffdevil/SKILL.md','skills/diffdevil/references/install-and-update.md',
  'skills/diffdevil/references/restricted-harnesses.md','skills/diffdevil/references/cli-and-evidence.md',
 ]);

@@ -5,6 +5,7 @@
 // fetchable, but kept out of search engines, snippets and the site search.
 import Base from '../layouts/Base.astro';
 import SectionHead from '../components/SectionHead.astro';
+import LegalOperator from '../components/LegalOperator.astro';
 import { LIVE_PLAYGROUND_WORKER, docPaths, paths } from '../data/site';
 ---
 <Base title="Privacy and data" description="What the diffdevil website and public playground do with data: no accounts, no analytics, no stored analyses; public pull requests only." current="privacy" noindex>
@@ -12,10 +13,12 @@ import { LIVE_PLAYGROUND_WORKER, docPaths, paths } from '../data/site';
     <article class="wrap legal">
       <SectionHead id="privacy" as="h1" title="Privacy and data" />
       <p class="lede">This page describes what the diffdevil website and its public playground do with data. The hosted GitHub App has its own <a class="link-quiet" href={docPaths.privacyAndData}>privacy and data contract</a>.</p>
+      <h2 class="h3">Controller and contact</h2>
+      <LegalOperator contact="privacy" />
       <h2 class="h3">The website</h2>
       <ul class="small">
         <li>Static pages, no accounts, no sign-in, no analytics, no tracking pixels, no third-party scripts.</li>
-        <li>No cookies. Your theme choice (dark, automatic or light) is kept in the local storage of your browser under <code class="code-inline">diffdevil.theme</code> and <code class="code-inline">diffdevil.theme.next</code> and never sent anywhere.</li>
+        <li>The application sets no tracking cookies. Your requested theme choice (dark, automatic or light) is kept in browser local storage under <code class="code-inline">diffdevil.theme</code> and <code class="code-inline">diffdevil.theme.next</code>. When following a link between our site and manual, that preference travels in a temporary URL parameter which the destination removes.</li>
         <li>Fonts (IBM Plex Sans and Mono) are served from this site; no request goes to a font network.</li>
         <li>Search runs in your browser over an index built with the site. What you type is not sent anywhere.</li>
       </ul>

@@ -163,14 +163,14 @@ export const copy = {
     eyebrowTail: 'diffdevil GitHub App', h2: 'Same diffdevil. Less plumbing.', h2Lines: ['Same diffdevil.', 'Less plumbing.'] as const,
     body: 'Install for the repositories you choose, inspect the effective policy and enable the intended effects. The App runs the same engine and the same .diffdevil.yml as the Action, and stays up to date without a workflow file, a token, or a runner to babysit.',
     ctaPrimary: 'Install on GitHub', ctaSecondary: 'How the App works', ctaTertiary: 'Self-host it',
-    foot: 'Open source (AGPL-3.0). Official hosted version with a useful free allowance; self-hosting documented with its real requirements.',
+    foot: 'Community is open source (AGPL-3.0-only). The official hosted service is not generally available; Free, Pro and Business remain a planned offer.',
     benefits: [
       ['Install once', 'No workflow file for ordinary use, no personal token assembly, no runner minutes or upgrades.'],
       ['Native check summaries', 'Evidence, raw and replacement-aware facts, rule results and observed effects on the PR itself.'],
       ['Org defaults, repo overrides', 'Pick a preset for the account; a repository’s .diffdevil.yml wins where it speaks.'],
       ['Effective configuration', 'See every setting and where it came from. Export the resolved ordinary policy any time.'],
       ['Deliberate effects', 'Labels only in declared groups, comments only when opted in, readback after every write.'],
-      ['History if you want it', 'Opt-in, numeric, pathless. Nothing is archived before you say so.'],
+      ['History if you want it', 'Opt-in measurements with repository names and file paths, never source or patches.'],
     ] as const,
   },
 

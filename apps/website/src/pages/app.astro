@@ -17,8 +17,8 @@ const permissions = [
   ['Checks', 'write', 'one App-owned check summary per analyzed head, updated rather than duplicated'],
 ];
 const history = [
-  ['What is kept', 'Numbers only: aggregate line and file measurements, pathless per-file figures, metric and band results, their evidence standing, and the time and coverage they belong to.'],
-  ['What is never kept', 'No paths, authors, titles, prose, patches or full reports. History is built from an explicit allowlist, so a new report field does not become stored data by accident.'],
+  ['What is kept', 'Repository names, relative file paths, numerical measurements, comparison identities, lifecycle facts and coverage. Names and paths are protected repository metadata, not anonymous data.'],
+  ['What is never kept', 'No source contents, patches, contributor-performance dimensions, PR prose or full reports. History uses an explicit allowlist; a new report field does not become stored data by accident.'],
   ['Retention', 'Thirty rolling days on the free hosted allowance, counted from the analysis. You can choose a shorter period. Opt-in dates and collection gaps stay visible beside every trend.'],
   ['Export and delete', 'Export the retained numbers in a documented, versioned format. Stopping collection and deleting what exists are separate controls, and deleted ranges are not recreated by retries.'],
 ];
@@ -31,7 +31,7 @@ const migration = `# 1. Turn off the Action writer. A read-only step may stay.
   <section class="section section-first" data-section="app">
     <div class="wrap">
       <AppPanel as="h1" secondaryHref={docPaths.app} selfHostHref="#self-host" />
-      <aside class="notice-proposed" role="note"><strong>In development</strong> The complete managed-service experience described here is being prepared for public use. Backend source and contained deployment evidence do not establish a public dashboard or ordinary installation journey.</aside>
+      <aside class="notice-proposed" role="note"><strong>In development</strong> The analytical App and Manage console are implemented and privately qualified. The hosted service is not generally available, and public installation and paid plans are unavailable. The website and Lens Studio can be used independently of that service.</aside>
     </div>
   </section>
 
@@ -69,7 +69,7 @@ const migration = `# 1. Turn off the Action writer. A read-only step may stay.
       <div class="history-grid">
         {history.map(([title, body]) => <div class="panel"><p class="label">{title}</p><p class="small history-body">{body}</p></div>)}
       </div>
-      <p class="history-standing">Final dashboard wording, controls and the first journey remain in co-design. The selected history model also includes paid retention without automatic age expiry; published prices, quotas, billing controls and service commitments are not yet defined.</p>
+      <p class="history-standing">The implemented App includes Overview, Pull requests, History, Files and their detail views, plus Manage. The planned offer has useful basic Free history, richer Pro file exploration and Business coordination. Pro is €9/month or €90/year; Business is €42/month or €400/year, including applicable tax. These are planned terms, not a service available to purchase. Paid history has no automatic age expiry while its entitlement and service remain active, subject to deletion and disclosed limits.</p>
       <SectionLinks links={[['Privacy and data', docPaths.privacyAndData]]} />
     </div>
   </section>
@@ -90,7 +90,7 @@ const migration = `# 1. Turn off the Action writer. A read-only step may stay.
 
   <section class="section" data-section="self-host">
     <div class="wrap">
-      <SectionHead id="self-host" title="Hosted by us or self-hosted" body="The App runtime is open source under AGPL-3.0-only, in the same repository as the engine. The official hosted version carries a useful free allowance; self-hosting is documented with its real requirements." />
+      <SectionHead id="self-host" title="Hosted by us or self-hosted" body="The Community App is open source under AGPL-3.0-only, in the same repository as the engine. The official service is not generally available. Pro and Business include separately maintained private extensions; Community self-hosting needs neither a subscription nor those modules." />
       <div class="grid-2">
         <div class="panel">
           <p class="label">Self-hosting needs</p>
@@ -104,7 +104,7 @@ const migration = `# 1. Turn off the Action writer. A read-only step may stay.
         </div>
         <div class="panel">
           <p class="label">Data</p>
-          <p class="small data-body">Managed automation keeps a seven-day operational recovery ledger. Persistent history is off until an installation administrator enables it, then retains aggregate and pathless per-file numbers only: no paths, authors, prose, patches or reports.</p>
+          <p class="small data-body">Managed automation keeps a seven-day operational recovery ledger. Persistent history requires explicit enablement and retains permitted repository names, relative paths and numerical facts. Source contents, patches, PR prose and full reports are not retained as history. GitHub access still governs who may read it.</p>
           <SectionLinks class="panel-links" links={[['Privacy and data', docPaths.privacyAndData]]} />
         </div>
       </div>

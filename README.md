@@ -18,9 +18,13 @@ The same engine powers every surface. A diffdevil account is not required.
 [FAQ](docs/manual/faq.md) · [Releases](docs/manual/help/releases.md)
 
 GitHub and npm carry the released **v1.0.0 CLI, library and four Actions**.
-diffdevil is a product in development. The browser extension and complete managed
-service are not publicly released. The richer website, Examples and manual-host
-experience is source-owned, not a claim that its domains are already serving it.
+Explore the source-owned **Lens Studio (Playground)** and real-PR Examples without
+an account, or read the complete manual and FAQ. Their canonical website build is
+being prepared for publication; the domains are not yet a verified reading route.
+The browser extension is not published in the Chrome Web Store. The managed App
+has implemented analytical and administration interfaces and private deployment
+evidence, but is not generally available; Free, Pro and Business are a planned
+offer, not an available paid service.
 The [earlier public-PR measurement Playground](https://diffdevil-playground.wolfsblvt.workers.dev)
 is a separate deployed surface, not that complete website experience.
 
@@ -151,7 +155,7 @@ Other surfaces reuse their meaning and change who operates the work:
 | GitHub Actions | Repository-owned automation in reviewed workflows | [Actions](docs/manual/use/github-actions.md) |
 | TypeScript library | The engine inside your own application | [Library](docs/manual/use/typescript-library.md) |
 | Browser extension | Personal aggregate and per-file Changed inside GitHub, without repository writes | [Extension](docs/manual/use/browser-extension.md) |
-| Playground and Examples | Read-only exploration of public PRs and frozen real-PR editions | [Playground](docs/manual/use/playground.md) |
+| Lens Studio (Playground) and Examples | Read-only exploration of public PRs and frozen real-PR editions, without an account | [Playground](docs/manual/use/playground.md) |
 | Managed App | Optional operated repository automation, administration and opt-in quantitative history | [Managed App](docs/manual/use/managed-app/README.md) |
 | Coding-agent Skill | Persistent tool knowledge; executable access remains separate | [Coding agents](docs/manual/use/coding-agent.md) |
 

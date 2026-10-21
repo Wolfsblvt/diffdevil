@@ -127,3 +127,24 @@ test('A source retirement cannot silently leave its public route behind',()=>{
  assert.throws(()=>validateRetiredRoutes(local,entries,[]),/missing legacy route/u);
  assert.doesNotThrow(()=>validateRetiredRoutes(local,entries,[{from:'/docs/old/',to:pageUrl('cli'),status:308}]));
 });
+
+test('Legal responses exclude indexing and mutable public files revalidate without caching provider failures', async () => {
+ const handler=createStaticHandler({site:'https://diffdevil.dev',docs:'https://docs.diffdevil.dev',compatibility:'https://www.diffdevil.dev',host:'site',redirects:[]});
+ const env={ASSETS:{fetch:async()=>new Response('asset',{headers:{'Content-Type':'text/html'}})}};
+ for (const path of ['/impressum/','/privacy/','/terms/']) {
+  const response=await handler.fetch(new Request('https://diffdevil.dev'+path),env);
+  assert.equal(response.headers.get('X-Robots-Tag'),'noindex, nosnippet');
+  assert.equal(response.headers.get('Cache-Control'),'public, max-age=0, must-revalidate');
+  assert.equal(await response.text(),'asset');
+ }
+ for (const path of ['/','/pagefind/pagefind.js','/sitemap.xml']) {
+  const response=await handler.fetch(new Request('https://diffdevil.dev'+path),env);
+  assert.equal(response.headers.get('Cache-Control'),'public, max-age=0, must-revalidate');
+  assert.equal(response.headers.get('X-Robots-Tag'),null);
+ }
+ const asset=await handler.fetch(new Request('https://diffdevil.dev/_astro/site.hash.css'),env);
+ assert.equal(asset.headers.get('Cache-Control'),'public, max-age=31536000, immutable');
+ const missing=await handler.fetch(new Request('https://diffdevil.dev/_astro/missing.css'),{ASSETS:{fetch:async()=>new Response('missing',{status:404})}});
+ assert.equal(missing.status,404);
+ assert.equal(missing.headers.get('Cache-Control'),'no-store');
+});

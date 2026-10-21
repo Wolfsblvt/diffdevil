@@ -1,0 +1,17 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only
+import { legalOperator } from '../../legal-operator.mjs';
+interface Props { contact?: 'legal' | 'privacy' | 'impressum' }
+const { contact = 'legal' } = Astro.props;
+const operator = legalOperator();
+const address = operator.postalAddress;
+const email = operator.contacts[contact];
+---
+<address>
+  {operator.legalName}<br />
+  {address.streetAddress}<br />
+  {address.postalCode} {address.locality}<br />
+  {address.countryName}<br />
+  Email: <a href={`mailto:${email}`}>{email}</a>
+  {operator.additionalDirectContact && <><br /><a href={operator.additionalDirectContact.href}>{operator.additionalDirectContact.label}</a></>}
+</address>
