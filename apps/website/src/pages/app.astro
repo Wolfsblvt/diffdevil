@@ -16,6 +16,7 @@ import historyShot from '../assets/app/history.png';
 import prDetail from '../assets/app/pr-detail.png';
 import manage from '../assets/app/manage-repositories.png';
 import { availability } from '../data/availability';
+import Icon from '../components/Icon.astro';
 import { copy } from '../data/copy';
 import CodeBlock from '../components/CodeBlock.astro';
 import SectionHead from '../components/SectionHead.astro';
@@ -50,22 +51,37 @@ const plans = [
   { name: 'Business', price: '€42', cadence: 'per month', annual: 'or €400 a year (€33.33 a month)', fit: 'For teams that run policy across an organisation.', lead: 'Everything in Pro, coordinated across teams.',
     items: ['One organisation included, without repository limits', 'Shared named policies, linked and applied in bulk', 'Eligible repositories set up automatically', 'Delegated administration with a full audit'] },
 ] as const;
-// Capability by plan, condensed from docs/app-plans.md for a reader choosing a plan.
-const compare: readonly (readonly [string, string, string, string])[] = [
-  ['Checks, size labels and size replies', 'Included', 'Included', 'Included'],
-  ['Private repositories', 'Up to 3, shared with one organisation', 'No limit for you; 3 per organisation', 'No limit'],
-  ['Public repositories with labels', 'No limit', 'No limit', 'No limit'],
-  ['Public repositories with history', 'Up to 10', 'No limit', 'No limit'],
-  ['Pull-request size, lifecycle and history', 'Included', 'Included', 'Included'],
-  ['History retention', '30 rolling days', 'No automatic expiry', 'No automatic expiry'],
-  ['File history, clouds, Turnover, co-change', '—', 'Included', 'Included'],
-  ['Historical import', 'Up to 100 recent PRs per repository', 'Recent first, then older history', 'Recent first, coordinated onboarding'],
-  ['Default policies', 'Per repository', 'One personal, one per organisation', 'Shared named policies, linking, bulk apply'],
-  ['Automatic repository setup', '—', '—', 'Included'],
-  ['Administration', 'One administrator per scope', 'One administrator per scope', 'Delegated, with full audit'],
-  ['Included organisation', 'One, sharing the Free limits', 'One, with 3 private repositories', 'One, without limits'],
-  ['Additional organisations', '—', '€9/month or €90/year each', '€9/month or €90/year each'],
+// Capability by plan, condensed from docs/app-plans.md: true is included, false is not, a string is the limit.
+type Cell = boolean | string;
+const compare: readonly { group: string; rows: readonly (readonly [string, Cell, Cell, Cell])[] }[] = [
+  { group: 'Pull requests', rows: [
+    ['Native checks, size labels and size replies', true, true, true],
+    ['Unmetered: no pull-request budget, no per-PR charge', true, true, true],
+  ] },
+  { group: 'Repositories', rows: [
+    ['Private repositories', 'Up to 3', 'Unlimited', 'Unlimited'],
+    ['Public repositories', 'Unlimited', 'Unlimited', 'Unlimited'],
+    ['Public repositories with history', 'Up to 10', 'Unlimited', 'Unlimited'],
+    ['Organisation included', 'Shares the Free limits', '3 private repositories', 'Unlimited'],
+    ['More organisations', false, '+€9/month each', '+€9/month each'],
+  ] },
+  { group: 'History', rows: [
+    ['Pull-request size, lifecycle and history', true, true, true],
+    ['How long history is kept', '30 days', 'No expiry', 'No expiry'],
+    ['Historical import', '100 recent PRs', 'All recoverable', 'All recoverable'],
+    ['File history, clouds, Turnover and co-change', false, true, true],
+  ] },
+  { group: 'Policy and teams', rows: [
+    ['Repository policy', true, true, true],
+    ['Default policy per account and organisation', false, true, true],
+    ['Shared policies, linking and bulk apply', false, false, true],
+    ['Automatic repository setup', false, false, true],
+    ['Delegated administration and full audit', false, false, true],
+    ['Readers without seats', true, true, true],
+  ] },
 ];
+/** A cell a higher plan adds over the plan before it gets the gain highlight. */
+const gains = (row: readonly Cell[], index: number): boolean => index > 0 && row[index] !== false && row[index] !== row[index - 1];
 const migration = `# 1. Turn off the Action writer. A read-only step may stay.
 - uses: Wolfsblvt/diffdevil/actions/analyze@v1
 # 2. Install the App and pick the same preset.
@@ -105,7 +121,7 @@ const migration = `# 1. Turn off the Action writer. A read-only step may stay.
 
   <section class="section" data-section="plans">
     <div class="wrap">
-      <SectionHead id="plans" title="Free, Pro and Business" body="Start free and keep it free for your own projects. Pro adds file-level memory of your codebase; Business coordinates policy across an organisation. A plan belongs to one person and can fund organisations they connect, and everyone with GitHub access to a connected repository reads what its plan includes. There are no reader seats." />
+      <SectionHead id="plans" title="Free, Pro and Business" body="Free for your own projects. Pay for file-level memory of your codebase, or for policy across an organisation." />
       <div class="plans">
         {plans.map(plan => (
           <div class:list={['panel', 'plan', { 'plan-mid': plan.name === 'Pro' }]}>
@@ -118,17 +134,29 @@ const migration = `# 1. Turn off the Action writer. A read-only step may stay.
           </div>
         ))}
       </div>
-      <p class="plans-standing small">{availability.app.open ? 'Prices in EUR, including applicable tax.' : 'Paid plans open with public access. Prices in EUR, including applicable tax.'} Live checks and labels are never metered: no pull-request budget, no charge per pull request or revision.</p>
-      <details class="plans-compare">
-        <summary>Compare every capability</summary>
-        <div class="perms-wrap">
-          <table class="perms compare">
-            <thead><tr><th>Capability</th><th>Free</th><th>Pro</th><th>Business</th></tr></thead>
-            <tbody>{compare.map(([name, free, pro, business]) => <tr><td>{name}</td><td>{free}</td><td>{pro}</td><td>{business}</td></tr>)}</tbody>
-          </table>
-        </div>
-      </details>
-      <p class="caption plans-foot">An additional organisation inherits its plan’s capabilities and renewal date. The open-source Community App gives you the Free capabilities on your own hosting, without the hosted limits.</p>
+      <div class="compare-wrap">
+        <table class="compare">
+          <caption class="visually-hidden">Capabilities by plan</caption>
+          <thead><tr><th scope="col"><span class="compare-note">{availability.app.open ? 'Prices in EUR, incl. tax' : 'Paid plans open with public access · EUR, incl. tax'}</span></th>{plans.map(plan => <th scope="col" class:list={{ 'is-pro': plan.name === 'Pro' }}><span class="compare-plan">{plan.name}</span><span class="compare-price">{plan.price}{plan.name !== 'Free' && <small>/month</small>}</span></th>)}</tr></thead>
+          {compare.map(({ group, rows }) => (
+            <tbody>
+              <tr class="compare-group"><th scope="rowgroup" colspan="4">{group}</th></tr>
+              {rows.map(row => (
+                <tr>
+                  <th scope="row">{row[0]}</th>
+                  {[row[1], row[2], row[3]].map((cell, index, cells) => (
+                    <td class:list={{ 'is-pro': index === 1, 'is-gain': gains(cells, index) }}>
+                      {cell === true ? <span class="compare-yes"><Icon name="included" size={14} /><span class="visually-hidden">Included</span></span>
+                        : cell === false ? <span class="compare-no"><Icon name="not-included" size={14} /><span class="visually-hidden">Not included</span></span>
+                        : cell}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          ))}
+        </table>
+      </div>
       <SectionLinks links={[['Plans and account management', docPaths.service], ['Hosted by us or self-hosted', '#self-host']]} />
     </div>
   </section>
@@ -266,13 +294,29 @@ const migration = `# 1. Turn off the Action writer. A read-only step may stay.
   .plan-list li { padding-left: 20px; position: relative; }
   .plan-list li::before { content: '✓'; position: absolute; left: 0; color: var(--status-success); }
   :global([data-theme="light"]) .plan-list li::before { color: var(--status-success-light); }
-  .plans-standing { margin: 0; color: var(--fg-2); max-width: 90ch; }
-  .plans-compare { border: 1px solid var(--hair); border-radius: var(--r-card); background: var(--bg-raised); }
-  .plans-compare summary { cursor: pointer; padding: 12px 16px; font-weight: 600; font-size: 14px; }
-  .plans-compare[open] summary { border-bottom: 1px solid var(--hair); }
-  .plans-compare .perms-wrap { padding: 4px 8px 8px; }
-  .compare td:first-child { white-space: normal; }
-  .plans-foot { margin: 0; max-width: 90ch; }
+  /* comparison: what each higher plan adds is tinted, included is a green check, not included a quiet dash */
+  .compare-wrap { position: relative; min-width: 0; overflow-x: auto; border: 1px solid var(--hair); border-radius: var(--r-card); background: var(--bg-raised); }
+  .compare { width: 100%; min-width: 600px; border-collapse: collapse; font-size: 13.5px; }
+  .compare th, .compare td { padding: 10px 16px; text-align: left; border-bottom: 1px solid var(--hair); }
+  .compare thead th { vertical-align: bottom; padding-top: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--hair-strong); }
+  .compare thead th:first-child { width: 40%; }
+  .compare-note { font-size: 12px; font-weight: 400; color: var(--fg-3); }
+  .compare-plan { display: block; font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--fg-3); font-weight: 500; }
+  .compare-price { display: block; margin-top: 4px; font-size: 22px; font-weight: 700; color: var(--fg); }
+  .compare-price small { font-size: 12px; font-weight: 400; color: var(--fg-3); margin-left: 3px; }
+  .compare tbody th { font-weight: 500; color: var(--fg); }
+  .compare td { color: var(--fg-2); }
+  .compare .compare-group th { padding-top: 18px; padding-bottom: 6px; font-family: var(--font-mono); font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: .06em; color: var(--fg-3); }
+  .compare tbody:last-child tr:last-child > * { border-bottom: 0; }
+  .compare .is-pro { background: color-mix(in srgb, var(--accent) 5%, transparent); }
+  .compare td.is-gain { color: var(--fg); font-weight: 600; background: color-mix(in srgb, var(--status-success) 14%, transparent); }
+  /* on narrow screens the table scrolls under a pinned capability column */
+  @media (max-width: 760px) { .compare tbody th, .compare thead th:first-child { position: sticky; left: 0; z-index: 1; background: var(--bg-raised); min-width: 170px; } .compare .compare-group th { position: static; } }
+  .compare-yes { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; color: var(--status-success); background: color-mix(in srgb, var(--status-success) 16%, transparent); }
+  .compare-yes :global(svg *) { stroke-width: 3; }
+  .compare-no { display: inline-flex; color: var(--fg-3); opacity: .6; }
+  :global([data-theme="light"]) .compare-yes { color: var(--status-success-light); background: color-mix(in srgb, var(--status-success-light) 14%, transparent); }
+  :global([data-theme="light"]) .compare td.is-gain { background: color-mix(in srgb, var(--status-success-light) 10%, transparent); }
   .history-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
   .history-body, .data-body { margin: 0; color: var(--fg-2); }
   .history-standing { margin: 0; }

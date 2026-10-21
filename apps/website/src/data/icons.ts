@@ -22,6 +22,9 @@ export const iconMap = {
   'github-actions': 'simple-icons:githubactions',
   cli: 'ui:lucide:terminal',
   website: 'ui:lucide:globe',
+  // plan comparison
+  included: 'ui:lucide:check',
+  'not-included': 'ui:lucide:minus',
   // support
   sponsor: 'ui:lucide:heart',
   star: 'ui:lucide:star',
