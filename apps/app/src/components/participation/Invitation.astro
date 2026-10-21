@@ -12,8 +12,10 @@ import { fmtDay } from '../../lib/manage/works.mjs';
 import { sha256Hex } from '../../../../github-app/commercial-wirt.mjs';
 
 const runtime = Astro.locals.app, viewer = Astro.locals.viewer, session = Astro.locals.session;
+// A server fragment's own address is not the page the participant should return to.
+const pageUrl = new URL(Astro.locals.analyticalUrl ?? Astro.url.href);
 let view = null;
-if (runtime?.participation && viewer && session && !Astro.url.pathname.startsWith('/manage/plan/survey')) {
+if (runtime?.participation && viewer && session && !pageUrl.pathname.startsWith('/manage/plan/survey')) {
   try {
     const commercial = await commercialStatus({ session, runtime });
     view = await runtime.participation.view({ userId: viewer.userId, commercial, repositories: viewer.repositories });
@@ -26,10 +28,10 @@ if (runtime?.participation && viewer && session && !Astro.url.pathname.startsWit
   }
 }
 const stage = view?.invitation ?? null;
-const back = `${Astro.url.pathname}${Astro.url.search}`.replace(/([?&])m=[^&]*(&|$)/u, (_, lead, tail) => (tail ? lead : '')).replace(/[?&]$/u, '');
+const back = `${pageUrl.pathname}${pageUrl.search}`.replace(/([?&])m=[^&]*(&|$)/u, (_, lead, tail) => (tail ? lead : '')).replace(/[?&]$/u, '');
 const draft = view?.response?.state === 'draft';
 // Manage pages show a redirect's message themselves; elsewhere the dismissal is acknowledged here, where it was made.
-const acknowledged = Astro.url.searchParams.get('m') === 'survey-dismissed' && !Astro.url.pathname.startsWith('/manage');
+const acknowledged = pageUrl.searchParams.get('m') === 'survey-dismissed' && !pageUrl.pathname.startsWith('/manage');
 ---
 {acknowledged && <div class="m-banner m-msg ok p-invite" role="status"><Icon name="circle-check" size={18} /><div><b>{MESSAGES['survey-dismissed'].text}</b></div><div></div></div>}
 {stage && <Banner tone="info" icon="gift" class="p-invite" data-invitation={stage}

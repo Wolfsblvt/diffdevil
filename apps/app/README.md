@@ -14,6 +14,11 @@ notifications. A failed read stays in its region with a keyboard-operable retry 
 Late replies cannot replace a newer selected scope or period. With JavaScript disabled, the shell links to the complete
 server-rendered document using `render=document`.
 
+Period, bucket and chart-selection interactions keep the previous view while common data loads. Common results then
+commit independently of premium acquisition; existing premium chart objects remain usable with a visible previous-selection
+notice until their new models arrive. The premium response renders only the requested regions, without rendering and
+discarding the common page's charts again. Both common and premium updates retain chart instances and keyboard state.
+
 A 200 shell establishes only a valid local session and a rendered frame. It does not establish provider, plan or
 analytical health. An inaccessible detail returns 404 from its independently authorized data read and renders the
 existing not-found state; the generic document itself contains no protected detail.
@@ -25,6 +30,17 @@ meaning. This does not add a persistent analytical cache or a new job system.
 `node apps/app/qa/run.mjs --loading` qualifies the built Community Worker with the retained local fixture and held/failed
 data replies: prompt shell, independent navigation, populated rendering, retry, superseded replies and reduced motion.
 It does not prove the joined private extension, provider CPU/memory, staging recovery or ordinary live use.
+
+For held/failed premium-region and chart-continuity checks without private source, build with
+`DIFFDEVIL_PREMIUM=apps/app/qa/loading-premium/index.mjs`, then run the same `--loading` journey. This joins a clearly
+synthetic public extension fixture, not the paid implementation; rebuild with `DIFFDEVIL_PREMIUM=off` afterward.
+
+Migration `0017_authorization-refresh.sql` adds the per-grant claim used before a one-use provider rotation. Other
+request runtimes re-read the committed winner with bounded backoff; pending/unknown rotation withholds data without
+revoking sessions. An interrupted rotation is never taken over by a timer: the provider may already have consumed the
+old token. A fresh verified sign-in replaces that uncertain grant. Explicit provider invalidation and account/service
+disconnect still retire the grant and sessions. Source tests apply this migration only to disposable local D1; a live
+migration remains an independently authorized deployment operation.
 
 ## Inspect and admit a repository
 

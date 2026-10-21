@@ -129,7 +129,7 @@ export async function rewardOnlyJourney({ page, go, check, shot }, state, { unli
 }
 
 export async function participationJourney(ctx) {
-  const { check, go, page, shot, ORIGIN } = ctx;
+  const { check, go, page, shot, ORIGIN, settled } = ctx;
   const text = () => page.evaluate(() => document.body.innerText);
   const message = () => page.evaluate(() => ({ text: document.querySelector('.m-msg')?.textContent?.trim() ?? '', role: document.querySelector('.m-msg')?.getAttribute('role') ?? '' }));
   const reward = () => page.evaluate(() => ({ key: document.querySelector('[data-reward]')?.getAttribute('data-reward') ?? null, title: document.querySelector('#p-reward-title')?.textContent?.trim() ?? '',
@@ -141,11 +141,13 @@ export async function participationJourney(ctx) {
 
   // ── the invitation: once used enough, at the top of signed-in pages; Not now closes it ──
   await go('/');
-  const invite = await page.evaluate(() => ({ stage: document.querySelector('[data-invitation]')?.getAttribute('data-invitation') ?? null, text: document.querySelector('[data-invitation]')?.textContent ?? '', link: document.querySelector('[data-invitation] a')?.getAttribute('href') ?? '' }));
+  const invite = await page.evaluate(() => ({ stage: document.querySelector('[data-invitation]')?.getAttribute('data-invitation') ?? null, text: document.querySelector('[data-invitation]')?.textContent ?? '', link: document.querySelector('[data-invitation] a')?.getAttribute('href') ?? '', back: document.querySelector('[data-invitation] input[name="back"]')?.value }));
+  check('the acquired invitation returns to the actual page rather than its internal fragment address', invite.back === '/');
   check('after a failed managed operation during beta access the participant sees one survey invitation above the page, pointing at the survey', invite.stage === 'invite' && /Honest answers count, critical ones included/u.test(invite.text) && invite.link === '/manage/plan/survey', JSON.stringify(invite));
   await shot('participation-invitation');
   await Promise.all([page.waitForURL(url => new URL(url).searchParams.get('m') === 'survey-dismissed'), page.click('[data-invitation] form button')]);
   await page.waitForLoadState('networkidle');
+  await settled();
   check('Not now closes the invitation, returns to the same page and says where the survey stays', new URL(page.url()).pathname === '/' && (await page.locator('[data-invitation]').count()) === 0 && /Plan & funding/u.test((await message()).text), JSON.stringify(await message()));
   await go('/history');
   check('a dismissed invitation stays closed on other pages until its one reminder', (await page.locator('[data-invitation]').count()) === 0);

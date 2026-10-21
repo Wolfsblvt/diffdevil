@@ -9,6 +9,7 @@
 import { Frame, type Recipe } from './frame';
 import { RECIPES } from './recipes';
 import { mountHero } from './hero';
+import { preserveNavigation } from '../navigation-state';
 import { readoutOf, readoutHtml, tableOf, tableHtml, teachOf } from '../../lib/charts/readout.mjs';
 
 declare global { interface Window { __diffdevilCharts?: { mounted: string[]; timings: { id: string; ms: number }[]; cloud: () => unknown } } }
@@ -116,10 +117,51 @@ export async function swapTo(url: string, { reason }: { reason: 'period' | 'buck
     document.dispatchEvent(new CustomEvent('diffdevil:load-failed', { detail: { url, reason } }));
     return false;
   }
-  const focusedNav = document.activeElement instanceof HTMLElement && document.activeElement.closest('[data-nav]') ? document.activeElement : null;
-  const navHref = focusedNav instanceof HTMLAnchorElement ? focusedNav.getAttribute('href') : null;
-  const navLabel = focusedNav?.getAttribute('aria-label');
-  const filterValue = document.querySelector<HTMLInputElement>('[data-nav-filter]')?.value ?? '';
+  const restoreNavigation = preserveNavigation();
+  // Keep useful premium content while its next independently acquired model is pending.
+  // The status names that the retained view belongs to the previous selection.
+  const focused = document.activeElement as HTMLElement | null;
+  for (const pending of nextFrame.querySelectorAll<HTMLElement>('[data-premium-region][data-pending]')) {
+    // PR file facts already arrived in the common response; only their history links await enrichment.
+    if (pending.dataset.premiumRegion === 'pr-files') continue;
+    const previous = frame.querySelector<HTMLElement>(`[data-premium-region="${CSS.escape(pending.dataset.premiumRegion!)}"]`);
+    if (!previous || previous.dataset.pending) continue;
+    const status = pending.querySelector('[data-region-status]');
+    if (status) status.textContent = 'Loading this selection. The previous selection remains displayed below.';
+    if (pending.dataset.premiumRegion === 'file-body') {
+      for (const heading of previous.querySelectorAll('h1')) {
+        const secondary = document.createElement('h2');
+        for (const attribute of heading.attributes) secondary.setAttribute(attribute.name, attribute.value);
+        secondary.append(...heading.childNodes); heading.replaceWith(secondary);
+      }
+    }
+    pending.append(...previous.childNodes);
+  }
+  const finishCharts = carryCharts(nextFrame, reason);
+  const scroll = window.scrollY;
+  frame.replaceWith(nextFrame);
+  document.title = next.title;
+  if (reason !== 'initial') history.pushState(null, '', url);
+  window.scrollTo(0, scroll);
+  document.body.classList.remove('is-leaving');
+  finishCharts();
+  if (focused?.isConnected) focused.focus({ preventScroll: true });
+  else if (reason === 'initial' && location.hash) {
+    let id = location.hash.slice(1);
+    try { id = decodeURIComponent(id); } catch { /* An unmatched literal fragment still leaves the populated document usable. */ }
+    const anchor = document.getElementById(id);
+    anchor?.setAttribute('tabindex', '-1');
+    anchor?.focus({ preventScroll: true });
+  }
+  document.dispatchEvent(new CustomEvent('diffdevil:page', { detail: { reason } }));
+  restoreNavigation();
+  mountCharts(nextFrame);
+  placeThumbs(nextFrame);
+  return true;
+}
+
+/** Carry mounted chart objects into an incoming document or region and then update their models. */
+export function carryCharts(nextFrame: ParentNode, reason: string): () => void {
   // Keep the live chart instances whose panel survives: move the node, then feed it the next model. A person may be
   // inside a kept panel with the keyboard when the swap lands (a metric click, then arrows in the Turnover map):
   // moving the node blurs it and restarts its entrance animation, so the keyboard's place is remembered, the
@@ -128,7 +170,7 @@ export async function swapTo(url: string, { reason }: { reason: 'period' | 'buck
   for (const incoming of nextFrame.querySelectorAll<HTMLElement>('[data-chart][data-chart-id]')) {
     const id = incoming.dataset.chartId!;
     const existing = document.querySelector<HTMLElement>(`[data-chart-id="${CSS.escape(id)}"]`);
-    if (!existing || !existing.classList.contains('is-mounted') || existing.dataset.chart !== incoming.dataset.chart) continue;
+    if (!existing || existing === incoming || !existing.classList.contains('is-mounted') || existing.dataset.chart !== incoming.dataset.chart) continue;
     const model = JSON.parse(incoming.querySelector('[data-chart-model]')?.textContent || 'null');
     if (!model) continue;
     const active = document.activeElement as HTMLElement | null;
@@ -140,40 +182,25 @@ export async function swapTo(url: string, { reason }: { reason: 'period' | 'buck
     if (incoming.dataset.chart === 'hero') adoptHero(existing, incoming); else adoptChrome(existing, incoming);
     incoming.replaceWith(existing);
   }
-  const scroll = window.scrollY;
-  frame.replaceWith(nextFrame);
-  document.title = next.title;
-  if (reason !== 'initial') history.pushState(null, '', url);
-  window.scrollTo(0, scroll);
-  document.body.classList.remove('is-leaving');
-  for (const entry of kept) {
-    const frameLive = (entry.host as any).__frame as Frame | undefined;
-    if (frameLive) { frameLive.update(entry.model, { meta: entry.meta, teach: entry.teach || teachOf(entry.model), table: entry.table || tableHtml(tableOf(entry.model)), sel: entry.sel }); continue; }
-    const controller = (entry.host as any).__live as LiveChart | undefined;
-    if (controller) { if (reason === 'select' && controller.select) controller.select(entry.host.dataset.selected ?? ''); else controller.update(entry.model, { meta: entry.meta }); continue; }
-    const heroLive = (entry.host as any).__hero as { update: (model: any) => void } | undefined;
-    if (heroLive) heroLive.update(entry.model);
-  }
-  // Readouts of kept frames keep their default text current without a pin.
-  for (const entry of kept) { const readout = entry.host.querySelector('[data-readout]'); if (readout && (entry.host as any).__frame && entry.sel === null) readout.innerHTML = readoutHtml(readoutOf(entry.model, null), { hint: true }); }
-  // The keyboard goes back where it was: the same row focused (and pinned) when the next model still names it there.
-  for (const entry of kept) {
-    if (!entry.focused || !entry.focused.isConnected) continue;
-    const frameLive = (entry.host as any).__frame as Frame | undefined;
-    if (frameLive && entry.keyboard) frameLive.restoreKeyboard(entry.keyboard);
-    entry.focused.focus({ preventScroll: true });
-  }
-  document.dispatchEvent(new CustomEvent('diffdevil:page', { detail: { reason } }));
-  if (reason === 'initial') {
-    const filter = document.querySelector<HTMLInputElement>('[data-nav-filter]');
-    if (filter && filterValue) { filter.value = filterValue; filter.dispatchEvent(new Event('input')); }
-    const target = navHref ? document.querySelector<HTMLElement>(`[data-nav] a[href="${CSS.escape(navHref)}"]`)
-      : navLabel ? document.querySelector<HTMLElement>(`[data-nav] [aria-label="${CSS.escape(navLabel)}"]`) : null;
-    target?.focus({ preventScroll: true });
-  }
-  mountCharts(nextFrame);
-  placeThumbs(nextFrame);
-  return true;
+  return () => {
+    for (const entry of kept) {
+      const frameLive = (entry.host as any).__frame as Frame | undefined;
+      if (frameLive) { frameLive.update(entry.model, { meta: entry.meta, teach: entry.teach || teachOf(entry.model), table: entry.table || tableHtml(tableOf(entry.model)), sel: entry.sel }); continue; }
+      const controller = (entry.host as any).__live as LiveChart | undefined;
+      if (controller) { if (reason === 'select' && controller.select) controller.select(entry.host.dataset.selected ?? ''); else controller.update(entry.model, { meta: entry.meta }); continue; }
+      const heroLive = (entry.host as any).__hero as { update: (model: any) => void } | undefined;
+      if (heroLive) heroLive.update(entry.model);
+    }
+    // Readouts of kept frames keep their default text current without a pin.
+    for (const entry of kept) { const readout = entry.host.querySelector('[data-readout]'); if (readout && (entry.host as any).__frame && entry.sel === null) readout.innerHTML = readoutHtml(readoutOf(entry.model, null), { hint: true }); }
+    // The keyboard goes back where it was: the same row focused (and pinned) when the next model still names it there.
+    for (const entry of kept) {
+      if (!entry.focused || !entry.focused.isConnected) continue;
+      const frameLive = (entry.host as any).__frame as Frame | undefined;
+      if (frameLive && entry.keyboard) frameLive.restoreKeyboard(entry.keyboard);
+      entry.focused.focus({ preventScroll: true });
+    }
+  };
 }
 
 /** The hero keeps only its plot: the lead figure, delta line and legend around it are the incoming page's. */

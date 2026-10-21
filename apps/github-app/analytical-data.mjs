@@ -213,14 +213,18 @@ export function createAnalyticalDataService({ store, authorize, entitlement, nam
         if (!cache.has(measurement)) cache.set(measurement, facts(measurement, policies.get(repositoryId)));
         return cache.get(measurement);
       };
-      const merged = all.filter(record => inside(record.mergedAt, query)).map(record => ({ ...record, facts: factsOf(record.final, record.repositoryId) }));
+      const populationSurface = query.surface === 'overview' || query.surface === 'prs';
+      const comparisonSurface = populationSurface || query.surface === 'history';
+      // Detail coverage counts all retained merges, but a PR detail only interprets
+      // its own measurements (and whatever related work the premium extension uses).
+      const merged = all.filter(record => inside(record.mergedAt, query)).map(record => query.surface === 'pr' ? record : ({ ...record, facts: factsOf(record.final, record.repositoryId) }));
       const previousQuery = { ...query, from: new Date(2 * Date.parse(query.from) - Date.parse(query.to)).toISOString(), to: query.from };
-      const previous = all.filter(record => inside(record.mergedAt, previousQuery)).map(record => factsOf(record.final, record.repositoryId));
+      const previous = comparisonSurface ? all.filter(record => inside(record.mergedAt, previousQuery)).map(record => factsOf(record.final, record.repositoryId)) : [];
       const retainedCoverage = window => ({ from: window.from, to: window.to, completeWindow: false,
         standing: 'retained-observations', countMeaning: 'observed-lower-bounds', distributionMeaning: 'retained-observed-population' });
-      const comparison = { standing: 'retained-observations', delta: null, reason: 'complete-period-populations-unestablished',
+      const comparison = comparisonSurface ? { standing: 'retained-observations', delta: null, reason: 'complete-period-populations-unestablished',
         current: { ...summarize(merged.map(record => record.facts)), coverage: retainedCoverage(query) },
-        previous: { ...summarize(previous), coverage: retainedCoverage(previousQuery) } };
+        previous: { ...summarize(previous), coverage: retainedCoverage(previousQuery) } } : undefined;
       const active = all.filter(record => ['open', 'draft'].includes(record.state));
       const effective = record => factsOf(record.state === 'merged' ? record.final : latest(record), record.repositoryId);
       const prRow = record => {
@@ -240,20 +244,20 @@ export function createAnalyticalDataService({ store, authorize, entitlement, nam
           original: revision ? { policyId: revision.originalPolicyId, band: revision.originalBand } : null,
           desiredLabel: revision?.desiredLabel ?? null, observedLabel: revision?.observedLabel ?? null };
       };
-      const overview = { coverage: retainedCoverage(query), lifecycleBasis: 'last-observed-state',
+      const overview = populationSurface ? { coverage: retainedCoverage(query), lifecycleBasis: 'last-observed-state',
         mergedPullRequests: merged.length, opened: all.filter(record => inside(record.openedAt, query)).length,
         openNow: active.length, ready: active.filter(record => record.state === 'open').length, draft: active.filter(record => record.state === 'draft').length,
-        ...summarize(merged.map(record => record.facts)), timeToMergeMs: median(merged.map(record => ({ status: 'exact', value: Date.parse(record.mergedAt) - Date.parse(record.openedAt) }))) };
-      const mix = sizeMix(merged);
+        ...summarize(merged.map(record => record.facts)), timeToMergeMs: median(merged.map(record => ({ status: 'exact', value: Date.parse(record.mergedAt) - Date.parse(record.openedAt) }))) } : undefined;
+      const mix = populationSurface ? sizeMix(merged) : [];
       const lifecycle = mix.map(value => {
         const records = merged.filter(record => (record.facts.band?.status === 'resolved' ? record.facts.band.id : 'unknown') === value.band);
         return { band: value.band, samples: records.length, timeToMergeMs: median(records.map(record => ({ status: 'exact', value: Date.parse(record.mergedAt) - Date.parse(record.openedAt) }))),
           readyToMergeMs: median(records.filter(record => record.readyAt).map(record => ({ status: 'exact', value: Date.parse(record.mergedAt) - Date.parse(record.readyAt) }))) };
       });
       const flowFrom = new Date(Date.parse(query.to) - 13 * 7 * DAY).toISOString();
-      const flow = { from: flowFrom, to: query.to, buckets: buckets({ from: flowFrom, to: query.to }).map(bucket => ({ ...bucket,
+      const flow = populationSurface ? { from: flowFrom, to: query.to, buckets: buckets({ from: flowFrom, to: query.to }).map(bucket => ({ ...bucket,
         coverage: retainedCoverage(bucket), opened: all.filter(record => inside(record.openedAt, bucket)).length, merged: all.filter(record => inside(record.mergedAt, bucket)).length,
-        closedUnmerged: all.filter(record => record.state === 'closed' && inside(record.closedAt, bucket)).length })) };
+        closedUnmerged: all.filter(record => record.state === 'closed' && inside(record.closedAt, bucket)).length })) } : undefined;
       let files = [], sizeObservation = [];
       if (premium && extension && fileSurfaces.has(query.surface)) {
         ({ files, sizeObservation } = await extension.files({ query, merged: merged.filter(record => premiumIds.includes(record.repositoryId)), all, premiumIds, store }));

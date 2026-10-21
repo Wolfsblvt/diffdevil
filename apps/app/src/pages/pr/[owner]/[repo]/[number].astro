@@ -13,7 +13,7 @@ import ChartFrame from '../../../../components/ChartFrame.astro';
 import Unavailable from '../../../../components/Unavailable.astro';
 import SeePro from '../../../../components/SeePro.astro';
 import LabelChip from '../../../../components/LabelChip.astro';
-import FilePath from '../../../../components/FilePath.astro';
+import PullRequestFiles from '../../../../components/PullRequestFiles.astro';
 import Icon from '../../../../components/Icon.astro';
 import { loadView, navModel, repositoryByFullName } from '../../../../lib/view.mjs';
 import { describeBound, n0, bound } from '../../../../lib/intervals.mjs';
@@ -60,9 +60,8 @@ const bandIndex = latest ? BANDS.findIndex(band => band.id === latest.band.id) :
 const fileLinks = pro && retainedRow && !Astro.locals.deferPremium ? await pages.fileHrefs({ view, runtime, repository, fullName, paths: (retainedRow.files ?? []).map((file: any) => file.path) }) : undefined;
 const retainedFiles = retainedRow ? await Promise.all((retainedRow.files ?? []).map(async (file: any) => ({ path: file.path, included: file.included, changed: { status: file.changed.status === 'unavailable' ? 'unknown' : file.changed.status, lower: file.changed.lower ?? 0, upper: file.changed.upper ?? null }, rawChurn: { status: file.rawChurn.status === 'unavailable' ? 'unknown' : file.rawChurn.status, lower: file.rawChurn.lower ?? 0, upper: file.rawChurn.upper ?? null }, href: fileLinks?.get(file.path) }))) : [];
 const pathlessRows = !retainedRow && latest ? latest.fileRows.map((row: any) => ({ ...row, changed: bound(row.lines?.changed), rawAdded: bound(row.raw?.added), rawDeleted: bound(row.raw?.deleted), added: bound(row.lines?.added), deleted: bound(row.lines?.deleted), modified: bound(row.lines?.modified) })) : [];
-const included = retainedRow ? retainedFiles.filter((file: any) => file.included).length : pathlessRows.filter((row: any) => row.inclusion === 'included').length;
-const excluded = retainedRow ? retainedFiles.filter((file: any) => !file.included).length : pathlessRows.filter((row: any) => row.inclusion === 'excluded').length;
-const inclusionUnknown = retainedRow ? 0 : pathlessRows.filter((row: any) => !['included', 'excluded'].includes(row.inclusion)).length;
+const included = retainedRow ? retainedFiles.filter((file: any) => file.included).length : 0;
+const excluded = retainedRow ? retainedFiles.filter((file: any) => !file.included).length : 0;
 const original = retainedRow?.original ?? null;
 const originalDiffers = original?.band && latest && original.band !== latest.band.id;
 const policyBasis = retainedRow?.policy?.basis;
@@ -107,15 +106,7 @@ const policyBasis = retainedRow?.policy?.basis;
     : <SeePro text="Other active work on these files, recent file activity and co-change history" span={12} />}
 
     <div class="a-deferred-slot" data-premium-region={pro ? 'pr-files' : undefined} data-pending={pro && Astro.locals.deferPremium ? 'true' : undefined}>
-    <Panel id="pf" span={6} class="pr-files" title="Files" meta={retainedRow ? `${retainedFiles.length} observed · ${included} included · ${excluded} excluded by policy · base file facts of this comparison` : `${pathlessRows.length} observed · ${inclusionUnknown === pathlessRows.length ? 'policy scope not recorded by this analysis version' : `${included} included · ${excluded} excluded by policy${inclusionUnknown ? ` · ${inclusionUnknown} scope not recorded` : ''}`} · paths are not retained in pathless history`}>
-      {retainedRow ? (retainedFiles.length === 0 ? <p class="a-mini">This comparison retained no per-file rows.</p> : <div class="pr-files-scroll" role="region" aria-label="File comparison table" tabindex="0"><table class="a-tbl named"><thead><tr><th>Path</th><th>Policy</th><th class="r">Changed</th><th class="r" title="Raw churn" aria-label="Raw churn">Raw</th></tr></thead><tbody>
-        {retainedFiles.map((file: any) => <tr class={file.included ? '' : 'excl'}><td title={file.path} aria-label={file.path}>{file.href ? <a href={file.href} title={file.path} aria-label={file.path}><FilePath path={file.path} title={file.path} middleEllipsis /></a> : <FilePath path={file.path} title={file.path} middleEllipsis />}</td><td class="a-mini">{file.included ? <Icon name="check" size={13} label="Included in policy scope" /> : 'excluded'}</td><td class="r"><span class="a-chg"><span class="n">{describeBound(file.changed)}</span></span></td><td class="r a-mini">{describeBound(file.rawChurn)}</td></tr>)}
-      </tbody></table></div>)
-      : (pathlessRows.length === 0 ? <p class="a-mini">This analysis retained no per-file rows.</p> : <div class="pr-files-scroll" role="region" aria-label="File comparison table" tabindex="0"><table class="a-tbl"><thead><tr><th>File</th><th>Policy scope</th><th>Change</th><th class="r">Changed</th><th style="width:90px"></th><th class="r">Raw</th></tr></thead><tbody>
-        {pathlessRows.map((row: any) => <tr class={row.inclusion === 'excluded' ? 'excl' : ''}><td><span class="a-path"><span class="dir">file </span>{row.ordinal + 1}</span><span class="a-mini"> · path not retained</span></td><td class="a-mini">{['included', 'excluded'].includes(row.inclusion) ? row.inclusion : 'not recorded'}</td><td class="a-mini">{row.changeType}{row.material === 'binary' ? ' · binary' : ''}</td><td class="r">{row.changed.status === 'unknown' && (row.changed.lower ?? 0) === 0 ? <span class="a-mini">{row.evidence === 'unmeasurable' ? 'not measurable' : 'unknown'}</span> : <span class="a-chg"><span class="n">{describeBound(row.changed)}</span>{row.changed.status === 'exact' && <span class="d"><span class="p">+{n0(row.added.lower)}</span><span class="x">−{n0(row.deleted.lower)}</span><span class="t">~{n0(row.modified.lower)}</span></span>}</span>}</td><td>{row.changed.status === 'exact' && row.changed.lower > 0 && <div class="a-split" style="height:6px"><i style={`flex:${row.modified.lower};background:var(--a-mod)`}></i><i style={`flex:${row.added.lower};background:var(--a-add)`}></i><i style={`flex:${row.deleted.lower};background:var(--a-del)`}></i></div>}</td><td class="r a-mini" style="white-space:nowrap">+{describeBound(row.rawAdded)} −{describeBound(row.rawDeleted)}</td></tr>)}
-      </tbody></table></div>)}
-      <p class="a-mini" style="margin:10px 0 0">{retainedRow ? (pro ? 'Each file links to its history; a file-detail address is an opaque handle, never the path.' : 'File names are base facts of this comparison; file history, sizes and co-change are Pro.') : 'Per-file rows keep an ordinal local to this analysis, never a path, name or author. Named files arrive as the App retains final merged comparisons for this repository.'}</p>
-    </Panel>
+    <PullRequestFiles retainedRow={retainedRow} retainedFiles={retainedFiles} pathlessRows={pathlessRows} pro={pro} pending={pro && Astro.locals.deferPremium} />
     </div>
     {heads.length
       ? <ChartFrame id="dev" kind="development" model={development} title="Development" span={6} class="pr-development" h={230} meta={`Changed at each analysed head · ${heads.length} head${heads.length === 1 ? '' : 's'} · zones = size-v1 bands`}>

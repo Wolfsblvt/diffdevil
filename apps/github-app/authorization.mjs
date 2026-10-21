@@ -55,38 +55,55 @@ export function createAuthorizationService({ store, admission, history, analytic
   }
 
   async function currentAuthorization(userId, { service = false, withLease = false } = {}) {
-    for (let attempt = 0; attempt < 2; attempt++) {
+    const waitUntil = Date.now() + 5_000;
+    let waitMs = 50;
+    for (let attempt = 0; attempt < 3; attempt++) {
       if (service && await store.serviceDisconnected(userId)) throw refusal('E_SERVICE_DISCONNECTED');
       const row = await store.authorization(userId);
       if (!row || row.revoked_at || row.expires_at <= now()) throw refusal('E_AUTHORIZATION_UNAVAILABLE');
+      if (row.refresh_claim) {
+        // Other isolates consume the committed winner. A lost response/worker may
+        // have spent the one-use token; never take over by timeout and spend it again.
+        if (Date.now() >= waitUntil) throw refusal('E_AUTHORIZATION_UNAVAILABLE');
+        await new Promise(resolve => setTimeout(resolve, Math.min(waitMs, waitUntil - Date.now())));
+        waitMs = Math.min(waitMs * 2, 500);
+        attempt--;
+        continue;
+      }
       let material;
+      let refreshClaim = null;
       let expectedProtectedMaterial = row.protected_material;
       try {
         material = await protector.open(row.protected_material);
         if (!material) throw refusal('E_AUTHORIZATION_UNAVAILABLE');
-        const result = await provider.verifyUserAuthorization({ userId, material });
+        const result = await provider.verifyUserAuthorization({ userId, material, claimRefresh: async () => {
+          const claim = opaqueValue();
+          if (!await store.claimAuthorizationRefresh(userId, row.protected_material, claim)) throw refusal('E_AUTH_REFRESH_PENDING');
+          refreshClaim = claim;
+        } });
         // Only an explicit invalid answer retires the grant. Missing answers, exceptions and
         // transient/rate-limit failures withhold this use without manufacturing revocation.
         if (result?.valid === false) {
-          await store.revokeAuthorization(userId, { expectedMaterial: row.protected_material });
+          await store.revokeAuthorization(userId, { expectedMaterial: row.protected_material, expectedRefreshClaim: refreshClaim });
+          const latest = await store.authorization(userId);
+          if (latest && !latest.revoked_at && (latest.protected_material !== row.protected_material || latest.refresh_claim !== refreshClaim)) continue;
           throw refusal('E_AUTHORIZATION_UNAVAILABLE');
         }
         if (result?.valid !== true) throw refusal('E_AUTHORIZATION_UNAVAILABLE');
         if (result.material) {
           if (!validExpiry(result.expiresAt, now)) throw refusal('E_AUTHORIZATION_UNAVAILABLE');
           expectedProtectedMaterial = await protector.seal(result.material);
-          if (!await store.refreshAuthorization(userId, row.protected_material, expectedProtectedMaterial, result.expiresAt)) {
-            if (attempt === 0) continue;
-            throw refusal('E_AUTHORIZATION_UNAVAILABLE');
-          }
+          if (!await store.refreshAuthorization(userId, row.protected_material, expectedProtectedMaterial, result.expiresAt, refreshClaim)) continue;
           material = result.material;
         }
-      } catch { throw refusal('E_AUTHORIZATION_UNAVAILABLE'); }
+      } catch (error) {
+        if (error?.code === 'E_AUTH_REFRESH_PENDING') { attempt--; continue; }
+        throw refusal('E_AUTHORIZATION_UNAVAILABLE');
+      }
       const current = await store.authorization(userId);
       if (!current || current.revoked_at || current.expires_at <= now()) throw refusal('E_AUTHORIZATION_UNAVAILABLE');
       if (service && await store.serviceDisconnected(userId)) throw refusal('E_SERVICE_DISCONNECTED');
-      if (current.protected_material === expectedProtectedMaterial) return withLease ? { material, protectedMaterial: expectedProtectedMaterial } : material;
-      if (attempt === 1) throw refusal('E_AUTHORIZATION_UNAVAILABLE');
+      if (current.protected_material === expectedProtectedMaterial && !current.refresh_claim) return withLease ? { material, protectedMaterial: expectedProtectedMaterial } : material;
     }
     throw refusal('E_AUTHORIZATION_UNAVAILABLE');
   }

@@ -148,8 +148,12 @@ export function createGitHubUserProvider({ clientId, clientSecret, callbackUrl, 
       return user.id;
     },
     /** Refresh or check a grant. Unavailable evidence throws; only definite invalidation returns false. */
-    async verifyUserAuthorization({ userId, material }) {
+    async verifyUserAuthorization({ userId, material, claimRefresh }) {
       if (material.refreshToken && material.accessExpiresAt && Date.parse(material.accessExpiresAt) - 60_000 <= now()) {
+        // Claim in the persistent store before spending GitHub's one-use token.
+        // All callers of this adapter go through the authorization service.
+        if (typeof claimRefresh !== 'function') throw providerError('E_PROVIDER_REFRESH_UNCLAIMED');
+        await claimRefresh();
         try {
           const rotated = await tokenRequest({ grant_type: 'refresh_token', refresh_token: material.refreshToken });
           return { valid: true, material: rotated.material, expiresAt: rotated.expiresAt };

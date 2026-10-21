@@ -41,6 +41,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
       const refusal = await openAnalyticalShell(context.request, runtime, cookieValue, SESSION_COOKIE);
       if (refusal) return context.redirect(`/sign-in?reason=${encodeURIComponent(refusal)}`, 303);
       context.locals.analyticalUrl = context.url.href;
+      context.locals.deferChrome = true;
       return context.rewrite(`/render/analytical-shell${context.url.search}`);
     }
     const opened = await openSession(context.request, runtime);
@@ -64,6 +65,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
         runtime.deferPremium = true;
       }
       if (render === 'navigation' || render === 'notifications') return context.rewrite(`/render/analytical-${render}${context.url.search}`);
+      if (render === 'enrichment') return context.rewrite(`/render/analytical-premium${context.url.search}`);
     }
   }
   const response = await next();

@@ -1,20 +1,26 @@
 // SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
 /** Independent navigation, population and optional notifications; only the current document may commit a reply. */
-import { swapTo } from './charts/mount';
+import { swapTo, carryCharts } from './charts/mount';
+import { preserveNavigation } from './navigation-state';
+
+/** Hashes name a focus/anchor within a document, not a different analytical acquisition. */
+function documentUrl(value: string): string { const url = new URL(value, location.origin); url.hash = ''; return url.href; }
+let enrichmentController: AbortController | null = null;
+let notificationController: AbortController | null = null;
 
 function announce(message: string): void {
   const live = document.querySelector('[data-live-region]');
   if (live) live.textContent = message;
 }
 
-async function fragment(url: string, part: 'navigation' | 'notifications' | 'enrichment'): Promise<Document> {
-  const response = await fetch(url, { credentials: 'same-origin', headers: { accept: 'text/html', 'x-diffdevil-render': part } });
+async function fragment(url: string, part: 'navigation' | 'notifications' | 'enrichment', signal?: AbortSignal): Promise<Document> {
+  const response = await fetch(url, { credentials: 'same-origin', headers: { accept: 'text/html', 'x-diffdevil-render': part }, signal });
   if ((!response.ok && response.status !== 404) || response.redirected) throw new Error('E_ANALYTICAL_READ');
   return new DOMParser().parseFromString(await response.text(), 'text/html');
 }
 
 export function loadAnalyticalDocument(): void {
-  document.addEventListener('diffdevil:page', () => { void enrich(); void notifications(location.href); });
+  document.addEventListener('diffdevil:page', event => { void enrich((event as CustomEvent).detail?.reason); void notifications(location.href); notificationBadge(); });
   document.addEventListener('diffdevil:load-failed', event => {
     if (document.querySelector('[data-analytical-loading]')) return;
     const { url, reason } = (event as CustomEvent).detail;
@@ -31,28 +37,25 @@ export function loadAnalyticalDocument(): void {
   });
   const loading = document.querySelector<HTMLElement>('[data-analytical-loading]');
   if (!loading) return;
-  const url = new URL(loading.dataset.url!, location.origin).href;
-  const current = () => loading.isConnected && location.href === url;
+  const url = documentUrl(loading.dataset.url!);
+  const current = () => loading.isConnected && documentUrl(location.href) === url;
   const region = loading.querySelector<HTMLElement>('[data-analytical-region]')!;
   const status = region.querySelector<HTMLElement>('[data-loading-status]')!;
   const retry = region.querySelector<HTMLButtonElement>('[data-loading-retry]')!;
 
   async function navigation(): Promise<void> {
     const control = document.querySelector<HTMLButtonElement>('[data-navigation-retry]');
+    const retryFocused = control === document.activeElement;
     if (control) control.hidden = true;
     try {
       const next = await fragment(url, 'navigation');
       if (!current()) return;
       const nav = next.querySelector('[data-nav]');
       if (!nav) throw new Error('E_ANALYTICAL_READ');
-      const previousFilter = document.querySelector<HTMLInputElement>('[data-nav-filter]');
-      const filterValue = previousFilter?.value ?? '';
-      const filterFocused = previousFilter === document.activeElement;
+      const restoreNavigation = preserveNavigation({ focusFilter: retryFocused && document.activeElement === document.body });
       document.querySelector('[data-nav]')?.replaceWith(nav);
       document.dispatchEvent(new CustomEvent('diffdevil:page'));
-      const filter = document.querySelector<HTMLInputElement>('[data-nav-filter]');
-      if (filter && filterValue) { filter.value = filterValue; filter.dispatchEvent(new Event('input')); }
-      if (filterFocused) filter?.focus({ preventScroll: true });
+      restoreNavigation();
     } catch {
       if (!current()) return;
       const message = document.querySelector('[data-navigation-status]');
@@ -86,29 +89,40 @@ export function loadAnalyticalDocument(): void {
     announce('Data could not load. Retry is available.');
   });
   void navigation();
+  void notifications(url);
   void populate();
 }
 
-async function enrich(): Promise<void> {
+async function enrich(reason = 'enrichment'): Promise<void> {
   const slots = [...document.querySelectorAll<HTMLElement>('[data-premium-region][data-pending="true"]')];
   if (!slots.length) return;
-  const url = location.href;
+  enrichmentController?.abort();
+  const controller = (enrichmentController = new AbortController());
+  const url = documentUrl(location.href);
   for (const slot of slots) slot.dataset.pending = 'loading';
   try {
-    const next = await fragment(url, 'enrichment');
-    if (location.href !== url || !slots.every(slot => slot.isConnected)) return;
+    const next = await fragment(url, 'enrichment', controller.signal);
+    if (documentUrl(location.href) !== url || !slots.every(slot => slot.isConnected)) return;
     for (const slot of slots) {
       const fresh = next.querySelector<HTMLElement>(`[data-premium-region="${CSS.escape(slot.dataset.premiumRegion!)}"]`);
       if (!fresh || fresh.dataset.pending) throw new Error('E_ANALYTICAL_READ');
     }
+    const retryFocused = slots.some(slot => slot.contains(document.activeElement) && document.activeElement?.matches('[data-premium-retry]'));
     document.querySelector('[data-pending-file-head]')?.remove();
+    const finishCharts = carryCharts(next, reason);
     for (const slot of slots) {
       const fresh = next.querySelector(`[data-premium-region="${CSS.escape(slot.dataset.premiumRegion!)}"]`)!;
-      slot.replaceWith(...fresh.childNodes);
+      slot.replaceWith(fresh);
+    }
+    finishCharts();
+    if (retryFocused) {
+      const heading = document.querySelector<HTMLElement>(`[data-premium-region="${CSS.escape(slots[0].dataset.premiumRegion!)}"] h1, [data-premium-region="${CSS.escape(slots[0].dataset.premiumRegion!)}"] h2`);
+      heading?.setAttribute('tabindex', '-1'); heading?.focus({ preventScroll: true });
     }
     announce('File history loaded.');
     document.dispatchEvent(new CustomEvent('diffdevil:page'));
   } catch {
+    if (controller.signal.aborted || documentUrl(location.href) !== url || !slots.some(slot => slot.isConnected)) return;
     for (const slot of slots) {
       if (!slot.isConnected) continue;
       slot.setAttribute('aria-busy', 'false');
@@ -131,26 +145,32 @@ async function enrich(): Promise<void> {
 async function notifications(url: string): Promise<void> {
   const target = document.querySelector<HTMLElement>('[data-analytical-notifications][data-notifications-pending="true"]');
   if (!target) return;
+  notificationController?.abort();
+  const controller = (notificationController = new AbortController());
   target.dataset.notificationsPending = 'loading';
   try {
-    const next = await fragment(url, 'notifications');
-    if (location.href !== url || !target.isConnected) return;
+    const next = await fragment(url, 'notifications', controller.signal);
+    if (documentUrl(location.href) !== documentUrl(url) || !target.isConnected) return;
     const invitation = next.querySelector('[data-analytical-notifications]');
     if (!invitation) throw new Error('E_ANALYTICAL_READ');
     target.replaceWith(invitation);
-    const badge = next.querySelector<HTMLElement>('[data-analytical-badge]');
-    const end = document.querySelector('[data-nav-manage] .a-end');
-    if (badge && end && Number(badge.dataset.count) > 0) {
-      const count = document.createElement('span');
-      count.className = badge.dataset.urgent === 'true' ? 'm-dotn err' : 'm-dotn';
-      count.textContent = badge.dataset.count!;
-      count.title = `${badge.dataset.count} things need a decision`;
-      end.replaceChildren(count);
-    }
+    notificationBadge();
     document.dispatchEvent(new CustomEvent('diffdevil:page'));
   } catch {
+    if (controller.signal.aborted || !target.isConnected) return;
     // Optional chrome may be unavailable; it cannot hold navigation or analytical content.
     target.removeAttribute('data-notifications-pending');
     target.dataset.notificationsUnavailable = 'true';
   }
+}
+
+function notificationBadge(): void {
+  const badge = document.querySelector<HTMLElement>('[data-analytical-badge]');
+  const end = document.querySelector('[data-nav-manage] .a-end');
+  if (!badge || !end || Number(badge.dataset.count) <= 0) return;
+  const count = document.createElement('span');
+  count.className = badge.dataset.urgent === 'true' ? 'm-dotn err' : 'm-dotn';
+  count.textContent = badge.dataset.count!;
+  count.title = `${badge.dataset.count} things need a decision`;
+  end.replaceChildren(count);
 }

@@ -72,7 +72,7 @@ const EDITION = join(target.artifacts, 'edition.json');
 if (!existsSync(EDITION)) { console.error('The build carries no edition record; rebuild with npm run app:build.'); process.exit(2); }
 const edition = JSON.parse(readFileSync(EDITION, 'utf8'));
 const premium = edition.premium && edition.qa ? (await import(pathToFileURL(resolve(edition.qa)).href)).default : null;
-console.log(`Qualifying the ${premium ? 'premium-joined' : 'Community'} build (${edition.reason}).`);
+console.log(`Qualifying the ${premium ? 'premium-joined' : edition.premium ? 'extension-boundary fixture' : 'Community'} build (${edition.reason}).`);
 // A local variables file copied into the build output would silently override the pass's --var flags.
 for (const stale of [join(dirname(resolve('apps/app', target.configPath)), '.dev.vars'), join(target.artifacts, 'dist/server/.dev.vars')]) if (existsSync(stale)) { console.error(`Refusing to run with a local variables file in place: ${stale}`); process.exit(2); }
 // The dense pass seeds a four-times larger fixture through the real engine, which takes its own minutes.
@@ -184,7 +184,7 @@ const context = await browser.newContext({ viewport: { width: 1440, height: 900 
 const consoleErrors = [], pageErrors = [], external = [];
 context.on('page', page => {
   // A deliberately requested 404 (the refused repository or handle) is not a console error worth failing on.
-  page.on('console', message => { if (message.type() === 'error' && !(LOADING_ONLY && /status of 503/u.test(message.text())) && !(/status of 404/u.test(message.text()) && /\/pr\/someone\/else\/|\/file\/.*\/not-a-locator/u.test(page.url()))) consoleErrors.push(`${page.url()} ${message.text()}`); });
+  page.on('console', message => { if (message.type() === 'error' && !(LOADING_ONLY && /status of 503/u.test(message.text())) && !(/status of 404/u.test(message.text()) && /\/pr\/someone\/else\/|\/file\/.*\/(?:not-a-locator|a{22})(?:\?|$)/u.test(page.url()))) consoleErrors.push(`${page.url()} ${message.text()}`); });
   page.on('pageerror', error => pageErrors.push(`${page.url()} ${error.message}`));
   page.on('request', request => { const url = new URL(request.url()); if (!['127.0.0.1', 'localhost'].includes(url.hostname)) external.push(request.url()); });
 });
@@ -197,7 +197,7 @@ const go = async (path, options = {}) => {
   return response;
 };
 const shot = name => page.screenshot({ path: join(OUT, `${name}.png`), fullPage: true });
-const ctx = { check, go, page, shot, ORIGIN, OUT, settled, qualifyFrame, qualifyCloud, premium: Boolean(premium), signIn: () => signIn(), holdBusinessHistoryJob, releaseBusinessHistoryJob };
+const ctx = { check, go, page, shot, ORIGIN, OUT, settled, qualifyFrame, qualifyCloud, premium: Boolean(premium), joined: edition.premium, signIn: () => signIn(), holdBusinessHistoryJob, releaseBusinessHistoryJob };
 const overflow = () => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
 const offenders = () => page.evaluate(() => { const width = document.documentElement.clientWidth; return [...document.querySelectorAll('body *')].filter(element => element.getBoundingClientRect().right > width + 1).slice(0, 4).map(element => `${element.tagName.toLowerCase()}.${String(element.className).split(' ')[0]}@${Math.round(element.getBoundingClientRect().right)}`).join(', '); });
 const pageFacts = () => page.evaluate(() => ({
@@ -210,7 +210,7 @@ const pageFacts = () => page.evaluate(() => ({
 
 /** Wait until every chart frame on the page has mounted (or failed) and the page line has gone. */
 async function settled(timeout = 25_000) {
-  try { await page.waitForFunction(() => !document.querySelector('[data-analytical-loading], [data-premium-region][data-pending="true"], [data-premium-region][data-pending="loading"]') && [...document.querySelectorAll('[data-chart]')].every(host => host.classList.contains('is-mounted') || host.classList.contains('is-failed')) && !document.body.classList.contains('is-drawing') && !document.querySelector('.cl.is-busy'), null, { timeout }); } catch { /* reported by the facts */ }
+  await page.waitForFunction(() => !document.querySelector('[data-analytical-loading], [data-notifications-pending], [data-premium-region][data-pending]') && [...document.querySelectorAll('[data-chart]')].every(host => host.classList.contains('is-mounted') || host.classList.contains('is-failed')) && !document.body.classList.contains('is-drawing') && !document.querySelector('.cl.is-busy'), null, { timeout });
   await page.evaluate(() => new Promise(resolve => setTimeout(resolve, 150)));
 }
 

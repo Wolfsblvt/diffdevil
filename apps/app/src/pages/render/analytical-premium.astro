@@ -1,0 +1,64 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
+// Only premium regions: no second common chart/model/document render to throw away.
+export const partial = true;
+import DeferredRegion from '../../components/DeferredRegion.astro';
+import PullRequestFiles from '../../components/PullRequestFiles.astro';
+import { analyticalRoute } from '../../lib/analytical-request.mjs';
+import { loadView, repositoryByFullName } from '../../lib/view.mjs';
+import { historySelection } from '../../lib/history-selection.mjs';
+import { groupPullRequests } from '../../lib/derive.mjs';
+import { bound } from '../../lib/intervals.mjs';
+
+const runtime = Astro.locals.app;
+const url = new URL(Astro.locals.analyticalUrl!);
+const route = analyticalRoute(url.pathname)!;
+const [, , owner, repo, identifier] = url.pathname.split('/').map(decodeURIComponent);
+const fullName = `${owner}/${repo}`;
+const repository = ['pr', 'file'].includes(route.section) ? repositoryByFullName(Astro.locals.viewer, fullName) : undefined;
+const prNumber = Number(identifier);
+const pages = runtime.premium.pages;
+const surface = route.section === 'overview' ? 'prs' : route.section === 'file' ? 'files' : route.section;
+const detail = surface === 'pr' ? { repositoryId: repository?.repositoryId, pullRequest: prNumber }
+  : route.section === 'files' ? pages.files?.query?.(url) ?? {} : {};
+const viewUrl = ['pr', 'file'].includes(route.section) && !url.search ? new URL(`${url.pathname}?s=${repository ? fullName : 'all'}`, url) : url;
+const view = await loadView({ url: viewUrl, viewer: Astro.locals.viewer, session: Astro.locals.session, runtime, surface, detail });
+if (view.dataStanding === 'unavailable') return new Response('This analytical region could not be read. Retry the region.', { status: 503 });
+const pro = view.premiumHere;
+const overview = pages.overview;
+const overviewData = route.section === 'overview' && pro && overview ? await overview.load({ view, runtime }) : null;
+const { Concentration, Cloud, Turnover } = overview ?? {};
+const { Panels, BucketFiles } = pages.history ?? {};
+const selection = route.section === 'history' ? historySelection(view) : null;
+const FilesBody = pages.files?.Body, FileBody = pages.file?.Body;
+const file = route.section === 'file' && repository && pro && FileBody && runtime.locator.plausible(identifier)
+  ? await runtime.locator.resolve(identifier, view.files.filter((candidate: any) => candidate.repositoryId === repository.repositoryId)) : undefined;
+const { Context, Cochange } = pages.pr ?? {};
+const retainedRow = route.section === 'pr' && view.dataStanding === 'available' ? view.data.result : null;
+const fileLinks = retainedRow && pro && Context ? await pages.pr.fileHrefs({ view, runtime, repository, fullName, paths: (retainedRow.files ?? []).map((file: any) => file.path) }) : undefined;
+const retainedFiles = (retainedRow?.files ?? []).map((file: any) => ({ path: file.path, included: file.included,
+  changed: { status: file.changed.status === 'unavailable' ? 'unknown' : file.changed.status, lower: file.changed.lower ?? 0, upper: file.changed.upper ?? null },
+  rawChurn: { status: file.rawChurn.status === 'unavailable' ? 'unknown' : file.rawChurn.status, lower: file.rawChurn.lower ?? 0, upper: file.rawChurn.upper ?? null }, href: fileLinks?.get(file.path) }));
+const pathlessRecords = route.section === 'pr' && repository && !retainedRow ? await runtime.store.pullRequestAnalyses(repository.repositoryId, prNumber) : [];
+const pathless = pathlessRecords.length ? [...groupPullRequests(pathlessRecords).values()][0] : undefined;
+const pathlessRows = pathless?.latest?.fileRows.map((row: any) => ({ ...row, changed: bound(row.lines?.changed), rawAdded: bound(row.raw?.added), rawDeleted: bound(row.raw?.deleted), added: bound(row.lines?.added), deleted: bound(row.lines?.deleted), modified: bound(row.lines?.modified) })) ?? [];
+if (route.section === 'file' && !file) Astro.response.status = 404;
+---
+{pro && route.section === 'overview' && <>
+  {Concentration && <DeferredRegion name="overview-concentration" title="Concentration"><Concentration view={view} data={overviewData} /></DeferredRegion>}
+  {Cloud && <DeferredRegion name="overview-cloud" title="Where change lands"><Cloud view={view} data={overviewData} /></DeferredRegion>}
+  {Turnover && <DeferredRegion name="overview-turnover" title="Turnover"><Turnover view={view} data={overviewData} /></DeferredRegion>}
+</>}
+{pro && route.section === 'history' && selection && <>
+  {selection.bucket && BucketFiles && <DeferredRegion name="history-bucket-files" title="Files in this bucket"><BucketFiles view={view} bucket={selection.bucket} unitWord={selection.unitWord} /></DeferredRegion>}
+  {Panels && <DeferredRegion name="history-panels" title="Growth and concentration"><Panels view={view} {...selection} life={view.lifecycle.standing === 'available'} /></DeferredRegion>}
+</>}
+{pro && route.section === 'files' && FilesBody && <DeferredRegion name="files-body" title="File history"><FilesBody view={view} /></DeferredRegion>}
+{pro && route.section === 'file' && FileBody && <DeferredRegion name="file-body" title="File history">
+  {file ? <FileBody view={view} repository={repository} file={file} fullName={fullName} /> : <div class="a-focus a-pn"><div class="a-pn-b"><h1>No such file in this period</h1><p class="lede">No merged pull request names a file with this handle in {fullName} during the selected {view.period.label}. Widen the period, or <a class="link-quiet" href={view.href('/files', { s: fullName })}>pick a file</a>.</p></div></div>}
+</DeferredRegion>}
+{pro && route.section === 'pr' && repository && Context && <>
+  <DeferredRegion name="pr-context" title="File context"><Context view={view} repository={repository} fullName={fullName} prNumber={prNumber} retainedRow={retainedRow} retainedFiles={retainedFiles} /></DeferredRegion>
+  <DeferredRegion name="pr-files" title="Files"><PullRequestFiles retainedRow={retainedRow} retainedFiles={retainedFiles} pathlessRows={pathlessRows} pro={pro} /></DeferredRegion>
+  {Cochange && <DeferredRegion name="pr-cochange" title="Co-change"><Cochange view={view} repository={repository} fullName={fullName} retainedRow={retainedRow} retainedFiles={retainedFiles} /></DeferredRegion>}
+</>}
