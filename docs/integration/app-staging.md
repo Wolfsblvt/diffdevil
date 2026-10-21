@@ -244,6 +244,21 @@ spend, paid-plan selection, production migration or automatic publication.
 
 ## Protected-input operation
 
+Use the [clean operator launch entry](../../apps/github-app/README.md#registration-and-credential-helper)
+for both helpers. A background process must hide its own profile-free PowerShell
+launch as well; starting Node first and clearing variables afterward is too late.
+The entry preserves the selected native authentication and explicitly named
+seal/Wirt inputs without carrying ambient Node/preload/proxy/CA controls.
+
+**Installation limitation:** pinned Wrangler 4.150.0 patches `/versions/latest`.
+Pre-write latest checks and binding-name readback do not prevent a concurrent
+upload from receiving credentials or establish source lineage. The specimens
+below retain the complete mediated operation, but are not an admitted exact-base
+production route. A qualified atomic composite-and-secret upload is the proposed
+replacement; code/assets/settings identity and recovery remain unresolved.
+Existing receipts continue to use read-only `resume`; do not retry an ambiguous
+installation to work around this limitation.
+
 For a new registration, enter the [native manifest route](#native-manifest-registration-and-capture)
 below. The full-set specimen in this section serves an existing registration or
 its recovered inputs; these are alternative installation entrances.
@@ -263,7 +278,7 @@ Visibility, organisation/actor reach and installation admission remain the
 operator's separately settled choices.
 
 ```powershell
-node apps/github-app/operator-helper.mjs registration --app-name diffdevil-staging --visibility public --webhook-url https://admitted-staging.example/webhooks/github --oauth-callback-url https://admitted-staging.example/auth/callback --policy-refresh
+pwsh -NoProfile -NonInteractive -File apps/github-app/operator-launch.ps1 operator registration --app-name diffdevil-staging --visibility public --webhook-url https://admitted-staging.example/webhooks/github --oauth-callback-url https://admitted-staging.example/auth/callback --policy-refresh
 if ($LASTEXITCODE -ne 0) { throw 'Staging registration preparation refused.' }
 ```
 
@@ -288,9 +303,9 @@ $credentialArguments = @(
     '--seal-key-initial',
     '--wirt-signing-key-file', 'C:\operator-custody\staging-wirt-current.txt'
 )
-node apps/github-app/operator-helper.mjs check @credentialArguments
+pwsh -NoProfile -NonInteractive -File apps/github-app/operator-launch.ps1 operator check @credentialArguments
 if ($LASTEXITCODE -ne 0) { throw 'Staging credential preflight refused.' }
-node apps/github-app/operator-helper.mjs install @credentialArguments
+pwsh -NoProfile -NonInteractive -File apps/github-app/operator-launch.ps1 operator install @credentialArguments
 if ($LASTEXITCODE -ne 0) { throw 'Retain the receipt. A proven not-attempted result permits correction and a new receipt; otherwise resume read-only before another effect.' }
 ```
 
@@ -376,7 +391,7 @@ the new operation. After an attempted/ambiguous write, reconcile read-only using
 the exact unchanged config and existing receipt, with no credential input flags:
 
 ```powershell
-node apps/github-app/operator-helper.mjs resume --worker diffdevil-app-staging --account-id admitted-account-id --config artifacts/app-staging/dist/server/wrangler.json --receipt-file D:\custody\diffdevil-staging\operations\credential-install.json
+pwsh -NoProfile -NonInteractive -File apps/github-app/operator-launch.ps1 operator resume --worker diffdevil-app-staging --account-id admitted-account-id --config artifacts/app-staging/dist/server/wrangler.json --receipt-file D:\custody\diffdevil-staging\operations\credential-install.json
 if ($LASTEXITCODE -ne 0) { throw 'The receipt remains unresolved; retain it for exact-target reconciliation.' }
 ```
 
@@ -470,11 +485,11 @@ $registrationArguments = @(
     '--oauth-callback-url', 'https://admitted-staging.example/auth/callback',
     '--policy-refresh', '--port', '43871'
 )
-node apps/github-app/manifest-helper.mjs check @captureArguments @registrationArguments
+pwsh -NoProfile -NonInteractive -File apps/github-app/operator-launch.ps1 manifest check @captureArguments @registrationArguments
 if ($LASTEXITCODE -ne 0) { throw 'Registration destinations or selection are not ready.' }
-node apps/github-app/manifest-helper.mjs register @captureArguments @registrationArguments
+pwsh -NoProfile -NonInteractive -File apps/github-app/operator-launch.ps1 manifest register @captureArguments @registrationArguments
 if ($LASTEXITCODE -ne 0) { throw 'Retain the capture; inspect status and recovery before another registration.' }
-node apps/github-app/manifest-helper.mjs status @captureArguments
+pwsh -NoProfile -NonInteractive -File apps/github-app/operator-launch.ps1 manifest status @captureArguments
 if ($LASTEXITCODE -ne 0) { throw 'The protected capture is unavailable or unusable.' }
 ```
 
@@ -519,7 +534,7 @@ The existing installer checks both identity and the retained seal comparison;
 neither capture success nor possession of a new seal establishes an empty target.
 
 ```powershell
-node apps/github-app/manifest-helper.mjs install @captureArguments --config $stagingConfig --worker diffdevil-app-staging --account-id admitted-account-id --base-version-id $qualifiedBootstrapVersion --seal-key-initial --install-receipt-file $credentialReceipt --wirt-signing-key-env DIFFDEVIL_STAGING_WIRT_SIGNING_KEY
+pwsh -NoProfile -NonInteractive -File apps/github-app/operator-launch.ps1 manifest install @captureArguments --config $stagingConfig --worker diffdevil-app-staging --account-id admitted-account-id --base-version-id $qualifiedBootstrapVersion --seal-key-initial --install-receipt-file $credentialReceipt --wirt-signing-key-env DIFFDEVIL_STAGING_WIRT_SIGNING_KEY
 if ($LASTEXITCODE -ne 0) { throw 'Retain the installation receipt and capture. Correct a proven not-attempted refusal with a new receipt; reconcile an attempted/ambiguous write read-only.' }
 ```
 
@@ -541,9 +556,9 @@ Recover the condition left by an interruption rather than beginning again:
 | Installation attempted, receipt incomplete | Use `operator-helper.mjs resume` with the same exact config/account and **installation** receipt. It reads provider state and never repeats the upload. A capture alone does not reconcile a Worker write. |
 
 ```powershell
-node apps/github-app/manifest-helper.mjs resume @captureArguments
+pwsh -NoProfile -NonInteractive -File apps/github-app/operator-launch.ps1 manifest resume @captureArguments
 if ($LASTEXITCODE -ne 0) { throw 'Retain this capture and its exact unknown/refused condition for reconciliation.' }
-node apps/github-app/operator-helper.mjs resume --config $stagingConfig --worker diffdevil-app-staging --account-id admitted-account-id --receipt-file $credentialReceipt
+pwsh -NoProfile -NonInteractive -File apps/github-app/operator-launch.ps1 operator resume --config $stagingConfig --worker diffdevil-app-staging --account-id admitted-account-id --receipt-file $credentialReceipt
 if ($LASTEXITCODE -ne 0) { throw 'The exact Worker write remains unresolved; do not repeat installation.' }
 ```
 

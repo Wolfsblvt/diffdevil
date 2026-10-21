@@ -19,13 +19,6 @@ const PROCESS_ENVIRONMENT_NAMES = new Set([
   'APPDATA', 'LOCALAPPDATA', 'XDG_CONFIG_HOME', 'WRANGLER_HOME'
 ]);
 const AUTH_ENVIRONMENT_NAMES = ['CLOUDFLARE_API_TOKEN', 'CLOUDFLARE_API_KEY', 'CLOUDFLARE_EMAIL'];
-const PROVIDER_CONTROL_ENVIRONMENT_NAMES = new Set([
-  'CLOUDFLARE_API_BASE_URL', 'CF_API_BASE_URL', 'CLOUDFLARE_BASE_URL',
-  'CLOUDFLARE_COMPLIANCE_REGION', 'CLOUDFLARE_ENV', 'CLOUDFLARE_ACCOUNT_ID', 'CF_ACCOUNT_ID',
-  'CF_API_TOKEN', 'CF_API_KEY', 'CF_EMAIL', 'CLOUDFLARE_API_USER_SERVICE_KEY',
-  'CLOUDFLARE_ACCESS_CLIENT_ID', 'CLOUDFLARE_ACCESS_CLIENT_SECRET',
-  'WRANGLER_SEND_METRICS', 'WRANGLER_WRITE_LOGS', 'WRANGLER_LOG'
-].map(environmentName));
 const INERT_DATABASE_IDS = new Set(['00000000-0000-0000-0000-000000000000', '00000000-0000-0000-0000-000000000001']);
 const BACKEND_INPUTS = ['GITHUB_APP_ID', 'GITHUB_WEBHOOK_SECRET', 'GITHUB_APP_PRIVATE_KEY'];
 const APP_INPUTS = [...BACKEND_INPUTS, 'GITHUB_OAUTH_CLIENT_ID', 'GITHUB_OAUTH_CLIENT_SECRET', 'APP_SEAL_KEY'];
@@ -117,12 +110,8 @@ export function createProcessRunner({ executable = process.execPath, cwd = HELPE
 }
 
 function environment(accountId, options) {
-  const env = withoutProtectedInputs(process.env, options);
+  const env = nativeProcessEnvironment(process.env, options);
   const controls = { CLOUDFLARE_ACCOUNT_ID: accountId, WRANGLER_SEND_METRICS: 'false', WRANGLER_WRITE_LOGS: 'false', WRANGLER_LOG: 'error' };
-  for (const key of Object.keys(env)) {
-    const normalized = environmentName(key);
-    if (PROVIDER_CONTROL_ENVIRONMENT_NAMES.has(normalized)) delete env[key];
-  }
   return { ...env, ...controls };
 }
 
@@ -156,12 +145,15 @@ export function withoutProtectedInputs(source, options) {
   return env;
 }
 
-/** Keep the pre-existing manifest conversion child environment unchanged. */
+/** Required OS/authentication inputs only; no ambient Node or provider transport controls. */
 export function nativeProcessEnvironment(source, options) {
   const names = new Set([...PROCESS_ENVIRONMENT_NAMES, ...AUTH_ENVIRONMENT_NAMES].map(environmentName));
-  const env = Object.fromEntries(Object.entries(source).filter(([name]) => names.has(environmentName(name))));
-  const protectedNames = new Set([options.sealKeyEnv, options.wirtSigningKeyEnv].filter(Boolean).map(environmentName));
-  for (const name of Object.keys(env)) if (protectedNames.has(environmentName(name))) delete env[name];
+  const env = withoutProtectedInputs(Object.fromEntries(Object.entries(source).filter(([name]) => names.has(environmentName(name))).map(([name, value]) => [environmentName(name), value])), options);
+  // Match Wrangler's authentication precedence without passing competing credentials.
+  if (env.CLOUDFLARE_API_TOKEN) {
+    delete env.CLOUDFLARE_API_KEY;
+    delete env.CLOUDFLARE_EMAIL;
+  }
   return env;
 }
 
@@ -617,14 +609,17 @@ function createFakeGitHubFetch(options) {
 }
 
 function help() {
+  const entry = process.platform === 'win32'
+    ? 'pwsh -NoProfile -NonInteractive -File apps/github-app/operator-launch.ps1 operator'
+    : 'bash -p apps/github-app/operator-launch.sh operator';
   return `Usage:
-  node apps/github-app/operator-helper.mjs registration --webhook-url <https-url> [--visibility private|public] [--app-name <name>] [--oauth-callback-url <https-url>] [--policy-refresh]
-  node apps/github-app/operator-helper.mjs check|install --app-id <numeric-id> --private-key-file <app-pem> --account-id <account-id> --config <exact-json-or-jsonc> --receipt-file <new-durable-receipt> [--worker <matching-name>] [--webhook-secret-file <protected-file> | --webhook-secret-stdin] [--fake]
+  ${entry} registration --webhook-url <https-url> [--visibility private|public] [--app-name <name>] [--oauth-callback-url <https-url>] [--policy-refresh]
+  ${entry} check|install --app-id <numeric-id> --private-key-file <app-pem> --account-id <account-id> --config <exact-json-or-jsonc> --receipt-file <new-durable-receipt> [--worker <matching-name>] [--webhook-secret-file <protected-file> | --webhook-secret-stdin] [--fake]
     Joined-App configs also require --base-version-id <qualified-bootstrap-version> --oauth-client-id <id> --oauth-client-secret-file <protected-file> (--seal-key-file <retained-file> | --seal-key-env <variable-name>) --seal-key-recovery-ref <opaque-custody-id> (--seal-key-initial | --seal-key-previous-receipt <established-target-receipt>). With Wirt configured, add --wirt-signing-key-file <protected-file> or --wirt-signing-key-env <variable-name>.
-  node apps/github-app/operator-helper.mjs generate-seal --seal-key-file <new-admitted-custody-file> --seal-key-recovery-ref <established-custody-id>
-  node apps/github-app/operator-helper.mjs resume --account-id <account-id> --config <same-exact-config> --receipt-file <existing-receipt> [--worker <matching-name>]
+  ${entry} generate-seal --seal-key-file <new-admitted-custody-file> --seal-key-recovery-ref <established-custody-id>
+  ${entry} resume --account-id <account-id> --config <same-exact-config> --receipt-file <existing-receipt> [--worker <matching-name>]
 
-Omit webhook input flags for the hidden TTY checkpoint. --webhook-secret-stdin requires an already-safe redirected channel. Generation requires externally established custody and never prints the key. The config selects the Worker; --worker verifies it, never overrides it. No command deploys.`;
+Omit webhook input flags for the hidden TTY checkpoint. --webhook-secret-stdin requires an already-safe redirected channel. Generation requires externally established custody and never prints the key. The config selects the Worker; --worker verifies it, never overrides it. The clean entry must run before Node starts; direct library callers need an already-clean runtime. Latest-version installation does not atomically bind the qualified base; see apps/github-app/README.md. No command deploys.`;
 }
 
 export async function main(argv = process.argv.slice(2)) {

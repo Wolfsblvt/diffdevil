@@ -62,6 +62,31 @@ function containsProtectedValues(text, setup) {
   return ['GITHUB_WEBHOOK_SECRET', 'GITHUB_OAUTH_CLIENT_SECRET', 'APP_SEAL_KEY', 'WIRT_SIGNING_KEY_CURRENT'].some(name => text.includes(setup.values[name])) || text.includes('BEGIN RSA PRIVATE KEY');
 }
 
+test('credential-bearing native children cannot execute an ambient Node preload or inherit proxy overrides', async () => {
+  const setup = await appFixture();
+  const marker = join(setup.directory, 'ambient-preload-ran');
+  const preload = join(setup.directory, 'ambient.cjs');
+  const names = ['NODE_OPTIONS', 'NODE_PATH', 'HTTPS_PROXY', 'NODE_EXTRA_CA_CERTS'];
+  const previous = new Map(names.map(name => [name, process.env[name]]));
+  try {
+    await writeFile(preload, `require('node:fs').writeFileSync(${JSON.stringify(marker)}, 'ran');`);
+    process.env.NODE_OPTIONS = `--require=${JSON.stringify(preload)}`;
+    process.env.NODE_PATH = setup.directory;
+    process.env.HTTPS_PROXY = 'http://127.0.0.1:1';
+    process.env.NODE_EXTRA_CA_CERTS = join(setup.directory, 'missing-ca');
+    await writeFile(join(setup.directory, 'fixture-options.json'), JSON.stringify({ absentEnvironmentNames: names }));
+    const receipt = await installCredentials({ ...setup.options, wrangler: resolve('apps/github-app/fixtures/operator-provider.mjs'), runner: createProcessRunner() });
+    assert.equal(receipt.state, 'version-created');
+    assert.equal(receipt.inputs.length, 7);
+    assert.equal(await readFile(marker).then(() => true, () => false), false);
+  } finally {
+    for (const [name, value] of previous) {
+      if (value === undefined) delete process.env[name]; else process.env[name] = value;
+    }
+    await rm(setup.directory, { recursive: true, force: true });
+  }
+});
+
 async function fixture() {
   const directory = await mkdtemp(join(tmpdir(), 'diffdevil-app-helper-'));
   const privateKeyPath = join(directory, 'github-app.pem');
@@ -129,9 +154,9 @@ test('the ready-entry path runs Wrangler from the helper installation outside th
   }
 });
 
-test('provider commands preserve unrelated process inputs and selected authentication while overriding route controls', async () => {
+test('provider commands allow only OS paths, selected authentication and fixed controls', async () => {
   const setup = await fixture();
-  const names = ['CLOUDFLARE_API_BASE_URL', 'CLOUDFLARE_BASE_URL', 'CF_API_BASE_URL', 'CLOUDFLARE_API_TOKEN', 'CLOUDFLARE_ENV', 'CLOUDFLARE_ACCOUNT_ID', 'CF_ACCOUNT_ID', 'CF_API_TOKEN', 'CLOUDFLARE_API_USER_SERVICE_KEY', 'CLOUDFLARE_AUTH_USE_KEYRING', 'WRANGLER_HOME', 'WRANGLER_CONFIG_DIR', 'WRANGLER_SEND_METRICS', 'WRANGLER_WRITE_LOGS', 'WRANGLER_LOG', 'DIFFDEVIL_TEST_UNRELATED_ENV'];
+  const names = ['CLOUDFLARE_API_BASE_URL', 'CLOUDFLARE_BASE_URL', 'CF_API_BASE_URL', 'CLOUDFLARE_API_TOKEN', 'CLOUDFLARE_ENV', 'CLOUDFLARE_ACCOUNT_ID', 'CF_ACCOUNT_ID', 'CF_API_TOKEN', 'CLOUDFLARE_API_USER_SERVICE_KEY', 'CLOUDFLARE_AUTH_USE_KEYRING', 'WRANGLER_HOME', 'WRANGLER_CONFIG_DIR', 'WRANGLER_SEND_METRICS', 'WRANGLER_WRITE_LOGS', 'WRANGLER_LOG', 'DIFFDEVIL_TEST_UNRELATED_ENV', 'NODE_OPTIONS', 'NODE_PATH', 'HTTPS_PROXY', 'NODE_EXTRA_CA_CERTS'];
   const previous = new Map(names.map(name => [name, process.env[name]]));
   const { calls, runner } = versionRunner();
 
@@ -152,6 +177,7 @@ test('provider commands preserve unrelated process inputs and selected authentic
     process.env.WRANGLER_WRITE_LOGS = 'true';
     process.env.WRANGLER_LOG = 'debug';
     process.env.DIFFDEVIL_TEST_UNRELATED_ENV = 'keep-this-process-input';
+    for (const name of ['NODE_OPTIONS', 'NODE_PATH', 'HTTPS_PROXY', 'NODE_EXTRA_CA_CERTS']) process.env[name] = 'unselected-runtime-input';
 
     await checkCredentials({ appId: '123', privateKeyPath: setup.privateKeyPath, webhookSecretPath: setup.privateKeyPath, accountId: 'account-1', config: setup.config, receiptPath: join(setup.directory, 'receipt.json'), runner });
 
@@ -166,13 +192,13 @@ test('provider commands preserve unrelated process inputs and selected authentic
       assert.equal(call.env.CLOUDFLARE_API_TOKEN, 'selected-process-token');
       assert.equal(call.env.CF_API_TOKEN, undefined);
       assert.equal(call.env.CLOUDFLARE_API_USER_SERVICE_KEY, undefined);
-      assert.equal(call.env.CLOUDFLARE_AUTH_USE_KEYRING, 'false');
+      assert.equal(call.env.CLOUDFLARE_AUTH_USE_KEYRING, undefined);
       assert.equal(call.env.WRANGLER_HOME, 'selected-wrangler-home');
-      assert.equal(call.env.WRANGLER_CONFIG_DIR, 'caller-wrangler-config');
+      assert.equal(call.env.WRANGLER_CONFIG_DIR, undefined);
       assert.equal(call.env.WRANGLER_SEND_METRICS, 'false');
       assert.equal(call.env.WRANGLER_WRITE_LOGS, 'false');
       assert.equal(call.env.WRANGLER_LOG, 'log');
-      assert.equal(call.env.DIFFDEVIL_TEST_UNRELATED_ENV, 'keep-this-process-input');
+      for (const name of ['DIFFDEVIL_TEST_UNRELATED_ENV', 'NODE_OPTIONS', 'NODE_PATH', 'HTTPS_PROXY', 'NODE_EXTRA_CA_CERTS']) assert.equal(call.env[name], undefined);
       assert.ok(call.args.includes('--env-file'));
     }
   } finally {

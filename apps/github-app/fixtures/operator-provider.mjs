@@ -29,10 +29,13 @@ else {
     { id: options.changedDeployment && state.created ? 'changed-deployment' : 'active-deployment', versions: [{ version_id: 'version-before', percentage: 100 }] }
   ];
   else if (args.includes('list')) {
-    result = [{ id: 'older-version' }, { id: 'version-before' }, ...(state.created ? [{ id: 'version-created' }] : [])];
+    result = [{ id: 'older-version' }, { id: 'version-before' }, ...(state.foreignUpload ? [{ id: 'foreign-version' }] : []), ...(state.created ? [{ id: 'version-created' }] : [])];
     if (state.created && options.omitReadback) exitCode = 1;
   } else if (args.includes('view')) result = { id: args[args.indexOf('view') + 1], resources: { bindings: [{ name: 'APP_DB', type: 'd1', id: options.foreignDatabase ? 'abcdefab-abcd-abcd-abcd-abcdefabcdef' : config.d1_databases[0].database_id }, ...(config.vars?.GITHUB_APP_BOT_LOGIN ? [{ name: 'GITHUB_APP_BOT_LOGIN', type: 'plain_text', text: config.vars.GITHUB_APP_BOT_LOGIN }] : []), ...(state.inputs ?? options.existingInputs ?? []).map(name => ({ name, type: 'secret_text' }))] } };
   else if (args.includes('bulk')) {
+    // A foreign writer uploads after the helper's final version check.
+    if (options.foreignUploadBeforeWrite) state.foreignUpload = true;
+    state.secretAttachmentBase = state.foreignUpload ? 'foreign-version' : 'version-before';
     const chunks = [];
     for await (const chunk of process.stdin) chunks.push(chunk);
     const input = Buffer.concat(chunks).toString('utf8');

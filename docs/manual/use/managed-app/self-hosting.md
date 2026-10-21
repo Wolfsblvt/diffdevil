@@ -42,7 +42,7 @@ installer below remains available. This complete, read-only specimen prints
 registration inputs and a provider registration link:
 
 ```sh
-node apps/github-app/operator-helper.mjs registration --webhook-url https://example.invalid/webhooks/github
+bash -p apps/github-app/operator-launch.sh operator registration --webhook-url https://example.invalid/webhooks/github
 ```
 
 `example.invalid` is deliberately non-operational. Replace it with your selected webhook destination when preparing a real registration; running this specimen registers nothing. The helper selects Contents read, Pull requests write, Checks write, and the PR/check events. GitHub supplies installation lifecycle events. Review the resulting App identity and scope rather than assuming the example selected your organization.
@@ -92,8 +92,8 @@ The source-owned credential helper requires an already identified Worker deploym
 For that established target, the operator command has this shape:
 
 ```sh
-node apps/github-app/operator-helper.mjs check --app-id 123 --private-key-file path/to/retained-app-key.pem --account-id account-id --config path/to/derived-qualification.jsonc --receipt-file path/to/new-credential-receipt.json
-node apps/github-app/operator-helper.mjs install --app-id 123 --private-key-file path/to/retained-app-key.pem --account-id account-id --config path/to/derived-qualification.jsonc --receipt-file path/to/new-credential-receipt.json
+bash -p apps/github-app/operator-launch.sh operator check --app-id 123 --private-key-file path/to/retained-app-key.pem --account-id account-id --config path/to/derived-qualification.jsonc --receipt-file path/to/new-credential-receipt.json
+bash -p apps/github-app/operator-launch.sh operator install --app-id 123 --private-key-file path/to/retained-app-key.pem --account-id account-id --config path/to/derived-qualification.jsonc --receipt-file path/to/new-credential-receipt.json
 ```
 
 The identifiers and file paths are specimens, not values for a real environment.
@@ -131,8 +131,21 @@ Use your own production config, Worker and custody paths. Keep the original seal
 key recoverable with the database: generating another key cannot open existing
 protected authorizations or reproduce opaque file locators.
 
+Start both helpers through the clean launch entry shown in the
+[operator source](../../../../apps/github-app/README.md#registration-and-credential-helper).
+The Bash specimens use `bash -p`; on Windows replace that prefix with
+`pwsh -NoProfile -NonInteractive -File apps/github-app/operator-launch.ps1`.
+Keep the `operator` or `manifest` selection and all helper arguments. The entry
+retains native authentication and explicit seal/Wirt sources while excluding
+ambient Node preloads and provider transport overrides before Node starts.
+
 Select `--base-version-id <qualified-bootstrap-version>` for the joined App.
 That exact version must still be latest immediately before the secret write.
+This is an observation, not an atomic attachment guarantee: Wrangler 4.150.0
+patches `/versions/latest`, so a concurrent upload can receive the credentials.
+The current installer is not an admitted exact-base production route; a
+source-bound upload replacement remains unresolved. Registration, capture,
+preflight and read-only recovery remain available.
 For a confirmed new/empty target, use `--seal-key-initial`; an established target
 uses `--seal-key-previous-receipt <durable-successful-receipt>` and the same
 retained key/custody reference. A foreign target or different seal refuses.
@@ -158,7 +171,7 @@ deployment, and partial/unknown results. Reconcile an interrupted operation with
 the existing receipt and exact unchanged config:
 
 ```sh
-node apps/github-app/operator-helper.mjs resume --account-id account-id --config path/to/derived-qualification.jsonc --receipt-file path/to/existing-credential-receipt.json
+bash -p apps/github-app/operator-launch.sh operator resume --account-id account-id --config path/to/derived-qualification.jsonc --receipt-file path/to/existing-credential-receipt.json
 ```
 
 Resume reads provider state without reading input files or creating another

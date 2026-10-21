@@ -73,6 +73,49 @@ The scheduled Worker maintenance path performs recovery pruning, expiry-derived 
 
 ## Registration and credential helper
 
+Start either helper through the repository's clean launch entry, before Node
+starts. On Windows use PowerShell 7 without profiles; on Unix use Bash protected
+mode (which ignores `BASH_ENV` and imported functions):
+
+```powershell
+pwsh -NoProfile -NonInteractive -File apps/github-app/operator-launch.ps1 manifest --help
+pwsh -NoProfile -NonInteractive -File apps/github-app/operator-launch.ps1 operator registration --webhook-url https://example.invalid/webhooks/github
+```
+
+```sh
+bash -p apps/github-app/operator-launch.sh manifest --help
+bash -p apps/github-app/operator-launch.sh operator registration --webhook-url https://example.invalid/webhooks/github
+```
+
+Keep these scripts beside the helpers in an installed source tree. They resolve
+Node from the trusted operator PATH and preserve caller-relative file paths,
+arguments, exit status and redirected streams. Windows starts Node without a new
+window; an explicitly interactive console retains its TTY. A background caller
+must also hide its own PowerShell process at creation. Do not start a Node wrapper
+to invoke this entry: `NODE_OPTIONS` could execute before that wrapper's code.
+Direct Node/library entry remains usable only from an already-clean runtime.
+
+The launchers allow only OS paths and the selected Cloudflare authentication
+inputs: `CLOUDFLARE_API_TOKEN` takes precedence, otherwise API key/email, otherwise
+Wrangler's retained OAuth configuration under the selected home. They forward
+only explicitly named seal/Wirt sources into fixed private environment slots;
+values never become command arguments. The helper's native children independently
+allow only OS/authentication inputs and fixed account/logging controls. Ambient
+Node options/module paths, proxy/CA overrides, alternate API endpoints and
+unrelated variables do not reach Node or its credential-bearing children. This
+qualifies a trusted operator installation with hostile incidental Node/transport
+settings, not an untrusted host, executable, dependency tree or credential store.
+
+**Exact-base installation remains unresolved.** Pinned Wrangler 4.150.0's
+`versions secret bulk` patches `/versions/latest`, without a version-ID operand
+or conditional base. The two latest-version checks below are observations, not
+an enforced single-writer invariant. A concurrent upload can receive the secrets
+before readback, even if its binding names look familiar. This route must not be
+admitted as an exact-qualified-base production installer. The complete mediated
+installation destination remains; its source-bound upload replacement requires
+qualification, including code/assets/settings identity and read-only recovery.
+No install capability or existing receipt is deleted by this source repair.
+
 The preferred initial setup is `manifest-helper.mjs`: a local native manifest
 form for personal/organisation registration and explicit visibility, with
 state-checked callback, contained conversion, encrypted capture and a direct
@@ -80,7 +123,7 @@ in-memory handoff to the existing installer. It opens no browser and deploys
 nothing. [The maintained invocation and recovery route](../../docs/integration/app-staging.md#native-manifest-registration-and-capture)
 explain retained seal custody, the one-hour handshake, interruption checkpoints,
 the separate installation receipt, and the unobserved real GitHub redirect seam.
-Use `node apps/github-app/manifest-helper.mjs --help` for its CLI options and
+Use the clean entry with `manifest --help` for its CLI options and
 `npm run qa:app:manifest` for isolated local-browser/synthetic-provider proof.
 The explicit seal file or named-environment input is shared by capture, resume
 and installation. A managed environment consumer needs no plaintext seal file.
@@ -99,10 +142,10 @@ before reading protected files or prompting for input. Use a derived operational
 config or the admitted built App config, with its relative paths kept valid.
 
 ```sh
-node apps/github-app/operator-helper.mjs registration --webhook-url https://example.invalid/webhooks/github
-node apps/github-app/operator-helper.mjs check --app-id 123 --private-key-file path/to/retained-app-key.pem --account-id account-id --config path/to/derived-qualification.jsonc --receipt-file path/to/new-credential-receipt.json
-node apps/github-app/operator-helper.mjs install --app-id 123 --private-key-file path/to/retained-app-key.pem --account-id account-id --config path/to/derived-qualification.jsonc --receipt-file path/to/new-credential-receipt.json
-node apps/github-app/operator-helper.mjs resume --account-id account-id --config path/to/derived-qualification.jsonc --receipt-file path/to/existing-credential-receipt.json
+bash -p apps/github-app/operator-launch.sh operator registration --webhook-url https://example.invalid/webhooks/github
+bash -p apps/github-app/operator-launch.sh operator check --app-id 123 --private-key-file path/to/retained-app-key.pem --account-id account-id --config path/to/derived-qualification.jsonc --receipt-file path/to/new-credential-receipt.json
+bash -p apps/github-app/operator-launch.sh operator install --app-id 123 --private-key-file path/to/retained-app-key.pem --account-id account-id --config path/to/derived-qualification.jsonc --receipt-file path/to/new-credential-receipt.json
+bash -p apps/github-app/operator-launch.sh operator resume --account-id account-id --config path/to/derived-qualification.jsonc --receipt-file path/to/existing-credential-receipt.json
 ```
 
 Registration selects Contents read, Pull requests write, Checks write, and
@@ -194,7 +237,7 @@ After a custodian has established an appropriate protected recovery destination,
 the contained file-generation specimen is:
 
 ```sh
-node apps/github-app/operator-helper.mjs generate-seal --seal-key-file path/to/new-custody-owned-seal.txt --seal-key-recovery-ref admitted-custody-reference
+bash -p apps/github-app/operator-launch.sh operator generate-seal --seal-key-file path/to/new-custody-owned-seal.txt --seal-key-recovery-ref admitted-custody-reference
 ```
 
 It generates 32 random bytes once, exclusively creates and flushes the selected
@@ -226,10 +269,11 @@ start, or preserve the non-secret receipt in the operation's durable handback
 before retiring the checkout. Repository `artifacts/` is only a working copy.
 
 Wrangler's secret operation inherits the latest uploaded version, which can differ
-from the active deployment. Keep one operator as this Worker's writer until the
-receipt is reconciled, and qualify the returned version's source/engine/composition
-before activation. The staging packet separates its unexposed bootstrap from
-credential preparation and version-specific activation.
+from the active deployment. An operator convention and post-write readback cannot
+prevent attachment to a concurrent upload. Binding-name readback does not prove
+source lineage. See the exact-base limitation above before selecting installation.
+The staging packet separates its unexposed bootstrap from credential preparation
+and version-specific activation.
 
 `--fake` selects disposable in-process provider responses and labels its receipts
 `mode: fixture`; they cannot be resumed as live receipts. The registered

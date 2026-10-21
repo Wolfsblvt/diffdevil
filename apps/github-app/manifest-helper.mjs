@@ -283,7 +283,17 @@ const NAMES = { 'capture-file': 'capturePath', 'receipt-file': 'receiptPath', 's
 const FLAGS = new Set(['policy-refresh', 'seal-key-initial']);
 export async function main(argv = process.argv.slice(2)) {
   const [command, ...args] = argv;
-  if (command === '--help') { process.stdout.write('Usage: node apps/github-app/manifest-helper.mjs check|register|resume|status|install --capture-file <encrypted-file> --receipt-file <non-secret-file> (--seal-key-file <retained-file> | --seal-key-env <explicit-name>) --seal-key-recovery-ref <custody-id>\nRegistration: --owner <login> --owner-type personal|organisation --visibility public|private --app-name <name> --webhook-url <https-url> [--oauth-callback-url <https-url>] [--policy-refresh] [--port <loopback-port>]\nInstall: --config <exact-config> --account-id <id> --install-receipt-file <new-receipt> [--worker <matching-name>]; joined App: --base-version-id <qualified-bootstrap> (--seal-key-initial | --seal-key-previous-receipt <previous-successful-receipt>); Wirt: (--wirt-signing-key-file <retained-file> | --wirt-signing-key-env <explicit-name>)\nSee docs/integration/app-staging.md for the capture, interruption and separate installation handoff. No command deploys or opens a browser.\n'); return; }
+  if (command === '--help') {
+    const entry = process.platform === 'win32'
+      ? 'pwsh -NoProfile -NonInteractive -File apps/github-app/operator-launch.ps1 manifest'
+      : 'bash -p apps/github-app/operator-launch.sh manifest';
+    process.stdout.write(`Usage: ${entry} check|register|resume|status|install --capture-file <encrypted-file> --receipt-file <non-secret-file> (--seal-key-file <retained-file> | --seal-key-env <explicit-name>) --seal-key-recovery-ref <custody-id>
+Registration: --owner <login> --owner-type personal|organisation --visibility public|private --app-name <name> --webhook-url <https-url> [--oauth-callback-url <https-url>] [--policy-refresh] [--port <loopback-port>]
+Install: --config <exact-config> --account-id <id> --install-receipt-file <new-receipt> [--worker <matching-name>]; joined App: --base-version-id <qualified-bootstrap> (--seal-key-initial | --seal-key-previous-receipt <previous-successful-receipt>); Wirt: (--wirt-signing-key-file <retained-file> | --wirt-signing-key-env <explicit-name>)
+The clean entry must run before Node starts. Direct library callers need an already-clean runtime. Latest-version installation does not atomically bind the qualified base.
+See docs/integration/app-staging.md for the capture, interruption and separate installation handoff. No command deploys or opens a browser.\n`);
+    return;
+  }
   const options = {};
   for (let index = 0; index < args.length; index++) {
     const name = args[index].replace(/^--/u, '');
