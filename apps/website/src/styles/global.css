@@ -236,17 +236,9 @@ pre.astro-code, .code-body.astro-code { background: transparent !important; whit
 .utility-social { width: 42px; padding: 0 7px; gap: 2px; }
 .disclosure-host { position: relative; display: flex; align-items: center; }
 
-/* trailing action: one per header. The npm command keeps exactly its width when it confirms a copy. */
+/* trailing action: one per header, the App (D039). */
 .trailing-action { display: inline-flex; align-items: center; gap: 8px; height: 30px; padding: 0 10px; flex: none; border: 1px solid var(--hair); border-radius: var(--r-control); background: transparent; color: var(--fg); font-size: 13px; font-weight: 600; white-space: nowrap; transition: border-color var(--dur) var(--ease), background var(--dur) var(--ease); }
 .trailing-action:hover { border-color: var(--hair-strong); background: var(--bg-raised); }
-.trailing-copy { font-family: var(--font-mono); font-size: 12px; font-weight: 400; color: var(--fg-2); }
-.trailing-copy:hover { color: var(--fg); }
-.trailing-copy .copy-glyph { color: var(--fg-3); }
-.copy-swap { display: inline-grid; }
-.copy-swap > * { grid-area: 1 / 1; text-align: left; }
-.copy-swap-done { visibility: hidden; color: var(--fg); }
-.is-copied .copy-swap-rest { visibility: hidden; }
-.is-copied .copy-swap-done { visibility: visible; }
 
 /* destination panels: Install, Community, compact Menu */
 .dest-panel { position: absolute; top: calc(100% + 6px); z-index: 30; width: 260px; max-width: calc(100vw - 24px); padding: 6px; border: 1px solid var(--hair); border-radius: var(--r-block); background: var(--bg-raised); box-shadow: 0 10px 30px rgb(0 0 0 / 22%); transform: translateX(var(--shift, 0px)); }
@@ -331,9 +323,10 @@ html[data-theme-pref="auto"][data-theme="light"] .theme-dot { color: #161b24; }
 @media (max-width: 1080px) {
   .primary-nav { display: none; }
   .header-main .compact-menu { display: flex; }
-  .trailing-copy { display: none; }
 }
 @media (max-width: 640px) { .logo-lockup { display: none; } .site-header .wrap, .header-main { gap: 10px; } }
+/* the narrowest phones keep the App action; Community stays reachable in the footer */
+@media (max-width: 360px) { .community-host { display: none; } }
 @media (min-width: 641px) { .brand-micro { display: none; } }
 /* at the narrowest widths the redundant section label yields before any utility does */
 @media (max-width: 480px) { .brand .surface-title { display: none; } }

@@ -1,7 +1,9 @@
 ---
 // SPDX-License-Identifier: AGPL-3.0-only
 // The one site header, identical on every route including the manual. Identity,
-// discovery, navigation, utilities and one trailing action retain their accepted order.
+// discovery, navigation, utilities and one trailing action retain their accepted order. The trailing
+// action is the App (D039): the signed-in App once its destination is configured, its product page until
+// then. Examples is reached through the Playground's lessons and the footer, not the top navigation.
 import Icon from './Icon.astro';
 import Search from './Search.astro';
 import ThemeControl from './ThemeControl.astro';
@@ -17,7 +19,6 @@ const isHere = (href: string) => { const target = new URL(href, here); return ta
 const links = [
   { href: paths.docs, label: copy.nav.docs, key: 'docs' },
   { href: paths.playground, label: copy.nav.playground, key: 'playground' },
-  { href: paths.examples, label: copy.nav.examples, key: 'examples' },
 ] as const;
 const installCurrent = current === 'app' || current === 'extension';
 ---
@@ -55,17 +56,13 @@ const installCurrent = current === 'app' || current === 'extension';
       <span class="header-sep" aria-hidden="true"></span>
       <div class="utilities">
         <a class="utility utility-direct" href={GITHUB} rel="noopener" aria-label={copy.nav.source} title={copy.nav.source} data-direct-source><Icon name="github" size={16} /></a>
-        <div class="disclosure-host">
+        <div class="disclosure-host community-host">
           <button class="utility utility-social" type="button" aria-expanded="false" aria-controls="panel-community" aria-label={copy.community.trigger} title={copy.community.tooltip} data-panel-trigger><Icon name="social-links" size={16} /><Icon name="chevron" size={10} class="chevron" /></button>
           <div class="dest-panel" id="panel-community" data-panel data-align="end" hidden><p class="dest-heading">{copy.community.heading}</p><DestinationRows rows={community} kind="community" /></div>
         </div>
         <ThemeControl />
       </div>
-      {DASHBOARD_URL
-        ? <a class="trailing-action" href={DASHBOARD_URL} data-trailing="app" aria-current={current === 'app' ? 'page' : undefined}>{copy.nav.app}</a>
-        : <button class="trailing-action trailing-copy" type="button" data-copy={copy.nav.command} data-copy-state aria-label={`Copy install command: ${copy.nav.command}`} data-trailing="npm">
-            <span class="copy-swap"><span class="copy-swap-rest">{copy.nav.command}</span><span class="copy-swap-done" aria-hidden="true">{copy.nav.copied}</span></span><Icon name="copy" size={13} class="copy-glyph" />
-          </button>}
+      <a class="trailing-action" href={DASHBOARD_URL ?? paths.app} data-trailing="app" aria-current={current === 'app' ? 'page' : undefined}>{copy.nav.app}</a>
     </div>
   </div>
 </header>

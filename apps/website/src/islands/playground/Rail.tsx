@@ -107,12 +107,12 @@ export function Rail(props: Props) {
           </div>
         ) : (
           <div className="stack">
-            <p className="field-hint">{c.prsHint}</p>
+            <p className="field-hint">{c.prsHint} <a className="link-quiet" href="/examples/">{c.prsAll} →</a></p>
             <ul className="pg-examples">
               {catalogue.map(card => (
                 <li key={card.id}>
                   <span className="pg-card pg-card-lesson"><span className="pg-card-body pg-card-wide"><span className="pg-card-title">{card.title}</span><span className="pg-card-hook">{card.summary}</span><span className="pg-card-meta">{card.lessons.join(' · ')}</span></span>
-                    <span className="pg-card-variants">{card.variants.map(variant => <button key={variant.id} type="button" className="link-plain small" aria-pressed={state.example === card.id && state.variant === variant.id} onClick={() => props.onSelectExample(card.id, variant.id)}><GitHubMark /> {variant.label} · {variant.repository}#{variant.pullRequest} · {variant.evidence}</button>)}</span>
+                    <span className="pg-card-variants">{card.variants.map(variant => <button key={variant.id} type="button" className="pg-variant" aria-pressed={state.example === card.id && state.variant === variant.id} onClick={() => props.onSelectExample(card.id, variant.id)}><GitHubMark /><span className="pg-variant-label">{variant.label}</span><span className="pg-variant-meta">{variant.repository}#{variant.pullRequest} · {variant.evidence}</span></button>)}</span>
                   </span>
                 </li>
               ))}

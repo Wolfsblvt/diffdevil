@@ -40,6 +40,14 @@
 .pg-card-ev { margin-left: auto; font: 400 11px var(--font-mono); color: var(--fg-3); }
 .pg-card-hook { font-size: 12px; line-height: 1.45; color: var(--fg-2); }
 .pg-card-meta { font-family: var(--font-mono); font-size: 11px; color: var(--fg-3); margin-top: 2px; }
+/* a lesson card's variants: one compact row each, label first, the PR and evidence quiet beside it */
+.pg-card-variants { grid-column: 1 / -1; display: grid; gap: 4px; margin-top: 6px; }
+.pg-variant { display: grid; grid-template-columns: 13px minmax(0, 1fr); gap: 1px 8px; align-items: center; width: 100%; text-align: left; background: transparent; border: 1px solid var(--hair); border-radius: var(--r-control); padding: 6px 9px; color: var(--fg-2); font: inherit; font-size: 12.5px; line-height: 1.35; transition: border-color var(--dur) var(--ease), color var(--dur) var(--ease); }
+.pg-variant:hover { border-color: var(--hair-strong); color: var(--fg); }
+.pg-variant[aria-pressed="true"] { border-color: var(--accent); background: var(--bg-raised); color: var(--fg); }
+.pg-variant .gh { width: 13px; height: 13px; color: var(--fg-3); }
+.pg-variant-label { font-weight: 600; min-width: 0; }
+.pg-variant-meta { grid-column: 2; font-family: var(--font-mono); font-size: 11px; color: var(--fg-3); overflow-wrap: anywhere; }
 
 /* ── configuration: one label column, one control column ── */
 .pg-config { padding: 14px 18px 16px; display: flex; flex-direction: column; gap: 10px; }

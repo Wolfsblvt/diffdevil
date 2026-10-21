@@ -8,12 +8,12 @@
 export const copy = {
   nav: {
     docs: 'Docs', faq: 'FAQ', playground: 'Playground', examples: 'Examples', menu: 'Menu', install: 'Install', app: 'App',
-    command: 'npm i -D @wolfsblvt/diffdevil', copied: 'Copied ✓', source: 'Source on GitHub',
+    source: 'Source on GitHub',
   },
   /** Install⌄: a menu of the site's own pages. Every entry is [title, short description]. */
   install: {
     extension: ['Browser extension', 'Changed and policy directly inside GitHub'],
-    app: ['GitHub App', 'Automatic checks, labels and managed operation'],
+    app: ['GitHub App', 'Checks, labels and history across your repositories'],
     open: ['CLI and GitHub Actions', 'Run the open package yourself'],
   },
   theme: {
@@ -75,7 +75,7 @@ export const copy = {
       body: 'See replacement-aware Changed, per-file decomposition, personal or repository size bands, and inspectable reports directly on pull requests. No workflow, App installation, or repository write access required.',
       cta: 'Install the extension', link: 'Explore the browser extension' },
     three: { index: '03', label: 'GitHub App', title: 'Let it run for you',
-      body: 'Install the GitHub App once for automatic analysis, native checks, labels, comments, and managed configuration. No workflow file, token assembly, or runner upkeep.',
+      body: 'Install the GitHub App once for automatic analysis, native checks, labels and managed configuration, then read pull-request flow, size and history across your repositories. No workflow file, token assembly, or runner upkeep.',
       cta: 'Install the App', links: [['How the App works', '/app/'], ['Self-hosting', '/app/#self-host']] as const },
   },
 
@@ -175,16 +175,17 @@ export const copy = {
 
   app: {
     eyebrowTail: 'diffdevil GitHub App', h2: 'Same diffdevil. Less plumbing.', h2Lines: ['Same diffdevil.', 'Less plumbing.'] as const,
-    body: 'Install for the repositories you choose, inspect the effective policy and enable the intended effects. The App runs the same engine and the same .diffdevil.yml as the Action, and stays up to date without a workflow file, a token, or a runner to babysit.',
+    body: 'See how your repositories actually change: pull-request flow, size and history across every repository you choose, with native checks and size labels on every pull request. Same engine and same .diffdevil.yml as the Action, without a workflow file, a token or a runner to babysit.',
     ctaPrimary: 'Install on GitHub', ctaSecondary: 'How the App works', ctaTertiary: 'Self-host it',
-    foot: 'Community is open source (AGPL-3.0-only) and self-hostable. Free, Pro and Business are the planned hosted offer.',
+    foot: 'Free, Pro and Business plans. The Community App is open source (AGPL-3.0-only) and self-hostable.',
+    /** Selling order: what the App shows you first, then what it does on the PR, then how little it asks. */
     benefits: [
-      ['Install once', 'No workflow file for ordinary use, no personal token assembly, no runner minutes or upgrades.'],
-      ['Native check summaries', 'Evidence, raw and replacement-aware facts, rule results and observed effects on the PR itself.'],
-      ['Org defaults, repo overrides', 'Pick a preset for the account; a repository’s .diffdevil.yml wins where it speaks.'],
-      ['Effective configuration', 'See every setting and where it came from. Export the resolved ordinary policy any time.'],
-      ['Deliberate effects', 'Labels only in declared groups, comments only when opted in, readback after every write.'],
-      ['History if you want it', 'Opt-in measurements with repository names and file paths, never source or patches.'],
+      ['History that remembers', 'Every merged pull request, its size and its lifecycle, period over period. Numbers and paths, never source.'],
+      ['All your repositories at once', 'Overview, pull-request flow, time to merge and change volume across everything you can read.'],
+      ['Checks and labels on every PR', 'One native check summary per head and size labels in declared groups, read back after every write.'],
+      ['Install once', 'No workflow file, no personal token, no runner minutes or upgrades. It stays current.'],
+      ['Defaults that scale', 'A preset per account or organisation; a repository’s .diffdevil.yml still wins where it speaks.'],
+      ['Every setting explained', 'See the effective policy and where each value came from. Export it any time.'],
     ] as const,
     shotTitle: 'diffdevil App',
     shotStanding: 'Actual App UI on its sample accounts; every figure is fixture data.',
@@ -237,7 +238,7 @@ export const copy = {
     inputLabel: 'Pull request URL', inputHint: 'Public github.com pull requests only. Never asks for a token.', inputButton: 'Analyze public PR',
     analyzed: 'Analyzed', edit: 'edit', copyUrl: 'copy URL',
     fixtures: 'Frozen fixtures', fixturesHint: 'Repository-owned, deterministic. Work without touching GitHub.',
-    prs: 'Real pull requests', prsHint: 'Real open-source PRs we picked and snapshotted. Open from cache; refresh on demand.',
+    prs: 'Real pull requests', prsHint: 'Real open-source PRs we picked and snapshotted. Open from cache; refresh on demand.', prsAll: 'Why these pull requests',
     config: '§ Configuration', controls: 'Controls', policy: 'Policy',
     preset: 'Preset', metric: 'Size metric', bands: 'Bands', exclude: 'Exclude', comment: 'Comment', commentOff: 'off · opt-in, upsert', commentOn: 'on · upsert',
     kept: 'Also in this policy', keptTail: 'untouched by these controls:', keptLink: 'Open in Policy',

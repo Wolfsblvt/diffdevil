@@ -27,10 +27,10 @@ const permissions = [
   ['Checks', 'write', 'one App-owned check summary per analyzed head, updated rather than duplicated'],
 ];
 const history = [
+  ['What it shows', 'What merged and when, how big each pull request was, how long it took, and how this period compares with the last. Pro adds which files keep changing, grow or change together.'],
   ['What is kept', 'Repository names, relative file paths, numerical measurements, comparison identities, lifecycle facts and coverage. Names and paths are protected repository metadata, not anonymous data.'],
   ['What is never kept', 'No source contents, patches, contributor-performance dimensions, PR prose or full reports. History uses an explicit allowlist; a new report field does not become stored data by accident.'],
-  ['Retention', 'Thirty rolling days on the free hosted allowance, counted from the analysis. You can choose a shorter period. Opt-in dates and collection gaps stay visible beside every trend.'],
-  ['Export and delete', 'Export the retained numbers in a documented, versioned format. Stopping collection and deleting what exists are separate controls, and deleted ranges are not recreated by retries.'],
+  ['Yours to control', 'Choose the repositories that collect it and, if you like, a shorter retention. Export the numbers in a documented format, stop collection, or delete what exists; deleted ranges are not recreated.'],
 ];
 const shots = copy.app.shots;
 /** A tour stop is already named by its label; its lead is the caption without the "Name: " prefix. */
@@ -41,15 +41,31 @@ const tour = [
   { id: 'pr', name: 'Pull request detail', src: prDetail, shot: shots.prDetail, points: ['Replacement-aware Changed beside raw churn', 'The policy result, the label it wants and the label GitHub shows', 'How the size moved across analysed heads'] },
   { id: 'manage', name: 'Manage', src: manage, shot: shots.manage, points: ['Choose which repositories run, label-only or with history', 'Account defaults, linked policies, people and audit', 'Plan and funding for each account and organisation'] },
 ] as const;
-// The planned hosted offer as docs/app-plans.md selects it; not a checkout.
+// The hosted offer exactly as docs/app-plans.md selects it. Checkout opens with the App's public access.
 const plans = [
-  { name: 'Free', price: '€0', cadence: '', lead: 'Managed pull-request operation and useful basic history.',
-    items: ['Checks, size labels and owned size replies', 'Up to 3 private repositories, unlimited public labelling', 'PR size, lifecycle and basic history, 30 rolling days', 'History on up to 10 public repositories'] },
-  { name: 'Pro', price: '€9', cadence: '/month or €90/year', lead: 'File-level memory and richer exploration.',
-    items: ['Everything in Free, without a personal repository limit', 'File history, clouds, Turnover and co-change', 'One connected organisation with 3 private repositories', 'Personal and organisation default policies'] },
-  { name: 'Business', price: '€42', cadence: '/month or €400/year', lead: 'Coordinated policy and delegated operation.',
-    items: ['Everything in Pro, without repository limits', 'Shared named policies, linking and bulk application', 'Automatic setup of eligible repositories', 'Delegated administration and the full audit'] },
+  { name: 'Free', price: '€0', cadence: 'for everyone', annual: '', fit: 'For your own projects and small public ones.', lead: 'Checks, size labels and the history of your pull requests.',
+    items: ['Native checks, size labels and size replies', 'Up to 3 private repositories, any number of public ones', 'Pull-request size, lifecycle and repository history', 'History on up to 10 public repositories, 30 rolling days'] },
+  { name: 'Pro', price: '€9', cadence: 'per month', annual: 'or €90 a year (€7.50 a month)', fit: 'For people who want to understand their codebase.', lead: 'Everything in Free, plus file-level memory.',
+    items: ['No limit on your own repositories', 'File history, clouds, Turnover and co-change', 'History without automatic age expiry', 'One organisation included, with 3 private repositories'] },
+  { name: 'Business', price: '€42', cadence: 'per month', annual: 'or €400 a year (€33.33 a month)', fit: 'For teams that run policy across an organisation.', lead: 'Everything in Pro, coordinated across teams.',
+    items: ['One organisation included, without repository limits', 'Shared named policies, linked and applied in bulk', 'Eligible repositories set up automatically', 'Delegated administration with a full audit'] },
 ] as const;
+// Capability by plan, condensed from docs/app-plans.md for a reader choosing a plan.
+const compare: readonly (readonly [string, string, string, string])[] = [
+  ['Checks, size labels and size replies', 'Included', 'Included', 'Included'],
+  ['Private repositories', 'Up to 3, shared with one organisation', 'No limit for you; 3 per organisation', 'No limit'],
+  ['Public repositories with labels', 'No limit', 'No limit', 'No limit'],
+  ['Public repositories with history', 'Up to 10', 'No limit', 'No limit'],
+  ['Pull-request size, lifecycle and history', 'Included', 'Included', 'Included'],
+  ['History retention', '30 rolling days', 'No automatic expiry', 'No automatic expiry'],
+  ['File history, clouds, Turnover, co-change', '—', 'Included', 'Included'],
+  ['Historical import', 'Up to 100 recent PRs per repository', 'Recent first, then older history', 'Recent first, coordinated onboarding'],
+  ['Default policies', 'Per repository', 'One personal, one per organisation', 'Shared named policies, linking, bulk apply'],
+  ['Automatic repository setup', '—', '—', 'Included'],
+  ['Administration', 'One administrator per scope', 'One administrator per scope', 'Delegated, with full audit'],
+  ['Included organisation', 'One, sharing the Free limits', 'One, with 3 private repositories', 'One, without limits'],
+  ['Additional organisations', '—', '€9/month or €90/year each', '€9/month or €90/year each'],
+];
 const migration = `# 1. Turn off the Action writer. A read-only step may stay.
 - uses: Wolfsblvt/diffdevil/actions/analyze@v1
 # 2. Install the App and pick the same preset.
@@ -87,6 +103,47 @@ const migration = `# 1. Turn off the Action writer. A read-only step may stay.
     </div>
   </section>
 
+  <section class="section" data-section="plans">
+    <div class="wrap">
+      <SectionHead id="plans" title="Free, Pro and Business" body="Start free and keep it free for your own projects. Pro adds file-level memory of your codebase; Business coordinates policy across an organisation. A plan belongs to one person and can fund organisations they connect, and everyone with GitHub access to a connected repository reads what its plan includes. There are no reader seats." />
+      <div class="plans">
+        {plans.map(plan => (
+          <div class:list={['panel', 'plan', { 'plan-mid': plan.name === 'Pro' }]}>
+            <p class="label">{plan.name}</p>
+            <p class="plan-price"><strong>{plan.price}</strong><span>{plan.cadence}</span></p>
+            <p class="plan-annual small">{plan.annual || '\u00a0'}</p>
+            <p class="small plan-fit">{plan.fit}</p>
+            <p class="small plan-lead">{plan.lead}</p>
+            <ul class="small plan-list">{plan.items.map(item => <li>{item}</li>)}</ul>
+          </div>
+        ))}
+      </div>
+      <p class="plans-standing small">{availability.app.open ? 'Prices in EUR, including applicable tax.' : 'Paid plans open with public access. Prices in EUR, including applicable tax.'} Live checks and labels are never metered: no pull-request budget, no charge per pull request or revision.</p>
+      <details class="plans-compare">
+        <summary>Compare every capability</summary>
+        <div class="perms-wrap">
+          <table class="perms compare">
+            <thead><tr><th>Capability</th><th>Free</th><th>Pro</th><th>Business</th></tr></thead>
+            <tbody>{compare.map(([name, free, pro, business]) => <tr><td>{name}</td><td>{free}</td><td>{pro}</td><td>{business}</td></tr>)}</tbody>
+          </table>
+        </div>
+      </details>
+      <p class="caption plans-foot">An additional organisation inherits its plan’s capabilities and renewal date. The open-source Community App gives you the Free capabilities on your own hosting, without the hosted limits.</p>
+      <SectionLinks links={[['Plans and account management', docPaths.service], ['Hosted by us or self-hosted', '#self-host']]} />
+    </div>
+  </section>
+
+  <section class="section" data-section="history">
+    <div class="wrap">
+      <SectionHead id="history" title="History that remembers every change" body="The App keeps the size, lifecycle and measurements of every pull request in the repositories you choose, so you can see what merged, how big it was, how long it took and how that compares with last period. It is a record of numbers and paths, never an archive of your code, and an administrator turns it on per repository." />
+      <div class="history-grid">
+        {history.map(([title, body]) => <div class="panel"><p class="label">{title}</p><p class="small history-body">{body}</p></div>)}
+      </div>
+      <p class="history-standing small">Free keeps thirty rolling days. Pro and Business keep history without automatic age expiry while the plan and the service stay active, subject to your deletion and disclosed limits.</p>
+      <SectionLinks links={[['Privacy and data', docPaths.privacyAndData]]} />
+    </div>
+  </section>
+
   <section class="section" data-section="why">
     <div class="wrap">
       <SectionHead id="why" title="Why choose the App" body="Both routes run the same engine and the same policy. The difference is who operates it: a workflow you assemble and maintain, or an installation that stays current." />
@@ -107,39 +164,11 @@ const migration = `# 1. Turn off the Action writer. A read-only step may stay.
             <li>presets and account or organization defaults, below your repository file</li>
             <li>one native check summary per analyzed head</li>
             <li>labels only in declared groups, comments only when opted in, readback after every write</li>
-            <li>opt-in history of the numbers, never of the content</li>
+            <li>history across your repositories: numbers and paths, never content</li>
           </ul>
         </div>
       </div>
       <SectionLinks links={[['App architecture', docPaths.app], ['Configuration layering', `${docPaths.configure}#know-which-host-supplies-each-layer`]]} />
-    </div>
-  </section>
-
-  <section class="section" data-section="plans">
-    <div class="wrap">
-      <SectionHead id="plans" title="Free, Pro and Business" body="A plan belongs to one person and can fund organisations they connect. Everyone with GitHub access to a connected repository can read what its plan includes; there are no reader seats." />
-      <div class="plans">
-        {plans.map(plan => (
-          <div class:list={['panel', 'plan', { 'plan-mid': plan.name === 'Pro' }]}>
-            <p class="label">{plan.name}</p>
-            <p class="plan-price"><strong>{plan.price}</strong>{plan.cadence && <span>{plan.cadence}</span>}</p>
-            <p class="small plan-lead">{plan.lead}</p>
-            <ul class="small plain-list">{plan.items.map(item => <li>{item}</li>)}</ul>
-          </div>
-        ))}
-      </div>
-      <p class="caption plans-foot">Planned hosted offer, in EUR including applicable tax. Not available to buy yet: paid plans open with public access. Each additional organisation is €9/month or €90/year on either paid plan. The open-source Community App gives you the Free capabilities on your own hosting, without the hosted quotas.</p>
-    </div>
-  </section>
-
-  <section class="section" data-section="history">
-    <div class="wrap">
-      <SectionHead id="history" title="History, if you want it" body="See how change size and evidence move over time in the repositories you choose. History is off until an installation administrator turns it on, and turning it on never makes it an archive of your code." />
-      <div class="history-grid">
-        {history.map(([title, body]) => <div class="panel"><p class="label">{title}</p><p class="small history-body">{body}</p></div>)}
-      </div>
-      <p class="history-standing small">Paid history has no automatic age expiry while its entitlement and the service remain active, subject to deletion and disclosed limits.</p>
-      <SectionLinks links={[['Privacy and data', docPaths.privacyAndData]]} />
     </div>
   </section>
 
@@ -159,7 +188,7 @@ const migration = `# 1. Turn off the Action writer. A read-only step may stay.
 
   <section class="section" data-section="self-host">
     <div class="wrap">
-      <SectionHead id="self-host" title="Hosted by us or self-hosted" body="The Community App is open source under AGPL-3.0-only, in the same repository as the engine. The official service is not generally available. Pro and Business include separately maintained private extensions; Community self-hosting needs neither a subscription nor those modules." />
+      <SectionHead id="self-host" title="Hosted by us or self-hosted" body={`The Community App is open source under AGPL-3.0-only, in the same repository as the engine.${availability.app.open ? "" : " The official hosted service opens with public access."} Pro and Business include separately maintained private extensions; Community self-hosting needs neither a subscription nor those modules.`} />
       <div class="grid-2">
         <div class="panel">
           <p class="label">Self-hosting needs</p>
@@ -225,13 +254,24 @@ const migration = `# 1. Turn off the Action writer. A read-only step may stay.
   .tour-files-body { margin: 0; color: var(--fg-2); max-width: 80ch; }
   .plan-chip { font-family: var(--font-mono); font-size: 10.5px; border: 1px solid var(--hair-strong); border-radius: 4px; padding: 1px 6px; color: var(--fg-2); }
   .plans { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
-  .plan { display: flex; flex-direction: column; gap: 10px; }
+  .plan { display: flex; flex-direction: column; gap: 6px; padding: 22px 22px 20px; }
   .plan .label { margin: 0; }
   .plan-mid { border-color: var(--accent); }
-  .plan-price { margin: 0; display: flex; align-items: baseline; gap: 6px; color: var(--fg-2); font-size: 13px; }
-  .plan-price strong { font-size: 30px; line-height: 1; color: var(--fg); letter-spacing: -.01em; }
-  .plan-lead { margin: 0; color: var(--fg); }
-  .plan ul { margin: 0; color: var(--fg-2); display: flex; flex-direction: column; gap: 4px; }
+  .plan-price { margin: 6px 0 0; display: flex; align-items: baseline; gap: 8px; color: var(--fg-2); font-size: 13.5px; }
+  .plan-price strong { font-size: 38px; line-height: 1; color: var(--fg); letter-spacing: -.02em; }
+  .plan-annual { margin: 0; color: var(--fg-3); }
+  .plan-fit { margin: 8px 0 0; color: var(--fg-2); }
+  .plan-lead { margin: 0; color: var(--fg); font-weight: 600; }
+  .plan-list { margin: 8px 0 0; padding: 0; list-style: none; color: var(--fg-2); display: flex; flex-direction: column; gap: 6px; }
+  .plan-list li { padding-left: 20px; position: relative; }
+  .plan-list li::before { content: '✓'; position: absolute; left: 0; color: var(--status-success); }
+  :global([data-theme="light"]) .plan-list li::before { color: var(--status-success-light); }
+  .plans-standing { margin: 0; color: var(--fg-2); max-width: 90ch; }
+  .plans-compare { border: 1px solid var(--hair); border-radius: var(--r-card); background: var(--bg-raised); }
+  .plans-compare summary { cursor: pointer; padding: 12px 16px; font-weight: 600; font-size: 14px; }
+  .plans-compare[open] summary { border-bottom: 1px solid var(--hair); }
+  .plans-compare .perms-wrap { padding: 4px 8px 8px; }
+  .compare td:first-child { white-space: normal; }
   .plans-foot { margin: 0; max-width: 90ch; }
   .history-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
   .history-body, .data-body { margin: 0; color: var(--fg-2); }
