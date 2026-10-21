@@ -31,7 +31,7 @@ import { pathToFileURL } from 'node:url';
 import { once } from 'node:events';
 import { generateKeyPairSync } from 'node:crypto';
 import { dirname, join, resolve } from 'node:path';
-import { createFakeGitHub, CODE, ENTITLEMENT_FIXTURE, INSTALLATIONS, LONG_RETAINED_PATHS, setScale } from './fixture.mjs';
+import { createFakeGitHub, CODE, ENTITLEMENT_FIXTURE, INSTALLATIONS, LONG_RETAINED_PATHS, pullRequests, setScale } from './fixture.mjs';
 import { seedLocalState, executeLocal, recordLocalDelivery } from './seed.mjs';
 import { proManage, historyOnlyManage, planChoiceReturn, freeManage, businessManage, delegateManage, setupRecovery, manageAccess, COMMERCIAL_PRO, COMMERCIAL_FREE, COMMERCIAL_BUSINESS } from './manage.mjs';
 import { participationJourney, rewardOnlyJourney, nullableReceiverJourney, COMMERCIAL_BETA, COMMERCIAL_REWARD_ONLY, NULLABLE_LINK, NULLABLE_SIGNING_KEY, QA_CAMPAIGN } from './participation.mjs';
@@ -562,6 +562,8 @@ async function qualifyPrFilesMinimum() {
 }
 
 async function qualifyPrConfidenceState(consumerReturn = null) {
+  const pathlessPull = pullRequests().find(pull => pull.analysed && !pull.repository.named);
+  if (!pathlessPull) throw new Error('The PR layout qualification requires its seeded pathless reader.');
   const detail = await go('/pr/parser-guild/parser-lab/452');
   await settled();
   check('PR detail renders the Development chart for a retained merged pull request', detail.status() === 200 && await page.locator('[data-chart-id="dev"].is-mounted').count() === 1, `${detail.status()}`);
@@ -648,7 +650,7 @@ async function qualifyPrConfidenceState(consumerReturn = null) {
   for (const width of [1180, 1181, 1280, 1360, 1361, 1440]) {
     await page.setViewportSize({ width, height: 900 });
     const inspectFilesLayout = async (label, pathless) => {
-      const response = await go('/pr/parser-guild/parser-lab/452?per=90d');
+      const response = await go(pathless ? `/pr/${pathlessPull.repository.fullName}/${pathlessPull.number}?per=90d` : '/pr/parser-guild/parser-lab/452?per=90d');
       await settled();
       const layout = await page.evaluate(expectedPaths => {
         const panel = document.querySelector('.pr-files');
@@ -690,7 +692,7 @@ async function qualifyPrConfidenceState(consumerReturn = null) {
         && layout.pathCellLabel === layout.pathTitle && layout.pathText === layout.pathTitle
           && (width <= 1180 || layout.directoryClipped) && layout.fileNameVisible && layout.includedLabel === 'Included in policy scope'
         && !layout.hasScrollbar);
-      check(`PR detail ${label} Files table stays in its panel at ${width}px with the accepted ${compact ? '7/5' : '6/6'} composition`, response.status() === 200 && layout.width === width
+      check(`PR detail ${label} Files table stays in its panel at ${width}px with the accepted ${stacked ? '12/12' : compact ? '7/5' : '6/6'} composition`, response.status() === 200 && layout.width === width
         && JSON.stringify(layout.rowSpans) === JSON.stringify(expectedSpans) && layout.rows > 0 && layout.scroller && layout.scrollerTabIndex === 0
         && layout.panelContainsScroller && layout.tableFitsScrollableContent && layout.scrollWidth >= layout.clientWidth && !layout.pageOverflow && pathsPresent && namedContract, JSON.stringify(layout));
       return layout;
@@ -701,9 +703,9 @@ async function qualifyPrConfidenceState(consumerReturn = null) {
       await page.screenshot({ path: join(OUT, 'pr-files-long-paths-1280x900.png'), fullPage: true });
     }
     if (width === 1361) await page.screenshot({ path: join(OUT, 'pr-files-long-paths-1361x900.png'), fullPage: true });
-    executeLocal("INSERT INTO analytical_pull_requests(repository_id, pull_request, updated_at, expires_at, record_json) VALUES (1001, 999999, '2026-10-15T00:00:00.000Z', NULL, 'not-json')", STATE);
-    try { await inspectFilesLayout('pathless', true); }
-    finally { executeLocal('DELETE FROM analytical_pull_requests WHERE repository_id=1001 AND pull_request=999999', STATE); }
+    // Use the existing supported pathless reader. A layout check does not need a second
+    // Wrangler writer corrupting the running Worker's database to manufacture that state.
+    await inspectFilesLayout('pathless', true);
   }
   await go('/pr/parser-guild/parser-lab/452?per=90d');
   await settled();
