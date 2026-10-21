@@ -272,14 +272,14 @@ export async function installManifest(options) {
     if (capture.selection.mode === 'fixture' && !options.fixtureWrangler) fail('Synthetic capture requires an explicit synthetic native provider.');
     if (capture.selection.mode === 'provider' && options.fixtureWrangler) fail('Provider capture cannot install through a synthetic provider.');
     if (!options.installReceiptPath || [options.capturePath, options.receiptPath, options.sealKeyPath, options.wirtSigningKeyPath, options.sealKeyPreviousReceiptPath].filter(Boolean).some(path => resolve(path) === resolve(options.installReceiptPath))) fail('Use a separate new installation receipt.');
-    return installCredentials({ config: options.config, accountId: options.accountId, worker: options.worker, appId: identity.appId, baseVersionId: options.baseVersionId,
+    return installCredentials({ config: options.config, accountId: options.accountId, worker: options.worker, appId: identity.appId, baseVersionId: options.baseVersionId, artifactPath: options.artifactPath, artifactSha256: options.artifactSha256,
       ...(config.vars?.APP_ORIGIN ? { oauthClientId: identity.oauthClientId, sealKeyPath: options.sealKeyPath, sealKeyEnv: options.sealKeyEnv, sealKeyRecoveryRef: options.sealKeyRecoveryRef, sealKeyInitial: options.sealKeyInitial, sealKeyPreviousReceiptPath: options.sealKeyPreviousReceiptPath, wirtSigningKeyPath: options.wirtSigningKeyPath, wirtSigningKeyEnv: options.wirtSigningKeyEnv } : {}),
       readGitHubInputs: async () => identityAndInputs((await load(options)).capture).values, receiptPath: options.installReceiptPath,
-      ...(capture.selection.mode === 'fixture' ? { fixture: true, wrangler: options.fixtureWrangler } : {}) });
+      ...(capture.selection.mode === 'fixture' ? { fixture: true, fixtureWrangler: options.fixtureWrangler } : {}) });
   });
 }
 
-const NAMES = { 'capture-file': 'capturePath', 'receipt-file': 'receiptPath', 'seal-key-file': 'sealKeyPath', 'seal-key-env': 'sealKeyEnv', 'seal-key-recovery-ref': 'sealKeyRecoveryRef', 'seal-key-initial': 'sealKeyInitial', 'seal-key-previous-receipt': 'sealKeyPreviousReceiptPath', 'base-version-id': 'baseVersionId', 'owner': 'owner', 'owner-type': 'ownerType', 'visibility': 'visibility', 'app-name': 'appName', 'webhook-url': 'webhookUrl', 'oauth-callback-url': 'oauthCallbackUrl', 'port': 'port', 'fixture-provider': 'fixtureOrigin', 'config': 'config', 'worker': 'worker', 'account-id': 'accountId', 'install-receipt-file': 'installReceiptPath', 'wirt-signing-key-file': 'wirtSigningKeyPath', 'wirt-signing-key-env': 'wirtSigningKeyEnv', 'fixture-wrangler': 'fixtureWrangler' };
+const NAMES = { 'capture-file': 'capturePath', 'receipt-file': 'receiptPath', 'seal-key-file': 'sealKeyPath', 'seal-key-env': 'sealKeyEnv', 'seal-key-recovery-ref': 'sealKeyRecoveryRef', 'seal-key-initial': 'sealKeyInitial', 'seal-key-previous-receipt': 'sealKeyPreviousReceiptPath', 'base-version-id': 'baseVersionId', 'artifact-file': 'artifactPath', 'artifact-sha256': 'artifactSha256', 'owner': 'owner', 'owner-type': 'ownerType', 'visibility': 'visibility', 'app-name': 'appName', 'webhook-url': 'webhookUrl', 'oauth-callback-url': 'oauthCallbackUrl', 'port': 'port', 'fixture-provider': 'fixtureOrigin', 'config': 'config', 'worker': 'worker', 'account-id': 'accountId', 'install-receipt-file': 'installReceiptPath', 'wirt-signing-key-file': 'wirtSigningKeyPath', 'wirt-signing-key-env': 'wirtSigningKeyEnv', 'fixture-wrangler': 'fixtureWrangler' };
 const FLAGS = new Set(['policy-refresh', 'seal-key-initial']);
 export async function main(argv = process.argv.slice(2)) {
   const [command, ...args] = argv;
@@ -289,8 +289,8 @@ export async function main(argv = process.argv.slice(2)) {
       : 'bash -p apps/github-app/operator-launch.sh manifest';
     process.stdout.write(`Usage: ${entry} check|register|resume|status|install --capture-file <encrypted-file> --receipt-file <non-secret-file> (--seal-key-file <retained-file> | --seal-key-env <explicit-name>) --seal-key-recovery-ref <custody-id>
 Registration: --owner <login> --owner-type personal|organisation --visibility public|private --app-name <name> --webhook-url <https-url> [--oauth-callback-url <https-url>] [--policy-refresh] [--port <loopback-port>]
-Install: --config <exact-config> --account-id <id> --install-receipt-file <new-receipt> [--worker <matching-name>]; joined App: --base-version-id <qualified-bootstrap> (--seal-key-initial | --seal-key-previous-receipt <previous-successful-receipt>); Wirt: (--wirt-signing-key-file <retained-file> | --wirt-signing-key-env <explicit-name>)
-The clean entry must run before Node starts. Direct library callers need an already-clean runtime. Latest-version installation does not atomically bind the qualified base.
+Install: --config <exact-config> --account-id <id> --install-receipt-file <new-receipt> --artifact-file <qualified-artifact> --artifact-sha256 <qualified-64-hex-digest> [--worker <matching-name>]; joined App: --base-version-id <continuity-base> (--seal-key-initial | --seal-key-previous-receipt <previous-successful-receipt>); Wirt: (--wirt-signing-key-file <retained-file> | --wirt-signing-key-env <explicit-name>)
+The clean entry must run before Node starts. Direct library callers need an already-clean runtime. The artifact supplies the complete modules/settings/assets for one undeployed version; installation never patches latest.
 See docs/integration/app-staging.md for the capture, interruption and separate installation handoff. No command deploys or opens a browser.\n`);
     return;
   }

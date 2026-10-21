@@ -31,11 +31,16 @@ else {
   else if (args.includes('list')) {
     result = [{ id: 'older-version' }, { id: 'version-before' }, ...(state.foreignUpload ? [{ id: 'foreign-version' }] : []), ...(state.created ? [{ id: 'version-created' }] : [])];
     if (state.created && options.omitReadback) exitCode = 1;
-  } else if (args.includes('view')) result = { id: args[args.indexOf('view') + 1], resources: { bindings: [{ name: 'APP_DB', type: 'd1', id: options.foreignDatabase ? 'abcdefab-abcd-abcd-abcd-abcdefabcdef' : config.d1_databases[0].database_id }, ...(config.vars?.GITHUB_APP_BOT_LOGIN ? [{ name: 'GITHUB_APP_BOT_LOGIN', type: 'plain_text', text: config.vars.GITHUB_APP_BOT_LOGIN }] : []), ...(state.inputs ?? options.existingInputs ?? []).map(name => ({ name, type: 'secret_text' }))] } };
-  else if (args.includes('bulk')) {
+  } else if (args.includes('view')) result = { id: args[args.indexOf('view') + 1], ...(args[args.indexOf('view') + 1] === 'version-created' ? { annotations: { 'workers/tag': state.operationId, 'workers/message': `diffdevil artifact ${state.artifactSha256}` } } : {}), resources: { script: { etag: state.moduleHash ?? 'fixture-source' }, bindings: [{ name: 'APP_DB', type: 'd1', id: options.foreignDatabase ? 'abcdefab-abcd-abcd-abcd-abcdefabcdef' : config.d1_databases[0].database_id }, ...(config.vars?.GITHUB_APP_BOT_LOGIN ? [{ name: 'GITHUB_APP_BOT_LOGIN', type: 'plain_text', text: config.vars.GITHUB_APP_BOT_LOGIN }] : []), ...(state.inputs ?? options.existingInputs ?? []).map(name => ({ name, type: 'secret_text' }))] } };
+  else if (args.includes('upload-artifact')) {
+    const { readCredentialArtifact } = await import('../operator-artifact.mjs');
     // A foreign writer uploads after the helper's final version check.
     if (options.foreignUploadBeforeWrite) state.foreignUpload = true;
-    state.secretAttachmentBase = state.foreignUpload ? 'foreign-version' : 'version-before';
+    state.artifactSha256 = args[args.indexOf('--artifact-sha256') + 1];
+    state.operationId = args[args.indexOf('--operation-id') + 1];
+    const artifact = await readCredentialArtifact({ artifactPath: args[args.indexOf('--artifact-file') + 1], artifactSha256: state.artifactSha256 });
+    state.secretAttachmentBase = `artifact:${state.artifactSha256}`;
+    state.moduleHash = createHash('sha256').update(Buffer.from(artifact.modules[0].content, 'base64')).digest('hex');
     const chunks = [];
     for await (const chunk of process.stdin) chunks.push(chunk);
     const input = Buffer.concat(chunks).toString('utf8');
@@ -46,15 +51,17 @@ else {
     state.created = !options.failWrite;
     exitCode = options.failWrite ? 1 : 0;
     // Unsafe positive control: the real parent must contain both these streams.
-    process.stdout.write(input);
+    process.stdout.write(`${input}\n`);
     process.stderr.write(input);
-    result = undefined;
+    result = options.loseAcknowledgement ? undefined : { ...(options.failWrite ? { versionRequest: 'not-attempted' } : { id: 'version-created' }), artifactSha256: state.artifactSha256, operationId: state.operationId };
     const receipts = await Promise.all((await readdir(directory)).filter(name => name.endsWith('receipt.json')).map(async name => JSON.parse(await readFile(join(directory, name), 'utf8'))));
     const receipt = receipts.find(candidate => candidate.command === 'attempted-unknown');
     assert.ok(receipt);
     assert.equal(receipt.inputs.length, state.inputs.length);
   }
 }
+if (args.includes('view') && args[args.indexOf('view') + 1] === 'version-created' && options.omitReadback) exitCode = 1;
+if (args.includes('view') && !['older-version', 'version-before', ...(state.created ? ['version-created'] : []), ...(state.foreignUpload ? ['foreign-version'] : [])].includes(args[args.indexOf('view') + 1])) exitCode = 1;
 await writeFile(statePath, JSON.stringify(state));
 if (result !== undefined) process.stdout.write(JSON.stringify(result));
 process.exitCode = exitCode;

@@ -8,10 +8,12 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { parse } from 'jsonc-parser';
 import { createAppJwt, validateGitHubAppPrivateKey } from './crypto.mjs';
 import { readSigningKeys } from './commercial-wirt.mjs';
+import { artifactReceipt, prepareCredentialArtifact, readCredentialArtifact } from './operator-artifact.mjs';
 
 const GITHUB_REGISTRATION_URL = 'https://github.com/settings/apps/new';
 const HELPER_DIRECTORY = dirname(fileURLToPath(import.meta.url));
 const DEFAULT_WRANGLER = fileURLToPath(new URL('../../node_modules/wrangler/bin/wrangler.js', import.meta.url));
+const UPLOAD_ENTRY = fileURLToPath(new URL('./operator-upload.mjs', import.meta.url));
 const WRANGLER_ENV_FILE = fileURLToPath(new URL('./wrangler-empty.env', import.meta.url));
 const WRANGLER_UPGRADE_HINT = /^There is a newer version of Wrangler available \(current: [0-9A-Za-z.+-]+, latest: [0-9A-Za-z.+-]+\)\. Try upgrading, as it might support this configuration option\.$/u;
 const PROCESS_ENVIRONMENT_NAMES = new Set([
@@ -40,6 +42,11 @@ function identifier(value, name) {
   const text = requireValue(value, name);
   if (!/^[A-Za-z0-9_-]+$/u.test(text)) fail(`${name} has an invalid format.`);
   return text;
+}
+
+function selectedRuntime(options) {
+  const nativeWrangler = options.wrangler ? resolve(options.wrangler) : DEFAULT_WRANGLER;
+  return { ...options, nativeWrangler, wrangler: options.fixtureWrangler ? resolve(options.fixtureWrangler) : nativeWrangler, fixture: options.fixtureWrangler ? true : options.fixture, runner: options.runner ?? createProcessRunner() };
 }
 
 export function validateAppId(appId) {
@@ -236,19 +243,31 @@ function hasVersionTarget(bindings, target) {
 }
 
 async function requireVersionTarget(options, target) {
-  // Secret bulk patches the latest uploaded version, which need not be the active deployment.
-  // The pinned Wrangler versions list is ordered by created_on ascending.
+  // The base checks identity/seal continuity. Artifact upload never derives code from latest.
   const latest = target.versions.versions.at(-1);
   if (!latest) fail('The selected Worker has no uploaded version to receive credentials.', 'E_OPERATOR_TARGET');
   if (target.joinedApp || options.baseVersionId !== undefined) {
-    if (latest.id !== identifier(options.baseVersionId, 'Qualified base version ID')) fail('The latest Worker version differs from the qualified bootstrap/base; no provider write was attempted.', 'E_OPERATOR_TARGET');
+    const selectedId = identifier(options.baseVersionId, 'Qualified base version ID');
+    if (!options.artifactPath && latest.id !== selectedId) fail('The latest Worker version differs from the qualified bootstrap/base; no provider write was attempted.', 'E_OPERATOR_TARGET');
   }
-  const viewed = await nativeJson({ runner: options.runner, args: buildWranglerCommand(options.wrangler, ['versions', 'view', latest.id, '--json'], target), env: target.env });
-  if (viewed?.id !== latest.id || !hasVersionTarget(viewed.resources?.bindings, target)) fail('The latest Worker version does not read back the configured APP_DB and bot identity.', 'E_OPERATOR_TARGET');
-  if (target.joinedApp && options.sealKeyInitial && viewed.resources.bindings.some(binding => binding.type === 'secret_text' && binding.name === 'APP_SEAL_KEY')) {
-    fail('The qualified version already has APP_SEAL_KEY. Use the established target’s retained seal and previous successful receipt; initial mode cannot replace it.', 'E_OPERATOR_TARGET');
+  const baseId = options.artifactPath && options.baseVersionId ? options.baseVersionId : latest.id;
+  const viewed = await nativeJson({ runner: options.runner, args: buildWranglerCommand(options.wrangler, ['versions', 'view', baseId, '--json'], target), env: target.env });
+  if (viewed?.id !== baseId || !hasVersionTarget(viewed.resources?.bindings, target)) fail('The selected Worker version does not read back the configured APP_DB and bot identity.', 'E_OPERATOR_TARGET');
+  if (target.joinedApp && options.sealKeyInitial) {
+    const latestView = baseId === latest.id ? viewed : await nativeJson({ runner: options.runner, args: buildWranglerCommand(options.wrangler, ['versions', 'view', latest.id, '--json'], target), env: target.env });
+    if (latestView?.id !== latest.id || !Array.isArray(latestView.resources?.bindings)) fail('The latest seal-binding state is unknown; initial mode cannot proceed.', 'E_OPERATOR_TARGET');
+    if ([viewed, latestView].some(version => version.resources.bindings.some(binding => binding.type === 'secret_text' && binding.name === 'APP_SEAL_KEY'))) fail('The qualified or latest version already has APP_SEAL_KEY. Use the established target’s retained seal and previous successful receipt; initial mode cannot replace it.', 'E_OPERATOR_TARGET');
   }
-  target.baseVersionId = latest.id;
+  target.baseVersionId = baseId;
+}
+
+async function requireArtifact(options, target) {
+  const artifactPath = options.artifactPath ? resolve(options.artifactPath) : undefined;
+  const samePath = path => artifactPath && (process.platform === 'win32' ? resolve(path).toLowerCase() === artifactPath.toLowerCase() : resolve(path) === artifactPath);
+  if ([options.privateKeyPath, options.webhookSecretPath, options.oauthClientSecretPath, options.sealKeyPath, options.wirtSigningKeyPath].filter(Boolean).some(samePath)) fail('The source artifact must have its own path, separate from protected credential inputs.', 'E_OPERATOR_ARTIFACT');
+  const artifact = await readCredentialArtifact({ ...options, target });
+  if (!hasVersionTarget(artifact.metadata.bindings, target)) fail('The artifact does not contain the selected APP_DB and bot identity.', 'E_OPERATOR_ARTIFACT');
+  target.artifact = artifactReceipt(artifact, options.artifactSha256);
 }
 
 async function inputFiles(options, target) {
@@ -278,7 +297,7 @@ async function inputFiles(options, target) {
 }
 
 function initialReceipt(target, options) {
-  return { format: 'diffdevil-credential-version-v1', mode: target.fixture ? 'fixture' : 'provider', state: 'prepared', accountId: target.accountId, worker: target.worker, databaseId: target.databaseId, configHash: target.configHash, baseVersionId: target.baseVersionId, inputs: inputNames(target, options), identity: { state: 'unobserved' }, ...(target.joinedApp ? { sealKeyRecoveryRef: options.sealKeyRecoveryRef, sealKeyContinuity: { state: 'unobserved' } } : {}), command: 'not-attempted', version: { state: 'unknown' }, deployment: { state: 'unknown' }, carrier: { state: 'not-created' }, before: { deployment: target.deployment, versions: target.versions } };
+  return { format: 'diffdevil-credential-version-v1', mode: target.fixture ? 'fixture' : 'provider', state: 'prepared', accountId: target.accountId, worker: target.worker, databaseId: target.databaseId, configHash: target.configHash, baseVersionId: target.baseVersionId, inputs: inputNames(target, options), identity: { state: 'unobserved' }, ...(target.artifact ? { artifact: target.artifact, operationId: randomUUID() } : {}), ...(target.joinedApp ? { sealKeyRecoveryRef: options.sealKeyRecoveryRef, sealKeyContinuity: { state: 'unobserved' } } : {}), command: 'not-attempted', version: { state: 'unknown' }, deployment: { state: 'unknown' }, carrier: { state: 'not-created' }, before: { deployment: target.deployment, versions: target.versions } };
 }
 
 async function unchangedConfiguration(target) {
@@ -313,13 +332,14 @@ async function receiptDestination(path) {
 
 /** Same target, file metadata and receipt-commit preflight as install; no protected contents read. */
 export async function checkCredentials(options) {
-  const selected = { ...options, wrangler: options.wrangler ? resolve(options.wrangler) : DEFAULT_WRANGLER, runner: options.runner ?? createProcessRunner() };
+  const selected = selectedRuntime(options);
   validateAppId(selected.appId);
   const target = await requireTarget(selected);
   await requireVersionTarget(selected, target);
+  await requireArtifact(selected, target);
   await receiptDestination(selected.receiptPath);
   await inputFiles(selected, target);
-  return { state: 'ready-for-input', mode: target.fixture ? 'fixture' : 'provider', accountId: target.accountId, worker: target.worker, databaseId: target.databaseId, baseVersionId: target.baseVersionId, inputs: inputNames(target, selected), protectedValues: 'unread', identity: 'unverified', providerWrite: 'not-attempted' };
+  return { state: 'ready-for-input', mode: target.fixture ? 'fixture' : 'provider', accountId: target.accountId, worker: target.worker, databaseId: target.databaseId, configHash: target.configHash, baseVersionId: target.baseVersionId, artifact: target.artifact ?? { state: 'required-before-install' }, inputs: inputNames(target, selected), protectedValues: 'unread', identity: 'unverified', providerWrite: 'not-attempted' };
 }
 
 async function readSecretFile(path) {
@@ -424,18 +444,30 @@ async function reconcileReceipt({ runner, wrangler, target, report }) {
     report.state = 'not-attempted';
     return report;
   }
-  const candidate = report.version.id ? { state: 'observed', id: report.version.id } : newVersion(report.before.versions, await readVersions({ runner, wrangler, ...target }));
+  let candidate = report.version.id ? { state: 'observed', id: report.version.id } : newVersion(report.before.versions, await readVersions({ runner, wrangler, ...target }));
+  const lineageMatches = viewed => viewed?.annotations?.['workers/tag'] === report.operationId && viewed.annotations['workers/message'] === `diffdevil artifact ${report.artifact.sha256}`;
+  if (report.artifact && !report.version.id) {
+    const after = await readVersions({ runner, wrangler, ...target });
+    const oldIds = new Set(report.before.versions.versions.map(version => version.id));
+    const matches = [];
+    if (after.state === 'read-back') for (const entry of after.versions.filter(version => !oldIds.has(version.id))) {
+      const viewed = await nativeJson({ runner, args: buildWranglerCommand(wrangler, ['versions', 'view', entry.id, '--json'], target), env: target.env });
+      if (viewed?.id === entry.id && lineageMatches(viewed)) matches.push(entry);
+    }
+    candidate = matches.length === 1 ? { state: 'observed', id: matches[0].id } : { state: after.state === 'read-back' && after.versions.every(version => oldIds.has(version.id)) ? 'absent' : 'unknown' };
+  }
   report.version = candidate;
   if (candidate.state === 'observed') {
     const viewed = await nativeJson({ runner, args: buildWranglerCommand(wrangler, ['versions', 'view', candidate.id, '--json'], target), env: target.env });
     const bindings = viewed?.resources?.bindings;
     const hasInputs = hasVersionTarget(bindings, target) && report.inputs.every(name => bindings.some(binding => binding?.type === 'secret_text' && binding.name === name));
-    report.version = { state: viewed?.id === candidate.id && hasInputs ? 'read-back' : 'unknown', id: candidate.id };
+    const lineage = !report.artifact || lineageMatches(viewed);
+    report.version = { state: viewed?.id === candidate.id && hasInputs && lineage ? 'read-back' : 'unknown', id: candidate.id };
+    if (report.artifact) report.artifact = { ...report.artifact, lineage: lineage ? 'read-back' : 'unknown', ...(typeof viewed?.resources?.script?.etag === 'string' ? { scriptEtag: viewed.resources.script.etag } : {}) };
   }
   const after = await readDeployment({ runner, wrangler, ...target });
   report.deployment = after.state === 'read-back' ? { state: after.snapshot === report.before.deployment.snapshot ? 'unchanged' : 'changed' } : { state: 'unknown' };
   if (report.command === 'accepted' && report.version.state === 'read-back' && report.deployment.state === 'unchanged') report.state = 'version-created';
-  else if (report.command === 'failed' && report.version.state === 'absent' && report.deployment.state === 'unchanged') report.state = 'not-created';
   else if (report.version.state === 'read-back' || report.deployment.state === 'changed') report.state = 'partial';
   else report.state = 'unknown';
   return report;
@@ -443,10 +475,11 @@ async function reconcileReceipt({ runner, wrangler, target, report }) {
 
 /** Creates one undeployed version. Protected contents go directly to contained native stdin, never a disk carrier. */
 export async function installCredentials(options) {
-  const selected = { ...options, wrangler: options.wrangler ? resolve(options.wrangler) : DEFAULT_WRANGLER, runner: options.runner ?? createProcessRunner() };
+  const selected = selectedRuntime(options);
   validateAppId(selected.appId);
   const target = await requireTarget(selected);
   await requireVersionTarget(selected, target);
+  await requireArtifact(selected, target);
   await receiptDestination(selected.receiptPath);
   await inputFiles(selected, target);
   const report = initialReceipt(target, selected);
@@ -458,6 +491,7 @@ export async function installCredentials(options) {
     report.identity = await qualifiedIdentity(selected, target, values);
     if (target.joinedApp) report.sealKeyContinuity = await sealContinuity(selected, target, values.APP_SEAL_KEY);
     await unchangedConfiguration(target);
+    await requireArtifact(selected, target);
     target.versions = await readVersions({ ...selected, ...target });
     if (target.versions.state !== 'read-back') fail('Worker versions could not be read back before the write.', 'E_OPERATOR_TARGET');
     await requireVersionTarget({ ...selected, baseVersionId: report.baseVersionId }, target);
@@ -468,6 +502,7 @@ export async function installCredentials(options) {
     const reason = {
       E_OPERATOR_IDENTITY: 'GitHub App identity did not qualify.',
       E_OPERATOR_SEAL: 'Retained seal continuity did not qualify.',
+      E_OPERATOR_ARTIFACT: 'The selected immutable upload artifact did not remain qualified.',
       E_OPERATOR_TARGET: 'The exact target or qualified base did not remain current.',
       E_OPERATOR_CONFIG: 'The target configuration did not remain usable.'
     }[error.code] ?? 'Protected inputs could not be validated.';
@@ -478,13 +513,25 @@ export async function installCredentials(options) {
   report.state = 'unknown';
   await writeReceipt(selected.receiptPath, report);
   try {
-    const write = await selected.runner({ args: buildWranglerCommand(selected.wrangler, ['versions', 'secret', 'bulk', '--message', 'Prepare App credentials without deployment'], target), input: JSON.stringify(values), env: target.env });
-    report.command = write.code === 0 ? 'accepted' : 'failed';
+    const driver = selected.fixtureWrangler ? selected.wrangler : UPLOAD_ENTRY;
+    const write = await selected.runner({ args: buildWranglerCommand(driver, ['versions', 'upload-artifact', '--native-wrangler', selected.nativeWrangler, '--artifact-file', resolve(selected.artifactPath), '--artifact-sha256', selected.artifactSha256, '--operation-id', report.operationId], target), input: JSON.stringify(values), env: target.env });
+    report.command = 'attempted-unknown';
+    {
+      try {
+        const response = JSON.parse(write.stdout.trim().split(/\r?\n/u).at(-1));
+        const matches = response.artifactSha256 === report.artifact.sha256 && response.operationId === report.operationId;
+        if (write.code === 0 && matches && /^[A-Za-z0-9_-]+$/u.test(response.id ?? '')) {
+          report.command = 'accepted';
+          report.version = { state: 'observed', id: response.id };
+        } else if (write.code !== 0 && matches && response.versionRequest === 'not-attempted') report.command = 'not-attempted';
+      } catch { /* A successful exit with no qualified acknowledgement remains unknown. */ }
+    }
   } catch { /* The request may have arrived. Keep the durable attempted-unknown marker. */ }
   values = undefined;
   await writeReceipt(selected.receiptPath, report);
   await reconcileReceipt({ ...selected, target, report });
   await writeReceipt(selected.receiptPath, report);
+  if (report.state === 'not-attempted') fail('No credential version request was attempted. Correct artifact/native authentication/asset staging and use a new receipt for a selected new operation; staged immutable assets may remain.', 'E_OPERATOR_VERSION', report);
   if (report.state !== 'version-created') fail('Credential version has an incomplete result. Resume this receipt to reconcile; do not repeat installation.', 'E_OPERATOR_VERSION', report);
   return report;
 }
@@ -497,7 +544,14 @@ async function readReceipt(path, target) {
   const correctState = ['not-attempted', 'attempted-unknown', 'accepted', 'failed'].includes(report?.command) && report.before?.versions?.state === 'read-back' && Array.isArray(report.before.versions.versions) && report.before.versions.versions.every(version => typeof version?.id === 'string' && /^[A-Za-z0-9_-]+$/u.test(version.id)) && report.before?.deployment?.state === 'read-back' && typeof report.before.deployment.snapshot === 'string' && (report.version?.id === undefined || (typeof report.version.id === 'string' && /^[A-Za-z0-9_-]+$/u.test(report.version.id)));
   if (!correctTarget || !correctState) fail('Receipt is unusable or belongs to a different exact target/configuration.', 'E_OPERATOR_RECEIPT');
   const baseVersionId = identifier(report.baseVersionId, 'Receipt base version ID');
-  if (baseVersionId !== report.before.versions.versions.at(-1)?.id) fail('Receipt base version differs from its qualified checkpoint.', 'E_OPERATOR_RECEIPT');
+  if (!report.artifact && baseVersionId !== report.before.versions.versions.at(-1)?.id) fail('Receipt base version differs from its qualified checkpoint.', 'E_OPERATOR_RECEIPT');
+  let artifact;
+  if (report.artifact) {
+    const value = report.artifact;
+    if (!/^[a-f0-9]{64}$/u.test(value.sha256 ?? '') || !/^[a-f0-9]{64}$/u.test(value.nativeBundleHash ?? '') || value.configHash !== target.configHash || !Number.isInteger(value.modules) || value.modules < 1 || !Number.isInteger(value.assets) || value.assets < 0) fail('Receipt artifact identity is unusable.', 'E_OPERATOR_RECEIPT');
+    identifier(report.operationId, 'Receipt operation ID');
+    artifact = { state: 'qualified', sha256: value.sha256, nativeBundleHash: value.nativeBundleHash, configHash: value.configHash, modules: value.modules, assets: value.assets };
+  }
   let identity = { state: 'unobserved' }, continuity;
   if (report.identity?.state === 'verified') {
     if (report.identity.botLogin !== target.botLogin) fail('Receipt GitHub bot identity differs from the target.', 'E_OPERATOR_RECEIPT');
@@ -518,12 +572,12 @@ async function readReceipt(path, target) {
     if (beforeDeployment.versions.some(version => typeof version.percentage !== 'number' || !Number.isFinite(version.percentage))) throw new Error();
   } catch { fail('Receipt deployment checkpoint is unusable.', 'E_OPERATOR_RECEIPT'); }
   // Reconstruct the allowlisted receipt; an edited receipt cannot inject arbitrary data into output.
-  return { ...initialReceipt(target, { sealKeyRecoveryRef: target.joinedApp ? identifier(report.sealKeyRecoveryRef, 'Seal key recovery reference') : undefined }), baseVersionId, identity, ...(target.joinedApp ? { sealKeyContinuity: continuity } : {}), inputs, command: report.command, before: { deployment: { state: 'read-back', snapshot: JSON.stringify(beforeDeployment) }, versions: { state: 'read-back', versions: report.before.versions.versions.map(version => ({ id: version.id })) } }, version: report.version?.id ? { state: 'unknown', id: report.version.id } : { state: 'unknown' } };
+  return { ...initialReceipt({ ...target, artifact: undefined }, { sealKeyRecoveryRef: target.joinedApp ? identifier(report.sealKeyRecoveryRef, 'Seal key recovery reference') : undefined }), ...(artifact ? { artifact, operationId: report.operationId } : {}), baseVersionId, identity, ...(target.joinedApp ? { sealKeyContinuity: continuity } : {}), inputs, command: report.command, before: { deployment: { state: 'read-back', snapshot: JSON.stringify(beforeDeployment) }, versions: { state: 'read-back', versions: report.before.versions.versions.map(version => ({ id: version.id })) } }, version: report.version?.id ? { state: 'unknown', id: report.version.id } : { state: 'unknown' } };
 }
 
 /** Readback-only recovery. No credential read, secret upload, deployment, or blind retry. */
 export async function resumeCredentials(options) {
-  const selected = { ...options, wrangler: options.wrangler ? resolve(options.wrangler) : DEFAULT_WRANGLER, runner: options.runner ?? createProcessRunner() };
+  const selected = selectedRuntime(options);
   const target = await requireTarget(selected);
   const report = await readReceipt(selected.receiptPath, target);
   await reconcileReceipt({ ...selected, target, report });
@@ -564,7 +618,7 @@ async function readRedirectedSecret() {
 }
 
 const BOOLEAN_OPTIONS = new Set(['fake', 'webhook-secret-stdin', 'policy-refresh', 'seal-key-initial']);
-const VALUE_OPTIONS = new Set(['webhook-url', 'visibility', 'app-name', 'oauth-callback-url', 'app-id', 'private-key-file', 'account-id', 'config', 'worker', 'base-version-id', 'webhook-secret-file', 'oauth-client-id', 'oauth-client-secret-file', 'seal-key-file', 'seal-key-env', 'seal-key-recovery-ref', 'seal-key-previous-receipt', 'wirt-signing-key-file', 'wirt-signing-key-env', 'receipt-file', 'wrangler']);
+const VALUE_OPTIONS = new Set(['webhook-url', 'visibility', 'app-name', 'oauth-callback-url', 'app-id', 'private-key-file', 'account-id', 'config', 'worker', 'base-version-id', 'webhook-secret-file', 'oauth-client-id', 'oauth-client-secret-file', 'seal-key-file', 'seal-key-env', 'seal-key-recovery-ref', 'seal-key-previous-receipt', 'wirt-signing-key-file', 'wirt-signing-key-env', 'receipt-file', 'wrangler', 'fixture-wrangler', 'artifact-file', 'artifact-sha256']);
 
 function parseArgs(argv) {
   const [command, ...rest] = argv;
@@ -586,15 +640,20 @@ function parseArgs(argv) {
 
 function createFakeRunner() {
   let versionCreated = false, inputs = [];
+  let operationId, artifactSha256;
   return async ({ args, input }) => {
     if (args.includes('whoami')) return { code: 0, stdout: JSON.stringify({ accounts: [{ id: 'fixture-account' }] }) };
     if (args.includes('deployments')) return { code: 0, stdout: JSON.stringify([{ id: 'fixture-deployment', versions: [{ version_id: 'fixture-before', percentage: 100 }] }]) };
     if (args.includes('versions') && args.includes('list')) return { code: 0, stdout: JSON.stringify(versionCreated ? [{ id: 'fixture-before' }, { id: 'fixture-created' }] : [{ id: 'fixture-before' }]) };
     if (args.includes('versions') && args.includes('view')) {
       const config = parse(await readFile(args[args.indexOf('--config') + 1], 'utf8'));
-      return { code: 0, stdout: JSON.stringify({ id: args[args.indexOf('view') + 1], resources: { bindings: [{ name: 'APP_DB', type: 'd1', id: config.d1_databases[0].database_id }, ...(config.vars?.GITHUB_APP_BOT_LOGIN ? [{ name: 'GITHUB_APP_BOT_LOGIN', type: 'plain_text', text: config.vars.GITHUB_APP_BOT_LOGIN }] : []), ...inputs.map(name => ({ type: 'secret_text', name }))] } }) };
+      return { code: 0, stdout: JSON.stringify({ id: args[args.indexOf('view') + 1], ...(versionCreated ? { annotations: { 'workers/tag': operationId, 'workers/message': `diffdevil artifact ${artifactSha256}` } } : {}), resources: { bindings: [{ name: 'APP_DB', type: 'd1', id: config.d1_databases[0].database_id }, ...(config.vars?.GITHUB_APP_BOT_LOGIN ? [{ name: 'GITHUB_APP_BOT_LOGIN', type: 'plain_text', text: config.vars.GITHUB_APP_BOT_LOGIN }] : []), ...inputs.map(name => ({ type: 'secret_text', name }))] } }) };
     }
-    if (args.includes('bulk')) { inputs = Object.keys(JSON.parse(input)); versionCreated = true; return { code: 0, stdout: '' }; }
+    if (args.includes('upload-artifact')) {
+      inputs = Object.keys(JSON.parse(input)); versionCreated = true;
+      operationId = args[args.indexOf('--operation-id') + 1]; artifactSha256 = args[args.indexOf('--artifact-sha256') + 1];
+      return { code: 0, stdout: JSON.stringify({ id: 'fixture-created', operationId, artifactSha256 }) };
+    }
     return { code: 2, stdout: '' };
   };
 }
@@ -613,17 +672,26 @@ function help() {
     ? 'pwsh -NoProfile -NonInteractive -File apps/github-app/operator-launch.ps1 operator'
     : 'bash -p apps/github-app/operator-launch.sh operator';
   return `Usage:
+  ${entry} prepare-artifact --account-id <account-id> --config <complete-built-config> --artifact-file <new-source-artifact>
   ${entry} registration --webhook-url <https-url> [--visibility private|public] [--app-name <name>] [--oauth-callback-url <https-url>] [--policy-refresh]
-  ${entry} check|install --app-id <numeric-id> --private-key-file <app-pem> --account-id <account-id> --config <exact-json-or-jsonc> --receipt-file <new-durable-receipt> [--worker <matching-name>] [--webhook-secret-file <protected-file> | --webhook-secret-stdin] [--fake]
+  ${entry} check|install --artifact-file <qualified-artifact> --artifact-sha256 <qualified-64-hex-digest> --app-id <numeric-id> --private-key-file <app-pem> --account-id <account-id> --config <exact-json-or-jsonc> --receipt-file <new-durable-receipt> [--worker <matching-name>] [--webhook-secret-file <protected-file> | --webhook-secret-stdin] [--fake]
     Joined-App configs also require --base-version-id <qualified-bootstrap-version> --oauth-client-id <id> --oauth-client-secret-file <protected-file> (--seal-key-file <retained-file> | --seal-key-env <variable-name>) --seal-key-recovery-ref <opaque-custody-id> (--seal-key-initial | --seal-key-previous-receipt <established-target-receipt>). With Wirt configured, add --wirt-signing-key-file <protected-file> or --wirt-signing-key-env <variable-name>.
   ${entry} generate-seal --seal-key-file <new-admitted-custody-file> --seal-key-recovery-ref <established-custody-id>
   ${entry} resume --account-id <account-id> --config <same-exact-config> --receipt-file <existing-receipt> [--worker <matching-name>]
 
-Omit webhook input flags for the hidden TTY checkpoint. --webhook-secret-stdin requires an already-safe redirected channel. Generation requires externally established custody and never prints the key. The config selects the Worker; --worker verifies it, never overrides it. The clean entry must run before Node starts; direct library callers need an already-clean runtime. Latest-version installation does not atomically bind the qualified base; see apps/github-app/README.md. No command deploys.`;
+Omit webhook input flags for the hidden TTY checkpoint. --webhook-secret-stdin requires an already-safe redirected channel. Generation requires externally established custody and never prints the key. The config selects the Worker; --worker verifies it, never overrides it. The clean entry must run before Node starts; direct library callers need an already-clean runtime. Qualify the complete artifact before protected input; installation creates one artifact-bound undeployed version and never patches latest. No command deploys.`;
 }
 
 export async function main(argv = process.argv.slice(2)) {
   const { command, options } = parseArgs(argv);
+  if (command === 'prepare-artifact') {
+    const target = await qualificationConfig({ config: options.config, accountId: options['account-id'], worker: options.worker });
+    const wrangler = options.wrangler ? resolve(options.wrangler) : DEFAULT_WRANGLER;
+    const runner = createProcessRunner();
+    const result = await prepareCredentialArtifact({ configPath: target.config, artifactPath: requireValue(options['artifact-file'], 'New artifact file'), accountId: target.accountId, worker: target.worker, runDryRun: ({ bundlePath, directory }) => runner({ args: buildWranglerCommand(wrangler, ['versions', 'upload', '--dry-run', '--outfile', bundlePath, '--outdir', directory], target), env: environment(target.accountId, {}), input: '' }) });
+    process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+    return;
+  }
   if (command === 'generate-seal') {
     process.stdout.write(`${JSON.stringify(await generateSealKey({ sealKeyPath: options['seal-key-file'], sealKeyRecoveryRef: options['seal-key-recovery-ref'] }), null, 2)}\n`);
     return;
@@ -635,7 +703,7 @@ export async function main(argv = process.argv.slice(2)) {
   if (['check', 'install', 'resume'].includes(command)) {
     if (options['webhook-secret-file'] && options['webhook-secret-stdin']) fail('Choose one webhook input route.');
     if (options['webhook-secret-stdin'] && process.stdin.isTTY) fail('Refusing TTY stdin; omit the flag for hidden entry.', 'E_OPERATOR_TTY');
-    const selected = { appId: options['app-id'], privateKeyPath: options['private-key-file'], accountId: options['account-id'], config: options.config, worker: options.worker, baseVersionId: options['base-version-id'], receiptPath: options['receipt-file'], webhookSecretPath: options['webhook-secret-file'], oauthClientId: options['oauth-client-id'], oauthClientSecretPath: options['oauth-client-secret-file'], sealKeyPath: options['seal-key-file'], sealKeyEnv: options['seal-key-env'], sealKeyRecoveryRef: options['seal-key-recovery-ref'], sealKeyInitial: options['seal-key-initial'], sealKeyPreviousReceiptPath: options['seal-key-previous-receipt'], wirtSigningKeyPath: options['wirt-signing-key-file'], wirtSigningKeyEnv: options['wirt-signing-key-env'], readWebhookSecret: options['webhook-secret-stdin'] ? readRedirectedSecret : readHiddenTerminalSecret, ...(options.wrangler ? { wrangler: options.wrangler } : {}), ...(options.fake ? { fixture: true, runner: createFakeRunner(), githubFetch: createFakeGitHubFetch({ config: options.config, appId: options['app-id'], oauthClientId: options['oauth-client-id'] }) } : {}) };
+    const selected = { appId: options['app-id'], privateKeyPath: options['private-key-file'], accountId: options['account-id'], config: options.config, worker: options.worker, baseVersionId: options['base-version-id'], artifactPath: options['artifact-file'], artifactSha256: options['artifact-sha256'], receiptPath: options['receipt-file'], webhookSecretPath: options['webhook-secret-file'], oauthClientId: options['oauth-client-id'], oauthClientSecretPath: options['oauth-client-secret-file'], sealKeyPath: options['seal-key-file'], sealKeyEnv: options['seal-key-env'], sealKeyRecoveryRef: options['seal-key-recovery-ref'], sealKeyInitial: options['seal-key-initial'], sealKeyPreviousReceiptPath: options['seal-key-previous-receipt'], wirtSigningKeyPath: options['wirt-signing-key-file'], wirtSigningKeyEnv: options['wirt-signing-key-env'], readWebhookSecret: options['webhook-secret-stdin'] ? readRedirectedSecret : readHiddenTerminalSecret, ...(options.wrangler ? { wrangler: options.wrangler } : {}), ...(options['fixture-wrangler'] ? { fixtureWrangler: options['fixture-wrangler'] } : {}), ...(options.fake ? { fixture: true, runner: createFakeRunner(), githubFetch: createFakeGitHubFetch({ config: options.config, appId: options['app-id'], oauthClientId: options['oauth-client-id'] }) } : {}) };
     const result = await (command === 'check' ? checkCredentials(selected) : command === 'resume' ? resumeCredentials(selected) : installCredentials(selected));
     process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
     return;

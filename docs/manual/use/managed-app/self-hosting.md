@@ -92,8 +92,8 @@ The source-owned credential helper requires an already identified Worker deploym
 For that established target, the operator command has this shape:
 
 ```sh
-bash -p apps/github-app/operator-launch.sh operator check --app-id 123 --private-key-file path/to/retained-app-key.pem --account-id account-id --config path/to/derived-qualification.jsonc --receipt-file path/to/new-credential-receipt.json
-bash -p apps/github-app/operator-launch.sh operator install --app-id 123 --private-key-file path/to/retained-app-key.pem --account-id account-id --config path/to/derived-qualification.jsonc --receipt-file path/to/new-credential-receipt.json
+bash -p apps/github-app/operator-launch.sh operator check --artifact-file path/to/qualified-artifact.json --artifact-sha256 qualified-64-hex-sha256 --app-id 123 --private-key-file path/to/retained-app-key.pem --account-id account-id --config path/to/derived-qualification.jsonc --receipt-file path/to/new-credential-receipt.json
+bash -p apps/github-app/operator-launch.sh operator install --artifact-file path/to/qualified-artifact.json --artifact-sha256 qualified-64-hex-sha256 --app-id 123 --private-key-file path/to/retained-app-key.pem --account-id account-id --config path/to/derived-qualification.jsonc --receipt-file path/to/new-credential-receipt.json
 ```
 
 The identifiers and file paths are specimens, not values for a real environment.
@@ -115,7 +115,7 @@ webhook secret through a hidden interactive prompt after creating its non-secret
 checkpoint. `--webhook-secret-file` accepts an operator-controlled protected file.
 The non-interactive `--webhook-secret-stdin` route requires an already-protected,
 redirected channel; do not echo a secret into shell history. Native output stays
-contained, and bulk values go through private stdin rather than a temporary file.
+contained, and values go through the upload child's private stdin rather than a temporary file.
 No secret value belongs in a receipt.
 
 For the signed-in App, also supply its OAuth client ID/secret file and retained
@@ -140,12 +140,17 @@ retains native authentication and explicit seal/Wirt sources while excluding
 ambient Node preloads and provider transport overrides before Node starts.
 
 Select `--base-version-id <qualified-bootstrap-version>` for the joined App.
-That exact version must still be latest immediately before the secret write.
-This is an observation, not an atomic attachment guarantee: Wrangler 4.150.0
-patches `/versions/latest`, so a concurrent upload can receive the credentials.
-The current installer is not an admitted exact-base production route; a
-source-bound upload replacement remains unresolved. Registration, capture,
-preflight and read-only recovery remain available.
+This checks identity/seal continuity. Prepare and qualify the complete built target
+through `operator prepare-artifact`, then pass `--artifact-file <retained-artifact>`
+and `--artifact-sha256 <qualified-digest>` to `check` and `install`. The
+[complete specimen](../../../integration/app-staging.md#protected-input-operation)
+shows the preparation and protected operation. Preparation freezes the pinned
+native modules, versioned settings, selected static assets, routing and headers.
+Installation stages those assets and creates one undeployed version with that
+artifact and the secret bindings; a concurrent latest upload cannot select its
+code. Source/composition qualification and effect authorization stay separate.
+Existing consumers add these two artifact inputs; missing or changed artifacts
+refuse before protected input. Legacy receipts remain read-only resumable.
 For a confirmed new/empty target, use `--seal-key-initial`; an established target
 uses `--seal-key-previous-receipt <durable-successful-receipt>` and the same
 retained key/custody reference. A foreign target or different seal refuses.
@@ -163,11 +168,13 @@ file. First actual rotation/rollover separately scopes subset and previous-key
 support. Keep operation receipts outside disposable checkouts, with the qualified
 source/configuration/composition evidence, before retiring those carriers.
 
-This helper creates an **undeployed Worker version** using versioned secret
+This helper creates an **undeployed Worker version** using artifact-bound
 installation. It does not deploy that version, register the App, install it on a
 repository or enable execution. Its receipt separates command acceptance,
-created-version identity and secret-binding-name readback, unchanged latest
-deployment, and partial/unknown results. Reconcile an interrupted operation with
+created-version identity, operation/artifact lineage, observed script ETag and
+secret-binding-name readback, unchanged deployment, and partial/unknown results.
+These are request-bound source facts, not a byte download or secret-value readback.
+Reconcile an interrupted operation with
 the existing receipt and exact unchanged config:
 
 ```sh

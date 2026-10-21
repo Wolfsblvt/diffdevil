@@ -11,13 +11,16 @@ import { pathToFileURL } from 'node:url';
 import { PassThrough } from 'node:stream';
 import { test } from 'node:test';
 import { createProtector } from '../app/src/lib/protector.mjs';
-import { buildWranglerCommand, checkCredentials, createProcessRunner, installCredentials as install, resumeCredentials, readHiddenTerminalSecret, registrationInputs, withoutProtectedInputs } from './operator-helper.mjs';
+import { syntheticArtifact } from './fixtures/operator-artifact.mjs';
+import { assetHash, sha256 } from './operator-artifact.mjs';
+import { buildWranglerCommand, checkCredentials as check, createProcessRunner, installCredentials as install, resumeCredentials, readHiddenTerminalSecret, registrationInputs, withoutProtectedInputs } from './operator-helper.mjs';
 
 const databaseId = '12345678-1234-1234-1234-123456789abc';
 const keyPair = generateKeyPairSync('rsa', { modulusLength: 2048 });
 const fixtureKey = keyPair.privateKey.export({ type: 'pkcs1', format: 'pem' });
 const deployment = id => ({ id, versions: [{ version_id: 'version-before', percentage: 100 }] });
-const installCredentials = options => install({ receiptPath: join(dirname(options.config), 'receipt.json'), githubFetch: fixtureGitHubFetch(options.oauthClientId), ...options });
+const installCredentials = async options => install({ receiptPath: join(dirname(options.config), 'receipt.json'), githubFetch: fixtureGitHubFetch(options.oauthClientId), ...options, ...await syntheticArtifact(options.config) });
+const checkCredentials = async options => check({ ...options, ...await syntheticArtifact(options.config) });
 
 function fixtureGitHubFetch(clientId = 'fixture-client', overrides = {}) {
   return async (url, request) => {
@@ -48,11 +51,11 @@ async function appFixture(worker = 'diffdevil-app-staging') {
   await writeFile(setup.config, JSON.stringify({ name: worker, account_id: 'account-1', vars: { APP_ORIGIN: 'https://staging.example', WIRT_ORIGIN: 'https://wirt.example' }, d1_databases: [{ binding: 'APP_DB', database_id: databaseId }] }));
   await writeFile(join(setup.directory, 'fixture-options.json'), '{}');
   await writeFile(join(setup.directory, 'fixture-public-key.pem'), keyPair.publicKey.export({ type: 'spki', format: 'pem' }));
-  return { ...setup, values, options: { appId: '123', privateKeyPath: setup.privateKeyPath, config: setup.config, receiptPath: join(setup.directory, 'receipt.json'), accountId: 'account-1', baseVersionId: 'version-before', sealKeyInitial: true, oauthClientId: values.GITHUB_OAUTH_CLIENT_ID, sealKeyRecoveryRef: 'fixture-recovery-copy', ...files } };
+  return { ...setup, values, options: { ...await syntheticArtifact(setup.config), appId: '123', privateKeyPath: setup.privateKeyPath, config: setup.config, receiptPath: join(setup.directory, 'receipt.json'), accountId: 'account-1', baseVersionId: 'version-before', sealKeyInitial: true, oauthClientId: values.GITHUB_OAUTH_CLIENT_ID, sealKeyRecoveryRef: 'fixture-recovery-copy', ...files } };
 }
 
 function cli(setup, command = 'install', extra = [], { inputArgs, environment = {} } = {}) {
-  const target = ['--config', setup.config, '--account-id', 'account-1', '--receipt-file', setup.options.receiptPath, '--wrangler', resolve('apps/github-app/fixtures/operator-provider.mjs'), '--base-version-id', setup.options.baseVersionId];
+  const target = ['--config', setup.config, '--account-id', 'account-1', '--receipt-file', setup.options.receiptPath, '--fixture-wrangler', resolve('apps/github-app/fixtures/operator-provider.mjs'), '--base-version-id', setup.options.baseVersionId, '--artifact-file', setup.options.artifactPath, '--artifact-sha256', setup.options.artifactSha256];
   const inputs = command === 'resume' ? [] : inputArgs ?? ['--app-id', '123', '--private-key-file', setup.privateKeyPath, '--webhook-secret-file', setup.options.webhookSecretPath, '--oauth-client-id', setup.options.oauthClientId, '--oauth-client-secret-file', setup.options.oauthClientSecretPath, '--seal-key-file', setup.options.sealKeyPath, '--seal-key-initial', '--seal-key-recovery-ref', setup.options.sealKeyRecoveryRef, '--wirt-signing-key-file', setup.options.wirtSigningKeyPath];
   const preload = pathToFileURL(resolve('apps/github-app/fixtures/operator-github.mjs')).href;
   return spawnSync(process.execPath, ['--import', preload, 'apps/github-app/operator-helper.mjs', command, ...target, ...inputs, ...extra], { cwd: process.cwd(), encoding: 'utf8', windowsHide: true, env: { ...process.env, DIFFDEVIL_OPERATOR_FIXTURE_DIRECTORY: setup.directory, ...environment, [process.platform === 'win32' ? 'cloudflare_env' : 'CLOUDFLARE_ENV']: 'must-not-inherit' } });
@@ -75,7 +78,7 @@ test('credential-bearing native children cannot execute an ambient Node preload 
     process.env.HTTPS_PROXY = 'http://127.0.0.1:1';
     process.env.NODE_EXTRA_CA_CERTS = join(setup.directory, 'missing-ca');
     await writeFile(join(setup.directory, 'fixture-options.json'), JSON.stringify({ absentEnvironmentNames: names }));
-    const receipt = await installCredentials({ ...setup.options, wrangler: resolve('apps/github-app/fixtures/operator-provider.mjs'), runner: createProcessRunner() });
+    const receipt = await installCredentials({ ...setup.options, fixtureWrangler: resolve('apps/github-app/fixtures/operator-provider.mjs'), runner: createProcessRunner() });
     assert.equal(receipt.state, 'version-created');
     assert.equal(receipt.inputs.length, 7);
     assert.equal(await readFile(marker).then(() => true, () => false), false);
@@ -85,6 +88,39 @@ test('credential-bearing native children cannot execute an ambient Node preload 
     }
     await rm(setup.directory, { recursive: true, force: true });
   }
+});
+
+test('the maintained upload child uses native synthetic auth and exact modules/assets despite a foreign latest upload', async () => {
+  const setup = await appFixture();
+  const native = createProcessRunner();
+  try {
+    const artifact = JSON.parse(await readFile(setup.options.artifactPath, 'utf8'));
+    const bytes = Buffer.from('<h1>complete selected assets</h1>');
+    artifact.metadata.bindings.push({ name: 'ASSETS', type: 'assets' });
+    artifact.assets = { binding: 'ASSETS', config: { run_worker_first: true, _headers: '/*\n X-Artifact: same-version' }, files: [{ path: '/index.html', type: 'text/html; charset=utf-8', content: bytes.toString('base64'), hash: assetHash('/index.html', bytes), size: bytes.length }] };
+    const encoded = `${JSON.stringify(artifact)}\n`;
+    await writeFile(setup.options.artifactPath, encoded);
+    const runner = call => {
+      const upload = call.args[0].endsWith('operator-upload.mjs');
+      const args = upload
+        ? ['--import', pathToFileURL(resolve('apps/github-app/fixtures/operator-upload-transport.mjs')).href, ...call.args]
+        : [resolve('apps/github-app/fixtures/operator-provider.mjs'), ...call.args.slice(1)];
+      return native({ ...call, args, env: { ...call.env, CLOUDFLARE_API_TOKEN: 'synthetic-native-auth', WRANGLER_HOME: setup.directory } });
+    };
+    const result = await install({ ...setup.options, artifactSha256: sha256(encoded), githubFetch: fixtureGitHubFetch(setup.options.oauthClientId), runner });
+    assert.equal(result.state, 'version-created');
+    assert.equal(result.artifact.lineage, 'read-back');
+    const state = JSON.parse(await readFile(join(setup.directory, 'fixture-state.json'), 'utf8'));
+    assert.equal(state.foreignUpload, true);
+    assert.equal(state.inputs.length, 7);
+    assert.equal(state.writes, 1);
+    assert.equal(state.secretAttachmentBase, `artifact:${sha256(encoded)}`);
+    assert.equal(state.deliveryHash, createHash('sha256').update(JSON.stringify(setup.values)).digest('hex'));
+    assert.equal(JSON.stringify(result).includes('synthetic-native-auth'), false);
+    await rm(setup.options.artifactPath);
+    assert.equal((await resumeCredentials({ ...setup.options, runner })).state, 'version-created');
+    assert.equal(JSON.parse(await readFile(join(setup.directory, 'fixture-state.json'), 'utf8')).writes, 1);
+  } finally { await rm(setup.directory, { recursive: true, force: true }); }
 });
 
 async function fixture() {
@@ -98,9 +134,59 @@ async function fixture() {
   return { directory, privateKeyPath, config };
 }
 
+test('missing or changed artifacts refuse before protected input and receipt creation', async () => {
+  const setup = await appFixture();
+  let inputRead = false;
+  const fake = versionRunner();
+  try {
+    for (const change of [{ artifactPath: undefined, artifactSha256: undefined }, { artifactSha256: '0'.repeat(64) }, { artifactPath: setup.options.privateKeyPath }]) {
+      await assert.rejects(install({ ...setup.options, ...change, runner: fake.runner, readGitHubInputs: async () => { inputRead = true; return setup.values; } }), { code: 'E_OPERATOR_ARTIFACT' });
+    }
+    assert.equal(inputRead, false);
+    assert.equal(fake.calls.some(call => call.args.includes('upload-artifact')), false);
+    await assert.rejects(readFile(setup.options.receiptPath), { code: 'ENOENT' });
+  } finally { await rm(setup.directory, { recursive: true, force: true }); }
+});
+
+test('familiar binding names cannot establish a different artifact lineage and resume never writes', async () => {
+  const setup = await appFixture();
+  const fake = versionRunner();
+  const runner = async call => {
+    const result = await fake.runner(call);
+    if (call.args.includes('view') && call.args.includes('version-created')) {
+      const viewed = JSON.parse(result.stdout);
+      viewed.annotations['workers/message'] = `diffdevil artifact ${'f'.repeat(64)}`;
+      return { ...result, stdout: JSON.stringify(viewed) };
+    }
+    return result;
+  };
+  try {
+    await assert.rejects(installCredentials({ ...setup.options, runner }), error => error.code === 'E_OPERATOR_VERSION' && error.receipt.state === 'unknown' && error.receipt.artifact.lineage === 'unknown');
+    await assert.rejects(resumeCredentials({ ...setup.options, runner }), { code: 'E_OPERATOR_VERSION' });
+    assert.equal(fake.calls.filter(call => call.args.includes('upload-artifact')).length, 1);
+  } finally { await rm(setup.directory, { recursive: true, force: true }); }
+});
+
+test('initial mode cannot reuse an older empty base after latest already acquired a seal', async () => {
+  const setup = await appFixture();
+  const fake = versionRunner();
+  let inputRead = false;
+  const runner = call => {
+    if (call.args.includes('versions') && call.args.includes('list')) return { code: 0, stdout: '[{"id":"version-before"},{"id":"established-version"}]' };
+    if (call.args.includes('view') && call.args.includes('established-version')) return { code: 0, stdout: JSON.stringify({ id: 'established-version', resources: { bindings: [{ name: 'APP_SEAL_KEY', type: 'secret_text' }] } }) };
+    return fake.runner(call);
+  };
+  try {
+    await assert.rejects(install({ ...setup.options, runner, readGitHubInputs: async () => { inputRead = true; return setup.values; } }), { code: 'E_OPERATOR_TARGET' });
+    assert.equal(inputRead, false);
+    assert.equal(fake.calls.some(call => call.args.includes('upload-artifact')), false);
+  } finally { await rm(setup.directory, { recursive: true, force: true }); }
+});
+
 function versionRunner({ account = 'match', command = 'accepted', deployment: deploymentState = 'unchanged', versionReadback = 'complete' } = {}) {
   let created = false;
   let inputs = [];
+  let operationId, artifactSha256;
   const calls = [];
   return {
     calls,
@@ -114,14 +200,17 @@ function versionRunner({ account = 'match', command = 'accepted', deployment: de
       }
       if (call.args.includes('versions') && call.args.includes('view')) {
         const id = call.args[call.args.indexOf('view') + 1];
-        if (!created || versionReadback === 'complete') return { code: 0, stdout: JSON.stringify({ id, resources: { bindings: [{ name: 'APP_DB', type: 'd1', id: databaseId }, ...inputs.map(name => ({ type: 'secret_text', name }))] } }), stderr: '' };
+        if (!['version-before', 'version-created'].includes(id)) return { code: 1, stdout: '' };
+        if (!created || versionReadback === 'complete') return { code: 0, stdout: JSON.stringify({ id, ...(created && id === 'version-created' ? { annotations: { 'workers/tag': operationId, 'workers/message': `diffdevil artifact ${artifactSha256}` } } : {}), resources: { bindings: [{ name: 'APP_DB', type: 'd1', id: databaseId }, ...inputs.map(name => ({ type: 'secret_text', name }))] } }), stderr: '' };
         return { code: versionReadback === 'wrong-id' ? 0 : 1, stdout: versionReadback === 'wrong-id' ? JSON.stringify({ id: 'other-version' }) : '', stderr: '' };
       }
-      if (call.args.includes('bulk')) {
+      if (call.args.includes('upload-artifact')) {
         inputs = Object.keys(JSON.parse(call.input));
+        operationId = call.args[call.args.indexOf('--operation-id') + 1];
+        artifactSha256 = call.args[call.args.indexOf('--artifact-sha256') + 1];
         if (command === 'throws') throw new Error('fixture transport error');
         created = command === 'accepted';
-        return { code: command === 'accepted' ? 0 : 1, stdout: '', stderr: '' };
+        return { code: command === 'accepted' ? 0 : 1, stdout: JSON.stringify({ ...(command === 'accepted' ? { id: 'version-created' } : { versionRequest: 'not-attempted' }), operationId, artifactSha256 }), stderr: '' };
       }
       return { code: 2, stdout: '', stderr: '' };
     }
@@ -302,7 +391,7 @@ test('native readback refuses non-JSON output before protected input or writes',
       let protectedReads = 0;
       let writes = 0;
       const runner = async call => {
-        if (call.args.includes('bulk')) writes++;
+        if (call.args.includes('upload-artifact')) writes++;
         if (call.args.includes('deployments')) return { code: 0, stdout: output };
         return validRunner(call);
       };
@@ -422,12 +511,13 @@ test('credential installation creates one undeployed version without a transient
     assert.deepEqual(result.version, { state: 'read-back', id: 'version-created' });
     assert.deepEqual(result.deployment, { state: 'unchanged' });
     assert.deepEqual(result.carrier, { state: 'not-created' });
-    const bulk = calls.find(call => call.args.includes('bulk'));
+    const bulk = calls.find(call => call.args.includes('upload-artifact'));
     assert.ok(bulk);
     assert.equal(bulk.env.WRANGLER_LOG, 'error');
     assert.equal(bulk.args.includes(webhookSecret), false);
     assert.equal(bulk.args.some(argument => argument.includes('BEGIN RSA PRIVATE KEY')), false);
-    assert.equal(bulk.args[bulk.args.indexOf('bulk') + 1], '--message');
+    assert.equal(bulk.args[bulk.args.indexOf('--artifact-sha256') + 1], result.artifact.sha256);
+    assert.equal(result.artifact.lineage, 'read-back');
     assert.deepEqual(Object.keys(JSON.parse(bulk.input)), ['GITHUB_APP_ID', 'GITHUB_WEBHOOK_SECRET', 'GITHUB_APP_PRIVATE_KEY']);
     const receipt = await readFile(join(setup.directory, 'receipt.json'), 'utf8');
     assert.equal(receipt.includes(webhookSecret), false);
@@ -447,13 +537,29 @@ test('credential installation returns a partial receipt when a created version c
   }
 });
 
-test('credential installation returns a bounded not-created receipt after a failed bulk write', async () => {
+test('a contained before-effect failure returns a bounded not-attempted version receipt', async () => {
   const setup = await fixture();
   try {
-    await assert.rejects(installCredentials({ appId: '123', privateKeyPath: setup.privateKeyPath, accountId: 'account-1', config: setup.config, readWebhookSecret: async () => randomUUID(), runner: versionRunner({ command: 'failed' }).runner }), error => error.code === 'E_OPERATOR_VERSION' && error.receipt.state === 'not-created' && error.receipt.command === 'failed' && error.receipt.version.state === 'absent');
+    await assert.rejects(installCredentials({ appId: '123', privateKeyPath: setup.privateKeyPath, accountId: 'account-1', config: setup.config, readWebhookSecret: async () => randomUUID(), runner: versionRunner({ command: 'failed' }).runner }), error => error.code === 'E_OPERATOR_VERSION' && error.receipt.state === 'not-attempted' && error.receipt.command === 'not-attempted');
   } finally {
     await rm(setup.directory, { recursive: true, force: true });
   }
+});
+
+test('a failed child exit without a before-effect fact stays unknown even when no new version is listed', async () => {
+  const setup = await fixture();
+  const fake = versionRunner();
+  let attempts = 0;
+  const runner = call => {
+    if (call.args.includes('upload-artifact')) { attempts++; return { code: 2, stdout: '' }; }
+    return fake.runner(call);
+  };
+  const options = { appId: '123', privateKeyPath: setup.privateKeyPath, accountId: 'account-1', config: setup.config, readWebhookSecret: async () => randomUUID(), runner };
+  try {
+    await assert.rejects(installCredentials(options), error => error.code === 'E_OPERATOR_VERSION' && error.receipt.state === 'unknown' && error.receipt.command === 'attempted-unknown');
+    await assert.rejects(resumeCredentials({ ...options, receiptPath: join(setup.directory, 'receipt.json') }), { code: 'E_OPERATOR_VERSION' });
+    assert.equal(attempts, 1);
+  } finally { await rm(setup.directory, { recursive: true, force: true }); }
 });
 
 test('credential installation returns an unknown receipt when the provider route stops reporting', async () => {
@@ -481,7 +587,7 @@ test('credential installation rejects an account mismatch before reading secret 
   try {
     await assert.rejects(installCredentials({ appId: '123', privateKeyPath: setup.privateKeyPath, accountId: 'account-1', config: setup.config, readWebhookSecret: async () => { secretRead = true; return randomUUID(); }, runner }), { code: 'E_OPERATOR_TARGET' });
     assert.equal(secretRead, false);
-    assert.equal(calls.some(call => call.args.includes('bulk')), false);
+    assert.equal(calls.some(call => call.args.includes('upload-artifact')), false);
   } finally {
     await rm(setup.directory, { recursive: true, force: true });
   }
@@ -494,7 +600,7 @@ test('credential installation rejects an absent Worker deployment before reading
   try {
     await assert.rejects(installCredentials({ appId: '123', privateKeyPath: setup.privateKeyPath, accountId: 'account-1', config: setup.config, readWebhookSecret: async () => { secretRead = true; return randomUUID(); }, runner }), { code: 'E_OPERATOR_TARGET' });
     assert.equal(secretRead, false);
-    assert.equal(calls.some(call => call.args.includes('bulk')), false);
+    assert.equal(calls.some(call => call.args.includes('upload-artifact')), false);
   } finally {
     await rm(setup.directory, { recursive: true, force: true });
   }
@@ -545,7 +651,8 @@ test('the disposable CLI path reads redirected stdin and emits only a bounded re
     const data = JSON.parse(await readFile(setup.config, 'utf8'));
     data.account_id = 'fixture-account';
     await writeFile(setup.config, JSON.stringify(data));
-    const result = spawnSync(process.execPath, ['apps/github-app/operator-helper.mjs', 'install', '--fake', '--app-id', '123', '--private-key-file', setup.privateKeyPath, '--account-id', 'fixture-account', '--config', setup.config, '--receipt-file', join(setup.directory, 'receipt.json'), '--webhook-secret-stdin'], { cwd: process.cwd(), input: `${webhookSecret}\n`, encoding: 'utf8', windowsHide: true });
+    const artifact = await syntheticArtifact(setup.config);
+    const result = spawnSync(process.execPath, ['apps/github-app/operator-helper.mjs', 'install', '--fake', '--app-id', '123', '--private-key-file', setup.privateKeyPath, '--account-id', 'fixture-account', '--config', setup.config, '--receipt-file', join(setup.directory, 'receipt.json'), '--webhook-secret-stdin', '--artifact-file', artifact.artifactPath, '--artifact-sha256', artifact.artifactSha256], { cwd: process.cwd(), input: `${webhookSecret}\n`, encoding: 'utf8', windowsHide: true });
     assert.equal(result.status, 0);
     assert.equal(result.stdout.includes(webhookSecret), false);
     assert.equal(result.stderr.includes(webhookSecret), false);
@@ -635,7 +742,7 @@ test('joined-App check requires the full input and seal recovery contract before
     assert.equal(result.protectedValues, 'unread');
     assert.equal(result.providerWrite, 'not-attempted');
     assert.equal(result.identity, 'unverified');
-    assert.equal(calls.some(call => call.args.includes('bulk')), false);
+    assert.equal(calls.some(call => call.args.includes('upload-artifact')), false);
     await assert.rejects(checkCredentials({ ...setup.options, sealKeyRecoveryRef: undefined, runner }), { code: 'E_OPERATOR_INPUT' });
     await assert.rejects(checkCredentials({ ...setup.options, oauthClientSecretPath: undefined, runner }), { code: 'E_OPERATOR_INPUT' });
     assert.equal(await readFile(setup.options.receiptPath).then(() => true, () => false), false);
@@ -677,11 +784,11 @@ test('the real CLI contains failed-provider stdout/stderr without claiming versi
     await writeFile(join(setup.directory, 'fixture-options.json'), JSON.stringify({ failWrite: true }));
     const result = cli(setup);
     assert.equal(result.status, 2);
-    assert.equal(JSON.parse(result.stdout).state, 'not-created');
+    assert.equal(JSON.parse(result.stdout).state, 'not-attempted');
     assert.equal(containsProtectedValues(result.stdout + result.stderr + await readFile(setup.options.receiptPath, 'utf8'), setup), false);
     const resumed = cli(setup, 'resume');
     assert.equal(resumed.status, 0);
-    assert.equal(JSON.parse(resumed.stdout).state, 'not-created');
+    assert.equal(JSON.parse(resumed.stdout).state, 'not-attempted');
   } finally { await rm(setup.directory, { recursive: true, force: true }); }
 });
 
@@ -771,10 +878,10 @@ test('the real CLI refuses a latest-version database mismatch before protected i
     await rm(setup.privateKeyPath);
     const result = cli(setup);
     assert.equal(result.status, 2);
-    assert.match(result.stderr, /latest Worker version does not read back the configured APP_DB/u);
+    assert.match(result.stderr, /APP_DB/u);
     const state = JSON.parse(await readFile(join(setup.directory, 'fixture-state.json'), 'utf8'));
     assert.equal(state.writes, 0);
-    assert.equal(state.calls.some(args => args.includes('bulk')), false);
+    assert.equal(state.calls.some(args => args.includes('upload-artifact')), false);
     assert.equal((await readdir(setup.directory)).includes('receipt.json'), false);
     assert.equal(containsProtectedValues(result.stdout + result.stderr, setup), false);
   } finally { await rm(setup.directory, { recursive: true, force: true }); }
@@ -810,7 +917,7 @@ test('input failure and configuration drift retain a no-write receipt with no ra
     const original = await readFile(setup.config, 'utf8');
     await assert.rejects(installCredentials({ ...options, readWebhookSecret: async () => { await writeFile(setup.config, original + '\n'); return canary; } }), { code: 'E_OPERATOR_TARGET' });
     assert.equal(JSON.parse(await readFile(receiptPath, 'utf8')).command, 'not-attempted');
-    assert.equal(calls.some(call => call.args.includes('bulk')), false);
+    assert.equal(calls.some(call => call.args.includes('upload-artifact')), false);
     assert.deepEqual((await readdir(setup.directory)).filter(name => name.startsWith('.diffdevil-')), []);
   } finally { await rm(setup.directory, { recursive: true, force: true }); }
 });
@@ -835,7 +942,7 @@ test('a receipt commit failure after the write retains the ambiguity marker and 
   let moved = false;
   const runner = async call => {
     const result = await fake.runner(call);
-    if (call.args.includes('bulk')) { await rename(receiptDirectory, retainedDirectory); moved = true; }
+    if (call.args.includes('upload-artifact')) { await rename(receiptDirectory, retainedDirectory); moved = true; }
     return result;
   };
   try {
@@ -845,7 +952,7 @@ test('a receipt commit failure after the write retains the ambiguity marker and 
     await rename(retainedDirectory, receiptDirectory);
     moved = false;
     await assert.rejects(resumeCredentials({ ...options, runner: fake.runner }), error => error.code === 'E_OPERATOR_VERSION' && error.receipt.state === 'partial' && error.receipt.version.state === 'read-back');
-    assert.equal(fake.calls.filter(call => call.args.includes('bulk')).length, 1);
+    assert.equal(fake.calls.filter(call => call.args.includes('upload-artifact')).length, 1);
   } finally {
     if (moved) await rename(retainedDirectory, receiptDirectory);
     await rm(setup.directory, { recursive: true, force: true });
@@ -862,14 +969,14 @@ test('App ID, OAuth client and bot mismatches persist terminal no-write receipts
       const receipt = JSON.parse(await readFile(receiptPath, 'utf8'));
       assert.equal(receipt.state, 'not-attempted');
       assert.equal(receipt.command, 'not-attempted');
-      assert.equal(fake.calls.some(call => call.args.includes('bulk')), false);
+      assert.equal(fake.calls.some(call => call.args.includes('upload-artifact')), false);
       assert.equal(containsProtectedValues(JSON.stringify(receipt), setup), false);
     }
     const privateKey = generateKeyPairSync('rsa', { modulusLength: 2048 }).privateKey.export({ type: 'pkcs1', format: 'pem' });
     await writeFile(setup.privateKeyPath, privateKey);
     const fake = versionRunner();
     await assert.rejects(installCredentials({ ...setup.options, runner: fake.runner }), { code: 'E_OPERATOR_IDENTITY' });
-    assert.equal(fake.calls.some(call => call.args.includes('bulk')), false);
+    assert.equal(fake.calls.some(call => call.args.includes('upload-artifact')), false);
   } finally { await rm(setup.directory, { recursive: true, force: true }); }
 });
 
@@ -897,7 +1004,7 @@ test('manifest-captured GitHub inputs qualify identity without plaintext credent
       return values;
     } });
     assert.deepEqual(result.identity, { state: 'verified', appId: '123', clientId, botLogin: 'diffdevil[bot]', botId: '456' });
-    assert.deepEqual(JSON.parse(fake.calls.find(call => call.args.includes('bulk')).input), values);
+    assert.deepEqual(JSON.parse(fake.calls.find(call => call.args.includes('upload-artifact')).input), values);
     assert.equal(containsProtectedValues(JSON.stringify(result), setup), false);
   } finally { await rm(setup.directory, { recursive: true, force: true }); }
 });
@@ -914,22 +1021,27 @@ test('initial seal mode refuses an existing uploaded seal by name before protect
     }
     const state = JSON.parse(await readFile(join(setup.directory, 'fixture-state.json'), 'utf8'));
     assert.equal(state.writes, 0);
-    assert.equal(state.calls.some(args => args.includes('bulk')), false);
+    assert.equal(state.calls.some(args => args.includes('upload-artifact')), false);
     await assert.rejects(readFile(setup.options.receiptPath), { code: 'ENOENT' });
   } finally { await rm(setup.directory, { recursive: true, force: true }); }
 });
 
-test('the qualified bootstrap version refuses early mismatch and drift during private input', async () => {
+test('a missing continuity base refuses early while a foreign latest upload cannot replace the qualified artifact', async () => {
   const setup = await appFixture();
   const fake = versionRunner();
   let inputRead = false;
   try {
     await assert.rejects(installCredentials({ ...setup.options, baseVersionId: 'foreign-build', runner: fake.runner }), { code: 'E_OPERATOR_TARGET' });
     assert.equal(await readFile(setup.options.receiptPath).then(() => true, () => false), false);
-    const runner = async call => inputRead && call.args.includes('list') && call.args.includes('versions') ? { code: 0, stdout: JSON.stringify([{ id: 'foreign-build' }]) } : fake.runner(call);
-    await assert.rejects(installCredentials({ ...setup.options, runner, readGitHubInputs: async () => { inputRead = true; return setup.values; } }), error => error.code === 'E_OPERATOR_TARGET' && error.receipt.state === 'not-attempted');
-    assert.equal(JSON.parse(await readFile(setup.options.receiptPath, 'utf8')).state, 'not-attempted');
-    assert.equal(fake.calls.some(call => call.args.includes('bulk')), false);
+    const runner = async call => {
+      if (inputRead && call.args.includes('list') && call.args.includes('versions')) return { code: 0, stdout: JSON.stringify([{ id: 'foreign-build' }]) };
+      if (inputRead && call.args.includes('view') && call.args.includes('foreign-build')) return { code: 0, stdout: JSON.stringify({ id: 'foreign-build', resources: { bindings: [{ name: 'APP_DB', type: 'd1', id: databaseId }] } }) };
+      return fake.runner(call);
+    };
+    const result = await installCredentials({ ...setup.options, runner, readGitHubInputs: async () => { inputRead = true; return setup.values; } });
+    assert.equal(result.state, 'version-created');
+    assert.equal(result.artifact.lineage, 'read-back');
+    assert.equal(fake.calls.filter(call => call.args.includes('upload-artifact')).length, 1);
   } finally { await rm(setup.directory, { recursive: true, force: true }); }
 });
 
@@ -952,6 +1064,7 @@ test('the real CLI qualifies a distinct staging bot through App, user and upload
     const config = JSON.parse(await readFile(setup.config, 'utf8'));
     config.vars.GITHUB_APP_BOT_LOGIN = 'diffdevil-staging[bot]';
     await writeFile(setup.config, JSON.stringify(config));
+    Object.assign(setup.options, await syntheticArtifact(setup.config));
     await writeFile(join(setup.directory, 'fixture-options.json'), JSON.stringify({ githubIdentity: { slug: 'diffdevil-staging' } }));
     const result = cli(setup);
     assert.equal(result.status, 0, result.stderr);
@@ -983,7 +1096,7 @@ test('a durable seal receipt survives the original carrier and refuses another k
       await writeFile(replacement.options.sealKeyPath, change.key ?? retainedKey);
       const fake = versionRunner();
       await assert.rejects(installCredentials({ ...options, receiptPath: join(replacement.directory, `continuity-refused-${index}.json`), sealKeyRecoveryRef: change.recoveryRef ?? options.sealKeyRecoveryRef, runner: fake.runner }), error => error.code === 'E_OPERATOR_SEAL' && error.receipt.state === 'not-attempted');
-      assert.equal(fake.calls.some(call => call.args.includes('bulk')), false);
+      assert.equal(fake.calls.some(call => call.args.includes('upload-artifact')), false);
     }
   } finally { await Promise.all([original.directory, replacement.directory, handback].map(path => rm(path, { recursive: true, force: true }))); }
 });

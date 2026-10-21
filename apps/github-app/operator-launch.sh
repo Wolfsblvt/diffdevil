@@ -10,12 +10,12 @@ node_path=$(type -P node)
 # Strip export attributes rather than passing credentials as env(1) arguments.
 while IFS= read -r name; do export -n "$name"; done < <(compgen -e)
 for name in PATH SYSTEMROOT WINDIR TEMP TMP TMPDIR HOME USERPROFILE HOMEDRIVE HOMEPATH APPDATA LOCALAPPDATA XDG_CONFIG_HOME WRANGLER_HOME; do
-    if [[ -v $name ]]; then export "$name"; fi
+    if [[ ${!name+x} ]]; then export "$name"; fi
 done
 if [[ -n ${CLOUDFLARE_API_TOKEN-} ]]; then export CLOUDFLARE_API_TOKEN
 else
     for name in CLOUDFLARE_API_KEY CLOUDFLARE_EMAIL; do
-        if [[ -v $name ]]; then export "$name"; fi
+        if [[ ${!name+x} ]]; then export "$name"; fi
     done
 fi
 arguments=("$@")
@@ -33,7 +33,7 @@ for ((index=0; index<${#arguments[@]}; index++)); do
         if [[ $previous == "$name" ]]; then printf '%s\n' 'Each protected input must use a distinct named variable.' >&2; exit 2; fi
     done
     selected_names+=("$name")
-    if [[ -v $name ]]; then
+    if [[ ${!name+x} ]]; then
         value=${!name}
         printf -v "$slot" '%s' "$value"
         export "$slot"

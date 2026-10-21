@@ -7,6 +7,7 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { test } from 'node:test';
+import { syntheticArtifact } from './fixtures/operator-artifact.mjs';
 
 function launch(helper, args, env, { bash, ...options } = {}) {
   const windows = process.platform === 'win32' && !bash;
@@ -34,6 +35,7 @@ for (const bash of entries) test(`public clean ${bash ? 'Git Bash' : process.pla
     await writeFile(join(directory, 'key.pem'), pem);
     await writeFile(join(directory, 'webhook.txt'), values.webhook);
     await writeFile(join(directory, 'oauth.txt'), values.oauth);
+    const artifact = await syntheticArtifact(config);
     const env = { ...process.env, NODE_OPTIONS: `--require=${JSON.stringify(preload)}`, NODE_PATH: directory, BASH_ENV: shellStartup, HTTPS_PROXY: 'http://127.0.0.1:1', NODE_EXTRA_CA_CERTS: join(directory, 'missing-ca'), CF_API_TOKEN: 'unselected', CLOUDFLARE_API_BASE_URL: 'http://127.0.0.1:1', TEST_SEAL: values.seal, TEST_WIRT: values.wirt };
     // Positive control establishes that this exact ambient preload would run.
     const unsafe = spawnSync(process.execPath, ['-e', 'process.stdin.resume()'], { env, input: 'synthetic-credential-payload', encoding: 'utf8', windowsHide: true });
@@ -41,7 +43,7 @@ for (const bash of entries) test(`public clean ${bash ? 'Git Bash' : process.pla
     assert.match(await readFile(marker, 'utf8'), /synthetic-credential-payload/u);
     await rm(marker);
 
-    const result = launch('operator', ['install', '--fake', '--app-id', '123', '--private-key-file', join(directory, 'key.pem'), '--webhook-secret-stdin', '--oauth-client-id', 'fixture-client', '--oauth-client-secret-file', join(directory, 'oauth.txt'), '--seal-key-env', 'TEST_SEAL', '--wirt-signing-key-env', 'TEST_WIRT', '--seal-key-initial', '--seal-key-recovery-ref', 'retained-fixture', '--base-version-id', 'fixture-before', '--account-id', 'fixture-account', '--config', config, '--receipt-file', receiptPath], env, { bash, input: values.webhook });
+    const result = launch('operator', ['install', '--fake', '--app-id', '123', '--private-key-file', join(directory, 'key.pem'), '--webhook-secret-stdin', '--oauth-client-id', 'fixture-client', '--oauth-client-secret-file', join(directory, 'oauth.txt'), '--seal-key-env', 'TEST_SEAL', '--wirt-signing-key-env', 'TEST_WIRT', '--seal-key-initial', '--seal-key-recovery-ref', 'retained-fixture', '--base-version-id', 'fixture-before', '--account-id', 'fixture-account', '--config', config, '--receipt-file', receiptPath, '--artifact-file', artifact.artifactPath, '--artifact-sha256', artifact.artifactSha256], env, { bash, input: values.webhook });
     assert.equal(result.status, 0, result.stderr);
     const receipt = JSON.parse(result.stdout);
     assert.equal(receipt.mode, 'fixture');

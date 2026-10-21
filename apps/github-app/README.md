@@ -106,15 +106,38 @@ unrelated variables do not reach Node or its credential-bearing children. This
 qualifies a trusted operator installation with hostile incidental Node/transport
 settings, not an untrusted host, executable, dependency tree or credential store.
 
-**Exact-base installation remains unresolved.** Pinned Wrangler 4.150.0's
-`versions secret bulk` patches `/versions/latest`, without a version-ID operand
-or conditional base. The two latest-version checks below are observations, not
-an enforced single-writer invariant. A concurrent upload can receive the secrets
-before readback, even if its binding names look familiar. This route must not be
-admitted as an exact-qualified-base production installer. The complete mediated
-installation destination remains; its source-bound upload replacement requires
-qualification, including code/assets/settings identity and read-only recovery.
-No install capability or existing receipt is deleted by this source repair.
+Credential attachment consumes a **qualified artifact**, with its independently
+selected SHA-256, rather than deriving code from mutable `latest`. The existing
+script's Upload Version API receives all native modules, versioned settings,
+selected static assets and credential bindings in one new undeployed version.
+The contained upload child uses pinned Wrangler's native `auth token --json`
+internally; its credential-valued response never reaches helper output. The
+version POST is attempted once. No inherited binding/asset selector, deployment,
+resource provisioning or non-versioned settings write is part of that POST.
+
+Prepare the artifact from the **complete built target config**, including the
+joined App's generated server, modules and assets, before protected input:
+
+```powershell
+$artifactPath = 'D:\operator-custody\qualified-app-artifact.json'
+$artifact = pwsh -NoProfile -NonInteractive -File apps/github-app/operator-launch.ps1 operator prepare-artifact --config path/to/built-target/wrangler.json --account-id account-id --artifact-file $artifactPath | ConvertFrom-Json
+if ($LASTEXITCODE -ne 0) { throw 'Artifact preparation refused.' }
+```
+
+Preparation uses pinned Wrangler's `versions upload --dry-run --outfile` and
+freezes the actual multipart modules/settings plus the complete selected assets.
+It applies `.assetsignore`, retains `_headers`/`_redirects` and asset routing, and
+binds the original config hash. Source symlinks and unresolved inherited bindings
+refuse before protected input. The artifact contains executable code/assets and
+no credential bindings; private composites keep their private custody. Qualify
+its returned digest against the intended source/composition and retain that
+selection through install. Do not silently regenerate the artifact at upload time.
+
+Pass `--artifact-file <retained-artifact>` and `--artifact-sha256 <qualified-digest>`
+to `check` and `install` (or the manifest install handoff). Existing consumers add
+this preparation/selection; omitting it refuses before protected input. Existing
+receipt files remain readable through read-only `resume`, including legacy
+receipts without artifact lineage. No raw values need manual transport.
 
 The preferred initial setup is `manifest-helper.mjs`: a local native manifest
 form for personal/organisation registration and explicit visibility, with
@@ -143,8 +166,8 @@ config or the admitted built App config, with its relative paths kept valid.
 
 ```sh
 bash -p apps/github-app/operator-launch.sh operator registration --webhook-url https://example.invalid/webhooks/github
-bash -p apps/github-app/operator-launch.sh operator check --app-id 123 --private-key-file path/to/retained-app-key.pem --account-id account-id --config path/to/derived-qualification.jsonc --receipt-file path/to/new-credential-receipt.json
-bash -p apps/github-app/operator-launch.sh operator install --app-id 123 --private-key-file path/to/retained-app-key.pem --account-id account-id --config path/to/derived-qualification.jsonc --receipt-file path/to/new-credential-receipt.json
+bash -p apps/github-app/operator-launch.sh operator check --artifact-file path/to/qualified-artifact.json --artifact-sha256 qualified-64-hex-sha256 --app-id 123 --private-key-file path/to/retained-app-key.pem --account-id account-id --config path/to/derived-qualification.jsonc --receipt-file path/to/new-credential-receipt.json
+bash -p apps/github-app/operator-launch.sh operator install --artifact-file path/to/qualified-artifact.json --artifact-sha256 qualified-64-hex-sha256 --app-id 123 --private-key-file path/to/retained-app-key.pem --account-id account-id --config path/to/derived-qualification.jsonc --receipt-file path/to/new-credential-receipt.json
 bash -p apps/github-app/operator-launch.sh operator resume --account-id account-id --config path/to/derived-qualification.jsonc --receipt-file path/to/existing-credential-receipt.json
 ```
 
@@ -173,17 +196,19 @@ For a joined App, select `--base-version-id <qualified-version>` and either
 `--seal-key-previous-receipt <durable-receipt>` for an established target. The
 initial mode refuses an existing `APP_SEAL_KEY` secret binding in the qualified
 version's metadata without reading its value; absence is not empty-D1 or custody
-evidence. The
-latest uploaded version must equal that qualified bootstrap/base before input
-and again before the write. The base's actual source, included engine and
-Community/private composition are qualified separately by the activation operator.
+evidence. The selected base is an identity/seal-continuity checkpoint. The artifact
+supplies the uploaded source independently of a concurrent latest upload. Initial
+mode also inspects the actual latest seal-binding state. The artifact's source,
+included engine and Community/private composition are qualified by the activation
+operator before its digest is admitted.
 The exact configuration selects `GITHUB_APP_BOT_LOGIN` (the standalone runtime's
 existing default is `diffdevil[bot]`); configure the actual registered bot.
 
 A manifest-capture caller can supply the five matching GitHub values through
 `installCredentials({ readGitHubInputs, ... })` instead of creating plaintext
 credential files. The callback runs after the durable checkpoint; its App/client
-IDs must match the selected IDs. That caller also passes `baseVersionId` and
+IDs must match the selected IDs. That caller also passes `artifactPath`,
+`artifactSha256`, `baseVersionId` and
 either `sealKeyInitial` or `sealKeyPreviousReceiptPath`, plus the same retained
 seal/Wirt file or named-environment inputs. Capture and installation receipts
 remain separate recovery artifacts.
@@ -198,13 +223,14 @@ contents are validated only after preflight. `check` exercises target readback,
 file metadata and a same-directory atomic receipt probe; it does not read protected
 contents, create the real checkpoint or write a Worker version.
 
-Bulk installation sends JSON directly to Wrangler's private stdin. No temporary
+Installation sends JSON directly to the contained upload child's private stdin. No temporary
 secret file is created, including on failure; `carrier: not-created` records that
 fact. Native stdout/stderr are contained, Wrangler disk logs and telemetry are
 disabled for these children, and only allowlisted receipt fields reach output.
 Named seal/Wirt environment values are read only after the flushed receipt exists,
 removed from the Wrangler child environment and sent through that same private
-stdin. The helper leaves operator-owned input files intact. Their access controls
+stdin. The immutable artifact is a separate source package. The helper leaves
+operator-owned input files intact. Their access controls
 and retention remain the custodian's responsibility; Node's Unix file mode is not
 a Windows custody/ACL guarantee.
 
@@ -248,12 +274,14 @@ off-workstation recovery or a store binding. An environment-only custodian keeps
 generation/admission inside its existing contained route.
 
 The non-secret receipt is created exclusively and flushed before protected input.
-A durable `attempted-unknown` marker precedes the provider write. Command acceptance,
-the single newly observed version, its secret-binding names/database, and the latest
-deployment comparison are separate facts. `version-created` means a complete
-readback of an undeployed version with an unchanged active deployment; it does not
-prove secret values, registration correctness, exposure, runtime behavior or a
-deployment. `partial`/`unknown` never count as success. `resume` requires the same
+A durable `attempted-unknown` marker precedes asset staging and version creation.
+Command acceptance, the exact returned version ID, its operation tag/artifact SHA,
+secret-binding names/database, observed script ETag and active-deployment comparison
+remain separate facts. `version-created` requires matching artifact/operation
+lineage on that undeployed version and an unchanged deployment. This is request-bound
+source identity through the atomic API, not a provider byte-for-byte download or
+secret-value readback. It proves no registration correctness, exposure, runtime
+behavior or deployment. `partial`/`unknown` never count as success. `resume` requires the same
 exact config hash/account/Worker/database and a usable receipt, performs only
 provider reads, and never rereads inputs or repeats installation. Missing or
 foreign receipts refuse. A lost write acknowledgement remains partial even when
@@ -268,12 +296,14 @@ Select a durable operation-receipt path outside disposable worktrees from the
 start, or preserve the non-secret receipt in the operation's durable handback
 before retiring the checkout. Repository `artifacts/` is only a working copy.
 
-Wrangler's secret operation inherits the latest uploaded version, which can differ
-from the active deployment. An operator convention and post-write readback cannot
-prevent attachment to a concurrent upload. Binding-name readback does not prove
-source lineage. See the exact-base limitation above before selecting installation.
-The staging packet separates its unexposed bootstrap from credential preparation
-and version-specific activation.
+Static assets are staged with their exact native content identities before the
+single version POST. A failure can leave staged immutable assets. `not-attempted`
+attests that no credential-version request was attempted; it is not an asset
+rollback claim. A failed child exit without that before-effect fact stays unknown
+even if a matching version is not yet listed. Recovery never
+repeats staging or version creation. The staging packet keeps artifact qualification,
+credential attachment and version-specific activation distinct. The former
+`versions secret bulk`/`latest` path is not used for installation.
 
 `--fake` selects disposable in-process provider responses and labels its receipts
 `mode: fixture`; they cannot be resumed as live receipts. The registered
