@@ -24,6 +24,11 @@ const file = repository && here && !Astro.locals.deferPremium ? await runtime.lo
 if (repository && here && !file && !Astro.locals.deferPremium) Astro.response.status = 404;
 ---
 <AppShell title={`File · ${repo}`} nav={navModel(view, 'file')} view={view}>
+  {repository && here && Astro.locals.deferPremium && <div data-pending-file-head>
+    <PageHead view={view} title="File history" crumbs={[{ label: 'Files', href: view.href('/files') }]} scope={false}>
+      <div class="a-scope" slot="scope">{fullName}<span class="a-dot">·</span>{view.period.label}</div>
+    </PageHead>
+  </div>}
   {!repository ? <div class="a-focus a-pn"><div class="a-pn-b" style="padding:28px 32px"><h1 style="font-size:22px;margin:0 0 8px">Not in your repositories</h1><p class="lede">{fullName} is not among the repositories your GitHub account currently reaches through an App installation, or the file handle is not valid. <a class="link-quiet" href="/">Back to the overview</a>.</p></div></div>
   : !here ? <>
     <PageHead view={view} title="File history" crumbs={[{ label: 'Files', href: view.href('/files') }]} scope={false}>

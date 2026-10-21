@@ -187,7 +187,13 @@ context.on('page', page => {
   page.on('request', request => { const url = new URL(request.url()); if (!['127.0.0.1', 'localhost'].includes(url.hostname)) external.push(request.url()); });
 });
 const page = await context.newPage();
-const go = (path, options = {}) => page.goto(/^https?:/u.test(path) ? path : `${ORIGIN}${path}`, { waitUntil: 'networkidle', ...options });
+const go = async (path, options = {}) => {
+  const response = await page.goto(/^https?:/u.test(path) ? path : `${ORIGIN}${path}`, { waitUntil: 'networkidle', ...options });
+  // These existing journeys inspect the populated document. The loading journey uses page.goto
+  // directly when it deliberately needs the earlier shell or an unresolved acquisition.
+  await page.waitForFunction(() => !document.querySelector('[data-analytical-loading], [data-notifications-pending]'), null, { timeout: 25_000 });
+  return response;
+};
 const shot = name => page.screenshot({ path: join(OUT, `${name}.png`), fullPage: true });
 const ctx = { check, go, page, shot, ORIGIN, OUT, settled, qualifyFrame, qualifyCloud, premium: Boolean(premium), signIn: () => signIn(), holdBusinessHistoryJob, releaseBusinessHistoryJob };
 const overflow = () => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
@@ -202,7 +208,7 @@ const pageFacts = () => page.evaluate(() => ({
 
 /** Wait until every chart frame on the page has mounted (or failed) and the page line has gone. */
 async function settled(timeout = 25_000) {
-  try { await page.waitForFunction(() => [...document.querySelectorAll('[data-chart]')].every(host => host.classList.contains('is-mounted') || host.classList.contains('is-failed')) && !document.body.classList.contains('is-drawing') && !document.querySelector('.cl.is-busy'), null, { timeout }); } catch { /* reported by the facts */ }
+  try { await page.waitForFunction(() => !document.querySelector('[data-analytical-loading], [data-premium-region][data-pending="true"], [data-premium-region][data-pending="loading"]') && [...document.querySelectorAll('[data-chart]')].every(host => host.classList.contains('is-mounted') || host.classList.contains('is-failed')) && !document.body.classList.contains('is-drawing') && !document.querySelector('.cl.is-busy'), null, { timeout }); } catch { /* reported by the facts */ }
   await page.evaluate(() => new Promise(resolve => setTimeout(resolve, 150)));
 }
 
@@ -1042,7 +1048,7 @@ try {
   const calmStart = await calm.request.get(`${ORIGIN}/auth/start`, { maxRedirects: 0 });
   await calmPage.goto(`${ORIGIN}/auth/callback?state=${new URL(calmStart.headers().location).searchParams.get('state')}&code=${CODE}`);
   await calmPage.waitForURL(url => new URL(url).pathname === '/', { timeout: 15_000 }).catch(() => {});
-  await calmPage.waitForFunction(() => [...document.querySelectorAll('[data-chart]')].every(host => host.classList.contains('is-mounted') || host.classList.contains('is-failed')) && !document.body.classList.contains('is-drawing'), null, { timeout: 25_000 }).catch(() => {});
+  await calmPage.waitForFunction(() => !document.querySelector('[data-analytical-loading]') && [...document.querySelectorAll('[data-chart]')].every(host => host.classList.contains('is-mounted') || host.classList.contains('is-failed')) && !document.body.classList.contains('is-drawing'), null, { timeout: 25_000 }).catch(() => {});
   const calmFacts = await calmPage.evaluate(() => ({ reduced: matchMedia('(prefers-reduced-motion: reduce)').matches, charts: document.querySelectorAll('[data-chart]').length, mounted: document.querySelectorAll('[data-chart].is-mounted').length, svg: document.querySelectorAll('[data-plot] svg').length }));
   check('under reduced motion every chart still draws', calmFacts.reduced && calmFacts.charts > 0 && calmFacts.mounted === calmFacts.charts && calmFacts.svg > 0, JSON.stringify(calmFacts));
   await calmPage.screenshot({ path: join(OUT, 'free-overview-reduced-motion.png'), fullPage: true });

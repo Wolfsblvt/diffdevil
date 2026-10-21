@@ -14,7 +14,7 @@ async function fragment(url: string, part: 'navigation' | 'notifications' | 'enr
 }
 
 export function loadAnalyticalDocument(): void {
-  document.addEventListener('diffdevil:page', () => void enrich());
+  document.addEventListener('diffdevil:page', () => { void enrich(); void notifications(location.href); });
   document.addEventListener('diffdevil:load-failed', event => {
     if (document.querySelector('[data-analytical-loading]')) return;
     const { url, reason } = (event as CustomEvent).detail;
@@ -74,7 +74,6 @@ export function loadAnalyticalDocument(): void {
       main?.setAttribute('tabindex', '-1');
       main?.focus({ preventScroll: true });
     }
-    void notifications(url);
   }
 
   retry.addEventListener('click', () => void populate());
@@ -102,6 +101,7 @@ async function enrich(): Promise<void> {
       const fresh = next.querySelector<HTMLElement>(`[data-premium-region="${CSS.escape(slot.dataset.premiumRegion!)}"]`);
       if (!fresh || fresh.dataset.pending) throw new Error('E_ANALYTICAL_READ');
     }
+    document.querySelector('[data-pending-file-head]')?.remove();
     for (const slot of slots) {
       const fresh = next.querySelector(`[data-premium-region="${CSS.escape(slot.dataset.premiumRegion!)}"]`)!;
       slot.replaceWith(...fresh.childNodes);
@@ -129,11 +129,15 @@ async function enrich(): Promise<void> {
 }
 
 async function notifications(url: string): Promise<void> {
+  const target = document.querySelector<HTMLElement>('[data-analytical-notifications][data-notifications-pending="true"]');
+  if (!target) return;
+  target.dataset.notificationsPending = 'loading';
   try {
     const next = await fragment(url, 'notifications');
-    if (location.href !== url) return;
+    if (location.href !== url || !target.isConnected) return;
     const invitation = next.querySelector('[data-analytical-notifications]');
-    if (invitation) document.querySelector('[data-analytical-notifications]')?.replaceWith(invitation);
+    if (!invitation) throw new Error('E_ANALYTICAL_READ');
+    target.replaceWith(invitation);
     const badge = next.querySelector<HTMLElement>('[data-analytical-badge]');
     const end = document.querySelector('[data-nav-manage] .a-end');
     if (badge && end && Number(badge.dataset.count) > 0) {
@@ -144,5 +148,9 @@ async function notifications(url: string): Promise<void> {
       end.replaceChildren(count);
     }
     document.dispatchEvent(new CustomEvent('diffdevil:page'));
-  } catch { /* Optional notifications cannot hold navigation or analytical content. A later document retries. */ }
+  } catch {
+    // Optional chrome may be unavailable; it cannot hold navigation or analytical content.
+    target.removeAttribute('data-notifications-pending');
+    target.dataset.notificationsUnavailable = 'true';
+  }
 }

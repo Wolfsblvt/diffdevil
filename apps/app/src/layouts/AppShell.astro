@@ -42,7 +42,7 @@ const badge = viewer && nav && !Astro.locals.deferChrome ? await manageBadge({ v
         {viewer && nav && <Nav viewer={viewer} nav={nav} view={view} badge={badge} />}
         <slot name="navigation" />
         <main class="a-main" id="main">
-          <div data-analytical-notifications>{viewer && nav && !Astro.locals.deferChrome && <Invitation />}</div>
+          <div data-analytical-notifications data-notifications-pending={Astro.locals.deferChrome ? 'true' : undefined}>{viewer && nav && !Astro.locals.deferChrome && <Invitation />}</div>
           <slot />
         </main>
       </div>
