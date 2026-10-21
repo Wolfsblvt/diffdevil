@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
 /** The built Worker and retained fixture, with the data reply held/refused independently of its document. */
 export async function loadingJourney({ page, check, shot, ORIGIN, settled }) {
   const scope = '/?s=%40parser-guild&per=90d';
