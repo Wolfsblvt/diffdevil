@@ -18,7 +18,17 @@ export function createStaticHandler({ site, docs, compatibility, host, redirects
         target.search = url.search;
         return Response.redirect(target.href, 308);
       }
-      return env.ASSETS.fetch(request);
+      const response = await env.ASSETS.fetch(request);
+      const headers = new Headers(response.headers);
+      // Legal pages must remain fetchable so crawlers can observe this directive.
+      if (/^\/(?:impressum|privacy|terms)\/?$/u.test(url.pathname)) {
+        headers.set('X-Robots-Tag', 'noindex, nosnippet');
+      }
+      // Revalidate mutable documents and the joined index after either host rolls back.
+      // Content-addressed Astro assets can safely outlive an individual deployment.
+      headers.set('Cache-Control', response.status >= 400 ? 'no-store' : url.pathname.startsWith('/_astro/')
+        ? 'public, max-age=31536000, immutable' : 'public, max-age=0, must-revalidate');
+      return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
     },
   };
 }

@@ -40,7 +40,7 @@ export const COMPANY_PRIVACY = 'https://wolfsblvt.com/privacy.html';
 export const paths = {
   home: sitePath('/'), playground: sitePath('/playground/'), examples: sitePath('/examples/'),
   docs: origins.docs + '/', faq: sitePath('/faq/'), app: sitePath('/app/'), extension: sitePath('/extension/'),
-  security: pageUrl('security-and-data'), privacy: sitePath('/privacy/'), impressum: sitePath('/impressum/'),
+  security: pageUrl('security-and-data'), privacy: sitePath('/privacy/'), impressum: sitePath('/impressum/'), terms: sitePath('/terms/'),
   licences: sourceResolverUrl('LICENSES/README.md'), skill: sitePath('/skill/SKILL.md'), skillVersion: sitePath('/skill/version'),
   download: (asset: 'skill' | 'standalone' | 'bundled') => sitePath(`/downloads/${asset}/`),
   setup: (intent: 'skill' | 'cli' | 'actions' | 'app' | 'everything') => sitePath(`/setup/${intent}.md`),

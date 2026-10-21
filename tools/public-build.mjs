@@ -33,6 +33,16 @@ export function buildManualAndJoin() {
     }
   }
   run(process.execPath, ['apps/manual/search-index.mjs']);
+  for (const [host, name, paths] of [
+    [origins.site, 'website', ['/', '/playground/', '/examples/', '/extension/', '/app/', '/faq/']],
+    [origins.docs, 'manual', manifest.records.filter(page => page.current).map(page => page.route)],
+  ]) {
+    const directory = join(root, `artifacts/${name}/dist`);
+    writeFileSync(join(directory, 'robots.txt'), `User-agent: *\nAllow: /\nSitemap: ${host}/sitemap.xml\n`);
+    writeFileSync(join(directory, 'sitemap.xml'), '<?xml version="1.0" encoding="UTF-8"?>\n' +
+      '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' +
+      paths.map(path => `<url><loc>${host}${path}</loc></url>`).join('') + '</urlset>\n');
+  }
 }
 
 // Keep the same real website entry point for QA rebuilds and direct invocation.

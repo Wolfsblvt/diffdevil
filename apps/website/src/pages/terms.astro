@@ -1,0 +1,24 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only
+import Base from '../layouts/Base.astro';
+import LegalOperator from '../components/LegalOperator.astro';
+import { paths } from '../data/site';
+---
+<Base title="Terms" description="The scope and limits of the free diffdevil website and public Playground." noindex>
+  <section class="section section-first"><article class="wrap legal">
+    <h1>Terms</h1>
+    <p>These terms describe the free diffdevil website, manual and public Lens Studio (Playground) API. They do not offer a managed App subscription or replace the licences of software, documentation, examples or third-party material.</p>
+    <h2>Provider and contact</h2><LegalOperator />
+    <h2>Public Playground</h2>
+    <p>No account, payment or API key is required. Submit only public github.com pull-request URLs you are entitled to process. Do not submit private code, secrets or personal information. Saved lessons run in your browser; live acquisition reads GitHub through the public API and performs no repository writes.</p>
+    <p>Use the service lawfully. Do not bypass access controls or rate limits, interfere with other users, or create abusive load. The shared GitHub allowance can be exhausted; unavailable or incomplete evidence is reported rather than invented. Measurements are not quality, security or merge judgments.</p>
+    <h2>Availability and ending use</h2>
+    <p>The free service has no uptime or response-time commitment. Provider limits, maintenance or abuse may interrupt requests; access may be restricted to contain that interference. You can stop using it at any time. No permanent visitor analysis history is collected. Download or copy results you want to keep.</p>
+    <h2>Data, licences and responsibility</h2>
+    <p>The <a href={paths.privacy}>Privacy and data</a> page explains processing and contact rights. A footer link is notice, not evidence that a contract has been concluded. Where a separate agreement is needed, its actual offer and acceptance govern. Statutory liability and mandatory consumer protections remain unaffected. Changes to this notice do not silently amend an existing agreement.</p>
+  </article></section>
+</Base>
+<style>
+  .section-first { border-top: 0; padding-block: 40px 64px; }
+  .legal { gap: 16px !important; max-width: 840px; }
+</style>

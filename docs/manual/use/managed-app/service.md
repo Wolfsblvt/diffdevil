@@ -3,7 +3,7 @@
 > [!NOTE]
 > **In development**
 >
-> This describes the complete selected managed-service experience. Public admission and the final dashboard journey are not yet established.
+> This describes the selected managed-service experience. The analytical App and Manage are implemented and privately qualified; general public admission and paid availability are not established.
 
 Use the managed service to operate repository automation without maintaining its Worker, queue, database, installation credentials, or upgrades. You still control which repositories participate, their policy and enabled effects, history consent, and any migration from existing automation.
 
@@ -29,7 +29,7 @@ There are three independent questions:
 
 Newly discovered repositories begin without execution consent. Restored access or imported settings must not silently resume execution or collection. Existing installations can have incomplete historical consent provenance; “unknown” is not a fabricated administrator approval.
 
-The service exposes the repository's reach, execution standing, history standing, configuration origins, and any outstanding reason it cannot proceed. These are product facts, not prescribed dashboard field names. Current source includes the non-visual admission contract; final controls and their order remain part of dashboard co-design.
+The App's Manage console exposes repository selection, execution and history standing, configuration origins and outstanding reasons it cannot proceed. Its implemented source and local qualification do not establish the complete public installation journey.
 
 ## Inspect the effective policy
 
@@ -74,7 +74,7 @@ History is optional and does not disable ordinary automation when left off. Befo
 
 The selected free history window is thirty rolling days from analysis time. The paid-history design has no automatic age expiry while the entitlement and service remain active, subject to a user-selected shorter period, deletion, and disclosed limits. This is not an unlimited-storage claim or an available paid offer; prices, quotas, and billing terms still require publication.
 
-History stores aggregate and pathless per-file quantitative results with their evidence, versions, and comparison references. No source, patches, filenames, authors, PR prose, or comment bodies are retained as history. Configuration is separately protected and can contain your submitted path patterns or text. A history export must not silently join that configuration or fetched GitHub context into its numeric records.
+History stores repository names, relative file paths and numerical per-file results with evidence, versions, lifecycle facts and comparison references. No source contents, patches, contributor-performance dimensions, PR prose or comment bodies are retained as history. Configuration is separately protected and can contain your submitted path patterns or text. A history export must not silently join that configuration or fetched GitHub context into its records.
 
 Read distributions with their coverage. A revision count is not a PR count, an analysis date is not a merge date, and an omitted measurement is not zero. A gap before opt-in, during disabled collection, or beyond retention is not backfilled by retries. Re-enabling a longer window preserves still-retained records; it cannot recover expired ones.
 

@@ -87,7 +87,7 @@ const go = (path, opts = {}) => page.goto(/^https?:/u.test(path)?path:`http://12
 const shot = name => page.screenshot({ path: join(OUT, `${name}.png`), fullPage: true });
 
 // ── every page: Impressum in the footer, one h1, theme script before paint ──
-const pages = ['/', '/playground/', '/examples/', '/extension/', '/app/', '/privacy/', '/impressum/', '/faq/', pageUrl('what-is-diffdevil'), pageUrl('cli'), pageUrl('label-pull-requests'), pageUrl('security-and-data'), '/source/?f=LICENSES%2FREADME.md', '/nothing-here/'];
+const pages = ['/', '/playground/', '/examples/', '/extension/', '/app/', '/privacy/', '/impressum/', '/terms/', '/faq/', pageUrl('what-is-diffdevil'), pageUrl('cli'), pageUrl('label-pull-requests'), pageUrl('security-and-data'), '/source/?f=LICENSES%2FREADME.md', '/nothing-here/'];
 const overflowOf = () => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
 // One header geometry and one page grid: measured on every route and compared with the homepage.
 const shellOf = () => page.evaluate(() => {
@@ -114,9 +114,10 @@ for (const path of pages) {
 }
 
 // ── legal routes: public, but out of search engines and the site search ──
-for (const path of ['/privacy/', '/impressum/']) {
+for (const path of ['/privacy/', '/impressum/', '/terms/']) {
   await go(path);
   check(`${path} is noindex, nosnippet and outside the search index`, (await page.locator('meta[name="robots"]').getAttribute('content')) === 'noindex, nosnippet' && (await page.locator('main[data-pagefind-ignore]').count()) === 1);
+  check(`${path} has no social metadata`, await page.locator('meta[property^="og:"], meta[name^="twitter:"]').count() === 0);
 }
 
 // ── homepage: composition, engine numbers, anchors, theme switch, search, copy, Agents cards ──
@@ -492,7 +493,7 @@ check('examples lead with real pull requests, carry no fixture gallery and no se
 check('example cards: mark and identity on one row, owner greyed, evidence chip right-aligned', await page.evaluate(() => [...document.querySelectorAll('.ex-card')].every(card => { const head = card.querySelector('.ex-head').getBoundingClientRect(), title = card.querySelector('.ex-title').getBoundingClientRect(), icon = card.querySelector('.ex-title svg').getBoundingClientRect(), chip = card.querySelector('.ex-head .chip-ev').getBoundingClientRect(); const owner = getComputedStyle(card.querySelector('.ex-owner')).color, name = getComputedStyle(card.querySelector('.ex-title a')).color; return icon.bottom <= title.bottom + 1 && icon.top >= title.top - 1 && Math.round(head.right - chip.right) <= 1 && owner !== name; })));
 await go('/app/');
 check('app page head is the same panel as the homepage', (await page.locator('.app-panel .benefits li').count()) === 6 && (await page.evaluate(() => getComputedStyle(document.querySelector('.app-panel')).backgroundColor)) === 'rgb(12, 15, 23)' && (await page.locator('.app-panel h1').count()) === 1);
-check('app page has an honest #history chapter before #permissions with no dashboard imagery', await page.evaluate(() => { const ids = [...document.querySelectorAll('main .eyebrow-link')].map(a => a.id); const section = document.querySelector('[data-section="history"]'); return ids.indexOf('history') > 0 && ids.indexOf('history') < ids.indexOf('permissions') && /co-design/u.test(section.innerText) && section.querySelectorAll('img, svg, canvas').length === 0; }));
+check('app page has a history chapter before permissions and keeps hosted installation unavailable', await page.evaluate(() => { const ids = [...document.querySelectorAll('main .eyebrow-link')].map(a => a.id); const action = document.querySelector('[data-cta="install-app"]'); return ids.indexOf('history') > 0 && ids.indexOf('history') < ids.indexOf('permissions') && !!document.querySelector('[role="note"]') && action?.getAttribute('aria-disabled') === 'true' && !action?.getAttribute('href'); }));
 check('app page: comparison blocks sit side by side below the lead; internal strategy prose is gone', await page.evaluate(() => { const [a, b] = [...document.querySelectorAll('[data-section="why"] .choice')].map(el => el.getBoundingClientRect()); return Math.round(a.top) === Math.round(b.top) && Math.round(a.width) === Math.round(b.width) && !document.querySelector('main').innerText.includes('primary pitch'); }));
 
 // ── repository links ──

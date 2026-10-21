@@ -31,11 +31,11 @@ const canonical = ORIGIN_IS_PLACEHOLDER ? undefined : `${ORIGIN}${Astro.url.path
     <meta name="theme-color" content="#151922" />
     <meta name="color-scheme" content="dark light" />
     {noindex && <meta name="robots" content="noindex, nosnippet" />}
-    <meta property="og:title" content={pageTitle} />
+    {!noindex && <><meta property="og:title" content={pageTitle} />
     <meta property="og:description" content={description} />
     <meta property="og:type" content="website" />
     <meta property="og:image" content={`${ORIGIN}/og.png`} />
-    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:card" content="summary_large_image" /></>}
     {canonical && <link rel="canonical" href={canonical} />}
     <link rel="icon" href="/favicon.ico" sizes="32x32" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />

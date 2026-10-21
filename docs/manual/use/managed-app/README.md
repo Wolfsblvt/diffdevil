@@ -31,7 +31,7 @@ The service exports an ordinary resolved policy so it can be used outside the Ap
 
 Persistent history adds quantitative activity, comparisons, distributions, and statistics across retained analyses. It is optional: ordinary labels, owned comments, native checks, and recovery do not require it. Installing the App is not history consent.
 
-History retains aggregate and pathless per-file measurements, evidence, versions, policy references, and immutable comparison identities. It does not retain source, patches, filenames, contributor identities, PR prose, or rendered comments. The identifiers remain linkable to GitHub; “minimized” does not mean anonymous.
+History retains repository names, relative file paths, numerical per-file measurements, evidence, versions, policy references, lifecycle facts and immutable comparison identities. It does not retain source contents, patches, contributor-performance dimensions, PR prose or rendered comments. Names and paths are protected repository metadata; “minimized” does not mean anonymous.
 
 A historical view states its opt-in date, retention window, collection gaps, population, and analysis-time basis. Unique PRs, analyzed revisions, and execution attempts are different counts. Missing or unknown values do not disappear from the population, and successive PR snapshots are not summed as “code changed this month.” These are measurements of changes, not rankings of people.
 
@@ -47,6 +47,6 @@ A read-only Action can remain useful beside App-owned effects. Two independent w
 
 The repository contains the Worker/Queue/D1 runtime, policy resolution, stable execution diagnostics, admission state, and operator seams. A deployed backend canary has exercised a contained repository lifecycle. Neither that canary nor source-level tests establish general public admission, a finished dashboard, full live history/export/offboarding, or a commercially available service. [Direction](../../../DIRECTION.md) owns the current implementation and deployment record.
 
-The complete release experience includes account and organization administration, effective policy and origins, preview, explicit enablement, selected effects, optional history and statistics, export, deletion, and offboarding. Final dashboard language, layout, controls, routes, and interaction sequence are still being co-designed; this guide specifies the decisions and observable results rather than inventing screens.
+Current source includes the analytical App (Overview, Pull requests, History, Files and detail views) and Manage, including repository selection, effective policy, funding presentation, export and offboarding. Local qualification and private deployment evidence do not establish general public admission or a commercially available service. Free, Pro and Business remain a planned offer.
 
 Installation and dashboard destinations must come from the actual public product or your selected operator. A configured URL, reserved host, or successful sign-in is not proof that adoption is open. Exact prices, quotas, billing terms, complete production recovery qualification, and an alternate Docker adapter are not supplied by this guide. The [release guide](../../help/releases.md) keeps these outcomes separate from the published open tools.

@@ -10,6 +10,11 @@ manual: `apps/manual/` renders the selected `docs/manual/` chapters on their own
 A source build, fixture scene or local browser check does not establish deployment,
 Store availability, an ordinary installed extension journey or a public managed App.
 
+The [website publication carrier](../../docs/integration/website-publication.md)
+owns the explicit production build, proposed Pages targets, operator readback,
+legal/contact dependencies, upload pair and rollback. `npm run website:build:publication`
+prepares outputs only; it refuses unprovisioned legal data and never uploads.
+
 ## Build and use locally
 
 From the repository root:
@@ -100,8 +105,11 @@ Store imagery from these fixtures.
 effective policy, independent installation/execution/history states, recovery and
 self-hosting. Its top note distinguishes implemented/deployed backend components from
 the complete public service. Dashboard wording, controls, experienced routes and the
-first administrator journey remain co-design. No fixture supplies those decisions.
-Selected history tiers do not invent published prices, quotas, billing or commitments.
+first administrator journey require separate live qualification. No fixture proves that use.
+The implemented analytical App and Manage console are distinct from general public
+availability. Planned Free/Pro/Business prices are labelled as planned, not purchasable.
+History retains permitted repository names, relative paths and measurements after
+explicit enablement; source contents and patches remain transient.
 
 Store, App installation, dashboard, community and Sponsor actions consume explicitly
 configured destinations through `ActionLink`; unconfigured actions remain visibly

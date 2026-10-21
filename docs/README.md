@@ -18,7 +18,7 @@ the [complete manual](manual/README.md); its canonical standalone
 | Why were consequential choices made? | [Decisions](DECISIONS.md) |
 | Which behavior is exercised, and which is still unobserved? | [Qualification](qualification.md) |
 | Which tools share versions, and how do updates work? | [Release families and versioning](RELEASING.md), including the [App-family release manifest](RELEASING.md#app-family-release-manifest-and-its-consumers), and [reader release guidance](manual/help/releases.md) |
-| How are authorized releases published and read back? | [Publication boundary](publication-boundary.md) |
+| How are authorized releases published and read back? | [Publication boundary](publication-boundary.md) and [website publication](integration/website-publication.md) |
 | What owns the manual's prose, routes, examples and migration? | [Documentation design](documentation.md) and [manual application](../apps/manual/README.md) |
 | What owns wording and presentation? | [Branding](branding.md), [shared presenters](presentation.md) and [design source](../packages/design/README.md); the App's charts follow [Chart Grammar v1.1](../packages/design/chart-grammar-v1.1.md) |
 | What owns the FAQ's stable identifiers and behavior? | [FAQ authoring contract](faq-authoring.md) |
