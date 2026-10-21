@@ -76,7 +76,9 @@ console.log(`Qualifying the ${premium ? 'premium-joined' : 'Community'} build ($
 // A local variables file copied into the build output would silently override the pass's --var flags.
 for (const stale of [join(dirname(resolve('apps/app', target.configPath)), '.dev.vars'), join(target.artifacts, 'dist/server/.dev.vars')]) if (existsSync(stale)) { console.error(`Refusing to run with a local variables file in place: ${stale}`); process.exit(2); }
 // The dense pass seeds a four-times larger fixture through the real engine, which takes its own minutes.
-const MINUTES = DENSE ? 40 : 15;
+// The complete Community journey includes repeated Worker restarts and a final clean-seed return.
+// A 15-minute run reached that final seed but expired before its last consumer could run.
+const MINUTES = DENSE ? 40 : 30;
 const deadline = setTimeout(() => { console.error(`QA exceeded its ${MINUTES}-minute deadline.`); process.exit(3); }, MINUTES * 60_000);
 deadline.unref();
 await mkdir(OUT, { recursive: true });
