@@ -8,18 +8,30 @@
  */
 import { readSigningKeys, signedHeaders } from '../../github-app/commercial-wirt.mjs';
 
-/** A beta participant: thirty days of Pro by grant, no card, nothing renewing automatically. */
-export const COMMERCIAL_BETA = Object.freeze({ account: 123, linked: true, since: '2026-09-20', commercial: { standing: 'funded', tier: 'pro', cadence: 'monthly', period: { started_on: '2026-09-20', ends_on: '2026-10-20' }, renewal_preference: 'manual', cancellation_intent: 'none', grace: null, ended: null, next_renewal: null },
+const addUtcDays = (day, days) => {
+  const date = new Date(`${day}T00:00:00.000Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+};
+const utcDaysBetween = (start, end) => (Date.parse(`${end}T00:00:00.000Z`) - Date.parse(`${start}T00:00:00.000Z`)) / 86_400_000;
+const today = new Date().toISOString().slice(0, 10);
+const betaStartsOn = addUtcDays(today, -15);
+const betaEndsOn = addUtcDays(today, 15);
+const campaignOpensAt = `${addUtcDays(today, -15)}T00:00:00Z`;
+const campaignClosesAt = `${addUtcDays(today, 15)}T00:00:00Z`;
+
+/** A beta participant: a thirty-day Pro grant spanning the real QA run, no card or automatic renewal. */
+export const COMMERCIAL_BETA = Object.freeze({ account: 123, linked: true, since: betaStartsOn, commercial: { standing: 'funded', tier: 'pro', cadence: 'monthly', period: { started_on: betaStartsOn, ends_on: betaEndsOn }, renewal_preference: 'manual', cancellation_intent: 'none', grace: null, ended: null, next_renewal: null },
   // Native beta-grant contract of producer candidate 271c33f; actual delivery/application remains separate.
   betaTimeZone: 'UTC', // Explicit local stand-in for c33d5d9's native commercial_timezone.
   betaGrants: [{ id: 265, kind: 'beta', product: 'diffdevil', tier: 'pro', promised_units: 30,
-    original_window: { started_on: '2026-09-20', until: '2026-10-20' }, access_windows: [{ started_on: '2026-09-20', until: '2026-10-20' }],
-    current_access: { started_on: '2026-09-20', until: '2026-10-20' }, remaining_units: 9 }],
-  grants: [{ kind: 'beta', until: '2026-10-20' }], protection: { kind: 'beta' }, capacity: [{ slot: 'slot-included', funding: 'included', binding: null }],
-  participation: { campaign: { key: 'qa-beta-survey', version: 1, name: 'DiffDevil beta survey', reason: 'Participation reward · DiffDevil beta survey', claim_closes_at: '2030-01-01T00:00:00Z', valid_until: '2030-06-01T00:00:00Z',
+    original_window: { started_on: betaStartsOn, until: betaEndsOn }, access_windows: [{ started_on: betaStartsOn, until: betaEndsOn }],
+    current_access: { started_on: betaStartsOn, until: betaEndsOn }, remaining_units: utcDaysBetween(today, betaEndsOn) }],
+  grants: [{ kind: 'beta', until: betaEndsOn }], protection: { kind: 'beta' }, capacity: [{ slot: 'slot-included', funding: 'included', binding: null }],
+  participation: { campaign: { key: 'qa-beta-survey', version: 1, name: 'DiffDevil beta survey', reason: 'Participation reward · DiffDevil beta survey', claim_closes_at: campaignClosesAt, valid_until: `${addUtcDays(today, 44)}T00:00:00Z`,
     rewards: [{ key: 'monthly', kind: 'discount', tier: 'Pro', cadence: 'monthly', unit: 'percent', value: 50, uses: 3, charge_classes: ['first-purchase', 'renewal'], combinable: false }, { key: 'annual', kind: 'discount', tier: 'Pro', cadence: 'annual', unit: 'percent', value: 20, uses: 1, charge_classes: ['first-purchase', 'renewal'], combinable: false }] } } });
-/** QA's campaign configuration: an open window around the run, no invitation delay, a one-day reminder. Not a launch default. */
-export const QA_CAMPAIGN = Object.freeze({ key: 'qa-beta-survey', version: 1, survey: 'beta-v1', name: 'Beta survey', opensAt: '2026-01-01T00:00:00Z', closesAt: '2029-12-01T00:00:00Z', inviteAfterDays: 0, reminderAfterDays: 1 });
+/** QA's campaign window surrounds the real run date; it does not change the App clock or launch defaults. */
+export const QA_CAMPAIGN = Object.freeze({ key: 'qa-beta-survey', version: 1, survey: 'beta-v1', name: 'Beta survey', opensAt: campaignOpensAt, closesAt: campaignClosesAt, inviteAfterDays: 0, reminderAfterDays: 1 });
 
 /** A separate synthetic component reward, outside the beta survey; it grants no subscription or capacity. */
 export const COMMERCIAL_REWARD_ONLY = Object.freeze({ account: 123, linked: true, since: '2026-10-02', commercial: null, capacity: [], grants: [], protection: null,
@@ -63,9 +75,9 @@ export async function nullableReceiverJourney({ page, go, check, shot, ORIGIN })
   await go('/manage/plan');
   check('native expired component remains visible as Free', await page.locator('[data-standing="reward-only"] .plan b').textContent() === 'Free'
     && /Expired/u.test(await page.locator('[data-standing="reward-only"]').innerText()));
-  const active = { ...component, state: 'active', starts_on: '2026-10-01', ends_on: '2026-11-01', application_deadline: null };
+  const active = { ...component, state: 'active', starts_on: betaStartsOn, ends_on: betaEndsOn, application_deadline: null };
   const full = projection(3, [active]);
-  full.commercial = { standing: 'funded', tier: 'pro', cadence: 'monthly', period: { started_on: '2026-10-01', ends_on: '2026-11-01' },
+  full.commercial = { standing: 'funded', tier: 'pro', cadence: 'monthly', period: { started_on: betaStartsOn, ends_on: betaEndsOn },
     renewal_preference: 'manual', cancellation_intent: 'none', grace: null, ended: null, next_renewal: null };
   full.benefits.organisation_capacity = [{ slot: component.component_id, funding: 'grant', pending_end_on: active.ends_on }];
   check('native receiver admits active component facts with a compatible full base', (await push(full)).status === 200);
@@ -141,7 +153,10 @@ export async function participationJourney(ctx) {
   // ── Plan & funding names the beta month and offers the survey ──
   await go('/manage/plan');
   const plan = await page.evaluate(() => ({ funded: [...document.querySelectorAll('.m-dl dt')].map(dt => `${dt.textContent}:${dt.nextElementSibling?.textContent ?? ''}`).join(' | '), reward: document.querySelector('[data-reward]')?.getAttribute('data-reward') ?? null }));
-  check('Plan & funding names beta access with no card and nothing renewing automatically, and offers the survey', /Funded by:Beta access, through 19 Oct 2026/u.test(plan.funded) && /Nothing renews automatically/u.test(plan.funded) && plan.reward === 'invite', JSON.stringify(plan));
+  const betaThrough = new Date(`${COMMERCIAL_BETA.betaGrants[0].access_windows[0].until}T00:00:00.000Z`);
+  betaThrough.setUTCDate(betaThrough.getUTCDate() - 1);
+  const betaThroughLabel = betaThrough.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
+  check('Plan & funding names the current beta fixture window with no card or automatic renewal, and offers the open survey', plan.funded.includes(`Funded by:Beta access, through ${betaThroughLabel}`) && /Nothing renews automatically/u.test(plan.funded) && plan.reward === 'invite', JSON.stringify(plan));
 
   // ── the survey: fieldsets, labelled controls, keyboard, an incomplete attempt, a saved draft ──
   await go('/manage/plan/survey');
