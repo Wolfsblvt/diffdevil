@@ -34,6 +34,13 @@ It does not prove the joined private extension, provider CPU/memory, staging rec
 For held/failed premium-region and chart-continuity checks without private source, build with
 `DIFFDEVIL_PREMIUM=apps/app/qa/loading-premium/index.mjs`, then run the same `--loading` journey. This joins a clearly
 synthetic public extension fixture, not the paid implementation; rebuild with `DIFFDEVIL_PREMIUM=off` afterward.
+`DIFFDEVIL_APP_QA_LOADING_SCALE=1` selects the anonymous measured-scale cohort for this local journey: 142 records,
+915 paths and 256,986 logical size observations represented by 265 shared fact sets and 7,563 exact markers. The fixture
+also matches the retained JSON byte envelope and recovery gaps; identities, time distribution and sizes are synthetic,
+with explicit inert comparison-identity padding for the byte envelope. It contains no captured production rows. This
+qualifies scale and public acquisition boundaries; actual private algorithms and live Worker resources need their own
+matching proof. The same local seed path supports a record larger than D1's SQL-file statement limit through bounded
+appends while the disposable target has no running reader.
 
 Migration `0017_authorization-refresh.sql` adds the per-grant claim used before a one-use provider rotation. Other
 request runtimes re-read the committed winner with bounded backoff; pending/unknown rotation withholds data without

@@ -5,7 +5,9 @@ import { mixModel } from '../../src/lib/charts/models.mjs';
 const { view } = Astro.props;
 const model = mixModel({ prs: view.current.analysed, period: view.period.label, basis: 'retained', lost: 0, hrefOf: () => view.href('/prs') });
 ---
-<ChartFrame id="loading-fixture" kind="loading-fixture" model={model} title="Public loading fixture" span={12} h={260} meta="Synthetic extension boundary; no private implementation" />
+<div class="a-deferred-slot" data-loading-view-surface={view.data?.surface}>
+  <ChartFrame id="loading-fixture" kind="loading-fixture" model={model} title="Public loading fixture" span={12} h={260} meta="Synthetic extension boundary; no private implementation" />
+</div>
 <script>
   import { registerCharts } from '../../src/client/charts/mount';
   import { RECIPES } from '../../src/client/charts/recipes';

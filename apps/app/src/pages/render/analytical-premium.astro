@@ -18,9 +18,9 @@ const fullName = `${owner}/${repo}`;
 const repository = ['pr', 'file'].includes(route.section) ? repositoryByFullName(Astro.locals.viewer, fullName) : undefined;
 const prNumber = Number(identifier);
 const pages = runtime.premium.pages;
-const surface = route.section === 'overview' ? 'prs' : route.section === 'file' ? 'files' : route.section;
+const surface = route.section === 'overview' || route.section === 'file' ? 'files' : route.section;
 const detail = surface === 'pr' ? { repositoryId: repository?.repositoryId, pullRequest: prNumber }
-  : route.section === 'files' ? pages.files?.query?.(url) ?? {} : {};
+  : route.section === 'files' || route.section === 'overview' ? pages.files?.query?.(url) ?? {} : {};
 const viewUrl = ['pr', 'file'].includes(route.section) && !url.search ? new URL(`${url.pathname}?s=${repository ? fullName : 'all'}`, url) : url;
 const view = await loadView({ url: viewUrl, viewer: Astro.locals.viewer, session: Astro.locals.session, runtime, surface, detail });
 if (view.dataStanding === 'unavailable') return new Response('This analytical region could not be read. Retry the region.', { status: 503 });

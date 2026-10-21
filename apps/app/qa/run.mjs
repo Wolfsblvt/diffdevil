@@ -38,12 +38,14 @@ import { participationJourney, rewardOnlyJourney, nullableReceiverJourney, COMME
 import { appBuildTarget } from '../build-target.mjs';
 import { admissionJourney, seedAdmissionStore } from './admission.mjs';
 import { loadingJourney } from './loading.mjs';
+import { seedLoadingScale } from './loading-scale.mjs';
 
 const target = appBuildTarget();
 const IDENTITY_ONLY = process.argv.includes('--identity');
 const AUTHORITY_ONLY = process.argv.includes('--authority');
 const ADMISSION_ONLY = process.argv.includes('--admission');
 const LOADING_ONLY = process.argv.includes('--loading');
+const LOADING_SCALE = process.env.DIFFDEVIL_APP_QA_LOADING_SCALE === '1';
 // Generated specimen material for the local double, never an external App credential.
 const admissionKey = ADMISSION_ONLY ? generateKeyPairSync('rsa', { modulusLength: 2048 }).privateKey.export({ type: 'pkcs1', format: 'pem' }) : null;
 const HISTORY_ONLY = process.argv.includes('--history');
@@ -100,8 +102,9 @@ const githubServer = createServer(async (request, response) => {
 });
 githubServer.listen(GITHUB_PORT, '127.0.0.1'); await once(githubServer, 'listening');
 
-const seeded = await seedLocalState(STATE, ADMISSION_ONLY ? { seed: seedAdmissionStore } : undefined);
+const seeded = await seedLocalState(STATE, ADMISSION_ONLY ? { seed: seedAdmissionStore } : LOADING_SCALE ? { seed: seedLoadingScale } : undefined);
 console.log(`Seeded ${seeded.written.written} analyses, ${seeded.written.retained} analytical records and ${seeded.written.observations} size observations into local D1 state.`);
+if (LOADING_SCALE) console.log(`Anonymous measured-scale cohort: ${JSON.stringify(seeded.written.loadingScale)}`);
 
 /** Local Worker variables as --var flags: fixture values only, never real credentials. `commercial` is the loopback Works stand-in's spec. */
 function workerVars(entitlement, { commercial, allowances, participation, signingKey } = {}) {
