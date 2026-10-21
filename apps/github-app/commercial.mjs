@@ -510,6 +510,7 @@ export function createCommercialService({ store, wirt, signing, authorization, p
 
     /** The funder may withdraw a binding, and a current organisation administrator may disconnect it.
      * Server-only `changed` and `organisation` distinguish a performed release and its established target from a no-op.
+     * The established identity survives an unavailable or scrubbed display name without a new name lookup.
      */
     async unbind({ session, method, origin, organisationId }) {
       requireLinkRoute();
@@ -525,8 +526,8 @@ export function createCommercialService({ store, wirt, signing, authorization, p
         const remaining = bindings.filter(value => value.organisation_id !== organisationId);
         const change = { unbindSlot: existing.slot, ...(orderOf(link) ? { report: report(link, { worksAccount: link.works_account }, lastApplied(link), remaining, refusals) } : {}) };
         if (await store.transition(link, change)) {
-          const display = authority?.display ?? existing.display;
-          return { changed: true, organisation: display ? { id: existing.organisation_id, display } : null,
+          const display = authority?.display ?? existing.display ?? null;
+          return { changed: true, organisation: { id: existing.organisation_id, display },
             body: { ok: true, result: 'unbound' }, headers: protectedHeaders() };
         }
       }

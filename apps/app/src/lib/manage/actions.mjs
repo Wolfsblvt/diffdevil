@@ -215,7 +215,8 @@ export async function handleManageAction(request, { runtime, session, viewer }) 
     // Funding names another account only when the commercial service established the target and relevant authority.
     // A refusal before that point belongs to the signed-in account, regardless of submitted selectors.
     if (['link', 'unlink', 'reconnect', 'disconnect', 'fund', 'release-slot'].includes(action)) {
-      event = { ...event, accountId: fundingTarget?.id ?? viewer.userId, repositoryId: null, where: fundingTarget?.display ?? viewer.login };
+      const where = fundingTarget ? fundingTarget.display ?? `organisation ${fundingTarget.id}` : viewer.login;
+      event = { ...event, accountId: fundingTarget?.id ?? viewer.userId, repositoryId: null, where };
     }
     const repository = event.repositoryId !== undefined ? null : viewer.repositories.find(candidate => candidate.fullName === String(form.get('repository') ?? ''));
     const repositoryId = event.repositoryId ?? repository?.repositoryId ?? null;

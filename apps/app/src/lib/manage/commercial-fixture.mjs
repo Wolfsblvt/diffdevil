@@ -129,7 +129,7 @@ export function createCommercialFixture(spec, { authorization, namespaceOf, allo
       if (!binding) return { changed: false, organisation: null, body: { ok: true, result: 'unbound' }, headers: protectedHeaders() };
       for (const slot of state.capacity) if (slot.binding?.organisationId === organisationId) slot.binding = null;
       state.order++;
-      return { changed: true, organisation: binding.display ? { id: binding.organisationId, display: binding.display } : null,
+      return { changed: true, organisation: { id: binding.organisationId, display: binding.display ?? null },
         body: { ok: true, result: 'unbound' }, headers: protectedHeaders() };
     },
     async revokeFundingAuthorization({ session, method, origin: requestOrigin }) {

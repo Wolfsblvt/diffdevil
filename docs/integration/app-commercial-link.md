@@ -35,12 +35,14 @@ Audit write does not change the commercial result if the record store is unavail
 Account-level link and connection events belong to the authenticated account;
 submitted repository or namespace selectors cannot redirect their record.
 Funding and release events use an organisation target only when the commercial
-service established the relevant authority and a server-owned organisation name.
+service established its identity and the relevant authority. Names are server-owned.
 Failures before that point stay on the signed-in account. A release with no binding
 keeps its existing response and records no applied effect. A funder can still
-withdraw their own funding after losing GitHub administration; if the organisation
-name is no longer retained, that performed release is recorded on their personal
-account. These server-only effect facts do not change the commercial HTTP response.
+withdraw their own funding after losing GitHub administration. That performed release
+stays in the organisation's Audit even when its name is no longer retained: the record
+uses `organisation N` with its established numeric identity, without fetching or
+restoring the protected name. These server-only effect facts do not change the
+commercial HTTP response.
 
 New link intents include `product_account_label` in the existing signed
 `POST /api/wirt/diffdevil/link-intents` JSON alongside `product_account`, `challenge`

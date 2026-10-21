@@ -18,6 +18,7 @@ import { readNamespaceDefault } from '../src/lib/manage/defaults.mjs';
 import { SESSION_COOKIE, openSession } from '../src/lib/routes.mjs';
 import { resolveViewer } from '../src/lib/viewer.mjs';
 import { ACCOUNTS } from '../qa/fixture.mjs';
+import { presentEvent } from '../src/lib/manage/audit.mjs';
 import { fixture, disposeFixture, signIn, viewerFor, ORIGIN } from './support.mjs';
 
 after(disposeFixture);
@@ -570,13 +571,30 @@ test('real funding and release record server-owned targets and preserve a former
     assert.equal((await store.binding(organisationId)).authority_observed, 'absent');
     assert.equal((await store.binding(organisationId)).display, null);
     const orgBefore = await app.manage.events({ accountIds: [organisationId] });
-    assert.equal((await act(app, cookie, { ...fields, action: 'release-slot' })).message, 'unbound');
+    const personalBefore = await app.manage.events({ accountIds: [viewer.userId] });
+    const withdrawalContext = await locals(app, cookie);
+    const githubCallsBefore = github.calls.length;
+    const withdrawn = await handleManageAction(new Request(`${ORIGIN}/manage/do`, { method: 'POST', headers: { origin: ORIGIN,
+      'content-type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ ...fields, action: 'release-slot' }) }), withdrawalContext);
+    assert.equal(withdrawn.status, 303);
+    assert.equal(new URL(withdrawn.headers.get('location'), ORIGIN).searchParams.get('m'), 'unbound');
     assert.equal(await store.binding(organisationId), null, 'the funder can withdraw without current GitHub administration');
-    assert.deepEqual(await app.manage.events({ accountIds: [organisationId] }), orgBefore, 'no unresolved organisation name is invented');
-    const released = (await app.manage.events({ accountIds: [viewer.userId] }))[0];
-    assert.equal(released.where, viewer.login);
+    const orgAfter = await app.manage.events({ accountIds: [organisationId] });
+    assert.equal(orgAfter.length, orgBefore.length + 1, 'the verified withdrawal remains in the organisation Audit');
+    assert.ok(github.calls.slice(githubCallsBefore).every(call => call.method === 'POST' && /^\/applications\/[^/]+\/token$/u.test(call.path)),
+      'the withdrawal permits session authentication but performs no protected organisation lookup');
+    const released = orgAfter[0];
+    assert.equal(released.accountId, organisationId);
+    assert.equal(released.where, `organisation ${organisationId}`, 'unknown names use the server-established identity');
     assert.equal(released.what, 'Released the funding slot');
     assert.equal(released.result, 'applied');
+    assert.equal(released.reason, null);
+    assert.equal(released.detail, null);
+    assert.equal(released.repositoryId, null);
+    assert.deepEqual(released.actor, { kind: 'person', id: viewer.userId, login: viewer.login });
+    assert.equal(presentEvent(released).where, `organisation ${organisationId}`, 'the existing Audit presenter retains the identity label');
+    assert.deepEqual(await app.manage.events({ accountIds: [viewer.userId] }), personalBefore, 'the event is not moved to or duplicated on the personal account');
+    assert.deepEqual(await app.manage.events({ accountIds: [foreign] }), foreignBefore);
   } finally {
     github.state.roles.delete('parser-guild');
     app.cache.clear();
