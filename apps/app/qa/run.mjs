@@ -17,7 +17,8 @@
  * walks the rank order, the period switch morphs the live charts in place, and reduced motion
  * still draws. `DIFFDEVIL_APP_QA_DENSE=1` adds a pass over a denser fixture and records the
  * cloud's layout timings. Pass --pr-search-detail to qualify the Free search → PR detail return,
- * including empty and unavailable read states.
+ * --business-manage to run the Business Manage browser qualification alone, or --participation to
+ * qualify the beta survey journey. Focused modes write a separate results.json under qa/.
  * Results and screenshots go to the selected target's qa/ directory. This proves local
  * behaviour against a fixture; it proves no deployment, no live GitHub and no real data.
  */
@@ -48,7 +49,9 @@ const THUMB_ONLY = process.argv.includes('--thumb');
 const PR_SEARCH_DETAIL_ONLY = process.argv.includes('--pr-search-detail');
 const PR_CONFIDENCE_ONLY = process.argv.includes('--pr-confidence-state');
 const PR_FILES_ONLY = process.argv.includes('--pr-files-table');
-const OUT = join(target.artifacts, 'qa', ...(ADMISSION_ONLY ? ['admission'] : PR_FILES_ONLY ? ['pr-files-table'] : PR_CONFIDENCE_ONLY ? ['pr-confidence-state'] : PR_SEARCH_DETAIL_ONLY ? ['pr-search-detail'] : IDENTITY_ONLY ? ['identity'] : AUTHORITY_ONLY ? ['authority'] : HISTORY_ONLY ? ['history'] : THUMB_ONLY ? ['thumb'] : []));
+const BUSINESS_MANAGE_ONLY = process.argv.includes('--business-manage');
+const PARTICIPATION_ONLY = process.argv.includes('--participation');
+const OUT = join(target.artifacts, 'qa', ...(ADMISSION_ONLY ? ['admission'] : BUSINESS_MANAGE_ONLY ? ['business-manage'] : PARTICIPATION_ONLY ? ['participation'] : PR_FILES_ONLY ? ['pr-files-table'] : PR_CONFIDENCE_ONLY ? ['pr-confidence-state'] : PR_SEARCH_DETAIL_ONLY ? ['pr-search-detail'] : IDENTITY_ONLY ? ['identity'] : AUTHORITY_ONLY ? ['authority'] : HISTORY_ONLY ? ['history'] : THUMB_ONLY ? ['thumb'] : []));
 const APP_PORT = Number(process.env.DIFFDEVIL_APP_QA_PORT ?? (target.name === 'staging' ? 4512 : 4412));
 const GITHUB_PORT = Number(process.env.DIFFDEVIL_APP_QA_GITHUB_PORT ?? (target.name === 'staging' ? 4533 : 4433));
 // Chromium accepts Secure (__Host-) cookies from http://localhost, not from a loopback IP, so the browser origin is localhost; the Worker still binds 127.0.0.1.
@@ -56,7 +59,6 @@ const ORIGIN = `http://localhost:${APP_PORT}`;
 const PROBE = `http://127.0.0.1:${APP_PORT}`;
 const CONFIG = join(target.artifacts, 'dist/server/wrangler.json');
 const DENSE = process.env.DIFFDEVIL_APP_QA_DENSE === '1';
-const PARTICIPATION_ONLY = process.argv.includes('--participation');
 const STATE = join(target.artifacts, 'state');
 const DENSE_STATE = join(target.artifacts, 'state-dense');
 const chartTelemetry = [];
@@ -859,6 +861,11 @@ try {
       check(`${name}: keyboard navigation reaches the unchanged Works header`, await page.locator('.site-header :focus').count() === 1);
       await shot(`identity-${name}`);
     }
+  } else if (BUSINESS_MANAGE_ONLY) {
+    await startWorker(undefined, STATE, { commercial: COMMERCIAL_BUSINESS });
+    await signIn();
+    await businessManage(ctx);
+    await manageAccess(ctx, { browser, label: 'business' });
   } else {
   if (!PARTICIPATION_ONLY) {
   // ── Pro pass: the viewer and their organisation are Pro through the Works stand-in, one shared namespace is Business ──
@@ -1167,7 +1174,7 @@ try {
   githubServer.closeAllConnections?.();
   githubServer.close();
 }
-await writeFile(join(OUT, 'results.json'), JSON.stringify({ origin: ORIGIN, scope: ADMISSION_ONLY ? 'admission' : PR_FILES_ONLY ? 'pr-files-table' : THUMB_ONLY ? 'thumb' : PR_CONFIDENCE_ONLY ? 'pr-confidence-state' : PR_SEARCH_DETAIL_ONLY ? 'pr-search-detail' : AUTHORITY_ONLY ? 'authority' : HISTORY_ONLY ? 'history' : IDENTITY_ONLY ? 'identity' : PARTICIPATION_ONLY ? 'participation' : 'full', target: target.name, seeded: seeded.written, dense: DENSE && !ADMISSION_ONLY && !PR_FILES_ONLY && !THUMB_ONLY && !PR_CONFIDENCE_ONLY && !PR_SEARCH_DETAIL_ONLY && !PARTICIPATION_ONLY && !IDENTITY_ONLY && !AUTHORITY_ONLY && !HISTORY_ONLY, charts: chartTelemetry, results, failures, consoleErrors, pageErrors, external }, null, 2));
+await writeFile(join(OUT, 'results.json'), JSON.stringify({ origin: ORIGIN, scope: ADMISSION_ONLY ? 'admission' : BUSINESS_MANAGE_ONLY ? 'business-manage' : PR_FILES_ONLY ? 'pr-files-table' : THUMB_ONLY ? 'thumb' : PR_CONFIDENCE_ONLY ? 'pr-confidence-state' : PR_SEARCH_DETAIL_ONLY ? 'pr-search-detail' : AUTHORITY_ONLY ? 'authority' : HISTORY_ONLY ? 'history' : IDENTITY_ONLY ? 'identity' : PARTICIPATION_ONLY ? 'participation' : 'full', target: target.name, seeded: seeded.written, dense: DENSE && !ADMISSION_ONLY && !BUSINESS_MANAGE_ONLY && !PR_FILES_ONLY && !THUMB_ONLY && !PR_CONFIDENCE_ONLY && !PR_SEARCH_DETAIL_ONLY && !PARTICIPATION_ONLY && !IDENTITY_ONLY && !AUTHORITY_ONLY && !HISTORY_ONLY, charts: chartTelemetry, results, failures, consoleErrors, pageErrors, external }, null, 2));
 await writeFile(join(OUT, 'worker.log'), workerLog);
 console.log(`${PARTICIPATION_ONLY ? 'Participation: ' : ''}${results.filter(result => result.ok).length} of ${results.length} checks passed; screenshots and results in ${OUT}`);
 if (failures.length) { console.error(failures.map(failure => ` ✗ ${failure}`).join('\n')); process.exit(1); }
