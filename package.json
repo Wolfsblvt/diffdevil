@@ -8,7 +8,7 @@
     "build": "node tools/build.mjs",
     "build:offline": "npm run build",
     "test": "node tools/browser-extension-build.mjs --without-fonts && node tools/test.mjs",
-    "verify": "npm run check:prep && npm run build && npm test && npm run test:release && npm run check:actions && npm run check:workers && npm run check:github-app && npm run check:website && npm run check:app && npm run extension:check && node tools/browser-extension-build.mjs",
+    "verify": "npm run check:prep && npm run brand:check && npm run build && npm test && npm run test:release && npm run check:actions && npm run check:workers && npm run check:github-app && npm run check:website && npm run check:app && npm run extension:check && node tools/browser-extension-build.mjs",
     "verify:offline": "npm run verify",
     "test:package": "node tools/package-smoke.mjs",
     "prepack": "npm run build",
