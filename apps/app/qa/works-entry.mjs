@@ -241,9 +241,14 @@ try {
   await page.getByRole('heading', { name: 'Fixture Works consent' }).waitFor();
   check('expired native retry reaches consent through authentication with one fresh intent', authenticationHops === 2 && intents.size === 2 && violations.length === 0);
   const retryResponse = nativeResponses[beforeRetry];
+  const retryIntent = [...intents.keys()][1];
+  const retryAuthorizationUrl = `${WORKS}/wirt/products/diffdevil/link/${retryIntent}`;
+  const retryContinuation = retryResponse.body.match(/<a\b[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/u);
   const expectedPolicy = `form-action 'self' https://github.com ${WORKS}`;
-  check('expired Try again really posts link and returns 303 to a fresh admitted Works intent', retryResponse.method === 'POST' && retryResponse.action === 'link'
-    && retryResponse.status === 303 && new URL(retryResponse.location).origin === WORKS && intents.size === 2);
+  check('expired Try again commits a private bound document for the fresh admitted Works intent', retryResponse.method === 'POST' && retryResponse.action === 'link'
+    && retryResponse.status === 200 && retryResponse.private && retryResponse.bound && retryResponse.location === null
+    && retryResponse.body.includes(`http-equiv="refresh" content="0;url=${retryAuthorizationUrl}"`)
+    && retryContinuation?.[1] === retryAuthorizationUrl && retryContinuation[2].trim().length > 0 && intents.size === 2);
   check('both the form document and Manage response retain the exact configured Works form policy', planPolicies.at(-1) === expectedPolicy && retryResponse.formAction === expectedPolicy && violations.length === 0);
   const approvedIntent = new URL(page.url()).pathname.split('/').at(-1);
   failure = 'pending';
