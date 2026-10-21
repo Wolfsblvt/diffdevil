@@ -102,7 +102,7 @@ const githubServer = createServer(async (request, response) => {
 });
 githubServer.listen(GITHUB_PORT, '127.0.0.1'); await once(githubServer, 'listening');
 
-const seeded = await seedLocalState(STATE, ADMISSION_ONLY ? { seed: seedAdmissionStore } : LOADING_SCALE ? { seed: seedLoadingScale } : undefined);
+const seeded = await seedLocalState(STATE, ADMISSION_ONLY ? { seed: seedAdmissionStore } : LOADING_SCALE ? { seed: (store, clock) => seedLoadingScale(store, clock, { now: new Date().toISOString() }) } : undefined);
 console.log(`Seeded ${seeded.written.written} analyses, ${seeded.written.retained} analytical records and ${seeded.written.observations} size observations into local D1 state.`);
 if (LOADING_SCALE) console.log(`Anonymous measured-scale cohort: ${JSON.stringify(seeded.written.loadingScale)}`);
 

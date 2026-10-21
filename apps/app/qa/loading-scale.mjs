@@ -6,13 +6,13 @@ import { NOW, seedStore, comparisonReport } from './fixture.mjs';
 
 const DAY = 86_400_000;
 const sha = number => number.toString(16).padStart(40, '0');
-const at = days => new Date(Date.parse(NOW) - days * DAY).toISOString();
 const paths = Array.from({ length: 915 }, (_, index) => index === 0 ? 'src/index.ts' : `src/fixture/file-${String(index).padStart(4, '0')}.ts`);
 export const LOADING_SCALE = Object.freeze({ records: 142, recordBytes: 2_720_912, largestRecordBytes: 213_129,
   revisions: 137, revisionFiles: 1113, finals: 101, finalFiles: 1823, merged: 107,
   observations: 256_986, paths: 915, mostObservationsPerPath: 363, factSets: 265, markers: 7563 });
 
-export function loadingScale(repositoryId = 1001) {
+export function loadingScale(repositoryId = 1001, now = NOW) {
+  const at = days => new Date(Date.parse(now) - days * DAY).toISOString();
   let revisionCursor = 0, finalCursor = 0;
   const report = (count, offset, base, head) => comparisonReport(Array.from({ length: count }, (_, index) => ({
     path: paths[(offset + index) % paths.length], modified: 2, added: 1, deleted: 0
@@ -57,9 +57,9 @@ export function loadingScale(repositoryId = 1001) {
 }
 
 /** Only the disposable local QA D1: ordinary base state plus the anonymous measured-scale repository. */
-export async function seedLoadingScale(store, clock) {
+export async function seedLoadingScale(store, clock, { now = NOW } = {}) {
   const written = await seedStore(store, clock);
-  const specimen = loadingScale();
+  const specimen = loadingScale(1001, now);
   const statements = [store.statement('DELETE FROM analytical_pull_requests WHERE repository_id=1001'),
     store.statement('DELETE FROM analytical_size_observations WHERE repository_id=1001'), store.statement('DELETE FROM analytical_size_facts WHERE repository_id=1001')];
   await store.database.batch(statements);
@@ -73,8 +73,8 @@ export async function seedLoadingScale(store, clock) {
     try { await store.database.batch(specimen.markers.slice(offset, offset + 50).map(({ key, observedAt, revision }) => store.statement('INSERT INTO analytical_size_observations(repository_id,fact_key,observed_at,revision,expires_at) VALUES (1001,?,?,?,NULL)', key, observedAt, revision))); }
     catch (cause) { throw new Error(`Anonymous loading specimen marker batch ${offset} failed.`, { cause }); }
   }
-  clock.value = NOW;
+  clock.value = now;
   const retained = (await store.statement('SELECT COUNT(*) AS n FROM analytical_pull_requests').first()).n;
   const observations = (await store.statement('SELECT SUM(json_array_length(f.facts_json)) AS n FROM analytical_size_observations o JOIN analytical_size_facts f USING(repository_id,fact_key)').first()).n;
-  return { ...written, retained, observations, loadingScale: LOADING_SCALE };
+  return { ...written, retained, observations, loadingScale: { ...LOADING_SCALE, anchor: now } };
 }
