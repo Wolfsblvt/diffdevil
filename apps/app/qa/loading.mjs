@@ -39,6 +39,7 @@ export async function loadingJourney({ page, check, shot, ORIGIN, settled, joine
   await page.locator('[data-analytical-loading]').waitFor({ state: 'detached' });
   await settled();
   check('the held view becomes the real retained population', /merged pull requests/iu.test(await page.locator('.a-hero-l .eb').innerText()) && Number((await page.locator('.a-hero-l .val .n').innerText()).replace(/\D/gu, '')) > 0);
+  if (joined) check('acquired premium regions load their own browser modules and mount their charts', await page.locator('[data-premium-region] [data-chart]').count() > 0 && await page.locator('[data-premium-region] [data-chart]').evaluateAll(charts => charts.every(chart => chart.classList.contains('is-mounted') && !chart.classList.contains('is-failed'))));
   await shot('loading-populated-overview');
   await page.goto(`${ORIGIN}${scope}#main`, { waitUntil: 'domcontentloaded' });
   await settled();

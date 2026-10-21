@@ -5,4 +5,10 @@ import { mixModel } from '../../src/lib/charts/models.mjs';
 const { view } = Astro.props;
 const model = mixModel({ prs: view.current.analysed, period: view.period.label, basis: 'retained', lost: 0, hrefOf: () => view.href('/prs') });
 ---
-<ChartFrame id="loading-fixture" kind="mix" model={model} title="Public loading fixture" span={12} h={260} meta="Synthetic extension boundary; no private implementation" />
+<ChartFrame id="loading-fixture" kind="loading-fixture" model={model} title="Public loading fixture" span={12} h={260} meta="Synthetic extension boundary; no private implementation" />
+<script>
+  import { registerCharts } from '../../src/client/charts/mount';
+  import { RECIPES } from '../../src/client/charts/recipes';
+  // This recipe is absent from the generic shell. The acquired module must register it.
+  registerCharts({ recipes: { 'loading-fixture': RECIPES.mix } });
+</script>

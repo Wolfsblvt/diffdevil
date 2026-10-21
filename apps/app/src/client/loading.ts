@@ -2,6 +2,7 @@
 /** Independent navigation, population and optional notifications; only the current document may commit a reply. */
 import { swapTo, carryCharts } from './charts/mount';
 import { preserveNavigation } from './navigation-state';
+import { loadFragmentModules } from './fragment-modules';
 
 /** Hashes name a focus/anchor within a document, not a different analytical acquisition. */
 function documentUrl(value: string): string { const url = new URL(value, location.origin); url.hash = ''; return url.href; }
@@ -107,6 +108,8 @@ async function enrich(reason = 'enrichment'): Promise<void> {
       const fresh = next.querySelector<HTMLElement>(`[data-premium-region="${CSS.escape(slot.dataset.premiumRegion!)}"]`);
       if (!fresh || fresh.dataset.pending) throw new Error('E_ANALYTICAL_READ');
     }
+    await loadFragmentModules(next);
+    if (documentUrl(location.href) !== url || !slots.every(slot => slot.isConnected)) return;
     const retryFocused = slots.some(slot => slot.contains(document.activeElement) && document.activeElement?.matches('[data-premium-retry]'));
     document.querySelector('[data-pending-file-head]')?.remove();
     const finishCharts = carryCharts(next, reason);
