@@ -194,6 +194,7 @@ export async function handleManageAction(request, { runtime, session, viewer }) 
   const back = backOf(form);
   const cookie = session.session, origin = request.headers.get('origin');
   const mutation = { session: cookie, method: 'POST', origin };
+  let fundingTarget = null;
   const sessionHash = await sha256Hex(cookie);
   const repositoryOf = () => {
     const fullName = String(form.get('repository') ?? '');
@@ -211,9 +212,10 @@ export async function handleManageAction(request, { runtime, session, viewer }) 
   const audit = async (code, event = {}) => {
     const words = event.what ?? ACTION_WORDS[action];
     if (!words) return;
-    // These operations act on the signed-in account. Unrelated submitted selectors cannot move their record.
-    if (['link', 'unlink', 'reconnect', 'disconnect'].includes(action)) {
-      event = { ...event, accountId: viewer.userId, repositoryId: null, where: viewer.login };
+    // Funding names another account only when the commercial service established the target and relevant authority.
+    // A refusal before that point belongs to the signed-in account, regardless of submitted selectors.
+    if (['link', 'unlink', 'reconnect', 'disconnect', 'fund', 'release-slot'].includes(action)) {
+      event = { ...event, accountId: fundingTarget?.id ?? viewer.userId, repositoryId: null, where: fundingTarget?.display ?? viewer.login };
     }
     const repository = event.repositoryId !== undefined ? null : viewer.repositories.find(candidate => candidate.fullName === String(form.get('repository') ?? ''));
     const repositoryId = event.repositoryId ?? repository?.repositoryId ?? null;
@@ -384,13 +386,17 @@ export async function handleManageAction(request, { runtime, session, viewer }) 
         const organisationId = integer(form.get('organisation')), slot = String(form.get('slot') ?? '');
         if (!organisationId || !slot) return done('invalid');
         const result = await runtime.commercial.bind({ ...mutation, slot, organisationId });
+        fundingTarget = result.organisation ?? null;
         return done(result.body.ok ? 'bound' : 'bind-refused');
       }
       case 'release-slot': {
         if (!runtime.commercial) return done('commercial-unavailable');
         const organisationId = integer(form.get('organisation'));
         if (!organisationId) return done('invalid');
-        await runtime.commercial.unbind({ ...mutation, organisationId });
+        const result = await runtime.commercial.unbind({ ...mutation, organisationId });
+        // The idempotent no-binding answer changes nothing and must not invent an applied release record.
+        if (!result.changed) { runtime.cache.clear(); return redirect(withMessage(back, 'unbound')); }
+        fundingTarget = result.organisation ?? null;
         return done('unbound');
       }
       case 'link': {
