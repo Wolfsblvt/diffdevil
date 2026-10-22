@@ -96,7 +96,7 @@ function selectedWindow(query) {
   if (!['all', 'namespace', 'repository'].includes(scope?.kind) || (scope.kind === 'namespace' && !positive(scope.namespaceId))
     || (scope.kind === 'repository' && !positive(scope.repositoryId))) throw fail('E_APP_DATA_QUERY');
   if (from >= to || (['pr', 'file'].includes(query.surface) && scope.kind !== 'repository')
-    || (query.surface === 'pr' && !positive(query.pullRequest)) || (query.surface === 'file' && typeof query.path !== 'string')
+    || (query.surface === 'pr' && !positive(query.pullRequest)) || (query.surface === 'file' && query.path !== undefined && typeof query.path !== 'string')
     || (query.metric !== undefined && !['mergedPullRequests', 'changed', 'rawChurn', 'turnover'].includes(query.metric))) throw fail('E_APP_DATA_QUERY');
   return { ...query, scope, repositoryIds: [...new Set(query.repositoryIds)], from, to };
 }
@@ -173,6 +173,26 @@ export function createAnalyticalDataService({ store, authorize, entitlement, nam
   const historyReadable = async ids => typeof store.historySettings === 'function'
     && (await Promise.all(ids.map(id => store.historySettings(id, { independentExecution: true })))).every(settings => settings.readable);
   return {
+    /** Resolve opaque file identities from an authorised, request-local file view without building a ranked projection. */
+    fileCandidates(source, repositoryId) {
+      const prior = fileViews.get(source);
+      if (!prior || !['file', 'files'].includes(prior.query.surface) || prior.query.scope.kind !== 'repository'
+        || prior.query.scope.repositoryId !== repositoryId || !prior.authorized.includes(repositoryId)) return [];
+      const paths = new Set();
+      const activePullRequests = new Set(prior.merged.filter(record => record.repositoryId === repositoryId).map(record => record.pullRequest));
+      for (const record of prior.all) {
+        if (record.repositoryId !== repositoryId || record.state !== 'merged') continue;
+        const report = prior.factsOf(record.final, repositoryId).report;
+        for (const file of report?.files ?? []) if (file.included) paths.add(file.path);
+      }
+      const activePaths = new Set();
+      for (const record of prior.all) {
+        if (record.repositoryId !== repositoryId || record.state !== 'merged' || !activePullRequests.has(record.pullRequest)) continue;
+        const report = prior.factsOf(record.final, repositoryId).report;
+        for (const file of report?.files ?? []) if (file.included) activePaths.add(file.path);
+      }
+      return [...paths].map(path => ({ repositoryId, path, hasSelectedPeriodActivity: activePaths.has(path) }));
+    },
     async query(input, actor, source) {
       const query = selectedWindow(input);
       const granted = [], policies = new Map(), plans = new Map(), namespaces = new Map();
@@ -273,7 +293,9 @@ export function createAnalyticalDataService({ store, authorize, entitlement, nam
         coverage: retainedCoverage(bucket), opened: all.filter(record => inside(record.openedAt, bucket)).length, merged: all.filter(record => inside(record.mergedAt, bucket)).length,
         closedUnmerged: all.filter(record => record.state === 'closed' && inside(record.closedAt, bucket)).length })) } : undefined;
       let files = continued?.files ?? [], sizeObservation = continued?.sizeObservation ?? [];
-      if (!continued && premium && extension && fileSurfaces.has(query.surface)) {
+      const needsSelectedFileEnrichment = continued && query.surface === 'file' && query.path !== undefined;
+      if ((!continued || needsSelectedFileEnrichment) && premium && extension && fileSurfaces.has(query.surface)
+        && (query.surface !== 'file' || query.path !== undefined)) {
         ({ files, sizeObservation } = await extension.files({ query, merged: merged.filter(record => premiumIds.includes(record.repositoryId)), all, premiumIds, store }));
       }
       let result;
@@ -298,8 +320,8 @@ export function createAnalyticalDataService({ store, authorize, entitlement, nam
         if (premium && extension) Object.assign(result, await extension.pr({ record, query, all, active, effective, prRow, factsOf, paths }));
       }
       if (query.surface === 'file') {
-        result = await extension.file({ query, files, all, authorized, factsOf });
-        if (!result) throw fail('E_APP_DATA_NOT_FOUND');
+        result = query.path === undefined ? { files: [] } : await extension.file({ query, files, all, authorized, factsOf });
+        if (query.path !== undefined && !result) throw fail('E_APP_DATA_NOT_FOUND');
       }
       // Check current access again after asynchronous storage/policy work, before exposing names or aggregates.
       for (const repositoryId of granted) if (!await authorize({ repositoryId, actor, kind: 'read' })) throw fail('E_APP_DATA_UNAUTHORIZED');
@@ -310,7 +332,7 @@ export function createAnalyticalDataService({ store, authorize, entitlement, nam
           authorizedRepositories: granted.length, representedRepositories: authorized.length, recoveredMerged: merged.filter(record => record.final?.report).length, merged: merged.length },
         policies: authorized.map(repositoryId => ({ repositoryId, requestedId: policies.get(repositoryId)?.id ?? null, standing: policies.get(repositoryId)?.compiled ? 'current' : 'unfiltered-base-facts' })),
         sizeObservation, entitlements, fundedNamespaces, result };
-      if (query.surface === 'files' && query.scope.kind === 'repository' && premium && extension) {
+      if (['file', 'files'].includes(query.surface) && query.scope.kind === 'repository' && premium && extension) {
         fileViews.set(response, { actor, query, authorized, premiumIds, policies, all, merged, factsOf, files, sizeObservation });
       }
       return response;

@@ -19,13 +19,14 @@ export function loadingScale(repositoryId = 1001, now = NOW) {
   })), { base, head, comparisonId: 'anonymous-loading-specimen' });
   const records = Array.from({ length: 142 }, (_, index) => {
     const merged = index < 107, base = sha(index + 1), head = sha(index + 2);
+    const mergedAgeDays = index === 0 ? 2 : 20 - index / 10;
     const revisions = index < 137 ? (() => { const count = index < 17 ? 9 : 8, offset = revisionCursor; revisionCursor += count;
       return [{ base, head, observedAt: at(25 - index / 10), report: report(count, offset, base, head), originalPolicyId: null, originalBand: null, sizes: [] }]; })() : [];
     const final = index < 101 ? (() => { const count = index < 5 ? 19 : 18, offset = finalCursor; finalCursor += count;
-      return { base, head, observedAt: at(20 - index / 10), report: report(count, offset, base, head), sizes: [], basis: 'final-merged-comparison' }; })() : null;
+      return { base, head, observedAt: at(mergedAgeDays), report: report(count, offset, base, head), sizes: [], basis: 'final-merged-comparison' }; })() : null;
     return normalizeAnalyticalRecord({ version: 1, repositoryId, pullRequest: index === 0 ? 452 : 5000 + index,
       state: merged ? 'merged' : index < 137 ? 'open' : 'draft', openedAt: at(29), readyAt: at(28),
-      mergedAt: merged ? at(20 - index / 10) : null, closedAt: null, updatedAt: at(1), observedAt: at(1), currentHead: head, revisions, final });
+      mergedAt: merged ? at(mergedAgeDays) : null, closedAt: null, updatedAt: at(1), observedAt: at(1), currentHead: head, revisions, final });
   });
   const bytes = record => Buffer.byteLength(JSON.stringify(record));
   // Padding is inert comparison identity, not extra files or invented measurements. It models

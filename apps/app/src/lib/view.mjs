@@ -69,7 +69,7 @@ async function selectedScope(scope, repositories, runtime) {
 }
 
 export async function loadView({ url, viewer, session, runtime, surface = 'prs', detail = {} }) {
-  const { repositoryId: detailRepositoryId, ...queryDetail } = detail;
+  const { repositoryId: detailRepositoryId, fileLocator, ...queryDetail } = detail;
   const state = readViewState(url);
   const scope = describeScope(state.s);
   const repositories = scopeRepositories(viewer, scope);
@@ -77,7 +77,7 @@ export async function loadView({ url, viewer, session, runtime, surface = 'prs',
   const period = periodOf(state);
   const nowMs = Date.parse(nowIso);
   const window = { from: new Date(nowMs - period.days * DAY).toISOString(), to: nowIso, previousFrom: new Date(nowMs - 2 * period.days * DAY).toISOString() };
-  const detailRepository = ['pr', 'files'].includes(surface) && Number.isSafeInteger(detailRepositoryId)
+  const detailRepository = ['pr', 'files', 'file'].includes(surface) && Number.isSafeInteger(detailRepositoryId)
     ? viewer.repositories.find(repository => repository.repositoryId === detailRepositoryId)
     : undefined;
   const historyRepositories = (detailRepository ? [detailRepository] : repositories).filter(repository => repository.standing?.historyReadable);
@@ -100,7 +100,7 @@ export async function loadView({ url, viewer, session, runtime, surface = 'prs',
     : await selectedScope(scope, historyRepositories, runtime);
   if (ids.length > 0) {
     try {
-      data = await runtime.analytics.query({ surface, repositoryIds: ids, from: window.from, to: window.to, scope: contractScope, ...queryDetail }, actor);
+      data = await runtime.analytics.query({ surface: fileLocator ? 'file' : surface, repositoryIds: ids, from: window.from, to: window.to, scope: contractScope, ...queryDetail }, actor);
       // A Free page answer carries its standing (`free`, `scope-unavailable`, `entitlement-unavailable`); a data answer carries none.
       dataStanding = data.standing === undefined ? 'available' : data.standing === 'free' ? 'plan-required' : data.standing;
     } catch (error) {
@@ -133,12 +133,23 @@ export async function loadView({ url, viewer, session, runtime, surface = 'prs',
   attachTitles(pullRequests, titles.byRepository);
   const current = periodStats({ pullRequests, lifecycle, from: window.from, to: window.to });
   const previous = periodStats({ pullRequests, lifecycle, from: window.previousFrom, to: window.from });
-  // File rows (aggregated per file, with contributions) come from the premium extension with the files, history and overview surfaces; the pr surface's `files` are that comparison's own rows. A Community build has no such rows.
-  const files = entitlement.premium && surface !== 'pr' && runtime.premium.projection && Array.isArray(data?.result?.files) ? await runtime.premium.projection.mapFiles(data.result.files.filter(row => Array.isArray(row.contributions)), viewer, runtime) : [];
+  const fileRows = Array.isArray(data?.result?.files) ? data.result.files.filter(row => Array.isArray(row.contributions)) : [];
+  let fileIdentity;
+  if (fileLocator && detailRepository && data && runtime.locator?.plausible(fileLocator)) {
+    const inPeriod = await runtime.locator.resolve(fileLocator, fileRows);
+    fileIdentity = inPeriod ?? await runtime.locator.resolve(fileLocator, runtime.analytics.service.fileCandidates(data, detailRepository.repositoryId));
+  }
+  const selectedFileRow = fileIdentity && fileRows.find(row => row.repositoryId === fileIdentity.repositoryId && row.path === fileIdentity.path);
+  // Keep retained identity separate from aggregate rows; the pathless locator read carries period activity explicitly.
+  const fileHasSelectedPeriodActivity = Boolean(selectedFileRow || fileIdentity?.hasSelectedPeriodActivity);
+  const projectionRows = fileLocator ? (selectedFileRow ? [selectedFileRow] : []) : fileRows;
+  const files = fileLocator
+    ? projectionRows
+    : entitlement.premium && surface !== 'pr' && runtime.premium.projection ? await runtime.premium.projection.mapFiles(projectionRows, viewer, runtime) : [];
   const href = (path, patch = {}) => link(state, path, patch);
   // The plan decides who is entitled; the build decides whether the premium implementation exists. A premium slot renders only when both hold.
   const premiumProvided = runtime.premium.provided, premiumHere = entitlement.premium && premiumProvided;
-  return { state, scope, repositories, historyRepositories, retainedRepositories, ids, actor, contractScope, nowIso, period, periods: Object.values(PERIODS), window, pullRequests, lifecycle, current, previous, bounds, coverage, truncated, entitlement, premiumProvided, premiumHere, data, dataStanding, files, titles, href, viewer };
+  return { state, scope, repositories, historyRepositories, retainedRepositories, ids, actor, contractScope, nowIso, period, periods: Object.values(PERIODS), window, pullRequests, lifecycle, current, previous, bounds, coverage, truncated, entitlement, premiumProvided, premiumHere, data, dataStanding, files, fileIdentity, fileHasSelectedPeriodActivity, titles, href, viewer };
 }
 
 /** A second surface read for a page that composes two (a premium file panel beside the page's pull-request model). */

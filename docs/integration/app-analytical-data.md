@@ -350,7 +350,7 @@ period buckets. The rich file implementation is a separate extension joined thro
 `premium`: `{ files, file, pr }`, which the service calls only for an entitled reader.
 
 - `files({ query, merged, all, premiumIds, store })` returns `{ files, sizeObservation }` for the Overview, History,
-  Files and File detail surfaces: per-file Changed per merged PR, growth and shrinkage, observed sizes, turnover-v1
+  Files surfaces: per-file Changed per merged PR, growth and shrinkage, observed sizes, turnover-v1
   per file, and the read-time tail observation. On the Overview and Files surfaces each row also carries `partners`:
   its four strongest co-change companions over the query window, from the same derivation as `cochange`.
 - `file({ query, files, all, authorized, factsOf })` returns one file's detail with its 90-day co-change, or
@@ -382,9 +382,12 @@ Without the extension an entitled reader's Files and File detail answer `standin
 pull-request surface returns `alsoInProgress: null` and omits `recentFileActivity` and `cochange`. A Free reader's
 answers are unchanged (`standing: "free"`).
 
-The App's server-side `loadSurface` helper can continue a repository-scoped Files response into File detail within
-one request. It passes the original response object separately from the JSON query; the service retains the acquired
-records, interpreted facts and file enrichment only for that object. Matching actor identity, repository set, window,
-metric and compiled current policy are required, with fresh authorization/entitlement checks and readable-history
-checks before and after the file-detail derivation. Otherwise it performs an independent query. This introduces no
-HTTP query field, persisted projection, cross-request result cache or private consumer-interface change.
+The App first reads the repository-scoped `file` surface without a path to resolve the opaque locator against
+authorized current-policy history. This request-local result carries no ranked file table and does not invoke the rich
+`files` aggregation. After the App resolves one path, `loadSurface` passes that response object separately from the
+selected-path query; the service reuses the acquired records and interpreted facts only when actor identity,
+repository set, window, and compiled current policy still match. It checks current authorization, entitlement and
+readable history again, then invokes `files` for that selected path before passing the resulting rows to `file` for
+detail derivation. The selected-path query keeps this enrichment bounded to one path; the ordinary Files surface still
+invokes the complete `files` extension. This introduces no HTTP query field, persisted projection or cross-request
+result cache.
