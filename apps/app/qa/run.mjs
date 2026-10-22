@@ -164,6 +164,13 @@ async function stopWorker() {
   // The next pass must not be answered by a survivor.
   await freePort(APP_PORT);
 }
+/** Reset only this pass's disposable D1 fixture after its Worker has stopped. */
+function reseedState(label) {
+  // A fresh process avoids reusing the disposed Miniflare seed runtime.
+  const seeded = spawnSync(process.execPath, [resolve('apps/app/qa/seed.mjs'), STATE], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true });
+  if (seeded.status !== 0) throw new Error(`${label} seeding failed:\n${seeded.stdout}\n${seeded.stderr}`);
+  console.log(`Re-seeded ${label} fixture: ${seeded.stdout.trim().split(/\r?\n/u).at(-1)}`);
+}
 async function releaseBusinessHistoryJob() {
   await stopWorker();
   const releasedAt = new Date().toISOString();
@@ -1140,11 +1147,12 @@ try {
     check('Business File detail resolves its opaque handle and mounts its comparison chart', businessFileResponse.status() === 200 && await page.locator('[data-chart-id="fvol"].is-mounted').count() === 1);
     await shot('business-file-detail');
   }
-  if (premium) {
-    await stopWorker();
-    await startWorker(undefined, STATE, { commercial: COMMERCIAL_BUSINESS });
-    await signIn();
-  }
+  // Policy publication starts idle, then its own journey deliberately holds and releases one history job.
+  // Earlier Pro/Free journeys leave real queued work; keeping it would test a busy repository instead.
+  await stopWorker();
+  reseedState('Business policy');
+  await startWorker(undefined, STATE, { commercial: COMMERCIAL_BUSINESS });
+  await signIn();
   await businessManage(ctx);
   await manageAccess(ctx, { browser, label: 'business' });
 
@@ -1225,9 +1233,7 @@ try {
   // Run the plan-choice return journey from a clean seed after the other Manage journeys, so its intentional saved
   // choice and repository effects cannot change their starting fixture.
   await stopWorker();
-  const planChoiceSeed = spawnSync(process.execPath, [resolve('apps/app/qa/seed.mjs'), STATE], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true });
-  if (planChoiceSeed.status !== 0) throw new Error(`plan-choice seeding failed:\n${planChoiceSeed.stdout}\n${planChoiceSeed.stderr}`);
-  console.log(`Re-seeded Manage return fixture: ${planChoiceSeed.stdout.trim().split(/\r?\n/u).at(-1)}`);
+  reseedState('Manage return');
   await startWorker(undefined, STATE, { commercial: COMMERCIAL_PRO });
   await signIn();
   await planChoiceReturn(ctx);
