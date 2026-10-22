@@ -24,7 +24,9 @@ const modules = await build({ ...common, entryPoints: { background: join(root, '
 // The popover stylesheet is imported as text and adopted by its shadow root.
 const content = await build({ ...common, entryPoints: [join(root, 'src/content/main.ts')], outfile: join(out, 'content.js'), format: 'iife', loader: { '.css': 'text' } });
 await build({ ...common, entryPoints: [join(root, 'src/options/theme.ts')], outfile: join(out, 'theme.js'), format: 'iife' });
-await build({ entryPoints: [join(root, 'src/options/options.css')], outfile: join(out, 'options.css'), bundle: true, target: 'chrome120', loader: { '.svg': 'file' }, assetNames: 'assets/[name]-[hash]' });
+// Identity assets referenced through tokens.css are bundled under hashed names; the Works lockups keep their
+// plain names because this build copies and verifies them itself below.
+await build({ entryPoints: [join(root, 'src/options/options.css')], outfile: join(out, 'options.css'), bundle: true, target: 'chrome120', loader: { '.svg': 'file' }, assetNames: 'assets/[name]-[hash]', external: ['assets/works-*'] });
 await copyFile(join(root, 'src/content/content.css'), join(out, 'content.css'));
 // The shell's icon slots resolve through the shared catalogue at build time; the page ships inline SVG only.
 await writeFile(join(out, 'options.html'), inlineIcons(await readFile(join(root, 'options.html'), 'utf8')));
@@ -36,12 +38,14 @@ const acceptedBrandHash = createHash('sha256').update(acceptedBrand).digest('hex
 if (acceptedBrandHash !== 'd33cf3b1a7a8ec52706da3311ac82e0500ec6c2eee8e35baeaaa2d5ef2b9b34e') throw new Error('The vendored diffdevil/brand glyph disagrees with its accepted canonical source.');
 await writeFile(join(out, 'assets/diffdevil-brand.svg'), acceptedBrand);
 identities.push({ path: 'Wolfsblvt/wolfsblvt-icons@8596b6bc2ba7c4b950963b7ec26cee1a26974439:src/icons/products/diffdevil/brand.svg', sha256: acceptedBrandHash, license: 'MIT' });
-// The footer's Wolfsblvt Works compact lockup is the Works brand bundle's exact export (reserved artwork, not software).
-// The stylesheet references the vendored files; esbuild carries them into assets/ under hashed names.
+// The footer's Wolfsblvt Works compact lockup is the pinned Works brand bundle export vendored at its canonical
+// layout under vendor/brand/works/ (reserved artwork, not software); the same pin the website's sponsor section uses.
+const worksVendor = resolve('vendor/brand/works');
 const worksBundle = 'Wolfsblvt/wolfsblvt.works@97cbf177df1045d14e4e91b06c305c250d8e3186:brand/bundle/works/assets/lockup-compact';
-for (const [file, appearance, expected] of [['works-lockup-compact-dark.svg', 'on-dark', '2c92a08479680f8530b332fec1a1d639fe173a41093c5abe44dad872927abe93'], ['works-lockup-compact-light.svg', 'on-light', '09e851afd7b46bcec0ad989247627e739c69df92f26e4f3b29127e1e4624356a']]) {
-  const sha256 = createHash('sha256').update(await readFile(join(root, 'assets', file))).digest('hex');
-  if (sha256 !== expected) throw new Error(`The vendored Wolfsblvt Works lockup ${file} disagrees with its bundle export.`);
+for (const [appearance, expected] of [['on-dark', '2c92a08479680f8530b332fec1a1d639fe173a41093c5abe44dad872927abe93'], ['on-light', '09e851afd7b46bcec0ad989247627e739c69df92f26e4f3b29127e1e4624356a']]) {
+  const bytes = await readFile(join(worksVendor, 'assets/lockup-compact', `${appearance}.svg`)); const sha256 = createHash('sha256').update(bytes).digest('hex');
+  if (sha256 !== expected) throw new Error(`The vendored Wolfsblvt Works lockup ${appearance}.svg disagrees with its bundle export.`);
+  await writeFile(join(out, 'assets', `works-lockup-compact-${appearance.slice(3)}.svg`), bytes);
   identities.push({ path: `${worksBundle}/${appearance}.svg`, sha256, license: 'reserved' });
 }
 for (const file of ['diffdevil-symbol-micro-dark.svg', 'diffdevil-symbol-micro-light.svg']) {
@@ -75,7 +79,7 @@ function prose(title, text) {
 }
 for (const [file, page, title] of [['privacy.md', 'privacy.html', 'Privacy'], ['licenses.md', 'licenses.html', 'Licences']]) await writeFile(join(out, page), prose(title, await readFile(join(root, file), 'utf8')));
 await mkdir(join(out, 'licenses'), { recursive: true });
-for (const [name, path] of Object.entries({ 'AGPL-3.0-only.txt': 'LICENSES/AGPL-3.0-only.txt', 'MIT.txt': 'LICENSES/MIT.txt', 'works-artwork.txt': join(root, 'assets/works-artwork.txt'), 'chevrotain.txt': 'node_modules/chevrotain/LICENSE.txt', 'yaml.txt': 'node_modules/yaml/LICENSE', 'ajv.txt': 'node_modules/ajv/LICENSE', 'fast-deep-equal.txt': 'node_modules/fast-deep-equal/LICENSE', 'fast-uri.txt': 'node_modules/fast-uri/LICENSE', 'json-schema-traverse.txt': 'node_modules/json-schema-traverse/LICENSE', ...(!fontFree ? { 'IBM-Plex-Sans-OFL.txt': 'node_modules/@fontsource/ibm-plex-sans/LICENSE', 'IBM-Plex-Mono-OFL.txt': 'node_modules/@fontsource/ibm-plex-mono/LICENSE' } : {}) })) await copyFile(path, join(out, 'licenses', name));
+for (const [name, path] of Object.entries({ 'AGPL-3.0-only.txt': 'LICENSES/AGPL-3.0-only.txt', 'MIT.txt': 'LICENSES/MIT.txt', 'works-artwork.txt': 'vendor/brand/works/licences/works-artwork.txt', 'chevrotain.txt': 'node_modules/chevrotain/LICENSE.txt', 'yaml.txt': 'node_modules/yaml/LICENSE', 'ajv.txt': 'node_modules/ajv/LICENSE', 'fast-deep-equal.txt': 'node_modules/fast-deep-equal/LICENSE', 'fast-uri.txt': 'node_modules/fast-uri/LICENSE', 'json-schema-traverse.txt': 'node_modules/json-schema-traverse/LICENSE', ...(!fontFree ? { 'IBM-Plex-Sans-OFL.txt': 'node_modules/@fontsource/ibm-plex-sans/LICENSE', 'IBM-Plex-Mono-OFL.txt': 'node_modules/@fontsource/ibm-plex-mono/LICENSE' } : {}) })) await copyFile(path, join(out, 'licenses', name));
 const metadata = { modules: modules.metafile, content: content.metafile };
 const external = Object.values(metadata).flatMap(meta => Object.values(meta.outputs)).flatMap(output => output.imports).filter(item => item.external);
 if (external.length) throw new Error(`Extension contains external executable imports: ${external.map(item => item.path).join(', ')}`);

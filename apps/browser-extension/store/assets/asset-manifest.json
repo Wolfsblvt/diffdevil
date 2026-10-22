@@ -11,7 +11,7 @@
       "height": 800,
       "depth": 8,
       "colorType": 2,
-      "sha256": "e76495ba0eac06b3260a6244d932b61e525617d1e7d878b11cf9a02ffb4ebcf3",
+      "sha256": "b8a8941929438d0bb201861e65a14a959393f78215a8d358c8c06017ddc90e55",
       "generatedFrom": "artifacts/browser-extension/qa/github-dark.png",
       "caption": "Changed in GitHub’s own diffstat seats: the pull request with its decomposition, size chip, band rail and local provenance; each file with its own Changed.",
       "standing": "Actual production UI in an explicitly authored fixture; not a live or installed-extension capture."
@@ -22,7 +22,7 @@
       "height": 800,
       "depth": 8,
       "colorType": 2,
-      "sha256": "2b0f39aa636e3afc6cf65688c66bbe6c7994d7eede5b6d152460e39567050f26",
+      "sha256": "b5eeaeab18cb9a01366ceae965ee9a36a047a1bd8c307470700619f84582e3c9",
       "generatedFrom": "artifacts/browser-extension/qa/report-dark.png",
       "caption": "The anchored report: one dominant value with its evidence, the decomposition, raw churn, files, the policy in effect and the effect plan.",
       "standing": "Actual production UI in an explicitly authored fixture; not a live or installed-extension capture."
@@ -33,7 +33,7 @@
       "height": 800,
       "depth": 8,
       "colorType": 2,
-      "sha256": "52b2f900483b41ce3f131441d69a5ad0f0a72b4c3b8b8b580f9ba5d78abaa548",
+      "sha256": "e2f9d89fd76c1acc8be99724075442576f9f3e1e0630e538c56d96e47cfca863",
       "generatedFrom": "artifacts/browser-extension/qa/continuity-report-partial.png",
       "caption": "A bounded comparison names measured, bounded and provider-declined files, with one explicit Analyze remaining files action.",
       "standing": "Actual production UI in an explicitly authored fixture; not a live or installed-extension capture."
@@ -44,7 +44,7 @@
       "height": 800,
       "depth": 8,
       "colorType": 2,
-      "sha256": "f043039b6ddd0c9230d292dcb37eac54b3f0db764fa1788b03ac128afbf677d1",
+      "sha256": "0cdf6098ec97d4f12078350ade38fb213f251fad0c64196737573e2d86ea1f9f",
       "generatedFrom": "artifacts/browser-extension/qa/settings-bands-light.png",
       "caption": "Trusted-base repository policy mode alongside editable personal thresholds, colour metadata and optional existing-label mappings in the authored light theme.",
       "standing": "Actual production UI in an explicitly authored fixture; not a live or installed-extension capture."
@@ -55,7 +55,7 @@
       "height": 800,
       "depth": 8,
       "colorType": 2,
-      "sha256": "043848ba825c8b8a30fcbadd8fa2aa8c6e7360a38e68c3eaca6d4db2ad2957b7",
+      "sha256": "ea05794555bde15ee5ab997fe50798951cbf8a05f4ae8f1b9b1ac8d40ae6f434",
       "generatedFrom": "artifacts/browser-extension/qa/settings-data-light.png",
       "caption": "Local report inventory with scoped PR/repository clearing and a paused repository with its Resume control. Pausing and deletion are separate choices.",
       "standing": "Actual production UI in an explicitly authored fixture; not a live or installed-extension capture."
@@ -77,9 +77,9 @@
       "height": 560,
       "depth": 8,
       "colorType": 2,
-      "sha256": "c2aef62ca56301706a5d7d90049bff4f8b05c5f67c6ff79b636b586f7072faa3",
+      "sha256": "6f3d73f22d0f372503c4dd06e4b5e657cbfd08130643ad8250d57abd435eed21",
       "editableSource": "promo/marquee-1400x560.svg",
-      "editableSourceSha256": "fba3f55b4b381a60653bfcaedd3651dcfada04c4095d50b6d5258a5848c97816",
+      "editableSourceSha256": "63c4c237a6dc5148c64b315783ecc85f1b21a448c70092612e2ad6898c8391a0",
       "standing": "Authored promotional composition using accepted identity bytes and exact synthetic fixture measurements."
     },
     {
