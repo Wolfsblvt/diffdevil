@@ -2,16 +2,24 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { renderWorksSponsor, worksSponsorSource } from './works-sponsor.mjs';
 
 const vendored = path => readFileSync(new URL(`../../vendor/brand/works/${path}`, import.meta.url));
 const template = vendored('components/works-sponsor.html').toString('utf8');
 
-test('the vendored Works sponsor files are the pinned bundle bytes', () => {
+test('the vendored Works sponsor files and compact lockup are the pinned bundle bytes', () => {
+  assert.deepEqual(Object.keys(worksSponsorSource.files).filter(path => path.startsWith('assets/lockup-compact/')), ['assets/lockup-compact/on-dark.svg', 'assets/lockup-compact/on-light.svg']);
   for (const [path, sha256] of Object.entries(worksSponsorSource.files)) {
     assert.equal(createHash('sha256').update(vendored(path)).digest('hex'), sha256, path);
   }
+});
+
+test('the website footer binds the vendored lockup for each appearance from vendor/, not from a second copy', () => {
+  const css = readFileSync(new URL('./src/styles/global.css', import.meta.url), 'utf8');
+  const bindings = [...css.matchAll(/--logo-works: url\("([^"]+)"\)/gu)].map(match => match[1]);
+  assert.deepEqual([...new Set(bindings)].sort(), ['on-dark', 'on-light'].map(appearance => `../../../../vendor/brand/works/assets/lockup-compact/${appearance}.svg`));
+  for (const binding of bindings) assert.ok(existsSync(new URL(binding, new URL('./src/styles/global.css', import.meta.url))), binding);
 });
 
 test('the binding fills every placeholder with escaped host facts and keeps Works copy', () => {
