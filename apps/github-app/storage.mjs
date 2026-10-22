@@ -644,18 +644,18 @@ export class D1AppStore {
     return (await this.historySettings(repositoryId, { independentExecution: true })).readable ? result : [];
   }
 
-  async analyticalSizes(repositoryId, from, to) {
+  async analyticalSizes(repositoryId, from, to, { paths } = {}) {
     if (!(await this.historySettings(repositoryId, { independentExecution: true })).readable) return [];
-    const result = await sizesIn(this, repositoryId, from, to, this.now());
+    const result = await sizesIn(this, repositoryId, from, to, this.now(), paths);
     if (!(await this.historySettings(repositoryId, { independentExecution: true })).readable) return [];
     return result;
   }
 
   /** Query-local shared facts and exact observation markers for consumers that index history without expanding every row. */
-  async analyticalSizeHistory(repositoryId, from, to) {
+  async analyticalSizeHistory(repositoryId, from, to, { paths } = {}) {
     const empty = () => ({ repositoryId, groups: [], boundaries: [] });
     if (!(await this.historySettings(repositoryId, { independentExecution: true })).readable) return empty();
-    const result = await sizeHistoryIn(this, repositoryId, from, to, this.now());
+    const result = await sizeHistoryIn(this, repositoryId, from, to, this.now(), paths);
     return (await this.historySettings(repositoryId, { independentExecution: true })).readable ? result : empty();
   }
 
