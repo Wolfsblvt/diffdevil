@@ -4,6 +4,7 @@ import { EXAMPLE_PULL_REQUEST, type Setting, type Settings } from '../shared/cat
 import { pausedRepositories, repositoryKey } from '../shared/repository.js';
 import { request, type Inventory } from '../shared/protocol.js';
 import { node, button } from '../shared/dom.js';
+import { destinations } from '../shared/destinations.js';
 export interface DataHost {
   readonly settings: () => Settings;
   /** Reload settings from the worker and draw the page again. */
@@ -34,10 +35,12 @@ export function readySection(host: HTMLElement, settings: Settings, review: () =
   ] as const) defaults.append(node('dt', '', key), node('dd', '', value));
   const example = node('a', 'primary-button', 'Open the public example PR'); example.href = EXAMPLE_PULL_REQUEST; example.target = '_blank'; example.rel = 'noopener noreferrer';
   const links = node('p', 'ready-links');
-  for (const [label, target] of [['Data controls', '#data.controls'], ['Pause repositories', '#repositories.paused'], ['Privacy', 'privacy.html']] as const) { if (links.childElementCount) links.append(' · '); const link = node('a', '', label); link.href = target; links.append(link); }
+  for (const [label, target] of [['Data controls', '#data.controls'], ['Pause repositories', '#repositories.paused'], ['Privacy', 'privacy.html'], ['Extension guide', destinations.guide]] as const) { if (links.childElementCount) links.append(' · '); const link = node('a', '', label); link.href = target; if (target.startsWith('https:')) { link.target = '_blank'; link.rel = 'noopener noreferrer'; } links.append(link); }
+  // The website's one-line distinction between the two routes, with the App as the quiet contextual link.
+  const routes = node('p', 'ready-routes', 'The extension changes your view. '); const app = node('a', '', 'The GitHub App runs for the repository →'); app.href = destinations.app; app.target = '_blank'; app.rel = 'noopener noreferrer'; routes.append(app);
   host.replaceChildren(heading, node('p', 'ready-lede', 'Changed appears beside GitHub’s own diff statistics.'),
     node('p', '', 'Analysis runs in this browser. No account, personal token, telemetry or source upload.'),
-    node('p', 'ready-label', 'In effect now'), defaults, node('div', 'button-row ready-actions'), links);
+    node('p', 'ready-label', 'In effect now'), defaults, node('div', 'button-row ready-actions'), links, routes);
   host.querySelector('.ready-actions')!.append(example, button('Review settings', review, 'secondary-button'));
 }
 /** Paused repositories: one local state per host and repository, reversible here and from the report. */
