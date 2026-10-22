@@ -21,10 +21,11 @@ function fixture() {
     authorize: async () => state.access, entitlement: async () => 'pro', namespace: async () => 9,
     currentPolicy: async () => state.policy, now: () => to,
     premium: {
-      async files({ merged }) {
+      async files({ query, merged }) {
         state.populations++;
-        return { files: merged.flatMap(row => row.facts.report?.files.map(file => ({ repositoryId: row.repositoryId, path: file.path,
-          changed: file.lines.changed, included: file.included })) ?? []), sizeObservation: [{ repositoryId: 17, standing: 'unavailable' }] };
+        return { files: merged.flatMap(row => row.facts.report?.files.filter(file => query.surface !== 'file' || file.path === query.path)
+          .map(file => ({ repositoryId: row.repositoryId, path: file.path, changed: file.lines.changed, included: file.included })) ?? []),
+        sizeObservation: [{ repositoryId: 17, standing: 'unavailable' }] };
       },
       async file({ query, files }) {
         state.duringDetail();
@@ -36,15 +37,16 @@ function fixture() {
   return { service, state };
 }
 
-test('one server file view enriches its full population once and returns the same detail as an independent query', async () => {
+test('a pathless file-identity read is enriched once after selection and matches an independent detail query', async () => {
   const { service, state } = fixture();
-  const source = await service.query(filesQuery(), actor);
+  const source = await service.query(query('file', { scope }), actor);
   const continued = await service.query(fileQuery(), actor, source);
   assert.equal(state.reads, 1);
   assert.equal(state.populations, 1);
   assert.equal(continued.coverage.merged, 2);
   assert.equal(continued.coverage.recoveredMerged, 1);
   assert.deepEqual(continued, await service.query(fileQuery(), actor));
+  assert.equal(state.populations, 2, 'an independent detail query performs its own selected-path enrichment');
 });
 
 test('a changed period, reader, metric or policy gets a fresh file population', async () => {

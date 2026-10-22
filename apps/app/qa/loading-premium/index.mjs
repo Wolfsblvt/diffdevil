@@ -6,18 +6,18 @@ export default {
   service: () => {
     let populations = 0;
     return {
-      async files({ merged }) {
+      async files({ query, merged }) {
         populations++;
         const files = new Map();
         for (const row of merged) for (const file of row.final?.report.files ?? []) {
+          if (query.surface === 'file' && file.path !== query.path) continue;
           files.set(`${row.repositoryId}:${file.path}`, { repositoryId: row.repositoryId, path: file.path, contributions: [] });
         }
         return { files: [...files.values()], sizeObservation: [] };
       },
-      async file({ query, all }) {
-        const exists = all.some(record => record.repositoryId === query.scope.repositoryId && record.state === 'merged'
-          && record.final?.report?.files.some(file => file.included && file.path === query.path));
-        return exists ? { file: { repositoryId: query.scope.repositoryId, path: query.path }, populations } : undefined;
+      async file({ query, files }) {
+        const selected = files.find(file => file.repositoryId === query.scope.repositoryId && file.path === query.path);
+        return selected ? { file: selected, populations } : undefined;
       },
       async pr() { return {}; }
     };

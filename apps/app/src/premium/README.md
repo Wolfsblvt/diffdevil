@@ -28,8 +28,9 @@ No registration lifecycle or generic plugin API is introduced. Premium loaders r
 
 For File detail, the first `file` surface read carries the authorized retained records needed to resolve the opaque
 locator and does not call the rich `files` aggregation. `loadSurface(view, runtime, 'file', { path })` continues that
-same request-local context after resolution, checks current access and readable history again, and calls the extension's
-`file` method for the selected path. The ordinary Files destination continues to call `files` for its complete rich
+same request-local context after resolution, checks current access and readable history again, then calls `files` with
+the selected path before passing those rows to the extension's `file` method. The selected-path query keeps this
+enrichment scoped to the requested file; the ordinary Files destination continues to call `files` for its complete rich
 table. A serialized response, another runtime or a changed selection cannot reuse the detail context. The public
 loading fixture exercises this bridge without copying private algorithms.
 

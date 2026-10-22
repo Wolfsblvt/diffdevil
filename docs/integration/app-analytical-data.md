@@ -384,10 +384,10 @@ answers are unchanged (`standing: "free"`).
 
 The App first reads the repository-scoped `file` surface without a path to resolve the opaque locator against
 authorized current-policy history. This request-local result carries no ranked file table and does not invoke the rich
-`files` extension. After the App resolves one path, `loadSurface` passes that response object separately from the
+`files` aggregation. After the App resolves one path, `loadSurface` passes that response object separately from the
 selected-path query; the service reuses the acquired records and interpreted facts only when actor identity,
 repository set, window, and compiled current policy still match. It checks current authorization, entitlement and
-readable history again before the detail derivation. The `file` method receives an empty `files` array on this direct
-path and derives selected-file detail from the query and authorized records. The ordinary Files surface still invokes
-the complete `files` extension. This introduces no HTTP query field, persisted projection or cross-request result
-cache. A joined extension's acceptance of the direct detail input remains a separate consumer qualification.
+readable history again, then invokes `files` for that selected path before passing the resulting rows to `file` for
+detail derivation. The selected-path query keeps this enrichment bounded to one path; the ordinary Files surface still
+invokes the complete `files` extension. This introduces no HTTP query field, persisted projection or cross-request
+result cache.

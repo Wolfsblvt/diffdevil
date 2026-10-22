@@ -6,7 +6,7 @@ import { fileContinuity, turnover, turnoverEvidence } from './turnover-v1.mjs';
 export { interval, median, fileContinuity, turnover };
 
 const DAY = 86_400_000;
-const fileSurfaces = new Set(['overview', 'history', 'files']);
+const fileSurfaces = new Set(['overview', 'history', 'files', 'file']);
 const surfaces = new Set(['overview', 'prs', 'history', 'files', 'pr', 'file']);
 const states = new Set(['open', 'draft', 'merged', 'closed']);
 const fail = code => Object.assign(new Error(code), { code });
@@ -286,7 +286,9 @@ export function createAnalyticalDataService({ store, authorize, entitlement, nam
         coverage: retainedCoverage(bucket), opened: all.filter(record => inside(record.openedAt, bucket)).length, merged: all.filter(record => inside(record.mergedAt, bucket)).length,
         closedUnmerged: all.filter(record => record.state === 'closed' && inside(record.closedAt, bucket)).length })) } : undefined;
       let files = continued?.files ?? [], sizeObservation = continued?.sizeObservation ?? [];
-      if (!continued && premium && extension && fileSurfaces.has(query.surface)) {
+      const needsSelectedFileEnrichment = continued && query.surface === 'file' && query.path !== undefined;
+      if ((!continued || needsSelectedFileEnrichment) && premium && extension && fileSurfaces.has(query.surface)
+        && (query.surface !== 'file' || query.path !== undefined)) {
         ({ files, sizeObservation } = await extension.files({ query, merged: merged.filter(record => premiumIds.includes(record.repositoryId)), all, premiumIds, store }));
       }
       let result;

@@ -111,19 +111,27 @@ test('scope selects namespace versus viewer entitlement and gives a Free reader 
   assert.equal(allPaid.result.overview.mergedPullRequests, 3, 'basic aggregates still include authorized Free repositories');
 });
 
-test('File detail resolves one authorised path without requesting the rich Files aggregation', async () => {
-  let fullFileReads = 0;
+test('File detail resolves cheaply then enriches only the selected path for the consumer', async () => {
+  const fileReads = [];
   const detailPaths = [];
+  const detailInputs = [];
+  const retainedFiles = [
+    { repositoryId: 17, path: 'a.txt', contributions: [{ pullRequest: 1 }] },
+    { repositoryId: 17, path: 'b.txt', contributions: [{ pullRequest: 2 }] }
+  ];
   const service = createAnalyticalDataService({
     store: { historySettings: async () => ({ readable: true }), analyticalRecords: async () => [record()], analyticalSizes: async () => [] },
     authorize: async () => true, entitlement: async () => 'pro', namespace: async () => 9, currentPolicy: async () => null,
     premium: {
-      files: async () => { fullFileReads++; return { files: [{ repositoryId: 17, path: 'a.txt', contributions: [] }], sizeObservation: [] }; },
-      file: async ({ query, files, all }) => {
+      files: async ({ query }) => {
+        fileReads.push({ surface: query.surface, path: query.path });
+        return { files: retainedFiles.filter(file => query.path === undefined || file.path === query.path), sizeObservation: [] };
+      },
+      file: async ({ query, files }) => {
         detailPaths.push(query.path);
-        assert.deepEqual(files, [], 'direct detail receives no ranked table rows');
-        assert.ok(all.some(row => row.repositoryId === 17), 'selected detail receives the authorised retained records');
-        return { path: query.path };
+        detailInputs.push(files.map(file => file.path));
+        const selected = files.find(file => file.repositoryId === query.scope.repositoryId && file.path === query.path);
+        return selected ? { path: selected.path } : undefined;
       }
     }
   });
@@ -131,15 +139,18 @@ test('File detail resolves one authorised path without requesting the rich Files
   const candidates = await service.query(query('file'), actor);
   assert.deepEqual(service.fileCandidates(candidates, 17), [{ repositoryId: 17, path: 'a.txt' }]);
   assert.deepEqual(candidates.result.files, [], 'the locator read carries no ranked file table');
-  assert.equal(fullFileReads, 0);
+  assert.deepEqual(fileReads, [], 'resolving the locator does not perform rich Files work');
 
   const detail = await service.query(query('file', { path: 'a.txt' }), actor, candidates);
   assert.deepEqual(detail.result, { path: 'a.txt' });
   assert.deepEqual(detailPaths, ['a.txt']);
-  assert.equal(fullFileReads, 0, 'File detail never invokes the table aggregation');
+  assert.deepEqual(detailInputs, [['a.txt']], 'the detail consumer receives the selected file, not unrelated table rows');
+  assert.deepEqual(fileReads, [{ surface: 'file', path: 'a.txt' }], 'the selected path receives its supported enrichment before detail');
 
-  await service.query(query('files'), actor);
-  assert.equal(fullFileReads, 1, 'the ordinary Files destination retains its complete rich aggregation');
+  const table = await service.query(query('files'), actor);
+  assert.deepEqual(fileReads, [{ surface: 'file', path: 'a.txt' }, { surface: 'files', path: undefined }],
+    'the ordinary Files destination retains its complete rich aggregation');
+  assert.deepEqual(table.result.files.map(file => file.path), ['a.txt', 'b.txt']);
 });
 
 test('turnover requires observed endpoint sizes and revision continuity, never summed growth', () => {
