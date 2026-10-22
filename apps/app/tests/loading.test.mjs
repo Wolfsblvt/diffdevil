@@ -60,11 +60,11 @@ test('a failed analytical population cannot reach the chart renderer as an empty
 
 test('file detail separates retained identity from selected-period rows while retaining broader navigation context', async () => {
   const repositories = [1, 2].map(repositoryId => ({ repositoryId, owner: 'reader', fullName: `reader/repo${repositoryId}`, standing: { historyReadable: true } }));
-  let requested, selectedRows = [];
+  let requested, hasSelectedPeriodActivity = false;
   const runtime = { now: () => '2026-10-21T00:00:00.000Z', store: {
     analyticalCoverage: async ids => { assert.deepEqual(ids, [2]); return { counts: new Map([[2, 3]]) }; }, observationBounds: async () => ({}) },
     cache: createContextCache(), premium: { provided: false }, locator: { plausible: () => true, resolve: async (_locator, rows) => rows[0] },
-    analytics: { service: { fileCandidates: () => [{ repositoryId: 2, path: 'src/selected.ts' }] }, query: async input => { requested = input; return { result: { files: selectedRows } }; } } };
+    analytics: { service: { fileCandidates: () => [{ repositoryId: 2, path: 'src/selected.ts', hasSelectedPeriodActivity }] }, query: async input => { requested = input; return { result: { files: [] } }; } } };
   const viewer = { userId: 123, plan: 'Pro', namespaces: [{ login: 'reader', yours: true }], repositories };
   const detail = { repositoryId: 2, fileLocator: 'a'.repeat(22) };
   const url = new URL('https://app.example/file/reader/repo2/' + 'a'.repeat(22) + '?s=all&per=30d');
@@ -74,12 +74,14 @@ test('file detail separates retained identity from selected-period rows while re
   assert.deepEqual(requested.repositoryIds, [2]);
   assert.deepEqual(requested.scope, { kind: 'repository', repositoryId: 2 });
   assert.equal(view.scope.kind, 'all');
-  assert.deepEqual(view.fileIdentity, { repositoryId: 2, path: 'src/selected.ts' });
+  assert.deepEqual(view.fileIdentity, { repositoryId: 2, path: 'src/selected.ts', hasSelectedPeriodActivity: false });
+  assert.equal(view.fileHasSelectedPeriodActivity, false);
   assert.deepEqual(view.files, [], 'a retained identity without a selected-period row is not passed as aggregate detail');
   assert.equal(view.state.per, '30d');
 
-  selectedRows = [{ repositoryId: 2, path: 'src/selected.ts', contributions: [] }];
+  hasSelectedPeriodActivity = true;
   const activeView = await loadView({ url, viewer, session, runtime, surface: 'file', detail });
-  assert.deepEqual(activeView.fileIdentity, selectedRows[0]);
-  assert.deepEqual(activeView.files, selectedRows, 'a real selected-period row still reaches the detail consumer');
+  assert.deepEqual(activeView.fileIdentity, { repositoryId: 2, path: 'src/selected.ts', hasSelectedPeriodActivity: true });
+  assert.equal(activeView.fileHasSelectedPeriodActivity, true, 'the pathless locator response carries active-period state');
+  assert.deepEqual(activeView.files, [], 'pathless locator metadata is not mislabeled as rich aggregate detail');
 });

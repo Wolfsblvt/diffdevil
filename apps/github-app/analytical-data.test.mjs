@@ -111,7 +111,7 @@ test('scope selects namespace versus viewer entitlement and gives a Free reader 
   assert.equal(allPaid.result.overview.mergedPullRequests, 3, 'basic aggregates still include authorized Free repositories');
 });
 
-test('File detail resolves cheaply then enriches only the selected path for the consumer', async () => {
+test('File detail resolves retained identity and period activity cheaply, then enriches only the selected path', async () => {
   const fileReads = [];
   const detailPaths = [];
   const detailInputs = [];
@@ -120,7 +120,7 @@ test('File detail resolves cheaply then enriches only the selected path for the 
     { repositoryId: 17, path: 'b.txt', contributions: [{ pullRequest: 2 }] }
   ];
   const service = createAnalyticalDataService({
-    store: { historySettings: async () => ({ readable: true }), analyticalRecords: async () => [record()], analyticalSizes: async () => [] },
+    store: { historySettings: async () => ({ readable: true }), analyticalRecords: async () => [record(), transition(2, 'b.txt', ['d'.repeat(40), 'e'.repeat(40)], '2026-08-20T00:00:00.000Z')], analyticalSizes: async () => [] },
     authorize: async () => true, entitlement: async () => 'pro', namespace: async () => 9, currentPolicy: async () => null,
     premium: {
       files: async ({ query }) => {
@@ -137,7 +137,10 @@ test('File detail resolves cheaply then enriches only the selected path for the 
   });
 
   const candidates = await service.query(query('file'), actor);
-  assert.deepEqual(service.fileCandidates(candidates, 17), [{ repositoryId: 17, path: 'a.txt' }]);
+  assert.deepEqual(service.fileCandidates(candidates, 17), [
+    { repositoryId: 17, path: 'a.txt', hasSelectedPeriodActivity: true },
+    { repositoryId: 17, path: 'b.txt', hasSelectedPeriodActivity: false }
+  ]);
   assert.deepEqual(candidates.result.files, [], 'the locator read carries no ranked file table');
   assert.deepEqual(fileReads, [], 'resolving the locator does not perform rich Files work');
 

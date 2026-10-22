@@ -179,12 +179,19 @@ export function createAnalyticalDataService({ store, authorize, entitlement, nam
       if (!prior || !['file', 'files'].includes(prior.query.surface) || prior.query.scope.kind !== 'repository'
         || prior.query.scope.repositoryId !== repositoryId || !prior.authorized.includes(repositoryId)) return [];
       const paths = new Set();
+      const activePullRequests = new Set(prior.merged.filter(record => record.repositoryId === repositoryId).map(record => record.pullRequest));
       for (const record of prior.all) {
         if (record.repositoryId !== repositoryId || record.state !== 'merged') continue;
         const report = prior.factsOf(record.final, repositoryId).report;
         for (const file of report?.files ?? []) if (file.included) paths.add(file.path);
       }
-      return [...paths].map(path => ({ repositoryId, path }));
+      const activePaths = new Set();
+      for (const record of prior.all) {
+        if (record.repositoryId !== repositoryId || record.state !== 'merged' || !activePullRequests.has(record.pullRequest)) continue;
+        const report = prior.factsOf(record.final, repositoryId).report;
+        for (const file of report?.files ?? []) if (file.included) activePaths.add(file.path);
+      }
+      return [...paths].map(path => ({ repositoryId, path, hasSelectedPeriodActivity: activePaths.has(path) }));
     },
     async query(input, actor, source) {
       const query = selectedWindow(input);

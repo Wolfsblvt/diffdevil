@@ -37,10 +37,11 @@ export async function fileReadJourney({ page, check, shot, ORIGIN, OUT, settled,
       await Promise.all(pending);
       const sample = await page.evaluate(() => ({ timeOrigin: performance.timeOrigin, observations: window.__fileRead,
         detailMs: Number(document.querySelector('[data-file-read]').dataset.detailMs), populations: Number(document.querySelector('[data-file-read]').dataset.populations),
-        files: Number(document.querySelector('[data-file-read]').dataset.files), identity: document.querySelector('[data-file-read]').dataset.fileIdentity,
+        enrichedFiles: Number(document.querySelector('[data-file-read]').dataset.enrichedFiles), enrichedPath: document.querySelector('[data-file-read]').dataset.enrichedPath,
+        identity: document.querySelector('[data-file-read]').dataset.fileIdentity,
         heading: document.querySelector('[data-file-read] h1').textContent }));
       samples.push({ ...sample, requests });
-      check('file-detail resolves and enriches only the selected retained file', sample.heading === path && sample.files === 1, JSON.stringify(sample));
+      check('file-detail resolves and enriches only the selected retained file', sample.heading === path && sample.identity === path && sample.enrichedFiles === 1 && sample.enrichedPath === path, JSON.stringify(sample));
       check('file-detail consumer enriches one server-view population', sample.populations === 1, JSON.stringify({ populations: sample.populations, detailMs: sample.detailMs }));
       if (index === 2) {
         await shot('file-read-populated');

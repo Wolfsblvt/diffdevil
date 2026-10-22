@@ -19,8 +19,11 @@ const view = await loadView({ url: new URL(Astro.url.pathname + (Astro.url.searc
 if (!repository) Astro.response.status = 404;
 const Body = runtime.premium.pages.file?.Body;
 const here = view.premiumHere && Boolean(Body);
-// Resolve identity against authorised retained history; only its current-period row reaches premium detail.
-const file = repository && here && !Astro.locals.deferPremium ? view.files.find((candidate: any) => candidate.repositoryId === repository.repositoryId && candidate.path === view.fileIdentity?.path) : undefined;
+// Resolve identity cheaply; only an active selected-period path reaches premium detail enrichment.
+const file = repository && here && view.fileIdentity && view.fileHasSelectedPeriodActivity && !Astro.locals.deferPremium
+  ? view.files.find((candidate: any) => candidate.repositoryId === repository.repositoryId && candidate.path === view.fileIdentity.path)
+    ?? { repositoryId: view.fileIdentity.repositoryId, path: view.fileIdentity.path }
+  : undefined;
 if (repository && here && !view.fileIdentity && !Astro.locals.deferPremium) Astro.response.status = 404;
 ---
 <AppShell title={`File · ${repo}`} nav={navModel(view, 'file')} view={view}>

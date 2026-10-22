@@ -32,8 +32,10 @@ const { Concentration, Cloud, Turnover } = overview ?? {};
 const { Panels, BucketFiles } = pages.history ?? {};
 const selection = route.section === 'history' ? historySelection(view) : null;
 const FilesBody = pages.files?.Body, FileBody = pages.file?.Body;
-const file = route.section === 'file' && repository && pro && FileBody && runtime.locator.plausible(identifier)
-  ? view.files.find((candidate: any) => candidate.repositoryId === repository.repositoryId && candidate.path === view.fileIdentity?.path) : undefined;
+const file = route.section === 'file' && repository && pro && FileBody && view.fileIdentity && view.fileHasSelectedPeriodActivity && runtime.locator.plausible(identifier)
+  ? view.files.find((candidate: any) => candidate.repositoryId === repository.repositoryId && candidate.path === view.fileIdentity.path)
+    ?? { repositoryId: view.fileIdentity.repositoryId, path: view.fileIdentity.path }
+  : undefined;
 const { Context, Cochange } = pages.pr ?? {};
 const retainedRow = route.section === 'pr' && view.dataStanding === 'available' ? view.data.result : null;
 const fileLinks = retainedRow && pro && Context ? await pages.pr.fileHrefs({ view, runtime, repository, fullName, paths: (retainedRow.files ?? []).map((file: any) => file.path) }) : undefined;

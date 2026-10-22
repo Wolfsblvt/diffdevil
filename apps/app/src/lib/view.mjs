@@ -140,7 +140,8 @@ export async function loadView({ url, viewer, session, runtime, surface = 'prs',
     fileIdentity = inPeriod ?? await runtime.locator.resolve(fileLocator, runtime.analytics.service.fileCandidates(data, detailRepository.repositoryId));
   }
   const selectedFileRow = fileIdentity && fileRows.find(row => row.repositoryId === fileIdentity.repositoryId && row.path === fileIdentity.path);
-  // Keep retained identity separate from aggregate rows; a known file with no period row has an honest empty view.
+  // Keep retained identity separate from aggregate rows; the pathless locator read carries period activity explicitly.
+  const fileHasSelectedPeriodActivity = Boolean(selectedFileRow || fileIdentity?.hasSelectedPeriodActivity);
   const projectionRows = fileLocator ? (selectedFileRow ? [selectedFileRow] : []) : fileRows;
   const files = fileLocator
     ? projectionRows
@@ -148,7 +149,7 @@ export async function loadView({ url, viewer, session, runtime, surface = 'prs',
   const href = (path, patch = {}) => link(state, path, patch);
   // The plan decides who is entitled; the build decides whether the premium implementation exists. A premium slot renders only when both hold.
   const premiumProvided = runtime.premium.provided, premiumHere = entitlement.premium && premiumProvided;
-  return { state, scope, repositories, historyRepositories, retainedRepositories, ids, actor, contractScope, nowIso, period, periods: Object.values(PERIODS), window, pullRequests, lifecycle, current, previous, bounds, coverage, truncated, entitlement, premiumProvided, premiumHere, data, dataStanding, files, fileIdentity, titles, href, viewer };
+  return { state, scope, repositories, historyRepositories, retainedRepositories, ids, actor, contractScope, nowIso, period, periods: Object.values(PERIODS), window, pullRequests, lifecycle, current, previous, bounds, coverage, truncated, entitlement, premiumProvided, premiumHere, data, dataStanding, files, fileIdentity, fileHasSelectedPeriodActivity, titles, href, viewer };
 }
 
 /** A second surface read for a page that composes two (a premium file panel beside the page's pull-request model). */
