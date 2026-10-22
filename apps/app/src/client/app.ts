@@ -11,6 +11,7 @@ import { wirePanels, labelShortcut } from '../../../website/src/lib/shell-behavi
 import { wireSearch } from '../../../website/src/lib/search';
 import { wireCopyButtons } from '../../../website/src/lib/clipboard';
 import { mountCharts, placeThumbs, wireNavigationFeedback } from './charts/mount';
+import { loadAnalyticalDocument } from './loading';
 
 wirePanels();
 wireSearch();
@@ -86,7 +87,7 @@ function wirePage(): void {
 
 wireNavigationFeedback();
 wirePage();
-document.addEventListener('diffdevil:page', wirePage);
+document.addEventListener('diffdevil:page', () => { wirePage(); mountCharts(); });
 document.addEventListener('click', event => {
   const target = event.target;
   if (!(target instanceof Element)) return;
@@ -95,3 +96,4 @@ document.addEventListener('click', event => {
   if (segment) requestAnimationFrame(() => placeThumbs(segment.parentElement ?? document));
 });
 mountCharts();
+loadAnalyticalDocument();

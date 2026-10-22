@@ -11,7 +11,15 @@ const rotated = { access_token: 'fixture-next-access', refresh_token: 'fixture-n
 function providerFor(answer) {
   return createGitHubUserProvider({ clientId: 'fixture-client', clientSecret: 'fixture-secret', callbackUrl: 'https://fixture.invalid/callback', now: () => NOW, fetch: answer });
 }
-const verify = (provider, grant = material) => provider.verifyUserAuthorization({ userId: 123, material: grant });
+const verify = (provider, grant = material) => provider.verifyUserAuthorization({ userId: 123, material: grant, claimRefresh: async () => {} });
+
+test('refresh refuses to spend a token without the durable claim callback', async () => {
+  let calls = 0;
+  const provider = providerFor(async () => { calls++; return Response.json(rotated); });
+  await assert.rejects(provider.verifyUserAuthorization({ userId: 123, material: expiring }), { code: 'E_PROVIDER_REFRESH_UNCLAIMED' });
+  await assert.rejects(provider.verifyUserAuthorization({ userId: 123, material: expiring, claimRefresh: async () => { throw new Error('held by another runtime'); } }), /held by another runtime/u);
+  assert.equal(calls, 0);
+});
 
 test('token-check HTTP failures are unavailable evidence, except GitHub\'s definite invalid-token 404', async () => {
   for (const status of [401, 403, 422, 500, 503]) {

@@ -156,6 +156,7 @@ export function createAppRuntime(env, { fetch = globalThis.fetch, now, premium =
   // Without the GitHub App credentials the extension reports the observation unavailable and the read still answers.
   const premiumService = premium.service?.(createAnalyticalPremiumHost(env, { store: appStore, installationOf: async repositoryId => (await authStore.repositoryIdentity(repositoryId))?.installation_id, fetch }));
   const analytics = createAnalytics({ appStore, entitlement, policies, namespaceOf, premium: premiumService, now: clock });
+  const baseAnalytics = premiumService ? createAnalytics({ appStore, entitlement, policies, namespaceOf, now: clock }) : analytics;
   // Delegated administration (Business): a named delegate administers what the namespace's GitHub administrators named
   // for them and only while the namespace is funded by Business; the authorization service separately requires the
   // delegate's own current GitHub write access to the repository at every action.
@@ -177,7 +178,7 @@ export function createAppRuntime(env, { fetch = globalThis.fetch, now, premium =
   return {
     config: { origin, loopback, sessionDays, callbackUrl, siteOrigin: env.SITE_ORIGIN ?? 'https://diffdevil.dev', worksOrigin, retentionDays, allowedOrigins,
       admissionService: admissionServiceIdentity(origin, env.CF_VERSION_METADATA) },
-    now: clock, store, appStore, commercialStore, auth, provider, entitlement, policies, analytics, locator, commercial, commercialSource, namespaceOf, premium, manage, participation, participationStore, allowances, automaticSetup,
+    now: clock, store, appStore, commercialStore, auth, provider, entitlement, policies, analytics, baseAnalytics, locator, commercial, commercialSource, namespaceOf, premium, manage, participation, participationStore, allowances, automaticSetup,
     operating, jobs, importScope, queue: env.APP_QUEUE, cache: caches.get(env.APP_DB)
   };
 }

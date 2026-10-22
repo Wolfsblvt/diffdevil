@@ -264,6 +264,9 @@ test('local D1 writes, reads, exports, expiry, consent loss and restore-resistan
     assert.equal(await store.executionAllowed(17), false);
     assert.equal((await store.recordAnalytical(record())).status, 'published');
     assert.equal((await store.analyticalRecords(17)).length, 1);
+    assert.deepEqual(await store.analyticalRecords(17), [normalizeAnalyticalRecord(record())], 'ordinary reads consume the representation normalized by ingestion');
+    await assert.rejects(store.recordAnalytical({ ...record(), state: 'unknown' }), { code: 'E_APP_DATA_RECORD' });
+    assert.equal((await store.analyticalRecords(17)).length, 1, 'an invalid write cannot replace the normalized retained record');
     await store.recordAnalyticalSize({ repositoryId: 17, path: 'a.txt', observedAt: from, revision: base, size: 100 });
     const exported = await store.exportAnalytical(17);
     assert.equal(exported.sizes.length, 1);

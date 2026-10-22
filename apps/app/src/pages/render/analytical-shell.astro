@@ -1,0 +1,27 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
+import AppShell from '../../layouts/AppShell.astro';
+import Nav from '../../components/Nav.astro';
+import LoadingRegion from '../../components/LoadingRegion.astro';
+import { analyticalRoute } from '../../lib/analytical-request.mjs';
+import { readViewState, describeScope, periodOf, link, PERIODS } from '../../lib/scope.mjs';
+const url = new URL(Astro.locals.analyticalUrl!);
+const route = analyticalRoute(url.pathname)!;
+const state = readViewState(url), scope = describeScope(state.s), period = periodOf(state);
+const viewer = { login: 'Account', plan: null, namespaces: [], repositories: [], loading: true };
+---
+<AppShell title={route.title}>
+  <Nav slot="navigation" viewer={viewer} nav={{ section: route.section, active: null, premium: true }} view={{ state }} />
+  <div data-analytical-loading data-url={url.pathname + url.search}>
+    <div class="a-head">
+      <div class="ttl"><nav class="crumb" aria-label="Breadcrumb"><a href={link(state, '/')}>All repositories</a></nav>
+        <h1>{route.title}</h1><div class="a-scope">{scope.kind === 'all' ? 'All repositories' : scope.kind === 'namespace' ? scope.namespace : scope.repository} · {period.label} · waiting for current access and data</div>
+      </div>
+      <div class="tools"><div class="a-seg" role="group" aria-label="Period" data-period>
+        {Object.values(PERIODS).map(candidate => <a href={link(state, url.pathname, { per: candidate.key, w: '', page: '' })} aria-current={period.key === candidate.key ? 'true' : undefined}>{candidate.label}</a>)}
+      </div></div>
+    </div>
+    <LoadingRegion title={route.title} shape={route.section} />
+  </div>
+  <noscript><p class="a-note">This view loads its data in place with JavaScript. <a href={`${url.pathname}${url.search}${url.search ? '&' : '?'}render=document`}>Read the complete server-rendered document</a>.</p></noscript>
+</AppShell>

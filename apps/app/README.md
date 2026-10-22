@@ -4,6 +4,51 @@
 
 This application is the signed-in diffdevil App: the analytical and operating experience of the managed GitHub App, served at `app.diffdevil.dev`. It renders the ratified Overview, Pull requests, History, Files, PR detail and File detail destinations from the managed App's own D1 state through the managed App's analytical data contract, under the signed-in person's current GitHub reach and the server-selected plan of each namespace, and the ratified Manage console (D080): what the plan allows, which repositories run and why, each repository's settings, the plan and its funding as the product-facing Wirt seam, and the account's four relationships. Its Worker also carries the managed App's runtime routes (webhook ingress, Queue consumer, scheduled maintenance, the protected analytics read and the Wirt commercial routes) on the same host and bindings. It is not the public website, not a claim that the hosted App is deployed, that any plan can be bought, or that named history has been collected for a real repository.
 
+## Analytical loading
+
+The six analytical destinations first return the protected shell and navigation links after a local session check.
+No repository name, plan or measurement is included in that generic shell. Navigation then reads the current viewer
+independently of the analytical population. Every acquisition opens the current authorization again; HTML fragments
+are private and not cached. Common analytical panels can finish before premium file regions and optional Manage
+notifications. A failed read stays in its region with a keyboard-operable retry and explicit unavailable standing.
+Late replies cannot replace a newer selected scope or period. With JavaScript disabled, the shell links to the complete
+server-rendered document using `render=document`.
+
+Period, bucket and chart-selection interactions keep the previous view while common data loads. Common results then
+commit independently of premium acquisition; existing premium chart objects remain usable with a visible previous-selection
+notice until their new models arrive. The premium response renders only the requested regions, without rendering and
+discarding the common page's charts again. Both common and premium updates retain chart instances and keyboard state.
+
+A 200 shell establishes only a valid local session and a rendered frame. It does not establish provider, plan or
+analytical health. An inaccessible detail returns 404 from its independently authorized data read and renders the
+existing not-found state; the generic document itself contains no protected detail.
+
+The ordinary read consumes the analytical record already normalized by ingestion/import. Current-policy interpretation
+still happens at read time, once per measurement in that query; populations, policy changes and coverage keep their
+meaning. This does not add a persistent analytical cache or a new job system.
+
+`node apps/app/qa/run.mjs --loading` qualifies the built Community Worker with the retained local fixture and held/failed
+data replies: prompt shell, independent navigation, populated rendering, retry, superseded replies and reduced motion.
+It does not prove the joined private extension, provider CPU/memory, staging recovery or ordinary live use.
+
+For held/failed premium-region and chart-continuity checks without private source, build with
+`DIFFDEVIL_PREMIUM=apps/app/qa/loading-premium/index.mjs`, then run the same `--loading` journey. This joins a clearly
+synthetic public extension fixture, not the paid implementation; rebuild with `DIFFDEVIL_PREMIUM=off` afterward.
+`DIFFDEVIL_APP_QA_LOADING_SCALE=1` selects the anonymous measured-scale cohort for this local journey: 142 records,
+915 paths and 256,986 logical size observations represented by 265 shared fact sets and 7,563 exact markers. The fixture
+also matches the retained JSON byte envelope and recovery gaps; identities, time distribution and sizes are synthetic,
+with explicit inert comparison-identity padding for the byte envelope. It contains no captured production rows. This
+qualifies scale and public acquisition boundaries; actual private algorithms and live Worker resources need their own
+matching proof. The same local seed path supports a record larger than D1's SQL-file statement limit through bounded
+appends while the disposable target has no running reader.
+
+Migration `0017_authorization-refresh.sql` adds the per-grant claim used before a one-use provider rotation. Other
+request runtimes re-read the committed winner with bounded backoff; pending/unknown rotation withholds data without
+revoking sessions. An interrupted rotation is never taken over by a timer: the provider may already have consumed the
+old token. A fresh verified sign-in replaces that uncertain grant. Explicit provider invalidation and account/service
+disconnect still retire the grant and sessions. Source tests apply this migration only to disposable local D1; a live
+migration remains an independently authorized deployment operation.
+
 ## Inspect and admit a repository
 
 On the intended deployment, sign in, open **Manage → Repositories**, select the

@@ -73,12 +73,14 @@
 @media (min-width: 1181px) and (max-width: 1360px) {
   .fr[data-chart="development"] .fr-vals dd { font-size: 13px; }
   .fr[data-chart="development"] .fr-vals .sum dd { font-size: 15px; }
-  .a-grid > .pr-files { grid-column: span 7; }
+  .a-grid > .pr-files,
+  .a-grid > .a-deferred-slot > .pr-files { grid-column: span 7; }
   .a-grid > .pr-development { grid-column: span 5; }
 }
 
 @media (max-width: 1180px) {
   .a-grid > .pr-files,
+  .a-grid > .a-deferred-slot > .pr-files,
   .a-grid > .pr-development { grid-column: span 12; }
 }
 

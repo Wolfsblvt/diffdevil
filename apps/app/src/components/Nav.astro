@@ -44,7 +44,7 @@ const siteOrigin = Astro.locals.app?.config?.siteOrigin ?? 'https://diffdevil.de
     </div>
     <div class="a-nav-label">Repositories</div>
     <a class="a-allrepos" href={link({ ...carried, s: 'all' }, keep)} aria-current={state.s === 'all' ? 'page' : undefined}>
-      <Icon name="overview" size={15} /><span>All repositories</span><span class="a-end"><span class="a-count">{viewer.repositories.length}</span></span>
+      <Icon name="overview" size={15} /><span>All repositories</span><span class="a-end">{!viewer.loading && <span class="a-count">{viewer.repositories.length}</span>}</span>
     </a>
     <label class="a-filter"><Icon name="search" size={13} /><input type="search" placeholder="Filter repositories" aria-label="Filter repositories" data-nav-filter /></label>
     {[['Yours', yours], ['Shared with you', shared]].map(([group, namespaces]: any) => namespaces.length > 0 && (
@@ -73,14 +73,15 @@ const siteOrigin = Astro.locals.app?.config?.siteOrigin ?? 'https://diffdevil.de
         ))}
       </>
     ))}
-    {viewer.repositories.length === 0 && <p class="a-nav-empty">No repository reaches this account through an App installation yet. <a class="link-quiet" href={`${siteOrigin}/app/`}>How the App is installed</a></p>}
+    {viewer.loading ? <p class="a-nav-empty" role="status" data-navigation-status>Loading your repositories…</p> : viewer.repositories.length === 0 && <p class="a-nav-empty">No repository reaches this account through an App installation yet. <a class="link-quiet" href={`${siteOrigin}/app/`}>How the App is installed</a></p>}
+    {viewer.loading && <button class="a-linkbtn" type="button" data-navigation-retry hidden>Retry repositories</button>}
   </div>
   <div class="a-nav-foot">
     <details class="a-me-host">
       <summary class="a-me" title="Account and plan">
         <span class="a-av user" aria-hidden="true">{viewer.login.slice(0, 2)}</span>
-        <span class="who"><b>{viewer.login}</b><span>{viewer.plan === 'Free' ? 'Free plan' : `${viewer.plan} plan`}</span></span>
-        <PlanChip plan={viewer.plan} />
+        <span class="who"><b>{viewer.login}</b><span>{viewer.loading ? 'Loading account…' : viewer.plan === 'Free' ? 'Free plan' : `${viewer.plan} plan`}</span></span>
+        {!viewer.loading && <PlanChip plan={viewer.plan} />}
         <Icon name="chevron" size={14} />
       </summary>
       <div class="a-me-menu">

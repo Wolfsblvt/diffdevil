@@ -1,0 +1,10 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
+export const partial = true;
+import Nav from '../../components/Nav.astro';
+import { analyticalRoute } from '../../lib/analytical-request.mjs';
+import { readViewState } from '../../lib/scope.mjs';
+const url = new URL(Astro.locals.analyticalUrl!);
+const route = analyticalRoute(url.pathname)!;
+---
+<Nav viewer={Astro.locals.viewer} nav={{ section: route.section, active: null, premium: true }} view={{ state: readViewState(url) }} />

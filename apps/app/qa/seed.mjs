@@ -59,6 +59,17 @@ export async function fixtureSql({ seed = seedStore } = {}) {
       const flush = () => { if (values.length) statements.push(`INSERT INTO ${table} (${columns.join(', ')}) VALUES ${values.join(',\n  ')};`); values = []; size = 0; };
       for (const row of rows) {
         const value = `(${columns.map(column => literal(row[column])).join(', ')})`;
+        // The measured loading cohort includes a 213 KB record. D1 accepts it as a
+        // bound value, but its SQL-file entry must cross the native statement limit
+        // in smaller appends while this disposable database has no running reader.
+        if (table === 'analytical_pull_requests' && value.length > LIMIT) {
+          flush();
+          statements.push(`INSERT INTO ${table} (${columns.join(', ')}) VALUES (${columns.map(column => literal(column === 'record_json' ? '' : row[column])).join(', ')});`);
+          for (let offset = 0; offset < row.record_json.length; offset += LIMIT / 2) {
+            statements.push(`UPDATE ${table} SET record_json=record_json || ${literal(row.record_json.slice(offset, offset + LIMIT / 2))} WHERE repository_id=${literal(row.repository_id)} AND pull_request=${literal(row.pull_request)};`);
+          }
+          continue;
+        }
         if (size + value.length > LIMIT) flush();
         values.push(value); size += value.length;
         if (values.length >= 40) flush();

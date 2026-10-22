@@ -18,6 +18,8 @@ import { authSession, authLogout, briefPreview, openSession, cookieValue, SESSIO
 import { scopeRepositories, loadTitles, resolveViewer } from '../src/lib/viewer.mjs';
 import { loadView, entitlementFor } from '../src/lib/view.mjs';
 import { describeScope } from '../src/lib/scope.mjs';
+import { composePremium } from '../src/premium/registry.mjs';
+import { openAnalyticalShell } from '../src/lib/analytical-request.mjs';
 import { REPOSITORIES, ENTITLEMENT_FIXTURE, CODE, USER, createFakeGitHub } from '../qa/fixture.mjs';
 import { fixture, disposeFixture, signIn, viewerFor, ORIGIN, NOW } from './support.mjs';
 
@@ -122,6 +124,46 @@ test('listed roles stay permission-free and the signed-in authority observes an 
   }
 });
 
+test('independent request runtimes rotate a one-use grant once and preserve both browser reads', async () => {
+  const { env, clock } = await fixture();
+  const userId = 8124;
+  const github = createFakeGitHub({ user: { ...USER, id: userId, login: 'refresh-race-fixture' } });
+  const first = createAppRuntime(env, { fetch: github.fetch, now: () => clock.value });
+  const second = createAppRuntime(env, { fetch: github.fetch, now: () => clock.value });
+  const store = new D1AuthorizationStore(env.APP_DB, { now: () => clock.value });
+  const protector = createProtector({ secret: env.APP_SEAL_KEY });
+  let release, entered;
+  const gate = new Promise(resolve => { release = resolve; });
+  const started = new Promise(resolve => { entered = resolve; });
+  let refreshes = 0;
+  try {
+    const { cookie } = await signIn(first);
+    const original = await store.authorization(userId);
+    const material = { ...await protector.open(original.protected_material), refreshToken: 'fixture-one-use', accessExpiresAt: clock.value };
+    await store.refreshAuthorization(userId, original.protected_material, await protector.seal(material), original.expires_at);
+    github.state.refreshResponse = async () => {
+      refreshes++;
+      if (refreshes > 1) return Response.json({ error: 'bad_refresh_token' }, { status: 400 });
+      entered(); await gate;
+      return Response.json({ access_token: material.accessToken, refresh_token: 'fixture-next-refresh', expires_in: 28800, refresh_token_expires_in: 15897600 });
+    };
+    const a = first.auth.authenticate(cookie);
+    await started;
+    assert.ok((await store.authorization(userId)).refresh_claim, 'the persistent claim precedes the held provider effect');
+    const b = second.auth.authenticate(cookie);
+    const premature = await Promise.race([b.then(() => true, () => true), new Promise(resolve => setTimeout(() => resolve(false), 80))]);
+    release();
+    assert.equal(premature, false, 'the second runtime does not spend or revoke the in-flight grant');
+    assert.deepEqual(await Promise.all([a, b]), [{ userId, returnContext: 'app' }, { userId, returnContext: 'app' }]);
+    assert.equal(refreshes, 1);
+    const row = await store.authorization(userId);
+    assert.equal(row.refresh_claim, null);
+    assert.equal(row.revoked_at, null);
+    assert.equal((await protector.open(row.protected_material)).refreshToken, 'fixture-next-refresh');
+    assert.equal((await second.auth.authenticate(cookie)).userId, userId);
+  } finally { release(); first.cache.clear(); second.cache.clear(); }
+});
+
 test('real GitHub verification uncertainty preserves sealed grants and sessions in D1 while invalidation and disconnect still retire them', async () => {
   const { env, clock } = await fixture();
   const userId = 8123;
@@ -167,12 +209,22 @@ test('real GitHub verification uncertainty preserves sealed grants and sessions 
     const expiring = { ...await protector.open(signedIn.protected_material), refreshToken: 'fixture-refresh', accessExpiresAt: new Date(Date.parse(clock.value) + 30_000).toISOString() };
     const sealed = await protector.seal(expiring);
     assert.equal(await store.refreshAuthorization(userId, signedIn.protected_material, sealed, signedIn.expires_at), true);
-    const beforeRefresh = await store.authorization(userId), refreshSessions = await sessions();
+    let beforeRefresh = await store.authorization(userId), refreshSessions = await sessions();
     for (const answer of [...unavailable, () => Response.json({ error: 'incorrect_client_credentials' }), () => Response.json({ error: 'unknown_oauth_error' })]) {
       github.state.refreshResponse = answer;
       await assert.rejects(app.auth.authenticate(cookie), { code: 'E_AUTHORIZATION_UNAVAILABLE' });
-      assert.deepEqual(await store.authorization(userId), beforeRefresh);
+      const uncertain = await store.authorization(userId);
+      assert.equal(uncertain.protected_material, beforeRefresh.protected_material);
+      assert.equal(uncertain.revoked_at, null);
+      assert.ok(uncertain.refresh_claim, 'an ambiguous one-use refresh cannot be retried by another request');
       assert.deepEqual(await sessions(), refreshSessions);
+      // A genuinely new verified grant resolves the interrupted provider transition;
+      // it is not manufactured by a timeout or by replaying the old refresh token.
+      github.state.refreshResponse = null;
+      ({ cookie } = await signIn(app));
+      const fresh = await store.authorization(userId);
+      await store.refreshAuthorization(userId, fresh.protected_material, await protector.seal(expiring), fresh.expires_at);
+      beforeRefresh = await store.authorization(userId); refreshSessions = await sessions();
     }
     github.state.refreshResponse = null;
     assert.equal((await app.auth.authenticate(cookie)).userId, userId);
@@ -328,6 +380,32 @@ test('the brief preview route serves an administrator an effect-free synthetic p
   assert.equal((await post({ repositoryId: 1006 })).status, 403, 'a non-administrator cannot preview');
   assert.equal((await post({ repositoryId: 1001 }, { origin: 'https://evil.example' })).status, 403);
   assert.equal((await post({ repositoryId: 1001, settings: { mode: 'llm' } })).status, 400);
+});
+
+test('the local-session shell and common history answer while provider, D1 and premium work are held', async () => {
+  const { app: compose } = await fixture();
+  let release;
+  const gate = new Promise(resolve => { release = resolve; });
+  let fileCalls = 0;
+  const premium = composePremium({ service: () => ({ files: async () => { fileCalls++; await gate; return { files: [], sizeObservation: [] }; } }) });
+  const app = compose(ENTITLEMENT_FIXTURE, { premium });
+  const { cookie } = await signIn(app);
+  const request = new Request(`${ORIGIN}/`, { headers: { cookie: `${SESSION_COOKIE}=${cookie}` } });
+  const opened = await openSession(request, app);
+  const viewer = await resolveViewer({ reads: opened.reads, actor: opened.actor, store: app.store, entitlement: app.entitlement, cache: app.cache });
+  const query = { surface: 'history', repositoryIds: [1001], scope: { kind: 'repository', repositoryId: 1001 }, from: '2026-07-01T00:00:00.000Z', to: NOW };
+  const actor = { userId: viewer.userId, authorizedRepositoryIds: [1001] };
+  const enriched = app.analytics.query(query, actor);
+  const common = await app.baseAnalytics.query(query, actor);
+  assert.ok(common.result.buckets.some(bucket => bucket.pullRequests.length > 0), 'the common response is populated retained history');
+  assert.equal(fileCalls, 1, 'only the enriched request entered the held extension');
+  // A second viewer load and page load are held at their actual provider and analytical-D1 seams.
+  const providerRead = resolveViewer({ reads: { ...opened.reads, profile: async () => { await gate; return opened.reads.profile(); } }, actor: opened.actor, store: app.store, entitlement: app.entitlement, cache: { get: (_key, load) => load() } });
+  const dataRead = loadView({ url: new URL(`${ORIGIN}/history`), viewer, session: opened, runtime: { ...app, store: { ...app.store,
+    analyticalCoverage: async (...args) => { await gate; return app.store.analyticalCoverage(...args); }, observationBounds: (...args) => app.store.observationBounds(...args) } }, surface: 'history' });
+  assert.equal(await openAnalyticalShell(request, app, cookieValue, SESSION_COOKIE), null, 'the protected generic shell does not await those held reads');
+  release();
+  await Promise.all([enriched, providerRead, dataRead]);
 });
 
 test('a withdrawn consent stops serving that repository on both bases', async () => {

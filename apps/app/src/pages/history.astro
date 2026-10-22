@@ -8,6 +8,7 @@
 // pathless analyses bucket by analysis time, and the page says so. The file panels and the
 // selected bucket's files come from the premium extension for an entitled reader.
 import AppShell from '../layouts/AppShell.astro';
+import DeferredRegion from '../components/DeferredRegion.astro';
 import PageHead from '../components/PageHead.astro';
 import Panel from '../components/Panel.astro';
 import PeriodComparisonTable from '../components/PeriodComparisonTable.astro';
@@ -15,13 +16,12 @@ import ChartFrame from '../components/ChartFrame.astro';
 import Unavailable from '../components/Unavailable.astro';
 import SeePro from '../components/SeePro.astro';
 import Icon from '../components/Icon.astro';
+import { historySelection } from '../lib/history-selection.mjs';
 import { loadView, navModel } from '../lib/view.mjs';
 import { describeBound, n0 } from '../lib/intervals.mjs';
-import { bucketsFor, changeVolume, fromRetained } from '../lib/derive.mjs';
 import { mosaicModel, lanesModel } from '../lib/charts/models.mjs';
 import { compositionBar } from '../lib/charts/format.mjs';
-import { fmtDate, fmtMonth, fmtMonthLong } from '../lib/format.mjs';
-import { pullRequestPath } from '../lib/scope.mjs';
+import { fmtDate } from '../lib/format.mjs';
 
 const view = await loadView({ url: Astro.url, viewer: Astro.locals.viewer, session: Astro.locals.session, runtime: Astro.locals.app, surface: 'history' });
 const { current: cur, previous: prev, lifecycle, entitlement, state } = view;
@@ -31,32 +31,7 @@ const { Panels, BucketFiles } = premiumPage ?? ({} as any);
 const pro = view.premiumHere && Boolean(Panels);
 const multi = view.scope.kind !== 'repository';
 const period = view.period.label;
-const DAY = 86_400_000;
-const serviceBuckets = life ? (view.data?.result?.buckets ?? []) : [];
-const unitOf = (bucket: any) => { const days = Math.round((Date.parse(bucket.to) - Date.parse(bucket.from)) / DAY); return days <= 1 ? 'day' : days === 2 ? '2 days' : days <= 7 ? 'week' : 'month'; };
-const repositoryName = (pr: any) => view.viewer.repositories.find((repository: any) => repository.repositoryId === pr.repositoryId)?.fullName ?? '';
-const prHref = (pr: any) => view.href(pullRequestPath(repositoryName(pr), pr.number));
-// Buckets on the retained basis come from the service (merged pull requests by merge time, current-policy composition); otherwise calendar buckets over the pathless analyses.
-const retainedList = serviceBuckets.map((bucket: any, index: number) => {
-  const members = (bucket.pullRequests ?? []).map((row: any) => view.pullRequests.get(`${row.repositoryId}#${row.pullRequest}`) ?? fromRetained(row));
-  const recovered = members.filter((pr: any) => !pr.unrecovered);
-  const boundedOnes = recovered.filter((pr: any) => pr.latest.changed.status !== 'exact');
-  return { index, start: bucket.from, end: bucket.to, unit: unitOf(bucket), count: members.length, recovered: recovered.length, coverage: members.length > recovered.length ? 'partial' : 'complete',
-    added: bucket.composition?.addedOnly?.lower ?? 0, deleted: bucket.composition?.deletedOnly?.lower ?? 0, modified: bucket.composition?.modified?.lower ?? 0,
-    boundedLow: boundedOnes.reduce((total: number, pr: any) => total + (pr.latest.changed.lower ?? 0), 0), boundedHigh: boundedOnes.every((pr: any) => pr.latest.changed.upper !== null) ? boundedOnes.reduce((total: number, pr: any) => total + pr.latest.changed.upper, 0) : null, boundedCount: boundedOnes.length,
-    rawChurn: bucket.rawChurn?.lower ?? 0, covered: bucket.coverage?.completeWindow !== false,
-    evidence: { changed: bucket.changed, rawChurn: bucket.rawChurn, modified: bucket.composition?.modified, added: bucket.composition?.addedOnly, deleted: bucket.composition?.deletedOnly }, members };
-});
-const pathless = life ? null : changeVolume({ buckets: bucketsFor(view.period.key, view.nowIso, view.bounds.first).list, pullRequests: view.pullRequests, lifecycle });
-const list = life ? retainedList : pathless!.list;
-const unit = list[0]?.unit ?? 'bucket';
-const note = !life ? bucketsFor(view.period.key, view.nowIso, view.bounds.first).note : undefined;
-const lastWithContent = list.map((bucket: any, index: number) => bucket.count ? index : -1).filter((index: number) => index >= 0).pop();
-const selected = list.length ? (state.w !== '' ? Math.max(0, Math.min(list.length - 1, Number(state.w))) : (lastWithContent ?? list.length - 1)) : null;
-const bucket = selected === null ? null : list[selected];
-const labelOf = (item: any) => item.unit === 'month' ? fmtMonth(item.start) : fmtDate(item.start);
-const nameOf = (item: any) => item.unit === 'week' ? `Week of ${fmtDate(item.start)}` : item.unit === 'month' ? fmtMonthLong(item.start) : item.unit === '2 days' ? `${fmtDate(item.start)} – ${fmtDate(new Date(Date.parse(item.end) - 1).toISOString())}` : fmtDate(item.start);
-const unitWord = unit === '2 days' ? 'bucket' : unit;
+const { list, unit, note, selected, bucket, labelOf, nameOf, unitWord, repositoryName, prHref } = historySelection(view);
 const population = life ? 'merged' : 'analysed';
 const scopeLabel = view.scope.kind === 'all' ? 'all repositories' : view.scope.kind === 'namespace' ? view.scope.namespace : view.scope.name;
 const mosaic = mosaicModel({ buckets: list, unit, period, population, scopeLabel, labelOf, nameOf, hrefOf: (_: any, index: number) => view.href('/history', { w: String(index) }), sel: selected });
@@ -108,13 +83,13 @@ const comp = (parts: { k: string; v: number }[], height = 8) => compositionBar(p
           <dl class="fr-vals"><div class="sum"><dt>Changed</dt><dd class={bucketCoverage === 'none' ? 'unk' : ''}>{q('changed')}</dd></div><div><dt><i class="sw mod"></i>~ modified</dt><dd class={bucketCoverage === 'none' ? 'unk' : ''}>{q('modified')}</dd></div><div><dt><i class="sw add"></i>+ added-only</dt><dd class={bucketCoverage === 'none' ? 'unk' : ''}>{q('added')}</dd></div><div><dt><i class="sw del"></i>− deleted-only</dt><dd class={bucketCoverage === 'none' ? 'unk' : ''}>{q('deleted')}</dd></div><div><dt>raw churn</dt><dd class={bucketCoverage === 'none' ? 'unk' : ''}>{q('rawChurn')}</dd></div></dl></div>
         <div class="hb-k">Changed per {population} PR <span>ranked · bar = Changed, colour = composition, hatch = bounded</span></div>
         <div class="hb-rows">{members.map((pr: any) => { const changed = pr.latest.changed, lo = changed.lower ?? 0, hi = changed.upper, exact = changed.status === 'exact'; return <a class="hb-row" href={prHref(pr)}><span class="hb-t"><span class="hb-n">{multi && <b>{repoShort(pr.repositoryId)} · </b>}#{pr.number}</span>{pr.title ?? ''}</span><span class="fr-chip" style={`--c:${pr.latest.band.color}`}>{pr.latest.band.short}</span><span class="hb-bar"><span class="hb-fill" style={`width:${(lo / maxChanged) * 100}%`}><Fragment set:html={exact ? comp([{ k: 'mod', v: pr.latest.modified.lower }, { k: 'add', v: pr.latest.added.lower }, { k: 'del', v: pr.latest.deleted.lower }]) : comp([{ k: 'unres', v: 1 }])} /></span>{hi !== null && hi > lo && <span class="hb-range" style={`width:${((hi - lo) / maxChanged) * 100}%`}></span>}</span><span class="hb-v">{describeBound(changed)}</span></a>; })}{members.length === 0 && <p class="a-mini">{bucketCoverage === 'none' ? `No recovered comparison in this ${unitWord}; its ${population} PRs are listed below as not recovered.` : `No ${population} PRs in this ${unitWord}.`}</p>}</div>
-        {pro && BucketFiles && <BucketFiles view={view} bucket={bucket} unitWord={unitWord} />}
+        {pro && BucketFiles && <DeferredRegion name="history-bucket-files" title="Files in this bucket"><BucketFiles view={view} bucket={bucket} unitWord={unitWord} /></DeferredRegion>}
         {missing.length > 0 && <><div class="hb-k">Not recovered · {missing.length} <span>counted, not measured · nothing interpolated</span></div><div class="hb-rows">{missing.map((pr: any) => <a class="hb-row miss" href={prHref(pr)}><span class="hb-t"><span class="hb-n">{multi && <b>{repoShort(pr.repositoryId)} · </b>}#{pr.number}</span>{pr.title ?? ''}</span><span class="hb-bar"><span class="hb-range" style="width:100%"></span></span><span class="hb-v">unknown</span></a>)}</div></>}
       </Panel>}
       {!bucket && <Panel id="bucket" span={12} class="a-fill" title="Selected bucket"><Unavailable what="No buckets for this period" compact /></Panel>}
     </div>
     <div class="s7 a-col">
-      {pro ? <Panels view={view} list={list} unit={unit} unitWord={unitWord} life={life} labelOf={labelOf} nameOf={nameOf} selected={selected} />
+      {pro ? <DeferredRegion name="history-panels" title="Growth and concentration"><Panels view={view} list={list} unit={unit} unitWord={unitWord} life={life} labelOf={labelOf} nameOf={nameOf} selected={selected} /></DeferredRegion>
  : <>
         <Panel id="cmp" span={12} class="a-fill" title="Period comparison" meta={`selected ${period} vs previous ${period}`}>
           <PeriodComparisonTable rows={rows} comparable={comparable} currentCovered={cur.windowCovered} previousCovered={prev.windowCovered} period={period} />

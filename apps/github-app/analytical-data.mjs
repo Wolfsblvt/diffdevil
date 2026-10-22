@@ -105,7 +105,8 @@ const latest = record => record.revisions.at(-1) ?? null;
 function facts(record, policy) {
   if (!record?.report) return { report: null, policyId: policy?.id ?? null, basis: 'comparison-unrecovered', band: null };
   if (!policy?.compiled) return { report: record.report, policyId: null, basis: 'unfiltered-base-facts', band: null };
-  const result = unwrap(evaluatePolicy(policy.compiled, unwrap(readReport(record.report)), { phase: 'analyze' }));
+  // evaluatePolicy validates the report itself. Parsing it here repeated the same full tree walk.
+  const result = unwrap(evaluatePolicy(policy.compiled, record.report, { phase: 'analyze' }));
   return { report: result.report, policyId: result.policyId, basis: 'current-policy', band: result.report.bands?.size ?? null };
 }
 const changed = value => value?.report?.totals.lines.changed;
@@ -202,16 +203,30 @@ export function createAnalyticalDataService({ store, authorize, entitlement, nam
       }
       const all = (await Promise.all(authorized.map(id => store.analyticalRecords(id)))).flat();
       for (const repositoryId of authorized) policies.set(repositoryId, await currentPolicy({ repositoryId, actor }));
-      const merged = all.filter(record => inside(record.mergedAt, query)).map(record => ({ ...record, facts: facts(record.final, policies.get(record.repositoryId)) }));
+      // One interpretation per measurement and repository in this query. Summary, rows and development
+      // share it; it cannot outlive the current policy, authority or retained-data read.
+      const interpretations = new Map();
+      const factsOf = (measurement, repositoryId) => {
+        if (!measurement) return facts(measurement, policies.get(repositoryId));
+        if (!interpretations.has(repositoryId)) interpretations.set(repositoryId, new WeakMap());
+        const cache = interpretations.get(repositoryId);
+        if (!cache.has(measurement)) cache.set(measurement, facts(measurement, policies.get(repositoryId)));
+        return cache.get(measurement);
+      };
+      const populationSurface = query.surface === 'overview' || query.surface === 'prs';
+      const comparisonSurface = populationSurface || query.surface === 'history';
+      // Detail coverage counts all retained merges, but a PR detail only interprets
+      // its own measurements (and whatever related work the premium extension uses).
+      const merged = all.filter(record => inside(record.mergedAt, query)).map(record => query.surface === 'pr' ? record : ({ ...record, facts: factsOf(record.final, record.repositoryId) }));
       const previousQuery = { ...query, from: new Date(2 * Date.parse(query.from) - Date.parse(query.to)).toISOString(), to: query.from };
-      const previous = all.filter(record => inside(record.mergedAt, previousQuery)).map(record => facts(record.final, policies.get(record.repositoryId)));
+      const previous = comparisonSurface ? all.filter(record => inside(record.mergedAt, previousQuery)).map(record => factsOf(record.final, record.repositoryId)) : [];
       const retainedCoverage = window => ({ from: window.from, to: window.to, completeWindow: false,
         standing: 'retained-observations', countMeaning: 'observed-lower-bounds', distributionMeaning: 'retained-observed-population' });
-      const comparison = { standing: 'retained-observations', delta: null, reason: 'complete-period-populations-unestablished',
+      const comparison = comparisonSurface ? { standing: 'retained-observations', delta: null, reason: 'complete-period-populations-unestablished',
         current: { ...summarize(merged.map(record => record.facts)), coverage: retainedCoverage(query) },
-        previous: { ...summarize(previous), coverage: retainedCoverage(previousQuery) } };
+        previous: { ...summarize(previous), coverage: retainedCoverage(previousQuery) } } : undefined;
       const active = all.filter(record => ['open', 'draft'].includes(record.state));
-      const effective = record => facts(record.state === 'merged' ? record.final : latest(record), policies.get(record.repositoryId));
+      const effective = record => factsOf(record.state === 'merged' ? record.final : latest(record), record.repositoryId);
       const prRow = record => {
         const measured = effective(record), revision = latest(record);
         const comparison = record.state === 'merged' ? record.final : revision;
@@ -229,21 +244,20 @@ export function createAnalyticalDataService({ store, authorize, entitlement, nam
           original: revision ? { policyId: revision.originalPolicyId, band: revision.originalBand } : null,
           desiredLabel: revision?.desiredLabel ?? null, observedLabel: revision?.observedLabel ?? null };
       };
-      const overview = { coverage: retainedCoverage(query), lifecycleBasis: 'last-observed-state',
+      const overview = populationSurface ? { coverage: retainedCoverage(query), lifecycleBasis: 'last-observed-state',
         mergedPullRequests: merged.length, opened: all.filter(record => inside(record.openedAt, query)).length,
         openNow: active.length, ready: active.filter(record => record.state === 'open').length, draft: active.filter(record => record.state === 'draft').length,
-        ...summarize(merged.map(record => record.facts)), timeToMergeMs: median(merged.map(record => ({ status: 'exact', value: Date.parse(record.mergedAt) - Date.parse(record.openedAt) }))) };
-      const mix = sizeMix(merged);
+        ...summarize(merged.map(record => record.facts)), timeToMergeMs: median(merged.map(record => ({ status: 'exact', value: Date.parse(record.mergedAt) - Date.parse(record.openedAt) }))) } : undefined;
+      const mix = populationSurface ? sizeMix(merged) : [];
       const lifecycle = mix.map(value => {
         const records = merged.filter(record => (record.facts.band?.status === 'resolved' ? record.facts.band.id : 'unknown') === value.band);
         return { band: value.band, samples: records.length, timeToMergeMs: median(records.map(record => ({ status: 'exact', value: Date.parse(record.mergedAt) - Date.parse(record.openedAt) }))),
           readyToMergeMs: median(records.filter(record => record.readyAt).map(record => ({ status: 'exact', value: Date.parse(record.mergedAt) - Date.parse(record.readyAt) }))) };
       });
       const flowFrom = new Date(Date.parse(query.to) - 13 * 7 * DAY).toISOString();
-      const flow = { from: flowFrom, to: query.to, buckets: buckets({ from: flowFrom, to: query.to }).map(bucket => ({ ...bucket,
+      const flow = populationSurface ? { from: flowFrom, to: query.to, buckets: buckets({ from: flowFrom, to: query.to }).map(bucket => ({ ...bucket,
         coverage: retainedCoverage(bucket), opened: all.filter(record => inside(record.openedAt, bucket)).length, merged: all.filter(record => inside(record.mergedAt, bucket)).length,
-        closedUnmerged: all.filter(record => record.state === 'closed' && inside(record.closedAt, bucket)).length })) };
-      const factsOf = (measurement, repositoryId) => facts(measurement, policies.get(repositoryId));
+        closedUnmerged: all.filter(record => record.state === 'closed' && inside(record.closedAt, bucket)).length })) } : undefined;
       let files = [], sizeObservation = [];
       if (premium && extension && fileSurfaces.has(query.surface)) {
         ({ files, sizeObservation } = await extension.files({ query, merged: merged.filter(record => premiumIds.includes(record.repositoryId)), all, premiumIds, store }));
@@ -252,7 +266,7 @@ export function createAnalyticalDataService({ store, authorize, entitlement, nam
       if (query.surface === 'overview') result = { overview, sizeMix: mix, lifecycle, flow, concentration: merged.map(record => ({ repositoryId: record.repositoryId, pullRequest: record.pullRequest, ...concentration(record.facts.report) })), activity: active.map(prRow), files, comparison };
       if (query.surface === 'prs') result = { overview, sizeMix: mix, lifecycle, flow, pullRequests: all.map(prRow).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
         development: merged.map(record => ({ repositoryId: record.repositoryId, pullRequest: record.pullRequest,
-          heads: new Set(record.revisions.map(value => value.head)).size, first: sum([changed(facts(record.revisions[0], policies.get(record.repositoryId)))]), final: sum([changed(record.facts)]) })) };
+          heads: new Set(record.revisions.map(value => value.head)).size, first: sum([changed(factsOf(record.revisions[0], record.repositoryId))]), final: sum([changed(record.facts)]) })) };
       if (query.surface === 'history') result = { buckets: buckets(query).map(bucket => {
         const contributions = merged.filter(record => inside(record.mergedAt, bucket));
         return { ...bucket, coverage: retainedCoverage(bucket), ...summarize(contributions.map(record => record.facts)), pullRequests: contributions.map(prRow),
@@ -265,7 +279,7 @@ export function createAnalyticalDataService({ store, authorize, entitlement, nam
         const measured = effective(record), paths = new Set(measured.report?.files.map(file => file.path) ?? []);
         result = { ...prRow(record), files: (measured.report?.files ?? []).map(file => ({ path: file.path, included: file.included, changed: sum([file.lines.changed]), rawChurn: sum([file.raw.churn]) })),
           development: record.revisions.map(revision => ({ base: revision.base, head: revision.head, observedAt: revision.observedAt,
-            changed: sum([changed(facts(revision, policies.get(record.repositoryId)))]), originalPolicyId: revision.originalPolicyId, originalBand: revision.originalBand })),
+            changed: sum([changed(factsOf(revision, record.repositoryId))]), originalPolicyId: revision.originalPolicyId, originalBand: revision.originalBand })),
           alsoInProgress: null };
         if (premium && extension) Object.assign(result, await extension.pr({ record, query, all, active, effective, prRow, factsOf, paths }));
       }

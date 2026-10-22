@@ -1,0 +1,16 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
+interface Props { title: string; shape: string }
+const { title, shape } = Astro.props;
+const panels = shape === 'overview' ? [['Period summary', 12], ['Change volume', 12], ['Pull-request flow', 8], ['Current activity', 4], ['Time to merge', 6], ['Size mix', 6]]
+  : shape === 'history' ? [['Change volume', 12], ['Merged pull requests', 12], ['Period comparison', 12]]
+  : shape === 'prs' ? [['Pull-request flow', 8], ['Summary', 4], ['Lifecycle', 6], ['Size mix', 6], ['Pull requests', 12]]
+  : shape === 'pr' ? [['Changed', 5], ['Policy and effects', 7], ['Files', 6], ['Development', 6]] : [['File history', 12]];
+---
+<section data-analytical-region aria-label={title} aria-busy="true">
+  <p class="a-note" role="status" data-loading-status>Loading {title.toLowerCase()}… Measurements and populations have not answered yet.</p>
+  <button class="btn btn-quiet" type="button" data-loading-retry hidden>Retry {title.toLowerCase()}</button>
+  <div class="a-grid" data-loading-shapes aria-hidden="true">
+    {panels.map(([panel, span]) => <section class:list={['a-pn', `s${span}`, 'a-loading-panel']}><header class="a-pn-h"><h2>{panel}</h2></header><div class="a-loading-plot"><i></i><i></i><i></i><i></i></div></section>)}
+  </div>
+</section>

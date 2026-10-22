@@ -42,15 +42,22 @@ export class D1AuthorizationStore {
     return (result.meta?.changes ?? 0) === 1 ? row.return_context : undefined;
   }
 
-  async refreshAuthorization(userId, previousMaterial, protectedMaterial, expiresAt) {
+  async claimAuthorizationRefresh(userId, previousMaterial, claim) {
+    const result = await this.statement(`UPDATE user_authorizations SET refresh_claim=?
+      WHERE user_id=? AND protected_material=? AND refresh_claim IS NULL AND revoked_at IS NULL AND expires_at>?`,
+    claim, userId, previousMaterial, this.now()).run();
+    return (result.meta?.changes ?? 0) === 1;
+  }
+
+  async refreshAuthorization(userId, previousMaterial, protectedMaterial, expiresAt, claim = null) {
     const now = this.now();
-    const result = await this.statement(`UPDATE user_authorizations SET protected_material=?, expires_at=?, updated_at=?
-      WHERE user_id=? AND protected_material=? AND revoked_at IS NULL AND expires_at > ?`, protectedMaterial, expiresAt, now, userId, previousMaterial, now).run();
+    const result = await this.statement(`UPDATE user_authorizations SET protected_material=?, expires_at=?, updated_at=?, refresh_claim=NULL
+      WHERE user_id=? AND protected_material=? AND refresh_claim IS ? AND revoked_at IS NULL AND expires_at > ?`, protectedMaterial, expiresAt, now, userId, previousMaterial, claim, now).run();
     return (result.meta?.changes ?? 0) === 1;
   }
 
   async authorization(userId) {
-    return this.statement('SELECT protected_material, expires_at, revoked_at FROM user_authorizations WHERE user_id=?', userId).first();
+    return this.statement('SELECT protected_material, expires_at, revoked_at, refresh_claim FROM user_authorizations WHERE user_id=?', userId).first();
   }
 
   async serviceConnection(userId) {
@@ -82,29 +89,31 @@ export class D1AuthorizationStore {
     await this.database.batch([
       this.statement(`INSERT INTO user_authorizations (user_id, protected_material, expires_at, revoked_at, updated_at)
         VALUES (?, ?, ?, NULL, ?) ON CONFLICT(user_id) DO UPDATE SET protected_material=excluded.protected_material,
-        expires_at=excluded.expires_at, revoked_at=NULL, updated_at=excluded.updated_at`, userId, protectedMaterial, authorizationExpiresAt, now),
+        expires_at=excluded.expires_at, revoked_at=NULL, updated_at=excluded.updated_at, refresh_claim=NULL`, userId, protectedMaterial, authorizationExpiresAt, now),
       this.statement('INSERT INTO authorization_artifacts (artifact_hash, user_id, return_context, expires_at) VALUES (?, ?, ?, ?)', artifactHash, userId, returnContext, artifactExpiresAt)
     ]);
   }
 
-  async revokeAuthorization(userId, { disconnectService = false, expectedMaterial, sessionHash } = {}) {
+  async revokeAuthorization(userId, { disconnectService = false, expectedMaterial, expectedRefreshClaim, sessionHash } = {}) {
     const guard = sessionHash === undefined ? undefined : browserWriteGuard(userId, sessionHash, this.now());
-    const [sessions, ...authorization] = this.revokeAuthorizationStatements(userId, { disconnectService, expectedMaterial, guard });
+    const [sessions, ...authorization] = this.revokeAuthorizationStatements(userId, { disconnectService, expectedMaterial, expectedRefreshClaim, guard });
     // A browser lease stays live until all guarded effects commit. Provider lease revocation keeps its original order.
     await this.database.batch(guard ? [...authorization, sessions] : [sessions, ...authorization]);
   }
 
   /** Prepared revocation lets account closure end grants and sessions in its own local transaction. */
-  revokeAuthorizationStatements(userId, { disconnectService = false, expectedMaterial, guard = { sql: '1', values: [] }, sessionGuard = guard } = {}) {
+  revokeAuthorizationStatements(userId, { disconnectService = false, expectedMaterial, expectedRefreshClaim, guard = { sql: '1', values: [] }, sessionGuard = guard } = {}) {
     const now = this.now();
     const statement = (sql, ...values) => this.statement(`${sql} AND (${guard.sql})`, ...values, ...guard.values);
-    const matches = expectedMaterial === undefined ? '' : ' AND EXISTS (SELECT 1 FROM user_authorizations WHERE user_id=? AND protected_material=?)';
-    const lease = expectedMaterial === undefined ? [] : [userId, expectedMaterial];
+    const refreshGuard = expectedRefreshClaim === undefined ? '' : ' AND refresh_claim IS ?';
+    const refreshValues = expectedRefreshClaim === undefined ? [] : [expectedRefreshClaim];
+    const matches = expectedMaterial === undefined ? '' : ` AND EXISTS (SELECT 1 FROM user_authorizations WHERE user_id=? AND protected_material=?${refreshGuard})`;
+    const lease = expectedMaterial === undefined ? [] : [userId, expectedMaterial, ...refreshValues];
     const statements = [
       this.statement(`WITH admitted AS MATERIALIZED (SELECT 1 WHERE ${sessionGuard.sql})
         UPDATE browser_sessions SET revoked_at=? WHERE user_id=? AND revoked_at IS NULL${matches} AND EXISTS (SELECT 1 FROM admitted)`, ...sessionGuard.values, now, userId, ...lease),
       statement(`UPDATE authorization_artifacts SET consumed_at=? WHERE user_id=? AND consumed_at IS NULL${matches}`, now, userId, ...lease),
-      statement(`UPDATE user_authorizations SET revoked_at=?, protected_material='' WHERE user_id=?${expectedMaterial === undefined ? '' : ' AND protected_material=?'}`, now, userId, ...(expectedMaterial === undefined ? [] : [expectedMaterial]))
+      statement(`UPDATE user_authorizations SET revoked_at=?, protected_material='', refresh_claim=NULL WHERE user_id=?${expectedMaterial === undefined ? '' : ` AND protected_material=?${refreshGuard}`}`, now, userId, ...(expectedMaterial === undefined ? [] : [expectedMaterial, ...refreshValues]))
     ];
     if (disconnectService) statements.push(this.statement(`INSERT INTO user_service_connections (user_id, disconnected_at, updated_at)
       SELECT ?, ?, ? WHERE (${guard.sql}) ON CONFLICT(user_id) DO UPDATE SET disconnected_at=excluded.disconnected_at, updated_at=excluded.updated_at`, userId, now, now, ...guard.values));

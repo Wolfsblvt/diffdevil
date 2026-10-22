@@ -18,11 +18,19 @@ export function createContextCache(now = () => Date.now()) {
   return {
     async get(key, load, ttl = TTL_MS) {
       const hit = entries.get(key);
+      if (hit?.pending) return hit.pending;
       if (hit && hit.until > now()) return hit.value;
-      const value = await load();
-      entries.set(key, { value, until: now() + ttl });
-      if (entries.size > 2000) for (const [stale, entry] of entries) { if (entry.until <= now()) entries.delete(stale); }
-      return value;
+      const entry = {};
+      entry.pending = Promise.resolve().then(load).then(value => {
+        if (entries.get(key) === entry) entries.set(key, { value, until: now() + ttl });
+        if (entries.size > 2000) for (const [stale, candidate] of entries) { if (candidate.until <= now()) entries.delete(stale); }
+        return value;
+      }, error => {
+        if (entries.get(key) === entry) entries.delete(key);
+        throw error;
+      });
+      entries.set(key, entry);
+      return entry.pending;
     },
     clear() { entries.clear(); }
   };

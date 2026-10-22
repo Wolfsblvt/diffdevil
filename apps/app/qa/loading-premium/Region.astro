@@ -1,0 +1,16 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
+import ChartFrame from '../../src/components/ChartFrame.astro';
+import { mixModel } from '../../src/lib/charts/models.mjs';
+const { view } = Astro.props;
+const model = mixModel({ prs: view.current.analysed, period: view.period.label, basis: 'retained', lost: 0, hrefOf: () => view.href('/prs') });
+---
+<div class="a-deferred-slot" data-loading-view-surface={view.data?.surface}>
+  <ChartFrame id="loading-fixture" kind="loading-fixture" model={model} title="Public loading fixture" span={12} h={260} meta="Synthetic extension boundary; no private implementation" />
+</div>
+<script>
+  import { registerCharts } from '../../src/client/charts/mount';
+  import { RECIPES } from '../../src/client/charts/recipes';
+  // This recipe is absent from the generic shell. The acquired module must register it.
+  registerCharts({ recipes: { 'loading-fixture': RECIPES.mix } });
+</script>

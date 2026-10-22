@@ -1,0 +1,8 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
+export const partial = true;
+import Invitation from '../../components/participation/Invitation.astro';
+import { manageBadge } from '../../lib/manage/model.mjs';
+const badge = await manageBadge({ viewer: Astro.locals.viewer, session: Astro.locals.session, runtime: Astro.locals.app });
+---
+<div data-analytical-notifications><Invitation /><span hidden data-analytical-badge data-count={badge.count} data-urgent={String(badge.urgent)}></span></div>

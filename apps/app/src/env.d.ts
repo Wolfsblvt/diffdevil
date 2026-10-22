@@ -39,5 +39,10 @@ declare namespace App {
     session?: { reads: any; actor: { userId: number; returnContext: string }; session: string; worksLinkBinding?: string | undefined };
     /** The resolved viewer: profile, namespaces and authorised repositories. Absent on public routes. */
     viewer?: any;
+    /** Original analytical URL, set only after authenticating a rewrite in middleware. */
+    analyticalUrl?: string;
+    /** Analytical documents acquire optional chrome independently of their population. */
+    deferChrome?: boolean;
+    deferPremium?: boolean;
   }
 }

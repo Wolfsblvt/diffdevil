@@ -5,6 +5,7 @@
 // the bounded Pro state with pointers to the funded namespaces the reader may already use, and a build without the
 // premium extension says so for a reader whose plan includes file history.
 import AppShell from '../layouts/AppShell.astro';
+import DeferredRegion from '../components/DeferredRegion.astro';
 import PageHead from '../components/PageHead.astro';
 import PlanChip from '../components/PlanChip.astro';
 import Icon from '../components/Icon.astro';
@@ -20,7 +21,7 @@ const pointers = (entitlement.fundedNamespaces ?? entitlement.sharedPaid ?? []).
 ---
 <AppShell title="Files" nav={navModel(view, 'files')} view={view}>
   <PageHead view={view} title="Files" period={view.premiumHere} />
-  {view.premiumHere && Body ? <Body view={view} />
+  {view.premiumHere && Body ? <DeferredRegion name="files-body" title="File history"><Body view={view} /></DeferredRegion>
   : entitlement.premium ? <div class="a-focus a-pn">
     <div class="a-pn-b" style="padding:28px 32px">
       <div style="display:flex;gap:10px;align-items:center"><PlanChip plan="Pro" /><h2 style="margin:0;font-size:19px">File history is not part of this build</h2></div>

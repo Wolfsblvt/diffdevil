@@ -31,17 +31,21 @@ import { pathToFileURL } from 'node:url';
 import { once } from 'node:events';
 import { generateKeyPairSync } from 'node:crypto';
 import { dirname, join, resolve } from 'node:path';
-import { createFakeGitHub, CODE, ENTITLEMENT_FIXTURE, INSTALLATIONS, LONG_RETAINED_PATHS, setScale } from './fixture.mjs';
+import { createFakeGitHub, CODE, ENTITLEMENT_FIXTURE, INSTALLATIONS, LONG_RETAINED_PATHS, pullRequests, setScale } from './fixture.mjs';
 import { seedLocalState, executeLocal, recordLocalDelivery } from './seed.mjs';
 import { proManage, historyOnlyManage, planChoiceReturn, freeManage, businessManage, delegateManage, setupRecovery, manageAccess, COMMERCIAL_PRO, COMMERCIAL_FREE, COMMERCIAL_BUSINESS } from './manage.mjs';
 import { participationJourney, rewardOnlyJourney, nullableReceiverJourney, COMMERCIAL_BETA, COMMERCIAL_REWARD_ONLY, NULLABLE_LINK, NULLABLE_SIGNING_KEY, QA_CAMPAIGN } from './participation.mjs';
 import { appBuildTarget } from '../build-target.mjs';
 import { admissionJourney, seedAdmissionStore } from './admission.mjs';
+import { loadingJourney } from './loading.mjs';
+import { seedLoadingScale } from './loading-scale.mjs';
 
 const target = appBuildTarget();
 const IDENTITY_ONLY = process.argv.includes('--identity');
 const AUTHORITY_ONLY = process.argv.includes('--authority');
 const ADMISSION_ONLY = process.argv.includes('--admission');
+const LOADING_ONLY = process.argv.includes('--loading');
+const LOADING_SCALE = process.env.DIFFDEVIL_APP_QA_LOADING_SCALE === '1';
 // Generated specimen material for the local double, never an external App credential.
 const admissionKey = ADMISSION_ONLY ? generateKeyPairSync('rsa', { modulusLength: 2048 }).privateKey.export({ type: 'pkcs1', format: 'pem' }) : null;
 const HISTORY_ONLY = process.argv.includes('--history');
@@ -51,7 +55,7 @@ const PR_CONFIDENCE_ONLY = process.argv.includes('--pr-confidence-state');
 const PR_FILES_ONLY = process.argv.includes('--pr-files-table');
 const BUSINESS_MANAGE_ONLY = process.argv.includes('--business-manage');
 const PARTICIPATION_ONLY = process.argv.includes('--participation');
-const OUT = join(target.artifacts, 'qa', ...(ADMISSION_ONLY ? ['admission'] : BUSINESS_MANAGE_ONLY ? ['business-manage'] : PARTICIPATION_ONLY ? ['participation'] : PR_FILES_ONLY ? ['pr-files-table'] : PR_CONFIDENCE_ONLY ? ['pr-confidence-state'] : PR_SEARCH_DETAIL_ONLY ? ['pr-search-detail'] : IDENTITY_ONLY ? ['identity'] : AUTHORITY_ONLY ? ['authority'] : HISTORY_ONLY ? ['history'] : THUMB_ONLY ? ['thumb'] : []));
+const OUT = join(target.artifacts, 'qa', ...(LOADING_ONLY ? ['loading'] : ADMISSION_ONLY ? ['admission'] : BUSINESS_MANAGE_ONLY ? ['business-manage'] : PARTICIPATION_ONLY ? ['participation'] : PR_FILES_ONLY ? ['pr-files-table'] : PR_CONFIDENCE_ONLY ? ['pr-confidence-state'] : PR_SEARCH_DETAIL_ONLY ? ['pr-search-detail'] : IDENTITY_ONLY ? ['identity'] : AUTHORITY_ONLY ? ['authority'] : HISTORY_ONLY ? ['history'] : THUMB_ONLY ? ['thumb'] : []));
 const APP_PORT = Number(process.env.DIFFDEVIL_APP_QA_PORT ?? (target.name === 'staging' ? 4512 : 4412));
 const GITHUB_PORT = Number(process.env.DIFFDEVIL_APP_QA_GITHUB_PORT ?? (target.name === 'staging' ? 4533 : 4433));
 // Chromium accepts Secure (__Host-) cookies from http://localhost, not from a loopback IP, so the browser origin is localhost; the Worker still binds 127.0.0.1.
@@ -70,11 +74,13 @@ const EDITION = join(target.artifacts, 'edition.json');
 if (!existsSync(EDITION)) { console.error('The build carries no edition record; rebuild with npm run app:build.'); process.exit(2); }
 const edition = JSON.parse(readFileSync(EDITION, 'utf8'));
 const premium = edition.premium && edition.qa ? (await import(pathToFileURL(resolve(edition.qa)).href)).default : null;
-console.log(`Qualifying the ${premium ? 'premium-joined' : 'Community'} build (${edition.reason}).`);
+console.log(`Qualifying the ${premium ? 'premium-joined' : edition.premium ? 'extension-boundary fixture' : 'Community'} build (${edition.reason}).`);
 // A local variables file copied into the build output would silently override the pass's --var flags.
 for (const stale of [join(dirname(resolve('apps/app', target.configPath)), '.dev.vars'), join(target.artifacts, 'dist/server/.dev.vars')]) if (existsSync(stale)) { console.error(`Refusing to run with a local variables file in place: ${stale}`); process.exit(2); }
 // The dense pass seeds a four-times larger fixture through the real engine, which takes its own minutes.
-const MINUTES = DENSE ? 40 : 15;
+// The complete Community journey includes repeated Worker restarts and a final clean-seed return.
+// A 15-minute run reached that final seed but expired before its last consumer could run.
+const MINUTES = DENSE ? 40 : 30;
 const deadline = setTimeout(() => { console.error(`QA exceeded its ${MINUTES}-minute deadline.`); process.exit(3); }, MINUTES * 60_000);
 deadline.unref();
 await mkdir(OUT, { recursive: true });
@@ -96,8 +102,9 @@ const githubServer = createServer(async (request, response) => {
 });
 githubServer.listen(GITHUB_PORT, '127.0.0.1'); await once(githubServer, 'listening');
 
-const seeded = await seedLocalState(STATE, ADMISSION_ONLY ? { seed: seedAdmissionStore } : undefined);
+const seeded = await seedLocalState(STATE, ADMISSION_ONLY ? { seed: seedAdmissionStore } : LOADING_SCALE ? { seed: (store, clock) => seedLoadingScale(store, clock, { now: new Date().toISOString() }) } : undefined);
 console.log(`Seeded ${seeded.written.written} analyses, ${seeded.written.retained} analytical records and ${seeded.written.observations} size observations into local D1 state.`);
+if (LOADING_SCALE) console.log(`Anonymous measured-scale cohort: ${JSON.stringify(seeded.written.loadingScale)}`);
 
 /** Local Worker variables as --var flags: fixture values only, never real credentials. `commercial` is the loopback Works stand-in's spec. */
 function workerVars(entitlement, { commercial, allowances, participation, signingKey } = {}) {
@@ -180,14 +187,20 @@ const context = await browser.newContext({ viewport: { width: 1440, height: 900 
 const consoleErrors = [], pageErrors = [], external = [];
 context.on('page', page => {
   // A deliberately requested 404 (the refused repository or handle) is not a console error worth failing on.
-  page.on('console', message => { if (message.type() === 'error' && !(/status of 404/u.test(message.text()) && /\/pr\/someone\/else\/|\/file\/.*\/not-a-locator/u.test(page.url()))) consoleErrors.push(`${page.url()} ${message.text()}`); });
+  page.on('console', message => { if (message.type() === 'error' && !(LOADING_ONLY && /status of 503/u.test(message.text())) && !(/status of 404/u.test(message.text()) && /\/pr\/someone\/else\/|\/file\/.*\/(?:not-a-locator|a{22})(?:\?|$)/u.test(page.url()))) consoleErrors.push(`${page.url()} ${message.text()}`); });
   page.on('pageerror', error => pageErrors.push(`${page.url()} ${error.message}`));
   page.on('request', request => { const url = new URL(request.url()); if (!['127.0.0.1', 'localhost'].includes(url.hostname)) external.push(request.url()); });
 });
 const page = await context.newPage();
-const go = (path, options = {}) => page.goto(/^https?:/u.test(path) ? path : `${ORIGIN}${path}`, { waitUntil: 'networkidle', ...options });
+const go = async (path, options = {}) => {
+  const response = await page.goto(/^https?:/u.test(path) ? path : `${ORIGIN}${path}`, { waitUntil: 'networkidle', ...options });
+  // These existing journeys inspect the populated document. The loading journey uses page.goto
+  // directly when it deliberately needs the earlier shell or an unresolved acquisition.
+  await page.waitForFunction(() => !document.querySelector('[data-analytical-loading], [data-notifications-pending]'), null, { timeout: 25_000 });
+  return response;
+};
 const shot = name => page.screenshot({ path: join(OUT, `${name}.png`), fullPage: true });
-const ctx = { check, go, page, shot, ORIGIN, OUT, settled, qualifyFrame, qualifyCloud, premium: Boolean(premium), signIn: () => signIn(), holdBusinessHistoryJob, releaseBusinessHistoryJob };
+const ctx = { check, go, page, shot, ORIGIN, OUT, settled, qualifyFrame, qualifyCloud, premium: Boolean(premium), joined: edition.premium, signIn: () => signIn(), holdBusinessHistoryJob, releaseBusinessHistoryJob };
 const overflow = () => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
 const offenders = () => page.evaluate(() => { const width = document.documentElement.clientWidth; return [...document.querySelectorAll('body *')].filter(element => element.getBoundingClientRect().right > width + 1).slice(0, 4).map(element => `${element.tagName.toLowerCase()}.${String(element.className).split(' ')[0]}@${Math.round(element.getBoundingClientRect().right)}`).join(', '); });
 const pageFacts = () => page.evaluate(() => ({
@@ -200,7 +213,7 @@ const pageFacts = () => page.evaluate(() => ({
 
 /** Wait until every chart frame on the page has mounted (or failed) and the page line has gone. */
 async function settled(timeout = 25_000) {
-  try { await page.waitForFunction(() => [...document.querySelectorAll('[data-chart]')].every(host => host.classList.contains('is-mounted') || host.classList.contains('is-failed')) && !document.body.classList.contains('is-drawing') && !document.querySelector('.cl.is-busy'), null, { timeout }); } catch { /* reported by the facts */ }
+  await page.waitForFunction(() => !document.querySelector('[data-analytical-loading], [data-notifications-pending], [data-premium-region][data-pending]') && [...document.querySelectorAll('[data-chart]')].every(host => host.classList.contains('is-mounted') || host.classList.contains('is-failed')) && !document.body.classList.contains('is-drawing') && !document.querySelector('.cl.is-busy'), null, { timeout });
   await page.evaluate(() => new Promise(resolve => setTimeout(resolve, 150)));
 }
 
@@ -489,7 +502,7 @@ async function qualifyPages(label, { pro }) {
 }
 
 async function readPrDetailFacts() {
-  return page.evaluate(() => ({ lanes: document.querySelectorAll('.lane').length, result: document.querySelector('.a-result .big .n')?.textContent ?? '', snap: document.querySelector('.a-snap')?.textContent ?? '', files: document.querySelectorAll('#h-pf ~ * table tbody tr, .a-tbl tbody tr').length, github: Boolean(document.querySelector('a[href^="https://github.com/"]')), named: /src\/index\.ts/u.test(document.body.innerText), fileLinks: document.querySelectorAll('a[href^="/file/"]').length }));
+  return page.evaluate(() => ({ lanes: document.querySelectorAll('.lane').length, result: document.querySelector('.a-result .big .n')?.textContent ?? '', snap: document.querySelector('.a-snap')?.textContent ?? '', files: document.querySelectorAll('#h-pf ~ * table tbody tr, .a-tbl tbody tr').length, github: Boolean(document.querySelector('a[href^="https://github.com/"]')), named: document.querySelector('.a-tbl.named td[aria-label="src/index.ts"] .a-path')?.textContent === 'src/index.ts', fileLinks: document.querySelectorAll('a[href^="/file/"]').length }));
 }
 
 async function qualifyPrFilesMinimum() {
@@ -549,6 +562,8 @@ async function qualifyPrFilesMinimum() {
 }
 
 async function qualifyPrConfidenceState(consumerReturn = null) {
+  const pathlessPull = pullRequests().find(pull => pull.analysed && !pull.repository.named);
+  if (!pathlessPull) throw new Error('The PR layout qualification requires its seeded pathless reader.');
   const detail = await go('/pr/parser-guild/parser-lab/452');
   await settled();
   check('PR detail renders the Development chart for a retained merged pull request', detail.status() === 200 && await page.locator('[data-chart-id="dev"].is-mounted').count() === 1, `${detail.status()}`);
@@ -635,7 +650,7 @@ async function qualifyPrConfidenceState(consumerReturn = null) {
   for (const width of [1180, 1181, 1280, 1360, 1361, 1440]) {
     await page.setViewportSize({ width, height: 900 });
     const inspectFilesLayout = async (label, pathless) => {
-      const response = await go('/pr/parser-guild/parser-lab/452?per=90d');
+      const response = await go(pathless ? `/pr/${pathlessPull.repository.fullName}/${pathlessPull.number}?per=90d` : '/pr/parser-guild/parser-lab/452?per=90d');
       await settled();
       const layout = await page.evaluate(expectedPaths => {
         const panel = document.querySelector('.pr-files');
@@ -677,7 +692,7 @@ async function qualifyPrConfidenceState(consumerReturn = null) {
         && layout.pathCellLabel === layout.pathTitle && layout.pathText === layout.pathTitle
           && (width <= 1180 || layout.directoryClipped) && layout.fileNameVisible && layout.includedLabel === 'Included in policy scope'
         && !layout.hasScrollbar);
-      check(`PR detail ${label} Files table stays in its panel at ${width}px with the accepted ${compact ? '7/5' : '6/6'} composition`, response.status() === 200 && layout.width === width
+      check(`PR detail ${label} Files table stays in its panel at ${width}px with the accepted ${stacked ? '12/12' : compact ? '7/5' : '6/6'} composition`, response.status() === 200 && layout.width === width
         && JSON.stringify(layout.rowSpans) === JSON.stringify(expectedSpans) && layout.rows > 0 && layout.scroller && layout.scrollerTabIndex === 0
         && layout.panelContainsScroller && layout.tableFitsScrollableContent && layout.scrollWidth >= layout.clientWidth && !layout.pageOverflow && pathsPresent && namedContract, JSON.stringify(layout));
       return layout;
@@ -688,9 +703,9 @@ async function qualifyPrConfidenceState(consumerReturn = null) {
       await page.screenshot({ path: join(OUT, 'pr-files-long-paths-1280x900.png'), fullPage: true });
     }
     if (width === 1361) await page.screenshot({ path: join(OUT, 'pr-files-long-paths-1361x900.png'), fullPage: true });
-    executeLocal("INSERT INTO analytical_pull_requests(repository_id, pull_request, updated_at, expires_at, record_json) VALUES (1001, 999999, '2026-10-15T00:00:00.000Z', NULL, 'not-json')", STATE);
-    try { await inspectFilesLayout('pathless', true); }
-    finally { executeLocal('DELETE FROM analytical_pull_requests WHERE repository_id=1001 AND pull_request=999999', STATE); }
+    // Use the existing supported pathless reader. A layout check does not need a second
+    // Wrangler writer corrupting the running Worker's database to manufacture that state.
+    await inspectFilesLayout('pathless', true);
   }
   await go('/pr/parser-guild/parser-lab/452?per=90d');
   await settled();
@@ -725,7 +740,11 @@ async function qualifyPrConfidenceState(consumerReturn = null) {
 }
 
 try {
-  if (ADMISSION_ONLY) {
+  if (LOADING_ONLY) {
+    await startWorker(ENTITLEMENT_FIXTURE);
+    await signIn();
+    await loadingJourney(ctx);
+  } else if (ADMISSION_ONLY) {
     await startWorker(ENTITLEMENT_FIXTURE);
     await signIn();
     await admissionJourney(ctx, github);
@@ -956,8 +975,9 @@ try {
   }
   const badHandle = await go('/file/parser-guild/parser-lab/not-a-locator');
   check('a malformed file handle is refused with 404', badHandle.status() === 404);
+  const deniedRead = page.waitForResponse(response => new URL(response.url()).pathname === '/pr/someone/else/1' && response.request().headers()['x-diffdevil-render'] === 'page');
   const denied = await go('/pr/someone/else/1');
-  check('a repository outside the authorised set is refused with 404, not rendered', denied.status() === 404 && (await page.evaluate(() => /Not in your repositories/u.test(document.body.innerText))));
+  check('a generic shell carries no foreign data and the authorised detail read refuses an inaccessible repository with 404', denied.status() === 200 && (await deniedRead).status() === 404 && await page.locator('.a-result').count() === 0 && (await page.evaluate(() => /Not in your repositories/u.test(document.body.innerText))));
 
   await premium?.files?.(ctx);
   if (!premium) {
@@ -1036,7 +1056,7 @@ try {
   const calmStart = await calm.request.get(`${ORIGIN}/auth/start`, { maxRedirects: 0 });
   await calmPage.goto(`${ORIGIN}/auth/callback?state=${new URL(calmStart.headers().location).searchParams.get('state')}&code=${CODE}`);
   await calmPage.waitForURL(url => new URL(url).pathname === '/', { timeout: 15_000 }).catch(() => {});
-  await calmPage.waitForFunction(() => [...document.querySelectorAll('[data-chart]')].every(host => host.classList.contains('is-mounted') || host.classList.contains('is-failed')) && !document.body.classList.contains('is-drawing'), null, { timeout: 25_000 }).catch(() => {});
+  await calmPage.waitForFunction(() => !document.querySelector('[data-analytical-loading]') && [...document.querySelectorAll('[data-chart]')].every(host => host.classList.contains('is-mounted') || host.classList.contains('is-failed')) && !document.body.classList.contains('is-drawing'), null, { timeout: 25_000 }).catch(() => {});
   const calmFacts = await calmPage.evaluate(() => ({ reduced: matchMedia('(prefers-reduced-motion: reduce)').matches, charts: document.querySelectorAll('[data-chart]').length, mounted: document.querySelectorAll('[data-chart].is-mounted').length, svg: document.querySelectorAll('[data-plot] svg').length }));
   check('under reduced motion every chart still draws', calmFacts.reduced && calmFacts.charts > 0 && calmFacts.mounted === calmFacts.charts && calmFacts.svg > 0, JSON.stringify(calmFacts));
   await calmPage.screenshot({ path: join(OUT, 'free-overview-reduced-motion.png'), fullPage: true });
@@ -1174,7 +1194,7 @@ try {
   githubServer.closeAllConnections?.();
   githubServer.close();
 }
-await writeFile(join(OUT, 'results.json'), JSON.stringify({ origin: ORIGIN, scope: ADMISSION_ONLY ? 'admission' : BUSINESS_MANAGE_ONLY ? 'business-manage' : PR_FILES_ONLY ? 'pr-files-table' : THUMB_ONLY ? 'thumb' : PR_CONFIDENCE_ONLY ? 'pr-confidence-state' : PR_SEARCH_DETAIL_ONLY ? 'pr-search-detail' : AUTHORITY_ONLY ? 'authority' : HISTORY_ONLY ? 'history' : IDENTITY_ONLY ? 'identity' : PARTICIPATION_ONLY ? 'participation' : 'full', target: target.name, seeded: seeded.written, dense: DENSE && !ADMISSION_ONLY && !BUSINESS_MANAGE_ONLY && !PR_FILES_ONLY && !THUMB_ONLY && !PR_CONFIDENCE_ONLY && !PR_SEARCH_DETAIL_ONLY && !PARTICIPATION_ONLY && !IDENTITY_ONLY && !AUTHORITY_ONLY && !HISTORY_ONLY, charts: chartTelemetry, results, failures, consoleErrors, pageErrors, external }, null, 2));
+await writeFile(join(OUT, 'results.json'), JSON.stringify({ origin: ORIGIN, scope: LOADING_ONLY ? 'loading' : ADMISSION_ONLY ? 'admission' : BUSINESS_MANAGE_ONLY ? 'business-manage' : PR_FILES_ONLY ? 'pr-files-table' : THUMB_ONLY ? 'thumb' : PR_CONFIDENCE_ONLY ? 'pr-confidence-state' : PR_SEARCH_DETAIL_ONLY ? 'pr-search-detail' : AUTHORITY_ONLY ? 'authority' : HISTORY_ONLY ? 'history' : IDENTITY_ONLY ? 'identity' : PARTICIPATION_ONLY ? 'participation' : 'full', target: target.name, seeded: seeded.written, dense: DENSE && !LOADING_ONLY && !ADMISSION_ONLY && !BUSINESS_MANAGE_ONLY && !PR_FILES_ONLY && !THUMB_ONLY && !PR_CONFIDENCE_ONLY && !PR_SEARCH_DETAIL_ONLY && !PARTICIPATION_ONLY && !IDENTITY_ONLY && !AUTHORITY_ONLY && !HISTORY_ONLY, charts: chartTelemetry, results, failures, consoleErrors, pageErrors, external }, null, 2));
 await writeFile(join(OUT, 'worker.log'), workerLog);
 console.log(`${PARTICIPATION_ONLY ? 'Participation: ' : ''}${results.filter(result => result.ok).length} of ${results.length} checks passed; screenshots and results in ${OUT}`);
 if (failures.length) { console.error(failures.map(failure => ` ✗ ${failure}`).join('\n')); process.exit(1); }

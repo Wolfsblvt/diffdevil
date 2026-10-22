@@ -19,7 +19,7 @@ import { closeLocalAccount } from '../app/src/lib/manage/account-closure.mjs';
 import { migrationNames } from '../app/qa/seed.mjs';
 
 const migrations = ['0001_initial.sql', '0002_consent-provenance.sql', '0003_preserve-active-consent.sql', '0004_admission-settings.sql',
-  '0005_offboarding-consent-tombstones.sql', '0006_user-authorization.sql', '0007_consent-actors.sql', '0010_commercial-links.sql', '0011_service-connection.sql'];
+  '0005_offboarding-consent-tombstones.sql', '0006_user-authorization.sql', '0007_consent-actors.sql', '0010_commercial-links.sql', '0011_service-connection.sql', '0017_authorization-refresh.sql'];
 const APP = 'https://app.example.test';
 const WIRT = 'https://works.example.test';
 const KEY = 'fixture-signing-key-material-of-at-least-32-bytes';
@@ -176,87 +176,103 @@ async function fixture({ Store = D1CommercialStore, realAuthorization = false } 
   const runtime = new Miniflare({ workers: [{
     config: { name: 'commercial-test', compatibilityDate: '2026-09-17', env: { APP_DB: { type: 'd1', id: `commercial-${randomUUID()}` } }, manifest: { mainModule: 'worker.mjs', modulesRoot: resolve('.'), modules: { 'worker.mjs': { type: 'esm', contents: 'export default { fetch() { return new Response("ok"); } };' } } } }
   }] });
-  const database = await runtime.getD1Database('APP_DB');
-  const appStore = new D1AppStore(database, { now });
-  for (const name of migrations) await appStore.migrate(await readFile(resolve('apps/github-app/migrations', name), 'utf8'));
-  const store = new Store(database, { now });
-  const wirt = wirtDouble(clock);
-  const vault = new Map();
-  const protector = { seal: async value => { const handle = `sealed:${randomUUID()}`; vault.set(handle, structuredClone(value)); return handle; }, open: async handle => structuredClone(vault.get(handle)) };
-  const administers = new Map([[USER, new Set([ORG])], [OTHER_USER, new Set([ORG])]]);
-  const sessions = new Map([[SESSION, USER], [OTHER_SESSION, OTHER_USER]]);
-  const profiles = new Map([[USER, { id: USER, login: 'example-user' }], [OTHER_USER, { id: OTHER_USER, login: 'other-user' }]]);
-  // Users whose GitHub authorization the product still retains; the background observation needs it.
-  const retained = new Set([USER, OTHER_USER]);
-  const github = { answering: true };
-  const observe = userId => organisationId => {
-    // The real adapter answers `unknown` when GitHub does not answer the administration check.
-    if (!github.answering) return { userId, authority: 'unknown', display: null };
-    const present = administers.get(userId)?.has(organisationId);
-    return { userId, authority: present ? 'present' : 'absent', display: present ? 'example-org' : null };
-  };
-  let authorization = {
-    authenticate: async session => { if (!sessions.has(session)) throw Object.assign(new Error('E_SESSION_UNAVAILABLE'), { code: 'E_SESSION_UNAVAILABLE' }); return { userId: sessions.get(session) }; },
-    read: async ({ session }, operation) => {
-      const actor = await authorization.authenticate(session);
-      return operation({ profile: async () => {
-        if (!github.answering) throw new Error('fixture provider unavailable');
-        return profiles.get(actor.userId);
-      } }, actor);
-    },
-    organisationAuthority: async ({ session, organisationId }) => {
-      const userId = sessions.get(session);
-      if (!userId) throw Object.assign(new Error('E_SESSION_UNAVAILABLE'), { code: 'E_SESSION_UNAVAILABLE' });
-      return observe(userId)(organisationId);
-    },
-    observeOrganisationAuthority: async ({ userId, organisationId }) => retained.has(userId) ? observe(userId)(organisationId) : { userId, authority: 'unknown', display: null }
-  };
-  const authStore = new D1AuthorizationStore(database, { now });
-  if (!realAuthorization) for (const [session, userId] of sessions) {
-    await database.prepare('INSERT INTO browser_sessions(session_hash,user_id,return_context,expires_at) VALUES (?,?,?,?)')
-      .bind(createHash('sha256').update(session).digest('hex'), userId, 'account', '2027-04-01T00:00:00.000Z').run();
-  }
-  const browserSessions = new Map();
-  let signIn;
-  if (realAuthorization) {
-    const provider = {
-      authorizationUrl: async ({ state }) => `https://github.com/login/oauth/authorize?state=${state}&redirect_uri=${encodeURIComponent(`${APP}/oauth/callback`)}`,
-      exchangeCode: async ({ code }) => ({ material: { userId: Number(code) }, expiresAt: '2027-04-01T00:00:00.000Z' }),
-      userForAuthorization: async material => material.userId,
-      verifyUserAuthorization: async ({ userId, material }) => ({ valid: retained.has(userId) && material.userId === userId }),
-      profile: async ({ userId, material }) => {
-        assert.equal(material.userId, userId);
-        if (!github.answering) throw new Error('fixture provider unavailable');
-        return profiles.get(userId);
+  try {
+    const database = await runtime.getD1Database('APP_DB');
+    const appStore = new D1AppStore(database, { now });
+    for (const name of migrations) await appStore.migrate(await readFile(resolve('apps/github-app/migrations', name), 'utf8'));
+    const store = new Store(database, { now });
+    const wirt = wirtDouble(clock);
+    const vault = new Map();
+    const protector = { seal: async value => { const handle = `sealed:${randomUUID()}`; vault.set(handle, structuredClone(value)); return handle; }, open: async handle => structuredClone(vault.get(handle)) };
+    const administers = new Map([[USER, new Set([ORG])], [OTHER_USER, new Set([ORG])]]);
+    const sessions = new Map([[SESSION, USER], [OTHER_SESSION, OTHER_USER]]);
+    const profiles = new Map([[USER, { id: USER, login: 'example-user' }], [OTHER_USER, { id: OTHER_USER, login: 'other-user' }]]);
+    // Users whose GitHub authorization the product still retains; the background observation needs it.
+    const retained = new Set([USER, OTHER_USER]);
+    const github = { answering: true };
+    const observe = userId => organisationId => {
+      // The real adapter answers `unknown` when GitHub does not answer the administration check.
+      if (!github.answering) return { userId, authority: 'unknown', display: null };
+      const present = administers.get(userId)?.has(organisationId);
+      return { userId, authority: present ? 'present' : 'absent', display: present ? 'example-org' : null };
+    };
+    let authorization = {
+      authenticate: async session => { if (!sessions.has(session)) throw Object.assign(new Error('E_SESSION_UNAVAILABLE'), { code: 'E_SESSION_UNAVAILABLE' }); return { userId: sessions.get(session) }; },
+      read: async ({ session }, operation) => {
+        const actor = await authorization.authenticate(session);
+        return operation({ profile: async () => {
+          if (!github.answering) throw new Error('fixture provider unavailable');
+          return profiles.get(actor.userId);
+        } }, actor);
       },
-      checkOrganisationAdministration: async ({ userId, material, organisationId }) => {
-        assert.equal(material.userId, userId);
-        if (!github.answering) throw new Error('fixture provider unavailable');
-        return { administer: administers.get(userId)?.has(organisationId) === true, login: 'example-org' };
-      }
+      organisationAuthority: async ({ session, organisationId }) => {
+        const userId = sessions.get(session);
+        if (!userId) throw Object.assign(new Error('E_SESSION_UNAVAILABLE'), { code: 'E_SESSION_UNAVAILABLE' });
+        return observe(userId)(organisationId);
+      },
+      observeOrganisationAuthority: async ({ userId, organisationId }) => retained.has(userId) ? observe(userId)(organisationId) : { userId, authority: 'unknown', display: null }
     };
-    authorization = createAuthorizationService({ store: authStore, admission: {}, provider, protector, returnContexts: ['account'],
-      allowedOrigins: [APP], allowedCallbackUrls: [`${APP}/oauth/callback`], sessionLifetimeMs: 60 * 60_000, now });
-    signIn = async (userId, previousSession) => {
-      const begun = await authorization.begin('account');
-      const browserBinding = begun.headers['Set-Cookie'].match(/^__Host-diffdevil-oauth=([^;]+)/u)[1];
-      const completed = await authorization.complete({ state: begun.state, code: String(userId), browserBinding });
-      const exchanged = await authorization.exchange({ artifact: completed.artifact, returnContext: 'account', method: 'POST', origin: APP, previousSession });
-      const session = exchanged.headers['Set-Cookie'].match(/^__Host-diffdevil-session=([^;]+)/u)[1];
-      browserSessions.set(userId === USER ? SESSION : OTHER_SESSION, session);
-      return session;
-    };
-    await signIn(USER);
-    await signIn(OTHER_USER);
+    const authStore = new D1AuthorizationStore(database, { now });
+    if (!realAuthorization) for (const [session, userId] of sessions) {
+      await database.prepare('INSERT INTO browser_sessions(session_hash,user_id,return_context,expires_at) VALUES (?,?,?,?)')
+        .bind(createHash('sha256').update(session).digest('hex'), userId, 'account', '2027-04-01T00:00:00.000Z').run();
+    }
+    const browserSessions = new Map();
+    let signIn;
+    if (realAuthorization) {
+      const provider = {
+        authorizationUrl: async ({ state }) => `https://github.com/login/oauth/authorize?state=${state}&redirect_uri=${encodeURIComponent(`${APP}/oauth/callback`)}`,
+        exchangeCode: async ({ code }) => ({ material: { userId: Number(code) }, expiresAt: '2027-04-01T00:00:00.000Z' }),
+        userForAuthorization: async material => material.userId,
+        verifyUserAuthorization: async ({ userId, material }) => ({ valid: retained.has(userId) && material.userId === userId }),
+        profile: async ({ userId, material }) => {
+          assert.equal(material.userId, userId);
+          if (!github.answering) throw new Error('fixture provider unavailable');
+          return profiles.get(userId);
+        },
+        checkOrganisationAdministration: async ({ userId, material, organisationId }) => {
+          assert.equal(material.userId, userId);
+          if (!github.answering) throw new Error('fixture provider unavailable');
+          return { administer: administers.get(userId)?.has(organisationId) === true, login: 'example-org' };
+        }
+      };
+      authorization = createAuthorizationService({ store: authStore, admission: {}, provider, protector, returnContexts: ['account'],
+        allowedOrigins: [APP], allowedCallbackUrls: [`${APP}/oauth/callback`], sessionLifetimeMs: 60 * 60_000, now });
+      signIn = async (userId, previousSession) => {
+        const begun = await authorization.begin('account');
+        const browserBinding = begun.headers['Set-Cookie'].match(/^__Host-diffdevil-oauth=([^;]+)/u)[1];
+        const completed = await authorization.complete({ state: begun.state, code: String(userId), browserBinding });
+        const exchanged = await authorization.exchange({ artifact: completed.artifact, returnContext: 'account', method: 'POST', origin: APP, previousSession });
+        const session = exchanged.headers['Set-Cookie'].match(/^__Host-diffdevil-session=([^;]+)/u)[1];
+        browserSessions.set(userId === USER ? SESSION : OTHER_SESSION, session);
+        return session;
+      };
+      await signIn(USER);
+      await signIn(OTHER_USER);
+    }
+    const env = { APP_DB: database, WIRT_SIGNING_KEY_CURRENT: KEY, WIRT_SIGNING_KEY_PREVIOUS: PREVIOUS, WIRT_ORIGIN: WIRT, WIRT_OAUTH_CLIENT_ID: 'diffdevil-public-client', WIRT_LINK_CALLBACK_URL: CALLBACK };
+    const commercial = commercialFromEnv(env, { store, authorization, protector, allowedOrigins: [APP], linkContinuationUrl: CONTINUATION, fetch: wirt.fetch, now });
+    const worker = createGitHubAppWorker({ store: appStore, commercial });
+    const call = (path, init = {}) => worker.fetch(new Request(`${APP}${path}`, init), env);
+    const browser = (session = SESSION, cookies = '') => ({ cookie: [`__Host-diffdevil-session=${browserSessions.get(session) ?? session}`, cookies].filter(Boolean).join('; '), origin: APP });
+    return { runtime, database, appStore, store, wirt, clock, commercial, worker, env, call, browser, administers, retained, github, vault,
+      authorization, authStore, browserSessions, signIn, profiles };
+  } catch (error) {
+    await runtime.dispose();
+    throw error;
   }
-  const env = { APP_DB: database, WIRT_SIGNING_KEY_CURRENT: KEY, WIRT_SIGNING_KEY_PREVIOUS: PREVIOUS, WIRT_ORIGIN: WIRT, WIRT_OAUTH_CLIENT_ID: 'diffdevil-public-client', WIRT_LINK_CALLBACK_URL: CALLBACK };
-  const commercial = commercialFromEnv(env, { store, authorization, protector, allowedOrigins: [APP], linkContinuationUrl: CONTINUATION, fetch: wirt.fetch, now });
-  const worker = createGitHubAppWorker({ store: appStore, commercial });
-  const call = (path, init = {}) => worker.fetch(new Request(`${APP}${path}`, init), env);
-  const browser = (session = SESSION, cookies = '') => ({ cookie: [`__Host-diffdevil-session=${browserSessions.get(session) ?? session}`, cookies].filter(Boolean).join('; '), origin: APP });
-  return { runtime, database, appStore, store, wirt, clock, commercial, worker, env, call, browser, administers, retained, github, vault,
-    authorization, authStore, browserSessions, signIn, profiles };
 }
+
+test('failed commercial fixture initialization releases D1 and preserves the setup error', async () => {
+  const failure = new Error('fixture store initialization failed');
+  let binding;
+  class FailingStore {
+    constructor(database) { binding = database; throw failure; }
+  }
+  await assert.rejects(fixture({ Store: FailingStore }), error => error === failure);
+  assert.ok(binding, 'the injected failure happened after D1 opened');
+  await assert.rejects(async () => binding.prepare('SELECT 1 AS still_open').first());
+});
 
 const at = source => Date.parse(source.clock.value);
 const rows = async (source, table) => (await source.database.prepare(`SELECT * FROM ${table}`).all()).results ?? [];

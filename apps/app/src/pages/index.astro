@@ -9,6 +9,7 @@
 // from the premium extension for an entitled reader (src/premium/README.md); a Community build says
 // file history is not part of the build instead.
 import AppShell from '../layouts/AppShell.astro';
+import DeferredRegion from '../components/DeferredRegion.astro';
 import PageHead from '../components/PageHead.astro';
 import Panel from '../components/Panel.astro';
 import ChartFrame from '../components/ChartFrame.astro';
@@ -45,7 +46,7 @@ const prHref = (pr: any) => view.href(pullRequestPath(repositoryName(pr), pr.num
 // reader; their shared data is loaded once. A Community build, or a Free reader, gets the common panels instead.
 const premiumPage = runtime.premium.pages.overview;
 const { Concentration, Cloud, Turnover } = premiumPage ?? ({} as any);
-const premium = pro && premiumPage ? await premiumPage.load({ view, runtime }) : null;
+const premium = pro && premiumPage && !Astro.locals.deferPremium ? await premiumPage.load({ view, runtime }) : null;
 
 // Hero population: merged pull requests in the window on the retained basis, analysed ones otherwise.
 const leadKind = life ? 'merged' : 'analysed';
@@ -122,12 +123,12 @@ const populationWord = life ? 'merged' : 'analysed';
           {cur.analysedCount > 0 && <div class="a-contrast"><span style={`width:${medianRawLower ? Math.min(100, (medianChangedLower / medianRawLower) * 100) : 0}%`}></span><span style="width:100%"></span></div>}
         </Tile>
         {pro && Concentration
-          ? <Concentration view={view} data={premium} />
+          ? <DeferredRegion name="overview-concentration" title="Concentration" compact><Concentration view={view} data={premium} /></DeferredRegion>
           : <Tile label="Repositories active" value={String(activeRepositories)} unit={`of ${view.historyRepositories.length}`} caption={`with ${populationWord} PRs in period`} href={view.href('/')}><Fragment set:html={charts.minibars(perRepositoryCounts.length ? perRepositoryCounts : [0])} /></Tile>}
       </div>
     </section>
 
-    {pro && Cloud && <Cloud view={view} data={premium} />}
+    {pro && Cloud && <DeferredRegion name="overview-cloud" title="Where change lands"><Cloud view={view} data={premium} /></DeferredRegion>}
 
     <ChartFrame id="volume" kind="mosaic" model={mosaic} title="Change volume" span={12} h={pro ? 220 : 300} open={view.href('/history')} meta={`${populationWord} PRs in ${period} · by ${unit === '2 days' ? '2 days' : unit} · ${scopeLabel} · ${volume.basis === 'merged' ? 'one final merged comparison per PR, under current policy' : 'one retained analysis per PR, by analysis time'}`}>
       <Fragment slot="foot">{!pro && entitlement.sharedPaid.length ? <span>File history is available inside {entitlement.sharedPaid.map((namespace: string, index: number) => <>{index > 0 && ', '}<a class="link-quiet" href={view.href('/files', { s: `@${namespace}` })}>{namespace}</a></>)}, funded by its owner.</span> : !pro && entitlement.premium && !view.premiumProvided ? <span>File history is part of this scope's plan, and not part of this build</span> : !pro ? <span><span class="a-plan">Pro</span> adds where this change lands, file by file</span> : <span>{volume.totals.recovered} of {volume.totals.count} {populationWord} PRs recovered · nothing interpolated</span>}<a href={view.href('/history')}>History →</a></Fragment>
@@ -149,7 +150,7 @@ const populationWord = life ? 'merged' : 'analysed';
 
     <ChartFrame id="mix" kind="mix" model={mix} title="PR size mix" span={6} h={40 + Math.max(1, mix.rows.length) * 34 + 10} open={view.href('/prs')} meta={`${mix.n} ${life ? 'merged PRs with a recovered final comparison' : 'analysed PRs'} in ${period} · size-v1 ${life ? 'under current policy' : 'as recorded'}`} />
 
-    {pro && Turnover && <Turnover view={view} data={premium} />}
+    {pro && Turnover && <DeferredRegion name="overview-turnover" title="Turnover"><Turnover view={view} data={premium} /></DeferredRegion>}
 
     {(pro || many) && (many
       ? <Panel id="repos" span={6} title={`Repositories by ${state.rm === 'changed' ? 'Changed' : `${populationWord} PRs`}`} meta={period}>
