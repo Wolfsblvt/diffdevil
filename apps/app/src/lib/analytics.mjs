@@ -27,9 +27,9 @@ export function createAnalytics({ appStore, entitlement, policies, namespaceOf, 
      * One surface read for one viewer. `scope` is the contract's explicit selection:
      * `{ kind: 'all' }`, `{ kind: 'namespace', namespaceId }` or `{ kind: 'repository', repositoryId }`.
      */
-    async query({ surface, repositoryIds, from, to, scope, pullRequest, path, metric }, actor) {
+    async query({ surface, repositoryIds, from, to, scope, pullRequest, path, metric }, actor, source) {
       const query = { version: 1, surface, repositoryIds, from, to, ...(scope ? { scope } : {}), ...(pullRequest ? { pullRequest } : {}), ...(path !== undefined ? { path } : {}), ...(metric ? { metric } : {}) };
-      return service.query(query, actor);
+      return service.query(query, actor, source);
     }
   };
 }

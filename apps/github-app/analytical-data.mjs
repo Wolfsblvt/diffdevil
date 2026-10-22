@@ -166,8 +166,14 @@ export const analyticalKit = Object.freeze({ interval, amount, sum, median, file
  */
 export function createAnalyticalDataService({ store, authorize, entitlement, namespace, currentPolicy, premium: extension, now = () => new Date().toISOString() }) {
   if (!store || typeof authorize !== 'function' || typeof entitlement !== 'function' || typeof namespace !== 'function' || typeof currentPolicy !== 'function') throw new TypeError('Analytical read adapters are required.');
+  // A file page resolves its opaque handle from Files before reading that file's detail.
+  // Continue that same server view without interpreting and enriching every file twice.
+  // Only this service's actual response object can carry the context; HTTP inputs cannot.
+  const fileViews = new WeakMap();
+  const historyReadable = async ids => typeof store.historySettings === 'function'
+    && (await Promise.all(ids.map(id => store.historySettings(id, { independentExecution: true })))).every(settings => settings.readable);
   return {
-    async query(input, actor) {
+    async query(input, actor, source) {
       const query = selectedWindow(input);
       const granted = [], policies = new Map(), plans = new Map(), namespaces = new Map();
       for (const repositoryId of query.repositoryIds) {
@@ -201,23 +207,31 @@ export function createAnalyticalDataService({ store, authorize, entitlement, nam
         for (const repositoryId of granted) if (!await authorize({ repositoryId, actor, kind: 'read' })) throw fail('E_APP_DATA_UNAUTHORIZED');
         return freePage;
       }
-      const all = (await Promise.all(authorized.map(id => store.analyticalRecords(id)))).flat();
       for (const repositoryId of authorized) policies.set(repositoryId, await currentPolicy({ repositoryId, actor }));
+      const prior = query.surface === 'file' ? fileViews.get(source) : undefined;
+      const sameIds = (a, b) => a.length === b.length && a.every((id, index) => id === b[index]);
+      const continued = prior && prior.actor === actor && prior.query.from === query.from && prior.query.to === query.to
+        && prior.query.scope.kind === 'repository' && query.scope.repositoryId === prior.query.scope.repositoryId
+        && (query.metric ?? 'mergedPullRequests') === (prior.query.metric ?? 'mergedPullRequests')
+        && sameIds(prior.query.repositoryIds, query.repositoryIds) && sameIds(prior.authorized, authorized) && sameIds(prior.premiumIds, premiumIds)
+        && authorized.every(id => policies.get(id)?.id === prior.policies.get(id)?.id && policies.get(id)?.compiled === prior.policies.get(id)?.compiled)
+        && await historyReadable(authorized) ? prior : null;
+      const all = continued ? continued.all : (await Promise.all(authorized.map(id => store.analyticalRecords(id)))).flat();
       // One interpretation per measurement and repository in this query. Summary, rows and development
       // share it; it cannot outlive the current policy, authority or retained-data read.
       const interpretations = new Map();
-      const factsOf = (measurement, repositoryId) => {
+      const factsOf = continued?.factsOf ?? ((measurement, repositoryId) => {
         if (!measurement) return facts(measurement, policies.get(repositoryId));
         if (!interpretations.has(repositoryId)) interpretations.set(repositoryId, new WeakMap());
         const cache = interpretations.get(repositoryId);
         if (!cache.has(measurement)) cache.set(measurement, facts(measurement, policies.get(repositoryId)));
         return cache.get(measurement);
-      };
+      });
       const populationSurface = query.surface === 'overview' || query.surface === 'prs';
       const comparisonSurface = populationSurface || query.surface === 'history';
       // Detail coverage counts all retained merges, but a PR detail only interprets
       // its own measurements (and whatever related work the premium extension uses).
-      const merged = all.filter(record => inside(record.mergedAt, query)).map(record => query.surface === 'pr' ? record : ({ ...record, facts: factsOf(record.final, record.repositoryId) }));
+      const merged = continued?.merged ?? all.filter(record => inside(record.mergedAt, query)).map(record => query.surface === 'pr' ? record : ({ ...record, facts: factsOf(record.final, record.repositoryId) }));
       const previousQuery = { ...query, from: new Date(2 * Date.parse(query.from) - Date.parse(query.to)).toISOString(), to: query.from };
       const previous = comparisonSurface ? all.filter(record => inside(record.mergedAt, previousQuery)).map(record => factsOf(record.final, record.repositoryId)) : [];
       const retainedCoverage = window => ({ from: window.from, to: window.to, completeWindow: false,
@@ -258,8 +272,8 @@ export function createAnalyticalDataService({ store, authorize, entitlement, nam
       const flow = populationSurface ? { from: flowFrom, to: query.to, buckets: buckets({ from: flowFrom, to: query.to }).map(bucket => ({ ...bucket,
         coverage: retainedCoverage(bucket), opened: all.filter(record => inside(record.openedAt, bucket)).length, merged: all.filter(record => inside(record.mergedAt, bucket)).length,
         closedUnmerged: all.filter(record => record.state === 'closed' && inside(record.closedAt, bucket)).length })) } : undefined;
-      let files = [], sizeObservation = [];
-      if (premium && extension && fileSurfaces.has(query.surface)) {
+      let files = continued?.files ?? [], sizeObservation = continued?.sizeObservation ?? [];
+      if (!continued && premium && extension && fileSurfaces.has(query.surface)) {
         ({ files, sizeObservation } = await extension.files({ query, merged: merged.filter(record => premiumIds.includes(record.repositoryId)), all, premiumIds, store }));
       }
       let result;
@@ -289,12 +303,17 @@ export function createAnalyticalDataService({ store, authorize, entitlement, nam
       }
       // Check current access again after asynchronous storage/policy work, before exposing names or aggregates.
       for (const repositoryId of granted) if (!await authorize({ repositoryId, actor, kind: 'read' })) throw fail('E_APP_DATA_UNAUTHORIZED');
-      return { kind: 'diffdevil.app-analytics', version: 1, surface: query.surface, scope: query.scope, generatedAt: now(),
+      if (continued && !await historyReadable(authorized)) throw fail('E_APP_DATA_NOT_FOUND');
+      const response = { kind: 'diffdevil.app-analytics', version: 1, surface: query.surface, scope: query.scope, generatedAt: now(),
         population: 'final-merged-comparisons', window: { from: query.from, to: query.to },
         coverage: { completeWindow: false, standing: 'retained-observations', requestedRepositories: query.repositoryIds.length,
           authorizedRepositories: granted.length, representedRepositories: authorized.length, recoveredMerged: merged.filter(record => record.final?.report).length, merged: merged.length },
         policies: authorized.map(repositoryId => ({ repositoryId, requestedId: policies.get(repositoryId)?.id ?? null, standing: policies.get(repositoryId)?.compiled ? 'current' : 'unfiltered-base-facts' })),
         sizeObservation, entitlements, fundedNamespaces, result };
+      if (query.surface === 'files' && query.scope.kind === 'repository' && premium && extension) {
+        fileViews.set(response, { actor, query, authorized, premiumIds, policies, all, merged, factsOf, files, sizeObservation });
+      }
+      return response;
     }
   };
 }

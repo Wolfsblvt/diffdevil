@@ -19,6 +19,7 @@ function toBase64Url(bytes) {
 export function createLocator({ secret }) {
   if (typeof secret !== 'string' || secret.length < 16) throw new TypeError('The locator secret must be a string of at least 16 characters.');
   let keyPromise;
+  const signatures = new Map();
   const key = () => {
     keyPromise ??= crypto.subtle.importKey('raw', encoder.encode(`diffdevil-app-file-locator:${secret}`), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
     return keyPromise;
@@ -26,8 +27,12 @@ export function createLocator({ secret }) {
   return {
     /** The locator for one file of one repository. Deterministic for the deployment's secret. */
     async of(repositoryId, path) {
-      const signature = new Uint8Array(await crypto.subtle.sign('HMAC', await key(), encoder.encode(`${repositoryId}\n${path}`)));
-      return toBase64Url(signature).slice(0, LENGTH);
+      const identity = `${repositoryId}\n${path}`;
+      if (signatures.has(identity)) return signatures.get(identity);
+      const signature = new Uint8Array(await crypto.subtle.sign('HMAC', await key(), encoder.encode(identity)));
+      const value = toBase64Url(signature).slice(0, LENGTH);
+      signatures.set(identity, value);
+      return value;
     },
     /** Whether a route parameter has the locator shape; anything else is refused before lookup. */
     plausible(value) { return typeof value === 'string' && SHAPE.test(value); },

@@ -42,6 +42,29 @@ qualifies scale and public acquisition boundaries; actual private algorithms and
 matching proof. The same local seed path supports a record larger than D1's SQL-file statement limit through bounded
 appends while the disposable target has no running reader.
 
+With the public extension fixture, that journey also follows a real retained opaque file handle through the App's
+file-detail bridge. `qa/loading/file-read.json` separates fetch timing and response bytes, DOM commits and a two-frame
+paint opportunity; the latter is not a compositor timestamp. It records the complete file count and the number of
+file-population derivations. It remains synthetic consumer evidence, not private-algorithm or Cloudflare qualification.
+
+A file detail reads only its named repository while retaining the broader scope as navigation context. Its second
+file-surface read continues the same request's Files response through `loadSurface`; matching reader, repository,
+period, metric, policy, current access and readable history are required. This avoids a second full interpretation
+and premium file enrichment. A different request or selection reads fresh data; no analytical result is cached across
+HTTP requests. Opaque signatures already calculated for that view are also reused only inside its runtime.
+
+Files retains the complete query in full documents, progressive fragments and carried links, including the file-detail
+return context. The PR search keeps its existing query policy. On Files, `q` and `page` select a local projection of the
+same acquired population; changing them with replace-state does not invalidate that population's pending reply or
+failure/retry. Scope, period, metric, file selection, cancellation and newer navigation still govern acquisition.
+Requests keep the complete URL, while the freshness comparison ignores only these Files-local projection fields.
+The private controller owns reapplying the newest local projection and focus through a commit.
+
+With the same public extension fixture build, `node apps/app/qa/run.mjs --files-query` qualifies the public counterpart:
+171-character full/partial/GET reads and links, controlled replace-state edits during common/enrichment waits,
+failure and keyboard retry, no extra analytical request for a local edit, and rejection of a superseded population.
+It models the private controller's URL effect; it does not qualify that controller's input, filtering or focus behavior.
+
 Migration `0017_authorization-refresh.sql` adds the per-grant claim used before a one-use provider rotation. Other
 request runtimes re-read the committed winner with bounded backoff; pending/unknown rotation withholds data without
 revoking sessions. An interrupted rotation is never taken over by a timer: the provider may already have consumed the

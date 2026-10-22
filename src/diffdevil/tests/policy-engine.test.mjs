@@ -11,6 +11,7 @@ import { SIZE_PRESET } from '../../../dist/lib/policy/size-preset.js';
 import { canonicalJson } from '../../../dist/lib/inert.js';
 import { DEFAULT_LIMITS } from '../../../dist/lib/limits.js';
 import { unwrap } from '../../../dist/lib/errors.js';
+import { environmentFromReport } from '../../../dist/lib/language/index.js';
 
 const fixture = name => JSON.parse(readFileSync(new URL(`../../../docs/examples/reports/${name}.json`, import.meta.url)));
 const config = extra => ({ version: 1, presets: [], ...extra });
@@ -20,6 +21,13 @@ const target = { repository: 'example/repository', pullRequest: 42 };
 const query = (policy, expression, report = fixture('exact'), options) => unwrap(evaluatePolicyQuery(policy, report, expression, options));
 const measured = value => value.result.value.measurement;
 const planned = (policy, report = fixture('exact'), options) => unwrap(createPlan(unwrap(evaluatePolicy(policy, report)), target, options));
+
+test('policy and expression entry points still reject malformed supplied reports', () => {
+  const report = fixture('exact');
+  report.files[0].lines.changed = { status: 'exact', value: -1 };
+  assert.equal(evaluatePolicy(compile(), report).ok, false);
+  assert.equal(environmentFromReport(report).ok, false);
+});
 
 test('size preset generation remains bound to its canonical authored bytes', () => {
   const source = readFileSync('src/diffdevil/policy/size-preset.ts', 'utf8');
