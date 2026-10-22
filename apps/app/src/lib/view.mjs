@@ -77,7 +77,7 @@ export async function loadView({ url, viewer, session, runtime, surface = 'prs',
   const period = periodOf(state);
   const nowMs = Date.parse(nowIso);
   const window = { from: new Date(nowMs - period.days * DAY).toISOString(), to: nowIso, previousFrom: new Date(nowMs - 2 * period.days * DAY).toISOString() };
-  const detailRepository = surface === 'pr' && Number.isSafeInteger(detailRepositoryId)
+  const detailRepository = ['pr', 'files'].includes(surface) && Number.isSafeInteger(detailRepositoryId)
     ? viewer.repositories.find(repository => repository.repositoryId === detailRepositoryId)
     : undefined;
   const historyRepositories = (detailRepository ? [detailRepository] : repositories).filter(repository => repository.standing?.historyReadable);
@@ -145,7 +145,7 @@ export async function loadView({ url, viewer, session, runtime, surface = 'prs',
 export async function loadSurface(view, runtime, surface, detail = {}) {
   if (view.ids.length === 0) return null;
   const scope = ['pr', 'file'].includes(surface) ? { kind: 'repository', repositoryId: view.ids[0] } : view.contractScope;
-  try { return await runtime.analytics.query({ surface, repositoryIds: view.ids, from: view.window.from, to: view.window.to, scope, ...detail }, view.actor); }
+  try { return await runtime.analytics.query({ surface, repositoryIds: view.ids, from: view.window.from, to: view.window.to, scope, ...detail }, view.actor, surface === 'file' ? view.data : undefined); }
   catch { return null; }
 }
 

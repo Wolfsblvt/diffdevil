@@ -3,9 +3,11 @@
 import { swapTo, carryCharts } from './charts/mount';
 import { preserveNavigation } from './navigation-state';
 import { loadFragmentModules } from './fragment-modules';
+import { analyticalAcquisitionKey } from '../lib/scope.mjs';
 
 /** Hashes name a focus/anchor within a document, not a different analytical acquisition. */
 function documentUrl(value: string): string { const url = new URL(value, location.origin); url.hash = ''; return url.href; }
+function acquisitionKey(value: string): string { return analyticalAcquisitionKey(new URL(value, location.origin)); }
 let enrichmentController: AbortController | null = null;
 let notificationController: AbortController | null = null;
 
@@ -39,7 +41,7 @@ export function loadAnalyticalDocument(): void {
   const loading = document.querySelector<HTMLElement>('[data-analytical-loading]');
   if (!loading) return;
   const url = documentUrl(loading.dataset.url!);
-  const current = () => loading.isConnected && documentUrl(location.href) === url;
+  const current = () => loading.isConnected && acquisitionKey(location.href) === acquisitionKey(url);
   const region = loading.querySelector<HTMLElement>('[data-analytical-region]')!;
   const status = region.querySelector<HTMLElement>('[data-loading-status]')!;
   const retry = region.querySelector<HTMLButtonElement>('[data-loading-retry]')!;
@@ -103,13 +105,13 @@ async function enrich(reason = 'enrichment'): Promise<void> {
   for (const slot of slots) slot.dataset.pending = 'loading';
   try {
     const next = await fragment(url, 'enrichment', controller.signal);
-    if (documentUrl(location.href) !== url || !slots.every(slot => slot.isConnected)) return;
+    if (controller.signal.aborted || acquisitionKey(location.href) !== acquisitionKey(url) || !slots.every(slot => slot.isConnected)) return;
     for (const slot of slots) {
       const fresh = next.querySelector<HTMLElement>(`[data-premium-region="${CSS.escape(slot.dataset.premiumRegion!)}"]`);
       if (!fresh || fresh.dataset.pending) throw new Error('E_ANALYTICAL_READ');
     }
     await loadFragmentModules(next);
-    if (documentUrl(location.href) !== url || !slots.every(slot => slot.isConnected)) return;
+    if (controller.signal.aborted || acquisitionKey(location.href) !== acquisitionKey(url) || !slots.every(slot => slot.isConnected)) return;
     const retryFocused = slots.some(slot => slot.contains(document.activeElement) && document.activeElement?.matches('[data-premium-retry]'));
     document.querySelector('[data-pending-file-head]')?.remove();
     const finishCharts = carryCharts(next, reason);
@@ -125,7 +127,7 @@ async function enrich(reason = 'enrichment'): Promise<void> {
     announce('File history loaded.');
     document.dispatchEvent(new CustomEvent('diffdevil:page'));
   } catch {
-    if (controller.signal.aborted || documentUrl(location.href) !== url || !slots.some(slot => slot.isConnected)) return;
+    if (controller.signal.aborted || acquisitionKey(location.href) !== acquisitionKey(url) || !slots.some(slot => slot.isConnected)) return;
     for (const slot of slots) {
       if (!slot.isConnected) continue;
       slot.setAttribute('aria-busy', 'false');
@@ -153,14 +155,14 @@ async function notifications(url: string): Promise<void> {
   target.dataset.notificationsPending = 'loading';
   try {
     const next = await fragment(url, 'notifications', controller.signal);
-    if (documentUrl(location.href) !== documentUrl(url) || !target.isConnected) return;
+    if (controller.signal.aborted || acquisitionKey(location.href) !== acquisitionKey(url) || !target.isConnected) return;
     const invitation = next.querySelector('[data-analytical-notifications]');
     if (!invitation) throw new Error('E_ANALYTICAL_READ');
     target.replaceWith(invitation);
     notificationBadge();
     document.dispatchEvent(new CustomEvent('diffdevil:page'));
   } catch {
-    if (controller.signal.aborted || !target.isConnected) return;
+    if (controller.signal.aborted || acquisitionKey(location.href) !== acquisitionKey(url) || !target.isConnected) return;
     // Optional chrome may be unavailable; it cannot hold navigation or analytical content.
     target.removeAttribute('data-notifications-pending');
     target.dataset.notificationsUnavailable = 'true';

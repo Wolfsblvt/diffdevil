@@ -381,3 +381,10 @@ Without the extension an entitled reader's Files and File detail answer `standin
 `entitlements.premium.provided: false` and no files, never an empty list standing in for a computation; the
 pull-request surface returns `alsoInProgress: null` and omits `recentFileActivity` and `cochange`. A Free reader's
 answers are unchanged (`standing: "free"`).
+
+The App's server-side `loadSurface` helper can continue a repository-scoped Files response into File detail within
+one request. It passes the original response object separately from the JSON query; the service retains the acquired
+records, interpreted facts and file enrichment only for that object. Matching actor identity, repository set, window,
+metric and compiled current policy are required, with fresh authorization/entitlement checks and readable-history
+checks before and after the file-detail derivation. Otherwise it performs an independent query. This introduces no
+HTTP query field, persisted projection, cross-request result cache or private consumer-interface change.

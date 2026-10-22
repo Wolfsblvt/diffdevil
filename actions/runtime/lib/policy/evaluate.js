@@ -5,7 +5,7 @@ import { readReport, withPathPolicy } from '../report.js';
 import { expressionReferences } from '../language/compile.js';
 import { compileExpression } from '../language/text.js';
 import { compileShortcut } from '../language/shortcuts.js';
-import { environmentFromReport, withParameters, withPolicyValues } from '../language/environment.js';
+import { environmentFromValidatedReport, withParameters, withPolicyValues } from '../language/environment.js';
 import { evaluateExpression } from '../language/evaluate.js';
 import { boolValue, textValue, unknownValue } from '../language/values.js';
 import { requireType } from '../language/types.js';
@@ -67,7 +67,8 @@ export class PolicyEvaluation {
             this.bandValues[id] = { status: 'unknown', candidates: band.ranges.ids, reasons: pending };
         for (const id of Object.keys(document.rules ?? {}))
             this.ruleValues[id] = { disposition: 'held' };
-        const env = unwrap(environmentFromReport(this.facts));
+        // The input was validated above; withPathPolicy is our own report transformation.
+        const env = environmentFromValidatedReport(this.facts);
         this.baseEnvironment = unwrap(withParameters(env, Object.fromEntries(Object.entries(document.parameters ?? {}).map(([id, p]) => [id, p.type])), parameters));
     }
     environment() {

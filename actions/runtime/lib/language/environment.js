@@ -106,7 +106,11 @@ function totalsValue(totals, files, values, complete) {
     for (const group of ['raw', 'lines']) {
         const fields = Object.create(null);
         for (const [key, m] of Object.entries(totals[group])) {
-            let value = numberValue(m);
+            // Path selection can create an incomplete total. Preserve the reader's canonical
+            // measurement field order without validating and copying the whole report again.
+            let value = numberValue(m.status === 'unknown'
+                ? { status: m.status, reasons: m.reasons, ...(m.lower === undefined ? {} : { lower: m.lower }), ...(m.upper === undefined ? {} : { upper: m.upper }) }
+                : m);
             if (complete) {
                 value = integer(0);
                 for (const file of files) {
@@ -124,30 +128,31 @@ function totalsValue(totals, files, values, complete) {
     return recordValue(groups);
 }
 export function environmentFromReport(input) {
-    return capture(() => {
-        const report = unwrap(readReport(input));
-        const files = new Map(report.files.map(file => [file.id, fileValue(file, report.source.comparisonId)]));
-        const included = report.files.filter(file => file.included), scopeTypes = Object.create(null), scopes = Object.create(null);
-        for (const [name, scope] of Object.entries(report.scopes ?? {})) {
-            const ids = new Set(scope.fileIds), selected = report.files.filter(file => ids.has(file.id));
-            scopeTypes[name] = recordType({ files: collection(FILE_TYPE), totals: totalsType(true) });
-            scopes[name] = recordValue({ files: fileCollection(selected, files, scope.fileSet), totals: totalsValue(scope.totals, selected, files, scope.fileSet.complete) });
-        }
-        const metricTypes = { ...report.metricTypes }, metrics = Object.create(null);
-        for (const [key, measurement] of Object.entries(report.metrics ?? {}))
-            metrics[key] = numberValue(measurement, metricTypes[key]);
-        const sourceKeys = ['kind', 'comparisonId', 'base', 'baseTip', 'head', 'comparison', 'repository'];
-        const sourceType = recordType({ ...Object.fromEntries(sourceKeys.map(key => [key, key === 'kind' || key === 'comparisonId' ? 'string' : optional('string')])), pullRequest: optional('integer') });
-        const source = recordValue({ ...Object.fromEntries(sourceKeys.map(key => [key, Object.hasOwn(report.source, key) ? textValue(String(report.source[key])) : { kind: 'missing' }])), pullRequest: report.source.pullRequest === undefined ? { kind: 'missing' } : integer(report.source.pullRequest) });
-        const bandTypes = Object.fromEntries(Object.keys(report.bands ?? {}).map(key => [key, bandType]));
-        const bands = Object.fromEntries(Object.entries(report.bands ?? {}).map(([key, value]) => [key, bandValue(value)]));
-        const ruleTypes = Object.create(null), rules = Object.create(null);
-        for (const [key, rule] of Object.entries(report.rules ?? {})) {
-            ruleTypes[key] = ruleType;
-            rules[key] = ruleValue(rule);
-        }
-        const schema = { totals: totalsType(false), files: collection(FILE_TYPE), scopes: recordType(scopeTypes), metrics: recordType(metricTypes), bands: recordType(bandTypes), rules: recordType(ruleTypes), params: recordType({}), measurement: summaryType, source: sourceType };
-        return seal(schema, { totals: totalsValue(report.totals, included, files, report.fileSet.complete), files: fileCollection(report.files, files, report.fileSet), scopes: recordValue(scopes), metrics: recordValue(metrics), bands: recordValue(bands), rules: recordValue(rules), params: recordValue({}), measurement: summaryValue(report.measurement), source }, true);
-    });
+    return capture(() => environmentFromValidatedReport(unwrap(readReport(input))));
+}
+/** @internal Build from the report this engine has already validated and transformed. External inputs use environmentFromReport. */
+export function environmentFromValidatedReport(report) {
+    const files = new Map(report.files.map(file => [file.id, fileValue(file, report.source.comparisonId)]));
+    const included = report.files.filter(file => file.included), scopeTypes = Object.create(null), scopes = Object.create(null);
+    for (const [name, scope] of Object.entries(report.scopes ?? {})) {
+        const ids = new Set(scope.fileIds), selected = report.files.filter(file => ids.has(file.id));
+        scopeTypes[name] = recordType({ files: collection(FILE_TYPE), totals: totalsType(true) });
+        scopes[name] = recordValue({ files: fileCollection(selected, files, scope.fileSet), totals: totalsValue(scope.totals, selected, files, scope.fileSet.complete) });
+    }
+    const metricTypes = { ...report.metricTypes }, metrics = Object.create(null);
+    for (const [key, measurement] of Object.entries(report.metrics ?? {}))
+        metrics[key] = numberValue(measurement, metricTypes[key]);
+    const sourceKeys = ['kind', 'comparisonId', 'base', 'baseTip', 'head', 'comparison', 'repository'];
+    const sourceType = recordType({ ...Object.fromEntries(sourceKeys.map(key => [key, key === 'kind' || key === 'comparisonId' ? 'string' : optional('string')])), pullRequest: optional('integer') });
+    const source = recordValue({ ...Object.fromEntries(sourceKeys.map(key => [key, Object.hasOwn(report.source, key) ? textValue(String(report.source[key])) : { kind: 'missing' }])), pullRequest: report.source.pullRequest === undefined ? { kind: 'missing' } : integer(report.source.pullRequest) });
+    const bandTypes = Object.fromEntries(Object.keys(report.bands ?? {}).map(key => [key, bandType]));
+    const bands = Object.fromEntries(Object.entries(report.bands ?? {}).map(([key, value]) => [key, bandValue(value)]));
+    const ruleTypes = Object.create(null), rules = Object.create(null);
+    for (const [key, rule] of Object.entries(report.rules ?? {})) {
+        ruleTypes[key] = ruleType;
+        rules[key] = ruleValue(rule);
+    }
+    const schema = { totals: totalsType(false), files: collection(FILE_TYPE), scopes: recordType(scopeTypes), metrics: recordType(metricTypes), bands: recordType(bandTypes), rules: recordType(ruleTypes), params: recordType({}), measurement: summaryType, source: sourceType };
+    return seal(schema, { totals: totalsValue(report.totals, included, files, report.fileSet.complete), files: fileCollection(report.files, files, report.fileSet), scopes: recordValue(scopes), metrics: recordValue(metrics), bands: recordValue(bands), rules: recordValue(rules), params: recordValue({}), measurement: summaryValue(report.measurement), source }, true);
 }
 //# sourceMappingURL=environment.js.map

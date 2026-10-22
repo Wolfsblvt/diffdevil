@@ -20,6 +20,7 @@ const prNumber = Number(identifier);
 const pages = runtime.premium.pages;
 const surface = route.section === 'overview' || route.section === 'file' ? 'files' : route.section;
 const detail = surface === 'pr' ? { repositoryId: repository?.repositoryId, pullRequest: prNumber }
+  : route.section === 'file' ? { repositoryId: repository?.repositoryId }
   : route.section === 'files' || route.section === 'overview' ? pages.files?.query?.(url) ?? {} : {};
 const viewUrl = ['pr', 'file'].includes(route.section) && !url.search ? new URL(`${url.pathname}?s=${repository ? fullName : 'all'}`, url) : url;
 const view = await loadView({ url: viewUrl, viewer: Astro.locals.viewer, session: Astro.locals.session, runtime, surface, detail });

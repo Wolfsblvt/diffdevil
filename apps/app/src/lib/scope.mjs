@@ -27,6 +27,8 @@ function clean(value, pattern = SHORT) { return typeof value === 'string' && pat
 /** Parse the query string into the view state; anything malformed falls back to its default. */
 export function readViewState(url) {
   const query = url instanceof URL ? url.searchParams : new URLSearchParams(url);
+  // File detail carries the Files query back to its ranking; it does not search PRs.
+  const completeFileQuery = url instanceof URL && (url.pathname === '/files' || url.pathname.startsWith('/file/'));
   const scope = query.get('s');
   const period = query.get('per');
   const page = Number(query.get('page'));
@@ -38,7 +40,7 @@ export function readViewState(url) {
     band: clean(query.get('band')),
     ev: clean(query.get('ev')),
     sort: clean(query.get('sort')),
-    q: typeof query.get('q') === 'string' ? query.get('q').slice(0, 120) : '',
+    q: completeFileQuery ? query.get('q') ?? '' : (query.get('q') ?? '').slice(0, 120),
     page: Number.isSafeInteger(page) && page > 1 ? String(page) : '',
     w: bucket !== null && /^\d{1,3}$/u.test(bucket) ? bucket : '',
     m: clean(query.get('m')),
@@ -47,6 +49,18 @@ export function readViewState(url) {
     // A selected file is addressed by its opaque locator, never by its path.
     sel: clean(query.get('sel'), LOCATOR)
   };
+}
+
+/** Files q/page project an acquired population locally; every other selection still identifies a different acquisition. */
+export function analyticalAcquisitionKey(input) {
+  const url = new URL(input);
+  url.hash = '';
+  if (url.pathname === '/files') {
+    url.searchParams.delete('q');
+    url.searchParams.delete('page');
+    url.searchParams.sort();
+  }
+  return url.href;
 }
 
 /** Describe the scope selector: everything, one namespace, or one repository. */

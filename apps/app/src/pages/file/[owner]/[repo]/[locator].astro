@@ -15,7 +15,7 @@ const runtime = Astro.locals.app;
 const { owner, repo, locator } = Astro.params;
 const fullName = `${owner}/${repo}`;
 const repository = runtime.locator.plausible(locator) ? repositoryByFullName(Astro.locals.viewer, fullName) : undefined;
-const view = await loadView({ url: new URL(Astro.url.pathname + (Astro.url.search || `?s=${repository ? fullName : 'all'}`), Astro.url), viewer: Astro.locals.viewer, session: Astro.locals.session, runtime, surface: 'files' });
+const view = await loadView({ url: new URL(Astro.url.pathname + (Astro.url.search || `?s=${repository ? fullName : 'all'}`), Astro.url), viewer: Astro.locals.viewer, session: Astro.locals.session, runtime, surface: 'files', detail: { repositoryId: repository?.repositoryId } });
 if (!repository) Astro.response.status = 404;
 const Body = runtime.premium.pages.file?.Body;
 const here = view.premiumHere && Boolean(Body);

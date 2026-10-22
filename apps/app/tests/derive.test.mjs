@@ -186,3 +186,21 @@ test('URL state parses defensively and links omit defaults', () => {
   assert.equal(describeScope('owner/repo').kind, 'repository');
   assert.equal(describeScope('nonsense').kind, 'all');
 });
+
+test('Files preserves a complete query through period, metric, card, paging and file-return links', () => {
+  const query = 'path/' + 'a'.repeat(148) + '/package-lock.json';
+  assert.equal(query.length, 171);
+  for (const pathname of ['/files', '/file/parser-guild/parser-lab/' + 'a'.repeat(22)]) {
+    const url = new URL(pathname, 'https://app.example');
+    url.search = new URLSearchParams({ s: 'parser-guild/parser-lab', per: '7d', m: 'changed', q: query, page: '3', sel: 'b'.repeat(22) }).toString();
+    const state = readViewState(url);
+    assert.equal(state.q, query);
+    for (const patch of [{ per: '90d' }, { m: 'turnover' }, { sel: 'c'.repeat(22) }, { page: '4' }, {}]) {
+      const carried = new URL(link(state, '/files', patch), url);
+      assert.equal(carried.searchParams.get('q'), query);
+      assert.equal(carried.searchParams.get('s'), 'parser-guild/parser-lab');
+      assert.equal(readViewState(carried).q, query);
+    }
+  }
+  assert.equal(readViewState(new URL('https://app.example/prs?' + new URLSearchParams({ q: query }))).q, query.slice(0, 120), 'the PR search policy is unchanged');
+});
