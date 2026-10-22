@@ -85,3 +85,19 @@ test('file detail separates retained identity from selected-period rows while re
   assert.equal(activeView.fileHasSelectedPeriodActivity, true, 'the pathless locator response carries active-period state');
   assert.deepEqual(activeView.files, [], 'pathless locator metadata is not mislabeled as rich aggregate detail');
 });
+
+test('invalid file detail does not query a broader analytical population before its not-found page can render', async () => {
+  const repository = { repositoryId: 1, owner: 'reader', fullName: 'reader/repo', standing: { historyReadable: true } };
+  const runtime = { now: () => '2026-10-21T00:00:00.000Z', store: {
+    analyticalCoverage: async ids => ({ counts: new Map(ids.map(id => [id, 3])) }), observationBounds: async () => ({}) },
+    cache: createContextCache(), premium: { provided: false },
+    analytics: { query: async () => { throw new Error('An invalid detail route must not read another population'); } } };
+  const viewer = { userId: 123, plan: 'Pro', namespaces: [], repositories: [repository] };
+  const view = await loadView({ url: new URL('https://app.example/file/reader/repo/not-a-locator'), viewer,
+    session: { reads: { recentPullRequests: async () => ({ pullRequests: [] }) } }, runtime, surface: 'file',
+    detail: { repositoryId: undefined, fileLocator: 'not-a-locator' } });
+  assert.deepEqual(view.ids, []);
+  assert.equal(view.dataStanding, 'none');
+  assert.equal(view.fileIdentity, undefined);
+  assert.deepEqual(view.repositories, [repository], 'the authorised navigation remains available');
+});

@@ -27,9 +27,18 @@ The ordinary read consumes the analytical record already normalized by ingestion
 still happens at read time, once per measurement in that query; populations, policy changes and coverage keep their
 meaning. This does not add a persistent analytical cache or a new job system.
 
+A malformed or inaccessible file-detail route keeps the authorised navigation available and reaches its not-found
+page without querying the broader repository population.
+
 `node apps/app/qa/run.mjs --loading` qualifies the built Community Worker with the retained local fixture and held/failed
 data replies: prompt shell, independent navigation, populated rendering, retry, superseded replies and reduced motion.
 It does not prove the joined private extension, provider CPU/memory, staging recovery or ordinary live use.
+
+`node apps/app/qa/run.mjs --pr-search-detail` exercises all-repository search, direct PR detail and Back on Free,
+then repeats with Pro when the build joins an extension. Its deliberately unreadable retained record must leave the
+older pathless result usable; premium regions must expose local keyboard Retry and recover independently. This failed-read
+journey waits for the common document's readiness rather than network silence. The full journey still checks the
+accepted Overview chart composition through its deferred-region wrappers.
 
 For held/failed premium-region and chart-continuity checks without private source, build with
 `DIFFDEVIL_PREMIUM=apps/app/qa/loading-premium/index.mjs`, then run the same `--loading` journey. This joins a clearly

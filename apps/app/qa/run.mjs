@@ -188,9 +188,14 @@ async function holdBusinessHistoryJob() {
 const browser = await chromium.launch({ executablePath: process.env.PLAYWRIGHT_EXECUTABLE_PATH });
 const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, colorScheme: 'dark' });
 const consoleErrors = [], pageErrors = [], external = [];
+let expectPrEnrichmentFailure = false;
 context.on('page', page => {
   // A deliberately requested 404 (the refused repository or handle) is not a console error worth failing on.
-  page.on('console', message => { if (message.type() === 'error' && !((LOADING_ONLY || FILES_QUERY_ONLY) && /status of 503/u.test(message.text())) && !(/status of 404/u.test(message.text()) && /\/pr\/someone\/else\/|\/file\/.*\/(?:not-a-locator|a{22})(?:\?|$)/u.test(page.url()))) consoleErrors.push(`${page.url()} ${message.text()}`); });
+  page.on('console', message => {
+    const expectedPrFailure = expectPrEnrichmentFailure && /status of 503/u.test(message.text())
+      && new URL(message.location().url || page.url(), ORIGIN).pathname === '/pr/parser-guild/parser-lab/452';
+    if (message.type() === 'error' && !expectedPrFailure && !((LOADING_ONLY || FILES_QUERY_ONLY) && /status of 503/u.test(message.text())) && !(/status of 404/u.test(message.text()) && /\/pr\/someone\/else\/|\/file\/.*\/(?:not-a-locator|a{22})(?:\?|$)/u.test(page.url()))) consoleErrors.push(`${page.url()} ${message.text()}`);
+  });
   page.on('pageerror', error => pageErrors.push(`${page.url()} ${error.message}`));
   page.on('request', request => { const url = new URL(request.url()); if (!['127.0.0.1', 'localhost'].includes(url.hostname)) external.push(request.url()); });
 });
@@ -245,18 +250,44 @@ async function qualifyAllRepositoriesSearchDetail(returnUrl, originalFacts) {
   const directResponse = await go('/pr/parser-guild/parser-lab/452?per=90d');
   const directDetail = await page.evaluate(() => ({ result: document.querySelector('.a-result .big .n')?.textContent ?? '', unavailable: document.body.innerText.includes('The analytical read did not answer.') }));
   check('the ordinary direct PR detail route returns the same retained result as search-to-detail', directResponse.status() === 200 && directDetail.result === searchedDetail.result && !directDetail.unavailable, JSON.stringify(directDetail));
+  const hasPremiumRegions = await page.locator('[data-premium-region="pr-context"]').count() > 0;
 
   const noHistoryResponse = await go('/pr/parser-guild/parser-lab/999999?per=90d');
   const noHistoryText = await page.locator('.a-pn-b').innerText();
   check('a completed empty analytical read says no retained analysis', noHistoryResponse.status() === 200 && /No retained analysis/u.test(noHistoryText) && !/cannot confirm/u.test(noHistoryText), noHistoryText);
+  await settled();
 
   // This malformed row makes the repository's analytical service read fail; pathless PR452 history remains readable.
   executeLocal("INSERT INTO analytical_pull_requests(repository_id, pull_request, updated_at, expires_at, record_json) VALUES (1001, 999999, '2026-10-15T00:00:00.000Z', NULL, 'not-json')", STATE);
+  expectPrEnrichmentFailure = hasPremiumRegions;
   try {
-    const unavailableResponse = await go('/pr/parser-guild/parser-lab/452?per=90d');
+    const failedEnrichment = hasPremiumRegions ? page.waitForResponse(response => new URL(response.url()).pathname === '/pr/parser-guild/parser-lab/452'
+      && response.request().headers()['x-diffdevil-render'] === 'enrichment' && response.status() === 503) : null;
+    // Failed enrichment is local state, not a requirement for network silence before the common view is useful.
+    const [unavailableResponse] = await Promise.all([
+      go('/pr/parser-guild/parser-lab/452?per=90d', { waitUntil: 'domcontentloaded' }), failedEnrichment
+    ]);
     const unavailableFacts = await page.evaluate(() => ({ text: document.body.innerText, changed: document.querySelector('.a-result .big .n')?.textContent ?? '' }));
     check('an unanswered retained read is explicit while the older pathless PR detail remains available', unavailableResponse.status() === 200 && unavailableFacts.changed !== '' && /retained read unanswered · showing pathless history/u.test(unavailableFacts.text) && /The retained analytical read did not answer/u.test(unavailableFacts.text) && /cannot confirm this pull request’s lifecycle or final merged comparison/u.test(unavailableFacts.text) && !/lifecycle not retained for this repository/u.test(unavailableFacts.text), JSON.stringify({ changed: unavailableFacts.changed, text: unavailableFacts.text.replace(/\s+/gu, ' ').slice(0, 500) }));
+    if (hasPremiumRegions) {
+      const retry = page.locator('[data-premium-retry]:visible').first();
+      await retry.waitFor();
+      check('a failed PR enrichment leaves the pathless result, files and navigation usable with local retry',
+        await page.locator('[data-premium-region][data-pending="failed"]').count() === 3
+        && await page.locator('.pr-files tbody tr').count() > 0 && await page.locator('[data-nav]').count() === 1
+        && /unavailable, not zero/u.test(await page.locator('[data-region-status]').first().innerText()));
+      await shot('pr-retained-read-unavailable');
+      await page.locator('.a-frame').evaluate(node => { window.__prFallbackFrame = node; });
+      executeLocal('DELETE FROM analytical_pull_requests WHERE repository_id=1001 AND pull_request=999999', STATE);
+      await retry.focus(); await page.keyboard.press('Enter');
+      await settled();
+      check('keyboard Retry recovers PR enrichment without replacing the common fallback or navigation',
+        await page.locator('.a-frame').evaluate(node => node === window.__prFallbackFrame)
+        && await page.locator('.a-result .big .n').innerText() === unavailableFacts.changed
+        && await page.locator('.pr-files a[href^="/file/"]').count() > 0 && await page.locator('[data-nav]').count() === 1);
+    }
   } finally {
+    expectPrEnrichmentFailure = false;
     executeLocal('DELETE FROM analytical_pull_requests WHERE repository_id=1001 AND pull_request=999999', STATE);
   }
 
@@ -284,6 +315,15 @@ async function thumbPosition(selector, view) {
 }
 
 /** The F1 contract on one frame: the readout stays 66 px and the plot never moves under keyboard focus, pin and clear; the table view carries rows; the live region speaks on keyboard moves. */
+async function qualifyDetailRefusals() {
+  const badHandle = await go('/file/parser-guild/parser-lab/not-a-locator');
+  const badHandleFacts = { status: badHandle.status(), responseUrl: badHandle.url(), pageUrl: page.url(), headings: await page.locator('h1').allTextContents() };
+  check('a malformed file handle is refused with 404', badHandleFacts.status === 404, JSON.stringify(badHandleFacts));
+  const deniedRead = page.waitForResponse(response => new URL(response.url()).pathname === '/pr/someone/else/1' && response.request().headers()['x-diffdevil-render'] === 'page');
+  const denied = await go('/pr/someone/else/1');
+  check('a generic shell carries no foreign data and the authorised detail read refuses an inaccessible repository with 404', denied.status() === 200 && (await deniedRead).status() === 404 && await page.locator('.a-result').count() === 0 && (await page.evaluate(() => /Not in your repositories/u.test(document.body.innerText))));
+}
+
 async function qualifyFrame(label, selector) {
   const before = await geometry(selector);
   if (!before) { check(`${label}: frame ${selector} exists`, false); return; }
@@ -468,7 +508,7 @@ async function qualifyPages(label, { pro }) {
   check(`${label} overview shows ${premiumPanels ? 'premium panels with plan chips' : 'Free panels with bounded See Pro placeholders and no premium chips in panel titles'}`, premiumPanels ? (await page.evaluate(() => document.querySelectorAll('.a-pn-t .a-plan').length)) > 0 : (await page.evaluate(() => document.querySelectorAll('.a-pn-t .a-plan').length)) === 0, `chips=${proChips} hints=${hints}`);
   check(`${label} overview hero names its merged population from retained lifecycle`, await page.evaluate(() => /Merged pull requests/u.test(document.querySelector('.a-hero-l .eb')?.textContent ?? '')));
   await settled();
-  check(`${label} overview composes the accepted rows (${premiumPanels ? 'cloud, ' : ''}Change volume, flow, time to merge by size, size mix${premiumPanels ? ', Turnover map' : ''})`, await page.evaluate(pro => { const kinds = [...document.querySelectorAll('.a-grid > [data-chart]')].map(host => host.dataset.chart); const want = pro ? ['cloud', 'mosaic', 'flow', 'ttm', 'mix', 'turnover'] : ['mosaic', 'flow', 'ttm', 'mix']; return want.every(kind => kinds.includes(kind)) && (pro || !kinds.includes('cloud')) && !document.querySelector('[data-chart-provisional]'); }, premiumPanels), await page.evaluate(() => [...document.querySelectorAll('[data-chart]')].map(host => host.dataset.chart).join(',')));
+  check(`${label} overview composes the accepted rows (${premiumPanels ? 'cloud, ' : ''}Change volume, flow, time to merge by size, size mix${premiumPanels ? ', Turnover map' : ''})`, await page.evaluate(pro => { const kinds = [...document.querySelectorAll('.a-grid > [data-chart], .a-grid > [data-premium-region] [data-chart]')].map(host => host.dataset.chart); const want = pro ? ['cloud', 'mosaic', 'flow', 'ttm', 'mix', 'turnover'] : ['mosaic', 'flow', 'ttm', 'mix']; return want.every(kind => kinds.includes(kind)) && (pro || !kinds.includes('cloud')) && !document.querySelector('[data-chart-provisional]'); }, premiumPanels), await page.evaluate(() => [...document.querySelectorAll('[data-chart]')].map(host => host.dataset.chart).join(',')));
   const hero = await page.evaluate(() => ({ svg: Boolean(document.querySelector('[data-hero-plot] svg')), dl: document.querySelector('[data-hero-dl]')?.textContent ?? '' }));
   await page.focus('[data-hero-plot]'); await page.keyboard.press('ArrowLeft');
   const heroKeyed = await page.evaluate(() => document.querySelector('[data-hero-dl]')?.textContent ?? '');
@@ -766,6 +806,13 @@ try {
     await startWorker(undefined, STATE, { commercial: COMMERCIAL_FREE, allowances: { free: { private: 3, publicHistory: 10 }, proOrganisation: { private: 3 } } });
     await signIn();
     await qualifyAllRepositoriesSearchDetail();
+    if (edition.premium) {
+      await stopWorker();
+      await startWorker(ENTITLEMENT_FIXTURE);
+      await signIn();
+      await qualifyAllRepositoriesSearchDetail();
+    }
+    await qualifyDetailRefusals();
   } else if (PR_FILES_ONLY) {
     await startWorker(undefined, STATE, { commercial: COMMERCIAL_PRO });
     await signIn();
@@ -980,11 +1027,7 @@ try {
     check('without the premium extension PR detail keeps its named files as plain text and says file context is not part of this build', detailFacts.fileLinks === 0 && (await page.locator('#h-ctx1, #h-recent, #h-ow').count()) === 0 && (await page.evaluate(() => /File context is not part of this build/u.test(document.body.innerText))));
     await shot('community-pr-detail');
   }
-  const badHandle = await go('/file/parser-guild/parser-lab/not-a-locator');
-  check('a malformed file handle is refused with 404', badHandle.status() === 404);
-  const deniedRead = page.waitForResponse(response => new URL(response.url()).pathname === '/pr/someone/else/1' && response.request().headers()['x-diffdevil-render'] === 'page');
-  const denied = await go('/pr/someone/else/1');
-  check('a generic shell carries no foreign data and the authorised detail read refuses an inaccessible repository with 404', denied.status() === 200 && (await deniedRead).status() === 404 && await page.locator('.a-result').count() === 0 && (await page.evaluate(() => /Not in your repositories/u.test(document.body.innerText))));
+  await qualifyDetailRefusals();
 
   await premium?.files?.(ctx);
   if (!premium) {

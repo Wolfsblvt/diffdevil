@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
 /** The built Worker and retained fixture, with the data reply held/refused independently of its document. */
+import { readViewState } from '../src/lib/scope.mjs';
+
 export async function loadingJourney({ page, check, shot, ORIGIN, settled, joined }) {
   const scope = '/?s=%40parser-guild&per=90d';
   let release;
@@ -111,7 +113,14 @@ export async function loadingJourney({ page, check, shot, ORIGIN, settled, joine
       await page.locator('[data-analytical-loading]').waitFor({ state: 'detached' });
       await page.locator('[data-premium-region][data-pending="loading"]').first().waitFor();
       check(`${title} retains one page heading and navigation while premium is held`, await page.locator('h1').count() === 1 && await page.locator('[data-nav]').count() === 1);
-      if (title === 'File history') check('pending file identity reveals no unestablished path', await page.locator('h1').innerText() === 'File history' && await page.locator('[data-pending-file-head]').innerText().then(text => text.includes('parser-guild/parser-lab')));
+      if (title === 'File history') {
+        const identityTitle = await page.locator('h1').evaluate(heading => {
+          const title = heading.cloneNode(true);
+          title.querySelector('[data-staging-mark]')?.remove();
+          return title.textContent.trim();
+        });
+        check('pending file identity reveals no unestablished path', identityTitle === 'File history' && await page.locator('[data-pending-file-head]').innerText().then(text => text.includes('parser-guild/parser-lab')));
+      }
       await shot(`loading-held-premium-${title === 'File history' ? 'file' : 'pr'}`);
       premiumMode = 'fail'; finishPremium();
       const retryPremium = page.locator('[data-premium-retry]:visible').first();
@@ -127,13 +136,14 @@ export async function loadingJourney({ page, check, shot, ORIGIN, settled, joine
     await page.goto(`${ORIGIN}${scope}`, { waitUntil: 'networkidle' }); await settled();
     await page.locator('[data-premium-region] [data-chart]').first().evaluate(node => { window.__loadingPremiumChart = node; });
     premiumGate = new Promise(resolve => { finishPremium = resolve; }); premiumMode = 'hold';
-    await page.getByRole('link', { name: '7 days', exact: true }).click();
-    await page.waitForURL(url => url.searchParams.get('per') === '7d');
+    // Chart-to-chart continuity needs a populated window, not the retained fixture's potentially empty last seven days.
+    await page.getByRole('link', { name: '30 days', exact: true }).click();
+    await page.waitForURL(url => (url.searchParams.get('per') ?? '30d') === '30d');
     await page.locator('[data-premium-region][data-pending="loading"]').first().waitFor();
     check('fresh common results commit while the previous premium chart remains usable and identified', await page.locator('[data-premium-region] [data-chart]').first().evaluate(node => node === window.__loadingPremiumChart) && /previous selection remains displayed/u.test(await page.locator('[data-region-status]').first().innerText()));
     premiumMode = 'fail'; finishPremium();
     await page.locator('[data-premium-retry]:visible').first().waitFor();
-    check('optional premium failure cannot block the new common period', new URL(page.url()).searchParams.get('per') === '7d' && await page.locator('[data-period] [aria-current="true"]').innerText() === '7 days');
+    check('optional premium failure cannot block the new common period', readViewState(new URL(page.url())).per === '30d' && await page.locator('[data-period] [aria-current="true"]').innerText() === '30 days');
     premiumMode = 'pass'; await page.locator('[data-premium-retry]:visible').first().click(); await settled();
     check('premium region retry updates the same live chart object', await page.locator('[data-premium-region] [data-chart]').first().evaluate(node => node === window.__loadingPremiumChart));
     await page.unroute(`${ORIGIN}/**`);

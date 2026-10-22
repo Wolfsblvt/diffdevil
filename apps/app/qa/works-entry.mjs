@@ -14,6 +14,7 @@ import { appBuildTarget } from '../build-target.mjs';
 import { D1AppStore } from '../../github-app/storage.mjs';
 import { migrationNames } from './seed.mjs';
 import { createFakeGitHub, CODE, USER } from './fixture.mjs';
+import { reconcileInterceptionFailures } from './interception-failures.mjs';
 
 const target = appBuildTarget();
 const APP = target.origin;
@@ -105,6 +106,7 @@ const local = new Miniflare(convertV4MiniflareOptions({ ...workerOptions, name: 
 let browser, wire, closing = false;
 const inFlight = new Set();
 const networkFailures = new Map();
+const discardedInterceptions = [];
 let abortedResources = 0;
 const results = [], violations = [], transportErrors = [], nativeResponses = [], planPolicies = [];
 const formAction = headers => headers.get('content-security-policy')?.split(';').map(part => part.trim()).find(part => part.startsWith('form-action '));
@@ -174,10 +176,12 @@ try {
       throw new Error(`Unexpected browser destination: ${url.origin}${url.pathname}`);
     } catch (error) {
       if (closing) return; // Fetch.disable deliberately cancels remaining resource interceptions during teardown.
-      // A new document can discard an in-flight stylesheet/image. Count only a CDP-confirmed browser abort;
-      // navigation failures and any uncorroborated interception error still fail the transport check.
-      if (resourceType !== 'Document' && String(error).includes('Invalid InterceptionId')
-        && networkFailures.get(networkId) === 'net::ERR_ABORTED') { abortedResources++; return; }
+      // Navigation can discard a resource or XHR before its loadingFailed event reaches CDP.
+      // Keep the error until the final transport check can correlate both event orders.
+      if (resourceType !== 'Document' && String(error).includes('Invalid InterceptionId')) {
+        discardedInterceptions.push({ error, resourceType, networkId });
+        return;
+      }
       transportErrors.push(String(error));
       console.error(String(error));
       await wire.send('Fetch.failRequest', { requestId, errorReason: 'BlockedByClient' }).catch(() => {});
@@ -350,6 +354,11 @@ try {
   });
   await refused;
   check('an arbitrary first external form destination stays blocked by CSP', violations.length === 1 && new URL(page.url()).origin === APP && !requests.some(url => url.startsWith('https://unadmitted.example.test')));
+  await Promise.allSettled([...inFlight]);
+  const discarded = reconcileInterceptionFailures(discardedInterceptions, networkFailures);
+  abortedResources += discarded.abortedResources;
+  transportErrors.push(...discarded.errors);
+  for (const error of discarded.errors) console.error(error);
   check('all browser and backend provider traffic stays in the doubles', transportErrors.length === 0 && calls.every(call => ['http://github.invalid', WORKS].includes(call.origin)));
   await writeFile(join(OUT, 'results.json'), JSON.stringify({ target: target.name, build: built.main, browser: browser.version(), viewport: '1440x900', javaScript: !noJavaScript, authenticationHops, abortedResources,
     results, violations, calls, planPolicies,
