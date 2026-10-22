@@ -76,11 +76,12 @@ html[data-theme-pref="auto"][data-theme="light"] .theme-dot{color:#161b24}
 @media(max-width:480px){.brand .surface-title{display:none}}
 
 /* footer: the website's footer — brand column, product-owned link groups, one base row with
-   the maker's compact lockup and icon-only socials. The Works lockup is copied unchanged from
-   the Works brand bundle; all rights reserved (see licenses.md). */
-:root,[data-theme="dark"]{--logo-works:url("../../assets/works-lockup-compact-dark.svg")}
-[data-theme="light"]{--logo-works:url("../../assets/works-lockup-compact-light.svg")}
-@media(prefers-color-scheme:light){:root:not([data-theme]){--logo-works:url("../../assets/works-lockup-compact-light.svg")}}
+   the maker's compact lockup and icon-only socials. The Works lockup is the pinned Works brand
+   bundle export at vendor/brand/works/; the build verifies it and copies it beside the page
+   under these names (all rights reserved, see licenses.md). */
+:root,[data-theme="dark"]{--logo-works:url("assets/works-lockup-compact-dark.svg")}
+[data-theme="light"]{--logo-works:url("assets/works-lockup-compact-light.svg")}
+@media(prefers-color-scheme:light){:root:not([data-theme]){--logo-works:url("assets/works-lockup-compact-light.svg")}}
 .site-footer{border-top:1px solid var(--hair);margin-top:24px;padding:34px 0 26px;font-size:13px;color:var(--fg-2)}
 .site-footer .grid{display:grid;grid-template-columns:1.2fr 1fr 1fr 1fr;gap:28px}
 .site-footer .grid>*{min-width:0}
