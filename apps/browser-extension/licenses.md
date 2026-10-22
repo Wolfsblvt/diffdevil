@@ -8,6 +8,8 @@ The extension application, UI, settings, browser integration and application tes
 
 The diffdevil name, symbol, wordmark, screenshots and visual assets remain reserved under the repository’s identity terms. Software licences do not grant trademark rights. The monochrome interface mark is the accepted centre-seam `diffdevil/brand` glyph copied unchanged from `Wolfsblvt/wolfsblvt-icons@8596b6bc2ba7c4b950963b7ec26cee1a26974439` under MIT. Full-colour identity artwork remains reserved.
 
+The settings footer closes with the Wolfsblvt Works compact lockup, copied unchanged from the Works brand bundle (`Wolfsblvt/wolfsblvt.works`, bundle export commit `97cbf177df1045d14e4e91b06c305c250d8e3186`, `assets/lockup-compact/on-dark.svg` and `on-light.svg`) and verified by hash during build. It is Wolfsblvt Works identity artwork, all rights reserved (`licenses/works-artwork.txt`); distribution here identifies the maker and grants no trademark or reuse rights.
+
 ## Bundled dependencies
 
 The distribution includes applicable notices for Chevrotain, YAML, Ajv, fast-deep-equal, fast-uri and json-schema-traverse in its licenses directory. These dependencies retain their own upstream licences. Build-time esbuild and resvg are not remotely loaded executable dependencies.

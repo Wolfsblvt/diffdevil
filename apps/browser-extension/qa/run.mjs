@@ -12,6 +12,7 @@ import { performance } from 'node:perf_hooks';
 import { createHash } from 'node:crypto';
 import { productionModules, memoryAreas, unwrap } from '../tests/support.mjs';
 import { comparison, diff, filePatch, fileHeader, githubHtml, githubCss, storeSeatCss } from './fixtures.mjs';
+import { inlineIcons } from '../../../tools/browser-extension-icons.mjs';
 const out = resolve('artifacts/browser-extension/qa'); await mkdir(out, { recursive: true });
 const loaded = await productionModules(); const m = loaded.module;
 const areas = memoryAreas(); const preferences = new m.Preferences(areas); let settings = await preferences.load();
@@ -59,10 +60,11 @@ async function rpc(message) {
 const bundled = async (file, globalName) => (await build({ entryPoints: [file], write: false, bundle: true, platform: 'browser', format: 'iife', target: 'chrome120', globalName, loader: { '.css': 'text' }, alias: { '@wolfsblvt/diffdevil/browser/text': resolve('dist/lib/browser/text.js'), '@wolfsblvt/diffdevil/browser': resolve('dist/browser/index.js') } })).outputFiles[0].text;
 const optionsCode = await bundled('apps/browser-extension/src/options/main.ts', 'OptionsUnderTest');
 const domCode = await bundled('apps/browser-extension/qa/dom-entry.ts', 'DiffdevilUnderTest');
-const optionsCss = await readFile('artifacts/browser-extension/unpacked/options.css', 'utf8');
 const contentCss = await readFile('apps/browser-extension/src/content/content.css', 'utf8');
 const assets = {};
 for (const file of await readdir('artifacts/browser-extension/unpacked/assets')) if (/\.(svg|png)$/u.test(file)) assets[`assets/${file}`] = `data:image/${file.endsWith('.svg') ? 'svg+xml' : 'png'};base64,${(await readFile(`artifacts/browser-extension/unpacked/assets/${file}`)).toString('base64')}`;
+// The stylesheet is injected inline on a blank page, so its identity assets (lockup, tail wordmark, Works lockup) resolve through the same data URIs the page's chrome.runtime.getURL double serves; fonts keep their fallbacks.
+const optionsCss = (await readFile('artifacts/browser-extension/unpacked/options.css', 'utf8')).replace(/url\((["']?)(?:\.\/)?(assets\/[^"')]+)\1\)/gu, (match, _quote, path) => assets[path] ? `url("${assets[path]}")` : match);
 const executablePath = process.env.CHROMIUM_PATH ?? (existsSync('/usr/bin/chromium') ? '/usr/bin/chromium' : undefined);
 const browser = await chromium.launch({ ...(executablePath ? { executablePath } : {}), headless: true, args: ['--no-sandbox', '--disable-gpu'] });
 async function environment({ dark = true, mobile = false, backend = rpc } = {}) {
@@ -83,7 +85,7 @@ async function check(name, run) { const start = performance.now(); try { await r
 async function capture(page, name) { const path = join(out, `${name}.png`); await page.screenshot({ path, animations: 'disabled' }); screenshots.push({ file: `${name}.png`, sha256: createHash('sha256').update(await readFile(path)).digest('hex'), width: page.viewportSize().width, height: page.viewportSize().height }); }
 async function optionsPage(dark = true, mobile = false, backend = rpc) {
   const env = await environment({ dark, mobile, backend });
-  const html = (await readFile('apps/browser-extension/options.html', 'utf8')).replace(/<script\b[^>]*>[\s\S]*?<\/script>/gu, '').replace(/<link\b[^>]*>/gu, '').replace('src="assets/diffdevil-wordmark-dark.svg"', `src="${assets['assets/diffdevil-wordmark-dark.svg']}"`);
+  const html = inlineIcons(await readFile('apps/browser-extension/options.html', 'utf8')).replace(/<script\b[^>]*>[\s\S]*?<\/script>/gu, '').replace(/<link\b[^>]*>/gu, '');
   await env.page.setContent(html); await env.page.addStyleTag({ content: optionsCss });
   await env.page.addScriptTag({ content: optionsCode }); await env.page.locator('[id="display.enabled"]').waitFor();
   await env.page.evaluate(() => { const notice = document.createElement('div'); notice.id = 'qa-note'; notice.textContent = 'Rendered source candidate · Test storage · Not an installed-extension capture'; notice.style.cssText = 'position:fixed;bottom:0;left:0;right:0;text-align:center;padding:4px;z-index:9999;background:var(--bg);color:var(--fg-3);font:10px sans-serif;border-top:1px solid var(--hair)'; document.body.append(notice); });
@@ -109,6 +111,7 @@ try {
   const { page, context } = await optionsPage();
   await check('Basic settings render real defaults and literal anchors', async () => { assert.equal(await page.locator('[id="display.enabled"] .setting-anchor>a').textContent(), '#display.enabled'); assert.equal(await page.locator('[id="display.enabled"] input').isChecked(), true); assert.equal(await page.locator('[id="policy.advancedYaml"]').count(), 0); });
   await capture(page, 'settings-dark');
+  await page.locator('.site-footer').scrollIntoViewIfNeeded(); await capture(page, 'settings-footer-dark'); await page.evaluate(() => scrollTo(0, 0));
   await check('Searching an advanced stable ID reveals it without changing the selected view', async () => { await page.locator('#settings-search').fill('#labels.nativeHandoff'); assert.equal(await page.locator('.setting').count(), 1); assert.equal(await page.locator('[data-view="basic"]').getAttribute('aria-pressed'), 'true'); assert.equal(await page.locator('.advanced-tag').textContent(), 'Advanced'); });
   await check('Advanced value writes persist and Basic shows the active count', async () => { await page.locator('[id="control-labels.nativeHandoff"]').uncheck(); await page.waitForFunction(() => document.querySelector('#advanced-badge').textContent === '1'); await page.locator('#settings-search').fill(''); assert.equal(await page.locator('#show-changed').textContent(), '1 advanced setting active'); });
   await check('Literal fragment reveals and focuses a single advanced setting', async () => { await page.evaluate(() => { location.hash = '#policy.advancedYaml'; }); await page.locator('[id="control-policy.advancedYaml"]').waitFor(); assert.equal(await page.locator('[data-view="basic"]').getAttribute('aria-pressed'), 'true'); assert.equal(await page.locator('[id="display.density"]').count(), 0); await page.waitForFunction(() => document.activeElement?.id === 'control-policy.advancedYaml'); });
@@ -117,10 +120,22 @@ try {
   await check('Copy link retains the public fragment instead of a generated alias', async () => { await page.locator('[id="policy.advancedYaml"] .copy-link').click(); assert.ok((await page.evaluate(() => globalThis.__clipboard)).endsWith('#policy.advancedYaml')); });
   await page.locator('#settings-search').fill('diffdevil icon'); await capture(page, 'settings-icon-dark');
   await check('All three icon choices are real saved values, including no-icon layout', async () => { await page.locator('input[name="display.brandIcon"][value="none"]').check(); await page.waitForFunction(() => document.querySelector('#save-status')?.textContent.startsWith('Saved')); await page.waitForTimeout(30); assert.equal(settings['display.brandIcon'], 'none'); assert.equal(await page.locator('[data-icon-preview="none"] .ddx-brand').count(), 0); await page.locator('input[name="display.brandIcon"][value="full-color"]').check(); await page.waitForTimeout(30); assert.equal(settings['display.brandIcon'], 'full-color'); assert.equal(await page.locator('[data-icon-preview="full-color"] img').count(), 1); });
-  await check('Theme changes preserve unsaved policy drafts and use the light identity asset', async () => { await page.locator('#theme-control [data-theme="light"]').click(); await page.waitForFunction(() => document.documentElement.dataset.theme === 'light'); await page.locator('#settings-search').fill(''); assert.equal(await page.locator('[id="control-policy.advancedYaml"]').inputValue(), 'version: 1\nunknownThing: true\n'); assert.ok((await page.locator('#wordmark').getAttribute('src')).startsWith('data:image/svg+xml')); });
+  await check('The header theme control bounces Automatic → Light, saves the setting, keeps unsaved policy drafts and swaps the identity assets', async () => {
+    assert.deepEqual(await page.evaluate(() => [document.documentElement.dataset.themePref, document.documentElement.dataset.theme, document.documentElement.dataset.themeNext]), ['auto', 'dark', 'light']);
+    assert.equal(await page.locator('[data-theme-control]').getAttribute('title'), 'Automatic, using dark. Next click: Light.');
+    await page.locator('[data-theme-control]').click(); await page.waitForFunction(() => document.documentElement.dataset.theme === 'light' && document.documentElement.dataset.themePref === 'light');
+    assert.equal(settings['appearance.theme'], 'light'); assert.equal(await page.locator('[data-theme-control]').getAttribute('title'), 'Light. Next click: Automatic.');
+    await page.locator('#settings-search').fill(''); assert.equal(await page.locator('[id="control-policy.advancedYaml"]').inputValue(), 'version: 1\nunknownThing: true\n');
+    const inlined = prefix => Object.entries(assets).find(([path]) => path.startsWith(prefix))[1];
+    assert.equal(await page.evaluate(() => getComputedStyle(document.querySelector('.logo-lockup')).backgroundImage), `url("${inlined('assets/diffdevil-lockup-light')}")`);
+    assert.equal(await page.evaluate(() => getComputedStyle(document.querySelector('.logo-works')).backgroundImage), `url("${inlined('assets/works-lockup-compact-light')}")`);
+    assert.match(await page.evaluate(() => { const link = document.querySelector('.site-footer a[href^="https://docs.diffdevil.dev/"]'); link.dispatchEvent(new Event('pointerdown', { bubbles: true })); return link.href; }), /\?dd-theme=light\.dark$/u);
+  });
+  await check('Arrow keys bounce the theme control back through Automatic toward Dark', async () => { await page.locator('[data-theme-control]').focus(); await page.keyboard.press('ArrowLeft'); await page.waitForFunction(() => document.documentElement.dataset.themePref === 'auto'); assert.equal(settings['appearance.theme'], 'system'); assert.equal(await page.evaluate(() => document.documentElement.dataset.themeNext), 'light'); await page.keyboard.press('ArrowRight'); await page.waitForFunction(() => document.documentElement.dataset.themePref === 'light'); assert.equal(settings['appearance.theme'], 'light'); });
   await page.locator('#settings-search').fill('bands and label mappings');
   await page.locator('[id="policy.bands"]').scrollIntoViewIfNeeded();
   await capture(page, 'settings-bands-editor-light');
+  await page.locator('.site-footer').scrollIntoViewIfNeeded(); await capture(page, 'settings-footer-light'); await page.evaluate(() => scrollTo(0, 0));
   await check('Guided bands validate ascending thresholds and retain invalid edits for correction', async () => { await page.locator('.band-editor input[aria-label="S lt"]').fill('10'); const before = settingsWrites; await page.getByRole('button', { name: 'Save bands', exact: true }).click(); await page.locator('[id="policy.bands"] .validation-message').filter({ hasText: /./ }).waitFor(); assert.equal(settingsWrites, before); await page.getByRole('button', { name: 'Discard edits', exact: true }).click(); assert.equal(await page.locator('.band-editor input[aria-label="S lt"]').inputValue(), '100'); });
   await page.locator('#settings-search').fill(''); await page.evaluate(() => { location.hash = '#policy.repositoryOverrides'; });
   await check('Repository mode and explicit YAML save through the real settings validator', async () => { await page.locator('input[aria-label="Repository identifier"]').fill('Private/Example'); await page.locator('select[aria-label="Repository policy mode"]').selectOption('personal-only'); await page.locator('textarea[aria-label="Repository override YAML"]').fill('version: 1\nsize:\n  metric: raw.churn\n'); await page.getByRole('button', { name: 'Save repository override' }).click(); await page.locator('.repository-chip').filter({ hasText: 'private/example' }).waitFor(); assert.equal(m.overrides(settings['policy.repositoryOverrides'])['private/example'].mode, 'personal-only'); });

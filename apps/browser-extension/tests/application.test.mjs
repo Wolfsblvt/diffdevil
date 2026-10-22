@@ -115,6 +115,32 @@ test('content bundle contains no compiler, parser or heavy policy runtime', asyn
   const code = await readFile('artifacts/browser-extension/unpacked/content.js'); assert.ok(code.length < 160 * 1024, `Content bundle: ${code.length} bytes`); });
 test('manifest confines permissions, executable resources and incognito behavior', async () => { const manifest = JSON.parse(await readFile('apps/browser-extension/manifest.json', 'utf8')); assert.equal(manifest.manifest_version, 3); assert.deepEqual(manifest.permissions, ['storage']); assert.deepEqual(manifest.host_permissions, ['https://api.github.com/*']); assert.equal(manifest.incognito, 'not_allowed'); assert.ok(manifest.web_accessible_resources.flatMap(item => item.resources).every(name => name.endsWith('.svg') || name.endsWith('.woff2'))); assert.doesNotMatch(manifest.content_security_policy.extension_pages, /unsafe-eval/u); assert.equal(manifest.externally_connectable, undefined); });
 test('settings document has no Store link or unrelated remote assets', async () => { const html = await readFile('apps/browser-extension/options.html', 'utf8'); assert.doesNotMatch(html, /chromewebstore\.google\.com|fonts\.google|googletagmanager/u); assert.match(html, /privacy\.html/u); });
+test('settings shell links only to the product site, the manual, the source repository and the maker', async () => {
+  const html = await readFile('apps/browser-extension/options.html', 'utf8');
+  const hrefs = [...html.matchAll(/href="(\w+:[^"]*)"/gu)].map(match => match[1]);
+  assert.ok(hrefs.length >= 15);
+  for (const href of hrefs) assert.match(href, /^https:\/\/(?:diffdevil\.dev|docs\.diffdevil\.dev|wolfsblvt\.com)\/|^https:\/\/github\.com\/Wolfsblvt\/diffdevil(?:\/|$)/u, href);
+  for (const required of ['https://diffdevil.dev/', 'https://diffdevil.dev/app/', 'https://diffdevil.dev/extension/', 'https://docs.diffdevil.dev/use/browser-extension/', 'https://diffdevil.dev/impressum/', 'https://wolfsblvt.com/']) assert.ok(hrefs.includes(required), required);
+  // Every icon is a catalogue slot resolved at build time; the source document carries no drawn geometry.
+  assert.doesNotMatch(html, /<svg\b/u); assert.match(html, /data-icon="github"/u); assert.match(html, /data-icon="theme-dark"/u);
+});
+test('the theme control traverses Dark → Auto → Light → Auto → Dark and describes each step', () => {
+  const dark = { preference: 'dark', next: 'light' };
+  const autoTowardLight = m.stepTheme(dark, 1); assert.deepEqual(autoTowardLight, { preference: 'system', next: 'light' });
+  const light = m.stepTheme(autoTowardLight, 1); assert.deepEqual(light, { preference: 'light', next: 'dark' });
+  const autoTowardDark = m.stepTheme(light, 1); assert.deepEqual(autoTowardDark, { preference: 'system', next: 'dark' });
+  assert.deepEqual(m.stepTheme(autoTowardDark, 1), dark);
+  assert.deepEqual(m.stepTheme(autoTowardLight, -1), dark); assert.deepEqual(m.stepTheme(light, -1), autoTowardLight);
+  assert.equal(m.describeTheme(dark), 'Dark. Next click: Automatic.'); assert.equal(m.describeTheme(light), 'Light. Next click: Automatic.');
+  assert.equal(m.nextSide('light', 'light'), 'dark'); assert.equal(m.nextSide('system', 'dark'), 'dark');
+});
+test('links to the website and manual carry the current theme; everything else is left alone', () => {
+  const root = { dataset: { themePref: 'auto', themeNext: 'light' } };
+  assert.equal(m.themeHandoff('https://diffdevil.dev/app/', root), 'https://diffdevil.dev/app/?dd-theme=auto.light');
+  assert.equal(m.themeHandoff('https://docs.diffdevil.dev/use/browser-extension/', root), 'https://docs.diffdevil.dev/use/browser-extension/?dd-theme=auto.light');
+  for (const untouched of ['https://github.com/Wolfsblvt/diffdevil', 'https://wolfsblvt.com/', 'https://diffdevil.dev/skill/SKILL.md', 'privacy.html']) assert.equal(m.themeHandoff(untouched, root), untouched);
+  assert.equal(m.themeHandoff('https://diffdevil.dev/', { dataset: {} }), 'https://diffdevil.dev/');
+});
 test('extension package is a deterministic readback of the accepted unpacked receipt', async () => { execFileSync(process.execPath, ['tools/browser-extension-package.mjs'], { stdio: 'pipe' }); const receipt = JSON.parse(await readFile('artifacts/browser-extension/package/package-receipt.json', 'utf8')); assert.equal(receipt.kind, 'diffdevil.browser-extension-package/1'); assert.equal(receipt.archive.members.length, JSON.parse(await readFile('artifacts/browser-extension/build-receipt.json', 'utf8')).files.length); assert.deepEqual(receipt.archive.members.map(member => member.path), [...receipt.archive.members.map(member => member.path)].sort()); });
 
 test('the first-install example is the public pull request the installed QA exercises', async () => {
