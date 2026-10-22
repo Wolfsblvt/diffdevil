@@ -77,7 +77,7 @@ export async function loadView({ url, viewer, session, runtime, surface = 'prs',
   const period = periodOf(state);
   const nowMs = Date.parse(nowIso);
   const window = { from: new Date(nowMs - period.days * DAY).toISOString(), to: nowIso, previousFrom: new Date(nowMs - 2 * period.days * DAY).toISOString() };
-  const detailRepository = ['pr', 'files'].includes(surface) && Number.isSafeInteger(detailRepositoryId)
+  const detailRepository = ['pr', 'files', 'file'].includes(surface) && Number.isSafeInteger(detailRepositoryId)
     ? viewer.repositories.find(repository => repository.repositoryId === detailRepositoryId)
     : undefined;
   const historyRepositories = (detailRepository ? [detailRepository] : repositories).filter(repository => repository.standing?.historyReadable);
@@ -100,7 +100,7 @@ export async function loadView({ url, viewer, session, runtime, surface = 'prs',
     : await selectedScope(scope, historyRepositories, runtime);
   if (ids.length > 0) {
     try {
-      data = await runtime.analytics.query({ surface, repositoryIds: ids, from: window.from, to: window.to, scope: contractScope, ...queryDetail }, actor);
+      data = await runtime.analytics.query({ surface: fileLocator ? 'file' : surface, repositoryIds: ids, from: window.from, to: window.to, scope: contractScope, ...queryDetail }, actor);
       // A Free page answer carries its standing (`free`, `scope-unavailable`, `entitlement-unavailable`); a data answer carries none.
       dataStanding = data.standing === undefined ? 'available' : data.standing === 'free' ? 'plan-required' : data.standing;
     } catch (error) {
@@ -140,9 +140,11 @@ export async function loadView({ url, viewer, session, runtime, surface = 'prs',
     fileIdentity = inPeriod ?? await runtime.locator.resolve(fileLocator, runtime.analytics.service.fileCandidates(data, detailRepository.repositoryId));
   }
   const selectedFileRow = fileIdentity && fileRows.find(row => row.repositoryId === fileIdentity.repositoryId && row.path === fileIdentity.path);
-  // File rows come from the premium extension; a detail route must not derive the unrelated Files ranking just to resolve its handle.
-  const projectionRows = fileLocator ? (selectedFileRow ? [selectedFileRow] : []) : fileRows;
-  const files = entitlement.premium && surface !== 'pr' && runtime.premium.projection ? await runtime.premium.projection.mapFiles(projectionRows, viewer, runtime) : [];
+  // Detail pages carry the resolved identity; their file surface derives selected-path detail separately.
+  const projectionRows = fileLocator ? (selectedFileRow ? [selectedFileRow] : fileIdentity ? [fileIdentity] : []) : fileRows;
+  const files = fileLocator
+    ? projectionRows
+    : entitlement.premium && surface !== 'pr' && runtime.premium.projection ? await runtime.premium.projection.mapFiles(projectionRows, viewer, runtime) : [];
   const href = (path, patch = {}) => link(state, path, patch);
   // The plan decides who is entitled; the build decides whether the premium implementation exists. A premium slot renders only when both hold.
   const premiumProvided = runtime.premium.provided, premiumHere = entitlement.premium && premiumProvided;

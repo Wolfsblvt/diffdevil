@@ -14,9 +14,10 @@ export default {
         }
         return { files: [...files.values()], sizeObservation: [] };
       },
-      async file({ query, files }) {
-        const file = files.find(file => file.path === query.path);
-        return file ? { file, populations } : undefined;
+      async file({ query, all }) {
+        const exists = all.some(record => record.repositoryId === query.scope.repositoryId && record.state === 'merged'
+          && record.final?.report?.files.some(file => file.included && file.path === query.path));
+        return exists ? { file: { repositoryId: query.scope.repositoryId, path: query.path }, populations } : undefined;
       },
       async pr() { return {}; }
     };

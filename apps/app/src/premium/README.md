@@ -26,11 +26,12 @@ The unreleased source declaration in `apps/github-app/release.json` names two in
 
 No registration lifecycle or generic plugin API is introduced. Premium loaders receive the public runtime and authorized view rather than importing runtime construction. The existing service host keeps GitHub acquisition, storage and interval rules public while private algorithms receive that host explicitly. Premium browser and server tests exercise the same bridge as the production consumer.
 
-For File detail, `loadSurface(view, runtime, 'file', { path })` continues the same server view's repository-scoped Files
-response when its reader, window, metric and current policy still match. The service checks current access and readable
-history again. It reuses the acquired records and file enrichment, then calls the extension's existing `file` method;
-the body and service interfaces are unchanged. A serialized response, another runtime or a changed selection cannot
-reuse that context. The public loading fixture exercises this bridge without copying private algorithms.
+For File detail, the first `file` surface read carries the authorized retained records needed to resolve the opaque
+locator and does not call the rich `files` aggregation. `loadSurface(view, runtime, 'file', { path })` continues that
+same request-local context after resolution, checks current access and readable history again, and calls the extension's
+`file` method for the selected path. The ordinary Files destination continues to call `files` for its complete rich
+table. A serialized response, another runtime or a changed selection cannot reuse the detail context. The public
+loading fixture exercises this bridge without copying private algorithms.
 
 For large size histories, the host store's optional compact read is documented in
 [the analytical contract](../../../../docs/integration/app-analytical-data.md#community-service-and-premium-extension).

@@ -6,7 +6,7 @@ import { fileContinuity, turnover, turnoverEvidence } from './turnover-v1.mjs';
 export { interval, median, fileContinuity, turnover };
 
 const DAY = 86_400_000;
-const fileSurfaces = new Set(['overview', 'history', 'files', 'file']);
+const fileSurfaces = new Set(['overview', 'history', 'files']);
 const surfaces = new Set(['overview', 'prs', 'history', 'files', 'pr', 'file']);
 const states = new Set(['open', 'draft', 'merged', 'closed']);
 const fail = code => Object.assign(new Error(code), { code });
@@ -96,7 +96,7 @@ function selectedWindow(query) {
   if (!['all', 'namespace', 'repository'].includes(scope?.kind) || (scope.kind === 'namespace' && !positive(scope.namespaceId))
     || (scope.kind === 'repository' && !positive(scope.repositoryId))) throw fail('E_APP_DATA_QUERY');
   if (from >= to || (['pr', 'file'].includes(query.surface) && scope.kind !== 'repository')
-    || (query.surface === 'pr' && !positive(query.pullRequest)) || (query.surface === 'file' && typeof query.path !== 'string')
+    || (query.surface === 'pr' && !positive(query.pullRequest)) || (query.surface === 'file' && query.path !== undefined && typeof query.path !== 'string')
     || (query.metric !== undefined && !['mergedPullRequests', 'changed', 'rawChurn', 'turnover'].includes(query.metric))) throw fail('E_APP_DATA_QUERY');
   return { ...query, scope, repositoryIds: [...new Set(query.repositoryIds)], from, to };
 }
@@ -173,10 +173,10 @@ export function createAnalyticalDataService({ store, authorize, entitlement, nam
   const historyReadable = async ids => typeof store.historySettings === 'function'
     && (await Promise.all(ids.map(id => store.historySettings(id, { independentExecution: true })))).every(settings => settings.readable);
   return {
-    /** Resolve opaque file identities from an authorised Files view without building its ranked projection. */
+    /** Resolve opaque file identities from an authorised, request-local file view without building a ranked projection. */
     fileCandidates(source, repositoryId) {
       const prior = fileViews.get(source);
-      if (!prior || prior.query.surface !== 'files' || prior.query.scope.kind !== 'repository'
+      if (!prior || !['file', 'files'].includes(prior.query.surface) || prior.query.scope.kind !== 'repository'
         || prior.query.scope.repositoryId !== repositoryId || !prior.authorized.includes(repositoryId)) return [];
       const paths = new Set();
       for (const record of prior.all) {
@@ -311,8 +311,8 @@ export function createAnalyticalDataService({ store, authorize, entitlement, nam
         if (premium && extension) Object.assign(result, await extension.pr({ record, query, all, active, effective, prRow, factsOf, paths }));
       }
       if (query.surface === 'file') {
-        result = await extension.file({ query, files, all, authorized, factsOf });
-        if (!result) throw fail('E_APP_DATA_NOT_FOUND');
+        result = query.path === undefined ? { files: [] } : await extension.file({ query, files, all, authorized, factsOf });
+        if (query.path !== undefined && !result) throw fail('E_APP_DATA_NOT_FOUND');
       }
       // Check current access again after asynchronous storage/policy work, before exposing names or aggregates.
       for (const repositoryId of granted) if (!await authorize({ repositoryId, actor, kind: 'read' })) throw fail('E_APP_DATA_UNAUTHORIZED');
@@ -323,7 +323,7 @@ export function createAnalyticalDataService({ store, authorize, entitlement, nam
           authorizedRepositories: granted.length, representedRepositories: authorized.length, recoveredMerged: merged.filter(record => record.final?.report).length, merged: merged.length },
         policies: authorized.map(repositoryId => ({ repositoryId, requestedId: policies.get(repositoryId)?.id ?? null, standing: policies.get(repositoryId)?.compiled ? 'current' : 'unfiltered-base-facts' })),
         sizeObservation, entitlements, fundedNamespaces, result };
-      if (query.surface === 'files' && query.scope.kind === 'repository' && premium && extension) {
+      if (['file', 'files'].includes(query.surface) && query.scope.kind === 'repository' && premium && extension) {
         fileViews.set(response, { actor, query, authorized, premiumIds, policies, all, merged, factsOf, files, sizeObservation });
       }
       return response;

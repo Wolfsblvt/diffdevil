@@ -111,6 +111,37 @@ test('scope selects namespace versus viewer entitlement and gives a Free reader 
   assert.equal(allPaid.result.overview.mergedPullRequests, 3, 'basic aggregates still include authorized Free repositories');
 });
 
+test('File detail resolves one authorised path without requesting the rich Files aggregation', async () => {
+  let fullFileReads = 0;
+  const detailPaths = [];
+  const service = createAnalyticalDataService({
+    store: { historySettings: async () => ({ readable: true }), analyticalRecords: async () => [record()], analyticalSizes: async () => [] },
+    authorize: async () => true, entitlement: async () => 'pro', namespace: async () => 9, currentPolicy: async () => null,
+    premium: {
+      files: async () => { fullFileReads++; return { files: [{ repositoryId: 17, path: 'a.txt', contributions: [] }], sizeObservation: [] }; },
+      file: async ({ query, files, all }) => {
+        detailPaths.push(query.path);
+        assert.deepEqual(files, [], 'direct detail receives no ranked table rows');
+        assert.ok(all.some(row => row.repositoryId === 17), 'selected detail receives the authorised retained records');
+        return { path: query.path };
+      }
+    }
+  });
+
+  const candidates = await service.query(query('file'), actor);
+  assert.deepEqual(service.fileCandidates(candidates, 17), [{ repositoryId: 17, path: 'a.txt' }]);
+  assert.deepEqual(candidates.result.files, [], 'the locator read carries no ranked file table');
+  assert.equal(fullFileReads, 0);
+
+  const detail = await service.query(query('file', { path: 'a.txt' }), actor, candidates);
+  assert.deepEqual(detail.result, { path: 'a.txt' });
+  assert.deepEqual(detailPaths, ['a.txt']);
+  assert.equal(fullFileReads, 0, 'File detail never invokes the table aggregation');
+
+  await service.query(query('files'), actor);
+  assert.equal(fullFileReads, 1, 'the ordinary Files destination retains its complete rich aggregation');
+});
+
 test('turnover requires observed endpoint sizes and revision continuity, never summed growth', () => {
   const contribution = { mergedAt: at, base, head, file: { changeType: 'modified', lines: { changed: { status: 'exact', value: 10 } } }, size: { before: 100, after: 100 } };
   const observations = [{ observedAt: from, revision: base, size: 100 }, { observedAt: to, revision: head, size: 100 }];

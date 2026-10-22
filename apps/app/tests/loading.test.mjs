@@ -63,12 +63,16 @@ test('a file detail reads only its route repository while retaining the broader 
   let requested;
   const runtime = { now: () => '2026-10-21T00:00:00.000Z', store: {
     analyticalCoverage: async ids => { assert.deepEqual(ids, [2]); return { counts: new Map([[2, 3]]) }; }, observationBounds: async () => ({}) },
-    cache: createContextCache(), premium: { provided: false }, analytics: { query: async input => { requested = input; return { result: {} }; } } };
+    cache: createContextCache(), premium: { provided: false }, locator: { plausible: () => true, resolve: async (_locator, rows) => rows[0] },
+    analytics: { service: { fileCandidates: () => [{ repositoryId: 2, path: 'src/selected.ts' }] }, query: async input => { requested = input; return { result: { files: [] } }; } } };
   const viewer = { userId: 123, plan: 'Pro', namespaces: [{ login: 'reader', yours: true }], repositories };
   const view = await loadView({ url: new URL('https://app.example/file/reader/repo2/' + 'a'.repeat(22) + '?s=all&per=30d'), viewer,
-    session: { reads: { recentPullRequests: async () => ({ pullRequests: [] }) } }, runtime, surface: 'files', detail: { repositoryId: 2 } });
+    session: { reads: { recentPullRequests: async () => ({ pullRequests: [] }) } }, runtime, surface: 'file', detail: { repositoryId: 2, fileLocator: 'a'.repeat(22) } });
+  assert.equal(requested.surface, 'file', 'detail routing does not enter the Files aggregation surface');
   assert.deepEqual(requested.repositoryIds, [2]);
   assert.deepEqual(requested.scope, { kind: 'repository', repositoryId: 2 });
   assert.equal(view.scope.kind, 'all');
+  assert.deepEqual(view.fileIdentity, { repositoryId: 2, path: 'src/selected.ts' });
+  assert.deepEqual(view.files, [view.fileIdentity], 'the detail consumer receives only the resolved file identity');
   assert.equal(view.state.per, '30d');
 });
