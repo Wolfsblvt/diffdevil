@@ -7,6 +7,8 @@ import { scopeLine } from '../lib/view.mjs';
 interface Props { view: any; title: string; crumbs?: { label: string; href?: string }[]; period?: boolean; scope?: boolean }
 const { view, title, crumbs = [], period = true, scope = true } = Astro.props;
 const line = scopeLine(view);
+// Premium fragments render through an internal rewrite; period links must target the authenticated page URL.
+const pagePath = new URL(Astro.locals.analyticalUrl ?? Astro.url.href).pathname;
 const trail: { label: string; href?: string }[] = [{ label: 'All repositories', href: view.href('/', { s: 'all' }) }];
 if (view.scope.kind === 'namespace') trail.push({ label: view.scope.namespace });
 if (view.scope.kind === 'repository') trail.push({ label: view.scope.namespace, href: view.href('/', { s: `@${view.scope.namespace}` }) }, { label: view.scope.name, href: view.href('/') });
@@ -23,7 +25,7 @@ trail.push(...crumbs);
   <div class="tools">
     <slot name="tools" />
     {period && <div class="a-seg" role="group" aria-label="Period" data-period>
-      {view.periods.map((candidate: any) => <a href={view.href(Astro.url.pathname, { per: candidate.key, w: '', page: '' })} aria-current={view.period.key === candidate.key ? 'true' : undefined}>{candidate.label}</a>)}
+      {view.periods.map((candidate: any) => <a href={view.href(pagePath, { per: candidate.key, w: '', page: '' })} aria-current={view.period.key === candidate.key ? 'true' : undefined}>{candidate.label}</a>)}
     </div>}
   </div>
 </div>

@@ -69,7 +69,7 @@ async function selectedScope(scope, repositories, runtime) {
 }
 
 export async function loadView({ url, viewer, session, runtime, surface = 'prs', detail = {} }) {
-  const { repositoryId: detailRepositoryId, ...queryDetail } = detail;
+  const { repositoryId: detailRepositoryId, fileLocator, ...queryDetail } = detail;
   const state = readViewState(url);
   const scope = describeScope(state.s);
   const repositories = scopeRepositories(viewer, scope);
@@ -133,12 +133,20 @@ export async function loadView({ url, viewer, session, runtime, surface = 'prs',
   attachTitles(pullRequests, titles.byRepository);
   const current = periodStats({ pullRequests, lifecycle, from: window.from, to: window.to });
   const previous = periodStats({ pullRequests, lifecycle, from: window.previousFrom, to: window.from });
-  // File rows (aggregated per file, with contributions) come from the premium extension with the files, history and overview surfaces; the pr surface's `files` are that comparison's own rows. A Community build has no such rows.
-  const files = entitlement.premium && surface !== 'pr' && runtime.premium.projection && Array.isArray(data?.result?.files) ? await runtime.premium.projection.mapFiles(data.result.files.filter(row => Array.isArray(row.contributions)), viewer, runtime) : [];
+  const fileRows = Array.isArray(data?.result?.files) ? data.result.files.filter(row => Array.isArray(row.contributions)) : [];
+  let fileIdentity;
+  if (fileLocator && detailRepository && data && runtime.locator?.plausible(fileLocator)) {
+    const inPeriod = await runtime.locator.resolve(fileLocator, fileRows);
+    fileIdentity = inPeriod ?? await runtime.locator.resolve(fileLocator, runtime.analytics.service.fileCandidates(data, detailRepository.repositoryId));
+  }
+  const selectedFileRow = fileIdentity && fileRows.find(row => row.repositoryId === fileIdentity.repositoryId && row.path === fileIdentity.path);
+  // File rows come from the premium extension; a detail route must not derive the unrelated Files ranking just to resolve its handle.
+  const projectionRows = fileLocator ? (selectedFileRow ? [selectedFileRow] : []) : fileRows;
+  const files = entitlement.premium && surface !== 'pr' && runtime.premium.projection ? await runtime.premium.projection.mapFiles(projectionRows, viewer, runtime) : [];
   const href = (path, patch = {}) => link(state, path, patch);
   // The plan decides who is entitled; the build decides whether the premium implementation exists. A premium slot renders only when both hold.
   const premiumProvided = runtime.premium.provided, premiumHere = entitlement.premium && premiumProvided;
-  return { state, scope, repositories, historyRepositories, retainedRepositories, ids, actor, contractScope, nowIso, period, periods: Object.values(PERIODS), window, pullRequests, lifecycle, current, previous, bounds, coverage, truncated, entitlement, premiumProvided, premiumHere, data, dataStanding, files, titles, href, viewer };
+  return { state, scope, repositories, historyRepositories, retainedRepositories, ids, actor, contractScope, nowIso, period, periods: Object.values(PERIODS), window, pullRequests, lifecycle, current, previous, bounds, coverage, truncated, entitlement, premiumProvided, premiumHere, data, dataStanding, files, fileIdentity, titles, href, viewer };
 }
 
 /** A second surface read for a page that composes two (a premium file panel beside the page's pull-request model). */

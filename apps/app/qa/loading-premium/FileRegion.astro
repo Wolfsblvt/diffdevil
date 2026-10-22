@@ -2,14 +2,18 @@
 // SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
 // Exercise the real public bridge and full file-view acquisition, not private analytics.
 import { loadSurface } from '@diffdevil-app/premium/bridge/helpers.mjs';
+import { PageHead } from '@diffdevil-app/premium/bridge/components.mjs';
 import Region from './Region.astro';
-const { view, file } = Astro.props;
+const { view, file, fullName } = Astro.props;
 const started = performance.now();
 const detail = await loadSurface(view, Astro.locals.app, 'file', { path: file.path });
 const detailMs = performance.now() - started;
 if (!detail) return new Response('Synthetic file detail unavailable', { status: 503 });
 ---
-<section class="a-pn" data-file-read data-populations={detail.result.populations} data-detail-ms={detailMs} data-files={view.files.length}>
+<PageHead view={view} title="File history" crumbs={[{ label: 'Files', href: view.href('/files') }]} scope={false}>
+  <div class="a-scope" slot="scope">{fullName}<span class="a-dot">·</span>{view.period.label}</div>
+</PageHead>
+<section class="a-pn" data-file-read data-populations={detail.result.populations} data-detail-ms={detailMs} data-files={view.files.length} data-file-identity={view.fileIdentity?.path ?? ''} data-fixture-period={view.period.key}>
   <div class="a-pn-b"><h1>{file.path}</h1><p>Synthetic public file-detail consumer. No private algorithms or live data.</p></div>
 </section>
 <Region view={view} />

@@ -173,6 +173,19 @@ export function createAnalyticalDataService({ store, authorize, entitlement, nam
   const historyReadable = async ids => typeof store.historySettings === 'function'
     && (await Promise.all(ids.map(id => store.historySettings(id, { independentExecution: true })))).every(settings => settings.readable);
   return {
+    /** Resolve opaque file identities from an authorised Files view without building its ranked projection. */
+    fileCandidates(source, repositoryId) {
+      const prior = fileViews.get(source);
+      if (!prior || prior.query.surface !== 'files' || prior.query.scope.kind !== 'repository'
+        || prior.query.scope.repositoryId !== repositoryId || !prior.authorized.includes(repositoryId)) return [];
+      const paths = new Set();
+      for (const record of prior.all) {
+        if (record.repositoryId !== repositoryId || record.state !== 'merged') continue;
+        const report = prior.factsOf(record.final, repositoryId).report;
+        for (const file of report?.files ?? []) if (file.included) paths.add(file.path);
+      }
+      return [...paths].map(path => ({ repositoryId, path }));
+    },
     async query(input, actor, source) {
       const query = selectedWindow(input);
       const granted = [], policies = new Map(), plans = new Map(), namespaces = new Map();
