@@ -22,22 +22,52 @@ const oldWindow = `SELECT s.path,s.observed_at,s.revision,s.size FROM baseline_s
 // D1's own accounting, not elapsed time or a modeled row count, supplies the improvement evidence.
 function metered(database, tally) {
   const raw = new WeakMap();
-  const measure = result => {
+  const measure = (result, sql) => {
     tally.read += result.meta?.rows_read ?? 0; tally.written += result.meta?.rows_written ?? 0;
+    tally.queries?.push({ sql, read: result.meta?.rows_read ?? 0, rows: result.results?.length ?? 0 });
     if (result.meta?.size_after) tally.bytes = result.meta.size_after;
     return result;
   };
-  const wrap = statement => {
+  const wrap = (statement, sql) => {
     const proxy = new Proxy(statement, { get(target, key) {
-      if (key === 'bind') return (...values) => wrap(target.bind(...values));
-      if (key === 'run' || key === 'all') return async (...values) => measure(await target[key](...values));
-      if (key === 'first') return async column => { const row = measure(await target.all()).results?.[0] ?? null; return column === undefined ? row : row?.[column] ?? null; };
+      if (key === 'bind') return (...values) => wrap(target.bind(...values), sql);
+      if (key === 'run' || key === 'all') return async (...values) => measure(await target[key](...values), sql);
+      if (key === 'first') return async column => { const row = measure(await target.all(), sql).results?.[0] ?? null; return column === undefined ? row : row?.[column] ?? null; };
       const value = target[key]; return typeof value === 'function' ? value.bind(target) : value;
     } });
     raw.set(proxy, statement); return proxy;
   };
-  return { prepare: sql => wrap(database.prepare(sql)), batch: async statements => (await database.batch(statements.map(row => raw.get(row)))).map(measure) };
+  return { prepare: sql => wrap(database.prepare(sql), sql), batch: async statements => (await database.batch(statements.map(row => raw.get(row)))).map(result => measure(result)) };
 }
+
+test('marker pagination seeks forward across the complete retained window, including same-time ties and expiry', async t => {
+  const runtime = new Miniflare({ workers: [{ config: { name: 'paged-sizes', compatibilityDate: '2026-09-17',
+    env: { APP_DB: { type: 'd1', id: `pages-${crypto.randomUUID()}` } }, manifest: { mainModule: 'worker.mjs', modulesRoot: resolve('.'),
+      modules: { 'worker.mjs': { type: 'esm', contents: 'export default { fetch() { return new Response("ok"); } };' } } } } }] });
+  try {
+    const database = await runtime.getD1Database('APP_DB'), tally = { read: 0, written: 0, queries: [] };
+    const store = new D1AppStore(metered(database, tally), { now: () => stamp(25) });
+    for (const name of (await readdir('apps/github-app/migrations')).sort()) await store.migrate(await readFile(`apps/github-app/migrations/${name}`, 'utf8'));
+    await store.recordLifecycle({ installationId: 9, action: 'created', addedRepositories: [17], removedRepositories: [] });
+    await store.setRepositoryConsent(17, { enabled: true, retentionDays: 30, origin: 'fixture' });
+    await database.prepare(`INSERT INTO analytical_size_facts VALUES (17,'paging','[{"path":"pagination.txt","size":123}]')`).run();
+    await database.prepare(`WITH RECURSIVE n(x) AS (SELECT 1 UNION ALL SELECT x+1 FROM n WHERE x<7600)
+      INSERT INTO analytical_size_observations(repository_id,fact_key,observed_at,revision,expires_at)
+      SELECT 17,'paging',CASE WHEN x<=1500 THEN ? ELSE strftime('%Y-%m-%dT%H:%M:%fZ','2026-09-02',x || ' seconds') END,
+        printf('%040x',x),CASE WHEN x>7563 THEN ? ELSE ? END FROM n`).bind(stamp(2), stamp(10), stamp(30)).run();
+    const expected = (await database.prepare(`SELECT observed_at,revision,rowid AS sequence FROM analytical_size_observations
+      WHERE expires_at>? ORDER BY observed_at,fact_key,revision`).bind(stamp(25)).all()).results;
+    tally.queries.length = 0;
+    const history = await store.analyticalSizeHistory(17, stamp(1), stamp(30));
+    assert.deepEqual(history.groups[0].observations.map(({ observedAt, revision, sequence }) => ({ observed_at: observedAt, revision, sequence })), expected);
+    assert.equal(expected.length, 7563, 'no marker is capped, collapsed or replaced by an expired marker');
+    const pages = tally.queries.filter(row => row.sql?.startsWith('SELECT fact_key,observed_at,revision,expires_at,order_json,rowid'));
+    assert.equal(pages.length, 8);
+    const reads = pages.reduce((total, page) => total + page.read, 0);
+    t.diagnostic(`7,563 markers, including 1,500 equal-time ties: page reads ${pages.map(page => page.read).join(', ')}; total ${reads}`);
+    assert.ok(reads < 2 * expected.length, `later pages must not rescan the whole earlier time window (${reads} rows read)`);
+  } finally { await runtime.dispose(); }
+});
 
 test('shared snapshots preserve migration, every window row, turnover, first-writer identity and deletion while removing repeated facts', async t => {
   const runtime = new Miniflare({ workers: [{ config: { name: 'shared-sizes', compatibilityDate: '2026-09-17',

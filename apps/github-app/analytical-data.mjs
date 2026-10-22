@@ -173,25 +173,36 @@ export function createAnalyticalDataService({ store, authorize, entitlement, nam
   const historyReadable = async ids => typeof store.historySettings === 'function'
     && (await Promise.all(ids.map(id => store.historySettings(id, { independentExecution: true })))).every(settings => settings.readable);
   return {
-    /** Resolve opaque file identities from an authorised, request-local file view without building a ranked projection. */
-    fileCandidates(source, repositoryId) {
+    /** Resolve a handle against normalized paths, then interpret only matching measurements before exposing its identity. */
+    async resolveFileCandidate(source, repositoryId, resolve) {
       const prior = fileViews.get(source);
       if (!prior || !['file', 'files'].includes(prior.query.surface) || prior.query.scope.kind !== 'repository'
-        || prior.query.scope.repositoryId !== repositoryId || !prior.authorized.includes(repositoryId)) return [];
-      const paths = new Set();
+        || prior.query.scope.repositoryId !== repositoryId || !prior.authorized.includes(repositoryId)) return undefined;
+      const paths = new Map();
       const activePullRequests = new Set(prior.merged.filter(record => record.repositoryId === repositoryId).map(record => record.pullRequest));
       for (const record of prior.all) {
         if (record.repositoryId !== repositoryId || record.state !== 'merged') continue;
-        const report = prior.factsOf(record.final, repositoryId).report;
-        for (const file of report?.files ?? []) if (file.included) paths.add(file.path);
+        for (const file of record.final?.report?.files ?? []) {
+          if (!paths.has(file.path)) paths.set(file.path, []);
+          paths.get(file.path).push(record);
+        }
       }
-      const activePaths = new Set();
-      for (const record of prior.all) {
-        if (record.repositoryId !== repositoryId || record.state !== 'merged' || !activePullRequests.has(record.pullRequest)) continue;
+      // These are server-local candidates from the store's normalized v1 contract, not a returned file table.
+      // The opaque resolver selects one identity without needing unrelated reports' numbers or policy results.
+      const candidates = [...paths.keys()].map(path => ({ repositoryId, path }));
+      const selected = await resolve(candidates);
+      if (!candidates.includes(selected)) return undefined;
+      let included = false, hasSelectedPeriodActivity = false;
+      for (const record of paths.get(selected.path)) {
         const report = prior.factsOf(record.final, repositoryId).report;
-        for (const file of report?.files ?? []) if (file.included) activePaths.add(file.path);
+        if (!report?.files.some(file => file.path === selected.path && file.included)) continue;
+        included = true;
+        hasSelectedPeriodActivity ||= activePullRequests.has(record.pullRequest);
+        if (hasSelectedPeriodActivity) break;
       }
-      return [...paths].map(path => ({ repositoryId, path, hasSelectedPeriodActivity: activePaths.has(path) }));
+      if (!await authorize({ repositoryId, actor: prior.actor, kind: 'read' })) throw fail('E_APP_DATA_UNAUTHORIZED');
+      if (!await historyReadable([repositoryId])) throw fail('E_APP_DATA_NOT_FOUND');
+      return included ? { ...selected, hasSelectedPeriodActivity } : undefined;
     },
     async query(input, actor, source) {
       const query = selectedWindow(input);
@@ -251,7 +262,10 @@ export function createAnalyticalDataService({ store, authorize, entitlement, nam
       const comparisonSurface = populationSurface || query.surface === 'history';
       // Detail coverage counts all retained merges, but a PR detail only interprets
       // its own measurements (and whatever related work the premium extension uses).
-      const merged = continued?.merged ?? all.filter(record => inside(record.mergedAt, query)).map(record => query.surface === 'pr' ? record : ({ ...record, facts: factsOf(record.final, record.repositoryId) }));
+      // File identity lookup needs those counts and paths before any numeric interpretation.
+      const merged = continued?.merged ?? all.filter(record => inside(record.mergedAt, query)).map(record => query.surface === 'pr' ? record
+        : query.surface === 'file' ? { ...record, get facts() { return factsOf(record.final, record.repositoryId); } }
+          : { ...record, facts: factsOf(record.final, record.repositoryId) });
       const previousQuery = { ...query, from: new Date(2 * Date.parse(query.from) - Date.parse(query.to)).toISOString(), to: query.from };
       const previous = comparisonSurface ? all.filter(record => inside(record.mergedAt, previousQuery)).map(record => factsOf(record.final, record.repositoryId)) : [];
       const retainedCoverage = window => ({ from: window.from, to: window.to, completeWindow: false,

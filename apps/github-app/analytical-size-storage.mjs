@@ -82,10 +82,12 @@ async function markersIn(store, repositoryId, from, to, now) {
   const rows = [];
   let cursor = null;
   while (true) {
+    // Advance the time-index seek too; the tuple alone otherwise re-reads earlier pages.
+    // Keep its strict comparison to preserve distinct markers at the same timestamp.
     const result = await store.statement(`SELECT fact_key,observed_at,revision,expires_at,order_json,rowid AS sequence FROM analytical_size_observations
       WHERE repository_id=? AND observed_at BETWEEN ? AND ? AND (expires_at IS NULL OR expires_at>?)
       ${cursor ? 'AND (observed_at,fact_key,revision)>(?,?,?)' : ''}
-      ORDER BY observed_at,fact_key,revision LIMIT ${PAGE}`, repositoryId, from, to, now,
+      ORDER BY observed_at,fact_key,revision LIMIT ${PAGE}`, repositoryId, cursor?.observed_at ?? from, to, now,
     ...(cursor ? [cursor.observed_at, cursor.fact_key, cursor.revision] : [])).all();
     const page = result.results ?? [];
     rows.push(...page);

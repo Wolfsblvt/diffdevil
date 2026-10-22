@@ -34,7 +34,7 @@ function fixture() {
       }
     }
   });
-  return { service, state };
+  return { service, state, rows };
 }
 
 test('a pathless file-identity read is enriched once after selection and matches an independent detail query', async () => {
@@ -83,4 +83,25 @@ test('access or readable history lost before or during a continuation exposes no
     if (change === 'history-during') state.duringDetail = () => { state.readable = false; };
     await assert.rejects(service.query(fileQuery(), actor, source), { code: change.startsWith('access') ? 'E_APP_DATA_UNAUTHORIZED' : 'E_APP_DATA_NOT_FOUND' }, change);
   }
+});
+
+test('opaque identity resolution still enforces selected-report validation, current policy and current access', async () => {
+  const select = rows => rows.find(row => row.path === 'a.txt');
+  for (const change of ['access', 'history']) {
+    const { service, state } = fixture();
+    const source = await service.query(query('file', { scope }), actor);
+    await assert.rejects(service.resolveFileCandidate(source, 17, rows => {
+      state[change === 'access' ? 'access' : 'readable'] = false;
+      return select(rows);
+    }), { code: change === 'access' ? 'E_APP_DATA_UNAUTHORIZED' : 'E_APP_DATA_NOT_FOUND' });
+  }
+  const { service, state, rows } = fixture();
+  state.policy = { id: 'excluded', compiled: unwrap(compilePolicy({ version: 1, defaults: { paths: { exclude: ['a.txt'] } } })) };
+  let source = await service.query(query('file', { scope }), actor);
+  assert.equal(await service.resolveFileCandidate(source, 17, select), undefined);
+  assert.equal(await service.resolveFileCandidate(structuredClone(source), 17, select), undefined, 'HTTP-shaped data cannot supply request-local context');
+  rows[0].final.report.totals.lines.changed = { status: 'exact', value: 999 };
+  source = await service.query(query('file', { scope }), actor);
+  await assert.rejects(service.resolveFileCandidate(source, 17, select), error => error.diagnostic?.code === 'E_REPORT_INVALID',
+    'a matching path still reaches the engine report validator before its identity is returned');
 });

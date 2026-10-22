@@ -137,10 +137,10 @@ test('File detail resolves retained identity and period activity cheaply, then e
   });
 
   const candidates = await service.query(query('file'), actor);
-  assert.deepEqual(service.fileCandidates(candidates, 17), [
-    { repositoryId: 17, path: 'a.txt', hasSelectedPeriodActivity: true },
-    { repositoryId: 17, path: 'b.txt', hasSelectedPeriodActivity: false }
-  ]);
+  assert.deepEqual(await service.resolveFileCandidate(candidates, 17, rows => rows.find(row => row.path === 'a.txt')),
+    { repositoryId: 17, path: 'a.txt', hasSelectedPeriodActivity: true });
+  assert.deepEqual(await service.resolveFileCandidate(candidates, 17, rows => rows.find(row => row.path === 'b.txt')),
+    { repositoryId: 17, path: 'b.txt', hasSelectedPeriodActivity: false });
   assert.deepEqual(candidates.result.files, [], 'the locator read carries no ranked file table');
   assert.deepEqual(fileReads, [], 'resolving the locator does not perform rich Files work');
 

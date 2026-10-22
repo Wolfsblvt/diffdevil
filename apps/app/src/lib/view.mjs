@@ -139,7 +139,8 @@ export async function loadView({ url, viewer, session, runtime, surface = 'prs',
   let fileIdentity;
   if (fileLocator && detailRepository && data && runtime.locator?.plausible(fileLocator)) {
     const inPeriod = await runtime.locator.resolve(fileLocator, fileRows);
-    fileIdentity = inPeriod ?? await runtime.locator.resolve(fileLocator, runtime.analytics.service.fileCandidates(data, detailRepository.repositoryId));
+    fileIdentity = inPeriod ?? await runtime.analytics.service.resolveFileCandidate(data, detailRepository.repositoryId,
+      candidates => runtime.locator.resolve(fileLocator, candidates));
   }
   const selectedFileRow = fileIdentity && fileRows.find(row => row.repositoryId === fileIdentity.repositoryId && row.path === fileIdentity.path);
   // Keep retained identity separate from aggregate rows; the pathless locator read carries period activity explicitly.
