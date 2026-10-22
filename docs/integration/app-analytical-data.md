@@ -249,6 +249,28 @@ repeated facts and their transfer, not the size of the selected analytical respo
 or every individual database operation. Arbitrarily large responses are not
 claimed to fit a Worker.
 
+Both `analyticalSizes(repositoryId, from, to, options)` and
+`analyticalSizeHistory(repositoryId, from, to, options)` accept an optional
+`{ paths: [...] }` selection of exact repository-relative names (not globs).
+Omitting it keeps the complete repository result; an empty list selects none.
+Duplicate names select the same observations once, and absent names contribute no
+observations. Selection happens inside D1 before transferring shared facts,
+window markers and boundary anchors. Every selected timestamp, immutable revision,
+null/zero size and original same-time position survives, including positions from
+the shared-size migration. Expired-only facts cannot supply a selected group.
+Current access, readable history, expiry and deletion checks still govern the read.
+There is no new persisted membership, cache, collection or retention state.
+
+A consumer that only needs one file can supply `{ paths: [query.path] }`; one that
+needs the repository population keeps the default. The selector is not an
+authorization or policy decision and must follow the consumer's current authorized
+selection. Resolving membership still inspects retained fact sets inside D1. Local
+tests compare the selected logical result with the complete result filtered by
+those exact paths, including anchors and ties, and exercise the real App
+locator/detail loader with a selector-adopting extension stand-in. Providing this
+source boundary does not establish adoption by an independently composed extension
+or a deployed latency improvement.
+
 Writes retain the first observation at a path/time/revision identity, including
 overlapping captures; an atomic batch refuses an overlap that raced its initial
 read and retries the remaining paths with a refreshed clock. Overlap checks use

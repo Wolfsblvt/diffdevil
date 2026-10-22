@@ -4,9 +4,15 @@ import { readFile, readdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { test } from 'node:test';
 import { Miniflare } from 'miniflare';
+import { compilePolicy, unwrap } from '@wolfsblvt/diffdevil';
 import { D1AppStore } from './storage.mjs';
 import { turnoverEvidence, fileContinuity } from './turnover-v1.mjs';
-import { record, base, head, at } from './analytical-data.fixtures.mjs';
+import { record, base, head, at, transition, revisions } from './analytical-data.fixtures.mjs';
+import { createAnalyticalDataService } from './analytical-data.mjs';
+import { D1AppReadStore } from '../app/src/lib/app-store.mjs';
+import { loadView, loadSurface } from '../app/src/lib/view.mjs';
+import { createContextCache } from '../app/src/lib/viewer.mjs';
+import { createLocator } from '../app/src/lib/locator.mjs';
 import { sizeCaptureGroups } from './size-capture-groups.mjs';
 import { sizeHistoryRows } from './analytical-size-storage.mjs';
 
@@ -24,7 +30,8 @@ function metered(database, tally) {
   const raw = new WeakMap();
   const measure = (result, sql) => {
     tally.read += result.meta?.rows_read ?? 0; tally.written += result.meta?.rows_written ?? 0;
-    tally.queries?.push({ sql, read: result.meta?.rows_read ?? 0, rows: result.results?.length ?? 0 });
+    tally.queries?.push({ sql, read: result.meta?.rows_read ?? 0, rows: result.results?.length ?? 0,
+      valueBytes: Buffer.byteLength(JSON.stringify((result.results ?? []).map(Object.values))) });
     if (result.meta?.size_after) tally.bytes = result.meta.size_after;
     return result;
   };
@@ -66,6 +73,120 @@ test('marker pagination seeks forward across the complete retained window, inclu
     const reads = pages.reduce((total, page) => total + page.read, 0);
     t.diagnostic(`7,563 markers, including 1,500 equal-time ties: page reads ${pages.map(page => page.read).join(', ')}; total ${reads}`);
     assert.ok(reads < 2 * expected.length, `later pages must not rescan the whole earlier time window (${reads} rows read)`);
+    assert.deepEqual(await store.analyticalSizeHistory(17, stamp(1), stamp(30), { paths: ['pagination.txt'] }), history,
+      'selected-path pagination preserves the same full 7,563 markers and equal-time ties');
+  } finally { await runtime.dispose(); }
+});
+
+test('selected paths read their complete size history and anchors without transferring unrelated snapshots', async t => {
+  const runtime = new Miniflare({ workers: [{ config: { name: 'selected-sizes', compatibilityDate: '2026-09-17',
+    env: { APP_DB: { type: 'd1', id: `selected-${crypto.randomUUID()}` } }, manifest: { mainModule: 'worker.mjs', modulesRoot: resolve('.'),
+      modules: { 'worker.mjs': { type: 'esm', contents: 'export default { fetch() { return new Response("ok"); } };' } } } } }] });
+  try {
+    const database = await runtime.getD1Database('APP_DB'), tally = { read: 0, written: 0, queries: [] };
+    const store = new D1AppStore(metered(database, tally), { now: () => stamp(25) });
+    for (const name of (await readdir('apps/github-app/migrations')).sort()) await store.migrate(await readFile(`apps/github-app/migrations/${name}`, 'utf8'));
+    await store.recordLifecycle({ installationId: 9, action: 'created', addedRepositories: [17], removedRepositories: [] });
+    await store.setRepositoryConsent(17, { enabled: true, retentionDays: 30, origin: 'fixture' });
+    const names = Array.from({ length: 915 }, (_, index) => index === 17 ? `src/space ' quote ☃.txt` : `src/file-${index}.txt`);
+    const sets = Array.from({ length: Math.ceil(names.length / 18) }, (_, group) => names.slice(group * 18, (group + 1) * 18)
+      .map((path, index) => ({ path, size: index === 0 ? null : index === 1 ? 0 : 100 + index })));
+    await database.prepare(`INSERT INTO analytical_size_facts(repository_id,fact_key,facts_json)
+      SELECT 17,'set:' || key,value FROM json_each(?)`).bind(JSON.stringify(sets)).run();
+    await database.prepare(`WITH RECURSIVE n(x) AS (SELECT 1 UNION ALL SELECT x+1 FROM n WHERE x<142)
+      INSERT INTO analytical_size_observations(repository_id,fact_key,observed_at,revision,expires_at,order_json)
+      SELECT 17,f.fact_key,strftime('%Y-%m-%dT%H:%M:%fZ','2026-09-02',x || ' hours'),printf('%040x',x),?,
+        (SELECT json_group_array(x*10000+CAST(j.key AS INTEGER)*2) FROM json_each(f.facts_json) j)
+      FROM n,analytical_size_facts f WHERE f.repository_id=17`).bind(stamp(30)).run();
+    // Equal-time revisions, an expired later observation, and a changed set are distinct from a snapshot cap.
+    await database.prepare(`INSERT INTO analytical_size_facts VALUES (17,'changed',?)`).bind(JSON.stringify([{ path: names[17], size: 42 }])).run();
+    await database.prepare(`INSERT INTO analytical_size_observations(repository_id,fact_key,observed_at,revision,expires_at)
+      VALUES (17,'changed',?, ?, ?),(17,'changed',?, ?, ?),(17,'changed',?, ?, ?)`)
+      .bind(stamp(4), 'e'.repeat(40), stamp(30), stamp(4), 'f'.repeat(40), stamp(30), stamp(6), 'd'.repeat(40), stamp(10)).run();
+    await database.prepare(`INSERT INTO analytical_size_facts VALUES (17,'expired-only','[{"path":"expired-only.txt","size":999}]')`).run();
+    await database.prepare(`INSERT INTO analytical_size_observations(repository_id,fact_key,observed_at,revision,expires_at)
+      VALUES (17,'expired-only',?,?,?)`).bind(stamp(4), head, stamp(10)).run();
+    const window = { from: stamp(3), to: stamp(7) }, selected = [names[0], names[17], names[912], 'absent.txt'];
+    tally.queries.length = 0;
+    const complete = await store.analyticalSizeHistory(17, window.from, window.to);
+    const fullCost = tally.queries.reduce((cost, row) => ({ read: cost.read + row.read, bytes: cost.bytes + row.valueBytes, rows: cost.rows + row.rows }), { read: 0, bytes: 0, rows: 0 });
+    const expected = [...sizeHistoryRows(complete)].filter(row => selected.includes(row.path));
+    tally.queries.length = 0;
+    const scoped = await store.analyticalSizeHistory(17, window.from, window.to, { paths: [...selected, names[17]] });
+    const scopedCost = tally.queries.reduce((cost, row) => ({ read: cost.read + row.read, bytes: cost.bytes + row.valueBytes, rows: cost.rows + row.rows }), { read: 0, bytes: 0, rows: 0 });
+    const selectedRows = [...sizeHistoryRows(scoped)];
+    assert.equal(selectedRows.length, expected.length, 'selected reads must not return the full repository');
+    assert.deepEqual(order(selectedRows), order(expected), 'selection preserves every observation, boundary, original tie position, null and zero');
+    assert.ok(scopedCost.bytes < fullCost.bytes / 20, `unrelated size facts must stay in D1 (${scopedCost.bytes} vs ${fullCost.bytes} serialized result-value bytes)`);
+    assert.ok(scopedCost.read < fullCost.read, `selection must also remove database work (${scopedCost.read} vs ${fullCost.read} rows read)`);
+    assert.deepEqual(await store.analyticalSizes(17, window.from, window.to, { paths: selected }),
+      (await store.analyticalSizes(17, window.from, window.to)).filter(row => selected.includes(row.path)));
+    assert.deepEqual(await store.analyticalSizes(17, stamp(20), stamp(24), { paths: selected }),
+      (await store.analyticalSizes(17, stamp(20), stamp(24))).filter(row => selected.includes(row.path)),
+      'a path with only a boundary anchor survives without a window marker');
+    assert.deepEqual(await store.analyticalSizeHistory(17, window.from, window.to, { paths: [] }), { repositoryId: 17, groups: [], boundaries: [] });
+    assert.deepEqual(await store.analyticalSizes(17, window.from, window.to, { paths: ['absent.txt'] }), []);
+    assert.deepEqual(await store.analyticalSizeHistory(17, window.from, window.to, { paths: ['expired-only.txt'] }), { repositoryId: 17, groups: [], boundaries: [] });
+    await assert.rejects(store.analyticalSizeHistory(17, window.from, window.to, { paths: 'src/file-0.txt' }), TypeError);
+    t.diagnostic(`915 paths / 142 captures: full ${JSON.stringify(fullCost)}; selected ${JSON.stringify(scopedCost)}. Bytes encode returned D1 values, excluding RPC framing; no wall/CPU claim.`);
+
+    await t.test('the real App locator and detail keep the full answer with an adopting extension', async () => {
+      const name = names[912];
+      await store.recordAnalytical(transition(1, name, revisions.slice(0, 2), stamp(4)));
+      await store.recordAnalytical(transition(2, 'unrelated.txt', revisions.slice(1, 3), stamp(5), { complete: false }));
+      await store.recordAnalytical(record(3, null));
+      const policy = { id: 'current', compiled: unwrap(compilePolicy({ version: 1, defaults: { paths: { exclude: ['unrelated.txt'] } } })) };
+      const repository = { repositoryId: 17, owner: 'reader', fullName: 'reader/repo', standing: { historyReadable: true } };
+      const run = async selectedRead => {
+        let plan = 'pro', access = true;
+        const service = createAnalyticalDataService({ store, authorize: async () => access, entitlement: async () => plan, namespace: async () => 9,
+          currentPolicy: async () => policy, now: () => stamp(25), premium: {
+            async files({ query, merged, store }) {
+              const selected = merged.flatMap(record => (record.final?.report?.files ?? []).filter(file => file.path === query.path)
+                .flatMap(() => record.facts.report.files.filter(file => file.path === query.path && file.included)
+                  .map(file => ({ pullRequest: record.pullRequest, changed: file.lines.changed }))));
+              const history = await store.analyticalSizeHistory(17, query.from, query.to, selectedRead ? { paths: [query.path] } : undefined);
+              return { files: [{ repositoryId: 17, path: query.path, contributions: selected,
+                sizeHistory: [...sizeHistoryRows(history)].filter(row => row.path === query.path) }], sizeObservation: [] };
+            },
+            async file({ files }) { return files[0]; }
+          } });
+        const runtime = { store: new D1AppReadStore(database, { now: () => stamp(25) }), now: () => stamp(25), cache: createContextCache(),
+          premium: { provided: true }, locator: createLocator({ secret: 'local-selected-size-history-fixture' }),
+          analytics: { service, query: (input, actor, source) => service.query({ version: 1, ...input }, actor, source) } };
+        const fileLocator = await runtime.locator.of(17, name);
+        const view = await loadView({ url: new URL(`https://app.example/file/reader/repo/${fileLocator}?per=30d`),
+          viewer: { userId: 123, plan: 'Pro', namespaces: [{ login: 'reader', yours: true }], repositories: [repository] },
+          session: { reads: { recentPullRequests: async () => ({ pullRequests: [] }) } }, runtime, surface: 'file', detail: { repositoryId: 17, fileLocator } });
+        assert.deepEqual(view.fileIdentity, { repositoryId: 17, path: name, hasSelectedPeriodActivity: true });
+        const answer = await loadSurface(view, runtime, 'file', { path: name });
+        assert.equal(answer.coverage.merged, 3, 'unrelated incomplete and unrecovered comparisons remain in coverage');
+        assert.equal(answer.coverage.recoveredMerged, 2);
+        assert.equal(answer.coverage.completeWindow, false);
+        assert.equal(answer.result.sizeHistory.length, 142);
+        plan = 'free';
+        assert.equal((await loadSurface(view, runtime, 'file', { path: name })).standing, 'free');
+        access = false;
+        assert.equal(await loadSurface(view, runtime, 'file', { path: name }), null);
+        return answer;
+      };
+      assert.deepEqual(await run(true), await run(false), 'the actual App path returns an equal response; the extension here models selector adoption, not premium qualification');
+    });
+    const settings = store.historySettings.bind(store);
+    let reads = 0;
+    t.mock.method(store, 'historySettings', async (...args) => {
+      if (++reads === 2) await database.prepare("UPDATE repositories SET access_state='unavailable' WHERE repository_id=17").run();
+      return settings(...args);
+    });
+    try {
+      assert.deepEqual(await store.analyticalSizeHistory(17, window.from, window.to, { paths: selected }), { repositoryId: 17, groups: [], boundaries: [] },
+        'access lost after the selected D1 read discards its result');
+    } finally {
+      t.mock.restoreAll();
+      await database.prepare("UPDATE repositories SET access_state='available' WHERE repository_id=17").run();
+    }
+    await store.deleteHistory(17);
+    assert.deepEqual(await store.analyticalSizeHistory(17, window.from, window.to, { paths: selected }), { repositoryId: 17, groups: [], boundaries: [] });
   } finally { await runtime.dispose(); }
 });
 

@@ -67,6 +67,24 @@ async function readFacts(store, repositoryId, markers) {
   return facts;
 }
 
+/** Select exact path membership in D1; retain each fact's original position for migrated same-time ordering. */
+async function factsForPaths(store, repositoryId, paths, now) {
+  const result = await store.statement(`SELECT f.fact_key,j.key AS ordinal,json_extract(j.value,'$.path') AS path,
+    json_extract(j.value,'$.size') AS size FROM analytical_size_facts f,json_each(f.facts_json) j
+    WHERE f.repository_id=? AND json_extract(j.value,'$.path') IN (SELECT value FROM json_each(?))
+    AND EXISTS (SELECT 1 FROM analytical_size_observations o WHERE o.repository_id=f.repository_id AND o.fact_key=f.fact_key
+      AND (o.expires_at IS NULL OR o.expires_at>?))
+    ORDER BY f.fact_key,CAST(j.key AS INTEGER)`, repositoryId, JSON.stringify(paths), now).all();
+  const selected = new Map();
+  for (const row of result.results ?? []) {
+    if (!selected.has(row.fact_key)) selected.set(row.fact_key, { facts: [], ordinals: [] });
+    const group = selected.get(row.fact_key);
+    group.facts.push({ path: row.path, size: row.size });
+    group.ordinals.push(row.ordinal);
+  }
+  return selected;
+}
+
 /** Decode each shared fact set once, then reconstruct the exact logical rows named by the markers. */
 async function expand(store, repositoryId, markers) {
   const facts = await readFacts(store, repositoryId, markers);
@@ -78,7 +96,7 @@ async function expand(store, repositoryId, markers) {
 }
 
 /** Indexed keyset pages bound each D1 query; the full logical result is never truncated. */
-async function markersIn(store, repositoryId, from, to, now) {
+async function markersIn(store, repositoryId, from, to, now, keys) {
   const rows = [];
   let cursor = null;
   while (true) {
@@ -86,9 +104,10 @@ async function markersIn(store, repositoryId, from, to, now) {
     // Keep its strict comparison to preserve distinct markers at the same timestamp.
     const result = await store.statement(`SELECT fact_key,observed_at,revision,expires_at,order_json,rowid AS sequence FROM analytical_size_observations
       WHERE repository_id=? AND observed_at BETWEEN ? AND ? AND (expires_at IS NULL OR expires_at>?)
+      ${keys ? 'AND fact_key IN (SELECT value FROM json_each(?))' : ''}
       ${cursor ? 'AND (observed_at,fact_key,revision)>(?,?,?)' : ''}
       ORDER BY observed_at,fact_key,revision LIMIT ${PAGE}`, repositoryId, cursor?.observed_at ?? from, to, now,
-    ...(cursor ? [cursor.observed_at, cursor.fact_key, cursor.revision] : [])).all();
+    ...(keys ? [JSON.stringify(keys)] : []), ...(cursor ? [cursor.observed_at, cursor.fact_key, cursor.revision] : [])).all();
     const page = result.results ?? [];
     rows.push(...page);
     if (page.length < PAGE) return rows;
@@ -138,12 +157,24 @@ export async function expireSizes(store, now) {
 }
 
 /** The same exact window and per-path boundary anchors, without expanding shared sets into repeated row objects. */
-export async function sizeHistoryIn(store, repositoryId, from, to, now) {
-  const markers = await markersIn(store, repositoryId, from, to, now);
-  const facts = await readFacts(store, repositoryId, markers);
+export async function sizeHistoryIn(store, repositoryId, from, to, now, paths) {
+  if (paths !== undefined && (!Array.isArray(paths) || paths.some(path => typeof path !== 'string' || !path || path.includes('\0')))) {
+    throw new TypeError('Invalid analytical size-history paths.');
+  }
+  if (paths?.length === 0) return { repositoryId, groups: [], boundaries: [] };
+  const selected = paths === undefined ? null : await factsForPaths(store, repositoryId, [...new Set(paths)], now);
+  if (selected?.size === 0) return { repositoryId, groups: [], boundaries: [] };
+  const keys = selected ? [...selected.keys()] : undefined;
+  const markers = await markersIn(store, repositoryId, from, to, now, keys);
+  const facts = selected ? new Map([...new Set(markers.map(row => row.fact_key))].map(key => [key, selected.get(key).facts]))
+    : await readFacts(store, repositoryId, markers);
   const groups = new Map([...facts].map(([factKey, values]) => [factKey, { facts: values, observations: [] }]));
-  for (const row of markers) groups.get(row.fact_key)?.observations.push({ observedAt: row.observed_at, revision: row.revision,
-    expiresAt: row.expires_at, sequence: row.sequence, positions: row.order_json ? JSON.parse(row.order_json) : null });
+  for (const row of markers) {
+    const positions = row.order_json ? JSON.parse(row.order_json) : null;
+    groups.get(row.fact_key)?.observations.push({ observedAt: row.observed_at, revision: row.revision,
+      expiresAt: row.expires_at, sequence: row.sequence,
+      positions: positions && selected ? selected.get(row.fact_key).ordinals.map(index => positions[index] ?? row.sequence) : positions });
+  }
   const boundaries = [];
   for (const [operator, aggregate, boundary] of [['<=', 'MAX', from], ['>=', 'MIN', to]]) {
     // Seek once per shared set inside D1, then choose per-path bounds from its JSON there.
@@ -152,15 +183,17 @@ export async function sizeHistoryIn(store, repositoryId, from, to, now) {
       SELECT f.fact_key,f.facts_json,(SELECT ${aggregate}(o.observed_at) FROM analytical_size_observations o
         WHERE o.repository_id=? AND o.fact_key=f.fact_key AND o.observed_at${operator}?
         AND (o.expires_at IS NULL OR o.expires_at>?)) AS observed_at
-      FROM analytical_size_facts f WHERE f.repository_id=?), candidates AS MATERIALIZED (
+      FROM analytical_size_facts f WHERE f.repository_id=? ${keys ? 'AND f.fact_key IN (SELECT value FROM json_each(?))' : ''}), candidates AS MATERIALIZED (
       SELECT json_extract(j.value,'$.path') AS path,json_extract(j.value,'$.size') AS size,j.key AS ordinal,s.fact_key,s.observed_at
-      FROM set_bounds s,json_each(s.facts_json) j WHERE s.observed_at IS NOT NULL),
+      FROM set_bounds s,json_each(s.facts_json) j WHERE s.observed_at IS NOT NULL
+      ${selected ? "AND json_extract(j.value,'$.path') IN (SELECT value FROM json_each(?))" : ''}),
       bounds AS MATERIALIZED (SELECT path,${aggregate}(observed_at) AS observed_at FROM candidates GROUP BY path)
       SELECT c.path,c.size,o.observed_at,o.revision,
         COALESCE(json_extract(o.order_json,'$[' || c.ordinal || ']'),o.rowid) AS sequence
       FROM candidates c JOIN bounds b ON b.path=c.path AND b.observed_at=c.observed_at
       JOIN analytical_size_observations o ON o.repository_id=? AND o.fact_key=c.fact_key AND o.observed_at=c.observed_at
-      WHERE o.expires_at IS NULL OR o.expires_at>?`, repositoryId, boundary, now, repositoryId, repositoryId, now).all();
+      WHERE o.expires_at IS NULL OR o.expires_at>?`, repositoryId, boundary, now, repositoryId,
+    ...(keys ? [JSON.stringify(keys), JSON.stringify(paths)] : []), repositoryId, now).all();
     boundaries.push(...(result.results ?? []).map(row => ({ repositoryId, path: row.path, size: row.size,
       observedAt: row.observed_at, revision: row.revision, sequence: row.sequence })));
   }
@@ -178,8 +211,8 @@ export function* sizeHistoryRows(history) {
 }
 
 /** Compatibility projection retains every intermediate observation, deduplication and original same-time order. */
-export async function sizesIn(store, repositoryId, from, to, now) {
-  const history = await sizeHistoryIn(store, repositoryId, from, to, now);
+export async function sizesIn(store, repositoryId, from, to, now, paths) {
+  const history = await sizeHistoryIn(store, repositoryId, from, to, now, paths);
   const unique = new Map();
   for (const row of sizeHistoryRows(history)) {
     unique.set(JSON.stringify([row.path, row.observedAt, row.revision]), row);
