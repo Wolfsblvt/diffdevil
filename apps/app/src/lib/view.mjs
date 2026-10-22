@@ -140,8 +140,8 @@ export async function loadView({ url, viewer, session, runtime, surface = 'prs',
     fileIdentity = inPeriod ?? await runtime.locator.resolve(fileLocator, runtime.analytics.service.fileCandidates(data, detailRepository.repositoryId));
   }
   const selectedFileRow = fileIdentity && fileRows.find(row => row.repositoryId === fileIdentity.repositoryId && row.path === fileIdentity.path);
-  // Detail pages carry the resolved identity; their file surface derives selected-path detail separately.
-  const projectionRows = fileLocator ? (selectedFileRow ? [selectedFileRow] : fileIdentity ? [fileIdentity] : []) : fileRows;
+  // Keep retained identity separate from aggregate rows; a known file with no period row has an honest empty view.
+  const projectionRows = fileLocator ? (selectedFileRow ? [selectedFileRow] : []) : fileRows;
   const files = fileLocator
     ? projectionRows
     : entitlement.premium && surface !== 'pr' && runtime.premium.projection ? await runtime.premium.projection.mapFiles(projectionRows, viewer, runtime) : [];
