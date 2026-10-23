@@ -9,7 +9,7 @@ const ENTRY_OVERHEAD_BYTES = 512;
  * FIFO order also orders fixed-lifetime expiry: each entry is visited only when it leaves, plus one live head check.
  * Hits do not extend lifetime or reorder entries. A miss, eviction or oversized value always returns complete work.
  */
-export function createAnalyticalCache({ now = () => performance.now(), maxBytes = 12 * MIB, maxEntryBytes = MIB / 2, maxEntries = 2000 } = {}) {
+export function createAnalyticalCache({ now = () => performance.now(), maxBytes = 12 * MIB, maxEntryBytes = MIB, maxEntries = 2000 } = {}) {
   const entries = new Map();
   let weightBytes = 0;
   const remove = ([key, entry]) => { entries.delete(key); weightBytes -= entry.bytes; };

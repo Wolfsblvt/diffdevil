@@ -422,7 +422,8 @@ inputs match. Each query still selects its own current population and window and
 entitlement; the store still checks history standing, expiry and withdrawal. Neither response bodies nor authority
 are cached. Unchanged interpretation can be shared by common and premium reads without sharing a reader's result.
 Expiry, eviction, clearing or isolate loss is a normal recomputation; failures do not become cached empty answers.
-The numerical cache has independent default limits: 12 MiB of serialized weight, 2,000 entries and 512 KiB per entry.
+The numerical cache has independent default limits: 12 MiB of serialized weight, 2,000 entries and 1 MiB per entry.
+The per-entry allowance lets useful large interpretations remain warm while the total budget stays fixed.
 Accounting charges two bytes per key and value-JSON code unit plus a 512-byte entry allowance. This bounds retained
 serialized weight and count; it does not measure total JavaScript object allocation or promise a Worker heap ceiling.
 An entry over either byte budget is returned without retention, so one large comparison cannot evict useful small ones.

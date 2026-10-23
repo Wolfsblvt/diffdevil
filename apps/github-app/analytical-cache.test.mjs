@@ -60,6 +60,33 @@ test('weight, oversized keys/values, fixed expiry and failures leave complete co
   assert.equal(cache.usage().weightBytes, 0);
 });
 
+test('the default retains useful large interpretations while still bypassing oversized entries', () => {
+  const cache = createAnalyticalCache({ now: () => 0 });
+  assert.equal(cache.usage().maxEntryBytes, 1024 * 1024);
+
+  let largeComputations = 0;
+  const large = Object.freeze({ text: 'λ'.repeat(415_000) });
+  const largeKey = 'interpretation:large';
+  assert.equal(cache.memo(largeKey, () => { largeComputations++; return large; }), large);
+  const retained = cache.usage();
+  assert.ok(retained.weightBytes > 512 * 1024, 'the interpretation exceeds the previous default cap');
+  assert.ok(retained.weightBytes <= retained.maxEntryBytes);
+  assert.equal(retained.entries, 1);
+  assert.equal(cache.memo(largeKey, () => { largeComputations++; return large; }), large);
+  assert.equal(largeComputations, 1, 'a complete interpretation inside the new limit remains reusable');
+
+  let oversizedComputations = 0;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const result = cache.memo('interpretation:oversized', () => {
+      oversizedComputations++;
+      return { text: 'x'.repeat(550_000) };
+    });
+    assert.equal(result.text.length, 550_000, 'bypass returns the complete interpretation');
+  }
+  assert.equal(oversizedComputations, 2, 'an interpretation over one MiB is recalculated on each read');
+  assert.deepEqual(cache.usage(), retained, 'oversized work does not evict the useful retained interpretation');
+});
+
 test('a broad retained-history read keeps its entire answer when its interpretations exceed retention', async () => {
   const original = record();
   const rows = Array.from({ length: 2505 }, (_, index) => ({ ...original, pullRequest: index + 1,
