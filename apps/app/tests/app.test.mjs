@@ -288,6 +288,69 @@ test('the page loader drives populations from the retained analytical records an
   assert.equal(coverage.counts.get(1007), undefined, 'the pathless-only repository has no retained record');
   assert.equal(coverage.counts.get(1003), undefined, 'history-off repositories are not read');
   const { viewer, opened } = await viewerFor(app);
+  const viewerAfterNamespaceAccessLoss = {
+    ...viewer,
+    repositories: viewer.repositories.filter(repository => repository.owner !== 'parser-guild'),
+    namespaces: viewer.namespaces.filter(namespace => namespace.login !== 'parser-guild')
+  };
+  let inaccessibleScopeReads = 0;
+  const accessLossRuntime = {
+    ...app,
+    analytics: { ...app.analytics, async query(...args) { inaccessibleScopeReads++; return app.analytics.query(...args); } }
+  };
+  const inaccessibleScope = await loadView({
+    url: new URL(`${ORIGIN}/?s=%40parser-guild&per=90d`),
+    viewer: viewerAfterNamespaceAccessLoss,
+    session: opened,
+    runtime: accessLossRuntime,
+    surface: 'overview'
+  });
+  assert.equal(inaccessibleScope.scopeUnavailable, true, 'a selected namespace absent from current authorized repositories is unresolved, not an empty population');
+  assert.equal(inaccessibleScope.dataStanding, 'scope-unavailable');
+  assert.equal(inaccessibleScope.data, null);
+  assert.deepEqual(inaccessibleScope.ids, []);
+  assert.equal(inaccessibleScope.entitlement.premium, false, 'unavailable scope has no inferred premium offer');
+  assert.equal(inaccessibleScopeReads, 0, 'the unresolved selection does not fall back to an All repositories read');
+  const viewerAfterRepositoryAccessLoss = {
+    ...viewer,
+    repositories: viewer.repositories.filter(repository => repository.repositoryId !== 1001),
+    namespaces: viewer.namespaces.map(namespace => namespace.login === 'parser-guild'
+      ? { ...namespace, repositories: namespace.repositories.filter(repository => repository.repositoryId !== 1001) }
+      : namespace)
+  };
+  const inaccessibleRepository = await loadView({
+    url: new URL(`${ORIGIN}/?s=parser-guild%2Fparser-lab&per=90d`),
+    viewer: viewerAfterRepositoryAccessLoss,
+    session: opened,
+    runtime: accessLossRuntime,
+    surface: 'overview'
+  });
+  assert.equal(inaccessibleRepository.scopeUnavailable, true, 'a selected repository absent from current authorized repositories is unresolved even while a namespace sibling remains');
+  assert.equal(inaccessibleRepository.dataStanding, 'scope-unavailable');
+  assert.equal(inaccessibleRepository.data, null);
+  assert.deepEqual(inaccessibleRepository.ids, []);
+  assert.equal(inaccessibleRepository.entitlement.premium, false, 'unavailable repository scope has no inferred premium offer');
+  assert.equal(inaccessibleScopeReads, 0, 'the unresolved repository selection does not fall back to an All repositories read');
+  assert.ok(viewerAfterRepositoryAccessLoss.repositories.some(repository => repository.fullName === 'parser-guild/grammar-fuzz'), 'the accessible sibling remains visible');
+  const authorizedEmptyRepository = await loadView({
+    url: new URL(`${ORIGIN}/?s=parser-guild%2Fgrammar-fuzz&per=90d`),
+    viewer,
+    session: opened,
+    runtime: app,
+    surface: 'overview'
+  });
+  assert.equal(authorizedEmptyRepository.scopeUnavailable, false, 'an authorized history-off repository remains a valid empty population');
+  assert.equal(authorizedEmptyRepository.dataStanding, 'none');
+  const accessibleDetail = await loadView({
+    url: new URL(`${ORIGIN}/pr/parser-guild/parser-lab/452?s=%40missing-org&q=452`),
+    viewer,
+    session: opened,
+    runtime: app,
+    surface: 'pr',
+    detail: { repositoryId: 1001, pullRequest: 452 }
+  });
+  assert.equal(accessibleDetail.scopeUnavailable, false, "a detail route's unavailable navigation context does not hide its authorized repository detail");
+  assert.equal(accessibleDetail.dataStanding, 'available');
   const view = await loadView({ url: new URL(`${ORIGIN}/?s=parser-guild%2Fparser-lab&per=90d`), viewer, session: opened, runtime: app, surface: 'prs' });
   assert.equal(view.scope.kind, 'repository');
   assert.equal(view.lifecycle.standing, 'available');

@@ -38,6 +38,7 @@ import { participationJourney, rewardOnlyJourney, nullableReceiverJourney, COMME
 import { appBuildTarget } from '../build-target.mjs';
 import { admissionJourney, seedAdmissionStore } from './admission.mjs';
 import { loadingJourney } from './loading.mjs';
+import { scopeUnavailableJourney } from './scope-unavailable.mjs';
 import { fileReadJourney } from './file-read.mjs';
 import { filesQueryJourney } from './files-query.mjs';
 import { seedLoadingScale } from './loading-scale.mjs';
@@ -797,6 +798,7 @@ try {
     await startWorker(ENTITLEMENT_FIXTURE);
     await signIn();
     await loadingJourney(ctx);
+    await scopeUnavailableJourney({ ...ctx, github, restart: async () => { await stopWorker(); await startWorker(ENTITLEMENT_FIXTURE); } });
     if (edition.entry?.replaceAll('\\', '/').endsWith('/qa/loading-premium/index.mjs')) await fileReadJourney({ ...ctx, scale: LOADING_SCALE });
   } else if (ADMISSION_ONLY) {
     await startWorker(ENTITLEMENT_FIXTURE);

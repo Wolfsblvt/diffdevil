@@ -80,6 +80,8 @@ export async function loadView({ url, viewer, session, runtime, surface = 'prs',
   const detailRepository = ['pr', 'files', 'file'].includes(surface) && Number.isSafeInteger(detailRepositoryId)
     ? viewer.repositories.find(repository => repository.repositoryId === detailRepositoryId)
     : undefined;
+  const scopeUnavailable = !detailRepository && !['pr', 'file'].includes(surface)
+    && ['namespace', 'repository'].includes(scope.kind) && repositories.length === 0;
   // An invalid file route must reach its not-found page, never fall back to an all-repository detail query.
   const historyRepositories = (detailRepository ? [detailRepository] : repositories)
     .filter(repository => repository.standing?.historyReadable && (surface !== 'file' || repository === detailRepository));
@@ -96,7 +98,7 @@ export async function loadView({ url, viewer, session, runtime, surface = 'prs',
   ]);
   const retainedRepositories = historyRepositories.filter(repository => (coverage.counts.get(repository.repositoryId) ?? 0) > 0);
   const pathlessOnly = historyRepositories.filter(repository => (coverage.counts.get(repository.repositoryId) ?? 0) === 0);
-  let data = null, dataStanding = 'none';
+  let data = null, dataStanding = scopeUnavailable ? 'scope-unavailable' : 'none';
   const contractScope = detailRepository && historyRepositories.length > 0
     ? { kind: 'repository', repositoryId: detailRepository.repositoryId }
     : await selectedScope(scope, historyRepositories, runtime);
@@ -152,7 +154,7 @@ export async function loadView({ url, viewer, session, runtime, surface = 'prs',
   const href = (path, patch = {}) => link(state, path, patch);
   // The plan decides who is entitled; the build decides whether the premium implementation exists. A premium slot renders only when both hold.
   const premiumProvided = runtime.premium.provided, premiumHere = entitlement.premium && premiumProvided;
-  return { state, scope, repositories, historyRepositories, retainedRepositories, ids, actor, contractScope, nowIso, period, periods: Object.values(PERIODS), window, pullRequests, lifecycle, current, previous, bounds, coverage, truncated, entitlement, premiumProvided, premiumHere, data, dataStanding, files, fileIdentity, fileHasSelectedPeriodActivity, titles, href, viewer };
+  return { state, scope, scopeUnavailable, repositories, historyRepositories, retainedRepositories, ids, actor, contractScope, nowIso, period, periods: Object.values(PERIODS), window, pullRequests, lifecycle, current, previous, bounds, coverage, truncated, entitlement, premiumProvided, premiumHere, data, dataStanding, files, fileIdentity, fileHasSelectedPeriodActivity, titles, href, viewer };
 }
 
 /** A second surface read for a page that composes two (a premium file panel beside the page's pull-request model). */
