@@ -6,11 +6,11 @@
 import Icon from './Icon.astro';
 import PlanChip from './PlanChip.astro';
 import { link } from '../lib/scope.mjs';
-import { namespacePlan } from '../lib/view.mjs';
+import { namespacePlan, namespaceSelection } from '../lib/view.mjs';
 interface Props { viewer: any; nav: { section: string; active: number | null; premium: boolean }; view?: any; badge?: { count: number; urgent: boolean } | null }
 const { viewer, nav, view, badge = null } = Astro.props;
 const state = view?.state ?? { s: 'all', per: '30d' };
-const carried = { s: state.s, per: state.per };
+const carried = { s: state.s, per: state.per, r: state.r };
 const keep = ['pr', 'file', 'overview', 'manage'].includes(nav.section) ? '/' : `/${nav.section}`;
 const sections = [
   { key: 'overview', path: '/', label: 'Overview', icon: 'overview' as const },
@@ -39,7 +39,7 @@ const siteOrigin = Astro.locals.app?.config?.siteOrigin ?? 'https://diffdevil.de
           <Icon name={section.icon} size={16} /><span>{section.label}</span>
           <span class="a-end">
             {section.key === 'prs' && nav.active !== null && <span class="a-st">{nav.active} active</span>}
-            {section.key === 'files' && !nav.premium && !view?.scopeUnavailable && !planUnavailable && <PlanChip plan="Pro" />}
+            {section.key === 'files' && !nav.premium && !view?.historyUnavailable && !view?.scopeUnavailable && !planUnavailable && <PlanChip plan="Pro" />}
           </span>
         </a>
       ))}
@@ -55,7 +55,7 @@ const siteOrigin = Astro.locals.app?.config?.siteOrigin ?? 'https://diffdevil.de
         {namespaces.map((namespace: any) => (
           <div class="a-nsp" data-namespace={namespace.login}>
             <div class="a-acctrow">
-              <a class="a-acct" href={link({ ...carried, s: `@${namespace.login}` }, keep)} aria-current={state.s === `@${namespace.login}` ? 'page' : undefined}>
+              <a class="a-acct" href={link({ ...carried, ...namespaceSelection(viewer, namespace.login) }, keep)} aria-current={state.s === `@${namespace.login}` ? 'page' : undefined}>
                 <span class:list={['a-av', { user: namespace.kind === 'user' }]} aria-hidden="true">{namespace.login.slice(0, 2)}</span>
                 <span class="rn">{namespace.login}</span>
                 {namespace.login === viewer.login && <span class="a-you">you</span>}

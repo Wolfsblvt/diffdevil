@@ -185,6 +185,66 @@ test('an explicit reader omitted by discovery keeps actual organisation funding 
   }
 });
 
+test('canonical and case-varied history-off links retain the actual namespace plan without an analytical response', async () => {
+  const f = await readerFixture();
+  const repositoryName = 'parser-guild/grammar-fuzz';
+  for (const spelling of [repositoryName, repositoryName.toUpperCase()]) {
+    const viewer = await f.viewer([spelling]);
+    for (const plan of ['Pro', 'Unknown']) {
+      const current = { ...viewer, namespaces: viewer.namespaces.map(namespace => ({ ...namespace, plan })) };
+      const model = await loadView({ url: new URL(`${ORIGIN}/files?s=${spelling}`), viewer: current, session: f.opened, runtime: f.app, surface: 'files' });
+      assert.deepEqual(model.ids, []);
+      assert.equal(model.data, null);
+      assert.equal(model.entitlement.plan, plan, `${spelling}: ${plan}`);
+      assert.equal(model.scope.namespace, 'parser-guild');
+      assert.equal(model.scope.repository, repositoryName);
+    }
+  }
+});
+
+test('namespace continuation carries only the freshly authorised explicit target and drops it on All or another namespace', async () => {
+  const f = await readerFixture();
+  const viewer = await f.viewer([fullName]);
+  const model = await loadView({ url: new URL(`${ORIGIN}/files?s=${fullName}`), viewer, session: f.opened, runtime: f.app, surface: 'files' });
+  const continuation = new URL(model.href('/files', { s: '@parser-guild' }), ORIGIN);
+  assert.equal(continuation.searchParams.get('r'), fullName);
+  const currentViewer = await f.viewer(analyticalRepositoryNames(continuation));
+  const current = await loadView({ url: continuation, viewer: currentViewer, session: f.opened, runtime: f.app, surface: 'files' });
+  assert.deepEqual(current.ids, [1001]);
+  assert.equal(current.namespacePartial, true);
+  assert.equal(current.entitlement.plan, 'Pro');
+  const across = new URL(current.href('/files', { s: 'all' }), ORIGIN);
+  assert.deepEqual(analyticalRepositoryNames(across), []);
+  assert.equal(across.searchParams.has('r'), false);
+  assert.deepEqual((await f.viewer(analyticalRepositoryNames(across))).repositories, []);
+  assert.deepEqual(analyticalRepositoryNames(new URL(current.href('/files', { s: '@northwind-tools' }), ORIGIN)), []);
+  assert.deepEqual(analyticalRepositoryNames(new URL(`/files?s=@northwind-tools&r=${fullName}`, ORIGIN)), []);
+  assert.deepEqual(analyticalRepositoryNames(new URL(`/files?s=all&r=${fullName}`, ORIGIN)), []);
+  f.github.state.repositoryStatus.set(1001, 404);
+  const deniedViewer = await f.viewer(analyticalRepositoryNames(continuation));
+  const denied = await loadView({ url: continuation, viewer: deniedViewer, session: f.opened, runtime: f.app, surface: 'files' });
+  assert.equal(denied.scopeUnavailable, true);
+});
+
+test('known funding with history off is a history availability state independent of an absent premium build', async () => {
+  const f = await readerFixture();
+  const repositoryName = 'parser-guild/grammar-fuzz';
+  const viewer = await f.viewer([repositoryName]);
+  const model = await loadView({ url: new URL(`${ORIGIN}/files?s=${repositoryName}`), viewer, session: f.opened, runtime: f.app, surface: 'files' });
+  assert.equal(model.entitlement.plan, 'Pro');
+  assert.equal(model.entitlement.premium, false);
+  assert.equal(model.historyUnavailable, true);
+  assert.equal(model.premiumProvided, false);
+  f.github.state.installations = INSTALLATIONS;
+  f.github.state.admin.set(1003, false);
+  f.app.cache.clear();
+  const contextualViewer = await f.viewer([repositoryName]);
+  const detail = await loadView({ url: new URL(`${ORIGIN}/file/${repositoryName}/xxxxxxxxxxxxxxxxxxxxxx?s=all`),
+    viewer: contextualViewer, session: f.opened, runtime: f.app, surface: 'file', detail: { repositoryId: 1003 } });
+  assert.equal(detail.historyUnavailable, true);
+  assert.equal(detail.historyManageable, false, 'administration of another repository cannot select this target history action');
+});
+
 test('fresh GitHub access cannot restore withdrawn App history consent', async () => {
   const f = await readerFixture();
   await f.app.appStore.deleteHistory(1001);

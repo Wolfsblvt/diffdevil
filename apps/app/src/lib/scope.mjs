@@ -14,7 +14,7 @@ export const PERIODS = Object.freeze({
 export const DEFAULT_PERIOD = '30d';
 
 const STATE_KEYS = Object.freeze({
-  s: 'all', per: DEFAULT_PERIOD, f: '', band: '', ev: '', sort: '', q: '', page: '', w: '', m: '', rm: '', cm: '', sel: ''
+  s: 'all', r: '', per: DEFAULT_PERIOD, f: '', band: '', ev: '', sort: '', q: '', page: '', w: '', m: '', rm: '', cm: '', sel: ''
 });
 
 const SCOPE = /^(?:all|@[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})|[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})\/[A-Za-z0-9._-]{1,100})$/u;
@@ -33,8 +33,10 @@ export function readViewState(url) {
   const period = query.get('per');
   const page = Number(query.get('page'));
   const bucket = query.get('w');
+  const selector = scope && SCOPE.test(scope) ? scope : 'all';
   return {
-    s: scope && SCOPE.test(scope) ? scope : 'all',
+    s: selector,
+    r: namespaceRepository(selector, query.get('r')),
     per: period && Object.hasOwn(PERIODS, period) ? period : DEFAULT_PERIOD,
     f: clean(query.get('f')),
     band: clean(query.get('band')),
@@ -49,6 +51,12 @@ export function readViewState(url) {
     // A selected file is addressed by its opaque locator, never by its path.
     sel: clean(query.get('sel'), LOCATOR)
   };
+}
+
+/** One explicit lookup hint for its own namespace only; every consumer must freshly authorise it. */
+function namespaceRepository(selector, repository) {
+  const match = typeof repository === 'string' && REPOSITORY.exec(repository);
+  return selector?.startsWith('@') && match && selector.slice(1).toLowerCase() === match[1].toLowerCase() ? repository : '';
 }
 
 /** Files q/page project an acquired population locally; every other selection still identifies a different acquisition. */
@@ -77,6 +85,7 @@ export function describeScope(selector) {
  */
 export function link(state, path, patch = {}) {
   const next = { ...state, ...patch };
+  next.r = namespaceRepository(next.s, next.r);
   const query = new URLSearchParams();
   for (const key of Object.keys(STATE_KEYS)) {
     const value = next[key];
@@ -88,7 +97,7 @@ export function link(state, path, patch = {}) {
 }
 
 /** The scope-and-period subset that every page carries; filters belong to the page that set them. */
-export function carried(state) { return { s: state.s, per: state.per }; }
+export function carried(state) { return { s: state.s, per: state.per, r: namespaceRepository(state.s, state.r) }; }
 
 export function periodOf(state) { return PERIODS[state.per] ?? PERIODS[DEFAULT_PERIOD]; }
 

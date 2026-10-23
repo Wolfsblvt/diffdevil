@@ -47,13 +47,15 @@ export async function resolveViewer({ reads, actor, store, entitlement, cache, e
   const installations = await cache.get(`installations:${userId}`, () => reads.installations());
   let granted = (await Promise.all(installations.map(installation => cache.get(`repositories:${userId}:${installation.id}`, () => reads.installationRepositories(installation.id))
     .then(list => list.map(repository => ({ ...repository, accountType: installation.account?.type ?? 'User' })))))).flat();
+  const discovered = new Set(granted.map(repository => repository.repositoryId));
   // Explicit destinations re-authorise even a cached/listed identity. Do not cache this observation or discover siblings.
   for (const fullName of new Set(explicitRepositories)) {
     granted = granted.filter(repository => repository.fullName.toLowerCase() !== fullName.toLowerCase());
     const current = await reads.repository(fullName);
     if (!current) continue;
+    const explicitOnly = !discovered.has(current.repositoryId);
     granted = granted.filter(repository => repository.repositoryId !== current.repositoryId);
-    granted.push(current);
+    granted.push({ ...current, explicitOnly });
   }
   const standings = await store.repositoryStandings(granted.map(repository => repository.repositoryId));
   const repositories = granted.map(repository => {
@@ -94,7 +96,7 @@ export async function resolveViewer({ reads, actor, store, entitlement, cache, e
 /** The repositories a scope selector names, inside the viewer's authorised set. An unknown selector is empty, not everything. */
 export function scopeRepositories(viewer, scope) {
   if (scope.kind === 'all') return viewer.repositories;
-  if (scope.kind === 'namespace') return viewer.repositories.filter(repository => repository.owner === scope.namespace);
+  if (scope.kind === 'namespace') return viewer.repositories.filter(repository => repository.owner.toLowerCase() === scope.namespace.toLowerCase());
   return viewer.repositories.filter(repository => repository.fullName.toLowerCase() === scope.repository.toLowerCase());
 }
 

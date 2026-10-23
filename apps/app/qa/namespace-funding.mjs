@@ -4,6 +4,7 @@ import { COMMERCIAL_PRO, COMMERCIAL_FREE } from './manage.mjs';
 
 export async function namespaceFundingJourney({ page, check, go, settled, shot, github, restart }) {
   const baselineRoles = new Map(github.state.roles);
+  const baselineAdmin = new Map(github.state.admin), baselinePush = new Map(github.state.push);
   try {
     for (const [name, spec, plan, role = 'admin'] of [
       ['unfunded-admin', { ...COMMERCIAL_PRO, capacity: [{ slot: 'slot-included', funding: 'included', binding: null }] }, 'Free'],
@@ -14,6 +15,8 @@ export async function namespaceFundingJourney({ page, check, go, settled, shot, 
       ['unknown-funding', { ...COMMERCIAL_PRO, capacity: [], others: { 7001: 'unknown', 7002: 'business' } }, 'Unknown']
     ]) {
       github.state.roles.set('parser-guild', role);
+      github.state.admin.set(1003, role === 'admin');
+      github.state.push.set(1003, role === 'admin');
       await restart(spec);
       await go('/files?s=%40parser-guild&per=90d');
       await settled();
@@ -37,6 +40,39 @@ export async function namespaceFundingJourney({ page, check, go, settled, shot, 
         check('Free All repositories points to funded organisations regardless of administration', await page.locator('.a-pointers a[href*="parser-guild"]').count() === 1
           && await page.locator('.a-pointers a[href*="northwind-tools"]').count() === 1);
       }
+      if (plan === 'Pro' || plan === 'Business') {
+        for (const repository of ['parser-guild/grammar-fuzz', 'PARSER-GUILD/GRAMMAR-FUZZ']) {
+          await go(`/files?s=${repository}&per=90d`);
+          await settled();
+          const content = await page.locator('#main').innerText();
+          check(`${name}: ${repository} keeps known funding and explains unreadable history without a purchase offer`,
+            await page.locator('[data-history-unavailable]').count() === 1
+            && /plan already includes file history/u.test(content)
+            && !/What Pro adds|See Pro|plan funding this scope could not be established|not part of this build/u.test(content)
+            && await page.locator('.a-nav-sec a[href^="/files"] .a-plan').count() === 0
+            && (await page.locator('[data-namespace="parser-guild"] .a-acct .a-plan').textContent()).trim() === plan
+            && await page.getByRole('link', { name: role === 'admin' ? 'Manage repository history' : 'History status', exact: true }).count() === 1,
+          JSON.stringify({ plan, chipText: await page.locator('[data-namespace="parser-guild"] .a-acct .a-plan').textContent(),
+            renderedChip: await page.locator('[data-namespace="parser-guild"] .a-acct .a-plan').innerText(), content: content.slice(0, 450) }));
+        }
+        if (name === 'funded-pro-admin') {
+          await shot('funded-history-off-canonical-owner-1440');
+          await page.getByRole('link', { name: 'Manage repository history', exact: true }).click();
+          await page.waitForURL(url => url.pathname === '/manage/repositories');
+          check('known-funded history-off administrator reaches the existing repository management without a purchase',
+            (await page.locator('#main').innerText()).includes('grammar-fuzz'));
+          for (const path of ['/?s=parser-guild/grammar-fuzz', '/history?s=parser-guild/grammar-fuzz',
+            '/pr/parser-guild/grammar-fuzz/5', '/file/parser-guild/grammar-fuzz/xxxxxxxxxxxxxxxxxxxxxx']) {
+            await go(`${path}${path.includes('?') ? '&' : '?'}per=90d`);
+            await settled();
+            const content = await page.locator('#main').innerText();
+            check(`known-funded history-off ${path} preserves the history boundary without a purchase or guessed plan`,
+              /history|History|No retained analysis/u.test(content)
+              && !/What Pro adds|See Pro|plan funding this scope could not be established|not part of this build/u.test(content)
+              && await page.locator('.a-nav-sec a[href^="/files"] .a-plan').count() === 0);
+          }
+        }
+      }
       if (plan === 'Unknown') {
         check('unknown funding is named in navigation without a Files Pro offer', /Plan unavailable/u.test(await namespace.innerText())
           && await page.locator('.a-nav-sec a[href^="/files"] .a-plan').count() === 0);
@@ -52,5 +88,7 @@ export async function namespaceFundingJourney({ page, check, go, settled, shot, 
     }
   } finally {
     github.state.roles = baselineRoles;
+    github.state.admin = baselineAdmin;
+    github.state.push = baselinePush;
   }
 }

@@ -31,3 +31,4 @@ trail.push(...crumbs);
 </div>
 {!view.scopeUnavailable && view.entitlement?.namespaceEstablished === false && <p class="a-note"><span>This namespace's account is not recorded by the App yet, so its repositories read under your own plan until the next delivery records it.</span></p>}
 {!view.scopeUnavailable && view.entitlement?.aggregatePlan === 'unknown' && <p class="a-note"><span>The plan funding this scope could not be established right now; premium panels stay closed rather than guessed.</span></p>}
+{!view.scopeUnavailable && view.namespacePartial && <p class="a-note" data-namespace-partial><span>This namespace view covers the repositories currently discovered plus the repository reached through your direct link. Other repositories may be omitted; this is not a complete namespace inventory.</span></p>}

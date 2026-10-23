@@ -813,6 +813,34 @@ try {
       JSON.stringify({ status: response.status(), heading: await page.locator('h1').first().textContent() }));
       await shot(`explicit-${name}`);
     }
+    await go(`/files?s=${fullName}&per=1y`);
+    await page.locator('[data-namespace="parser-guild"] .a-acct').click();
+    await page.waitForURL(url => url.searchParams.get('s') === '@parser-guild');
+    await settled();
+    const namespaceContinuation = page.url();
+    check('namespace exploration retains the freshly authorised direct target and names its partial population', new URL(namespaceContinuation).searchParams.get('r') === fullName
+      && await page.locator('[data-namespace-partial]').count() === 1
+      && await page.locator('[data-nav-repo="parser-guild/lexer-kit"]').count() === 1
+      && (await page.locator('#main').innerText()).includes("This scope's plan includes file history"));
+    await page.locator('.a-nav-sec a[href^="/history"]').click();
+    await page.waitForURL(url => url.pathname === '/history');
+    await settled();
+    check('a second analytical destination retains the bounded namespace selection', new URL(page.url()).searchParams.get('r') === fullName
+      && await page.locator('[data-namespace-partial]').count() === 1
+      && (await page.locator('.a-head .a-scope').innerText()).includes('1 repository'));
+    await shot('explicit-namespace-continuation');
+    await page.locator('.a-allrepos').click();
+    await page.waitForURL(url => !url.searchParams.has('s'));
+    await settled();
+    check('All repositories does not acquire the request-local target or retain its lookup hint', !new URL(page.url()).searchParams.has('r')
+      && await page.locator('[data-nav-repo="parser-guild/lexer-kit"]').count() === 0);
+    github.state.repositoryStatus.set(1002, 404);
+    const deniedUrl = new URL(namespaceContinuation);
+    deniedUrl.searchParams.set('render', 'document');
+    const deniedContinuation = await page.request.get(deniedUrl.href);
+    check('namespace continuation rechecks current access instead of trusting a prior direct read', deniedContinuation.status() === 200
+      && (await deniedContinuation.text()).includes('data-scope-unavailable'));
+    github.state.repositoryStatus.clear();
     const query = { version: 1, surface: 'overview', repositoryIds: [1002], scope: { kind: 'repository', repositoryId: 1002 },
       repositoryIdentities: [{ repositoryId: 1002, fullName }], from: '2026-01-01T00:00:00.000Z', to: new Date().toISOString() };
     const apiUrl = `${ORIGIN}/api/analytics?query=${encodeURIComponent(JSON.stringify(query))}`;

@@ -1,0 +1,15 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
+// Funding is known; unreadable history is a separate state from plan eligibility and build composition.
+import Unavailable from './Unavailable.astro';
+interface Props { view: any }
+const { view } = Astro.props;
+---
+<section class="a-pn s12" data-history-unavailable>
+  <div class="a-pn-b">
+    <Unavailable what="History is unavailable for this selection" why="this scope's plan already includes file history, but no selected repository currently has readable history" />
+    <p class="a-mini">History consent, retention and availability are separate from the plan. A repository administrator can manage history collection.</p>
+    {view.historyManageable ? <a class="link-quiet" href="/manage/repositories">Manage repository history</a>
+      : <a class="link-quiet" href={view.href('/history')}>History status</a>}
+  </div>
+</section>

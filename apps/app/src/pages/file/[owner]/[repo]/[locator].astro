@@ -9,6 +9,7 @@ import DeferredRegion from '../../../../components/DeferredRegion.astro';
 import PageHead from '../../../../components/PageHead.astro';
 import Unavailable from '../../../../components/Unavailable.astro';
 import SeePro from '../../../../components/SeePro.astro';
+import HistoryUnavailable from '../../../../components/HistoryUnavailable.astro';
 import { loadView, navModel, repositoryByFullName } from '../../../../lib/view.mjs';
 
 const runtime = Astro.locals.app;
@@ -37,7 +38,7 @@ if (repository && here && !view.fileIdentity && !Astro.locals.deferPremium) Astr
     <PageHead view={view} title="File history" crumbs={[{ label: 'Files', href: view.href('/files') }]} scope={false}>
       <div class="a-scope" slot="scope">{fullName}<span class="a-dot">·</span>{view.period.label}</div>
     </PageHead>
-    <div class="a-grid">{view.entitlement.premium
+    <div class="a-grid">{view.historyUnavailable ? <HistoryUnavailable view={view} /> : view.entitlement.premium
       ? <section class="a-pn s12"><div class="a-pn-b"><Unavailable what="File history is not part of this build" why="the plan includes it, but this build carries only the Community application; nothing was computed" /></div></section>
       : <SeePro text="File history: Changed per merged PR, size over time, Turnover and the files it changes with" span={12} unavailable={view.entitlement.aggregatePlan === 'unknown'} />}</div>
   </> : <DeferredRegion name="file-body" title="File history">{!view.fileIdentity ? <div class="a-focus a-pn"><div class="a-pn-b" style="padding:28px 32px"><h1 style="font-size:22px;margin:0 0 8px">No such file</h1><p class="lede">This handle does not identify a file in your currently authorised, retained repository history.</p></div></div>

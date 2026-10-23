@@ -5,8 +5,9 @@ import { describeScope, readViewState } from './scope.mjs';
 /** Only names actually selected by a supported analytical URL; no namespace or All-repository discovery. */
 export function analyticalRepositoryNames(url) {
   if (!analyticalRoute(url.pathname)) return [];
-  const scope = describeScope(readViewState(url).s), names = [];
+  const state = readViewState(url), scope = describeScope(state.s), names = [];
   if (scope.kind === 'repository') names.push(scope.repository);
+  if (scope.kind === 'namespace' && state.r) names.push(state.r);
   const detail = /^\/(?:pr|file)\/([^/]+\/[^/]+)\//u.exec(url.pathname);
   if (detail && describeScope(detail[1]).kind === 'repository') names.push(detail[1]);
   return [...new Set(names)];

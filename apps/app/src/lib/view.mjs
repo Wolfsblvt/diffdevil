@@ -21,7 +21,7 @@ const PLAN_RANK = { Free: 0, Pro: 1, Business: 2 };
  */
 export function entitlementFor(viewer, scope, repositories) {
   const planOf = namespace => {
-    const entry = viewer.namespaces.find(candidate => candidate.login === namespace);
+    const entry = viewer.namespaces.find(candidate => candidate.login.toLowerCase() === namespace.toLowerCase());
     return namespacePlan(viewer, entry);
   };
   const paid = plan => ['Pro', 'Business'].includes(plan);
@@ -72,8 +72,15 @@ async function selectedScope(scope, repositories, runtime) {
 export async function loadView({ url, viewer, session, runtime, surface = 'prs', detail = {} }) {
   const { repositoryId: detailRepositoryId, fileLocator, ...queryDetail } = detail;
   const state = readViewState(url);
-  const scope = describeScope(state.s);
+  let scope = describeScope(state.s);
   const repositories = scopeRepositories(viewer, scope);
+  if (scope.kind === 'repository' && repositories[0]) state.s = repositories[0].fullName;
+  if (scope.kind === 'namespace') {
+    const namespace = viewer.namespaces.find(candidate => candidate.login.toLowerCase() === scope.namespace.toLowerCase());
+    if (namespace) state.s = `@${namespace.login}`;
+  }
+  scope = describeScope(state.s);
+  const namespacePartial = scope.kind === 'namespace' && repositories.some(repository => repository.explicitOnly);
   const nowIso = runtime.now();
   const period = periodOf(state);
   const nowMs = Date.parse(nowIso);
@@ -117,6 +124,9 @@ export async function loadView({ url, viewer, session, runtime, surface = 'prs',
     }
   }
   const entitlement = entitlementFromData(viewer, scope, repositories, data, expected);
+  const historyUnavailable = expectedRepositories.length > 0 && ['Pro', 'Business'].includes(entitlement.plan)
+    && historyRepositories.length === 0;
+  const historyManageable = historyUnavailable && expectedRepositories.some(repository => repository.canAdminister);
   entitlement.contractScope = contractScope;
   entitlement.namespaceEstablished = scope.kind !== 'namespace' || contractScope.kind === 'namespace' || Boolean(detailRepository);
   const retained = retainedRepositories.length > 0;
@@ -152,10 +162,10 @@ export async function loadView({ url, viewer, session, runtime, surface = 'prs',
   const files = fileLocator
     ? projectionRows
     : entitlement.premium && surface !== 'pr' && runtime.premium.projection ? await runtime.premium.projection.mapFiles(projectionRows, viewer, runtime) : [];
-  const href = (path, patch = {}) => link(state, path, patch);
+  const href = (path, patch = {}) => link(state, path, { ...(patch.s?.startsWith('@') ? namespaceSelection(viewer, patch.s.slice(1)) : {}), ...patch });
   // The plan decides who is entitled; the build decides whether the premium implementation exists. A premium slot renders only when both hold.
   const premiumProvided = runtime.premium.provided, premiumHere = entitlement.premium && premiumProvided;
-  return { state, scope, scopeUnavailable, repositories, historyRepositories, retainedRepositories, ids, actor, contractScope, nowIso, period, periods: Object.values(PERIODS), window, pullRequests, lifecycle, current, previous, bounds, coverage, truncated, entitlement, premiumProvided, premiumHere, data, dataStanding, files, fileIdentity, fileHasSelectedPeriodActivity, titles, href, viewer };
+  return { state, scope, scopeUnavailable, namespacePartial, historyUnavailable, historyManageable, repositories, historyRepositories, retainedRepositories, ids, actor, contractScope, nowIso, period, periods: Object.values(PERIODS), window, pullRequests, lifecycle, current, previous, bounds, coverage, truncated, entitlement, premiumProvided, premiumHere, data, dataStanding, files, fileIdentity, fileHasSelectedPeriodActivity, titles, href, viewer };
 }
 
 /** A second surface read for a page that composes two (a premium file panel beside the page's pull-request model). */
@@ -193,6 +203,12 @@ export function navModel(view, section) {
 }
 
 export function repositoryByFullName(viewer, fullName) { return viewer.repositories.find(repository => repository.fullName.toLowerCase() === fullName.toLowerCase()); }
+
+/** Retain a directly reached target for namespace exploration, never for All or a different namespace. */
+export function namespaceSelection(viewer, namespace) {
+  const repository = viewer.repositories.find(candidate => candidate.explicitOnly && candidate.owner.toLowerCase() === namespace.toLowerCase());
+  return { s: `@${namespace}`, r: repository?.fullName ?? '' };
+}
 
 /** Personal ownership shares the viewer's plan; organisation administration never supplies funding. */
 export function namespacePlan(viewer, namespace) {

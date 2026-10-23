@@ -12,6 +12,7 @@ import Panel from '../../../../components/Panel.astro';
 import ChartFrame from '../../../../components/ChartFrame.astro';
 import Unavailable from '../../../../components/Unavailable.astro';
 import SeePro from '../../../../components/SeePro.astro';
+import HistoryUnavailable from '../../../../components/HistoryUnavailable.astro';
 import LabelChip from '../../../../components/LabelChip.astro';
 import PullRequestFiles from '../../../../components/PullRequestFiles.astro';
 import Icon from '../../../../components/Icon.astro';
@@ -102,6 +103,7 @@ const policyBasis = retainedRow?.policy?.basis;
     </div></section>
 
     {pro ? <DeferredRegion name="pr-context" title="File context"><Context view={view} repository={repository} fullName={fullName} prNumber={prNumber} retainedRow={retainedRow} retainedFiles={retainedFiles} /></DeferredRegion>
+    : view.historyUnavailable ? <HistoryUnavailable view={view} />
     : view.entitlement.premium ? <section class="a-pn s12"><div class="a-pn-b"><Unavailable what="File context is not part of this build" why="the plan includes other active work, recent file activity and co-change, but this build carries only the Community application" compact /></div></section>
     : <SeePro text="Other active work on these files, recent file activity and co-change history" span={12} unavailable={view.entitlement.aggregatePlan === 'unknown'} />}
 
