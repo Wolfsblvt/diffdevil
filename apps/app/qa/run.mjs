@@ -819,8 +819,10 @@ try {
       && body.coverage?.merged > 0 && body.entitlements?.aggregatePlan === 'pro'
       && JSON.stringify(body.repositoryIdentities) === JSON.stringify([{ repositoryId: 1002, fullName }]));
     const sibling = await page.request.get(`${ORIGIN}/pr/parser-guild/parser-lab/452?render=document`);
-    check('an inaccessible private sibling remains unavailable without its history or repository context', sibling.status() === 404
-      && !(await sibling.text()).includes('parser-lab'));
+    const siblingText = await sibling.text();
+    check('an inaccessible private sibling returns the existing not-found explanation without retained PR data or charts', sibling.status() === 404
+      && siblingText.includes('Not in your repositories') && !siblingText.includes('data-chart')
+      && !siblingText.includes(pullRequests().find(value => value.repository.repositoryId === 1001 && value.number === 452).title));
     github.state.repositoryStatus.set(1002, 404);
     for (const path of ['/', '/prs', '/history', '/files']) {
       const unavailable = await page.request.get(`${ORIGIN}${path}?s=${fullName}&render=document`), text = await unavailable.text();
