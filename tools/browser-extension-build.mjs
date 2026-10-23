@@ -7,6 +7,7 @@ import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { extensionIdentity } from './browser-extension-version.mjs';
 import { inlineIcons } from './browser-extension-icons.mjs';
+import { extensionNotice } from './browser-extension-notice.mjs';
 const root = resolve('apps/browser-extension');
 const out = resolve('artifacts/browser-extension/unpacked');
 const fontFree = process.argv.includes('--without-fonts');
@@ -72,12 +73,7 @@ if (!fontFree) for (const [family, cssName, weights] of [['ibm-plex-sans', 'IBM 
 }
 await writeFile(join(out, 'options.css'), fonts + await readFile(join(out, 'options.css'), 'utf8'));
 await writeFile(join(out, 'content.css'), contentFonts + await readFile(join(out, 'content.css'), 'utf8'));
-const escape = value => value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
-function prose(title, text) {
-  const paragraphs = text.trim().split(/\n\s*\n/u).map(block => { const header = /^(#{1,3}) (.+)$/u.exec(block.trim()); return header ? `<h${header[1].length}>${escape(header[2])}</h${header[1].length}>` : `<p>${escape(block.replaceAll('\n', ' '))}</p>`; }).join('\n');
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escape(title)} · diffdevil</title><script src="theme.js"></script><link rel="stylesheet" href="options.css"></head><body><main class="app-main"><a href="options.html">← Settings</a>${paragraphs}</main></body></html>`;
-}
-for (const [file, page, title] of [['privacy.md', 'privacy.html', 'Privacy'], ['licenses.md', 'licenses.html', 'Licences']]) await writeFile(join(out, page), prose(title, await readFile(join(root, file), 'utf8')));
+for (const [file, page, title] of [['privacy.md', 'privacy.html', 'Privacy'], ['licenses.md', 'licenses.html', 'Licences']]) await writeFile(join(out, page), extensionNotice(title, await readFile(join(root, file), 'utf8')));
 await mkdir(join(out, 'licenses'), { recursive: true });
 for (const [name, path] of Object.entries({ 'AGPL-3.0-only.txt': 'LICENSES/AGPL-3.0-only.txt', 'MIT.txt': 'LICENSES/MIT.txt', 'works-artwork.txt': 'vendor/brand/works/licences/works-artwork.txt', 'chevrotain.txt': 'node_modules/chevrotain/LICENSE.txt', 'yaml.txt': 'node_modules/yaml/LICENSE', 'ajv.txt': 'node_modules/ajv/LICENSE', 'fast-deep-equal.txt': 'node_modules/fast-deep-equal/LICENSE', 'fast-uri.txt': 'node_modules/fast-uri/LICENSE', 'json-schema-traverse.txt': 'node_modules/json-schema-traverse/LICENSE', ...(!fontFree ? { 'IBM-Plex-Sans-OFL.txt': 'node_modules/@fontsource/ibm-plex-sans/LICENSE', 'IBM-Plex-Mono-OFL.txt': 'node_modules/@fontsource/ibm-plex-mono/LICENSE' } : {}) })) await copyFile(path, join(out, 'licenses', name));
 const metadata = { modules: modules.metafile, content: content.metafile };

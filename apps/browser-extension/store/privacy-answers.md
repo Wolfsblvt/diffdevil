@@ -10,7 +10,25 @@ The provider dashboard must agree with this file, the bundled/public privacy not
 
 The single purpose is local measurement and inspection of the GitHub pull request the user is viewing. `storage` preserves preferences, recoverable local policy and disposable reports. The github.com content-script scope supports GitHub's client-side navigation into PR views; the controller exits unrelated routes without reading their content for analysis. The api.github.com host permission supports a narrowly constructed, unauthenticated, read-only public fallback. No cookies, history API, tabs enumeration, unlimited storage, all-sites host access or clipboard permission is requested.
 
+### Ready-to-paste permission justifications
+
+For the `storage` permission:
+
+```text
+Store the user's display and policy preferences and bounded, rebuildable local pull-request reports. Small preferences may synchronize through Chrome. Advanced YAML, repository overrides, paused repositories, reports and trusted repository-policy cache stay local. Settings provides scoped clearing and reset controls. Raw diffs and patches are never persisted, and cached data is not independently encrypted.
+```
+
+For host access, including the github.com content-script scope when the dashboard asks for it:
+
+```text
+On github.com, identify the supported pull request and its immutable comparison, acquire available diff and trusted base-revision policy material, and display local measurements in GitHub's interface. The content script follows GitHub's client-side navigation and exits unrelated routes without analyzing their content. Access to api.github.com supplies a narrowly constructed, read-only public fallback that deliberately omits credentials. No all-site access, token collection, automatic repository write or hosted analysis is used.
+```
+
+If the provider separates those origins into different required fields, use the matching sentences for each. A permission not present in the accepted manifest is a package mismatch, not a reason to improvise a justification. Single-purpose copy is owned by `listing.md`.
+
 ## Privacy-dashboard data categories
+
+This table is the data-handling map, including user-provided configuration; it does not invent a provider checkbox called “User-provided content”. Match the actual fields to the disclosed behavior and preserve a mismatch if their scope differs. Local processing and storage still count; source, private repository identifiers and paths are not declared nonsensitive just because they stay in the browser.
 
 | Category | Declare | Exact standing |
 | --- | --- | --- |
@@ -49,9 +67,11 @@ No remotely hosted executable code is used. JavaScript, compiled validators, CSS
 
 ## Public notice and owner attestations
 
-The bundled privacy notice is `apps/browser-extension/privacy.md`. It explicitly affirms that the extension's use and transfer of user data complies with the Chrome Web Store User Data Policy's Limited Use restrictions, scoped to the disclosed GitHub data and local features. The current public source URL selected in `listing.md` is linked directly from the selected extension homepage and remains valid until the accepted public privacy route is deployed and read back.
+The bundled privacy notice is `apps/browser-extension/privacy.md`, rendered with working HTTPS links into `privacy.html`. It explicitly affirms that the extension's use and transfer of user data complies with the Chrome Web Store User Data Policy's Limited Use restrictions, scoped to the disclosed GitHub data and local features. The direct public source URL selected in `listing.md` remains the Store notice until an accepted extension-specific route is deployed and read back. `public-links.md` owns that check, the Works contact destination and the distinction from website privacy/Terms. The package's source identity and licence links remain available from its own files.
 
 This public affirmation does not certify the separate at-rest-encryption requirement. The first submission may proceed for provider review with the explicitly unencrypted-cache disclosure unchanged and deferred publishing selected. Do not answer any dashboard field as though independent at-rest encryption is present. If submission requires a mandatory certification that cannot be made truthfully, stop at that exact field and return its current wording. The owner must complete the provider's Limited Use certification only after reviewing the exact package and public notice; source authorship does not fabricate an owner's legal certification. Reviewer access and any required test account must be arranged without putting credentials in the repository or source archive.
+
+That stop includes a general required compliance certification if it would assert that the unmet strong-encryption requirement is satisfied. No wording change to this notice, Chrome profile assumption or HTTPS transport claim supplies independent encryption of retained data.
 
 ## Primary references
 
