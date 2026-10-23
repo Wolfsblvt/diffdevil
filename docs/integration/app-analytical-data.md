@@ -414,14 +414,21 @@ detail derivation. The selected-path query keeps this enrichment bounded to one 
 invokes the complete `files` extension. This introduces no HTTP query field, persisted projection or cross-request
 result cache.
 
-The App optionally supplies its existing isolate-local cache as `interpretationCache`, with the synchronous
+The App optionally supplies a dedicated isolate-local numerical cache as `interpretationCache`, with the synchronous
 `memo(key, compute)` operation. This host supplies normalized inert records and the App's ordinary compiled policy.
 After a fresh retained-data read, the service can reuse the frozen result of policy analysis for an exact serialized
 report, repository and actual compiled policy ID. A claimed report ID or friendly policy name cannot make changed
 inputs match. Each query still selects its own current population and window and checks current access and
 entitlement; the store still checks history standing, expiry and withdrawal. Neither response bodies nor authority
 are cached. Unchanged interpretation can be shared by common and premium reads without sharing a reader's result.
-Expiry, clearing or isolate loss is a normal recomputation; failures do not become cached empty answers. The App's
-existing one-minute reuse and stale-entry pruning apply, with no timer, durable projection, migration or new job.
-This is transient process memory, not a one-minute physical-deletion guarantee: stale allocations can remain until
-the existing pruning or isolate disposal. The private extension's independent derivations are not cached by this seam.
+Expiry, eviction, clearing or isolate loss is a normal recomputation; failures do not become cached empty answers.
+The numerical cache has independent default limits: 12 MiB of serialized weight, 2,000 entries and 512 KiB per entry.
+Accounting charges two bytes per key and value-JSON code unit plus a 512-byte entry allowance. This bounds retained
+serialized weight and count; it does not measure total JavaScript object allocation or promise a Worker heap ceiling.
+An entry over either byte budget is returned without retention, so one large comparison cannot evict useful small ones.
+Insertion order supplies FIFO eviction and fixed one-minute expiry; warm hits neither reorder nor extend lifetime.
+Each removed entry is visited once, plus constant live-head checks; insertion never walks the remaining live map.
+The provider-context cache keeps its own values, pending-read coalescing and lifetime independently.
+There is no timer, durable projection, migration or new job. This is transient process memory, not a one-minute
+physical-deletion guarantee: expired allocations can remain until a later cache operation or isolate disposal.
+The private extension's independent derivations are not cached by this seam.

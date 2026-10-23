@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
-/** Local common-read CPU specimen. Native D1, provider wait, HTML and the private extension are separate boundaries. */
+/** Local common-read CPU/retention specimen. Native D1, provider wait, HTML and private work are separate boundaries. */
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
@@ -7,7 +7,7 @@ import { resolve } from 'node:path';
 import { performance } from 'node:perf_hooks';
 import { compilePolicy, unwrap } from '../../../dist/lib/index.js';
 import { createAnalytics } from '../src/lib/analytics.mjs';
-import { createContextCache } from '../src/lib/viewer.mjs';
+import { createAnalyticalCache } from '../../github-app/analytical-cache.mjs';
 import { loadingScale, LOADING_SCALE } from './loading-scale.mjs';
 
 const now = '2026-10-23T00:00:00.000Z';
@@ -15,9 +15,9 @@ const rows = loadingScale(1001, now).records.map(record => JSON.stringify(record
 assert.equal(rows.reduce((total, row) => total + Buffer.byteLength(row), 0), LOADING_SCALE.recordBytes);
 const policy = { compiled: unwrap(compilePolicy({ version: 1, presets: ['size@1'], defaults: { paths: { exclude: ['**/file-0001.ts'] } } })) };
 const actor = { authorizedRepositoryIds: [1001] };
-const answers = new Map(), measurements = [];
+const answers = new Map(), measurements = [], retention = [];
 for (const mode of ['uncached', 'shared']) {
-  const cache = mode === 'shared' ? createContextCache() : undefined;
+  const cache = mode === 'shared' ? createAnalyticalCache() : undefined;
   for (const surface of ['overview', 'prs', 'history', 'pr']) {
     for (let iteration = 0; iteration < 4; iteration++) {
       let readMs = 0;
@@ -43,6 +43,15 @@ for (const mode of ['uncached', 'shared']) {
       measurements.push({ mode, surface, iteration, wallMs, cpuMs: (used.user + used.system) / 1000, readMs, answerHash: hash });
     }
   }
+  if (cache) {
+    const usage = { mode, ...cache.usage() };
+    if (global.gc) {
+      global.gc(); usage.populatedHeapBytes = process.memoryUsage().heapUsed;
+      cache.clear(); global.gc(); usage.clearedHeapBytes = process.memoryUsage().heapUsed;
+      usage.retainedIncreaseBytes = usage.populatedHeapBytes - usage.clearedHeapBytes;
+    }
+    retention.push(usage);
+  }
 }
 const summary = [...new Set(measurements.map(row => `${row.mode}:${row.surface}`))].map(key => {
   const [mode, surface] = key.split(':'), values = measurements.filter(row => row.mode === mode && row.surface === surface);
@@ -51,5 +60,5 @@ const summary = [...new Set(measurements.map(row => `${row.mode}:${row.surface}`
 });
 const output = resolve('artifacts/app/qa/analytical-read-profile');
 await mkdir(output, { recursive: true });
-await writeFile(resolve(output, 'results.json'), JSON.stringify({ node: process.version, scale: LOADING_SCALE, summary, measurements }, null, 2));
-console.log(JSON.stringify({ output, summary }, null, 2));
+await writeFile(resolve(output, 'results.json'), JSON.stringify({ node: process.version, scale: LOADING_SCALE, summary, measurements, retention }, null, 2));
+console.log(JSON.stringify({ output, summary, retention }, null, 2));

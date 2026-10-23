@@ -24,12 +24,18 @@ analytical health. An inaccessible detail returns 404 from its independently aut
 existing not-found state; the generic document itself contains no protected detail.
 
 The ordinary read consumes the analytical record already normalized by ingestion/import. Current-policy interpretation
-uses the existing isolate cache only when the exact report and actual compiled policy match; misses are calculated
+uses a dedicated isolate cache only when the exact report and actual compiled policy match; misses are calculated
 at read time. Each request still reads the current retained rows, expiry, history standing, access and entitlement.
-The cache expires reuse after a minute, and a cold or cleared cache recomputes normally. It stores frozen numeric
-interpretations, not HTML, authorization or analytical responses, and adds no persisted state or job system.
-`node apps/app/qa/analytical-read-profile.mjs` measures the common read with the anonymous loading-scale specimen,
-including cold and repeated reads and complete-answer equality. It does not measure native D1 wait or private algorithms.
+The cache admits at most 2,000 frozen numerical interpretations, 12 MiB of accounted serialized weight, and
+512 KiB per entry. Weight charges two bytes per key and value-JSON code unit plus 512 bytes per entry; it is an
+explicit retention budget, not a measurement or promise of total V8/Worker heap. Oversized entries compute normally
+without displacing smaller entries. Insertion-order eviction and fixed one-minute expiry make removal amortized
+constant work; hits do not extend lifetime. Analytical retention is independent of the provider-context cache.
+Eviction, expiry, clearing or a cold isolate recomputes the complete answer. This adds no persisted state or job system.
+The minute is a reuse window, not physical deletion: expired allocations leave on a later cache operation or isolate loss.
+`node --expose-gc apps/app/qa/analytical-read-profile.mjs` measures the common read with the anonymous loading-scale
+specimen, including cold/repeated reads, complete-answer equality, accounted retention and a local forced-GC heap
+delta. It does not measure native D1 wait, private algorithms or the joined live Worker.
 
 A malformed or inaccessible file-detail route keeps the authorised navigation available and reaches its not-found
 page without querying the broader repository population.

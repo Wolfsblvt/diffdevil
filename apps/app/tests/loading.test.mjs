@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { analyticalRoute, openAnalyticalShell } from '../src/lib/analytical-request.mjs';
 import { createContextCache } from '../src/lib/viewer.mjs';
+import { createAnalyticalCache } from '../../github-app/analytical-cache.mjs';
 import { loadView, loadSurface } from '../src/lib/view.mjs';
 import { analyticalAcquisitionKey } from '../src/lib/scope.mjs';
 import { compilePolicy, unwrap } from '@wolfsblvt/diffdevil';
@@ -55,7 +56,7 @@ test('concurrent navigation and population share one pending provider read, and 
 
 test('unchanged analytical facts are reused across fresh readers, with current data, policy, access and lifetime', async t => {
   let clock = 0, allowed = true, plan = 'free', reads = 0, validations = 0, denySecond = false, accessReads = 0;
-  const cache = createContextCache(() => clock);
+  const cache = createAnalyticalCache({ now: () => clock });
   let rows = [transition(1, 'a.txt', revisions.slice(0, 2), '2026-09-20T00:00:00.000Z'),
     transition(2, 'b.txt', revisions.slice(0, 2), '2026-09-21T00:00:00.000Z')];
   let exclude = ['b.txt'];

@@ -23,6 +23,7 @@ import { createPolicyReader } from './policies.mjs';
 import { createAnalytics } from './analytics.mjs';
 import { createLocator } from './locator.mjs';
 import { createContextCache } from './viewer.mjs';
+import { createAnalyticalCache } from '../../../github-app/analytical-cache.mjs';
 import { D1ManageStore } from './manage/store.mjs';
 import { closeLocalAccount } from './manage/account-closure.mjs';
 import { readAllowances } from './manage/allowances.mjs';
@@ -155,10 +156,10 @@ export function createAppRuntime(env, { fetch = globalThis.fetch, now, premium =
   // turnover-v1 rules and a Contents-read installation credential minted only when a returned Turnover has an open tail.
   // Without the GitHub App credentials the extension reports the observation unavailable and the read still answers.
   const premiumService = premium.service?.(createAnalyticalPremiumHost(env, { store: appStore, installationOf: async repositoryId => (await authStore.repositoryIdentity(repositoryId))?.installation_id, fetch }));
-  if (!caches.has(env.APP_DB)) caches.set(env.APP_DB, createContextCache());
-  const cache = caches.get(env.APP_DB);
-  const analytics = createAnalytics({ appStore, entitlement, policies, namespaceOf, interpretationCache: cache, premium: premiumService, now: clock });
-  const baseAnalytics = premiumService ? createAnalytics({ appStore, entitlement, policies, namespaceOf, interpretationCache: cache, now: clock }) : analytics;
+  if (!caches.has(env.APP_DB)) caches.set(env.APP_DB, { context: createContextCache(), interpretations: createAnalyticalCache() });
+  const { context: cache, interpretations: interpretationCache } = caches.get(env.APP_DB);
+  const analytics = createAnalytics({ appStore, entitlement, policies, namespaceOf, interpretationCache, premium: premiumService, now: clock });
+  const baseAnalytics = premiumService ? createAnalytics({ appStore, entitlement, policies, namespaceOf, interpretationCache, now: clock }) : analytics;
   // Delegated administration (Business): a named delegate administers what the namespace's GitHub administrators named
   // for them and only while the namespace is funded by Business; the authorization service separately requires the
   // delegate's own current GitHub write access to the repository at every action.
