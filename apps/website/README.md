@@ -173,10 +173,14 @@ directly, so derived bytes stay stable; the builder applies the framing it share
 and existing shared imports instead of drawing feature-local substitutes. Rendered
 Store/source imagery retains its provenance and does not become live-use evidence.
 
-Legal pages are public but `noindex, nosnippet` and excluded from site search. Product
-data/security links lead to the manual and its maintained authorities; the website
-privacy page owns website processing only. The operator notice points to its real
-Company source rather than inventing legal identity or terms here.
+Legal pages are public but `noindex, nosnippet`, with matching response headers and
+exclusion from sitemaps, site search and social metadata. The privacy notice covers
+the website/manual, Lens Studio, extension, contact and self-hosting boundaries,
+and identifies the developing managed App separately from an admitted hosted offer.
+The manual's product data contract supplies engineering detail; it is not a second
+legal notice. Operator identity and legal/impressum/privacy contacts arrive only
+through the private build-time projection. The publication carrier owns its exact
+input and the Works contact readback dependency. Ordinary QA uses fixtures only.
 
 ## License
 
