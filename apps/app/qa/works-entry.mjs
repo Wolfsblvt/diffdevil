@@ -214,6 +214,8 @@ try {
   }
   await page.waitForURL(APP + '/');
   await page.evaluate(() => document.fonts.ready);
+  // Sign-in lands on deferred analytics. Finish its requests before starting this separate Manage journey.
+  await page.waitForLoadState('networkidle');
   await page.goto(`${APP}/manage/plan`);
   await page.evaluate(() => document.fonts.ready);
   const pro = page.getByRole('button', { name: 'Pro · €9 a month or €90 a year', exact: true });
