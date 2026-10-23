@@ -95,7 +95,7 @@ const comp = (parts: { k: string; v: number }[], height = 8) => compositionBar(p
           <PeriodComparisonTable rows={rows} comparable={comparable} currentCovered={cur.windowCovered} previousCovered={prev.windowCovered} period={period} />
           <p class="a-mini" style="margin:8px 0 0">Line totals cover recovered comparisons; bounded results count at their proven minimum. Upper bar: selected period · lower bar: previous.</p>
         </Panel>
-        {entitlement.premium && !view.premiumProvided ? <section class="a-pn s12"><div class="a-pn-b"><Unavailable what="File growth and concentration are not part of this build" why="the plan includes them, but this build carries only the Community application" compact /></div></section> : <SeePro text="File growth and shrinkage, and concentration over time" span={12} />}
+        {entitlement.premium && !view.premiumProvided ? <section class="a-pn s12"><div class="a-pn-b"><Unavailable what="File growth and concentration are not part of this build" why="the plan includes them, but this build carries only the Community application" compact /></div></section> : <SeePro text="File growth and shrinkage, and concentration over time" span={12} unavailable={entitlement.aggregatePlan === 'unknown'} />}
       </>}
     </div>
     {pro && <Panel id="cmp" span={12} title="Period comparison" meta={`selected ${period} vs previous ${period}`}>

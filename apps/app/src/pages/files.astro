@@ -9,6 +9,7 @@ import DeferredRegion from '../components/DeferredRegion.astro';
 import PageHead from '../components/PageHead.astro';
 import PlanChip from '../components/PlanChip.astro';
 import Icon from '../components/Icon.astro';
+import Unavailable from '../components/Unavailable.astro';
 import { loadView, navModel } from '../lib/view.mjs';
 
 const runtime = Astro.locals.app;
@@ -29,6 +30,7 @@ const pointers = (entitlement.fundedNamespaces ?? entitlement.sharedPaid ?? []).
       <div style="display:flex;gap:10px"><a class="btn btn-quiet" href={view.href('/history')}>History <Icon name="arrow-right" size={14} /></a></div>
     </div>
   </div>
+  : entitlement.aggregatePlan === 'unknown' ? <section class="a-pn s12"><div class="a-pn-b"><Unavailable what="File history unavailable" why="the plan funding this scope could not be established" /></div></section>
   : <div class="a-focus a-pn">
     <div class="a-pn-b" style="padding:28px 32px">
       <div style="display:flex;gap:10px;align-items:center"><PlanChip plan="Pro" /><h2 style="margin:0;font-size:19px">File history</h2></div>

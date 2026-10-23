@@ -39,6 +39,7 @@ import { appBuildTarget } from '../build-target.mjs';
 import { admissionJourney, seedAdmissionStore } from './admission.mjs';
 import { loadingJourney } from './loading.mjs';
 import { scopeUnavailableJourney } from './scope-unavailable.mjs';
+import { namespaceFundingJourney } from './namespace-funding.mjs';
 import { fileReadJourney } from './file-read.mjs';
 import { filesQueryJourney } from './files-query.mjs';
 import { seedLoadingScale } from './loading-scale.mjs';
@@ -50,6 +51,7 @@ const AUTHORITY_ONLY = process.argv.includes('--authority');
 const ADMISSION_ONLY = process.argv.includes('--admission');
 const LOADING_ONLY = process.argv.includes('--loading');
 const FILES_QUERY_ONLY = process.argv.includes('--files-query');
+const FUNDING_ONLY = process.argv.includes('--funding');
 const LOADING_SCALE = process.env.DIFFDEVIL_APP_QA_LOADING_SCALE === '1';
 // Generated specimen material for the local double, never an external App credential.
 const admissionKey = ADMISSION_ONLY ? generateKeyPairSync('rsa', { modulusLength: 2048 }).privateKey.export({ type: 'pkcs1', format: 'pem' }) : null;
@@ -60,7 +62,7 @@ const PR_CONFIDENCE_ONLY = process.argv.includes('--pr-confidence-state');
 const PR_FILES_ONLY = process.argv.includes('--pr-files-table');
 const BUSINESS_MANAGE_ONLY = process.argv.includes('--business-manage');
 const PARTICIPATION_ONLY = process.argv.includes('--participation');
-const OUT = join(target.artifacts, 'qa', ...(EXPLICIT_READER_ONLY ? ['explicit-reader'] : FILES_QUERY_ONLY ? ['files-query'] : LOADING_ONLY ? ['loading'] : ADMISSION_ONLY ? ['admission'] : BUSINESS_MANAGE_ONLY ? ['business-manage'] : PARTICIPATION_ONLY ? ['participation'] : PR_FILES_ONLY ? ['pr-files-table'] : PR_CONFIDENCE_ONLY ? ['pr-confidence-state'] : PR_SEARCH_DETAIL_ONLY ? ['pr-search-detail'] : IDENTITY_ONLY ? ['identity'] : AUTHORITY_ONLY ? ['authority'] : HISTORY_ONLY ? ['history'] : THUMB_ONLY ? ['thumb'] : []));
+const OUT = join(target.artifacts, 'qa', ...(EXPLICIT_READER_ONLY ? ['explicit-reader'] : FUNDING_ONLY ? ['funding'] : FILES_QUERY_ONLY ? ['files-query'] : LOADING_ONLY ? ['loading'] : ADMISSION_ONLY ? ['admission'] : BUSINESS_MANAGE_ONLY ? ['business-manage'] : PARTICIPATION_ONLY ? ['participation'] : PR_FILES_ONLY ? ['pr-files-table'] : PR_CONFIDENCE_ONLY ? ['pr-confidence-state'] : PR_SEARCH_DETAIL_ONLY ? ['pr-search-detail'] : IDENTITY_ONLY ? ['identity'] : AUTHORITY_ONLY ? ['authority'] : HISTORY_ONLY ? ['history'] : THUMB_ONLY ? ['thumb'] : []));
 const APP_PORT = Number(process.env.DIFFDEVIL_APP_QA_PORT ?? (target.name === 'staging' ? 4512 : 4412));
 const GITHUB_PORT = Number(process.env.DIFFDEVIL_APP_QA_GITHUB_PORT ?? (target.name === 'staging' ? 4533 : 4433));
 // Chromium accepts Secure (__Host-) cookies from http://localhost, not from a loopback IP, so the browser origin is localhost; the Worker still binds 127.0.0.1.
@@ -838,6 +840,10 @@ try {
     github.state.repositoryStatus.clear();
     github.state.tokenValid = false;
     check('the actual HTTP caller refuses a revoked user grant', (await page.request.get(apiUrl)).status() === 401);
+  } else if (FUNDING_ONLY) {
+    await startWorker(undefined, STATE, { commercial: { ...COMMERCIAL_PRO, capacity: [] } });
+    await signIn();
+    await namespaceFundingJourney({ ...ctx, github, restart: async commercial => { await stopWorker(); await startWorker(undefined, STATE, { commercial }); } });
   } else if (FILES_QUERY_ONLY) {
     if (!edition.entry?.replaceAll('\\', '/').endsWith('/qa/loading-premium/index.mjs')) throw new Error('Files-query qualification requires the public loading extension fixture.');
     await startWorker(ENTITLEMENT_FIXTURE); await signIn(); await filesQueryJourney(ctx);

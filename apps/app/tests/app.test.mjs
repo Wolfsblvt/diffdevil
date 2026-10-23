@@ -16,7 +16,8 @@ import { createProtector } from '../src/lib/protector.mjs';
 import { createAppRuntime } from '../src/lib/runtime.mjs';
 import { authSession, authLogout, briefPreview, openSession, cookieValue, SESSION_COOKIE } from '../src/lib/routes.mjs';
 import { scopeRepositories, loadTitles, resolveViewer } from '../src/lib/viewer.mjs';
-import { loadView, entitlementFor } from '../src/lib/view.mjs';
+import { loadView, entitlementFor, namespacePlan } from '../src/lib/view.mjs';
+import { COMMERCIAL_PRO, COMMERCIAL_FREE } from '../qa/manage.mjs';
 import { describeScope } from '../src/lib/scope.mjs';
 import { composePremium } from '../src/premium/registry.mjs';
 import { openAnalyticalShell } from '../src/lib/analytical-request.mjs';
@@ -98,6 +99,40 @@ test('the viewer sees GitHub-reachable repositories with their App standing and 
   assert.equal(paid.plan, 'Pro');
   assert.equal(paid.entitlementSource, 'local-fixture');
   assert.deepEqual(Object.fromEntries(paid.namespaces.map(namespace => [namespace.login, namespace.plan])), { 'ada-sample': 'Pro', 'parser-guild': 'Pro', 'northwind-tools': 'Business', 'kai-sample': 'Free' });
+});
+
+test('organisation plans follow actual funding independently of the reader tier and administrative role', async () => {
+  const { app: compose } = await fixture();
+  for (const [name, spec, viewerPlan, organisationPlan] of [
+    ['unfunded administrator', { ...COMMERCIAL_PRO, capacity: [{ slot: 'slot-included', funding: 'included', binding: null }] }, 'Pro', 'Free'],
+    ['funded Pro administrator', COMMERCIAL_PRO, 'Pro', 'Pro'],
+    ['Pro administrator of a Business organisation', { ...COMMERCIAL_PRO, capacity: [], others: { 7001: 'business', 7002: 'business' } }, 'Pro', 'Business'],
+    ['Free administrator of a funded organisation', { ...COMMERCIAL_FREE, others: { 7001: 'pro', 7002: 'business' } }, 'Free', 'Pro'],
+    ['unconfirmed organisation funding', { ...COMMERCIAL_PRO, capacity: [], others: { 7001: 'unknown', 7002: 'business' } }, 'Pro', 'Unknown']
+  ]) {
+    const app = compose(undefined, { env: { APP_COMMERCIAL_FIXTURE: JSON.stringify(spec) } });
+    const { viewer, opened } = await viewerFor(app);
+    const organisation = viewer.namespaces.find(namespace => namespace.login === 'parser-guild');
+    const personal = viewer.namespaces.find(namespace => namespace.login === viewer.login);
+    assert.equal(viewer.plan, viewerPlan, name);
+    assert.equal(organisation.yours, true, 'administration still places the organisation in Yours');
+    assert.equal(namespacePlan(viewer, organisation), organisationPlan, name);
+    assert.equal(namespacePlan(viewer, personal), viewerPlan, 'the owned personal scope follows its account');
+    assert.equal(namespacePlan(viewer, viewer.namespaces.find(namespace => namespace.login === 'northwind-tools')), 'Business', 'a shared Business scope keeps its funding');
+    for (const selection of ['@parser-guild', 'parser-guild/parser-lab']) {
+      const scope = describeScope(selection);
+      const expected = entitlementFor(viewer, scope, scopeRepositories(viewer, scope));
+      assert.equal(expected.plan, organisationPlan, `${name}: ${selection}`);
+      assert.equal(expected.premium, ['Pro', 'Business'].includes(organisationPlan), name);
+      const loaded = await loadView({ url: new URL(`${ORIGIN}/files?s=${encodeURIComponent(selection)}&per=90d`), viewer, session: opened, runtime: app, surface: 'files' });
+      assert.equal(loaded.entitlement.plan, organisationPlan, `${name}: service answer`);
+      assert.equal(loaded.entitlement.premium, expected.premium, `${name}: service and shell agree`);
+      if (organisationPlan === 'Unknown') assert.equal(loaded.dataStanding, 'entitlement-unavailable');
+    }
+    const across = entitlementFor(viewer, describeScope('all'), viewer.repositories);
+    assert.equal(across.premium, viewerPlan !== 'Free', 'All repositories follows the viewer and includes only known funded repositories');
+    assert.equal(across.premiumRepositories.some(repository => repository.owner === 'parser-guild'), viewerPlan !== 'Free' && ['Pro', 'Business'].includes(organisationPlan), name);
+  }
 });
 
 test('listed roles stay permission-free and the signed-in authority observes an omitted organisation through the targeted read', async () => {
@@ -414,7 +449,7 @@ test('a Free reader keeps a funded namespace\'s plan inside it, and All reposito
   assert.equal(all.entitlement.premium, false, 'All repositories follows the Free viewer');
   assert.equal(all.dataStanding, 'plan-required');
   assert.deepEqual(all.entitlement.fundedNamespaces.sort(), ['northwind-tools', 'parser-guild'], 'the Free page can point to the funded namespaces');
-  assert.deepEqual(all.entitlement.sharedPaid, ['northwind-tools'], 'only a namespace the viewer does not own is a shared paid pointer');
+  assert.deepEqual(all.entitlement.sharedPaid.sort(), ['northwind-tools', 'parser-guild'], 'funded organisations remain useful pointers even when the Free reader administers one');
   assert.equal(all.files.length, 0);
   const allPrs = await loadView({ url: new URL(`${ORIGIN}/prs?s=all&per=90d`), viewer, session: opened, runtime: app, surface: 'prs' });
   assert.equal(allPrs.entitlement.premium, false);
