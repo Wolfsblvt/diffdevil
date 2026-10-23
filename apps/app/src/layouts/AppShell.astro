@@ -48,7 +48,7 @@ const badge = viewer && nav && !Astro.locals.deferChrome ? await manageBadge({ v
             <PageHead view={view} title={title} />
             <section class="a-pn s12" role="status" data-scope-unavailable>
               <h2>Scope unavailable</h2>
-              <p>Current GitHub access to {view.scope.namespace} could not be confirmed. Repository data and plan details are hidden for this selection.</p>
+              <p>Current GitHub access to {view.scope.kind === 'repository' ? view.scope.repository : view.scope.namespace} could not be confirmed. Repository data and plan details are hidden for this selection.</p>
               <a class="link-quiet" href={view.href('/', { s: 'all' })}>Choose another scope</a>
             </section>
           </> : <slot />}

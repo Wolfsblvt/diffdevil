@@ -80,7 +80,8 @@ export async function loadView({ url, viewer, session, runtime, surface = 'prs',
   const detailRepository = ['pr', 'files', 'file'].includes(surface) && Number.isSafeInteger(detailRepositoryId)
     ? viewer.repositories.find(repository => repository.repositoryId === detailRepositoryId)
     : undefined;
-  const scopeUnavailable = !detailRepository && !['pr', 'file'].includes(surface) && scope.kind === 'namespace' && repositories.length === 0;
+  const scopeUnavailable = !detailRepository && !['pr', 'file'].includes(surface)
+    && ['namespace', 'repository'].includes(scope.kind) && repositories.length === 0;
   // An invalid file route must reach its not-found page, never fall back to an all-repository detail query.
   const historyRepositories = (detailRepository ? [detailRepository] : repositories)
     .filter(repository => repository.standing?.historyReadable && (surface !== 'file' || repository === detailRepository));

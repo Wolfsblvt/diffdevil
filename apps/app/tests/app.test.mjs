@@ -311,6 +311,36 @@ test('the page loader drives populations from the retained analytical records an
   assert.deepEqual(inaccessibleScope.ids, []);
   assert.equal(inaccessibleScope.entitlement.premium, false, 'unavailable scope has no inferred premium offer');
   assert.equal(inaccessibleScopeReads, 0, 'the unresolved selection does not fall back to an All repositories read');
+  const viewerAfterRepositoryAccessLoss = {
+    ...viewer,
+    repositories: viewer.repositories.filter(repository => repository.repositoryId !== 1001),
+    namespaces: viewer.namespaces.map(namespace => namespace.login === 'parser-guild'
+      ? { ...namespace, repositories: namespace.repositories.filter(repository => repository.repositoryId !== 1001) }
+      : namespace)
+  };
+  const inaccessibleRepository = await loadView({
+    url: new URL(`${ORIGIN}/?s=parser-guild%2Fparser-lab&per=90d`),
+    viewer: viewerAfterRepositoryAccessLoss,
+    session: opened,
+    runtime: accessLossRuntime,
+    surface: 'overview'
+  });
+  assert.equal(inaccessibleRepository.scopeUnavailable, true, 'a selected repository absent from current authorized repositories is unresolved even while a namespace sibling remains');
+  assert.equal(inaccessibleRepository.dataStanding, 'scope-unavailable');
+  assert.equal(inaccessibleRepository.data, null);
+  assert.deepEqual(inaccessibleRepository.ids, []);
+  assert.equal(inaccessibleRepository.entitlement.premium, false, 'unavailable repository scope has no inferred premium offer');
+  assert.equal(inaccessibleScopeReads, 0, 'the unresolved repository selection does not fall back to an All repositories read');
+  assert.ok(viewerAfterRepositoryAccessLoss.repositories.some(repository => repository.fullName === 'parser-guild/grammar-fuzz'), 'the accessible sibling remains visible');
+  const authorizedEmptyRepository = await loadView({
+    url: new URL(`${ORIGIN}/?s=parser-guild%2Fgrammar-fuzz&per=90d`),
+    viewer,
+    session: opened,
+    runtime: app,
+    surface: 'overview'
+  });
+  assert.equal(authorizedEmptyRepository.scopeUnavailable, false, 'an authorized history-off repository remains a valid empty population');
+  assert.equal(authorizedEmptyRepository.dataStanding, 'none');
   const accessibleDetail = await loadView({
     url: new URL(`${ORIGIN}/pr/parser-guild/parser-lab/452?s=%40missing-org&q=452`),
     viewer,
