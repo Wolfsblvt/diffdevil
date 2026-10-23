@@ -261,7 +261,7 @@ canonical Markdown and the exact build commit/contribution branch.
 
 The website's Skill handoff uses `/setup/skill.md`; the complete Skill tree and
 five raw setup payloads keep their existing owners. Search has one current result
-per selected URL: 41 manual chapters, five product pages and 20 FAQ questions.
+per selected URL across manual chapters, product pages and individual FAQ questions.
 Retired `/docs/` articles and historical/technical projections are excluded even
 when an old HTML file is encountered. Legal and source-resolver routes remain
 outside current search. The English Starlight i18n collection supplies the actual

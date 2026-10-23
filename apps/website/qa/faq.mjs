@@ -57,7 +57,7 @@ try {
   await page.goto(`${origin}/faq/`);
   await page.evaluate(() => document.fonts.ready);
   await expect(page.locator('h1')).toHaveCount(1);
-  await expect(page.locator('.faq-question')).toHaveCount(20);
+  await expect(page.locator('.faq-question')).toHaveCount(records.length);
   await expect(page.locator('.faq-categories a')).toHaveCount(8);
   await expect(page.locator('.faq-answer a')).toHaveCount(authoredLinkCount);
   await expect(page.locator('.faq-question details[open]')).toHaveCount(2);
@@ -69,7 +69,7 @@ try {
     assert.ok(await page.locator(`[data-faq-id="${question.id}"] .faq-answer a`).count() <= 1, question.id);
   }
   await page.screenshot({ path: resolve(output, 'faq-dark-desktop.png') });
-  evidence.push('Standalone page, all 20 disclosures, category navigation, shared header/footer and one-link limit.');
+  evidence.push(`Standalone page, all ${records.length} disclosures, category navigation, shared header/footer and one-link limit.`);
 
   const custom = page.locator('[data-faq-id="no-language-required"]');
   await page.goto(`${origin}/faq/#changed-vs-churn`);
@@ -91,6 +91,13 @@ try {
   await expect(custom.locator('details')).not.toHaveAttribute('open', '');
   evidence.push('Keyboard toggles, canonical clipboard links, same-fragment reopening and browser Back/Forward.');
 
+  for (const { id } of records) {
+    await page.goto(`${origin}/faq/#${id}`);
+    await expect(page.locator(`#${id}`)).toBeVisible();
+    await expect(page.locator(`[data-faq-id="${id}"] summary`)).toBeFocused();
+  }
+  evidence.push('Every established and new direct question link opens and focuses its disclosure.');
+
   // Query the actual emitted index for every stable identifier. No fixture search response.
   const indexed = await page.evaluate(async expected => {
     const engine = await import('/pagefind/pagefind.js');
@@ -106,20 +113,20 @@ try {
     }
     return observed;
   }, records.map(record => record.id));
-  assert.equal(indexed.length, 20);
+  assert.equal(indexed.length, records.length);
   assert.equal(indexed.find(record => record.id === 'extension-without-repo-setup').standing, 'In development');
   assert.ok(indexed.every(record => record.category && new URL(record.url, origin).hash === `#${record.id}`));
   await page.keyboard.press('Control+k');
   const input = page.locator('[data-search-input]');
-  await input.fill('another analysis provider');
-  const result = page.locator('.search-hit[data-kind="faq"][href$="#code-data"]');
+  await input.fill('private pull requests');
+  const result = page.locator('.search-hit[data-kind="faq"][href$="#extension-private-prs"]');
   await expect(result).toBeVisible();
   await expect(result.locator('.search-faq-context')).toContainText('In development');
   await result.click();
   await expect(page.locator('[data-search-dialog]')).not.toBeVisible();
-  await expect(page.locator('#code-data')).toBeVisible();
-  await expect(page.locator('[data-faq-id="code-data"] summary')).toBeFocused();
-  evidence.push('All 20 actual Pagefind records; visible FAQ kind/category/standing; search opens and focuses the answer outside the modal.');
+  await expect(page.locator('#extension-private-prs')).toBeVisible();
+  await expect(page.locator('[data-faq-id="extension-private-prs"] summary')).toBeFocused();
+  evidence.push(`All ${records.length} actual Pagefind records; visible FAQ kind/category/standing; private-PR search opens and focuses the new answer outside the modal.`);
 
   // Resolve the real built destinations and fragments selected by the FAQ's Markdown links.
   const links = await page.locator('.faq-answer a').evaluateAll(anchors => anchors.map(anchor => anchor.getAttribute('href')));
@@ -167,7 +174,7 @@ try {
   await page.evaluate(() => localStorage.setItem('diffdevil.theme', 'light'));
   // A same-page hash navigation does not rerun the shared before-paint script.
   await page.reload();
-  await page.goto(`${origin}/faq/#code-data`);
+  await page.goto(`${origin}/faq/#app-history`);
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
   await page.screenshot({ path: resolve(output, 'faq-light-mobile-answer.png') });
   await page.goto(`${origin}/faq/#%E0%A4%A`);
