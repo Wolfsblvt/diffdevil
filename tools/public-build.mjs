@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 /** Build only: no deployment, publication, remote preview, DNS or account effect. */
 import { prepareManual, root, manualRoot, run, npm, packageBin } from './manual-package.mjs';
-import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, rmSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { origins } from '../apps/manual/manifest.mjs';
@@ -21,6 +21,9 @@ export function buildManualAndJoin() {
   const handler = readFileSync(join(root, 'apps/manual/static-handler.mjs'), 'utf8');
   for (const [host, name, rules] of [['site', 'website', manifest.redirects], ['docs', 'manual', manifest.aliases]]) {
     const directory = join(root, `artifacts/${name}/dist`);
+    // Only static consumer output belongs in the upload pair. Prerender chunks can
+    // retain the build-only legal projection module and must not become assets.
+    rmSync(join(directory, '.prerender'), { recursive: true, force: true });
     // Path rules also serve a plain static adapter. Matching-host redirects need
     // the actual request handler rather than an unsupported _redirects host rule.
     writeFileSync(join(directory, '_redirects'), rules.map(rule => `${rule.from} ${rule.to} 308`).join('\n') + '\n');

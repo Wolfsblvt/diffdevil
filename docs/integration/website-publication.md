@@ -86,8 +86,11 @@ The publication command explicitly selects:
 | `DIFFDEVIL_DOCS_QA` | removed: no reading-qualification route |
 
 The extension and App switches are independent: the Store listing can open while the
-App stays private, or the reverse. Opening one is that one input plus a rebuild of the
-publication pair; `publication.json` records the resulting `availability`.
+App stays private, or the reverse. Set a switch only after that surface's own admission
+and legal/distribution work is accepted. The initial website cut leaves both empty.
+A nonempty App installation URL is not evidence that its hosted privacy/retention,
+contract or commercial journey is ready. Rebuild the pair after an admitted change;
+`publication.json` records the resulting `availability`.
 
 Ordinary `website:build` remains a local/CI build, uses the obvious legal fixture
 when no projection is supplied and retains the loopback API default. **Its output
@@ -95,6 +98,61 @@ is not the publication artifact.** The publication command rejects missing,
 malformed, fixture or unprovisioned operator/contact data before building. Contact
 standing is an operator assertion backed by real operating evidence, not something
 the renderer verifies with an email or form request.
+
+### Canonical operator and the Works contact event
+
+The restricted canonical source is the operator record `legal/operators/wolf.v1.json`
+in the private agent-data repository; its adjacent `legal/README.md` governs use.
+The authorized operator resolves that existing source. Read it at build time rather
+than copying identity from a prior build or this public repository. Preserve the
+record coordinate/revision in the restricted publication record, not its contents
+in build logs or the public receipt. The joined build removes intermediate
+`.prerender` bundles from both static upload roots; build-only modules are not public
+assets.
+
+The schema-1 input consumed here is:
+
+| Field | Build meaning |
+| --- | --- |
+| `schemaVersion` | `1` |
+| `operatorId`, `publisherName` | canonical operator and maker identity; the maker is not a substitute legal person |
+| `legalName` | the actual natural-person/legal-entity name, rendered only on legal routes |
+| `postalAddress.streetAddress`, `.postalCode`, `.locality`, `.countryName` | legal address, rendered only on legal routes |
+| `contacts.impressum`, `.legal`, `.privacy` | canonical aliases, selected respectively by Impressum, Terms and Privacy |
+| `contactStanding` | `provisioned` only from the canonical operating record |
+| `additionalDirectContact.label`, `.href`, `.standing` | the working additional contact label, HTTPS URL and `provisioned` standing |
+
+The canonical email aliases were confirmed provisioned on 2026-10-22. Privacy uses
+the canonical privacy value even where it points at the legal mailbox; do not invent
+a distinct privacy mailbox. This does not qualify outbound deliverability. At the
+2026-10-24 source check, the canonical record had **no additional direct contact**.
+The guarded publication build therefore still correctly refuses that record.
+
+The selected additional route is the shared Works form at
+`https://contact.wolfsblvt.works/`. After the authorized Works owner deploys it, the
+operating readback must establish the actual canonical URL, successful submission
+and receipt/handling route, and its channel-specific privacy information. Only then
+does the authorized custodian update the **private** canonical record with
+`additionalDirectContact: { label: "Contact Wolfsblvt Works", href: <observed HTTPS URL>,
+standing: "provisioned" }`. Diffdevil then consumes a fresh projection and rebuilds.
+Do not stage a real-looking provisioned pointer in public source, substitute another
+email or GitHub issues, or weaken the guard while waiting for that event.
+
+The operator supplies the canonical JSON as UTF-8 base64 via the mediated
+`WOLFSBLVT_LEGAL_OPERATOR_B64` environment value. Base64 is transport, not encryption.
+Never echo the value, place it in a shell argument or public CI secret diagnostic,
+pass it through `PUBLIC_*`, or use it for screenshots. The real publication trees
+necessarily contain the intended identity on the three legal pages: keep them in
+the restricted deployment workspace until the authorized upload. Only the final
+legal routes are its public destination. `publication.json` contains paths, sizes
+and hashes, not a copy of the operator record.
+
+Confirm applicable operator disclosures from the real record before the cut: an
+issued VAT/economic identifier, register/professional information or consumer-dispute
+statement cannot be inferred absent merely because the minimal record omits it.
+Do not publish ordinary personal tax identifiers. If an additional disclosure applies,
+return that exact fact for a bounded legal-source amendment before upload. This is
+an unresolved applicability check, not permission to invent a company or exemption.
 
 ## Qualification before the upload pair is frozen
 
@@ -106,6 +164,15 @@ the final publication rebuild. These suites exercise source/Edit links, redirect
 fragments, keyboard/search/theme behavior, responsive reading, example replay,
 unavailable actions and generated assets with a loopback GitHub double. The real
 public API and provider routing remain separate evidence.
+
+Run `node --test apps/website/legal-operator.test.mjs` for the build-input boundary
+and `node apps/website/qa/legal.mjs` against the ordinary joined **fixture** build.
+The focused legal readback uses the emitted handlers without internet access. It
+checks all three routes' response/header/metadata behavior, canonical/footer links,
+sitemap/search exclusion and operator-field isolation from other output and page
+metadata, then records desktop/narrow screenshots and results under
+`artifacts/website/qa/legal/`. It refuses a non-fixture legal build before making
+screenshots. It is not the live legal verifier and must not consume the real payload.
 
 Verify the final emitted handlers locally with both canonical hosts and `www`.
 Legal pages must carry `noindex, nosnippet` in metadata and `X-Robots-Tag`, omit
@@ -129,13 +196,80 @@ Katja/the authorized operating seat resolves and records:
   for all routes; this is not assumed to be an unlimited free static-only workload;
 - provisioned legal email and the effective additional direct-contact route, the
   approved production operator projection and applicable operator/legal disclosures;
-- hosting/request-log retention and transfer facts for the privacy notice, and
+- hosting/request-log retention and transfer facts described below, and
   existing Search Console coverage/sitemap handoff for both Homes. A new docs
   hostname does not automatically require a new property.
 
 These are a bounded operating readback, not work for the owner to reconstruct.
 Missing provider access leaves these facts **UNOBSERVED**; a project name in this
 document does not resolve them.
+
+### Privacy readback for the actual public service
+
+The notice describes the public sites/API's delivery and security processing and
+the extension's real local storage; it does not equate an absent product-history
+table with absent provider processing. Before upload, the operating seat records:
+
+- Cloudflare Pages/Functions and Playground Worker plan, enabled observability,
+  invocation/custom logs, sampling, retention, exports/Logpush, access and any
+  separate security/incident store. Invocation logs can include request URLs, so the
+  API's public-PR query and a policy carried in a page URL are material. A source
+  `console.error` absence would not establish a no-logging claim; the current Worker
+  also emits unexpected exceptions.
+- The applicable Cloudflare agreement/DPA, recipients/subprocessors, processing
+  locations and transfer safeguards. Published provider terms are useful evidence,
+  not proof of this account's settings or executed arrangement. Record the actual
+  mail/contact providers and confirm that the Works channel notice describes them.
+- The request/security and support retention practice against the notice's purposes
+  and criteria. The notice cites Cloudflare's published Workers Logs windows (Free
+  three days, Paid seven days); those are not a universal Cloudflare TTL. Any retained
+  exports or other processing outside the described boundary need their actual
+  purpose, recipients and retention disclosed before use.
+- The basis and delivery of any Article 14 notice owed for personal data obtained
+  through public GitHub PRs, or the actual supported exception. A public repository
+  and a passive footer notice do not, alone, establish an exception. Assess the
+  bounded live acquisition and published lesson fixtures, not a hypothetical future
+  App dataset. Any required direct notice is a separate authorized operation.
+- Whether the actual free public service forms a consumer digital-service contract
+  triggering additional information/functions, and the real operator's § 36 VSBG
+  standing where applicable. A free, preview or open-source label alone does not
+  settle those questions. Terms preserve statutory liability and do not pretend
+  that a footer link proves agreement.
+
+These are finite legal/provider facts to resolve for the selected public offer,
+not a new compliance automation system. A mismatch holds only the affected launch
+claim/effect and returns the exact correction needed; it does not weaken the contact
+guard or turn a future paid App launch into a prerequisite for the public website.
+
+The managed-App section is explicitly a development boundary. Before opening that
+separate surface, its owner still owes the actual hosted offer and roles, customer
+history/audit/backup retention, qualified archive/recovery policy, GitHub grant and
+history choices, export/deletion and any commercial/consumer journeys. Do not turn
+the runtime's 3660-day default or selected four-year inactive archive into a lived
+customer promise. The extension's Store package and listing keep their own privacy
+and availability readback; this website change does not publish that listing.
+
+### Facts behind the authored copy
+
+| Public claim | Maintained evidence |
+| --- | --- |
+| Saved lessons fetch fixtures and check public-PR freshness; only a revision check is session-cached | `apps/website/src/islands/playground/Playground.tsx` |
+| Policy editing is local; PR/policy values can travel in URLs | `apps/website/src/islands/playground/Playground.tsx` and its state/API helpers |
+| Public API has transient acquisition, `no-store` responses, no result cache or service rate limiter | `apps/playground/app.mjs`, `worker.mjs`, `wrangler.jsonc` |
+| Extension reports/policy text persist within a size budget; no TTL; some preferences synchronize | `apps/browser-extension/src/background/analysis.ts`, `cache.ts`, `preferences.ts`, `worker.ts` |
+| Managed history retains protected names/paths; source content is separate; stopping and deletion differ | `docs/PRIVACY-AND-DATA.md`, `apps/github-app/analytical-data.mjs`, `storage.mjs` |
+| Managed grant, Works and feedback purposes differ from browser login/history | `apps/github-app/authorization-storage.mjs`, `docs/PRIVACY-AND-DATA.md`, `apps/app/README.md` |
+
+Legal/provider anchors checked on 2026-10-24:
+[§ 5 DDG](https://www.gesetze-im-internet.de/ddg/__5.html),
+[GDPR Articles 6, 13, 14 and 21](https://eur-lex.europa.eu/eli/reg/2016/679/oj/eng),
+[§ 25 TDDDG](https://www.gesetze-im-internet.de/ttdsg/__25.html),
+[§ 36 VSBG](https://www.gesetze-im-internet.de/vsbg/__36.html),
+[Cloudflare privacy](https://www.cloudflare.com/privacypolicy/),
+[Cloudflare DPA](https://www.cloudflare.com/cloudflare-customer-dpa/),
+[Workers Logs](https://developers.cloudflare.com/workers/observability/logs/workers-logs/),
+[GitHub privacy](https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement)
+and [Chrome storage](https://developer.chrome.com/docs/extensions/reference/api/storage).
 
 ## Operator effects after explicit publication authorization
 
@@ -186,6 +320,15 @@ robots, sitemap/canonicals, legal pages/headers and absence of fixture operator 
 Fetch a representative `www` URL and a moved legacy URL with query/fragment, and
 verify 308 plus final destination. Recheck after a cache-cold navigation. A CLI
 deployment receipt is not this public reader result.
+
+Read the actual Impressum, Privacy and Terms with the projected identity/contact
+locally under the restricted operating context; retain only redacted evidence in
+the public room. Check the Works form link against its prior live readback. Run the
+Leitsatz public-legal Skill's manual verifier for the selected published Home and
+fixed sitemap routes after this real publication occasion. It must remain a manual,
+bounded check, never CI, a deploy hook, monitoring or a scheduled crawl. Its result
+proves fetched content/directives, not legal sufficiency, mailbox receipt, provider
+configuration, notice delivery or contract formation.
 
 Retain the **pair** of previous production deployment IDs and frozen output trees.
 If either host fails, roll both back to the last coherent pair through Pages'

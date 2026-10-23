@@ -34,7 +34,7 @@
     "website:preview": "astro preview --root apps/website",
     "website:check": "node tools/website-docs.mjs && astro sync --root apps/website && node tools/website-typecheck.mjs apps/website",
     "check:website": "node tools/website-assets.mjs && node tools/website-docs.mjs && astro build --root apps/website",
-    "test:website": "node --test apps/website/website.test.mjs",
+    "test:website": "node --test apps/website/website.test.mjs apps/website/legal-operator.test.mjs",
     "qa:website": "node apps/website/qa/run.mjs",
     "extension:dev": "npm run extension:build",
     "extension:build": "npm run build && npm run extension:check && node tools/browser-extension-build.mjs",
