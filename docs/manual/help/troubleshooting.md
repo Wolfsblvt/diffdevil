@@ -137,6 +137,8 @@ Check installation approval, actual repository access, explicit execution consen
 
 An unavailable public App or configured-but-unexposed URL is not something to repair by guessing an endpoint. The analytical App and Manage are implemented and locally qualified, but those results and the backend canary do not prove public admission. Use the operator's actual supported sign-in and administration route. In Manage, inspect repository reach, selection, execution and history separately; a history-only selection can collect without writing labels or checks.
 
+For admission, `E_ADMISSION_UNAUTHORIZED` needs current authority, `E_ADMISSION_STALE` needs a fresh revision/readback, and `E_ADMISSION_WRITER_UNRESOLVED` needs exclusive-writer resolution before enablement. A tombstone or removed installation is not permission to bypass consent in SQL. Return to [Use the managed service](../use/managed-app/service.md).
+
 ## The App shows no history or an unavailable file
 
 Check scope, current GitHub access, history standing and recovered coverage before changing the plan. A direct connected-repository link can resolve through your current GitHub grant even when ordinary discovery omitted it. A namespace reached that way may explicitly show only a partial inventory; switching to All repositories does not silently add private siblings.
@@ -152,8 +154,6 @@ Inspect imports and recalculation in the repository's History settings. A comple
 Payment does not establish current GitHub authority. Check the organization binding, current funded standing, provider access and Account's service-connection state. An explicit disconnect leaves funding in place but removes its protected local grant; ordinary sign-in alone does not reconnect that purpose. Use deliberate reconnect if wanted and available. Browser logout, remote OAuth revocation, organization-slot release and subscription ending are different operations.
 
 An uncertain checkout or participation-reward response needs its current standing reconciled before retry, not a guessed second purchase. [Plans and shared access](../use/managed-app/plans-and-sharing.md) and [Account connections](../use/managed-app/service.md#manage-the-account-connection) explain the selected behavior. Source-local qualification is not proof of a live Works connection.
-
-For admission, `E_ADMISSION_UNAUTHORIZED` needs current authority, `E_ADMISSION_STALE` needs a fresh revision/readback, and `E_ADMISSION_WRITER_UNRESOLVED` needs exclusive-writer resolution before enablement. A tombstone or removed installation is not permission to bypass consent in SQL. Return to [Use the managed service](../use/managed-app/service.md).
 
 ## An App operation needs repair
 

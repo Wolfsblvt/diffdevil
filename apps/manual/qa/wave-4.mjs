@@ -32,6 +32,14 @@ export async function qualifyManagedHelp({page,origins,check,screenshot}) {
   await expect(page.locator('.sl-markdown-content img[src="/assets/manual/app-history.png"]')).toBeVisible();
   await page.locator(`.sl-markdown-content a[href="${pageUrl('app-plans-and-sharing')}"]`).first().click();
   await expect(page.locator('h1').first()).toHaveText('Plans and shared access');
+  await page.setViewportSize({width:320,height:900});
+  for(const name of ['Planned prices','Plan capabilities']){
+   const comparison=page.getByRole('region',{name,exact:true});
+   assert.equal(await comparison.evaluate(element=>element.scrollWidth>element.clientWidth),true,name);
+   await comparison.focus();
+   await comparison.press('ArrowRight');
+   await expect.poll(()=>comparison.evaluate(element=>element.scrollLeft)).toBeGreaterThan(0);
+  }
   await page.locator('.sl-markdown-content a[href*="f=docs%2Fapp-plans.md"]').click();
   const ref=JSON.parse(readFileSync('artifacts/manual/manifest.json','utf8')).ref;
   await expect(page.locator('[data-source-result]')).toHaveAttribute('href',`https://github.com/Wolfsblvt/diffdevil/blob/${ref}/docs/app-plans.md`);

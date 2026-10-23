@@ -11,6 +11,11 @@ Choose a plan for the capability and repository scope you need. **Free** supplie
 
 These tables are generated from the [canonical App plan contract](../../../app-plans.md). Prices are consumer totals in EUR, including applicable consumption tax. Annual amounts are charged annually; the monthly equivalent is a comparison, not a monthly payment schedule. The shared Works billing service supplies the authoritative quote and tax treatment when paid enrollment opens.
 
+On a narrow screen, scroll each comparison horizontally. Keyboard users can focus the table area and use the arrow keys.
+
+<div role="region" aria-label="Planned prices" tabindex="0" style="overflow-x: auto;">
+<div style="min-width: 36rem;">
+
 <!-- manual:generated app-plan-prices -->
 | Purchase | Monthly | Annually | Monthly equivalent when paid annually |
 | --- | ---: | ---: | ---: |
@@ -19,9 +24,15 @@ These tables are generated from the [canonical App plan contract](../../../app-p
 | Each additional organisation, on either paid plan | €9 | €90 | €7.50 |
 <!-- /manual:generated app-plan-prices -->
 
+</div>
+</div>
+
 An extra organization inherits the parent plan's features, billing cadence and renewal date. A Business connection therefore carries Business coordination; a Pro connection carries the Pro organization allowance. There are no per-reader seats, per-PR fees or purchasable processing credits in this offer.
 
 ## Capabilities and repository allowances
+
+<div role="region" aria-label="Plan capabilities" tabindex="0" style="overflow-x: auto;">
+<div style="min-width: 42rem;">
 
 <!-- manual:generated app-plan-capabilities -->
 | Capability | Free | Pro | Business |
@@ -47,6 +58,9 @@ An extra organization inherits the parent plan's features, billing cadence and r
 | Full administrative audit experience | No | No | Included |
 | Reading currently authorised repository data | No paid reader seats | No paid reader seats | No paid reader seats |
 <!-- /manual:generated app-plan-capabilities -->
+
+</div>
+</div>
 
 Free's personal repositories and included organization share one pool; connecting the organization does not create another set of Free slots. Each additional Pro organization has its own three-private-repository allowance. Installed but unselected repositories do not consume every allowance automatically. A public repository outside Free's history allocation can still receive labels.
 
