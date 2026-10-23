@@ -43,14 +43,18 @@ export function numberValue(measurement, numericType = 'integer') {
     if (measurement.status === 'exact') {
         if (!Number.isFinite(measurement.value) || (numericType === 'integer' && !Number.isSafeInteger(measurement.value)))
             fail('E_NUMERIC_OVERFLOW', 'Numeric value is outside its finite domain.');
-        if (numericType === 'integer')
-            affineForms.set(result, { constant: BigInt(measurement.value), terms: new Map() });
     }
     return result;
 }
 export const integer = (value) => numberValue(exact(checkedInteger(value)));
 // Provenance is request-local, never accepted as a user-supplied expression object.
 const affineForms = new WeakMap();
+function affineForm(value) {
+    // Exact integers are already constants. Allocate a form only when they join an
+    // unresolved primitive; the ordinary exact arithmetic path needs no provenance map.
+    return affineForms.get(value) ?? (value.numericType === 'integer' && value.measurement.status === 'exact'
+        ? { constant: BigInt(value.measurement.value), terms: new Map() } : undefined);
+}
 function affineBounds(form) {
     let lower = form.constant, upper = form.constant;
     for (const term of form.terms.values()) {
@@ -66,7 +70,8 @@ function affineValue(form) {
     if (outside)
         fail('E_NUMERIC_OVERFLOW', 'Every possible arithmetic result exceeds the safe integer domain.');
     const result = numberValue(interval(checkedBigint(lower, lower !== upper), checkedBigint(upper, lower !== upper)));
-    affineForms.set(result, form);
+    if (lower !== upper)
+        affineForms.set(result, form);
     return result;
 }
 function combineForms(left, right, sign) {
@@ -133,7 +138,9 @@ export function arithmetic(op, left, right) {
         if (c <= 0 && d >= 0)
             fail('E_POSSIBLE_DOMAIN', 'The divisor may be zero.');
     }
-    const lf = affineForms.get(left), rf = affineForms.get(right);
+    if (bothExact)
+        return numberValue(exact(endpoint(op, a, c, type, false)), type);
+    const lf = affineForm(left), rf = affineForm(right);
     if (type === 'integer' && lf && rf) {
         if (op === '+' || op === '-')
             return affineValue(combineForms(lf, rf, op === '+' ? 1n : -1n));
@@ -142,8 +149,6 @@ export function arithmetic(op, left, right) {
         if (op === '*' && rm.status === 'exact')
             return affineValue(scaleForm(lf, BigInt(rm.value)));
     }
-    if (bothExact)
-        return numberValue(exact(endpoint(op, a, c, type, false)), type);
     const reasons = mergeReasons(reasonsOf(lm), reasonsOf(rm));
     if (op === '%') {
         const magnitude = Math.max(Math.abs(c), Math.abs(d)) - 1;
@@ -167,7 +172,7 @@ export function numericComparison(op, left, right) {
     if (left.measurement.status === 'unmeasurable' || right.measurement.status === 'unmeasurable')
         return unknownDecision(mergeReasons(reasonsOf(left.measurement), reasonsOf(right.measurement)));
     let [a, b] = bounds(left.measurement), [c, d] = bounds(right.measurement);
-    const lf = affineForms.get(left), rf = affineForms.get(right);
+    const lf = affineForm(left), rf = affineForm(right);
     if (left.numericType === 'integer' && right.numericType === 'integer' && lf && rf) {
         const [lo, hi] = affineBounds(combineForms(lf, rf, -1n));
         // A comparison is not an authored subtraction: wide differences are valid.

@@ -12,18 +12,28 @@ const TTL_MS = 60_000;
 const TITLE_SCOPE_LIMIT = 25;
 const ROLE_ERRORS = new Set(['E_GITHUB_RATE_LIMIT', 'E_PROVIDER_NOT_FOUND', 'E_PROVIDER_UNAUTHORIZED', 'E_PROVIDER_REQUEST', 'E_PROVIDER_RESPONSE']);
 
-/** A per-isolate, per-user TTL cache for transient provider context. Expiry is the only invalidation. */
+/** Isolate-local transient reuse. User-specific provider keys expire; deterministic keys include every input. */
 export function createContextCache(now = () => Date.now()) {
   const entries = new Map();
+  const retain = (key, value, ttl) => {
+    entries.set(key, { value, until: now() + ttl });
+    if (entries.size > 2000) for (const [stale, candidate] of entries) { if (candidate.until <= now()) entries.delete(stale); }
+    return value;
+  };
   return {
+    /** Reuse synchronous deterministic work; failures are never retained. Keys must include all changing inputs. */
+    memo(key, compute, ttl = TTL_MS) {
+      const hit = entries.get(key);
+      if (hit && !hit.pending && hit.until > now()) return hit.value;
+      return retain(key, compute(), ttl);
+    },
     async get(key, load, ttl = TTL_MS) {
       const hit = entries.get(key);
       if (hit?.pending) return hit.pending;
       if (hit && hit.until > now()) return hit.value;
       const entry = {};
       entry.pending = Promise.resolve().then(load).then(value => {
-        if (entries.get(key) === entry) entries.set(key, { value, until: now() + ttl });
-        if (entries.size > 2000) for (const [stale, candidate] of entries) { if (candidate.until <= now()) entries.delete(stale); }
+        if (entries.get(key) === entry) retain(key, value, ttl);
         return value;
       }, error => {
         if (entries.get(key) === entry) entries.delete(key);

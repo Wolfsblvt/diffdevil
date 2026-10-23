@@ -155,8 +155,10 @@ export function createAppRuntime(env, { fetch = globalThis.fetch, now, premium =
   // turnover-v1 rules and a Contents-read installation credential minted only when a returned Turnover has an open tail.
   // Without the GitHub App credentials the extension reports the observation unavailable and the read still answers.
   const premiumService = premium.service?.(createAnalyticalPremiumHost(env, { store: appStore, installationOf: async repositoryId => (await authStore.repositoryIdentity(repositoryId))?.installation_id, fetch }));
-  const analytics = createAnalytics({ appStore, entitlement, policies, namespaceOf, premium: premiumService, now: clock });
-  const baseAnalytics = premiumService ? createAnalytics({ appStore, entitlement, policies, namespaceOf, now: clock }) : analytics;
+  if (!caches.has(env.APP_DB)) caches.set(env.APP_DB, createContextCache());
+  const cache = caches.get(env.APP_DB);
+  const analytics = createAnalytics({ appStore, entitlement, policies, namespaceOf, interpretationCache: cache, premium: premiumService, now: clock });
+  const baseAnalytics = premiumService ? createAnalytics({ appStore, entitlement, policies, namespaceOf, interpretationCache: cache, now: clock }) : analytics;
   // Delegated administration (Business): a named delegate administers what the namespace's GitHub administrators named
   // for them and only while the namespace is funded by Business; the authorization service separately requires the
   // delegate's own current GitHub write access to the repository at every action.
@@ -174,11 +176,10 @@ export function createAppRuntime(env, { fetch = globalThis.fetch, now, premium =
   // the chooser's current permission on each repository through the App installation; without App credentials it holds.
   const permissionOf = env.GITHUB_APP_ID && env.GITHUB_APP_PRIVATE_KEY ? createRepositoryPermissionReader(env, { fetch }) : undefined;
   const automaticSetup = createAutomaticSetup({ appStore, manage, namespaceOf, entitlement, permissionOf });
-  if (!caches.has(env.APP_DB)) caches.set(env.APP_DB, createContextCache());
   return {
     config: { origin, loopback, sessionDays, callbackUrl, siteOrigin: env.SITE_ORIGIN ?? 'https://diffdevil.dev', worksOrigin, retentionDays, allowedOrigins,
       admissionService: admissionServiceIdentity(origin, env.CF_VERSION_METADATA) },
     now: clock, store, appStore, commercialStore, auth, provider, entitlement, policies, analytics, baseAnalytics, locator, commercial, commercialSource, namespaceOf, premium, manage, participation, participationStore, allowances, automaticSetup,
-    operating, jobs, importScope, queue: env.APP_QUEUE, cache: caches.get(env.APP_DB)
+    operating, jobs, importScope, queue: env.APP_QUEUE, cache
   };
 }

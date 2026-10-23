@@ -24,8 +24,12 @@ analytical health. An inaccessible detail returns 404 from its independently aut
 existing not-found state; the generic document itself contains no protected detail.
 
 The ordinary read consumes the analytical record already normalized by ingestion/import. Current-policy interpretation
-still happens at read time, once per measurement in that query; populations, policy changes and coverage keep their
-meaning. This does not add a persistent analytical cache or a new job system.
+uses the existing isolate cache only when the exact report and actual compiled policy match; misses are calculated
+at read time. Each request still reads the current retained rows, expiry, history standing, access and entitlement.
+The cache expires reuse after a minute, and a cold or cleared cache recomputes normally. It stores frozen numeric
+interpretations, not HTML, authorization or analytical responses, and adds no persisted state or job system.
+`node apps/app/qa/analytical-read-profile.mjs` measures the common read with the anonymous loading-scale specimen,
+including cold and repeated reads and complete-answer equality. It does not measure native D1 wait or private algorithms.
 
 A malformed or inaccessible file-detail route keeps the authorised navigation available and reaches its not-found
 page without querying the broader repository population.
@@ -59,8 +63,9 @@ file-population derivations. It remains synthetic consumer evidence, not private
 A file detail reads only its named repository while retaining the broader scope as navigation context. Its second
 file-surface read continues the same request's Files response through `loadSurface`; matching reader, repository,
 period, metric, policy, current access and readable history are required. This avoids a second full interpretation
-and premium file enrichment. A different request or selection reads fresh data; no analytical result is cached across
-HTTP requests. Opaque signatures already calculated for that view are also reused only inside its runtime.
+and premium file enrichment. A different request or selection reads fresh data and derives its own answer; only
+unchanged deterministic policy interpretations can reuse work across requests. Opaque signatures already calculated
+for that view are also reused only inside its runtime.
 
 Files retains the complete query in full documents, progressive fragments and carried links, including the file-detail
 return context. The PR search keeps its existing query policy. On Files, `q` and `page` select a local projection of the
