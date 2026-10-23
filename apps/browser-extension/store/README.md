@@ -8,6 +8,8 @@ The Store must never contain copy or images that exist only in the provider dash
 
 [Listing](listing.md) contains the single purpose and ready-to-edit listing copy. [Privacy answers](privacy-answers.md) maps actual behavior to declarations rather than equating local processing with no data handling. [Submission](submission.md) contains the release gate and reviewer notes. [The application privacy notice](../privacy.md) is also rendered into the unpacked extension.
 
+[Public links](public-links.md) owns the final package/Store URLs, temporary fallbacks and launch readback. [Dashboard walkthrough](dashboard.md) is the split-screen packet for the later authorized upload and deferred-review submission. The accepted screenshots and promotional art remain selected unless the actual rendered product comparison earns a deliberate regeneration.
+
 ## Source layout
 
 ```text
@@ -15,6 +17,8 @@ apps/browser-extension/store/
   listing.md
   privacy-answers.md
   submission.md
+  public-links.md
+  dashboard.md
   assets/
     asset-manifest.json
     store-icon-128.png

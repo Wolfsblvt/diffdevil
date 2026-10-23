@@ -18,13 +18,15 @@ The visual asset set renders the Extension Grammar v1 implementation against aut
 | Distribution | Public; free; all supported regions unless a current legal/provider restriction requires an explicit narrower set |
 | Mature content | No |
 | In-app purchases | No |
-| Homepage URL | `https://github.com/Wolfsblvt/diffdevil/blob/main/apps/browser-extension/README.md` (its Privacy link opens the notice in one click) until the accepted public `/extension/` page is deployed and read back |
-| Support URL | `https://github.com/Wolfsblvt/diffdevil/issues` |
-| Privacy policy URL | `https://github.com/Wolfsblvt/diffdevil/blob/main/apps/browser-extension/privacy.md` until the accepted public privacy route is deployed and read back |
-| Official URL | Leave unset until a verified public `diffdevil.dev` property is available in the provider dashboard |
+| Homepage URL | Final: `https://diffdevil.dev/extension/`. Temporary draft fallback: `https://github.com/Wolfsblvt/diffdevil/blob/main/apps/browser-extension/README.md` until that page is deployed and read back |
+| Support URL | Final: `https://contact.wolfsblvt.works/?product=diffdevil`. Temporary draft fallback: `https://github.com/Wolfsblvt/diffdevil/issues` until the Works contact journey is deployed and qualified |
+| Privacy policy URL | `https://github.com/Wolfsblvt/diffdevil/blob/main/apps/browser-extension/privacy.md`. Keep this direct extension notice until a dedicated extension-specific public route is accepted and read back; the generic website privacy page is not a substitute |
+| Official URL | Select the verified `https://diffdevil.dev/` property only if offered by the provider's verified-site selector; otherwise leave unset |
 | Promotional video | None selected. Do not add a provider-only URL; any later video and exact URL must first be admitted here. |
 
 If the live dashboard vocabulary or required category list differs, stop at that visible provider mismatch and update this source before submission. Do not silently choose a nearby provider value.
+
+[Public links](public-links.md) owns the complete package/site/contact URL matrix and finite cutover readback. [Dashboard walkthrough](dashboard.md) places these fields beside the exact package and asset handoff. The source values above do not assert live availability or verified domain ownership.
 
 ### Name
 
@@ -65,7 +67,7 @@ No diffdevil account or local daemon is required. First install opens a Ready pa
 
 The extension supports github.com in normal Chrome profiles. It does not support Incognito or GitHub Enterprise hosts. Very large or incomplete provider responses remain qualified explicitly. The current candidate presents local results; authenticated hosted-App report delivery is not included.
 
-This is an independent open-source product. It is not affiliated with, endorsed by or provided by GitHub or Google.
+An open-source product from Wolfsblvt Works. It is not affiliated with, endorsed by or provided by GitHub or Google.
 ```
 
 ### Screenshot set

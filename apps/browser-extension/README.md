@@ -4,6 +4,8 @@ A Chrome Manifest V3 application that puts replacement-aware **Changed** counts 
 
 This is an authored source candidate, not a published Store extension. The implemented browser UI, settings, data management, provider acquisition, build, fixtures and Store-preparation pipeline are included. Installed Chrome, live GitHub and Windows acceptance are distinct from the deterministic browser evidence. See [QA](qa.md) and the generated receipts.
 
+The prepared public destinations are the [extension Home](https://diffdevil.dev/extension/), [extension guide](https://docs.diffdevil.dev/use/browser-extension/), [FAQ](https://diffdevil.dev/faq/), [contact for diffdevil](https://contact.wolfsblvt.works/?product=diffdevil) and [Wolfsblvt Works](https://wolfsblvt.works/). They become release destinations after actual publication and readback. Until then, this README, the [extension privacy notice](privacy.md) and [public Issues](https://github.com/Wolfsblvt/diffdevil/issues) remain accessible source/support fallbacks. The [public-link matrix](store/public-links.md) records each final value and its admission condition.
+
 ## Build and load
 
 From the repository root, with Node 22.12 or newer:
