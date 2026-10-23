@@ -3,10 +3,13 @@
 // The small, bounded See Pro placeholder a Free scope shows where a premium panel would sit.
 // It names what Pro adds there and leads to the public App page, which explains the plans;
 // a dedicated Pro features and pricing page replaces that destination later.
+// Unknown funding keeps the same panel boundary but reports unavailable instead of offering a tier.
 import PlanChip from './PlanChip.astro';
 import Icon from './Icon.astro';
-interface Props { text: string; span?: 4 | 5 | 7 | 8 | 12 }
-const { text, span = 12 } = Astro.props;
+import Unavailable from './Unavailable.astro';
+interface Props { text: string; span?: 4 | 5 | 7 | 8 | 12; unavailable?: boolean }
+const { text, span = 12, unavailable = false } = Astro.props;
 const destination = `${Astro.locals.app?.config?.siteOrigin ?? 'https://diffdevil.dev'}/app/`;
 ---
-<a class:list={['a-prohint', `s${span}`]} href={destination} title="What Pro adds, on the public App page"><PlanChip plan="Pro" /><span>{text}</span><span class="go">See Pro <Icon name="arrow-right" size={12} /></span></a>
+{unavailable ? <section class:list={['a-pn', `s${span}`]}><div class="a-pn-b"><Unavailable what="Premium features unavailable" why="the plan funding this scope could not be established" compact /></div></section>
+  : <a class:list={['a-prohint', `s${span}`]} href={destination} title="What Pro adds, on the public App page"><PlanChip plan="Pro" /><span>{text}</span><span class="go">See Pro <Icon name="arrow-right" size={12} /></span></a>}

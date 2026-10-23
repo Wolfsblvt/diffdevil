@@ -15,23 +15,24 @@ const PLAN_RANK = { Free: 0, Pro: 1, Business: 2 };
 
 /**
  * What the shell expects before data answers: a namespace's features follow that namespace's
- * plan, a viewer's own namespaces follow the viewer's plan, and All repositories follows the
+ * funded plan, the viewer's personal namespace follows their plan, and All repositories follows the
  * viewer's plan. The analytical service applies the same rule server-side on every read; its
  * answer replaces this expectation wherever retained data exists.
  */
 export function entitlementFor(viewer, scope, repositories) {
   const planOf = namespace => {
     const entry = viewer.namespaces.find(candidate => candidate.login === namespace);
-    return entry?.yours ? viewer.plan : entry?.plan ?? 'Free';
+    return namespacePlan(viewer, entry);
   };
-  const premiumRepositories = repositories.filter(repository => repository.standing?.historyReadable && planOf(repository.owner) !== 'Free');
-  const sharedPaid = [...new Set(viewer.repositories.filter(repository => !viewer.namespaces.find(candidate => candidate.login === repository.owner)?.yours && planOf(repository.owner) !== 'Free').map(repository => repository.owner))];
+  const paid = plan => ['Pro', 'Business'].includes(plan);
+  const premiumRepositories = repositories.filter(repository => repository.standing?.historyReadable && paid(planOf(repository.owner)));
+  const sharedPaid = [...new Set(viewer.repositories.filter(repository => repository.owner !== viewer.login && paid(planOf(repository.owner))).map(repository => repository.owner))];
   if (scope.kind === 'all') {
-    const premium = viewer.plan !== 'Free' && premiumRepositories.length > 0;
-    return { premium, plan: viewer.plan, scope: 'all', premiumRepositories: premium ? premiumRepositories : [], excluded: premium ? repositories.filter(repository => repository.standing?.historyReadable).length - premiumRepositories.length : 0, sharedPaid: viewer.plan === 'Free' ? sharedPaid : [], source: 'expected' };
+    const premium = paid(viewer.plan) && premiumRepositories.length > 0;
+    return { premium, plan: viewer.plan, aggregatePlan: viewer.plan.toLowerCase(), scope: 'all', premiumRepositories: premium ? premiumRepositories : [], excluded: premium ? repositories.filter(repository => repository.standing?.historyReadable).length - premiumRepositories.length : 0, sharedPaid: viewer.plan === 'Free' ? sharedPaid : [], source: 'expected' };
   }
   const plan = planOf(scope.namespace);
-  return { premium: plan !== 'Free' && premiumRepositories.length > 0, plan, scope: 'namespace', premiumRepositories, excluded: 0, sharedPaid: plan === 'Free' ? sharedPaid : [], source: 'expected' };
+  return { premium: paid(plan) && premiumRepositories.length > 0, plan, aggregatePlan: plan.toLowerCase(), scope: 'namespace', premiumRepositories, excluded: 0, sharedPaid: plan === 'Free' ? sharedPaid : [], source: 'expected' };
 }
 
 /** The server's entitlement answer, mapped to presentation: plan labels and namespace logins. */
@@ -47,7 +48,7 @@ function entitlementFromData(viewer, scope, repositories, data, expected) {
     premiumRepositories: repositories.filter(repository => eligible.has(repository.repositoryId)),
     excluded: (entitlements.premium?.excludedFreeRepositories ?? 0) + (entitlements.premium?.excludedUnknownPlanRepositories ?? 0),
     excludedUnknown: entitlements.premium?.excludedUnknownPlanRepositories ?? 0,
-    sharedPaid: premium ? [] : funded.filter(owner => !viewer.namespaces.find(candidate => candidate.login === owner)?.yours),
+    sharedPaid: premium ? [] : funded.filter(owner => owner !== viewer.login),
     fundedNamespaces: funded, source: 'service'
   };
 }
@@ -98,7 +99,7 @@ export async function loadView({ url, viewer, session, runtime, surface = 'prs',
   ]);
   const retainedRepositories = historyRepositories.filter(repository => (coverage.counts.get(repository.repositoryId) ?? 0) > 0);
   const pathlessOnly = historyRepositories.filter(repository => (coverage.counts.get(repository.repositoryId) ?? 0) === 0);
-  let data = null, dataStanding = scopeUnavailable ? 'scope-unavailable' : 'none';
+  let data = null, dataStanding = scopeUnavailable ? 'scope-unavailable' : expected.aggregatePlan === 'unknown' ? 'entitlement-unavailable' : 'none';
   const contractScope = detailRepository && historyRepositories.length > 0
     ? { kind: 'repository', repositoryId: detailRepository.repositoryId }
     : await selectedScope(scope, historyRepositories, runtime);
@@ -193,7 +194,9 @@ export function navModel(view, section) {
 
 export function repositoryByFullName(viewer, fullName) { return viewer.repositories.find(repository => repository.fullName === fullName); }
 
-/** A namespace's plan label for the navigation; the viewer's own namespaces follow the viewer. */
-export function namespacePlan(viewer, namespace) { return namespace.yours ? viewer.plan : namespace.plan; }
+/** Personal ownership shares the viewer's plan; organisation administration never supplies funding. */
+export function namespacePlan(viewer, namespace) {
+  return namespace?.kind === 'user' && namespace.login === viewer.login ? viewer.plan : namespace?.plan ?? 'Unknown';
+}
 
 export { PLAN_RANK };
