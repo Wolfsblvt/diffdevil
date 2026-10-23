@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { analyticalRoute, openAnalyticalShell } from '../src/lib/analytical-request.mjs';
 import { createContextCache } from '../src/lib/viewer.mjs';
+import { createAnalyticalCache } from '../../github-app/analytical-cache.mjs';
 import { loadView, loadSurface } from '../src/lib/view.mjs';
 import { analyticalAcquisitionKey } from '../src/lib/scope.mjs';
 import { compilePolicy, unwrap } from '@wolfsblvt/diffdevil';
@@ -51,6 +52,64 @@ test('concurrent navigation and population share one pending provider read, and 
   await assert.rejects(cache.get('profile:456', async () => { throw new Error('unavailable'); }));
   assert.equal(await cache.get('profile:456', async () => 'recovered'), 'recovered');
   assert.equal(await cache.get('repositories:456:9', async () => 'other-user'), 'other-user');
+});
+
+test('unchanged analytical facts are reused across fresh readers, with current data, policy, access and lifetime', async t => {
+  let clock = 0, allowed = true, plan = 'free', reads = 0, validations = 0, denySecond = false, accessReads = 0;
+  const cache = createAnalyticalCache({ now: () => clock });
+  let rows = [transition(1, 'a.txt', revisions.slice(0, 2), '2026-09-20T00:00:00.000Z'),
+    transition(2, 'b.txt', revisions.slice(0, 2), '2026-09-21T00:00:00.000Z')];
+  let exclude = ['b.txt'];
+  const descriptors = Object.getOwnPropertyDescriptors;
+  t.mock.method(Object, 'getOwnPropertyDescriptors', value => {
+    if (value?.kind === 'diffdevil.report') validations++;
+    return descriptors(value);
+  });
+  const fresh = () => createAnalyticalDataService({ interpretationCache: cache,
+    store: { analyticalRecords: async () => { reads++; return JSON.parse(JSON.stringify(rows)); } },
+    authorize: async () => allowed && !(denySecond && ++accessReads > 1), entitlement: async () => plan, namespace: async () => 9,
+    currentPolicy: async () => ({ id: 'friendly-name', compiled: unwrap(compilePolicy({ version: 1, defaults: { paths: { exclude } } })) }),
+    now: () => '2026-10-01T00:00:00.000Z' });
+  const query = { version: 1, surface: 'overview', repositoryIds: [17], from: '2026-09-01T00:00:00.000Z', to: '2026-10-01T00:00:00.000Z' };
+  const actor = { authorizedRepositoryIds: [17] };
+  const first = await fresh().query(query, actor);
+  const initialValidations = validations;
+  assert.equal(initialValidations, 2);
+  assert.deepEqual(await fresh().query(query, actor), first);
+  assert.equal(reads, 2, 'the store is read again even when interpretations match');
+  assert.equal(validations, initialValidations, 'newly parsed measurements and a newly compiled equivalent policy reuse the same deterministic work');
+
+  plan = 'pro';
+  assert.equal((await fresh().query(query, actor)).entitlements.aggregatePlan, 'pro');
+  assert.equal(validations, initialValidations, 'entitlements are current rather than part of a cached answer');
+  // A claimed report ID cannot hide changed facts under the same comparison identity.
+  const replacement = transition(2, 'c.txt', revisions.slice(0, 2), '2026-09-21T00:00:00.000Z');
+  replacement.final.report.reportId = rows[1].final.report.reportId;
+  rows[1] = replacement;
+  const beforeChangedRead = validations;
+  assert.notDeepEqual((await fresh().query(query, actor)).result.overview.changed, first.result.overview.changed);
+  assert.equal(validations, beforeChangedRead + 1);
+
+  exclude = ['a.txt', 'c.txt'];
+  assert.equal((await fresh().query(query, actor)).result.overview.changed.lower, 0);
+  const afterPolicyChange = validations;
+  assert.equal(afterPolicyChange, beforeChangedRead + 3, 'actual compiled policy identity invalidates a reused friendly name');
+  clock = 60_001;
+  await fresh().query(query, actor);
+  assert.equal(validations, afterPolicyChange + 2, 'expiry is a safe recomputation, not an availability dependency');
+  denySecond = true;
+  await assert.rejects(fresh().query(query, actor), { code: 'E_APP_DATA_UNAUTHORIZED' }, 'a warm hit still checks access again before exposure');
+  denySecond = false;
+  const validRows = structuredClone(rows);
+  rows[0].final.report.totals.lines.changed.value = 999;
+  await assert.rejects(fresh().query(query, actor), error => error.diagnostic?.code === 'E_REPORT_INVALID');
+  await assert.rejects(fresh().query(query, actor), error => error.diagnostic?.code === 'E_REPORT_INVALID', 'failed interpretations are retryable, never cached as an empty answer');
+  rows = validRows;
+  assert.equal((await fresh().query(query, actor)).coverage.merged, 2);
+  rows = [];
+  assert.equal((await fresh().query(query, actor)).coverage.merged, 0, 'withdrawn or expired rows cannot return through the cache');
+  allowed = false;
+  await assert.rejects(fresh().query(query, actor), { code: 'E_APP_DATA_UNAUTHORIZED' });
 });
 
 test('a failed analytical population cannot reach the chart renderer as an empty count', async () => {

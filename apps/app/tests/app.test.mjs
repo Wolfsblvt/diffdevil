@@ -25,6 +25,34 @@ import { fixture, disposeFixture, signIn, viewerFor, ORIGIN, NOW } from './suppo
 
 after(disposeFixture);
 
+test('independent App runtimes reuse only unchanged interpretations after fresh native D1 reads', async t => {
+  const { env, github, clock } = await fixture();
+  const compose = () => createAppRuntime(env, { fetch: github.fetch, now: () => clock.value });
+  const first = compose(); first.cache.clear();
+  const actor = { userId: 123, authorizedRepositoryIds: [1001] };
+  const input = { surface: 'overview', repositoryIds: [1001], scope: { kind: 'repository', repositoryId: 1001 }, from: '2026-01-01T00:00:00.000Z', to: NOW };
+  let validations = 0;
+  const descriptors = Object.getOwnPropertyDescriptors;
+  t.mock.method(Object, 'getOwnPropertyDescriptors', value => {
+    if (value?.kind === 'diffdevil.report') validations++;
+    return descriptors(value);
+  });
+  const before = await first.analytics.query(input, actor);
+  assert.ok(before.coverage.merged > 0);
+  const count = validations;
+  assert.ok(count > 0);
+  assert.deepEqual(await compose().analytics.query(input, actor), before);
+  assert.equal(validations, count, 'the actual runtime passes the shared calculation cache across independent compositions');
+  const row = await first.appStore.statement("SELECT pull_request,expires_at FROM analytical_pull_requests WHERE repository_id=1001 AND json_extract(record_json,'$.state')='merged' LIMIT 1").first();
+  try {
+    await first.appStore.statement('UPDATE analytical_pull_requests SET expires_at=? WHERE repository_id=1001 AND pull_request=?', NOW, row.pull_request).run();
+    assert.equal((await compose().analytics.query(input, actor)).coverage.merged, before.coverage.merged - 1, 'fresh native expiry still determines the population');
+  } finally {
+    await first.appStore.statement('UPDATE analytical_pull_requests SET expires_at=? WHERE repository_id=1001 AND pull_request=?', row.expires_at, row.pull_request).run();
+    first.cache.clear();
+  }
+});
+
 test('the sign-in journey issues an opaque session, refuses foreign posts and signs out cleanly', async () => {
   const { app: compose, github } = await fixture();
   const app = compose();

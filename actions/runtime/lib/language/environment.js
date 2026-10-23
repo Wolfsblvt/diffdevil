@@ -88,12 +88,15 @@ function summaryValue(summary) {
     return recordValue({ status: textValue(summary.status), reasons: completeCollection(summary.reasons.map(reason => recordValue({ code: textValue(reason.code), subject: reason.subject === undefined ? { kind: 'missing' } : textValue(reason.subject), message: reason.message === undefined ? { kind: 'missing' } : textValue(reason.message) }))) });
 }
 function fileValue(file, comparison) {
-    let raw = Object.fromEntries(Object.entries(file.raw).map(([key, m]) => [key, numberValue(m)]));
-    let lines = Object.fromEntries(Object.entries(file.lines).map(([key, m]) => [key, numberValue(m)]));
+    let raw, lines;
     if (file.kind === 'text' && file.family?.rawCountsExact && file.raw.added.status === 'exact' && file.raw.deleted.status === 'exact') {
         const family = replacementFamily(`${comparison}\0${file.id}\0${file.family.id}`, file.raw.added.value, file.raw.deleted.value, file.lines.modified.status === 'exact' ? file.lines.modified.value : undefined);
         raw = family.raw;
         lines = family.lines;
+    }
+    else {
+        raw = Object.fromEntries(Object.entries(file.raw).map(([key, m]) => [key, numberValue(m)]));
+        lines = Object.fromEntries(Object.entries(file.lines).map(([key, m]) => [key, numberValue(m)]));
     }
     return recordValue({ id: textValue(file.id), path: textValue(file.path), oldPath: file.oldPath === undefined ? { kind: 'missing' } : textValue(file.oldPath), changeType: textValue(file.changeType), kind: textValue(file.kind), included: boolValue(file.included), raw: recordValue(raw), lines: recordValue(lines), measurement: summaryValue(file.measurement) });
 }
@@ -111,7 +114,9 @@ function totalsValue(totals, files, values, complete) {
             let value = numberValue(m.status === 'unknown'
                 ? { status: m.status, reasons: m.reasons, ...(m.lower === undefined ? {} : { lower: m.lower }), ...(m.upper === undefined ? {} : { upper: m.upper }) }
                 : m);
-            if (complete) {
+            // Validated exact totals already have their constant affine form. Only an unresolved
+            // total needs the constituent families to preserve correlation with file expressions.
+            if (complete && m.status !== 'exact') {
                 value = integer(0);
                 for (const file of files) {
                     const f = values.get(file.id);

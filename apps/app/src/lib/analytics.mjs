@@ -8,9 +8,10 @@
  */
 import { createAnalyticalDataService } from '../../../github-app/analytical-data.mjs';
 
-export function createAnalytics({ appStore, entitlement, policies, namespaceOf, premium, now }) {
+export function createAnalytics({ appStore, entitlement, policies, namespaceOf, interpretationCache, premium, now }) {
   const service = createAnalyticalDataService({
     store: appStore,
+    interpretationCache,
     // The premium file extension, when the build joined one; absent, the service is the Community service.
     ...(premium ? { premium } : {}),
     // The acting reader's authorised set was resolved from their current GitHub reach for this request.

@@ -164,7 +164,7 @@ export const analyticalKit = Object.freeze({ interval, amount, sum, median, file
  * entitled reader. Without it the service is the Community service: it answers every surface from the common facts,
  * and an entitled reader's Files and File detail answer `premium-not-provided` instead of pretending the result was computed.
  */
-export function createAnalyticalDataService({ store, authorize, entitlement, namespace, currentPolicy, premium: extension, now = () => new Date().toISOString() }) {
+export function createAnalyticalDataService({ store, authorize, entitlement, namespace, currentPolicy, interpretationCache, premium: extension, now = () => new Date().toISOString() }) {
   if (!store || typeof authorize !== 'function' || typeof entitlement !== 'function' || typeof namespace !== 'function' || typeof currentPolicy !== 'function') throw new TypeError('Analytical read adapters are required.');
   // A file page resolves its opaque handle from Files before reading that file's detail.
   // Continue that same server view without interpreting and enriching every file twice.
@@ -248,14 +248,23 @@ export function createAnalyticalDataService({ store, authorize, entitlement, nam
         && authorized.every(id => policies.get(id)?.id === prior.policies.get(id)?.id && policies.get(id)?.compiled === prior.policies.get(id)?.compiled)
         && await historyReadable(authorized) ? prior : null;
       const all = continued ? continued.all : (await Promise.all(authorized.map(id => store.analyticalRecords(id)))).flat();
-      // One interpretation per measurement and repository in this query. Summary, rows and development
-      // share it; it cannot outlive the current policy, authority or retained-data read.
+      // Always read the current retained population first. Only deterministic interpretation
+      // can cross requests; authority, entitlement, expiry and withdrawal are never cached here.
       const interpretations = new Map();
       const factsOf = continued?.factsOf ?? ((measurement, repositoryId) => {
         if (!measurement) return facts(measurement, policies.get(repositoryId));
         if (!interpretations.has(repositoryId)) interpretations.set(repositoryId, new WeakMap());
         const cache = interpretations.get(repositoryId);
-        if (!cache.has(measurement)) cache.set(measurement, facts(measurement, policies.get(repositoryId)));
+        if (!cache.has(measurement)) {
+          const policy = policies.get(repositoryId);
+          const compute = () => Object.freeze(facts(measurement, policy));
+          // The stored report is normalized inert data. Its exact bytes, not a claimed
+          // report ID or a friendly policy name, decide whether prior work is reusable.
+          const value = interpretationCache && measurement.report && policy?.compiled
+            ? interpretationCache.memo(`analytical:${JSON.stringify([repositoryId, policy.compiled.id, measurement.report])}`, compute)
+            : compute();
+          cache.set(measurement, value);
+        }
         return cache.get(measurement);
       });
       const populationSurface = query.surface === 'overview' || query.surface === 'prs';
