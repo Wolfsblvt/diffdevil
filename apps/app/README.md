@@ -27,7 +27,8 @@ The ordinary read consumes the analytical record already normalized by ingestion
 uses a dedicated isolate cache only when the exact report and actual compiled policy match; misses are calculated
 at read time. Each request still reads the current retained rows, expiry, history standing, access and entitlement.
 The cache admits at most 2,000 frozen numerical interpretations, 12 MiB of accounted serialized weight, and
-512 KiB per entry. Weight charges two bytes per key and value-JSON code unit plus 512 bytes per entry; it is an
+1 MiB per entry so a useful large interpretation can remain warm without widening the total budget. Weight charges
+two bytes per key and value-JSON code unit plus 512 bytes per entry; it is an
 explicit retention budget, not a measurement or promise of total V8/Worker heap. Oversized entries compute normally
 without displacing smaller entries. Insertion-order eviction and fixed one-minute expiry make removal amortized
 constant work; hits do not extend lifetime. Analytical retention is independent of the provider-context cache.
