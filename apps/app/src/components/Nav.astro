@@ -37,7 +37,7 @@ const siteOrigin = Astro.locals.app?.config?.siteOrigin ?? 'https://diffdevil.de
           <Icon name={section.icon} size={16} /><span>{section.label}</span>
           <span class="a-end">
             {section.key === 'prs' && nav.active !== null && <span class="a-st">{nav.active} active</span>}
-            {section.key === 'files' && !nav.premium && <PlanChip plan="Pro" />}
+            {section.key === 'files' && !nav.premium && !view?.scopeUnavailable && <PlanChip plan="Pro" />}
           </span>
         </a>
       ))}

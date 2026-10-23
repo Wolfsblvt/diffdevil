@@ -12,6 +12,7 @@ import '../styles/manage.css';
 // The joined premium extension's stylesheet, or the empty Community one (premium-selection.mjs).
 import '@diffdevil/premium-styles';
 import Nav from '../components/Nav.astro';
+import PageHead from '../components/PageHead.astro';
 import Invitation from '../components/participation/Invitation.astro';
 import { siteHeader } from '../lib/shell.mjs';
 import { manageBadge } from '../lib/manage/model.mjs';
@@ -43,7 +44,14 @@ const badge = viewer && nav && !Astro.locals.deferChrome ? await manageBadge({ v
         <slot name="navigation" />
         <main class="a-main" id="main">
           <div data-analytical-notifications data-notifications-pending={Astro.locals.deferChrome ? 'true' : undefined}>{viewer && nav && !Astro.locals.deferChrome && <Invitation />}</div>
-          <slot />
+          {view?.scopeUnavailable ? <>
+            <PageHead view={view} title={title} />
+            <section class="a-pn s12" role="status" data-scope-unavailable>
+              <h2>Scope unavailable</h2>
+              <p>Current GitHub access to {view.scope.namespace} could not be confirmed. Repository data and plan details are hidden for this selection.</p>
+              <a class="link-quiet" href={view.href('/', { s: 'all' })}>Choose another scope</a>
+            </section>
+          </> : <slot />}
         </main>
       </div>
     </div>

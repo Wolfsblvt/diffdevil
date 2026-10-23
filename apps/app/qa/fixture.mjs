@@ -272,7 +272,7 @@ export function createFakeGitHub({ user = USER, token = TOKEN, code = CODE, clie
   const calls = [];
   // Narrow the signed-in person's GitHub access for a case: `push` and `admin` per repository (repositoryId → boolean,
   // default write and the fixture's admin flag), `roles` per organisation login (default ROLES).
-  const state = { rateLimited: false, tokenValid: true, tokenCheckResponse: null, refreshResponse: null, membershipStatus: 200, targetedMembershipStatus: 403, omittedMemberships: new Set(), push: new Map(), admin: new Map(), roles: new Map(), membershipStates: new Map(), collaborators: new Map(), installationTokens: [], extraRepositories: [], logins: new Map(), policyHead: 'a'.repeat(40), policyFiles: new Map() };
+  const state = { rateLimited: false, tokenValid: true, tokenCheckResponse: null, refreshResponse: null, membershipStatus: 200, targetedMembershipStatus: 403, omittedMemberships: new Set(), push: new Map(), admin: new Map(), roles: new Map(), membershipStates: new Map(), collaborators: new Map(), installations: INSTALLATIONS, installationTokens: [], extraRepositories: [], logins: new Map(), policyHead: 'a'.repeat(40), policyFiles: new Map() };
   async function fetch(input, init = {}) {
     const url = new URL(String(input)), method = init.method ?? 'GET', path = url.pathname;
     const authorization = new Headers(init.headers).get('authorization') ?? '';
@@ -332,10 +332,10 @@ export function createFakeGitHub({ user = USER, token = TOKEN, code = CODE, clie
     }
     if (authorization !== `Bearer ${token}`) return json({ message: 'Requires authentication' }, 401);
     if (path === '/user') return json({ id: user.id, login: user.login, type: user.type, avatar_url: user.avatar_url });
-    if (path === '/user/installations') return json({ total_count: INSTALLATIONS.length, installations: INSTALLATIONS });
+    if (path === '/user/installations') return json({ total_count: state.installations.length, installations: state.installations });
     if (path === '/user/memberships/orgs') {
       if (state.membershipStatus !== 200) return json({ message: 'membership read unavailable' }, state.membershipStatus);
-      const memberships = INSTALLATIONS.filter(installation => installation.account.type === 'Organization').flatMap(installation => {
+      const memberships = state.installations.filter(installation => installation.account.type === 'Organization').flatMap(installation => {
         const organization = installation.account, role = state.roles.get(organization.login) ?? ROLES[organization.login];
         return role && !state.omittedMemberships.has(organization.id) ? [{ organization: { id: organization.id, login: organization.login }, role, state: state.membershipStates.get(organization.login) ?? 'active' }] : [];
       });
@@ -350,7 +350,7 @@ export function createFakeGitHub({ user = USER, token = TOKEN, code = CODE, clie
     // The unchanged registration has no Members-read. A test can explicitly supply the documented target result.
     if (match) {
       if (state.targetedMembershipStatus !== 200) return json({ message: 'membership read unavailable' }, state.targetedMembershipStatus);
-      const organization = INSTALLATIONS.find(installation => installation.account.type === 'Organization' && installation.account.login.toLowerCase() === decodeURIComponent(match[1]).toLowerCase())?.account;
+      const organization = state.installations.find(installation => installation.account.type === 'Organization' && installation.account.login.toLowerCase() === decodeURIComponent(match[1]).toLowerCase())?.account;
       if (!organization) return json({ message: 'Not Found' }, 404);
       return json({ organization: { id: organization.id, login: organization.login }, user: { id: user.id }, role: state.roles.get(organization.login) ?? ROLES[organization.login], state: state.membershipStates.get(organization.login) ?? 'active' });
     }
