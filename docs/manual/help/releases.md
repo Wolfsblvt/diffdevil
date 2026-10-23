@@ -17,6 +17,8 @@ For example, an extension `1.3.0` can contain analysis engine `1.7.4`, matching 
 
 Release tags identify their family: `vX.Y.Z` for the open tool, `extension-vX.Y.Z`, `app-vX.Y.Z`, and `skill-vX.Y.Z`. A repository-wide Latest badge is not a latest-version answer for every family. Check the release and distribution channel you actually use; a GitHub extension release does not prove the same version is already available in the Store. Release notes identify which tools contain a shared improvement and any separate rollout.
 
+The App's current metadata has no named release selected. A deployed backend or an npm `1.0.0` package is not an `app-v1.0.0` release. Server and signed-in application share the App family, including self-hosted Community; an operator also records the exact source/build and database migration state. The website, manual and learning surface use build/source identity rather than additional public SemVer families.
+
 ## Published open tools and current source
 
 The published open-tool release is `v1.0.0`: npm `@wolfsblvt/diffdevil@1.0.0`, the CLI and TypeScript API, the root and three sub-actions, the `v1.0.0` source ref, maintained Action alias `v1`, GitHub Release, and Marketplace entry. The [dated release account](https://diffdevil.dev/source/?f=docs%2Freleases%2Fv1.0.0.md) and [Qualification](https://diffdevil.dev/source/?f=docs%2Fqualification.md) retain its exact source and consumer/provider evidence.
@@ -31,6 +33,8 @@ The source identities below are generated from this checkout's metadata. They ar
 | Package source version | `1.0.0` | [Package metadata](../../../package.json) |
 | Package Node.js floor | `>=22` | [Runtime requirement](../../../package.json) |
 | Skill source version | `1.0.0` | [Complete Skill source](../../../skills/diffdevil/SKILL.md) |
+| Extension source version | `1.0.0` | [Extension manifest](../../../apps/browser-extension/manifest.json) |
+| App named release version | Not selected | [App release metadata](../../../apps/github-app/release.json) |
 | action.yml | `node24` | [Action runtime declaration](../../../action.yml) |
 | actions/analyze/action.yml | `node24` | [Action runtime declaration](../../../actions/analyze/action.yml) |
 | actions/apply/action.yml | `node24` | [Action runtime declaration](../../../actions/apply/action.yml) |
@@ -72,14 +76,22 @@ The carrier builder and consumer qualification exist in source. The current `v1.
 
 | Surface | Current established boundary | Separate release work |
 | --- | --- | --- |
-| Managed App | Worker/Queue/D1 source and a contained deployed backend canary | General admission, complete authenticated administration, history/export/offboarding qualification, final dashboard co-design, and public/commercial availability |
-| Browser extension | Local-first Chrome source, build and browser qualification | Live/installed acceptance for the selected release, Store submission/publication, and any authenticated App report delivery |
-| Playground | An earlier read-only measurement Worker is deployed; the complete configurable website Playground exists in source | Deploying that exact richer application/API and qualifying the public visitor journey |
+| Managed App | Six analytical destinations, chart/cloud system and Manage implemented and locally qualified; separate runtime/backend canary and ingress evidence | Named App release, joined production deployment and real authentication, repository/history/brief/commercial journeys; general public admission and paid availability |
+| Browser extension | Local-first Chrome source, installed-build qualification and signed-in acquisition, with rebuildable caches and explicit continuation | Acceptance of the exact distributed release, Store submission/publication, and any authenticated App report delivery |
+| Lens Studio (Playground) | An earlier read-only measurement Worker is deployed; the configurable browser learning surface and report/head API exist in source | Deploying the matching richer application/API and qualifying the public visitor journey |
 | Product website and manual | Repository-owned source, explicit routes, two-host static build and joined search | Remote publication, configured live destinations, hosting/DNS adoption, and actual public-route readback |
 
 A configured installation/dashboard/Store destination does not expose it. A Worker version created by the credential helper is not deployed. An unpacked extension is not a Store publication. An accepted website build or reserved domain is not a reachable public site.
 
-The [Managed App](../use/managed-app/README.md) chapters describe the complete selected first-public-release capability with their top availability note. Final dashboard labels, composition, controls, routes, and interaction sequence remain co-design, not frozen release instructions. Exact commercial prices/quotas and a supported non-Cloudflare operating stack are not supplied by current source.
+The [Managed App](../use/managed-app/README.md) chapters describe the implemented analytical and Manage experience with their top availability note. The selected desktop design and controls exist in source; whole-App light theme, phone, public analytics and operator views remain separate work. [Planned prices and repository allowances](../use/managed-app/plans-and-sharing.md) are selected, while monthly import budgets, production operating qualification and purchasable availability remain outstanding. Cloudflare is the supported first adapter; a Docker deployment is not supplied by this contract.
+
+## Take the next action for your surface
+
+For the extension, rebuild the selected source, reload its Chrome extension card and reload open GitHub tabs. Inspect its packaged build information when diagnosing a version mismatch. A source manifest number does not establish that those bytes reached the Store; the product page offers a Store link only when an actual destination is configured and available.
+
+For the App, use the operator's admitted installation/sign-in route. Self-hosters select the complete Community source or a verified App release manifest, review migrations and qualify the actual deployment unit before enabling repositories. A public App release describes Community source; a privately composed premium edition has an additional source/composition boundary. A frozen archive, installed billing connector or plan card is not evidence that premium code or live payments are available.
+
+For website downloads and agent carriers, select the family and actual attached assets from the release you intend to use. Verify their integrity and consumer requirements. The public site's download instructions, its own static build, the Lens Studio API and the two documentation/product hosts each require matching publication. Opening a frozen teaching example does not prove that live public-PR acquisition works.
 
 ## Compatibility and historical accounts
 

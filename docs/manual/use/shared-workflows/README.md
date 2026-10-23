@@ -18,7 +18,7 @@ A query JSON envelope answers a selected question. It is not interchangeable wit
 
 ## Keep policy provenance visible
 
-A local configuration file is convenient for experimenting. It is not automatically the trusted policy for a privileged GitHub Action. An extension's personal settings are not repository-wide policy, and a Playground export is a proposed configuration, not an installed one.
+A local configuration file is convenient for experimenting. It is not automatically the trusted policy for a privileged GitHub Action. An extension's personal settings are not repository-wide policy, and a Lens Studio export is a proposed configuration, not an installed one.
 
 Before expecting two results to match, align comparison revisions, file inclusion, policy and bound parameters, engine/semantic versions, and the evidence available to each acquisition route. An API response with omitted patches can establish less than a local Git comparison. That is an evidence difference, not a new definition of Changed. The [shared trust model](../../understand/trust-and-mutation.md) owns the distinction between identity, trust and freshness.
 

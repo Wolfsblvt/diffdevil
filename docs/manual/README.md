@@ -51,7 +51,7 @@ keep a script moving.
 Run diffdevil yourself through the CLI, TypeScript library, or GitHub Actions.
 Use **diffdevil for GitHub**, the browser extension, for a personal Changed view
 without installing repository automation. The optional managed App is the route
-for having a service operate repository automation. The public Playground lets
+for shared repository history and operated automation. Lens Studio, the public Playground, lets
 you explore the same measurements and policy without installing anything.
 
 The measurements are shared; the responsibilities are not. A local report is not

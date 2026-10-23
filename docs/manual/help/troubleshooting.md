@@ -135,7 +135,23 @@ A restricted harness may permit attached source but not persistent installation,
 
 Check installation approval, actual repository access, explicit execution consent, effective policy, and the chosen writer before retrying a PR. Authentication is not administrator authority. `E_ACCESS_DISABLED` can mean the repository is intentionally not enabled; it is not necessarily a broken token. Imported/restored settings do not auto-enable execution or history.
 
-An unavailable public dashboard or configured-but-unexposed URL is not something to repair by guessing an endpoint. The complete managed experience remains in development; the source backend and contained canary do not prove public admission. Use the operator's actual supported administration route, and preserve the dashboard's unsettled interaction details.
+An unavailable public App or configured-but-unexposed URL is not something to repair by guessing an endpoint. The analytical App and Manage are implemented and locally qualified, but those results and the backend canary do not prove public admission. Use the operator's actual supported sign-in and administration route. In Manage, inspect repository reach, selection, execution and history separately; a history-only selection can collect without writing labels or checks.
+
+## The App shows no history or an unavailable file
+
+Check scope, current GitHub access, history standing and recovered coverage before changing the plan. A direct connected-repository link can resolve through your current GitHub grant even when ordinary discovery omitted it. A namespace reached that way may explicitly show only a partial inventory; switching to All repositories does not silently add private siblings.
+
+A funded repository can still have no readable history. Its existing funding should not be treated as a request to buy the plan again. Retained base file rows on Free also do not imply access to premium file exploration. Community without private premium modules, unknown funding, history off and missing acquisition are distinct states.
+
+For a file link, use the App's opaque URL and your current authorized session. Do not put a private path into a guessed URL or publish a full request as a diagnostic. Missing rename continuity or an unrecoverable revision is a coverage limit, not proof that the file never existed.
+
+Inspect imports and recalculation in the repository's History settings. A completed import can still contain unrecovered comparisons; a pause, provider limit or pending enrichment is not zero activity. A resumed job cannot recreate deliberately deleted history. Return to [Read repository history](../use/managed-app/read-history.md) and [Inspect and extend history](../use/managed-app/service.md#inspect-and-extend-history).
+
+## Funding remains, but organization premium access is unavailable
+
+Payment does not establish current GitHub authority. Check the organization binding, current funded standing, provider access and Account's service-connection state. An explicit disconnect leaves funding in place but removes its protected local grant; ordinary sign-in alone does not reconnect that purpose. Use deliberate reconnect if wanted and available. Browser logout, remote OAuth revocation, organization-slot release and subscription ending are different operations.
+
+An uncertain checkout or participation-reward response needs its current standing reconciled before retry, not a guessed second purchase. [Plans and shared access](../use/managed-app/plans-and-sharing.md) and [Account connections](../use/managed-app/service.md#manage-the-account-connection) explain the selected behavior. Source-local qualification is not proof of a live Works connection.
 
 For admission, `E_ADMISSION_UNAUTHORIZED` needs current authority, `E_ADMISSION_STALE` needs a fresh revision/readback, and `E_ADMISSION_WRITER_UNRESOLVED` needs exclusive-writer resolution before enablement. A tombstone or removed installation is not permission to bypass consent in SQL. Return to [Use the managed service](../use/managed-app/service.md).
 

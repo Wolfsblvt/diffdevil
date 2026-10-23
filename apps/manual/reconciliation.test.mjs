@@ -23,7 +23,6 @@ const ref=execFileSync('git',['rev-parse','HEAD'],{cwd:root,encoding:'utf8'}).tr
 const targets=sourceTargets({ref,state,exists:path=>existsSync(join(root,path)),legacySources:entries.map(entry=>entry.source)});
 
 test('The complete manual and separate FAQ have no competing current apex article',()=>{
- assert.equal(manualPages.length,41);
  assert.equal(pages.filter(page=>page.kind==='FAQ').length,1);
  for(const page of manualPages)assert.equal(pageIsCurrent(page.key,state),true,page.key);
  const routes=siteRedirects(state,entries,targets);

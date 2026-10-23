@@ -8,7 +8,7 @@
 
 ## Install or update the extension
 
-Use a Chromium browser that supports the extension's Manifest V3 build. The qualified development route is Chrome; do not infer support for Firefox, Enterprise GitHub hosts or incognito from it. Use the [extension product page](https://diffdevil.dev/extension/) for release availability. A Store listing must actually exist before it is an installation route.
+Use Chrome 120 or newer for the Manifest V3 source build. Do not infer support for Firefox, Enterprise GitHub hosts or incognito from it. Use the [extension product page](https://diffdevil.dev/extension/) for release availability. A Store listing must actually exist before it is an installation route.
 
 For the available source route, use a diffdevil checkout and Node.js 22.12 or newer. At its root run:
 
@@ -43,7 +43,7 @@ Policy provenance explains which personal settings, trusted repository-base poli
 
 Open the extension from its browser-toolbar icon to reach settings. Search for the setting you need instead of browsing a long inventory. Search can reveal an Advanced setting without permanently switching every setting to Advanced mode.
 
-The source-defined deep links include `#display.brandIcon` and `#policy.advancedYaml` on the extension's own options page. They reveal and focus the selected control. These are extension-local fragments, not routes on the product website.
+The source-defined deep links include `#display.brandIcon` and `#policy.advancedYaml` on the extension's own options page. They reveal and focus the selected control. These are extension-local fragments, not routes on the product website. Use **Pause this repository** in the report or Settings to stop augmentation for this repository in your browser; **Resume** restores it without changing repository automation or deleting cached data.
 
 Personal settings do not change repository automation. Import or export policy deliberately, and inspect errors before saving. Invalid policy must not replace the last valid settings. The deeper [extension guide](../use/browser-extension.md) covers settings, origins, caches and reset behavior.
 
@@ -51,7 +51,7 @@ Personal settings do not change repository automation. Import or export policy d
 
 Analysis runs in the browser extension. It does not submit a PR to a diffdevil analysis service, accept a personal access token, or apply labels/comments. A native label-picker handoff still leaves selecting the label to you; opening that picker is not an automated write.
 
-Reports and trusted-policy caches can contain private paths and revisions. Small preferences may use browser sync, while advanced policy and repository overrides have their own local storage. Treat a complete settings export differently from a redacted support snapshot. Read the [extension privacy source](../../../apps/browser-extension/privacy.md) and [Security and data](../help/security-and-data.md) before sharing diagnostic material.
+Reports and trusted-policy caches can contain private paths and revisions. Small preferences may use browser sync, while advanced policy, repository overrides and pause choices stay local. Treat a complete settings export differently from a redacted support snapshot. Read the [extension privacy source](../../../apps/browser-extension/privacy.md) and [Security and data](../help/security-and-data.md) before sharing diagnostic material.
 
 ## Recover a missing or stale result
 
@@ -62,5 +62,7 @@ Reports and trusted-policy caches can contain private paths and revisions. Small
 **Facts appear but classification does not:** inspect the selected policy's origin and diagnostics. Repair the configuration or the access problem it names; do not reinterpret failure as “no repository policy.”
 
 **Only a file-level result is absent:** first check whether you are viewing a single commit or narrowed comparison. On a supported full-PR view, inspect acquisition and evidence rather than treating a missing row as unchanged.
+
+**A large PR is only partly measured:** automatic acquisition has a configurable file limit, initially 150. Open a file or choose **Analyze remaining files** for explicit continuation. If GitHub declined a requested file's lines, inspect the reason and use **Ask GitHub again** when you want another attempt. “Not confirmed” instead means the cached comparison remains visible while current GitHub freshness could not be established.
 
 After repair, open the detail panel again and confirm the intended comparison and policy. Continue with [diffdevil for GitHub](../use/browser-extension.md) for the complete operating guide.

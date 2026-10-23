@@ -127,6 +127,12 @@
     },
     "releases": {
       "status": "authored"
+    },
+    "read-app-history": {
+      "status": "authored"
+    },
+    "app-plans-and-sharing": {
+      "status": "authored"
     }
   },
   "transfers": {
