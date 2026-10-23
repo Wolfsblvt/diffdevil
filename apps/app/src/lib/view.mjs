@@ -15,23 +15,24 @@ const PLAN_RANK = { Free: 0, Pro: 1, Business: 2 };
 
 /**
  * What the shell expects before data answers: a namespace's features follow that namespace's
- * plan, a viewer's own namespaces follow the viewer's plan, and All repositories follows the
+ * funded plan, the viewer's personal namespace follows their plan, and All repositories follows the
  * viewer's plan. The analytical service applies the same rule server-side on every read; its
  * answer replaces this expectation wherever retained data exists.
  */
 export function entitlementFor(viewer, scope, repositories) {
   const planOf = namespace => {
-    const entry = viewer.namespaces.find(candidate => candidate.login === namespace);
-    return entry?.yours ? viewer.plan : entry?.plan ?? 'Free';
+    const entry = viewer.namespaces.find(candidate => candidate.login.toLowerCase() === namespace.toLowerCase());
+    return namespacePlan(viewer, entry);
   };
-  const premiumRepositories = repositories.filter(repository => repository.standing?.historyReadable && planOf(repository.owner) !== 'Free');
-  const sharedPaid = [...new Set(viewer.repositories.filter(repository => !viewer.namespaces.find(candidate => candidate.login === repository.owner)?.yours && planOf(repository.owner) !== 'Free').map(repository => repository.owner))];
+  const paid = plan => ['Pro', 'Business'].includes(plan);
+  const premiumRepositories = repositories.filter(repository => repository.standing?.historyReadable && paid(planOf(repository.owner)));
+  const sharedPaid = [...new Set(viewer.repositories.filter(repository => repository.owner !== viewer.login && paid(planOf(repository.owner))).map(repository => repository.owner))];
   if (scope.kind === 'all') {
-    const premium = viewer.plan !== 'Free' && premiumRepositories.length > 0;
-    return { premium, plan: viewer.plan, scope: 'all', premiumRepositories: premium ? premiumRepositories : [], excluded: premium ? repositories.filter(repository => repository.standing?.historyReadable).length - premiumRepositories.length : 0, sharedPaid: viewer.plan === 'Free' ? sharedPaid : [], source: 'expected' };
+    const premium = paid(viewer.plan) && premiumRepositories.length > 0;
+    return { premium, plan: viewer.plan, aggregatePlan: viewer.plan.toLowerCase(), scope: 'all', premiumRepositories: premium ? premiumRepositories : [], excluded: premium ? repositories.filter(repository => repository.standing?.historyReadable).length - premiumRepositories.length : 0, sharedPaid: viewer.plan === 'Free' ? sharedPaid : [], source: 'expected' };
   }
   const plan = planOf(scope.namespace);
-  return { premium: plan !== 'Free' && premiumRepositories.length > 0, plan, scope: 'namespace', premiumRepositories, excluded: 0, sharedPaid: plan === 'Free' ? sharedPaid : [], source: 'expected' };
+  return { premium: paid(plan) && premiumRepositories.length > 0, plan, aggregatePlan: plan.toLowerCase(), scope: 'namespace', premiumRepositories, excluded: 0, sharedPaid: plan === 'Free' ? sharedPaid : [], source: 'expected' };
 }
 
 /** The server's entitlement answer, mapped to presentation: plan labels and namespace logins. */
@@ -47,7 +48,7 @@ function entitlementFromData(viewer, scope, repositories, data, expected) {
     premiumRepositories: repositories.filter(repository => eligible.has(repository.repositoryId)),
     excluded: (entitlements.premium?.excludedFreeRepositories ?? 0) + (entitlements.premium?.excludedUnknownPlanRepositories ?? 0),
     excludedUnknown: entitlements.premium?.excludedUnknownPlanRepositories ?? 0,
-    sharedPaid: premium ? [] : funded.filter(owner => !viewer.namespaces.find(candidate => candidate.login === owner)?.yours),
+    sharedPaid: premium ? [] : funded.filter(owner => owner !== viewer.login),
     fundedNamespaces: funded, source: 'service'
   };
 }
@@ -71,8 +72,15 @@ async function selectedScope(scope, repositories, runtime) {
 export async function loadView({ url, viewer, session, runtime, surface = 'prs', detail = {} }) {
   const { repositoryId: detailRepositoryId, fileLocator, ...queryDetail } = detail;
   const state = readViewState(url);
-  const scope = describeScope(state.s);
+  let scope = describeScope(state.s);
   const repositories = scopeRepositories(viewer, scope);
+  if (scope.kind === 'repository' && repositories[0]) state.s = repositories[0].fullName;
+  if (scope.kind === 'namespace') {
+    const namespace = viewer.namespaces.find(candidate => candidate.login.toLowerCase() === scope.namespace.toLowerCase());
+    if (namespace) state.s = `@${namespace.login}`;
+  }
+  scope = describeScope(state.s);
+  const namespacePartial = scope.kind === 'namespace' && repositories.some(repository => repository.explicitOnly);
   const nowIso = runtime.now();
   const period = periodOf(state);
   const nowMs = Date.parse(nowIso);
@@ -98,7 +106,7 @@ export async function loadView({ url, viewer, session, runtime, surface = 'prs',
   ]);
   const retainedRepositories = historyRepositories.filter(repository => (coverage.counts.get(repository.repositoryId) ?? 0) > 0);
   const pathlessOnly = historyRepositories.filter(repository => (coverage.counts.get(repository.repositoryId) ?? 0) === 0);
-  let data = null, dataStanding = scopeUnavailable ? 'scope-unavailable' : 'none';
+  let data = null, dataStanding = scopeUnavailable ? 'scope-unavailable' : expected.aggregatePlan === 'unknown' ? 'entitlement-unavailable' : 'none';
   const contractScope = detailRepository && historyRepositories.length > 0
     ? { kind: 'repository', repositoryId: detailRepository.repositoryId }
     : await selectedScope(scope, historyRepositories, runtime);
@@ -116,6 +124,10 @@ export async function loadView({ url, viewer, session, runtime, surface = 'prs',
     }
   }
   const entitlement = entitlementFromData(viewer, scope, repositories, data, expected);
+  const historyUnavailable = expectedRepositories.length > 0 && ['Pro', 'Business'].includes(entitlement.plan)
+    && historyRepositories.length === 0;
+  // Analytical direct resolution does not add the target to Manage's ordinary discovery.
+  const historyManageable = historyUnavailable && expectedRepositories.some(repository => repository.canAdminister && !repository.explicitOnly);
   entitlement.contractScope = contractScope;
   entitlement.namespaceEstablished = scope.kind !== 'namespace' || contractScope.kind === 'namespace' || Boolean(detailRepository);
   const retained = retainedRepositories.length > 0;
@@ -151,10 +163,10 @@ export async function loadView({ url, viewer, session, runtime, surface = 'prs',
   const files = fileLocator
     ? projectionRows
     : entitlement.premium && surface !== 'pr' && runtime.premium.projection ? await runtime.premium.projection.mapFiles(projectionRows, viewer, runtime) : [];
-  const href = (path, patch = {}) => link(state, path, patch);
+  const href = (path, patch = {}) => link(state, path, { ...(patch.s?.startsWith('@') ? namespaceSelection(viewer, patch.s.slice(1)) : {}), ...patch });
   // The plan decides who is entitled; the build decides whether the premium implementation exists. A premium slot renders only when both hold.
   const premiumProvided = runtime.premium.provided, premiumHere = entitlement.premium && premiumProvided;
-  return { state, scope, scopeUnavailable, repositories, historyRepositories, retainedRepositories, ids, actor, contractScope, nowIso, period, periods: Object.values(PERIODS), window, pullRequests, lifecycle, current, previous, bounds, coverage, truncated, entitlement, premiumProvided, premiumHere, data, dataStanding, files, fileIdentity, fileHasSelectedPeriodActivity, titles, href, viewer };
+  return { state, scope, scopeUnavailable, namespacePartial, historyUnavailable, historyManageable, repositories, historyRepositories, retainedRepositories, ids, actor, contractScope, nowIso, period, periods: Object.values(PERIODS), window, pullRequests, lifecycle, current, previous, bounds, coverage, truncated, entitlement, premiumProvided, premiumHere, data, dataStanding, files, fileIdentity, fileHasSelectedPeriodActivity, titles, href, viewer };
 }
 
 /** A second surface read for a page that composes two (a premium file panel beside the page's pull-request model). */
@@ -191,9 +203,17 @@ export function navModel(view, section) {
   return { section, active, premium: view.entitlement.premium };
 }
 
-export function repositoryByFullName(viewer, fullName) { return viewer.repositories.find(repository => repository.fullName === fullName); }
+export function repositoryByFullName(viewer, fullName) { return viewer.repositories.find(repository => repository.fullName.toLowerCase() === fullName.toLowerCase()); }
 
-/** A namespace's plan label for the navigation; the viewer's own namespaces follow the viewer. */
-export function namespacePlan(viewer, namespace) { return namespace.yours ? viewer.plan : namespace.plan; }
+/** Retain a directly reached target for namespace exploration, never for All or a different namespace. */
+export function namespaceSelection(viewer, namespace) {
+  const repository = viewer.repositories.find(candidate => candidate.explicitOnly && candidate.owner.toLowerCase() === namespace.toLowerCase());
+  return { s: `@${namespace}`, r: repository?.fullName ?? '' };
+}
+
+/** Personal ownership shares the viewer's plan; organisation administration never supplies funding. */
+export function namespacePlan(viewer, namespace) {
+  return namespace?.kind === 'user' && namespace.login === viewer.login ? viewer.plan : namespace?.plan ?? 'Unknown';
+}
 
 export { PLAN_RANK };

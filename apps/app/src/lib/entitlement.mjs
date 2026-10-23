@@ -9,10 +9,10 @@
  */
 
 const PLANS = new Set(['free', 'pro', 'business']);
-const LABELS = Object.freeze({ free: 'Free', pro: 'Pro', business: 'Business', unknown: 'Free' });
+const LABELS = Object.freeze({ free: 'Free', pro: 'Pro', business: 'Business', unknown: 'Unknown' });
 
-/** Presentation label for a server-selected plan; an unknown namespace presents as Free. */
-export function planLabel(plan) { return LABELS[plan] ?? 'Free'; }
+/** Presentation label for a server-selected plan; unavailable funding stays unknown. */
+export function planLabel(plan) { return LABELS[plan] ?? 'Unknown'; }
 export const premium = plan => plan === 'pro' || plan === 'business';
 
 export function createEntitlement({ commercial, namespaceOf, fixture, loopback = false } = {}) {

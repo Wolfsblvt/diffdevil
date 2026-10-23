@@ -272,7 +272,7 @@ export function createFakeGitHub({ user = USER, token = TOKEN, code = CODE, clie
   const calls = [];
   // Narrow the signed-in person's GitHub access for a case: `push` and `admin` per repository (repositoryId → boolean,
   // default write and the fixture's admin flag), `roles` per organisation login (default ROLES).
-  const state = { rateLimited: false, tokenValid: true, tokenCheckResponse: null, refreshResponse: null, membershipStatus: 200, targetedMembershipStatus: 403, omittedMemberships: new Set(), inaccessibleRepositoryIds: new Set(), push: new Map(), admin: new Map(), roles: new Map(), membershipStates: new Map(), collaborators: new Map(), installations: INSTALLATIONS, installationTokens: [], extraRepositories: [], logins: new Map(), policyHead: 'a'.repeat(40), policyFiles: new Map() };
+  const state = { rateLimited: false, tokenValid: true, tokenCheckResponse: null, refreshResponse: null, membershipStatus: 200, targetedMembershipStatus: 403, omittedMemberships: new Set(), inaccessibleRepositoryIds: new Set(), repositoryStatus: new Map(), push: new Map(), admin: new Map(), roles: new Map(), membershipStates: new Map(), collaborators: new Map(), installations: INSTALLATIONS, installationTokens: [], extraRepositories: [], logins: new Map(), policyHead: 'a'.repeat(40), policyFiles: new Map() };
   async function fetch(input, init = {}) {
     const url = new URL(String(input)), method = init.method ?? 'GET', path = url.pathname;
     const authorization = new Headers(init.headers).get('authorization') ?? '';
@@ -344,6 +344,17 @@ export function createFakeGitHub({ user = USER, token = TOKEN, code = CODE, clie
     }
     let match = /^\/user\/installations\/(\d+)\/repositories$/u.exec(path);
     if (match) { const list = REPOSITORIES.filter(repository => repository.installationId === Number(match[1]) && !state.inaccessibleRepositoryIds.has(repository.repositoryId)).map(repository => ({ id: repository.repositoryId, full_name: repository.fullName, name: repository.fullName.split('/')[1], owner: { login: repository.fullName.split('/')[0], id: ACCOUNTS[repository.fullName.split('/')[0]] }, private: repository.private, permissions: { admin: state.admin.get(repository.repositoryId) ?? repository.admin, push: state.push.get(repository.repositoryId) ?? true, pull: true } })); return json({ total_count: list.length, repositories: list }); }
+    match = /^\/repos\/([^/]+\/[^/]+)$/u.exec(path);
+    if (match) {
+      const repository = [...REPOSITORIES, ...state.extraRepositories].find(value => value.fullName.toLowerCase() === match[1].toLowerCase());
+      if (!repository || state.inaccessibleRepositoryIds.has(repository.repositoryId)) return json({ message: 'Not Found' }, 404);
+      const status = state.repositoryStatus.get(repository.repositoryId) ?? 200;
+      if (status !== 200) return json({ message: 'repository unavailable' }, status);
+      const owner = repository.fullName.split('/')[0];
+      return json({ id: repository.repositoryId, full_name: repository.fullName, name: repository.fullName.split('/')[1],
+        owner: { login: owner, id: ACCOUNTS[owner], type: INSTALLATIONS.find(value => value.id === repository.installationId)?.account.type },
+        private: repository.private, permissions: { pull: true, push: state.push.get(repository.repositoryId) ?? true, admin: state.admin.get(repository.repositoryId) ?? repository.admin } });
+    }
     match = /^\/users\/([^/]+)$/u.exec(path);
     if (match) { const login = decodeURIComponent(match[1]); const id = ACCOUNTS[login]; return Number.isSafeInteger(id) ? json({ id, login, type: ['ada-sample', 'kai-sample'].includes(login) ? 'User' : 'Organization' }) : json({ message: 'Not Found' }, 404); }
     match = /^\/user\/memberships\/orgs\/([^/]+)$/u.exec(path);

@@ -6,10 +6,11 @@
 import Icon from './Icon.astro';
 import PlanChip from './PlanChip.astro';
 import { link } from '../lib/scope.mjs';
+import { namespacePlan, namespaceSelection } from '../lib/view.mjs';
 interface Props { viewer: any; nav: { section: string; active: number | null; premium: boolean }; view?: any; badge?: { count: number; urgent: boolean } | null }
 const { viewer, nav, view, badge = null } = Astro.props;
 const state = view?.state ?? { s: 'all', per: '30d' };
-const carried = { s: state.s, per: state.per };
+const carried = { s: state.s, per: state.per, r: state.r };
 const keep = ['pr', 'file', 'overview', 'manage'].includes(nav.section) ? '/' : `/${nav.section}`;
 const sections = [
   { key: 'overview', path: '/', label: 'Overview', icon: 'overview' as const },
@@ -18,7 +19,8 @@ const sections = [
   { key: 'files', path: '/files', label: 'Files', icon: 'files' as const }
 ];
 const current = { pr: 'prs', file: 'files' }[nav.section as 'pr' | 'file'] ?? nav.section;
-const planOf = (namespace: any) => (namespace.yours ? viewer.plan : namespace.plan);
+const planOf = (namespace: any) => namespacePlan(viewer, namespace);
+const planUnavailable = view ? view.entitlement?.aggregatePlan === 'unknown' : viewer.plan === 'Unknown';
 const statusText: Record<string, { label: string; title: string } | undefined> = {
   'labels-only': { label: 'Labels only', title: 'Size labels only; history is not collected' },
   'history-off': { label: 'History off', title: 'Installed; history not enabled' },
@@ -37,7 +39,7 @@ const siteOrigin = Astro.locals.app?.config?.siteOrigin ?? 'https://diffdevil.de
           <Icon name={section.icon} size={16} /><span>{section.label}</span>
           <span class="a-end">
             {section.key === 'prs' && nav.active !== null && <span class="a-st">{nav.active} active</span>}
-            {section.key === 'files' && !nav.premium && !view?.scopeUnavailable && <PlanChip plan="Pro" />}
+            {section.key === 'files' && !nav.premium && !view?.historyUnavailable && !view?.scopeUnavailable && !planUnavailable && <PlanChip plan="Pro" />}
           </span>
         </a>
       ))}
@@ -53,11 +55,11 @@ const siteOrigin = Astro.locals.app?.config?.siteOrigin ?? 'https://diffdevil.de
         {namespaces.map((namespace: any) => (
           <div class="a-nsp" data-namespace={namespace.login}>
             <div class="a-acctrow">
-              <a class="a-acct" href={link({ ...carried, s: `@${namespace.login}` }, keep)} aria-current={state.s === `@${namespace.login}` ? 'page' : undefined}>
+              <a class="a-acct" href={link({ ...carried, ...namespaceSelection(viewer, namespace.login) }, keep)} aria-current={state.s === `@${namespace.login}` ? 'page' : undefined}>
                 <span class:list={['a-av', { user: namespace.kind === 'user' }]} aria-hidden="true">{namespace.login.slice(0, 2)}</span>
                 <span class="rn">{namespace.login}</span>
                 {namespace.login === viewer.login && <span class="a-you">you</span>}
-                <span class="a-end"><PlanChip plan={planOf(namespace)} /></span>
+                <span class="a-end">{planOf(namespace) === 'Unknown' ? <span class="a-st">Plan unavailable</span> : <PlanChip plan={planOf(namespace)} />}</span>
               </a>
               <button class="a-tog" type="button" aria-expanded="true" aria-label={`Collapse ${namespace.login}`} data-nav-toggle={namespace.login}><Icon name="chevron" size={14} class="chev" /></button>
             </div>
@@ -80,7 +82,7 @@ const siteOrigin = Astro.locals.app?.config?.siteOrigin ?? 'https://diffdevil.de
     <details class="a-me-host">
       <summary class="a-me" title="Account and plan">
         <span class="a-av user" aria-hidden="true">{viewer.login.slice(0, 2)}</span>
-        <span class="who"><b>{viewer.login}</b><span>{viewer.loading ? 'Loading account…' : viewer.plan === 'Free' ? 'Free plan' : `${viewer.plan} plan`}</span></span>
+        <span class="who"><b>{viewer.login}</b><span>{viewer.loading ? 'Loading account…' : viewer.plan === 'Unknown' ? 'Plan unavailable' : `${viewer.plan} plan`}</span></span>
         {!viewer.loading && <PlanChip plan={viewer.plan} />}
         <Icon name="chevron" size={14} />
       </summary>

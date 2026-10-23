@@ -4,6 +4,52 @@ import { test } from 'node:test';
 import { createGitHubUserProvider } from '../src/lib/github-user-provider.mjs';
 
 const material = { accessToken: 'fixture-user-token' };
+const directRepository = { id: 17, full_name: 'org/project', name: 'project', private: false,
+  owner: { id: 7001, login: 'org', type: 'Organization' }, permissions: { pull: true, push: false, admin: false } };
+
+function repositoryFixture({ value = directRepository, status = 200, identity = { installation_id: 10, account_id: 7001 }, admitted = true, accounts = null } = {}) {
+  const requests = [];
+  const provider = createGitHubUserProvider({ clientId: 'fixture-client', clientSecret: 'fixture-secret', callbackUrl: 'https://app.example/auth/callback',
+    repositoryIdentity: async id => { assert.equal(id, value.id); return identity; }, installationAccounts: accounts, installationAdmitted: async () => admitted,
+    fetch: async (input, options) => {
+      const url = new URL(input); requests.push(url.pathname);
+      assert.equal(url.pathname, '/repos/org/project');
+      assert.equal(options.headers.authorization, `Bearer ${material.accessToken}`);
+      return Response.json(status === 200 ? value : { message: 'private provider text' }, { status });
+    } });
+  return { provider, requests };
+}
+
+test('explicit repository lookup uses the current user grant and binds the exact recorded installation/account', async () => {
+  const { provider, requests } = repositoryFixture();
+  assert.deepEqual(await provider.repository({ material, fullName: 'org/project' }), { repositoryId: 17, installationId: 10,
+    fullName: 'org/project', name: 'project', owner: 'org', accountType: 'Organization', private: false, canRead: true, canWrite: false, canAdminister: false });
+  assert.deepEqual(requests, ['/repos/org/project']);
+  const mismatch = await provider.checkRepositoryAccess({ material, fullName: 'org/project', repositoryId: 18, installationId: 10 });
+  assert.equal(mismatch.repository, 'unavailable');
+  assert.equal(mismatch.canRead, false);
+});
+
+test('explicit repository identity cannot override local App reach or the admitted account boundary', async () => {
+  for (const options of [{ identity: null }, { identity: { installation_id: 10, account_id: 7002 } }, { admitted: false }, { accounts: new Set([7002]) },
+    { value: { ...directRepository, permissions: { pull: false, push: false, admin: false } } }]) {
+    const { provider } = repositoryFixture(options);
+    assert.equal(await provider.repository({ material, fullName: 'org/project' }), null);
+  }
+  for (const value of [{ ...directRepository, id: 0 }, { ...directRepository, full_name: 'org/other' },
+    { ...directRepository, owner: { ...directRepository.owner, type: 'unknown' } }, { ...directRepository, permissions: undefined },
+    { ...directRepository, permissions: { pull: 'true', push: false, admin: false } }]) {
+    await assert.rejects(repositoryFixture({ value }).provider.repository({ material, fullName: 'org/project' }), { code: 'E_PROVIDER_RESPONSE' });
+  }
+});
+
+test('a direct provider refusal remains unavailable without leaking provider text or guessing public access', async () => {
+  for (const [status, code] of [[401, 'E_PROVIDER_UNAUTHORIZED'], [403, 'E_PROVIDER_REQUEST'], [429, 'E_GITHUB_RATE_LIMIT'], [503, 'E_PROVIDER_REQUEST']]) {
+    await assert.rejects(repositoryFixture({ status }).provider.repository({ material, fullName: 'org/project' }),
+      error => error.code === code && error.status === status && !error.message.includes('private provider text'));
+  }
+  assert.equal(await repositoryFixture({ status: 404 }).provider.repository({ material, fullName: 'org/project' }), null);
+});
 const membership = (id, login, role = 'admin', state = 'active') => ({ organization: { id, login }, role, state });
 
 function fixture(answer, { installations = [], targeted = () => Response.json({ message: 'unavailable' }, { status: 403 }), installationAccounts = null, installationAdmitted = async () => true } = {}) {

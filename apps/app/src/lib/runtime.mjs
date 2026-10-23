@@ -89,7 +89,8 @@ export function createAppRuntime(env, { fetch = globalThis.fetch, now, premium =
   const provider = createGitHubUserProvider({
     clientId: required(env, 'GITHUB_OAUTH_CLIENT_ID'), clientSecret: required(env, 'GITHUB_OAUTH_CLIENT_SECRET'), callbackUrl,
     ...(env.GITHUB_API_BASE ? { apiBase: env.GITHUB_API_BASE } : {}), ...(env.GITHUB_OAUTH_BASE ? { oauthBase: env.GITHUB_OAUTH_BASE } : {}),
-    fetch, now: () => Date.parse(clock()), installationAccounts, installationAdmitted: id => appStore.installationAdmitted(id)
+    fetch, now: () => Date.parse(clock()), installationAccounts, installationAdmitted: id => appStore.installationAdmitted(id),
+    repositoryIdentity: id => authStore.repositoryIdentity(id)
   });
   // Entitlement is read lazily: the brief preview needs the plan funding the repository, composed further below.
   let entitlement;

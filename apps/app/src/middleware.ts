@@ -10,7 +10,7 @@ import { createAppRuntime } from './lib/runtime.mjs';
 import { premium } from './premium/index.mjs';
 import { openSession, pageHeaders, securityHeaders, cookieValue, SESSION_COOKIE } from './lib/routes.mjs';
 import { resolveViewer } from './lib/viewer.mjs';
-import { analyticalRoute, openAnalyticalShell } from './lib/analytical-request.mjs';
+import { analyticalRoute, analyticalRepositoryNames, openAnalyticalShell } from './lib/analytical-request.mjs';
 
 const PUBLIC = [/^\/sign-in$/u, /^\/auth\//u, /^\/health\//u, /^\/fragments\//u];
 
@@ -50,7 +50,8 @@ export const onRequest = defineMiddleware(async (context, next) => {
       return context.redirect(`/sign-in?reason=${encodeURIComponent(opened.refusal)}`, 303);
     }
     context.locals.session = opened;
-    try { context.locals.viewer = await resolveViewer({ reads: opened.reads, actor: opened.actor, store: runtime.store, entitlement: runtime.entitlement, cache: runtime.cache }); }
+    try { context.locals.viewer = await resolveViewer({ reads: opened.reads, actor: opened.actor, store: runtime.store, entitlement: runtime.entitlement, cache: runtime.cache,
+      explicitRepositories: analyticalRepositoryNames(context.url) }); }
     catch (error) {
       const code = (error as { code?: string })?.code === 'E_GITHUB_RATE_LIMIT' ? 'E_GITHUB_RATE_LIMIT' : 'E_PROVIDER_UNAVAILABLE';
       if (analytical) return new Response('Current repository access could not be read. Retry this view.', { status: 503, headers: pageHeaders(runtime) });

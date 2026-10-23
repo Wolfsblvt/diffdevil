@@ -183,7 +183,8 @@ export class D1AuthorizationStore {
   }
 
   async repositoryIdentity(repositoryId) {
-    return this.statement('SELECT installation_id FROM repositories WHERE repository_id=?', repositoryId).first();
+    return this.statement(`SELECT r.installation_id, i.account_id FROM repositories r
+      JOIN installations i ON i.installation_id=r.installation_id WHERE r.repository_id=?`, repositoryId).first();
   }
 
   async maintain() {

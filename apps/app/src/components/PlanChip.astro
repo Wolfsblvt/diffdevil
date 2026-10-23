@@ -1,7 +1,7 @@
 ---
 // SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
-// A plan chip: Pro or Business, small and quiet, the same everywhere. Free renders nothing.
+// Only a known Pro or Business plan carries a paid chip, small and quiet, the same everywhere.
 interface Props { plan: 'Free' | 'Pro' | 'Business' | string }
 const { plan } = Astro.props;
 ---
-{plan !== 'Free' && <span class:list={['a-plan', { biz: plan === 'Business' }]}>{plan}</span>}
+{['Pro', 'Business'].includes(plan) && <span class:list={['a-plan', { biz: plan === 'Business' }]}>{plan}</span>}

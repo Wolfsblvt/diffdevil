@@ -19,7 +19,7 @@ const PAGE = 100;
 function providerError(code, status) { return Object.assign(new Error(code), { code, status }); }
 function iso(ms) { return new Date(ms).toISOString(); }
 
-export function createGitHubUserProvider({ clientId, clientSecret, callbackUrl, apiBase = DEFAULT_API_BASE, oauthBase = DEFAULT_OAUTH_BASE, fetch: fetchImpl = globalThis.fetch, now = () => Date.now(), userAgent = 'diffdevil-app', installationAccounts = null, installationAdmitted = async () => true }) {
+export function createGitHubUserProvider({ clientId, clientSecret, callbackUrl, apiBase = DEFAULT_API_BASE, oauthBase = DEFAULT_OAUTH_BASE, fetch: fetchImpl = globalThis.fetch, now = () => Date.now(), userAgent = 'diffdevil-app', installationAccounts = null, installationAdmitted = async () => true, repositoryIdentity = async () => null }) {
   if (!clientId || !clientSecret || !callbackUrl) throw new TypeError('GitHub user authorization needs a client ID, client secret and callback URL.');
   const api = apiBase.replace(/\/$/u, ''), oauth = oauthBase.replace(/\/$/u, '');
 
@@ -133,6 +133,27 @@ export function createGitHubUserProvider({ clientId, clientSecret, callbackUrl, 
 
   // The person's own write (push) access to a repository, as GitHub reports it; an administrator always has it.
   const canWrite = repository => repository.permissions?.push === true || repository.permissions?.admin === true;
+  const canRead = repository => repository.permissions?.pull === true || canWrite(repository);
+
+  /** A name is a lookup hint, never authority: bind the user's fresh result to the App's numeric installation/account. */
+  async function resolveRepository({ material, fullName }) {
+    if (typeof fullName !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9-]{0,38}\/[A-Za-z0-9._-]{1,100}$/u.test(fullName)) throw providerError('E_PROVIDER_RESPONSE');
+    let value;
+    try { value = await json(`${api}/repos/${fullName.split('/').map(encodeURIComponent).join('/')}`, { token: material.accessToken }); }
+    catch (error) { if (error.code === 'E_PROVIDER_NOT_FOUND') return null; throw error; }
+    if (!Number.isSafeInteger(value?.id) || value.id <= 0 || !Number.isSafeInteger(value.owner?.id) || value.owner.id <= 0
+      || typeof value.full_name !== 'string' || value.full_name.toLowerCase() !== fullName.toLowerCase() || typeof value.name !== 'string' || typeof value.owner.login !== 'string'
+      || `${value.owner.login}/${value.name}` !== value.full_name || !['User', 'Organization'].includes(value.owner.type)
+      || typeof value.private !== 'boolean' || !value.permissions || !['pull', 'push', 'admin'].every(key => typeof value.permissions[key] === 'boolean')) throw providerError('E_PROVIDER_RESPONSE');
+    if (!canRead(value)) return null;
+    const recorded = await repositoryIdentity(value.id);
+    if (!recorded || recorded.account_id !== value.owner.id || !Number.isSafeInteger(recorded.installation_id) || recorded.installation_id <= 0
+      || (installationAccounts !== null && !installationAccounts.has(recorded.account_id))
+      || !await installationAdmitted(recorded.installation_id)) return null;
+    return { repositoryId: value.id, installationId: recorded.installation_id, fullName: value.full_name,
+      owner: value.owner.login, name: value.name, accountType: value.owner.type, private: value.private,
+      canRead: true, canAdminister: value.permissions.admin === true, canWrite: canWrite(value) };
+  }
 
   return {
     async authorizationUrl({ state }) {
@@ -170,17 +191,24 @@ export function createGitHubUserProvider({ clientId, clientSecret, callbackUrl, 
       if (!Number.isSafeInteger(checked?.user?.id) || checked.user.id <= 0) throw providerError('E_PROVIDER_RESPONSE');
       return { valid: checked.user.id === userId };
     },
-    async checkRepositoryAccess({ material, installationId, repositoryId }) {
+    async checkRepositoryAccess({ material, installationId, repositoryId, fullName }) {
       if (!await installationAdmitted(installationId)) return { installation: 'unavailable', repository: 'unavailable', canAdminister: false };
+      if (fullName !== undefined) {
+        const current = await resolveRepository({ material, fullName });
+        return current?.repositoryId === repositoryId && current.installationId === installationId
+          ? { installation: 'active', repository: 'available', canRead: true, canAdminister: current.canAdminister, canWrite: current.canWrite, fullName: current.fullName }
+          : { installation: 'active', repository: 'unavailable', canRead: false, canAdminister: false, canWrite: false };
+      }
       let repositories;
       try { repositories = await pages(`${api}/user/installations/${installationId}/repositories`, material.accessToken, value => value.repositories ?? []); }
       catch (error) { if (error.code === 'E_PROVIDER_NOT_FOUND') return { installation: 'unavailable', repository: 'unavailable', canAdminister: false }; throw error; }
       const repository = repositories.find(value => value.id === repositoryId);
       if (!repository) return { installation: 'active', repository: 'unavailable', canAdminister: false };
-      return { installation: 'active', repository: 'available', canAdminister: repository.permissions?.admin === true, canWrite: canWrite(repository), fullName: repository.full_name };
+      return { installation: 'active', repository: 'available', canRead: canRead(repository), canAdminister: repository.permissions?.admin === true, canWrite: canWrite(repository), fullName: repository.full_name };
     },
 
     // Reads for the signed-in experience. Each result is display context for this request only.
+    repository: resolveRepository,
     async profile({ material }) {
       const user = await json(`${api}/user`, { token: material.accessToken });
       return { id: user.id, login: user.login, avatarUrl: user.avatar_url, type: user.type };

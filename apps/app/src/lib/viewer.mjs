@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
 /**
- * Who is looking, and at what. GitHub sign-in identifies the person; the App installations
- * the person can reach define the repositories; D1 says which of them the App actually
+ * Who is looking, and at what. GitHub sign-in identifies the person; installation enumeration
+ * and fresh explicit user-grant reads identify repositories; D1 says which of them the App actually
  * operates and retains history for; the entitlement reader says which plan funds each
  * namespace. The four are joined per request so a lost access, a withdrawn consent or an
  * ended subscription changes the page, not only the navigation.
@@ -41,12 +41,22 @@ export function createContextCache(now = () => Date.now()) {
  * plans, and repositories with their App standing. Repositories GitHub grants but the App has
  * never recorded appear as `not-recorded`; they are visible, not counted.
  */
-export async function resolveViewer({ reads, actor, store, entitlement, cache }) {
+export async function resolveViewer({ reads, actor, store, entitlement, cache, explicitRepositories = [] }) {
   const userId = actor.userId;
   const profile = await cache.get(`profile:${userId}`, () => reads.profile());
   const installations = await cache.get(`installations:${userId}`, () => reads.installations());
-  const granted = (await Promise.all(installations.map(installation => cache.get(`repositories:${userId}:${installation.id}`, () => reads.installationRepositories(installation.id))
+  let granted = (await Promise.all(installations.map(installation => cache.get(`repositories:${userId}:${installation.id}`, () => reads.installationRepositories(installation.id))
     .then(list => list.map(repository => ({ ...repository, accountType: installation.account?.type ?? 'User' })))))).flat();
+  const discovered = new Set(granted.map(repository => repository.repositoryId));
+  // Explicit destinations re-authorise even a cached/listed identity. Do not cache this observation or discover siblings.
+  for (const fullName of new Set(explicitRepositories)) {
+    granted = granted.filter(repository => repository.fullName.toLowerCase() !== fullName.toLowerCase());
+    const current = await reads.repository(fullName);
+    if (!current) continue;
+    const explicitOnly = !discovered.has(current.repositoryId);
+    granted = granted.filter(repository => repository.repositoryId !== current.repositoryId);
+    granted.push({ ...current, explicitOnly });
+  }
   const standings = await store.repositoryStandings(granted.map(repository => repository.repositoryId));
   const repositories = granted.map(repository => {
     const standing = standings.get(repository.repositoryId);
@@ -86,8 +96,8 @@ export async function resolveViewer({ reads, actor, store, entitlement, cache })
 /** The repositories a scope selector names, inside the viewer's authorised set. An unknown selector is empty, not everything. */
 export function scopeRepositories(viewer, scope) {
   if (scope.kind === 'all') return viewer.repositories;
-  if (scope.kind === 'namespace') return viewer.repositories.filter(repository => repository.owner === scope.namespace);
-  return viewer.repositories.filter(repository => repository.fullName === scope.repository);
+  if (scope.kind === 'namespace') return viewer.repositories.filter(repository => repository.owner.toLowerCase() === scope.namespace.toLowerCase());
+  return viewer.repositories.filter(repository => repository.fullName.toLowerCase() === scope.repository.toLowerCase());
 }
 
 /**

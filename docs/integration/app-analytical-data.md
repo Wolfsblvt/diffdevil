@@ -32,6 +32,15 @@ select `{ kind: "repository", repositoryId }` and supply `pullRequest` or `path`
 `repositoryIds` can carry the viewer's complete requested inventory: authorization
 filters it before namespace selection or funded-namespace pointers. An inaccessible
 repository cannot change which plan governs the selected scope.
+When installation enumeration omits an explicitly selected connected repository,
+the HTTP caller may include `repositoryIdentities: [{ repositoryId, fullName }]`.
+These are lookup hints for IDs already in `repositoryIds`, not authorization or a
+new population. The authorization service reads each hinted name through the current
+user grant, matches its numeric repository and owner to the recorded App installation,
+and requires current read permission. It strips the hints before calling the analytical
+service. An incorrect identity grants nothing; a provider failure remains unavailable.
+No hint is needed for the ordinary enumerated path, and neither path borrows an
+installation credential or caches an authority decision.
 The Files metric is `mergedPullRequests` (default), `changed`, `rawChurn`, or
 `turnover`. Repository IDs and paths remain separate, including in multi-repository
 results. Times are canonical UTC ISO timestamps; `to` is exclusive. History uses
