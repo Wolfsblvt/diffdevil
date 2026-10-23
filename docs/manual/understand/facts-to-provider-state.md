@@ -93,6 +93,6 @@ An analysis success is not an effect success. Likewise, a returned result object
 
 GitHub operations are separate requests. A PR can change between them. Rechecking identity before writes and again at completion prevents stale success claims; it does not make the sequence atomic or undo an earlier verified effect.
 
-A browser extension's local band and a Playground's desired-label preview are not provider readback. They need not match repository automation when source edition or effective policy differs.
+A browser extension's local band and a Lens Studio's desired-label preview are not provider readback. They need not match repository automation when source edition or effective policy differs.
 
 Return to [Label pull requests](../start/label-pull-requests.md) for the first applying workflow. Continue with [Reports, plans, and apply](../use/shared-workflows/reports-plans-and-apply.md) for artifact handling, or [Troubleshooting](../help/troubleshooting.md) when a real operation stopped at one of these stages.

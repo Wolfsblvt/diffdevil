@@ -95,6 +95,14 @@ export function generatedIsland(id,{root,ref,source,onSource = () => {}}) {
  const entry=typeof pkg.bin==='string'?pkg.bin:pkg.bin.diffdevil;
  const run=args=>cli(root,entry,args);
  const link=(label,path)=>{ recordSource(path); const url = source ? posix.relative(posix.dirname(source),path) : sourceUrl(path,ref); return `[${label}](${url})`; };
+ if (id === 'app-plan-prices' || id === 'app-plan-capabilities') {
+  const path = 'docs/app-plans.md';
+  const heading = id === 'app-plan-prices' ? 'Purchase' : 'Capability';
+  const tables = [...read(path).matchAll(/^\|[^\n]*\n\|[ :|-]+\n(?:\|[^\n]*\n?)+/gmu)]
+   .map(match => match[0].trimEnd()).filter(body => body.startsWith(`| ${heading} |`));
+  if (tables.length !== 1) throw new Error(`${path}: expected one ${heading} table for ${id}`);
+  return tables[0];
+ }
  if(id==='app-execution-stages') {
   const path='apps/github-app/app.mjs';
   const stages=new Map();
@@ -117,6 +125,10 @@ export function generatedIsland(id,{root,ref,source,onSource = () => {}}) {
    ['Package Node.js floor',code(pkg.engines.node),link('Runtime requirement','package.json')],
    ['Skill source version',code(skill.metadata.version),link('Complete Skill source',skillPath)],
   ];
+  const extensionPath='apps/browser-extension/manifest.json', extension=JSON.parse(read(extensionPath));
+  const appPath='apps/github-app/release.json', app=JSON.parse(read(appPath));
+  rows.push(['Extension source version',code(extension.version),link('Extension manifest',extensionPath)]);
+  rows.push(['App named release version',app.version === null ? 'Not selected' : code(app.version),link('App release metadata',appPath)]);
   for(const path of ['action.yml','actions/analyze/action.yml','actions/apply/action.yml','actions/sync-labels/action.yml']) {
    const action=parse(read(path));
    if(!action.runs?.using) throw new Error(`Action runtime missing: ${path}`);
@@ -144,7 +156,7 @@ export function generatedIsland(id,{root,ref,source,onSource = () => {}}) {
   return table(['Example','Lessons','Inspect'],catalogue.entries.map(entry=>{
    const variant=entry.variants?.[0];
    if (!variant) throw new Error(`No catalogue variant for ${entry.id}`);
-   return [entry.title,entry.lessons.join(', '),`[Open in the playground](https://diffdevil.dev/playground/?example=${encodeURIComponent(entry.id)}&variant=${encodeURIComponent(variant.id)})`];
+   return [entry.title,entry.lessons.join(', '),`[Open in Lens Studio](https://diffdevil.dev/playground/?example=${encodeURIComponent(entry.id)}&variant=${encodeURIComponent(variant.id)})`];
   }));
  }
  if(id==='schemas') {

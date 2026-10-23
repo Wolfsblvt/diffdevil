@@ -5,9 +5,16 @@
 >
 > The complete managed-service experience described here is being prepared for public use. The CLI, library, and Actions work independently of it.
 
-The managed App runs diffdevil for selected GitHub repositories. You choose the policy and enabled effects; the service acquires the comparison, evaluates it, applies the selected GitHub changes, and operates retries and recovery. It uses the same engine and ordinary policy as the [CLI](../cli.md) and [GitHub Actions](../github-actions.md), not a hosted-only rules language.
+The App gives selected GitHub repositories a memory and a place to run diffdevil together. Read PR activity and file history, explore the evidence behind a policy, or choose the checks, labels and replies the service operates. It uses the same engine and ordinary policy as the [CLI](../cli.md) and [GitHub Actions](../github-actions.md).
 
-Choose [Use the managed service](service.md) when you want the service operated for you. Choose [Self-host the App](self-hosting.md) when your organization will own the GitHub App registration, Cloudflare resources, credentials, updates, and data lifecycle. Self-hosting is an intentional operating route, not a different or restricted analysis engine.
+| Your next job | Guide |
+| --- | --- |
+| Read activity, follow a PR or explore a file | [Read repository history](read-history.md) |
+| Choose capabilities or understand shared access and funding | [Plans and shared access](plans-and-sharing.md) |
+| Connect repositories, configure operation or manage history | [Use the managed service](service.md) |
+| Operate Community under your own registration and infrastructure | [Self-host the App](self-hosting.md) |
+
+The analytical destinations are **Overview**, **Pull requests**, **History**, **Files**, **PR detail** and **File detail**. **Manage** holds settings and operation separately. A collaborator can read a connected repository's available capabilities under current GitHub access without administering the installation or buying a reader seat.
 
 ## What happens on a pull request
 
@@ -31,22 +38,22 @@ The service exports an ordinary resolved policy so it can be used outside the Ap
 
 Persistent history adds quantitative activity, comparisons, distributions, and statistics across retained analyses. It is optional: ordinary labels, owned comments, native checks, and recovery do not require it. Installing the App is not history consent.
 
-History retains repository names, relative file paths, numerical per-file measurements, evidence, versions, policy references, lifecycle facts and immutable comparison identities. It does not retain source contents, patches, contributor-performance dimensions, PR prose or rendered comments. Names and paths are protected repository metadata; “minimized” does not mean anonymous.
+History retains repository names, relative file paths, numerical per-file measurements, evidence, versions, policy references, lifecycle facts and immutable comparison identities. This includes permitted measurements of excluded files, so a changed policy can reinterpret them. It does not retain source contents, patches, contributor-performance dimensions, PR prose or rendered comments. Names and paths are protected repository metadata; “minimized” does not mean anonymous.
 
-A historical view states its opt-in date, retention window, collection gaps, population, and analysis-time basis. Unique PRs, analyzed revisions, and execution attempts are different counts. Missing or unknown values do not disappear from the population, and successive PR snapshots are not summed as “code changed this month.” These are measurements of changes, not rankings of people.
+A historical view states its covered period, collection gaps, population and policy basis. General file history uses one final recoverable comparison per merged PR; open-PR development stays separate. Unique PRs, analyzed revisions and execution attempts are different counts. Missing or unknown values do not disappear from the population, and successive PR snapshots are not summed as “code changed this month.” These are measurements of changes, not rankings of people.
 
 Permitted contextual detail is fetched from GitHub on demand with current authorization. Lost access, deleted PRs, unavailable revisions, or an unrecoverable old policy can prevent reconstruction. Yesterday's numbers are not silently attached to today's head or filename list. [Security and data](../../help/security-and-data.md) explains the recovery ledger, opt-in history, export, retention, and leaving the service.
 
 ## Coexist with your other tools
 
-The extension supplies a personal, local view while browsing GitHub. It does not require this App, enable repository automation, or create hosted history. The public Playground is read-only and cannot be used to inspect private PRs. Coding-agent knowledge likewise does not install or authorize an App.
+The extension supplies a personal, local view while browsing GitHub. It does not require this App, enable repository automation, or create hosted history. [Lens Studio (the Playground)](../playground.md) is free, read-only learning and cannot inspect private PRs. Coding-agent knowledge likewise does not install or authorize an App.
 
 A read-only Action can remain useful beside App-owned effects. Two independent writers should not compete over the same label group or comment lifecycle. [The managed-service migration](service.md#move-between-actions-and-the-app) prepares the destination, pauses only the overlapping writer, reconciles in-flight work, and verifies the replacement before declaring the cutover complete.
 
 ## Availability and release boundaries
 
-The repository contains the Worker/Queue/D1 runtime, policy resolution, stable execution diagnostics, admission state, and operator seams. A deployed backend canary has exercised a contained repository lifecycle. Neither that canary nor source-level tests establish general public admission, a finished dashboard, full live history/export/offboarding, or a commercially available service. [Direction](../../../DIRECTION.md) owns the current implementation and deployment record.
+Current source implements the six analytical destinations, the chart and file-cloud system, named history, imports, current-policy recalculation and Manage. Community and the separately composed premium experience have local qualification. The runtime has separate deployed backend and ingress evidence. Neither establishes general public admission, real collected history, ordinary live customer use or a purchasable subscription. [Direction](../../../DIRECTION.md) owns that implementation and deployment record.
 
-Current source includes the analytical App (Overview, Pull requests, History, Files and detail views) and Manage, including repository selection, effective policy, funding presentation, export and offboarding. Local qualification and private deployment evidence do not establish general public admission or a commercially available service. Free, Pro and Business remain a planned offer.
+The current analytical design is for ordinary desktop use in its dark shell. Whole-App light theme, phone, public analytics and operator views remain separate work. Do not infer those experiences from the public website's responsive layout or theme switch.
 
-Installation and dashboard destinations must come from the actual public product or your selected operator. A configured URL, reserved host, or successful sign-in is not proof that adoption is open. Exact prices, quotas, billing terms, complete production recovery qualification, and an alternate Docker adapter are not supplied by this guide. The [release guide](../../help/releases.md) keeps these outcomes separate from the published open tools.
+Installation and sign-in destinations must come from the [actual product](https://diffdevil.dev/app/) or your selected operator. A configured URL, reserved host or successful sign-in is not proof that adoption is open. Planned capabilities, prices and allowances are now selected in [Plans and shared access](plans-and-sharing.md); monthly import budgets and the complete production service still require qualification and publication. The [release guide](../../help/releases.md) keeps these outcomes separate from the published open tools and explains the independent App version.

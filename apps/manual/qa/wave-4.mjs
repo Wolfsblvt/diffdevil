@@ -6,11 +6,11 @@ import {readFileSync} from 'node:fs';
 import {manualPages,pageUrl} from '../manifest.mjs';
 import {entries as legacyEntries} from '../../website/docs-manifest.mjs';
 export async function qualifyManagedHelp({page,origins,check,screenshot}) {
- await check('Seven Managed App and Help articles reflow in both themes without hiding operating prerequisites',async()=>{
+ await check('Managed App and Help articles reflow in both themes without hiding operating prerequisites',async()=>{
   await page.emulateMedia({forcedColors:'none'});
   for(const theme of ['light','dark'])for(const width of [1280,320]){
    await page.setViewportSize({width,height:900});
-   for(const selected of manualPages.filter(p=>p.wave===4)){
+   for(const selected of manualPages.filter(p=>p.wave>=4)){
     await page.goto(pageUrl(selected.key));
     await page.evaluate(theme=>{document.documentElement.dataset.theme=theme;document.documentElement.dataset.themePref=theme;},theme);
     await expect(page.locator('h1').first()).toHaveText(selected.title);
@@ -19,9 +19,22 @@ export async function qualifyManagedHelp({page,origins,check,screenshot}) {
     assert.equal(await article.locator('details pre').count(),0,selected.key);
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth+1),true,selected.key+' '+width+' '+theme);
     assert.equal(await page.locator('meta[name="diffdevil-availability"]').getAttribute('content'),selected.availability);
+    if(selected.description)assert.equal(await page.locator('meta[name="description"]').getAttribute('content'),selected.description);
     if(width===320&&['self-host-app','troubleshooting'].includes(selected.key))await screenshot(`wave-4-${selected.key}-${theme}-${width}.png`);
+    if(['read-app-history','app-plans-and-sharing'].includes(selected.key))await screenshot(`app-manual-${selected.key}-${theme}-${width}.png`);
    }
   }
+ });
+ await check('App readers can reach analytical guidance, shared plans and the canonical plan contract',async()=>{
+  await page.goto(pageUrl('managed-app'));
+  await page.locator(`.sl-markdown-content a[href="${pageUrl('read-app-history')}"]`).first().click();
+  await expect(page.locator('h1').first()).toHaveText('Read repository history');
+  await expect(page.locator('.sl-markdown-content img[src="/assets/manual/app-history.png"]')).toBeVisible();
+  await page.locator(`.sl-markdown-content a[href="${pageUrl('app-plans-and-sharing')}"]`).first().click();
+  await expect(page.locator('h1').first()).toHaveText('Plans and shared access');
+  await page.locator('.sl-markdown-content a[href*="f=docs%2Fapp-plans.md"]').click();
+  const ref=JSON.parse(readFileSync('artifacts/manual/manifest.json','utf8')).ref;
+  await expect(page.locator('[data-source-result]')).toHaveAttribute('href',`https://github.com/Wolfsblvt/diffdevil/blob/${ref}/docs/app-plans.md`);
  });
  await check('Managed adoption, self-hosting, repair and exact operator source form one reader journey',async()=>{
   await page.setViewportSize({width:1280,height:900});
@@ -57,9 +70,9 @@ export async function qualifyManagedHelp({page,origins,check,screenshot}) {
    await expect(page.locator('[id="'+anchor+'"]').first()).toBeVisible();
   }
  });
- await check('Joined current search contains all seven chapters and no historical or retired duplicate',async()=>{
+ await check('Joined current search contains the App and Help chapters without historical or retired duplicates',async()=>{
   const {records}=JSON.parse(readFileSync('artifacts/public-search/records.json','utf8'));
-  for(const selected of manualPages.filter(p=>p.wave===4||p.key==='detail-language'))assert.ok(records.some(r=>r.url===pageUrl(selected.key)),selected.key);
+  for(const selected of manualPages.filter(p=>p.wave>=4||p.key==='detail-language'))assert.ok(records.some(r=>r.url===pageUrl(selected.key)),selected.key);
   for(const entry of legacyEntries.filter(e=>e.historical)){
    const route=entry.route??`/docs/${entry.slug}/`;
    assert.equal(records.some(r=>r.url===origins.site+route),false,entry.source);

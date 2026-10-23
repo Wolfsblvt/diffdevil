@@ -6,7 +6,7 @@ import { origins } from '../website/public-origins.mjs';
 export { origins };
 export const packageSource = Object.freeze({ repository: 'Wolfsblvt/starlight-works', commit: '22d4567006ec7a33d890fab2f3d3515332498a90', name: '@wolfsblvt/starlight-works', version: '0.1.0', starlight: '0.42.2', astro: '7.3.3' });
 // key, title, source (relative to docs/manual), route, section, parent, wave,
-// capability standing, old website routes. Array order is the selected reading order.
+// capability standing, old website routes, optional description. Array order is the selected reading order.
 const rows = [
  ['what-is-diffdevil','What is diffdevil','README.md','/','Start',null,1,'current',['/docs/']],
  ['see-changed-lines-on-github','See changed lines on GitHub','start/see-changed-lines-on-github.md','/start/see-changed-lines-on-github/','Start',null,1,'in-development',[]],
@@ -19,10 +19,12 @@ const rows = [
  ['github-actions','GitHub Actions','use/github-actions.md','/use/github-actions/','Use diffdevil','surfaces',2,'current',['/docs/actions/github-actions/']],
  ['browser-extension','diffdevil for GitHub','use/browser-extension.md','/use/browser-extension/','Use diffdevil','surfaces',2,'in-development',['/docs/browser-extension/','/docs/browser-extension/integration/']],
  ['managed-app','Managed App','use/managed-app/README.md','/use/managed-app/','Use diffdevil','surfaces',4,'in-development',['/docs/github-app/architecture/']],
+ ['read-app-history','Read repository history','use/managed-app/read-history.md','/use/managed-app/read-history/','Use diffdevil','managed-app',5,'in-development',[],'Read the App’s six analytical views, follow PR and file history, and understand coverage, Turnover, policy and protected file links.'],
+ ['app-plans-and-sharing','Plans and shared access','use/managed-app/plans-and-sharing.md','/use/managed-app/plans-and-sharing/','Use diffdevil','managed-app',5,'in-development',[],'Compare planned Community, Free, Pro and Business capabilities, prices and allowances, with shared readers, organization funding and data exit.'],
  ['managed-service','Use the managed service','use/managed-app/service.md','/use/managed-app/service/','Use diffdevil','managed-app',4,'in-development',['/docs/setup/app/']],
  ['self-host-app','Self-host the App','use/managed-app/self-hosting.md','/use/managed-app/self-hosting/','Use diffdevil','managed-app',4,'in-development',['/docs/github-app/self-hosting/']],
  ['typescript-library','TypeScript library','use/typescript-library.md','/use/typescript-library/','Use diffdevil','surfaces',2,'current',['/docs/library-api/']],
- ['playground','Playground','use/playground.md','/use/playground/','Use diffdevil','surfaces',2,'current',['/docs/playground/']],
+ ['playground','Lens Studio','use/playground.md','/use/playground/','Use diffdevil','surfaces',2,'current',['/docs/playground/'],'Use the free public Playground to explore a frozen PR, change policy, inspect evidence and export reusable inputs without an account.'],
  ['coding-agent','With a coding agent','use/coding-agent.md','/use/coding-agent/','Use diffdevil','surfaces',2,'current',['/docs/agents/agent-integration/','/docs/agents/skill/','/docs/agents/setup/','/docs/setup/skill/']],
  ['shared-workflows','Shared workflows','use/shared-workflows/README.md','/use/shared-workflows/','Use diffdevil','surfaces',2,'current',[]],
  ['reports-plans-and-apply','Reports, plans, and apply','use/shared-workflows/reports-plans-and-apply.md','/use/reports-plans-and-apply/','Use diffdevil','shared-workflows',2,'current',[]],
@@ -53,8 +55,8 @@ const rows = [
 ];
 const closed = new Set(['managed-app','interfaces','language-and-contracts']);
 export const sections = Object.freeze(['Start','Use diffdevil','Write policy','Understand','Reference','Help']);
-export const pages = Object.freeze(rows.map(([key,title,file,route,section,parent,wave,availability,legacyRoutes], order) => Object.freeze({
- key, title, sidebarLabel: key === 'browser-extension' ? 'Browser extension' : title, source: `docs/manual/${file}`, sourceId: `docs/manual/${file}`, route, host: key === 'faq' ? 'site' : 'docs', kind: key === 'faq' ? 'FAQ' : 'DOCS', section, parent, order, wave, availability,
+export const pages = Object.freeze(rows.map(([key,title,file,route,section,parent,wave,availability,legacyRoutes,description], order) => Object.freeze({
+ key, title, ...(description ? {description} : {}), sidebarLabel: key === 'browser-extension' ? 'Browser extension' : title, source: `docs/manual/${file}`, sourceId: `docs/manual/${file}`, route, host: key === 'faq' ? 'site' : 'docs', kind: key === 'faq' ? 'FAQ' : 'DOCS', section, parent, order, wave, availability,
  aliases: key === 'what-is-diffdevil' ? ['/start/what-is-diffdevil/'] : [], legacyRoutes, defaultOpen: !closed.has(key),
 })));
 export const manualPages = Object.freeze(pages.filter(page => page.host === 'docs'));

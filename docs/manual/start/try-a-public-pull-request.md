@@ -1,6 +1,6 @@
 # Try a public pull request
 
-Use the Playground to read a real PR result without installing anything, then change its policy and see what that changes. Start with a retained teaching snapshot: it does not depend on GitHub answering a new request, and its revisions stay fixed while you experiment.
+Use the Lens Studio to read a real PR result without installing anything, then change its policy and see what that changes. Start with a retained teaching snapshot: it does not depend on GitHub answering a new request, and its revisions stay fixed while you experiment.
 
 You need a browser. No account or token is required. Live acquisition accepts public GitHub.com PRs only; it is not a private-repository route or the managed App.
 
@@ -10,7 +10,7 @@ Open [the whole-change lockfile lesson](https://diffdevil.dev/playground/?exampl
 
 The useful starting result is **22 Changed / 25 churn across 2 included files**, classified as `s`. Both files and the evidence belong to that captured comparison, not to whatever the PR may contain when you open its GitHub page today.
 
-Read **Terminal** for the shared human presentation. **Agent · data** exposes the tool-oriented result; **Explanation** connects facts to the policy. **GitHub preview** shows desired labels and an optional comment, not labels that the Playground has applied or read back from GitHub.
+Read **Terminal** for the shared human presentation. **Agent · data** exposes the tool-oriented result; **Explanation** connects facts to the policy. **GitHub preview** shows desired labels and an optional comment, not labels that the Lens Studio has applied or read back from GitHub.
 
 ## Change one explicit exclusion
 
@@ -31,7 +31,7 @@ This lesson uses complete source and policy records from the [shared example cat
 
 **Analyze latest** deliberately asks for the source PR's current comparison. Inspect the returned revisions and evidence again; this is a new acquisition, not an update to the frozen lesson's facts. **Back to snapshot** restores the retained teaching edition.
 
-To try a different public PR, choose **Public pull request**, enter its full GitHub PR URL, and select **Analyze public PR**. The input must name a public `github.com` PR, not an arbitrary URL. Do not paste a token or expect the Playground to inherit private repository access from your browser's GitHub session.
+To try a different public PR, choose **Public pull request**, enter its full GitHub PR URL, and select **Analyze public PR**. The input must name a public `github.com` PR, not an arbitrary URL. Do not paste a token or expect the Lens Studio to inherit private repository access from your browser's GitHub session.
 
 The output may be bounded, unknown, unmeasurable or limited by an incomplete file set. An exact raw counter does not supply missing edit blocks. A new PR may also differ from a teaching example in both file population and policy. Compare identities and origins before comparing numbers.
 
@@ -67,4 +67,4 @@ The [Examples gallery](https://diffdevil.dev/examples/) and these links use the 
 
 <!-- manual:generated real-pr-catalogue -->
 
-Use [Playground](../use/playground.md) for the deeper operating guide, [Evidence and uncertainty](../understand/evidence-and-uncertainty.md) for interpretation, and [Security and data](../help/security-and-data.md) for the data boundary. A frozen result, a fresh analysis, a desired plan and an applied effect remain four different things.
+Use [Lens Studio](../use/playground.md) for the deeper operating guide, [Evidence and uncertainty](../understand/evidence-and-uncertainty.md) for interpretation, and [Security and data](../help/security-and-data.md) for the data boundary. A frozen result, a fresh analysis, a desired plan and an applied effect remain four different things.
