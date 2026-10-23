@@ -429,12 +429,14 @@ export async function handleManageAction(request, { runtime, session, viewer, ex
       case 'reconnect': {
         if (!runtime.commercial?.reconnectFundingAuthorization) return done('commercial-unavailable');
         const result = await runtime.commercial.reconnectFundingAuthorization(mutation);
+        await flushCommercialReport(result.reportLinkId);
         return done(result.body.ok ? 'reconnected' : 'reconnect-unconfirmed');
       }
       case 'disconnect': {
         if (!runtime.commercial?.revokeFundingAuthorization) return done('commercial-unavailable');
         // Disconnecting removes the retained GitHub grant, which also ends this browser's session; sign-in explains why.
         const result = await runtime.commercial.revokeFundingAuthorization(mutation);
+        await flushCommercialReport(result.reportLinkId);
         runtime.cache.clear();
         return redirect(`/sign-in?reason=E_FUNDING_DISCONNECTED${result.body.authorityReconciliation === 'required' ? '&reconcile=required' : ''}`, result.headers);
       }

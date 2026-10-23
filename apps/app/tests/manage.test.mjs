@@ -603,11 +603,11 @@ test('real funding and release record server-owned targets and preserve a former
   }
 });
 
-test('Manage answers committed funding actions while their scoped report delivery is held or fails', { timeout: 10_000 }, async t => {
+test('Manage answers committed funding and connection actions while their scoped report delivery is held or fails', { timeout: 10_000 }, async t => {
   const { app: compose } = await fixture();
   const app = compose(undefined, { env: WORKS_ENV });
-  const { cookie } = await signIn(app);
-  const context = await locals(app, cookie);
+  let { cookie } = await signIn(app);
+  let context = await locals(app, cookie);
   const store = app.commercialStore, linkId = crypto.randomUUID();
   const originalFlush = app.commercial.flushReports;
   try {
@@ -620,8 +620,11 @@ test('Manage answers committed funding actions while their scoped report deliver
     for (const [action, organisation, message] of [
       ['fund', ACCOUNTS['parser-guild'], 'bound'],
       ['fund', ACCOUNTS['northwind-tools'], 'bind-refused'],
+      ['disconnect', ACCOUNTS['parser-guild'], 'E_FUNDING_DISCONNECTED'],
+      ['reconnect', ACCOUNTS['parser-guild'], 'reconnected'],
       ['release-slot', ACCOUNTS['parser-guild'], 'unbound']
     ]) {
+      if (action === 'reconnect') { ({ cookie } = await signIn(app)); context = await locals(app, cookie); }
       let release;
       const held = new Promise(resolve => { release = resolve; });
       t.after(() => release());
@@ -635,12 +638,13 @@ test('Manage answers committed funding actions while their scoped report deliver
         'content-type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ action, organisation: String(organisation),
         slot: 'report-slot', back: '/manage/plan' }) }), { ...context, executionContext: { waitUntil: promise => pending.push(promise) } });
       assert.equal(response.status, 303, 'the action answers before the held dispatcher finishes');
-      assert.equal(new URL(response.headers.get('location'), ORIGIN).searchParams.get('m'), message);
+      assert.equal(new URL(response.headers.get('location'), ORIGIN).searchParams.get(action === 'disconnect' ? 'reason' : 'm'), message);
       assert.deepEqual(sentLinks, [linkId], 'only this mutation\'s server-owned link is dispatched');
       assert.equal(pending.length, 1);
       assert.equal(Boolean(await store.binding(ACCOUNTS['parser-guild'])), action !== 'release-slot');
       const report = await store.latestReport(linkId);
       assert.equal(report.state, 'pending');
+      if (action === 'disconnect' || action === 'reconnect') assert.equal(JSON.parse(report.body).bindings[0].authority, action === 'disconnect' ? 'unknown' : 'present');
       release();
       await pending[0];
       assert.equal((await store.latestReport(linkId)).state, 'pending', 'an unexpected delivery failure cannot acknowledge the report');

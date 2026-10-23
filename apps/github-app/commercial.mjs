@@ -540,37 +540,43 @@ export function createCommercialService({ store, wirt, signing, authorization, p
      * Disconnect the session owner's GitHub grant without unbinding or changing commercial standing.
      * Grant revocation commits first. A later observation/outbox failure returns that performed effect
      * explicitly, so the caller cannot present it as an unperformed disconnect and ask for a retry.
-     * A future designed Account router owns the URL and disclosures; this method selects no screen.
+     * The caller owns the screen and URL; server-only `reportLinkId` scopes its pending-report follow-up.
      */
     async revokeFundingAuthorization({ session, method, origin }) {
       if (!authorization?.revokeAuthorization) throw refusal('E_COMMERCIAL_UNAVAILABLE', 503);
       const revoked = await authorization.revokeAuthorization({ session, method, origin });
+      let reportLinkId;
       try {
         const link = await store.activeLink(revoked.userId);
+        reportLinkId = link?.link_id;
         if (link) {
           const observed = (await store.bindings(link.link_id)).map(binding => ({ slot: binding.slot,
             organisationId: binding.organisation_id, authority: 'unknown', display: null }));
           if (observed.length > 0) await recordObservations(link.link_id, observed);
         }
       } catch (error) {
-        return { headers: revoked.headers, body: { ok: false, result: 'authorization-revoked', authorityReconciliation: 'required',
+        return { reportLinkId, headers: revoked.headers, body: { ok: false, result: 'authorization-revoked', authorityReconciliation: 'required',
           code: error?.code === 'E_COMMERCIAL_CONFLICT' ? error.code : 'E_COMMERCIAL_AUTHORITY_RECONCILIATION' } };
       }
-      return { headers: revoked.headers, body: { ok: true, result: 'authorization-revoked', authorityReconciliation: 'recorded' } };
+      return { reportLinkId, headers: revoked.headers, body: { ok: true, result: 'authorization-revoked', authorityReconciliation: 'recorded' } };
     },
 
-    /** Explicit reconnect changes only service preference; authority is re-observed before use. */
+    /** Explicit reconnect changes only service preference; authority is re-observed before use.
+     * Server-only `reportLinkId` scopes the caller's pending-report follow-up.
+     */
     async reconnectFundingAuthorization({ session, method, origin }) {
       if (!authorization?.reconnectService) throw refusal('E_COMMERCIAL_UNAVAILABLE', 503);
       const connected = await authorization.reconnectService({ session, method, origin });
+      let reportLinkId;
       try {
         const link = await store.activeLink(connected.userId);
+        reportLinkId = link?.link_id;
         if (link) await observeBindings(link);
       } catch (error) {
-        return { headers: connected.headers, body: { ok: false, result: 'service-reconnected', authorityReconciliation: 'required',
+        return { reportLinkId, headers: connected.headers, body: { ok: false, result: 'service-reconnected', authorityReconciliation: 'required',
           code: error?.code === 'E_COMMERCIAL_CONFLICT' ? error.code : 'E_COMMERCIAL_AUTHORITY_RECONCILIATION' } };
       }
-      return { headers: connected.headers, body: { ok: true, result: 'service-reconnected', authorityReconciliation: 'recorded' } };
+      return { reportLinkId, headers: connected.headers, body: { ok: true, result: 'service-reconnected', authorityReconciliation: 'recorded' } };
     },
 
     /**
