@@ -126,7 +126,8 @@ export async function loadView({ url, viewer, session, runtime, surface = 'prs',
   const entitlement = entitlementFromData(viewer, scope, repositories, data, expected);
   const historyUnavailable = expectedRepositories.length > 0 && ['Pro', 'Business'].includes(entitlement.plan)
     && historyRepositories.length === 0;
-  const historyManageable = historyUnavailable && expectedRepositories.some(repository => repository.canAdminister);
+  // Analytical direct resolution does not add the target to Manage's ordinary discovery.
+  const historyManageable = historyUnavailable && expectedRepositories.some(repository => repository.canAdminister && !repository.explicitOnly);
   entitlement.contractScope = contractScope;
   entitlement.namespaceEstablished = scope.kind !== 'namespace' || contractScope.kind === 'namespace' || Boolean(detailRepository);
   const retained = retainedRepositories.length > 0;

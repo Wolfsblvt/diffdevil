@@ -834,6 +834,11 @@ try {
     await settled();
     check('All repositories does not acquire the request-local target or retain its lookup hint', !new URL(page.url()).searchParams.has('r')
       && await page.locator('[data-nav-repo="parser-guild/lexer-kit"]').count() === 0);
+    await go('/files?s=parser-guild/grammar-fuzz');
+    check('a direct-only history-off target offers reachable read-only status instead of implying Manage discovery',
+      await page.locator('[data-history-unavailable]').count() === 1
+      && await page.getByRole('link', { name: 'History status', exact: true }).count() === 1
+      && await page.getByRole('link', { name: 'Manage repository history', exact: true }).count() === 0);
     github.state.repositoryStatus.set(1002, 404);
     const deniedUrl = new URL(namespaceContinuation);
     deniedUrl.searchParams.set('render', 'document');

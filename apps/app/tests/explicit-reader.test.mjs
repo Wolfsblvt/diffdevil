@@ -235,7 +235,12 @@ test('known funding with history off is a history availability state independent
   assert.equal(model.entitlement.premium, false);
   assert.equal(model.historyUnavailable, true);
   assert.equal(model.premiumProvided, false);
+  assert.equal(model.historyManageable, false, 'a direct-only analytical target does not imply discovery in Manage');
   f.github.state.installations = INSTALLATIONS;
+  f.app.cache.clear();
+  const listedViewer = await f.viewer([repositoryName]);
+  const listed = await loadView({ url: new URL(`${ORIGIN}/files?s=${repositoryName}`), viewer: listedViewer, session: f.opened, runtime: f.app, surface: 'files' });
+  assert.equal(listed.historyManageable, true, 'an administered target present in ordinary discovery keeps its existing action');
   f.github.state.admin.set(1003, false);
   f.app.cache.clear();
   const contextualViewer = await f.viewer([repositoryName]);
