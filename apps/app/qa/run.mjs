@@ -45,6 +45,7 @@ import { seedLoadingScale } from './loading-scale.mjs';
 
 const target = appBuildTarget();
 const IDENTITY_ONLY = process.argv.includes('--identity');
+const EXPLICIT_READER_ONLY = process.argv.includes('--explicit-reader');
 const AUTHORITY_ONLY = process.argv.includes('--authority');
 const ADMISSION_ONLY = process.argv.includes('--admission');
 const LOADING_ONLY = process.argv.includes('--loading');
@@ -59,7 +60,7 @@ const PR_CONFIDENCE_ONLY = process.argv.includes('--pr-confidence-state');
 const PR_FILES_ONLY = process.argv.includes('--pr-files-table');
 const BUSINESS_MANAGE_ONLY = process.argv.includes('--business-manage');
 const PARTICIPATION_ONLY = process.argv.includes('--participation');
-const OUT = join(target.artifacts, 'qa', ...(FILES_QUERY_ONLY ? ['files-query'] : LOADING_ONLY ? ['loading'] : ADMISSION_ONLY ? ['admission'] : BUSINESS_MANAGE_ONLY ? ['business-manage'] : PARTICIPATION_ONLY ? ['participation'] : PR_FILES_ONLY ? ['pr-files-table'] : PR_CONFIDENCE_ONLY ? ['pr-confidence-state'] : PR_SEARCH_DETAIL_ONLY ? ['pr-search-detail'] : IDENTITY_ONLY ? ['identity'] : AUTHORITY_ONLY ? ['authority'] : HISTORY_ONLY ? ['history'] : THUMB_ONLY ? ['thumb'] : []));
+const OUT = join(target.artifacts, 'qa', ...(EXPLICIT_READER_ONLY ? ['explicit-reader'] : FILES_QUERY_ONLY ? ['files-query'] : LOADING_ONLY ? ['loading'] : ADMISSION_ONLY ? ['admission'] : BUSINESS_MANAGE_ONLY ? ['business-manage'] : PARTICIPATION_ONLY ? ['participation'] : PR_FILES_ONLY ? ['pr-files-table'] : PR_CONFIDENCE_ONLY ? ['pr-confidence-state'] : PR_SEARCH_DETAIL_ONLY ? ['pr-search-detail'] : IDENTITY_ONLY ? ['identity'] : AUTHORITY_ONLY ? ['authority'] : HISTORY_ONLY ? ['history'] : THUMB_ONLY ? ['thumb'] : []));
 const APP_PORT = Number(process.env.DIFFDEVIL_APP_QA_PORT ?? (target.name === 'staging' ? 4512 : 4412));
 const GITHUB_PORT = Number(process.env.DIFFDEVIL_APP_QA_GITHUB_PORT ?? (target.name === 'staging' ? 4533 : 4433));
 // Chromium accepts Secure (__Host-) cookies from http://localhost, not from a loopback IP, so the browser origin is localhost; the Worker still binds 127.0.0.1.
@@ -67,7 +68,7 @@ const ORIGIN = `http://localhost:${APP_PORT}`;
 const PROBE = `http://127.0.0.1:${APP_PORT}`;
 const CONFIG = join(target.artifacts, 'dist/server/wrangler.json');
 const DENSE = process.env.DIFFDEVIL_APP_QA_DENSE === '1';
-const STATE = join(target.artifacts, BUSINESS_MANAGE_ONLY ? 'state-business-manage' : 'state');
+const STATE = join(target.artifacts, EXPLICIT_READER_ONLY ? 'state-explicit-reader' : BUSINESS_MANAGE_ONLY ? 'state-business-manage' : 'state');
 const DENSE_STATE = join(target.artifacts, 'state-dense');
 const chartTelemetry = [];
 
@@ -791,7 +792,51 @@ async function qualifyPrConfidenceState(consumerReturn = null) {
 }
 
 try {
-  if (FILES_QUERY_ONLY) {
+  if (EXPLICIT_READER_ONLY) {
+    github.state.installations = [];
+    github.state.roles.set('parser-guild', 'member');
+    github.state.push.set(1002, false); github.state.admin.set(1002, false);
+    github.state.inaccessibleRepositoryIds.add(1001);
+    await startWorker({ 123: 'Free', 7001: 'Pro' });
+    await signIn();
+    const fullName = 'parser-guild/lexer-kit';
+    const pull = pullRequests().find(value => value.repository.repositoryId === 1002 && value.analysed && value.finalRecovered);
+    if (!pull) throw new Error('The explicit reader needs a retained fixture PR.');
+    for (const [name, path] of [['overview', `/?s=${fullName}&per=1y`], ['files', `/files?s=${fullName}&per=1y`],
+      ['pr', `/pr/${fullName}/${pull.number}?per=1y`], ['file', `/file/${fullName}/${'a'.repeat(22)}?per=1y`]]) {
+      const response = await go(path);
+      const text = await page.locator('body').innerText();
+      check(`explicit ${name}: a pull-only reader resolves the connected target despite empty installation enumeration`, response.status() === 200
+        && fullName.split('/').every(part => text.includes(part)) && !text.includes('Not in your repositories'),
+      JSON.stringify({ status: response.status(), heading: await page.locator('h1').first().textContent() }));
+      await shot(`explicit-${name}`);
+    }
+    const query = { version: 1, surface: 'overview', repositoryIds: [1002], scope: { kind: 'repository', repositoryId: 1002 },
+      repositoryIdentities: [{ repositoryId: 1002, fullName }], from: '2026-01-01T00:00:00.000Z', to: new Date().toISOString() };
+    const apiUrl = `${ORIGIN}/api/analytics?query=${encodeURIComponent(JSON.stringify(query))}`;
+    const result = await page.request.get(apiUrl), body = await result.json();
+    check('explicit HTTP analytics carries actual retained population and the namespace-funded plan', result.status() === 200
+      && body.coverage?.merged > 0 && body.entitlements?.aggregatePlan === 'pro'
+      && JSON.stringify(body.repositoryIdentities) === JSON.stringify([{ repositoryId: 1002, fullName }]));
+    const sibling = await page.request.get(`${ORIGIN}/pr/parser-guild/parser-lab/452?render=document`);
+    check('an inaccessible private sibling remains unavailable without its history or repository context', sibling.status() === 404
+      && !(await sibling.text()).includes('parser-lab'));
+    github.state.repositoryStatus.set(1002, 404);
+    for (const path of ['/', '/prs', '/history', '/files']) {
+      const unavailable = await page.request.get(`${ORIGIN}${path}?s=${fullName}&render=document`), text = await unavailable.text();
+      check(`explicit ${path}: confirmed access loss retains the analytical frame without false data or an upgrade offer`, unavailable.status() === 200
+        && text.includes('data-scope-unavailable') && !text.includes('data-chart') && !text.includes('See Pro'));
+    }
+    github.state.repositoryStatus.clear();
+    check('an ordinary request restores the explicit funded population after current access returns', (await page.request.get(apiUrl)).status() === 200);
+    github.state.repositoryStatus.set(1002, 503);
+    const unknown = await page.request.get(`${ORIGIN}/?s=${fullName}&render=document`);
+    check('a warm explicit viewer refuses an unknown current read instead of presenting zero data', unknown.status() === 503
+      && (await unknown.text()).includes('Current repository access could not be read'));
+    github.state.repositoryStatus.clear();
+    github.state.tokenValid = false;
+    check('the actual HTTP caller refuses a revoked user grant', (await page.request.get(apiUrl)).status() === 401);
+  } else if (FILES_QUERY_ONLY) {
     if (!edition.entry?.replaceAll('\\', '/').endsWith('/qa/loading-premium/index.mjs')) throw new Error('Files-query qualification requires the public loading extension fixture.');
     await startWorker(ENTITLEMENT_FIXTURE); await signIn(); await filesQueryJourney(ctx);
   } else if (LOADING_ONLY) {
@@ -1252,7 +1297,7 @@ try {
   githubServer.closeAllConnections?.();
   githubServer.close();
 }
-await writeFile(join(OUT, 'results.json'), JSON.stringify({ origin: ORIGIN, scope: FILES_QUERY_ONLY ? 'files-query' : LOADING_ONLY ? 'loading' : ADMISSION_ONLY ? 'admission' : BUSINESS_MANAGE_ONLY ? 'business-manage' : PR_FILES_ONLY ? 'pr-files-table' : THUMB_ONLY ? 'thumb' : PR_CONFIDENCE_ONLY ? 'pr-confidence-state' : PR_SEARCH_DETAIL_ONLY ? 'pr-search-detail' : AUTHORITY_ONLY ? 'authority' : HISTORY_ONLY ? 'history' : IDENTITY_ONLY ? 'identity' : PARTICIPATION_ONLY ? 'participation' : 'full', target: target.name, seeded: seeded.written, dense: DENSE && !FILES_QUERY_ONLY && !LOADING_ONLY && !ADMISSION_ONLY && !BUSINESS_MANAGE_ONLY && !PR_FILES_ONLY && !THUMB_ONLY && !PR_CONFIDENCE_ONLY && !PR_SEARCH_DETAIL_ONLY && !PARTICIPATION_ONLY && !IDENTITY_ONLY && !AUTHORITY_ONLY && !HISTORY_ONLY, charts: chartTelemetry, results, failures, consoleErrors, pageErrors, external }, null, 2));
+await writeFile(join(OUT, 'results.json'), JSON.stringify({ origin: ORIGIN, scope: EXPLICIT_READER_ONLY ? 'explicit-reader' : FILES_QUERY_ONLY ? 'files-query' : LOADING_ONLY ? 'loading' : ADMISSION_ONLY ? 'admission' : BUSINESS_MANAGE_ONLY ? 'business-manage' : PR_FILES_ONLY ? 'pr-files-table' : THUMB_ONLY ? 'thumb' : PR_CONFIDENCE_ONLY ? 'pr-confidence-state' : PR_SEARCH_DETAIL_ONLY ? 'pr-search-detail' : AUTHORITY_ONLY ? 'authority' : HISTORY_ONLY ? 'history' : IDENTITY_ONLY ? 'identity' : PARTICIPATION_ONLY ? 'participation' : 'full', target: target.name, seeded: seeded.written, dense: DENSE && !EXPLICIT_READER_ONLY && !FILES_QUERY_ONLY && !LOADING_ONLY && !ADMISSION_ONLY && !BUSINESS_MANAGE_ONLY && !PR_FILES_ONLY && !THUMB_ONLY && !PR_CONFIDENCE_ONLY && !PR_SEARCH_DETAIL_ONLY && !PARTICIPATION_ONLY && !IDENTITY_ONLY && !AUTHORITY_ONLY && !HISTORY_ONLY, charts: chartTelemetry, results, failures, consoleErrors, pageErrors, external }, null, 2));
 await writeFile(join(OUT, 'worker.log'), workerLog);
 console.log(`${PARTICIPATION_ONLY ? 'Participation: ' : ''}${results.filter(result => result.ok).length} of ${results.length} checks passed; screenshots and results in ${OUT}`);
 if (failures.length) { console.error(failures.map(failure => ` ✗ ${failure}`).join('\n')); process.exit(1); }

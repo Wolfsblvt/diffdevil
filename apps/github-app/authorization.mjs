@@ -157,20 +157,31 @@ export function createAuthorizationService({ store, admission, history, analytic
       const actor = await principal(session);
       const material = await currentAuthorization(actor.userId);
       if (!Array.isArray(query?.repositoryIds) || query.repositoryIds.some(id => !Number.isSafeInteger(id) || id < 1)) throw refusal('E_APP_DATA_QUERY');
+      const identities = new Map();
+      if (query.repositoryIdentities !== undefined) {
+        if (!Array.isArray(query.repositoryIdentities) || query.repositoryIdentities.length > query.repositoryIds.length) throw refusal('E_APP_DATA_QUERY');
+        for (const identity of query.repositoryIdentities) {
+          if (!query.repositoryIds.includes(identity?.repositoryId) || identities.has(identity.repositoryId)
+            || typeof identity.fullName !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9-]{0,38}\/[A-Za-z0-9._-]{1,100}$/u.test(identity.fullName)) throw refusal('E_APP_DATA_QUERY');
+          identities.set(identity.repositoryId, identity.fullName);
+        }
+      }
       const authorizedRepositoryIds = [];
       const repositoryIdentities = [];
       for (const repositoryId of new Set(query.repositoryIds)) {
         const repository = await store.repositoryIdentity(repositoryId);
         if (!repository) continue;
         let access;
-        try { access = await provider.checkRepositoryAccess({ material, userId: actor.userId, installationId: repository.installation_id, repositoryId, kind: 'read' }); }
+        try { access = await provider.checkRepositoryAccess({ material, userId: actor.userId, installationId: repository.installation_id, repositoryId, kind: 'read',
+          ...(identities.has(repositoryId) ? { fullName: identities.get(repositoryId) } : {}) }); }
         catch { throw refusal('E_APP_DATA_AUTH_UNAVAILABLE'); }
         if (access?.installation === 'active' && access?.repository === 'available' && (access?.canRead === true || access?.canAdminister === true)) {
           authorizedRepositoryIds.push(repositoryId);
           if (typeof access.fullName === 'string' && /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/u.test(access.fullName)) repositoryIdentities.push({ repositoryId, fullName: access.fullName });
         }
       }
-      const body = await analytics.query(query, { ...actor, authorizedRepositoryIds });
+      const { repositoryIdentities: hints, ...analyticalQuery } = query;
+      const body = await analytics.query(analyticalQuery, { ...actor, authorizedRepositoryIds });
       return { body: { ...body, repositoryIdentities }, headers: protectedHeaders() };
     },
     async begin(returnContext) {
@@ -311,6 +322,7 @@ export function createAuthorizationService({ store, admission, history, analytic
       const material = await currentAuthorization(actor.userId);
       const reads = {
         profile: () => provider.profile({ material, userId: actor.userId }),
+        repository: fullName => typeof provider.repository === 'function' ? provider.repository({ material, userId: actor.userId, fullName }) : Promise.resolve(null),
         installations: () => provider.installations({ material, userId: actor.userId }),
         installationRepositories: installationId => provider.installationRepositories({ material, userId: actor.userId, installationId }),
         organizationRole: organization => provider.organizationRole({ material, userId: actor.userId, organization }),

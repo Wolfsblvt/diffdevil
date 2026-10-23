@@ -191,7 +191,7 @@ export function navModel(view, section) {
   return { section, active, premium: view.entitlement.premium };
 }
 
-export function repositoryByFullName(viewer, fullName) { return viewer.repositories.find(repository => repository.fullName === fullName); }
+export function repositoryByFullName(viewer, fullName) { return viewer.repositories.find(repository => repository.fullName.toLowerCase() === fullName.toLowerCase()); }
 
 /** A namespace's plan label for the navigation; the viewer's own namespaces follow the viewer. */
 export function namespacePlan(viewer, namespace) { return namespace.yours ? viewer.plan : namespace.plan; }

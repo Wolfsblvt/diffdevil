@@ -34,6 +34,8 @@ Before customer adoption, the designed Account experience must disclose retentio
 
 Protected analytical access requires current supported GitHub user/repository and App grant checks. Loss of access affects charts, details, queries, exports and aggregates, not only navigation.
 
+Installation enumeration supplies ordinary discovery; it is not the only way to resolve an explicit connected-repository URL. A selected repository, PR or opaque file URL also reads that exact repository through the signed-in person's current GitHub App user grant using [Get a repository](https://docs.github.com/en/rest/repos/repos#get-a-repository). The returned numeric repository and owner must match an App-recorded installation/account inside the admitted estate, and the response must establish read permission. Public visibility, an installation credential or the URL itself supplies no substitute. The explicit observation is fresh even when ordinary discovery is cached; it neither discovers private siblings nor adds targets to a later All-repositories request. Unknown or refused access stays unavailable. History consent, namespace funding and Manage/write authority retain their separate checks.
+
 A home or organisation summary is calculated from the reader's actual authorised repository set. Hiding the repository name but retaining its numbers or relationships is not sufficient. Shared URLs and saved selections re-authorise when opened; possession of a link is not perpetual access.
 
 Premium capability is evaluated at the repository, including its funding, preview or OSS grant. Missing entitlement or enrichment is not measured zero. Free's retained base file rows do not implicitly expose premium file-history APIs.
