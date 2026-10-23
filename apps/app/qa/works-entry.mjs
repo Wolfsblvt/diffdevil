@@ -32,6 +32,7 @@ const json = (body, status = 200) => new Response(JSON.stringify(body), { status
 const github = createFakeGitHub();
 const intents = new Map(), calls = [];
 let failure = null;
+let reportOutcome = 'recorded';
 let holdContinuation = false;
 const link = randomUUID();
 const projection = {
@@ -41,7 +42,7 @@ const projection = {
   commercial: emptyCoverage ? null : { standing: 'funded', tier: 'pro', cadence: 'monthly', period: { started_on: '2026-10-01', ends_on: '2026-11-01' },
     renewal_preference: 'automatic', cancellation_intent: 'none', grace: null, ended: null,
     next_renewal: { on: '2026-11-01', total_cents: 900, currency: 'EUR', tax_inclusive: true } },
-  benefits: { organisation_capacity: [], grants: [], protection: null,
+  benefits: { organisation_capacity: emptyCoverage ? [] : [{ slot: 'slot-1', funding: 'paid', pending_end_on: null }], grants: [], protection: null,
     ...(emptyCoverage ? { beta_grants: [], participation_rewards: [], funded_components: [] } : {}) }, pending: [], bindings_seen: []
 };
 
@@ -84,6 +85,14 @@ async function outbound(request) {
     if (failure === 'pending') return json({ error: 'not confirmed' }, 503);
     return json({ stream: projection.stream }, 201);
   }
+  if (/\/api\/wirt\/diffdevil\/links\/[^/]+\/reports$/u.test(url.pathname)) {
+    assert.equal(request.method, 'POST');
+    const report = JSON.parse(body);
+    assert.equal(report.stream.link.id, link);
+    assert.equal(report.stream.link.product_account.github_user_id, USER.id);
+    if (reportOutcome === 'unavailable') return json({ error: 'temporarily unavailable' }, 503);
+    return json({ result: 'recorded' });
+  }
   if (url.pathname.endsWith('/projection')) return json(projection);
   throw new Error(`Unexpected Works fixture path: ${url.pathname}`);
 }
@@ -115,6 +124,8 @@ try {
   const database = await local.getD1Database('APP_DB');
   const store = new D1AppStore(database);
   for (const name of await migrationNames()) await store.migrate(await readFile(resolve('apps/github-app/migrations', name), 'utf8'));
+  await store.recordLifecycle({ action: 'created', installationId: 10, removedRepositories: [], addedRepositories: [1001, 1002, 1003] });
+  await store.recordInstallationAccount(10, 7001, 'organization');
   await mkdir(OUT, { recursive: true });
   browser = await chromium.launch({ executablePath: process.env.PLAYWRIGHT_EXECUTABLE_PATH });
   const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, javaScriptEnabled: !noJavaScript });
@@ -289,6 +300,33 @@ try {
     const report = JSON.parse(row.body);
     return row.state === 'pending' && report.stream.link.id === link && report.stream.link.product_account.github_user_id === USER.id && report.applied.result === 'applied';
   }));
+  if (!emptyCoverage) {
+    reportOutcome = 'unavailable';
+    const reportCallsBeforeFund = calls.filter(call => /\/reports$/u.test(call.path)).length;
+    await page.goto(`${APP}/manage/plan`);
+    const fund = page.getByRole('button', { name: 'Fund', exact: true });
+    await fund.click();
+    await page.waitForURL(url => url.origin === APP && url.pathname === '/manage/plan' && url.searchParams.get('m') === 'bound');
+    const binding = await database.prepare('SELECT organisation_id FROM commercial_bindings WHERE link_id=?').bind(link).first();
+    const failedReport = await database.prepare('SELECT report_version, state, attempts, code FROM commercial_reports WHERE link_id=? ORDER BY report_version DESC LIMIT 1').bind(link).first();
+    check('the native Manage Fund action redirects after its committed binding and attempts the scoped Works report',
+      nativeResponses.at(-1)?.action === 'fund' && nativeResponses.at(-1)?.status === 303 && binding?.organisation_id === 7001
+      && calls.filter(call => /\/reports$/u.test(call.path)).length === reportCallsBeforeFund + 1);
+    check('a temporary Works failure leaves the committed funding change in place and the current report retryable',
+      failedReport?.state === 'pending' && failedReport.attempts === 1 && failedReport.code === 'E_COMMERCIAL_REPORT_RETRY');
+
+    reportOutcome = 'recorded';
+    const reportCallsBeforeRelease = calls.filter(call => /\/reports$/u.test(call.path)).length;
+    await page.getByRole('button', { name: 'Release', exact: true }).click();
+    await page.waitForURL(url => url.origin === APP && url.pathname === '/manage/plan' && url.searchParams.get('m') === 'unbound');
+    const reportsAfterRelease = await database.prepare('SELECT report_version, body, state, attempts FROM commercial_reports WHERE link_id=? ORDER BY report_version').bind(link).all();
+    const sentReport = reportsAfterRelease.results.at(-1);
+    check('a later Manage Release supersedes the failed older report and sends only the current no-binding state',
+      nativeResponses.at(-1)?.action === 'release-slot' && nativeResponses.at(-1)?.status === 303
+      && calls.filter(call => /\/reports$/u.test(call.path)).length === reportCallsBeforeRelease + 1
+      && reportsAfterRelease.results.slice(0, -1).every(row => row.state === 'superseded')
+      && sentReport?.state === 'sent' && sentReport.attempts === 1 && JSON.parse(sentReport.body).bindings.length === 0);
+  }
   await page.screenshot({ path: join(OUT, 'native-works-linked.png'), fullPage: true });
   if (emptyCoverage) {
     const standing = page.locator('[data-standing="no-coverage"]');

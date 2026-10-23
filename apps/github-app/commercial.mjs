@@ -468,6 +468,7 @@ export function createCommercialService({ store, wirt, signing, authorization, p
 
     /** Bind one purchased slot to an organisation the funder currently administers. Refusals are reported to Wirt.
      * Server-only `organisation` identifies a target whose administration and name were established for this action.
+     * Server-only `reportLinkId` scopes post-response delivery to the committed report's link.
      */
     async bind({ session, method, origin, slot, organisationId }) {
       requireLinkRoute();
@@ -502,7 +503,7 @@ export function createCommercialService({ store, wirt, signing, authorization, p
           change = { unbindSlot: replaced?.slot, binding, report: report(link, stream, lastApplied(link), next, refusals) };
           outcome = 'bound';
         }
-        if (await store.transition(link, change)) return { organisation: authority.authority === 'present' && authority.display ? { id: organisationId, display: authority.display } : null,
+        if (await store.transition(link, change)) return { reportLinkId: link.link_id, organisation: authority.authority === 'present' && authority.display ? { id: organisationId, display: authority.display } : null,
           body: { ok: outcome === 'bound', result: outcome, ...(reason ? { code: reason } : {}) }, headers: protectedHeaders() };
       }
       throw refusal('E_COMMERCIAL_CONFLICT', 409);
@@ -510,6 +511,7 @@ export function createCommercialService({ store, wirt, signing, authorization, p
 
     /** The funder may withdraw a binding, and a current organisation administrator may disconnect it.
      * Server-only `changed` and `organisation` distinguish a performed release and its established target from a no-op.
+     * `reportLinkId` is present only when the release committed a report for post-response delivery.
      * The established identity survives an unavailable or scrubbed display name without a new name lookup.
      */
     async unbind({ session, method, origin, organisationId }) {
@@ -527,7 +529,7 @@ export function createCommercialService({ store, wirt, signing, authorization, p
         const change = { unbindSlot: existing.slot, ...(orderOf(link) ? { report: report(link, { worksAccount: link.works_account }, lastApplied(link), remaining, refusals) } : {}) };
         if (await store.transition(link, change)) {
           const display = authority?.display ?? existing.display ?? null;
-          return { changed: true, organisation: { id: existing.organisation_id, display },
+          return { changed: true, ...(change.report ? { reportLinkId: link.link_id } : {}), organisation: { id: existing.organisation_id, display },
             body: { ok: true, result: 'unbound' }, headers: protectedHeaders() };
         }
       }
