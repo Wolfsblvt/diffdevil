@@ -5,9 +5,10 @@ import { createGitHubAppWorker } from '../../github-app/app.mjs';
 import { createAppRuntime } from '../src/lib/runtime.mjs';
 import { openSession, SESSION_COOKIE } from '../src/lib/routes.mjs';
 import { resolveViewer } from '../src/lib/viewer.mjs';
-import { loadView } from '../src/lib/view.mjs';
+import { loadView, namespacePlan } from '../src/lib/view.mjs';
 import { analyticalRepositoryNames } from '../src/lib/analytical-request.mjs';
 import { INSTALLATIONS } from '../qa/fixture.mjs';
+import { COMMERCIAL_PRO } from '../qa/manage.mjs';
 import { fixture, disposeFixture, signIn, ORIGIN, NOW } from './support.mjs';
 
 after(disposeFixture);
@@ -151,6 +152,37 @@ test('ordinary discovery never fans out to targets; only supported explicit anal
   const current = await f.viewer([fullName]);
   assert.equal(current.repositories.some(repository => repository.repositoryId === 1001), false, 'fresh explicit refusal removes the cached target');
   assert.ok(current.repositories.some(repository => repository.repositoryId === 1003), 'other authorized repositories keep their navigation context');
+});
+
+test('an explicit reader omitted by discovery keeps actual organisation funding independent of personal Pro and administration', async () => {
+  const { env, github, clock } = await fixture();
+  github.state.installations = INSTALLATIONS;
+  github.state.inaccessibleRepositoryIds.clear();
+  github.state.roles.set('parser-guild', 'admin');
+  for (const [spec, plan] of [
+    [{ ...COMMERCIAL_PRO, capacity: [] }, 'Free'],
+    [COMMERCIAL_PRO, 'Pro'],
+    [{ ...COMMERCIAL_PRO, capacity: [], others: { 7001: 'unknown' } }, 'Unknown']
+  ]) {
+    const app = createAppRuntime({ ...env, APP_COMMERCIAL_FIXTURE: JSON.stringify(spec) }, {
+      now: () => clock.value,
+      fetch: (input, init) => new URL(input).pathname === '/user/installations'
+        ? Promise.resolve(Response.json({ installations: [] })) : github.fetch(input, init)
+    });
+    app.cache.clear();
+    const { cookie } = await signIn(app);
+    const opened = await openSession(new Request(ORIGIN, { headers: { cookie: `${SESSION_COOKIE}=${cookie}` } }), app);
+    const viewer = await resolveViewer({ reads: opened.reads, actor: opened.actor, store: app.store, entitlement: app.entitlement,
+      cache: app.cache, explicitRepositories: [fullName] });
+    assert.deepEqual(viewer.repositories.map(repository => repository.repositoryId), [1001]);
+    assert.equal(viewer.plan, 'Pro');
+    assert.equal(viewer.namespaces[0].yours, true, 'current organisation administration still controls placement');
+    assert.equal(namespacePlan(viewer, viewer.namespaces[0]), plan);
+    const model = await loadView({ url: new URL(`${ORIGIN}/files?s=${fullName}&per=90d`), viewer, session: opened, runtime: app, surface: 'files' });
+    assert.equal(model.entitlement.plan, plan);
+    assert.equal(model.entitlement.premium, plan === 'Pro');
+    if (plan === 'Unknown') assert.equal(model.dataStanding, 'entitlement-unavailable');
+  }
 });
 
 test('fresh GitHub access cannot restore withdrawn App history consent', async () => {
