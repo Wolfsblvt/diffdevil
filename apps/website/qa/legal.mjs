@@ -60,6 +60,7 @@ const errors = [], external = [];
 try {
   for (const [width, colorScheme] of [[1280, 'dark'], [390, 'light']]) {
     const context = await browser.newContext({ viewport: { width, height: 900 }, colorScheme });
+    await context.addInitScript(theme => localStorage.setItem('diffdevil.theme', theme), colorScheme);
     await context.route('**/*', async route => {
       const request = new Request(route.request().url());
       const host = hosts.get(new URL(request.url).origin);
@@ -86,6 +87,7 @@ try {
       check(`${path} ${width}: no social/structured/feed output`, await page.locator('meta[property^="og:"], meta[name^="twitter:"], script[type="application/ld+json"], link[type="application/rss+xml"], link[type="application/atom+xml"]').count() === 0);
       check(`${path} ${width}: canonical identity`, await page.locator('link[rel="canonical"]').getAttribute('href') === origins.site + path);
       check(`${path} ${width}: one heading`, await page.locator('h1').count() === 1);
+      check(`${path} ${width}: requested theme`, await page.locator('html').getAttribute('data-theme') === colorScheme);
       check(`${path} ${width}: complete fixture operator`, await page.locator('main address').count() === 1 && (await page.locator('main address').innerText()).includes(fixtureOperator.legalName));
       const contact = path === '/impressum/' ? 'impressum' : path === '/privacy/' ? 'privacy' : 'legal';
       check(`${path} ${width}: correct contact`, await page.locator('main address a[href^="mailto:"]').getAttribute('href') === 'mailto:' + fixtureOperator.contacts[contact]);

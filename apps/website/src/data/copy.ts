@@ -34,7 +34,6 @@ export const copy = {
   },
   footer: {
     line: 'One deterministic core. CLI, TypeScript API, GitHub Actions, browser extension, GitHub App, playground and agents read the same report.',
-    licence: 'Engine MIT · applications AGPL-3.0-only · docs CC BY 4.0 · brand reserved',
     get: 'Get', learn: 'Learn', project: 'Project',
   },
   a11y: { copied: 'Copied to clipboard.', menu: 'Menu' },
