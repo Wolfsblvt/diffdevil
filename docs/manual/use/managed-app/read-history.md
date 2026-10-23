@@ -17,7 +17,7 @@ Read the coverage beside a result before comparing periods. The date range you s
 
 ## Find the right destination
 
-| Destination | Start here when you want to… | Follow through to… |
+| View | Start here when you want to… | Follow through to… |
 | --- | --- | --- |
 | **Overview** | Understand merged-PR activity, size mix and what changed from the previous period | A repository, an active PR or the contributing population |
 | **Pull requests** | Inspect flow, lifecycle, size and analyzed-head development, then search or filter the PR list | One PR and its actual comparison |
