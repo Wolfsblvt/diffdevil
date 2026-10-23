@@ -102,6 +102,6 @@ test('Current search accepts reader pages and rejects every legacy, technical, h
  for(const path of ['/faq/','/source/','/privacy/','/impressum/','/404/','/__qualification/reading/'])assert.equal(indexable(path,body),false,path);
  for(const path of ['/','/playground/','/examples/','/extension/','/app/'])assert.equal(indexable(path,body),true,path);
  const faq=qualifyFaqRecords(faqRecords(read('docs/manual/faq.md')));
- assert.equal(faq.length,20);assert.equal(new Set(faq.map(item=>item.canonical)).size,faq.length);
+ assert.equal(new Set(faq.map(item=>item.canonical)).size,faq.length);
  assert.throws(()=>qualifyFaqRecords([...faq,faq[0]]),/unique/u);
 });

@@ -12,19 +12,24 @@ function specimen({ id = 'sample-question', title = 'A question?', extra = '', b
     <div id="${id}" class="faq-answer">${body}</div></details></article>`;
 }
 
-test('the focused FAQ preserves 20 unique question routes in its eight ordered categories', () => {
+test('the FAQ preserves established public question routes as its inventory evolves', () => {
   const records = faqRecords(source);
-  assert.equal(records.length, 20);
-  assert.equal(new Set(records.map(record => record.id)).size, records.length);
+  const ids = new Set(records.map(record => record.id));
+  assert.equal(ids.size, records.length);
+  for (const id of [
+    'changed-vs-churn', 'beyond-size-labels', 'code-review', 'changed-makes-sense',
+    'files-and-exclusions', 'measurement-evidence', 'playground-or-extension',
+    'extension-without-repo-setup', 'different-results', 'non-javascript-projects',
+    'no-language-required', 'automation-overlap', 'trusted-policy', 'why-managed',
+    'leaving-managed-service', 'code-data', 'app-history', 'coding-agents',
+    'semantic-versioning', 'licensing',
+  ]) assert.ok(ids.has(id), `Established FAQ destination is missing: ${id}`);
   assert.deepEqual(records.slice(0, 2).map(record => record.id), ['changed-vs-churn', 'beyond-size-labels']);
-  const counts = new Map();
   for (const record of records) {
-    counts.set(record.category, (counts.get(record.category) ?? 0) + 1);
     assert.equal(record.url, `${FAQ_ROUTE}#${record.id}`);
     assert.equal(record.canonical, `${FAQ_CANONICAL}#${record.id}`);
     assert.ok(record.title.length > 0);
   }
-  assert.deepEqual([...counts.values()], [3, 3, 3, 2, 2, 2, 2, 3]);
 });
 
 test('question search records carry the actual answer HTML, title, identifier and category', () => {
@@ -39,9 +44,12 @@ test('question search records carry the actual answer HTML, title, identifier an
 
 test('the subtle development note follows only affected answers into search', () => {
   const records = new Map(faqRecords(source).map(record => [record.id, record]));
-  assert.equal(records.get('extension-without-repo-setup').standing, 'In development');
-  assert.ok(records.get('extension-without-repo-setup').html.includes('managed-service experience'));
-  assert.equal(records.get('why-managed').standing, 'In development');
+  const note = /<aside\b[^>]*\bid="product-status"[^>]*>([\s\S]*?)<\/aside>/u.exec(source)[1];
+  for (const id of ['extension-without-repo-setup', 'extension-private-prs', 'extension-local-data',
+    'extension-policy', 'why-managed', 'app-plans', 'app-sharing', 'app-history']) {
+    assert.equal(records.get(id).standing, 'In development', id);
+    assert.ok(records.get(id).html.includes(note), id);
+  }
   assert.equal(records.get('changed-vs-churn').standing, '');
   assert.equal(records.get('no-language-required').standing, '');
 });

@@ -11,7 +11,7 @@ answers consistent. Source implementation is not publication or feature availabi
 ## Reader journey
 
 The ordered categories are **Why diffdevil?**, **Understanding the numbers**, **Browser extension
-and Playground**, **Local use and policy**, **GitHub Actions, labels, and comments**, **Managed App
+and Lens Studio**, **Local use and policy**, **GitHub Actions, labels, and comments**, **Managed App
 and self-hosting**, **Privacy, history, and data**, and **Coding agents, releases, and the
 project**.
 
@@ -84,8 +84,8 @@ add another search dependency graph. Toolchain updates retain the build and brow
 ## Availability and deeper ownership
 
 Write answers for the complete selected release experience. A single subtle note near the top of
-the page states that the browser extension and complete managed-service experience are in
-development. Questions that depend on either surface reference that note through metadata so a
+the page distinguishes source implementation and private preview from public extension/App
+availability. Questions that depend on either surface reference that note through metadata so a
 direct link or search result does not lose the standing. Do not repeat the disclaimer inside every
 answer or let provisional language weaken the explanation.
 
