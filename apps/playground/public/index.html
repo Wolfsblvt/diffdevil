@@ -25,9 +25,10 @@
           <input id="pull-request-url" name="url" type="url" required spellcheck="false" autocomplete="url" value="https://github.com/Wolfsblvt/diffdevil/pull/1">
           <button type="submit">Analyze</button>
         </div>
-        <p class="hint">Public <code>github.com</code> pull requests only. The first local tranche uses GitHub's unauthenticated read API and stores nothing.</p>
+        <p class="hint">Public <code>github.com</code> pull requests only. Analysis uses GitHub's unauthenticated read API and stores no history.</p>
       </form>
       <p id="status" class="status" role="status" aria-live="polite"></p>
+      <p id="recovery" class="hint" hidden>No analysis is available for this request. Check the URL before trying again; if GitHub is unavailable or rate-limited, try later. To try diffdevil without GitHub access, <a href="https://github.com/Wolfsblvt/diffdevil/blob/main/docs/manual/start/analyze-local-changes.md" rel="noreferrer">run the local example</a> with its sample patch (requires Node.js 22+ and a terminal).</p>
     </section>
 
     <section id="result" hidden>
@@ -74,8 +75,8 @@
         <p>The website front door points at the same maintained Markdown and executable examples contributors update with the product. No shadow wiki, because one stale documentation universe is already plenty for humanity.</p>
       </div>
       <nav class="link-grid" aria-label="diffdevil documentation">
-        <a href="https://github.com/Wolfsblvt/diffdevil/blob/main/docs/guides/auto-label-pull-requests.md" rel="noreferrer">Label pull requests</a>
-        <a href="https://github.com/Wolfsblvt/diffdevil/blob/main/docs/guides/local-automation.md" rel="noreferrer">Automate locally</a>
+        <a href="https://github.com/Wolfsblvt/diffdevil/blob/main/docs/manual/start/label-pull-requests.md" rel="noreferrer">Label pull requests</a>
+        <a href="https://github.com/Wolfsblvt/diffdevil/blob/main/docs/manual/start/use-results-in-scripts.md" rel="noreferrer">Automate locally</a>
         <a href="https://github.com/Wolfsblvt/diffdevil/blob/main/docs/manual/policy/recipes.md" rel="noreferrer">Write policy</a>
         <a href="https://github.com/Wolfsblvt/diffdevil/blob/main/docs/manual/use/typescript-library.md" rel="noreferrer">Use the TypeScript API</a>
         <a href="https://github.com/Wolfsblvt/diffdevil/blob/main/docs/README.md" rel="noreferrer">Browse all documentation</a>

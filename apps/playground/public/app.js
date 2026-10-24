@@ -3,6 +3,7 @@
 const form = document.querySelector('#analyze-form');
 const input = document.querySelector('#pull-request-url');
 const status = document.querySelector('#status');
+const recovery = document.querySelector('#recovery');
 const result = document.querySelector('#result');
 const resultTitle = document.querySelector('#result-title');
 const pullRequestLink = document.querySelector('#pull-request-link');
@@ -91,6 +92,7 @@ function render(data) {
 form.addEventListener('submit', async event => {
   event.preventDefault();
   result.hidden = true;
+  recovery.hidden = true;
   status.className = 'status working';
   status.textContent = 'Reading the current pull-request comparison…';
   form.querySelector('button').disabled = true;
@@ -105,6 +107,7 @@ form.addEventListener('submit', async event => {
   } catch (error) {
     status.className = 'status error';
     status.textContent = error instanceof Error ? error.message : 'Analysis failed.';
+    recovery.hidden = false;
   } finally {
     form.querySelector('button').disabled = false;
   }
