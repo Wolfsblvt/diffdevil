@@ -242,7 +242,7 @@ test('retained file identity survives policy exclusion and unavailable interpret
   const source = await service.query(query, actor);
   assert.equal(await service.resolveFileCandidate({ ...source }, 17, resolve), undefined, 'only the server-held response context may resolve identities');
   assert.equal(await service.resolveFileCandidate(source, 18, resolve), undefined, 'the selected repository remains binding');
-  const broadSource = await service.query({ ...query, scope: { kind: 'all' } }, actor);
+  const broadSource = await service.query({ ...query, surface: 'files', scope: { kind: 'all' } }, actor);
   assert.equal(await service.resolveFileCandidate(broadSource, 17, resolve), undefined, 'a broad-scope response cannot supply a repository-detail identity');
   assert.equal(await service.resolveFileCandidate(source, 17, candidates => ({ ...candidates[0] })), undefined, 'the resolver must select an actual candidate');
   assert.equal(await service.resolveFileCandidate(source, 17, candidates => locator.resolve('a'.repeat(22), candidates)), undefined, 'a wrong locator reveals no identity');
