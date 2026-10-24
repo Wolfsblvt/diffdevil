@@ -107,7 +107,7 @@ export async function loadingJourney({ page, check, shot, ORIGIN, settled, joine
       if (premiumMode === 'fail') return route.fulfill({ status: 503, body: 'Fixture premium unavailable' });
       return route.continue();
     });
-    for (const [path, title] of [['/pr/parser-guild/parser-lab/452?per=90d', 'Pull request'], ['/file/parser-guild/parser-lab/' + 'a'.repeat(22) + '?s=%40parser-guild&per=90d', 'File history']]) {
+    for (const [path, title] of [['/files?s=parser-guild%2Fparser-lab&per=90d', 'Files'], ['/pr/parser-guild/parser-lab/452?per=90d', 'Pull request'], ['/file/parser-guild/parser-lab/' + 'a'.repeat(22) + '?s=%40parser-guild&per=90d', 'File history']]) {
       premiumMode = 'hold'; premiumGate = new Promise(resolve => { finishPremium = resolve; });
       await page.goto(`${ORIGIN}${path}`, { waitUntil: 'domcontentloaded' });
       await page.locator('[data-analytical-loading]').waitFor({ state: 'detached' });
@@ -121,7 +121,7 @@ export async function loadingJourney({ page, check, shot, ORIGIN, settled, joine
         });
         check('pending file identity reveals no unestablished path', identityTitle === 'File history' && await page.locator('[data-pending-file-head]').innerText().then(text => text.includes('parser-guild/parser-lab')));
       }
-      await shot(`loading-held-premium-${title === 'File history' ? 'file' : 'pr'}`);
+      await shot(`loading-held-premium-${title === 'File history' ? 'file' : title === 'Files' ? 'files' : 'pr'}`);
       premiumMode = 'fail'; finishPremium();
       const retryPremium = page.locator('[data-premium-retry]:visible').first();
       await retryPremium.waitFor();

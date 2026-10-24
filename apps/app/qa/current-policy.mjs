@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
 /** Trusted policy through the built Worker, local GitHub wire double, real sign-in and retained D1. */
-export async function currentPolicyJourney({ page, go, check, shot, ORIGIN, github, restart }) {
+export async function currentPolicyJourney({ page, go, check, shot, ORIGIN, github, restart, joined, settled }) {
   const repository = 'parser-guild/parser-lab';
   const query = { version: 1, surface: 'prs', repositoryIds: [1001], scope: { kind: 'repository', repositoryId: 1001 }, from: '2026-01-01T00:00:00.000Z', to: new Date().toISOString() };
   const endpoint = `${ORIGIN}/api/analytics?query=${encodeURIComponent(JSON.stringify(query))}`;
@@ -17,6 +17,22 @@ export async function currentPolicyJourney({ page, go, check, shot, ORIGIN, gith
   await go('/prs?s=parser-guild%2Fparser-lab&per=90d');
   check('rendered basis names the actual trusted repository source', (await page.locator('[data-current-policy-basis]').innerText()).includes('.diffdevil.yml@' + 'c'.repeat(40)));
   await shot('current-policy-trusted');
+  if (joined) {
+    for (const path of ['/', '/history']) {
+      await go(`${path}?s=parser-guild%2Fparser-lab&per=90d`);
+      await settled();
+      check(`${path} keeps the shared trusted policy notice through premium enrichment`, await page.locator('[data-current-policy-basis]').count() === 1
+        && (await page.locator('[data-current-policy-basis]').innerText()).includes('.diffdevil.yml@' + 'c'.repeat(40)));
+    }
+    await go('/files?s=parser-guild%2Fparser-lab&per=90d');
+    await settled();
+    check('deferred Files displays the trusted policy beside the acquired premium body', await page.locator('[data-current-policy-basis]').count() === 1
+      && (await page.locator('[data-current-policy-basis]').allTextContents()).join('').includes('.diffdevil.yml@' + 'c'.repeat(40)));
+    await shot('current-policy-deferred-files-trusted');
+    const document = await page.request.get(`${ORIGIN}/files?s=parser-guild%2Fparser-lab&per=90d&render=document`);
+    check('the complete Files document carries one policy basis without client acquisition', document.ok()
+      && (await document.text()).match(/data-current-policy-basis/gu)?.length === 1);
+  }
   await go('/manage/repositories/parser-guild/parser-lab');
   check('Manage names the same trusted policy source', (await page.locator('main').innerText()).includes('.diffdevil.yml@' + 'c'.repeat(40)));
   github.state.policyFiles.set(repository, 'version: 1\nsize:\n  thresholds: { xs: 1, s: 2, m: 3, l: 4 }\n');
@@ -27,6 +43,7 @@ export async function currentPolicyJourney({ page, go, check, shot, ORIGIN, gith
   const policyResult = await page.locator('[aria-labelledby="h-policy"]').innerText();
   check('PR detail shows the effective result without asserting bundled thresholds', /band\s+xl/u.test(policyResult)
     && !policyResult.includes('XS <20'));
+  check('PR detail retains the shared current-policy basis', await page.locator('[data-current-policy-basis]').count() === 1);
   await shot('current-policy-bands');
   for (const contents of [503, 'version: [broken']) {
     github.state.policyFiles.set(repository, contents);
@@ -39,11 +56,24 @@ export async function currentPolicyJourney({ page, go, check, shot, ORIGIN, gith
     && await page.locator('.a-prs2 .a-pr').count() > 0);
   check('classification captions disclose unavailable interpretation', (await page.locator('[data-chart-id="mix"] [data-meta]').innerText()).includes('unavailable'));
   await shot('current-policy-unavailable');
+  if (joined) {
+    await go('/files?s=parser-guild%2Fparser-lab&per=90d');
+    await settled();
+    check('deferred Files preserves its body with an honest unavailable notice and retry', await page.locator('[data-current-policy-unavailable]').count() === 1
+      && await page.getByRole('link', { name: 'Retry current policy', exact: true }).count() === 1
+      && await page.locator('[data-premium-region="files-body"] [data-chart].is-mounted').count() > 0);
+    await shot('current-policy-deferred-files-unavailable');
+  }
   github.state.policyFiles.delete(repository);
   await page.getByRole('link', { name: 'Retry current policy', exact: true }).click();
   await page.waitForFunction(() => !document.querySelector('[data-analytical-loading]'));
   check('retry recovers in the selected repository and period', new URL(page.url()).searchParams.get('s') === repository
     && new URL(page.url()).searchParams.get('per') === '90d' && await page.locator('[data-current-policy-unavailable]').count() === 0);
+  if (joined) {
+    await settled();
+    check('Files policy retry reaches the acquired body and removes the old failure', new URL(page.url()).pathname === '/files'
+      && await page.locator('[data-current-policy-basis]').count() === 1 && await page.locator('[data-current-policy-unavailable]').count() === 0);
+  }
   let release;
   github.state.policyGate = new Promise(resolve => { release = resolve; });
   try {

@@ -43,6 +43,7 @@ export async function fileReadJourney({ page, check, shot, ORIGIN, OUT, settled,
       samples.push({ ...sample, requests });
       check('file-detail resolves and enriches only the selected retained file', sample.heading === path && sample.identity === path && sample.enrichedFiles === 1 && sample.enrichedPath === path, JSON.stringify(sample));
       check('file-detail consumer enriches one server-view population', sample.populations === 1, JSON.stringify({ populations: sample.populations, detailMs: sample.detailMs }));
+      if (index === 0) check('file-detail bridge retains one shared policy basis inside the acquired body', await page.locator('[data-current-policy-basis]').count() === 1);
       if (index === 2) {
         await shot('file-read-populated');
         let periodAttempts = 0;

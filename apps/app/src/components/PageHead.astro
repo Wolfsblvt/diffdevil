@@ -4,13 +4,12 @@
 // period · updated), and the period switch which persists across pages through the URL.
 import { ago } from '../lib/format.mjs';
 import { scopeLine } from '../lib/view.mjs';
-interface Props { view: any; title: string; crumbs?: { label: string; href?: string }[]; period?: boolean; scope?: boolean }
-const { view, title, crumbs = [], period = true, scope = true } = Astro.props;
+import CurrentPolicy from './CurrentPolicy.astro';
+interface Props { view: any; title: string; crumbs?: { label: string; href?: string }[]; period?: boolean; scope?: boolean; policyNotice?: boolean }
+const { view, title, crumbs = [], period = true, scope = true, policyNotice = true } = Astro.props;
 const line = scopeLine(view);
 // Premium fragments render through an internal rewrite; period links must target the authenticated page URL.
 const pagePath = new URL(Astro.locals.analyticalUrl ?? Astro.url.href).pathname;
-const policies = view.data?.policies ?? [];
-const unavailablePolicies = policies.filter((policy: any) => policy.standing !== 'current');
 const trail: { label: string; href?: string }[] = [{ label: 'All repositories', href: view.href('/', { s: 'all' }) }];
 if (view.scope.kind === 'namespace') trail.push({ label: view.scope.namespace });
 if (view.scope.kind === 'repository') trail.push({ label: view.scope.namespace, href: view.href('/', { s: `@${view.scope.namespace}` }) }, { label: view.scope.name, href: view.href('/') });
@@ -34,5 +33,4 @@ trail.push(...crumbs);
 {!view.scopeUnavailable && view.entitlement?.namespaceEstablished === false && <p class="a-note"><span>This namespace's account is not recorded by the App yet, so its repositories read under your own plan until the next delivery records it.</span></p>}
 {!view.scopeUnavailable && view.entitlement?.aggregatePlan === 'unknown' && <p class="a-note"><span>The plan funding this scope could not be established right now; premium panels stay closed rather than guessed.</span></p>}
 {!view.scopeUnavailable && view.namespacePartial && <p class="a-note" data-namespace-partial><span>This namespace view covers the repositories currently discovered plus the repository reached through your direct link. Other repositories may be omitted; this is not a complete namespace inventory.</span></p>}
-{unavailablePolicies.length > 0 && <p class="a-note" data-current-policy-unavailable role="status"><span>Current interpretation unavailable for {unavailablePolicies.length} {unavailablePolicies.length === 1 ? 'repository' : 'repositories'}: {unavailablePolicies.some((policy: any) => policy.reason === 'stored-configuration-unavailable') ? 'stored App settings could not be read.' : 'the trusted repository policy could not be resolved; check App credentials, repository access and policy syntax.'} Retained base measurements and recorded original results remain available. <a href={view.href(pagePath)}>Retry current policy</a></span></p>}
-{view.scope.kind === 'repository' && policies.length === 1 && policies[0].standing === 'current' && <p class="a-mini" data-current-policy-basis>Current policy <code>{policies[0].requestedId}</code> · {policies[0].sourceIdentity ?? 'effective repository policy'}</p>}
+{policyNotice && <CurrentPolicy view={view} />}

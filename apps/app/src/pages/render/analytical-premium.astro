@@ -3,6 +3,7 @@
 // Only premium regions: no second common chart/model/document render to throw away.
 export const partial = true;
 import DeferredRegion from '../../components/DeferredRegion.astro';
+import CurrentPolicy from '../../components/CurrentPolicy.astro';
 import PullRequestFiles from '../../components/PullRequestFiles.astro';
 import { analyticalRoute } from '../../lib/analytical-request.mjs';
 import { loadView, repositoryByFullName } from '../../lib/view.mjs';
@@ -56,7 +57,7 @@ if (route.section === 'file' && !view.fileIdentity) Astro.response.status = 404;
   {selection.bucket && BucketFiles && <DeferredRegion name="history-bucket-files" title="Files in this bucket"><BucketFiles view={view} bucket={selection.bucket} unitWord={selection.unitWord} /></DeferredRegion>}
   {Panels && <DeferredRegion name="history-panels" title="Growth and concentration"><Panels view={view} {...selection} life={view.lifecycle.standing === 'available'} /></DeferredRegion>}
 </>}
-{pro && route.section === 'files' && FilesBody && <DeferredRegion name="files-body" title="File history"><FilesBody view={view} /></DeferredRegion>}
+{pro && route.section === 'files' && FilesBody && <DeferredRegion name="files-body" title="File history"><CurrentPolicy view={view} /><FilesBody view={view} /></DeferredRegion>}
 {pro && route.section === 'file' && FileBody && <DeferredRegion name="file-body" title="File history">
   {file ? <FileBody view={view} repository={repository} file={file} fullName={fullName} /> : !view.fileIdentity ? <div class="a-focus a-pn"><div class="a-pn-b"><h1>No such file</h1><p class="lede">This handle does not identify a file in your currently authorised, retained repository history.</p></div></div> : <div class="a-focus a-pn"><div class="a-pn-b"><h1>{view.fileIdentity.path}</h1><p class="lede">No retained merged comparison names this file during the selected {view.period.label}. The retained history window is incomplete; this does not establish that the file was unchanged.</p></div></div>}
 </DeferredRegion>}

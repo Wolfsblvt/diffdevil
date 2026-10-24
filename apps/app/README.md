@@ -23,6 +23,10 @@ commit independently of premium acquisition; existing premium chart objects rema
 notice until their new models arrive. The premium response renders only the requested regions, without rendering and
 discarding the common page's charts again. Both common and premium updates retain chart instances and keyboard state.
 
+The shared current-policy notice travels with the population that supplied its basis. Files keeps its title and
+period controls in the common response; its public deferred-body wrapper renders policy provenance or unavailable/retry
+beside the premium result. Other page headers use the same notice component. Premium modules do not duplicate it.
+
 A 200 shell establishes only a valid local session and a rendered frame. It does not establish provider, plan or
 analytical health. An inaccessible detail returns 404 from its independently authorized data read and renders the
 existing not-found state; the generic document itself contains no protected detail.
@@ -59,6 +63,8 @@ accepted Overview chart composition through its deferred-region wrappers.
 For held/failed premium-region and chart-continuity checks without private source, build with
 `DIFFDEVIL_PREMIUM=apps/app/qa/loading-premium/index.mjs`, then run the same `--loading` journey. This joins a clearly
 synthetic public extension fixture, not the paid implementation; rebuild with `DIFFDEVIL_PREMIUM=off` afterward.
+The same fixture with `--current-policy` exercises deferred Files provenance, unavailable/retry and the complete
+server document, alongside the common analytical headers. This remains public contract evidence, not private composition.
 `DIFFDEVIL_APP_QA_LOADING_SCALE=1` selects the anonymous measured-scale cohort for this local journey: 142 records,
 915 paths and 256,986 logical size observations represented by 265 shared fact sets and 7,563 exact markers. The fixture
 also matches the retained JSON byte envelope and recovery gaps; identities, time distribution and sizes are synthetic,

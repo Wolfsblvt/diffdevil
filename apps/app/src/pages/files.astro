@@ -7,6 +7,7 @@
 import AppShell from '../layouts/AppShell.astro';
 import DeferredRegion from '../components/DeferredRegion.astro';
 import PageHead from '../components/PageHead.astro';
+import CurrentPolicy from '../components/CurrentPolicy.astro';
 import PlanChip from '../components/PlanChip.astro';
 import Icon from '../components/Icon.astro';
 import Unavailable from '../components/Unavailable.astro';
@@ -22,8 +23,8 @@ const siteOrigin = Astro.locals.app.config.siteOrigin;
 const pointers = (entitlement.fundedNamespaces ?? entitlement.sharedPaid ?? []).filter((namespace: string) => `@${namespace}` !== state.s);
 ---
 <AppShell title="Files" nav={navModel(view, 'files')} view={view}>
-  <PageHead view={view} title="Files" period={view.premiumHere} />
-  {view.premiumHere && Body ? <DeferredRegion name="files-body" title="File history"><Body view={view} /></DeferredRegion>
+  <PageHead view={view} title="Files" period={view.premiumHere} policyNotice={false} />
+  {view.premiumHere && Body ? <DeferredRegion name="files-body" title="File history"><CurrentPolicy view={view} /><Body view={view} /></DeferredRegion>
   : view.historyUnavailable ? <HistoryUnavailable view={view} />
   : entitlement.premium ? <div class="a-focus a-pn">
     <div class="a-pn-b" style="padding:28px 32px">
