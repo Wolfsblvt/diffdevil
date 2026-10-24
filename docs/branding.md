@@ -16,8 +16,8 @@ The document defines the **textual brand**. The selected visual identity and its
 - **Canonical repository path for this document:** `docs/branding.md`
 - **Textual brand status:** settled
 - **Visual brand status:** settled as E3/W1/T2 with Foundation A; [`../packages/design/`](../packages/design/) is the reusable visual source
-- **Primary product category:** composable diff analysis and automation
-- **Primary surfaces:** CLI, TypeScript library, GitHub Action, CI pipelines, scripts, and coding-agent workflows
+- **Primary product category:** diff analysis, repository history, and automation
+- **Primary surfaces:** diffdevil for GitHub (the personal browser extension), the free CLI/TypeScript library/GitHub Actions, and the managed App for repository history and automation; Lens Studio and Examples provide account-free exploration
 
 The core rule is:
 
@@ -43,7 +43,7 @@ A second useful editorial rule follows from it:
 
 ### Public category descriptor
 
-> **Composable diff analysis and automation for GitHub and the CLI.**
+> **Diff analysis, repository history, and automation.**
 
 ### Technical category descriptor
 
@@ -51,15 +51,15 @@ A second useful editorial rule follows from it:
 
 ### Canonical short description
 
-> **Measure and query Git diffs, evaluate rules, and automate GitHub labels and comments.**
+> **Understand changes in GitHub, explore repository history, and automate with shared measurements and rules.**
 
 ### Canonical one-sentence description
 
-> **diffdevil turns Git diffs into stable metrics, queryable facts, policy decisions, and optional GitHub labels and comments.**
+> **diffdevil helps you understand changes in GitHub, use their measurements in automation, and follow how a codebase changes over time.**
 
 ### Canonical long description
 
-> **diffdevil is a composable CLI, TypeScript library, and GitHub Action for turning Git diffs into stable, queryable facts. It calculates raw and replacement-aware line metrics, file facts, and scoped aggregates; evaluates custom metrics, queries, bands, and rules; emits structured reports and effect plans; and can optionally reconcile configured pull-request labels and comments. The same deterministic core works locally, in scripts, in CI pipelines, and in GitHub Actions.**
+> **diffdevil brings replacement-aware change measurements to GitHub through a personal browser extension, complete free CLI/library/Actions tools, and a managed App for repository history and automation. The same deterministic engine supplies file facts, scoped queries, policy decisions and explicit effect plans. The App connects pull requests and files across time, with Free, Pro and Business capabilities for history and coordinated operation. Each surface keeps its own availability, permissions and operating responsibilities.**
 
 ### Voice
 
@@ -190,7 +190,7 @@ It is compact enough for a README opening, website hero, social card, release im
 
 ### 3. Category or product description
 
-> **Composable diff analysis and automation for GitHub and the CLI.**
+> **Diff analysis, repository history, and automation.**
 
 The descriptor establishes what kind of product this is. It prevents the hero from being interpreted as an empty joke or a cute wrapper around a single PR-size counter.
 
@@ -207,7 +207,7 @@ For technical audiences already inside the documentation, use:
 
 **Measure changes. Match rules. Act on the result.**
 
-Composable diff analysis and automation for GitHub and the CLI.
+Diff analysis, repository history, and automation.
 ```
 
 Not every surface needs all three layers. The hero must not be repeated so often that it becomes verbal wallpaper.
@@ -218,7 +218,7 @@ The following copy is approved for direct reuse. Small grammatical adaptation is
 
 ### GitHub repository description
 
-> **Measure and query Git diffs, evaluate rules, and automate GitHub labels and comments.**
+> **Understand changes in GitHub, explore repository history, and automate with shared measurements and rules.**
 
 This is the preferred repository metadata description. It is clear, searchable, and broad enough for the full product.
 
@@ -236,17 +236,17 @@ This is the preferred repository metadata description. It is clear, searchable, 
 
 ### One-sentence product description
 
-> **diffdevil turns Git diffs into stable metrics, queryable facts, policy decisions, and optional GitHub labels and comments.**
+> **diffdevil helps you understand changes in GitHub, use their measurements in automation, and follow how a codebase changes over time.**
 
 Use this in introductions, comparison pages, release summaries, and places where one sentence must carry the complete product shape.
 
 ### Longer product description
 
-> **diffdevil is a composable CLI, TypeScript library, and GitHub Action for turning Git diffs into stable, queryable facts. It calculates raw and replacement-aware line metrics, file facts, and scoped aggregates; evaluates custom metrics, queries, bands, and rules; emits structured reports and effect plans; and can optionally reconcile configured pull-request labels and comments. The same deterministic core works locally, in scripts, in CI pipelines, and in GitHub Actions.**
+> **diffdevil brings replacement-aware change measurements to GitHub through a personal browser extension, complete free CLI/library/Actions tools, and a managed App for repository history and automation. The same deterministic engine supplies file facts, scoped queries, policy decisions and explicit effect plans. The App connects pull requests and files across time, with Free, Pro and Business capabilities for history and coordinated operation. Each surface keeps its own availability, permissions and operating responsibilities.**
 
 ### Short “why it exists” paragraph
 
-> **Git gives you a patch and a pair of raw counters. diffdevil turns the details inside that diff into facts your scripts and workflows can inspect, query, evaluate, and act on.**
+> **Git gives you a patch and a pair of raw counters. diffdevil makes those changes easier to understand in GitHub, reuse in scripts and workflows, and connect to the history of a codebase.**
 
 This belongs near the beginning of the root README, after the hero and before the detailed feature inventory.
 
@@ -286,35 +286,26 @@ Inside GitHub the extension follows GitHub's visual language, uses the compact `
 
 ## Canonical README opening
 
-The preferred root README opening is:
+The root README introduces the whole product to someone deciding whether and how
+to use it. Lead with the maintained diffdevil default lockup (mark and wordmark),
+a compact strip of truthful badges, the hero and strapline, then the human purpose:
 
-```markdown
-# diffdevil
+> **diffdevil helps you understand what changed in a pull request, use those facts in automation, and follow how a codebase changes over time.**
 
-> **The devil is in the diff.**
+Name the personal browser extension, free open tools and managed App together.
+Show replacement-aware Changed with a compact example, and make the website,
+Playground, documentation and local quick start easy to find. State release,
+Store and managed-service availability before a reader commits to a route.
+The extension changes a personal GitHub view; the App runs for the repository.
 
-**Measure changes. Match rules. Act on the result.**
+The opening establishes the name, memorable brand idea, functional movement,
+product purpose and a useful next action. It does not require technical literacy
+before a reader can understand the product. CLI installation, a complete workflow,
+API calls and policy syntax belong after that decision or in their maintained guides.
 
-`diffdevil` is a composable CLI, TypeScript library, and GitHub Action
-that turns Git diffs into stable metrics, queryable facts, policy
-decisions, and optional pull-request labels and comments.
-
-Git gives you a patch and a pair of raw counters. `diffdevil` turns the
-details inside that diff into facts your scripts and workflows can
-inspect, query, evaluate, and act on.
-```
-
-The README may place badges between the H1 and hero when repository convention or visual balance requires it. The hero, strapline, and product explanation should otherwise remain together as one opening unit.
-
-The opening must establish, in order:
-
-1. the name;
-2. the memorable brand idea;
-3. the functional movement;
-4. the actual product category;
-5. the reason the product exists.
-
-Do not open with an implementation inventory, installation command, mascot joke, or a paragraph about how GitHub’s counters are stupid. Those may all become relevant later, because humans apparently need evidence before accepting that a number can be misleading.
+Reuse the canonical light/dark assets rather than designing a README-only logo.
+Keep the hero, strapline and explanation together. The README's exact prose and
+layout can evolve without turning this reference into a second writable README.
 
 ## Brand voice
 
@@ -972,7 +963,7 @@ Repository metadata should be direct and searchable. Do not spend scarce descrip
 
 Preferred:
 
-> Measure and query Git diffs, evaluate rules, and automate GitHub labels and comments.
+> Understand changes in GitHub, explore repository history, and automate with shared measurements and rules.
 
 ### npm metadata
 
@@ -1418,52 +1409,25 @@ Avoid copy that turns a narrow fact into a grand claim.
 
 ## Product-page and README structure
 
-A public product page or mature root README should generally follow this narrative:
+The README is a short product entrance; the website can provide a deeper tour.
+Choose a coherent reading order rather than promoting every engine capability to
+a separate section. The release entrance follows this spine:
 
-```markdown
-# diffdevil
+1. The product identity, a useful Changed example, current availability, and website/docs/try routes.
+2. The personal extension: Changed inside GitHub, an inspectable report, and the next installation route.
+3. The managed App: repository memory, the Free/Pro/Business offer, sharing and data handling, with availability explicit.
+4. The complete free tools: a runnable first result and contextual routes to Actions, scripts, policy, the API and coding agents.
+5. Maintained documentation, contribution and security routes, a compact Wolfsblvt Works attribution, and component licensing.
 
-> The devil is in the diff.
+Use actual UI captures where they help a reader understand the experience. Name
+sample accounts and authored fixtures in captions; a screenshot does not prove
+Store publication, public App admission, or paid availability. Reuse the maintained
+asset rather than making a README copy of it.
 
-Measure changes. Match rules. Act on the result.
-
-[short product description]
-
-## Turn diffs into useful facts
-[raw and replacement-aware metrics]
-
-## Query what changed
-[CLI values, files, scopes, JSON, and checks]
-
-## Define what matters
-[metrics, bands, and rules]
-
-## Plan before applying
-[reports, effect plans, and dry runs]
-
-## Automate GitHub cleanly
-[managed labels, owned comments, and label definitions]
-
-## Use the same engine everywhere
-[CLI, TypeScript API, GitHub Action, CI, and agents]
-
-## Know what the result means
-[measurement status, metric versions, and interpretation boundaries]
-
-## Get started
-[installation and first useful examples]
-```
-
-The exact headings may change as the implemented product develops. The narrative should remain:
-
-1. trustworthy facts;
-2. flexible consumption;
-3. declared policy;
-4. deliberate effects;
-5. portable core;
-6. honest interpretation.
-
-Do not structure the README as a directory of every command before the reader understands why the product exists.
+Trustworthy facts, flexible consumption, declared policy, deliberate effects and
+honest interpretation run through this story. They do not each require another
+README chapter. Keep detailed examples and operating instructions discoverable in
+the manual. The exact headings and visual balance remain editorial choices.
 
 ## Visual-brand boundary
 
@@ -1535,7 +1499,7 @@ Update ordinary product and technical documentation instead unless the change al
 
 Canonical descriptions express the selected complete product identity. Individual public surfaces must remain truthful to the released implementation.
 
-Before a capability ships, wording may describe it as planned only in roadmap or design material. Do not copy the full long description into a release surface if that release does not yet provide the named capability.
+A product entrance can explain the complete selected destination, including the extension and App, when availability is explicit at the point of use. Do not present a planned service, Store listing, paid enrollment or feature as available. Package and Action release descriptions remain scoped to what that release supplies.
 
 A smaller first implementation tranche does not redefine the brand destination, but public copy must distinguish current and planned behavior honestly.
 
@@ -1548,13 +1512,13 @@ hero: The devil is in the diff.
 
 strapline: Measure changes. Match rules. Act on the result.
 
-category: Composable diff analysis and automation for GitHub and the CLI.
+category: Diff analysis, repository history, and automation.
 
 technicalCategory: A portable diff analysis and policy engine.
 
 shortDescription: >-
-  Measure and query Git diffs, evaluate rules, and automate GitHub
-  labels and comments.
+  Understand changes in GitHub, explore repository history, and
+  automate with shared measurements and rules.
 
 packageDescription: >-
   Composable Git diff analysis and policy for Node.js, CI pipelines,
@@ -1568,22 +1532,23 @@ marketplaceDescription: >-
   pull-request labels and comments.
 
 oneSentenceDescription: >-
-  diffdevil turns Git diffs into stable metrics, queryable facts,
-  policy decisions, and optional GitHub labels and comments.
+  diffdevil helps you understand changes in GitHub, use their measurements
+  in automation, and follow how a codebase changes over time.
 
 description: >-
-  diffdevil is a composable CLI, TypeScript library, and GitHub Action
-  for turning Git diffs into stable, queryable facts. It calculates raw
-  and replacement-aware line metrics, file facts, and scoped aggregates;
-  evaluates custom metrics, queries, bands, and rules; emits structured
-  reports and effect plans; and can optionally reconcile configured
-  pull-request labels and comments. The same deterministic core works
-  locally, in scripts, in CI pipelines, and in GitHub Actions.
+  diffdevil brings replacement-aware change measurements to GitHub through
+  a personal browser extension, complete free CLI/library/Actions tools,
+  and a managed App for repository history and automation. The same
+  deterministic engine supplies file facts, scoped queries, policy decisions
+  and explicit effect plans. The App connects pull requests and files across
+  time, with Free, Pro and Business capabilities for history and coordinated
+  operation. Each surface keeps its own availability, permissions and
+  operating responsibilities.
 
 why: >-
-  Git gives you a patch and a pair of raw counters. diffdevil turns the
-  details inside that diff into facts your scripts and workflows can
-  inspect, query, evaluate, and act on.
+  Git gives you a patch and a pair of raw counters. diffdevil makes those
+  changes easier to understand in GitHub, reuse in scripts and workflows,
+  and connect to the history of a codebase.
 
 voice:
   - precise
