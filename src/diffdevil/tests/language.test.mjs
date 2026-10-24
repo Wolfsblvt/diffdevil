@@ -84,7 +84,7 @@ test('file filtering, mapping and scoped totals use validated normalized facts',
   const e = env('exact');
   const selected = call('filter',p('files'),a.lambda('f',p('f.included')));
   const paths = value(call('map',selected,a.lambda('f',p('f.path'))),e);
-  assert.equal(paths.items.length,fixture('exact').files.filter(f=>f.included).length);
+  assert.deepEqual(paths,completeCollection([textValue('src/Foo.cs'),textValue('tests/Foo.Tests.cs')]));
   assert.deepEqual(value(call('sum',selected,a.lambda('f',p('f.lines.changed'))),e),value(p('totals.lines.changed'),e));
   assert.deepEqual(value(call('any',selected,a.lambda('f',a.binary('>',p('f.lines.changed'),lit(0)))),e),boolValue(true));
 });
@@ -106,7 +106,17 @@ test('unknown ordering and take retain possible membership with exact selected c
   const items={kind:'collection',items:[{membership:'definite',value:integer(2)},{membership:'definite',value:numberValue({status:'bounded',lower:0,upper:3})}],unseen:{possible:false,minimum:0,maximum:0},order:'known'};
   const e=unwrap(createEnvironment({params:recordType({items:collection('integer')})},{params:recordValue({items})}));
   const take=call('take',call('sortBy',p('params.items'),a.lambda('x',p('x'))),lit(1));
-  const result=unwrap(run(take,e)); assert.equal(result.value.items.length,2); assert.ok(result.value.items.every(x=>x.membership==='possible')); assert.equal(result.value.order,'unknown');
+  const result=unwrap(run(take,e));
+  assert.deepEqual(result.value,{
+    kind:'collection',
+    items:[
+      {membership:'possible',value:integer(2)},
+      {membership:'possible',value:numberValue({status:'bounded',lower:0,upper:3})}
+    ],
+    unseen:{possible:false,minimum:0,maximum:0},
+    order:'unknown',
+    cardinality:{status:'exact',value:1}
+  });
   assert.deepEqual(value(call('count',take),e),integer(1));
   assert.deepEqual(value(call('take',p('params.items'),lit(0)),e),completeCollection([]));
 });

@@ -11,7 +11,7 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { join } from 'node:path';
-import { readReport, unwrap } from '../../dist/lib/index.js';
+import { analyzeDiff, readReport, unwrap } from '../../dist/lib/index.js';
 import { compilePolicy, evaluatePolicy } from '../../dist/lib/policy/index.js';
 import { entries, groups } from './docs-manifest.mjs';
 import {isRetired, legacyRedirects, validateRetiredRoutes} from '../manual/migration.mjs';
@@ -79,9 +79,23 @@ test('the browser SHA-256 shim matches Node for the identities the engine derive
   }
 });
 
-test('the shared App check summary is the composer both runtimes use', () => {
-  const report = unwrap(readReport(JSON.parse(read('docs/examples/reports/exact.json'))));
-  assert.match(checkSummary(report, { changed: 1 }), /^Replacement-aware changed lines: \d+/u);
+for (const [name, changed, raw, effects] of [
+  ['exact', 178, 293, 2],
+  ['bounded', 'unavailable', 70, 1],
+  ['incomplete', 'unavailable', 'unavailable', 0],
+  ['unmeasurable', 'unavailable', 'unavailable', 0],
+]) {
+  test(`the shared check summary preserves ${name} measurements and observed effect counts`, () => {
+    const report = unwrap(readReport(JSON.parse(read(`docs/examples/reports/${name}.json`))));
+    assert.equal(checkSummary(report, { changed: effects }),
+      `Replacement-aware changed lines: ${changed}\nRaw churn: ${raw}\nPolicy effects observed: ${effects}`);
+  });
+}
+
+test('the shared check summary preserves measured zero instead of reporting it unavailable', () => {
+  const report = unwrap(analyzeDiff(''));
+  assert.equal(checkSummary(report, { changed: 0 }),
+    'Replacement-aware changed lines: 0\nRaw churn: 0\nPolicy effects observed: 0');
 });
 
 test('site copy keeps design placeholders only where the build resolves them', () => {

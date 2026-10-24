@@ -13,7 +13,11 @@ import {environmentFromReport} from '../../../dist/lib/language/environment.js';
 import {parseInvocation} from '../../../dist/lib/cli/arguments.js';
 import {unwrap} from '../../../dist/lib/errors.js';
 const root=fileURLToPath(new URL('../../../', import.meta.url)),cli=resolve(root,'dist/lib/cli/main.js');
-const invoke=(args,options={})=>spawnSync(process.execPath,[cli,...args],{encoding:'utf8',cwd:root,timeout:10000,...options});
+const invoke=(args,options={})=>{
+ const result=spawnSync(process.execPath,[cli,...args],{encoding:'utf8',cwd:root,timeout:10000,...options});
+ assert.ifError(result.error);
+ return result;
+};
 const report=name=>resolve(root,`docs/examples/reports/${name}.json`);
 const p=path=>a.path(path.split('.')),call=(name,...args)=>a.call(name,args),l=a.literal;
 const expressions={
@@ -61,12 +65,31 @@ test('strict unresolved results do not overwrite an existing output file',()=>{
   const exact=invoke(['query','--report',report('exact'),'--metric','changed','--output',output]);assert.equal(exact.status,0);assert.equal(exact.stdout,'');assert.equal(readFileSync(output,'utf8'),'178\n');
  }finally{rmSync(temp,{recursive:true,force:true});}
 });
-test('schema discovery and current capability failures remain explicit',()=>{
- for(const kind of ['report','config','query','plan','language']){
-  const r=invoke(['schema','--kind',kind]);assert.equal(r.status,0,r.stderr);assert.ok(JSON.parse(r.stdout));
- }
- const r=invoke(['query','--report',report('exact'),'--expr','totals.lines.changed']);assert.equal(r.status,0,r.stderr);assert.equal(r.stdout,'178\n');
- const missing=invoke(['query','--report','does-not-exist.json']);assert.equal(missing.status,2);assert.match(missing.stderr,/E_SOURCE/);
+const schemaContracts={
+ report:'schemas/report-v1.schema.json',
+ config:'schemas/policy-v1.schema.json',
+ query:'schemas/query-result-v1.schema.json',
+ plan:'schemas/plan-v1.schema.json',
+ language:'detail/v1/profile.json',
+ metrics:'detail/v1/shortcuts.json'
+};
+for(const [kind,path] of Object.entries(schemaContracts)){
+ test(`schema discovery emits the maintained ${kind} contract`,()=>{
+  const result=invoke(['schema','--kind',kind]);
+  assert.equal(result.status,0,result.stderr);
+  assert.equal(result.stderr,'');
+  assert.deepEqual(JSON.parse(result.stdout),JSON.parse(readFileSync(resolve(root,'src/diffdevil/contracts',path))));
+ });
+}
+test('schema discovery defaults to the report contract and refuses unknown kinds',()=>{
+ const result=invoke(['schema']);
+ assert.equal(result.status,0,result.stderr);
+ assert.equal(result.stderr,'');
+ assert.deepEqual(JSON.parse(result.stdout),JSON.parse(readFileSync(resolve(root,'src/diffdevil/contracts',schemaContracts.report))));
+ const unknown=invoke(['schema','--kind','unknown','--diagnostics','json']);
+ assert.equal(unknown.status,2);
+ assert.equal(unknown.stdout,'');
+ assert.equal(JSON.parse(unknown.stderr).code,'E_USAGE');
 });
 test('selection conflicts are rejected instead of ignored',()=>{
  for(const args of [['query','--scope','x','--all-files'],['check','--certain','--gt','1'],['check','--files','any','--metric','files','--gt','1'],['query','--metric','metrics.review','--path','src/**'],['query','--metric','files.total','--path','src/**'],['query','--select','path'],['query','--status','exact']]){
@@ -78,6 +101,7 @@ test('selection conflicts are rejected instead of ignored',()=>{
 test('file acquisition refuses invalid UTF-8, non-files, and over-limit inputs cleanly',()=>{
  const temp=mkdtempSync(resolve(tmpdir(),'diffdevil-input-'));
  try{
+  const missing=invoke(['query','--report',resolve(temp,'missing.json')]);assert.equal(missing.status,2);assert.equal(missing.stdout,'');assert.match(missing.stderr,/E_SOURCE/);
   const invalid=resolve(temp,'invalid.diff');writeFileSync(invalid,Buffer.from([0xff]));
   const bad=invoke(['analyze','--diff-file',invalid,'--no-config']);assert.equal(bad.status,2);assert.equal(bad.stdout,'');assert.match(bad.stderr,/E_SOURCE/);
   const directory=invoke(['analyze','--diff-file',temp,'--no-config']);assert.equal(directory.status,2);assert.equal(directory.stdout,'');assert.match(directory.stderr,/E_SOURCE/);
@@ -89,6 +113,7 @@ test('file acquisition refuses invalid UTF-8, non-files, and over-limit inputs c
 test('detail text, expression files and expression stdin share clean CLI output',()=>{
  const temp=mkdtempSync(resolve(tmpdir(),'diffdevil-expression-'));
  try {
+  const inline=invoke(['query','--report',report('exact'),'--expr','totals.lines.changed']);assert.equal(inline.status,0,inline.stderr);assert.equal(inline.stdout,'178\n');
   const file=resolve(temp,'calculation with spaces.ddexpr');writeFileSync(file,'totals.lines.deleted + 2 * totals.lines.modified\r\n');
   const fromFile=invoke(['query','--report',report('exact'),'--expr-file',file,'--format','value']);
   assert.equal(fromFile.status,0,fromFile.stderr);assert.equal(fromFile.stdout,'248\n');

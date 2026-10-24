@@ -22,14 +22,25 @@ test('the website footer binds the vendored lockup for each appearance from vend
   for (const binding of bindings) assert.ok(existsSync(new URL(binding, new URL('./src/styles/global.css', import.meta.url))), binding);
 });
 
-test('the binding fills every placeholder with escaped host facts and keeps Works copy', () => {
-  const html = renderWorksSponsor(template, { id: 'support-dd', links: [{ label: 'GitHub Sponsors', href: 'https://github.com/sponsors/Wolfsblvt' }] });
+test('the binding fills host slots, escapes their content, and keeps instance ids separate', () => {
+  const html = renderWorksSponsor(template, {
+    id: 'support-dd',
+    heading: 3,
+    context: '<diffdevil> & "friends"',
+    links: [
+      { label: 'GitHub Sponsors', href: 'https://github.com/sponsors/Wolfsblvt?ref=diffdevil&source=footer' },
+      { label: 'Ko-fi', href: 'https://ko-fi.com/wolfsblvt' },
+    ],
+  });
   assert.doesNotMatch(html, /\{\{\w+\}\}/u);
-  assert.match(html, /<h2 id="support-dd-title">Support the work\.<\/h2>/u);
-  assert.match(html, /Help fund development, maintenance, and the ideas behind Wolfsblvt Works\./u);
-  assert.match(html, /<a class="primary" href="https:\/\/github\.com\/sponsors\/Wolfsblvt" rel="noopener">GitHub Sponsors<\/a>/u);
+  assert.match(html, /<h3 id="support-dd-title">[^<]+<\/h3>/u);
+  assert.match(html, /<p class="add">&lt;diffdevil&gt; &amp; &quot;friends&quot;<\/p>/u);
+  assert.match(html, /<a class="primary" href="https:\/\/github\.com\/sponsors\/Wolfsblvt\?ref=diffdevil&amp;source=footer" rel="noopener">GitHub Sponsors<\/a>/u);
+  assert.match(html, /<a class="secondary" href="https:\/\/ko-fi\.com\/wolfsblvt" rel="noopener">Ko-fi<\/a>/u);
   assert.doesNotMatch(html, /\{\{id\}\}|id="-/u);
   const twice = renderWorksSponsor(template, { id: 'second', links: [] });
+  assert.match(twice, /<h2 id="second-title">[^<]+<\/h2>/u);
+  assert.doesNotMatch(twice, /<p class="add">|<a /u);
   const ids = html.match(/id="([^"]+)"/gu), other = twice.match(/id="([^"]+)"/gu);
   assert.equal(ids.filter(value => other.includes(value)).length, 0, 'two instances share no SVG ids');
 });
