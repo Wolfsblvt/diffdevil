@@ -21,7 +21,7 @@ import { copy } from '../data/copy';
 import CodeBlock from '../components/CodeBlock.astro';
 import SectionHead from '../components/SectionHead.astro';
 import SectionLinks from '../components/SectionLinks.astro';
-import { blobUrl, docPaths, paths } from '../data/site';
+import { blobUrl, docPaths, paths, DASHBOARD_URL } from '../data/site';
 const permissions = [
   ['Contents', 'read', 'trusted repository policy (.diffdevil.yml from the PR base) and relative comment templates'],
   ['Pull requests', 'write', 'PR acquisition and the selected label / owned-comment effects'],
@@ -91,6 +91,7 @@ const migration = `# 1. Turn off the Action writer. A read-only step may stay.
   <section class="section section-first" data-section="app">
     <div class="wrap">
       <AppPanel as="h1" secondaryHref="#tour" selfHostHref="#self-host" />
+      {DASHBOARD_URL && <p><a href={new URL('/',DASHBOARD_URL).href}>Open the diffdevil App</a> to sign in with your GitHub access.</p>}
       <ProductShot src={overview} alt={shots.overview.alt} title={copy.app.shotTitle} caption={`${shots.overview.caption} ${copy.app.shotStanding}`} eager />
       {!availability.app.open && <aside class="notice-proposed" role="note"><strong>{availability.app.status}</strong> {availability.app.note} Everything on this page describes the implemented App. The CLI, Actions and Playground work today without it.</aside>}
     </div>

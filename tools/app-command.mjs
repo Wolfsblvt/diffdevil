@@ -7,12 +7,13 @@
  *   node tools/app-command.mjs build|dev|preview [--staging] [extra astro args]
  */
 import { spawnSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, writeFileSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join, relative, resolve } from 'node:path';
 import { origins } from '../apps/website/public-origins.mjs';
 import { selectPremium } from '../apps/app/premium-selection.mjs';
 import { appBuildTarget } from '../apps/app/build-target.mjs';
+import { writeWebAppAssets } from './web-app-assets.mjs';
 
 const [command, ...rest] = process.argv.slice(2);
 if (!['build', 'dev', 'preview'].includes(command)) { console.error('Expected build, dev or preview.'); process.exit(2); }
@@ -25,6 +26,13 @@ if (expectedTarget !== undefined && target.name !== expectedTarget) {
   process.exit(2);
 }
 const appOrigin = target.origin;
+if (command === 'build' || command === 'dev') {
+  writeWebAppAssets('app', 'apps/app/public');
+  const discoverable = target.name === 'production';
+  writeFileSync('apps/app/public/robots.txt', `User-agent: *\n${discoverable ? 'Allow: /' : 'Disallow: /'}\nSitemap: ${appOrigin}/sitemap.xml\n`);
+  writeFileSync('apps/app/public/sitemap.xml', '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+    + (discoverable ? `<url><loc>${appOrigin}/</loc></url>` : '') + '</urlset>\n');
+}
 const astroArgs = rest.filter(argument => argument !== '--staging' && !argument.startsWith('--expect-target='));
 const extra = command === 'dev' ? ['--host', '127.0.0.1', '--port', '4411'] : command === 'preview' ? ['--host', '127.0.0.1', '--port', '4412'] : [];
 const result = spawnSync(process.execPath, [resolve('node_modules/astro/bin/astro.mjs'), command, '--root', 'apps/app', ...extra, ...astroArgs], {

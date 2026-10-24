@@ -31,7 +31,7 @@ export function securityHeaders(runtime) {
   return {
     // style-src allows attribute styles: data-bound bar widths and label colours are rendered as style attributes
     // from escaped server values. Scripts remain 'self' only; no inline script exists on any App page.
-    'content-security-policy': `default-src 'none'; script-src 'self'; worker-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: https://avatars.githubusercontent.com; connect-src 'self'; base-uri 'none'; form-action ${formSources.join(' ')}; frame-ancestors 'none'`,
+    'content-security-policy': `default-src 'none'; manifest-src 'self'; script-src 'self'; worker-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: https://avatars.githubusercontent.com; connect-src 'self'; base-uri 'none'; form-action ${formSources.join(' ')}; frame-ancestors 'none'`,
     'permissions-policy': 'camera=(), microphone=(), geolocation=(), payment=(), usb=()',
     // same-origin, not no-referrer, on documents: with no-referrer a browser sends `Origin: null` on same-origin
     // form posts, which the sign-in exchange must refuse. Cross-origin requests (GitHub links) still receive nothing.

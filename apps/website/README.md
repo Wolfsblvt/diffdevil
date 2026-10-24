@@ -44,6 +44,26 @@ exact candidates and exercised boundaries, not live services. See
 
 ## Sources and hosts
 
+The product Home title is `diffdevil`; ordinary pages use `<page> · diffdevil`.
+The manual has its own `diffdevil Docs` identity. Both outputs carry page-specific
+descriptions, explicit Open Graph/X metadata, canonical URLs and role-filtered
+sitemaps. The joined build checks their emitted HTML and actual image files through
+`identity-output.mjs`, rather than treating source configuration as proof.
+
+Playground links `/playground/manifest.webmanifest`, with stable ID, start and scope
+at `/playground/`. Its standalone identity is **diffdevil Playground** (short name
+**Playground**); the visible learning surface retains its selected Lens Studio name.
+The product website keeps its browser-mode identity manifest. The App owns a separate
+root manifest on its own origin. `tools/web-app-assets.mjs` projects approved primary
+and compact marks into opaque 192/512 mask-safe icons and 180px Apple touch icons;
+the ordinary website/App build commands generate these files. No service worker,
+offline mode or new browser data persistence is supplied. Actual installed-device
+behavior and deployed manifests remain separate publication/adoption evidence.
+
+`node apps/website/qa/run.mjs --standalone` runs the existing complete fixture
+journey in a fresh isolated headless Chromium app window. It verifies real
+standalone display and browser manifest parsing without installing an OS app.
+
 The product site is `https://diffdevil.dev/`; `www.diffdevil.dev` is the matching-path
 308 compatibility host. The manual is `https://docs.diffdevil.dev/`, whose root is
 **What is diffdevil**. The FAQ is only `https://diffdevil.dev/faq/` and has no manual

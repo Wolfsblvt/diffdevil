@@ -10,6 +10,15 @@ keep their separate rights in the repository's licence map.
 
 ## Build and inspect
 
+Browser titles use `diffdevil Docs` on Home and `<chapter> · diffdevil Docs`
+elsewhere. An explicit manifest description wins; otherwise the authored opening
+paragraph supplies the description, preserving one content source. The renderer
+generates product-owned 1200×630 chapter preview cards and explicit Open Graph/X
+metadata. The manual has baseline favicon/touch/theme assets and no application
+manifest. The joined public build verifies initial HTML, referenced image bytes,
+canonical hosts and the exact discovery inventory; it retires Starlight's broader
+automatic sitemap output in favor of that selected inventory.
+
 From the repository root, use `npm ci --ignore-scripts`, then `npm run website:build`.
 This builds the engine and product site, then the website's build hook builds the
 manual and one joined Pagefind index. Output is `artifacts/website/dist` and
