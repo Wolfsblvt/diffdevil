@@ -7,6 +7,7 @@
 import AppShell from '../../../../layouts/AppShell.astro';
 import DeferredRegion from '../../../../components/DeferredRegion.astro';
 import PageHead from '../../../../components/PageHead.astro';
+import CurrentPolicy from '../../../../components/CurrentPolicy.astro';
 import Unavailable from '../../../../components/Unavailable.astro';
 import SeePro from '../../../../components/SeePro.astro';
 import HistoryUnavailable from '../../../../components/HistoryUnavailable.astro';
@@ -29,7 +30,7 @@ if (repository && here && !view.fileIdentity && !Astro.locals.deferPremium) Astr
 ---
 <AppShell title={`File · ${repo}`} nav={navModel(view, 'file')} view={view}>
   {repository && here && Astro.locals.deferPremium && <div data-pending-file-head>
-    <PageHead view={view} title="File history" crumbs={[{ label: 'Files', href: view.href('/files') }]} scope={false}>
+    <PageHead view={view} title="File history" crumbs={[{ label: 'Files', href: view.href('/files') }]} scope={false} policyNotice={false}>
       <div class="a-scope" slot="scope">{fullName}<span class="a-dot">·</span>{view.period.label}</div>
     </PageHead>
   </div>}
@@ -41,8 +42,8 @@ if (repository && here && !view.fileIdentity && !Astro.locals.deferPremium) Astr
     <div class="a-grid">{view.historyUnavailable ? <HistoryUnavailable view={view} /> : view.entitlement.premium
       ? <section class="a-pn s12"><div class="a-pn-b"><Unavailable what="File history is not part of this build" why="the plan includes it, but this build carries only the Community application; nothing was computed" /></div></section>
       : <SeePro text="File history: Changed per merged PR, size over time, Turnover and the files it changes with" span={12} unavailable={view.entitlement.aggregatePlan === 'unknown'} />}</div>
-  </> : <DeferredRegion name="file-body" title="File history">{!view.fileIdentity ? <div class="a-focus a-pn"><div class="a-pn-b" style="padding:28px 32px"><h1 style="font-size:22px;margin:0 0 8px">No such file</h1><p class="lede">This handle does not identify a file in your currently authorised, retained repository history.</p></div></div>
-  : !file ? <><PageHead view={view} title="File history" crumbs={[{ label: 'Files', href: view.href('/files') }]} scope={false}>
+  </> : <DeferredRegion name="file-body" title="File history"><CurrentPolicy view={view} />{!view.fileIdentity ? <div class="a-focus a-pn"><div class="a-pn-b" style="padding:28px 32px"><h1 style="font-size:22px;margin:0 0 8px">No such file</h1><p class="lede">This handle does not identify a file in your currently authorised, retained repository history.</p></div></div>
+  : !file ? <><PageHead view={view} title="File history" crumbs={[{ label: 'Files', href: view.href('/files') }]} scope={false} policyNotice={false}>
       <div class="a-scope" slot="scope">{fullName}<span class="a-dot">·</span>{view.period.label}</div>
     </PageHead><div class="a-focus a-pn"><div class="a-pn-b" style="padding:28px 32px"><h1 style="font-size:22px;margin:0 0 8px">{view.fileIdentity.path}</h1><p class="lede">No retained merged comparison names this file during the selected {view.period.label}. The retained history window is incomplete; this does not establish that the file was unchanged.</p><a class="link-quiet" href={view.href('/files', { s: fullName })}>Back to Files</a></div></div></>
   : <Body view={view} repository={repository} file={file} fullName={fullName} />}</DeferredRegion>}

@@ -4,9 +4,10 @@ export async function currentPolicyJourney({ page, go, check, shot, ORIGIN, gith
   const repository = 'parser-guild/parser-lab';
   if (publicFileFixture) {
     let retainedHref, observedChanged;
-    for (const [name, contents, inclusion] of [['default', undefined, 'included'], ['excluded', 'version: 1\ndefaults: { paths: { exclude: ["**"] } }\n', 'excluded'], ['unavailable', 503, 'unavailable'], ['restored', undefined, 'included']]) {
-      if (contents === undefined) github.state.policyFiles.delete(repository);
-      else github.state.policyFiles.set(repository, contents);
+    const currentPolicy = 'version: 1\nsize:\n  thresholds: { xs: 1, s: 2, m: 3, l: 4 }\n';
+    github.state.policyHead = 'd'.repeat(40);
+    for (const [name, contents, inclusion] of [['default', currentPolicy, 'included'], ['excluded', 'version: 1\ndefaults: { paths: { exclude: ["**"] } }\n', 'excluded'], ['unavailable', 503, 'unavailable'], ['restored', currentPolicy, 'included']]) {
+      github.state.policyFiles.set(repository, contents);
       await go('/files?s=parser-guild%2Fparser-lab&per=90d'); await settled();
       const link = page.locator('[data-fixture-file-link="src/index.ts"]');
       const href = await link.getAttribute('href');
@@ -21,13 +22,57 @@ export async function currentPolicyJourney({ page, go, check, shot, ORIGIN, gith
         && await facts.getAttribute('data-fixture-inclusion') === inclusion && changed !== null && changed === observedChanged
         && await facts.getAttribute('data-fixture-policy-basis') === (inclusion === 'unavailable' ? 'unfiltered-base-facts' : 'current-policy')
         && await page.locator('[data-file-read]').getAttribute('data-file-identity') === 'src/index.ts');
+      const basis = page.locator('[data-current-policy-basis]');
+      const unavailable = page.locator('[data-current-policy-unavailable]');
+      check(`${name} File detail explains current policy or its unavailable state`, inclusion === 'unavailable'
+        ? await unavailable.isVisible() && await page.getByRole('link', { name: 'Retry current policy', exact: true }).count() === 1
+        : await basis.count() === 1 && (await basis.innerText()).includes(`.diffdevil.yml@${'d'.repeat(40)}`));
       const documentUrl = new URL(retainedHref, ORIGIN); documentUrl.searchParams.set('render', 'document');
       const document = await page.request.get(documentUrl.href);
+      const documentBody = await document.text();
       check(`${name} retained file has a real complete document, not just a successful shell`, document.status() === 200
-        && (await document.text()).includes('data-file-read'));
-      if (inclusion === 'unavailable') check('unavailable file interpretation keeps recovery beside retained detail', await page.locator('[data-current-policy-unavailable]').isVisible());
+        && documentBody.includes('data-file-read'));
+      check(`${name} complete File-detail document carries exactly one matching policy notice`, inclusion === 'unavailable'
+        ? (documentBody.match(/data-current-policy-unavailable/gu)?.length ?? 0) === 1
+        : (documentBody.match(/data-current-policy-basis/gu)?.length ?? 0) === 1
+          && documentBody.includes(`.diffdevil.yml@${'d'.repeat(40)}`));
+      if (inclusion === 'unavailable') {
+        if (name === 'unavailable') await shot('current-policy-unavailable-file-detail');
+        github.state.policyFiles.set(repository, currentPolicy);
+        await page.getByRole('link', { name: 'Retry current policy', exact: true }).click();
+        await page.locator('[data-file-read]').waitFor(); await settled();
+        check('File-detail retry recovers policy without losing file, scope or period', new URL(page.url()).pathname === new URL(retainedHref, ORIGIN).pathname
+          && new URL(page.url()).searchParams.get('s') === repository && new URL(page.url()).searchParams.get('per') === '90d'
+          && await page.locator('[data-current-policy-unavailable]').count() === 0
+          && await page.locator('[data-current-policy-basis]').count() === 1
+          && await page.locator('[data-file-read]').getAttribute('data-file-identity') === 'src/index.ts');
+      }
       if (name === 'excluded') await shot('current-policy-excluded-file-detail');
     }
+    github.state.policyFiles.delete(repository);
+    let releaseFilePolicy;
+    github.state.policyGate = new Promise(resolve => { releaseFilePolicy = resolve; });
+    try {
+      await page.goto(`${ORIGIN}${retainedHref}`, { waitUntil: 'domcontentloaded' });
+      await page.locator('[data-analytical-loading]').waitFor();
+      await page.locator('[data-pending-file-head]').waitFor();
+      const pendingFacts = {
+        url: page.url(), navCount: await page.locator('[data-nav]').count(),
+        title: await page.locator('[data-pending-file-head] h1').innerText(),
+        scope: await page.locator('[data-pending-file-head] .a-scope').innerText(),
+        regionCount: await page.locator('[data-premium-region="file-body"]').count(),
+        regionState: await page.locator('[data-premium-region="file-body"]').getAttribute('data-pending'),
+        fileReadCount: await page.locator('[data-file-read]').count()
+      };
+      check('deferred File detail keeps its prompt title, navigation and selected scope and period', pendingFacts.navCount === 1
+        && pendingFacts.title === 'File history' && /parser-guild\/parser-lab\s*·\s*90 days/u.test(pendingFacts.scope)
+        && pendingFacts.regionCount === 1 && ['true', 'loading'].includes(pendingFacts.regionState) && pendingFacts.fileReadCount === 0, JSON.stringify(pendingFacts));
+      await page.locator('[data-pending-file-head]').getByRole('link', { name: 'Files', exact: true }).click();
+      await page.waitForURL(url => url.pathname === '/files' && url.searchParams.get('s') === repository && url.searchParams.get('per') === '90d');
+    } finally { github.state.policyGate = null; releaseFilePolicy(); }
+    await settled();
+    check('a held File-detail answer cannot replace a later Files navigation', new URL(page.url()).pathname === '/files'
+      && new URL(page.url()).searchParams.get('s') === repository && new URL(page.url()).searchParams.get('per') === '90d');
   }
   const query = { version: 1, surface: 'prs', repositoryIds: [1001], scope: { kind: 'repository', repositoryId: 1001 }, from: '2026-01-01T00:00:00.000Z', to: new Date().toISOString() };
   const endpoint = `${ORIGIN}/api/analytics?query=${encodeURIComponent(JSON.stringify(query))}`;

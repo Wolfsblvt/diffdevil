@@ -10,7 +10,7 @@ const detail = await loadSurface(view, Astro.locals.app, 'file', { path: file.pa
 const detailMs = performance.now() - started;
 if (!detail) return new Response('Synthetic file detail unavailable', { status: 503 });
 ---
-<PageHead view={view} title="File history" crumbs={[{ label: 'Files', href: view.href('/files') }]} scope={false}>
+<PageHead view={view} title="File history" crumbs={[{ label: 'Files', href: view.href('/files') }]} scope={false} policyNotice={false}>
   <div class="a-scope" slot="scope">{fullName}<span class="a-dot">·</span>{view.period.label}</div>
 </PageHead>
 <section class="a-pn" data-file-read data-populations={detail.result.populations} data-detail-ms={detailMs}
