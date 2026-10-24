@@ -21,6 +21,7 @@ apps/website/.astro/
 # Derived website icons/rasters (tools/website-assets.mjs): the identity SVGs are the source; no raster is committed
 apps/website/public/favicon.ico
 apps/website/public/favicon.svg
+apps/website/public/favicon-192.png
 apps/website/public/mask-icon.svg
 apps/website/public/apple-touch-icon.png
 apps/website/public/app-logo-512.png
@@ -29,6 +30,15 @@ apps/website/public/og.png
 apps/website/public/og-app.png
 apps/website/public/og-extension.png
 apps/website/public/manifest.webmanifest
+apps/website/public/playground/icon-*.png
+apps/website/public/playground/icon-*.svg
+apps/website/public/playground/apple-touch-icon.*
+apps/website/public/playground/manifest.webmanifest
+apps/app/public/icon-*.png
+apps/app/public/icon-*.svg
+apps/app/public/apple-touch-icon.*
+apps/app/public/manifest.webmanifest
+apps/app/public/favicon.svg
 .wrangler/
 .DS_Store
 Thumbs.db

@@ -43,6 +43,7 @@ import { namespaceFundingJourney } from './namespace-funding.mjs';
 import { fileReadJourney } from './file-read.mjs';
 import { filesQueryJourney } from './files-query.mjs';
 import { seedLoadingScale } from './loading-scale.mjs';
+import { installEntry, installedShell } from './installability.mjs';
 
 const target = appBuildTarget();
 const IDENTITY_ONLY = process.argv.includes('--identity');
@@ -1006,10 +1007,12 @@ try {
     check('Stop collecting releases a private history-only place while leaving repository effects off', await page.locator('[data-free-allowance] .m-segs.priv i.on').count() === 1 && /Stopped/u.test(await page.locator('[data-repository-row="parser-guild/parser-lab"]').innerText()));
   } else if (IDENTITY_ONLY) {
     await startWorker(undefined, STATE, { commercial: COMMERCIAL_PRO });
+    await installEntry({page,context,check,ORIGIN,shot});
     await signIn();
     for (const [name, path] of [['overview', '/'], ['manage', '/manage']]) {
       await go(path);
       await settled();
+      await installedShell({page,check});
       const facts = await pageFacts();
       const staging = target.name === 'staging';
       const title = name === 'overview' ? 'Overview' : 'Manage';

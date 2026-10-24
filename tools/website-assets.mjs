@@ -23,6 +23,7 @@ import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { inflateSync } from 'node:zlib';
 import { Resvg } from '@resvg/resvg-js';
 import { FRAMES, faviconAdaptive, master as svg, measureBounds, onGround } from './identity-frames.mjs';
+import { writeWebAppAssets } from './web-app-assets.mjs';
 
 export { FRAMES, measureBounds };
 const OUT = 'apps/website/public/';
@@ -79,6 +80,7 @@ writeFileSync(`${OUT}favicon.ico`, ico([16, 32].map(size => ({ size, data: rende
 // favicon.svg: micro drawing with a prefers-color-scheme switch between the two authored files.
 writeFileSync(`${OUT}favicon.svg`, faviconAdaptive(microDark, microLight));
 writeFileSync(`${OUT}mask-icon.svg`, mono);
+writeFileSync(`${OUT}favicon-192.png`, render(onGround(master, 192, FRAMES.webApp.pad), 192).asPng());
 
 // Framed rasters from the one master mark: measure, then refuse to emit a frame outside its declared occupancy.
 const report = {};
@@ -101,6 +103,7 @@ const surfaceCard = ({ lines, strap, image, width, height, place = { x: 560, y: 
 writeFileSync(`${OUT}og-app.png`, render(surfaceCard({ lines: ['diffdevil,', 'with a memory.'], strap: 'History for every repository you choose.', image: capture('apps/website/src/assets/app/overview.png'), width: 860, height: 500 }), 1200).asPng());
 writeFileSync(`${OUT}og-extension.png`, render(surfaceCard({ lines: ['Changed,', 'directly in GitHub.'], strap: 'diffdevil for GitHub', image: capture('apps/browser-extension/store/assets/screenshots/02-inspect-the-report.png'), width: 800, height: 500, place: { x: 320, y: 96, width: 1000, height: 625 } }), 1200).asPng());
 writeFileSync(`${OUT}manifest.webmanifest`, JSON.stringify({ name: 'diffdevil', short_name: 'diffdevil', description: 'The devil is in the diff. Measure changes, evaluate rules, and automate what follows.', start_url: '/', display: 'browser', background_color: '#151922', theme_color: '#151922', icons: [{ src: '/app-logo-512.png', sizes: '512x512', type: 'image/png' }, { src: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }] }, null, 2) + '\n');
+writeWebAppAssets('playground', OUT);
 
 if (process.argv.includes('--report')) console.log(JSON.stringify(report, null, 2));
 else console.log(`website assets written to ${OUT}: ` + Object.entries(report).map(([name, r]) => `${name} ${Math.round(r.occupancy * 100)}%`).join(', '));

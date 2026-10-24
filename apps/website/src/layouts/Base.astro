@@ -21,7 +21,8 @@ interface Props {
 }
 const { title, description, surface, current, noindex = false, siteSearch = true, image } = Astro.props;
 const isHome = title === 'diffdevil';
-const pageTitle = isHome ? 'diffdevil — The devil is in the diff.' : `${title} · diffdevil`;
+const pageTitle = isHome ? 'diffdevil' : `${title} · diffdevil`;
+const isPlayground = Astro.url.pathname === '/playground/';
 const canonical = ORIGIN_IS_PLACEHOLDER ? undefined : `${ORIGIN}${Astro.url.pathname}`;
 // Social projection: the page subject as og:title, the host site as og:site_name, one image with its size and alt.
 const preview = image ?? { path: '/og.png', alt: 'diffdevil: The devil is in the diff. Measure changes. Match rules. Act on the result.' };
@@ -40,7 +41,7 @@ const identity = isHome && canonical ? JSON.stringify({ '@context': 'https://sch
     <meta name="color-scheme" content="dark light" />
     {noindex && <meta name="robots" content="noindex, nosnippet" />}
     {!noindex && <><meta property="og:site_name" content="diffdevil" />
-    <meta property="og:title" content={isHome ? pageTitle : title} />
+    <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:type" content="website" />
     {canonical && <meta property="og:url" content={canonical} />}
@@ -50,15 +51,19 @@ const identity = isHome && canonical ? JSON.stringify({ '@context': 'https://sch
     <meta property="og:image:height" content="630" />
     <meta property="og:image:alt" content={preview.alt} />
     <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={previewUrl} />
     <meta name="twitter:image:alt" content={preview.alt} /></>}
     {canonical && <link rel="canonical" href={canonical} />}
     {identity && <script type="application/ld+json" set:html={identity} />}
     <link rel="icon" href="/favicon.ico" sizes="32x32" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="icon" href="/favicon-192.png" type="image/png" sizes="192x192" />
+    <link rel="apple-touch-icon" href={isPlayground ? '/playground/apple-touch-icon.png' : '/apple-touch-icon.png'} />
     <link rel="mask-icon" href="/mask-icon.svg" color="#f061ba" />
-    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="manifest" href={isPlayground ? '/playground/manifest.webmanifest' : '/manifest.webmanifest'} />
+    {isPlayground && <><meta name="apple-mobile-web-app-capable" content="yes" /><meta name="apple-mobile-web-app-title" content="Playground" /><meta name="apple-mobile-web-app-status-bar-style" content="default" /></>}
     <script is:inline set:html={themeScript}></script>
   </head>
   <body>

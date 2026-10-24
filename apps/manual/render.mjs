@@ -18,6 +18,7 @@ import { faqRecords, FAQ_SOURCE, FAQ_CANONICAL } from '../website/faq-content.mj
 import { readHistoricalSource } from './historical-source.mjs';
 import relatedQuestions from './related-questions.json' with { type: 'json' };
 import publicAssets from './assets.json' with { type: 'json' };
+import { writeChapterCard } from './social-assets.mjs';
 
 export { sourceRef } from './source-resolver.mjs';
 export const repositoryRoot = fileURLToPath(new URL('../../', import.meta.url));
@@ -25,6 +26,13 @@ const parser = unified().use(remarkParse).use(remarkGfm);
 const printer = unified().use(remarkStringify, { bullet: '-', fences: true }).use(remarkGfm);
 function walk(node, visit) { visit(node); for (const child of node.children ?? []) walk(child, visit); }
 function text(node) { return node.value ?? (node.children ?? []).map(text).join(''); }
+/** Reuse authored introductory prose when a chapter has no explicit description. */
+export function descriptionOf(raw, page) {
+ if (page.description) return page.description;
+ const introduction = parser.parse(raw).children.find(node => node.type === 'paragraph');
+ if (!introduction) throw new Error(`${page.source}: an introduction or explicit description is required.`);
+ return text(introduction).replace(/\s+/gu,' ').trim();
+}
 export function anchorsOf(markdown) {
  const slugger = new GithubSlugger(), result = [];
  walk(parser.parse(markdown), node => {
@@ -123,10 +131,25 @@ export function generateManual({root = repositoryRoot, qa = process.env.DIFFDEVI
   anchorInventory[page.key] = anchors; sourceLinks[page.source] = projection.links;
   fragmentReferences.push(...projection.fragments.map(item=>({...item,from:page.source})));
   const current = pageIsCurrent(page.key,state);
+  const description = descriptionOf(raw,page);
+  const subject = page.route === '/' ? 'diffdevil Docs' : page.title;
+  const preview = { url: pageUrl(page.key).replace(/\/$/u,'') + '/og.png', alt: `${subject} · diffdevil Docs` };
   const front = {
-   title: page.title, ...(page.description ? {description:page.description} : {}), editUrl: `https://github.com/Wolfsblvt/diffdevil/edit/${branch}/${page.source}`,
+   title: page.title, description, editUrl: `https://github.com/Wolfsblvt/diffdevil/edit/${branch}/${page.source}`,
    pagefind: current,
-   head: [{tag:'meta',attrs:{name:'diffdevil-availability',content:page.availability}}, ...(!current ? [{tag:'meta',attrs:{name:'robots',content:'noindex, nosnippet'}}] : [])],
+   head: [{tag:'meta',attrs:{name:'diffdevil-availability',content:page.availability}},
+    ...(page.route === '/' ? [{tag:'title',content:subject},{tag:'meta',attrs:{property:'og:title',content:subject}},
+     {tag:'script',attrs:{type:'application/ld+json'},content:JSON.stringify({'@context':'https://schema.org','@type':'WebSite',name:subject,url:pageUrl(page.key),description,inLanguage:'en'})}] : []),
+    {tag:'meta',attrs:{name:'twitter:title',content:subject}},
+    {tag:'meta',attrs:{name:'twitter:description',content:description}},
+    {tag:'meta',attrs:{property:'og:image',content:preview.url}},
+    {tag:'meta',attrs:{property:'og:image:type',content:'image/png'}},
+    {tag:'meta',attrs:{property:'og:image:width',content:'1200'}},
+    {tag:'meta',attrs:{property:'og:image:height',content:'630'}},
+    {tag:'meta',attrs:{property:'og:image:alt',content:preview.alt}},
+    {tag:'meta',attrs:{name:'twitter:image',content:preview.url}},
+    {tag:'meta',attrs:{name:'twitter:image:alt',content:preview.alt}},
+    ...(!current ? [{tag:'meta',attrs:{name:'robots',content:'noindex, nosnippet'}}] : [])],
    diffdevil: { key:page.key,source:page.source,sourceUrl:sourceUrl(page.source,ref),sourceRef:ref,packageVersion,availability:page.availability },
   };
   const file = join(out,page.route === '/' ? 'index.md' : page.route.slice(1,-1)+'.md');
@@ -179,7 +202,8 @@ export function generateManual({root = repositoryRoot, qa = process.env.DIFFDEVI
  writeFileSync(join(manualGenerated,'fragments.json'),JSON.stringify(fragments,null,2)+'\n');
  const publicDir = join(root,'apps/manual/public'); rmSync(publicDir,{recursive:true,force:true}); mkdirSync(publicDir,{recursive:true});
  for (const [source,route] of Object.entries(publicAssets)) { const dest = join(publicDir,route.slice(1)); mkdirSync(dirname(dest),{recursive:true}); cpSync(join(root,source),dest); }
- for (const asset of ['favicon.ico','favicon.svg','apple-touch-icon.png','mask-icon.svg','manifest.webmanifest']) if (exists('apps/website/public/'+asset)) cpSync(join(root,'apps/website/public',asset),join(publicDir,asset));
+ for (const asset of ['favicon.ico','favicon.svg','favicon-192.png','apple-touch-icon.png','mask-icon.svg']) if (exists('apps/website/public/'+asset)) cpSync(join(root,'apps/website/public',asset),join(publicDir,asset));
+ for (const page of manualPages) writeChapterCard(page,publicDir,root);
  if (qa) {
   const fixturePage = {title:'Reading qualification',source:'apps/manual/qa/reading.md'};
   const fixture = projectMarkdown(readFileSync(join(root,fixturePage.source),'utf8'),fixturePage,{root,ref,targets,assets:publicAssets}).body;

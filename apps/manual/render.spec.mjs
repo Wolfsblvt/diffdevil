@@ -4,10 +4,16 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { projectMarkdown, anchorsOf, fragmentAliases, validateAvailability, validateFragments } from './render.mjs';
+import { projectMarkdown, anchorsOf, fragmentAliases, validateAvailability, validateFragments, descriptionOf } from './render.mjs';
 import { readHistoricalSource } from './historical-source.mjs';
 import { indexable, qualifyFaqRecords } from './search-index.mjs';
 const ref='1'.repeat(40), page={title:'Specimen',source:'docs/manual/specimen.md'};
+test('chapter descriptions prefer explicit copy and otherwise reuse the authored introduction',()=>{
+ const raw='# Specimen\n\n> [!NOTE]\n> In development\n\nRead **Changed** with the [CLI](use/cli.md).\nIt keeps uncertainty visible.\n\n## More\n';
+ assert.equal(descriptionOf(raw,page),'Read Changed with the CLI. It keeps uncertainty visible.');
+ assert.equal(descriptionOf(raw,{...page,description:'A selected preview.'}),'A selected preview.');
+ assert.throws(()=>descriptionOf('# Specimen\n',page),/introduction/u);
+});
 function fixture(fn){const root=mkdtempSync(join(tmpdir(),'manual-projection-'));try{
  for(const path of ['docs/manual/use/cli.md','docs/ARCHITECTURE.md','assets/mark.svg']){mkdirSync(join(root,path,'..'),{recursive:true});writeFileSync(join(root,path),'fixture');}
  fn(root);
