@@ -84,9 +84,15 @@ export function compilePolicy(input = { version: 1 }, options = {}) {
 /** The Action shorthand may supply directly constructed syntax for its generated fields. */
 export function compilePolicyWithSyntax(input, options, syntax = new Map()) {
     const source = isPolicySource(input) ? input : undefined;
+    const normalized = normalizePolicy(source?.document ?? input, options);
+    if (!normalized.ok)
+        return source ? { ok: false, diagnostics: normalized.diagnostics.map(d => locatePolicyDiagnostic(source, d)) } : normalized;
+    return compileNormalizedPolicy(normalized.value, options, source, syntax);
+}
+/** Internal binding stage: hosts retain normalization while acquiring trusted template text. */
+export function compileNormalizedPolicy(normalized, options, source, syntax = new Map()) {
     options = { ...options, ...(source && !options.sourceName ? { sourceName: source.name } : {}) };
     const result = capture(() => {
-        const normalized = unwrap(normalizePolicy(source?.document ?? input, options));
         const document = normalized.document, limits = options.limits ?? DEFAULT_LIMITS;
         validateReferences(document);
         const metricTypes = Object.fromEntries(Object.keys(document.metrics ?? {}).map(id => [id, 'integer']));

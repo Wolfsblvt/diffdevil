@@ -1,7 +1,7 @@
 import { dirname, resolve } from 'node:path';
 import { fail, unwrap } from '../errors.js';
 import { DEFAULT_LIMITS, enforceBytes } from '../limits.js';
-import { compilePolicy, type CompiledPolicy, type PolicyCompileOptions } from '../policy/compile.js';
+import { compileNormalizedPolicy, compilePolicy, type CompiledPolicy, type PolicyCompileOptions } from '../policy/compile.js';
 import { normalizePolicy } from '../policy/normalize.js';
 import { locatePolicyDiagnostic, readPolicyJson } from '../policy/source.js';
 import { readPolicyYaml } from '../policy/yaml.js';
@@ -33,7 +33,7 @@ export async function compilePolicyText(
     enforceBytes(acquired, options.limits?.configBytes ?? DEFAULT_LIMITS.configBytes, 'Policy and templates', 'config');
     templates[path] = contents;
   }
-  return unwrap(compilePolicy(parsed, { ...options, templateFiles: templates }));
+  return unwrap(compileNormalizedPolicy(normalized, { ...(options.limits ? { limits: options.limits } : {}), templateFiles: templates }, parsed));
 }
 
 /** Explicit local policy selection; discovery and trust posture belong to the calling host. */
