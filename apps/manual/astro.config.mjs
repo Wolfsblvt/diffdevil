@@ -20,7 +20,7 @@ export default defineConfig({
   plugins:[starlightWorks({sidebar:sidebar({includeFAQ:faq})})],
   pagefind:false,
   customCss:[shared('styles/fonts.css'),shared('styles/tokens.css'),shared('styles/global.css'),shared('styles/starlight.css'),own('styles/reading.css')],
-  components:{Header:shared('components/docs/Header.astro'),ThemeProvider:shared('components/docs/ThemeProvider.astro'),ThemeSelect:shared('components/docs/ThemeSelect.astro'),SiteTitle:shared('components/docs/SiteTitle.astro'),Footer:own('components/Footer.astro')},
+  components:{Head:own('components/Head.astro'),Header:shared('components/docs/Header.astro'),ThemeProvider:shared('components/docs/ThemeProvider.astro'),ThemeSelect:shared('components/docs/ThemeSelect.astro'),SiteTitle:shared('components/docs/SiteTitle.astro'),Footer:own('components/Footer.astro')},
   social:[{icon:'github',label:'GitHub',href:'https://github.com/Wolfsblvt/diffdevil'}],
   expressiveCode:{themes:[diffdevilSyntax],useStarlightDarkModeSwitch:false,useStarlightUiThemeColors:false,styleOverrides:{codeFontFamily:'var(--font-mono)',codeFontSize:'13px',codeLineHeight:'1.6',borderRadius:'10px'}},
   head:[{tag:'script',content:themeScript},{tag:'link',attrs:{rel:'icon',href:'/favicon.svg',type:'image/svg+xml'}},

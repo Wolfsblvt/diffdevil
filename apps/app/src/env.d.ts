@@ -41,6 +41,8 @@ declare namespace App {
     viewer?: any;
     /** Original analytical URL, set only after authenticating a rewrite in middleware. */
     analyticalUrl?: string;
+    /** Only the root request's middleware may select the neutral public entrance rewrite. */
+    publicEntrance?: boolean;
     /** Analytical documents acquire optional chrome independently of their population. */
     deferChrome?: boolean;
     deferPremium?: boolean;

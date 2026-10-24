@@ -60,6 +60,10 @@ the ordinary website/App build commands generate these files. No service worker,
 offline mode or new browser data persistence is supplied. Actual installed-device
 behavior and deployed manifests remain separate publication/adoption evidence.
 
+`node apps/website/qa/run.mjs --standalone` runs the existing complete fixture
+journey in a fresh isolated headless Chromium app window. It verifies real
+standalone display and browser manifest parsing without installing an OS app.
+
 The product site is `https://diffdevil.dev/`; `www.diffdevil.dev` is the matching-path
 308 compatibility host. The manual is `https://docs.diffdevil.dev/`, whose root is
 **What is diffdevil**. The FAQ is only `https://diffdevil.dev/faq/` and has no manual
