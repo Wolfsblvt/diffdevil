@@ -16,7 +16,8 @@ The document defines the **textual brand**. The selected visual identity and its
 - **Canonical repository path for this document:** `docs/branding.md`
 - **Textual brand status:** settled
 - **Visual brand status:** settled as E3/W1/T2 with Foundation A; [`../packages/design/`](../packages/design/) is the reusable visual source
-- **Primary product category:** diff analysis, repository history, and automation
+- **Product-family descriptor:** Diff analysis, repository history, and automation.
+- **Open-product category:** Composable diff analysis and automation for GitHub and the CLI.
 - **Primary surfaces:** diffdevil for GitHub (the personal browser extension), the free CLI/TypeScript library/GitHub Actions, and the managed App for repository history and automation; Lens Studio and Examples provide account-free exploration
 
 The core rule is:
@@ -41,9 +42,18 @@ A second useful editorial rule follows from it:
 
 > **Measure changes. Match rules. Act on the result.**
 
-### Public category descriptor
+### Product-family descriptor
 
 > **Diff analysis, repository history, and automation.**
+
+### Open-product category
+
+> **Composable diff analysis and automation for GitHub and the CLI.**
+
+The family descriptor belongs on entrances that present the extension, App and open
+tools together. Package, npm, Marketplace and open-tool release surfaces retain the
+open-product category. Website metadata uses the descriptor appropriate to the
+page's actual scope; a family entrance does not change the category of the engine.
 
 ### Technical category descriptor
 
@@ -188,11 +198,14 @@ plan or apply effects
 
 It is compact enough for a README opening, website hero, social card, release image, or presentation title.
 
-### 3. Category or product description
+### 3. Family descriptor or open-product category
 
 > **Diff analysis, repository history, and automation.**
 
-The descriptor establishes what kind of product this is. It prevents the hero from being interpreted as an empty joke or a cute wrapper around a single PR-size counter.
+The family descriptor establishes what the complete product offers. For an open-tool
+entrance, use **Composable diff analysis and automation for GitHub and the CLI.**
+These descriptions prevent the hero from being interpreted as an empty joke or a
+cute wrapper around a single PR-size counter.
 
 For technical audiences already inside the documentation, use:
 
@@ -1512,7 +1525,9 @@ hero: The devil is in the diff.
 
 strapline: Measure changes. Match rules. Act on the result.
 
-category: Diff analysis, repository history, and automation.
+familyDescriptor: Diff analysis, repository history, and automation.
+
+category: Composable diff analysis and automation for GitHub and the CLI.
 
 technicalCategory: A portable diff analysis and policy engine.
 
