@@ -38,9 +38,9 @@ export const RELEASES = `${GITHUB}/releases`;
 export const SECURITY_ADVISORIES = `${GITHUB}/security/advisories`;
 export const LIVE_PLAYGROUND_WORKER = 'https://diffdevil-playground.wolfsblvt.workers.dev';
 export const COMPANY = 'Wolfsblvt Works';
-export const COMPANY_SITE = 'https://wolfsblvt.com/';
-export const COMPANY_LEGAL_NOTICE = 'https://wolfsblvt.com/legal-notice.html';
-export const COMPANY_PRIVACY = 'https://wolfsblvt.com/privacy.html';
+export const COMPANY_SITE = 'https://wolfsblvt.works/';
+export const COMPANY_LEGAL_NOTICE = 'https://wolfsblvt.works/impressum/';
+export const COMPANY_PRIVACY = 'https://wolfsblvt.works/privacy/';
 export const paths = {
   home: sitePath('/'), playground: sitePath('/playground/'), examples: sitePath('/examples/'),
   docs: origins.docs + '/', faq: sitePath('/faq/'), app: sitePath('/app/'), extension: sitePath('/extension/'),
