@@ -9,8 +9,25 @@ import { parse } from 'jsonc-parser';
 const require = createRequire(import.meta.url);
 
 export const ARTIFACT_FORMAT = 'diffdevil-credential-artifact-v1';
+export const RETAINED_INPUT_NAMES = Object.freeze(['GITHUB_APP_ID', 'GITHUB_WEBHOOK_SECRET', 'GITHUB_APP_PRIVATE_KEY']);
 export const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
 function fail() { throw Object.assign(new Error('Select the retained qualified upload artifact and its SHA-256; the supplied artifact is missing, changed or incomplete. Use prepare-artifact for a new source selection.'), { code: 'E_OPERATOR_ARTIFACT' }); }
+
+/** Non-secret, operation-local source/effect custody, not a credential or recovery-key store. */
+export function retainedInputSelection(value, target) {
+  const id = text => typeof text === 'string' && /^[A-Za-z0-9_-]+$/u.test(text);
+  const identity = value?.identity;
+  if (value?.format !== 'diffdevil-retained-inputs-v1' || !id(value.accountId) || !id(value.worker) || !id(value.sourceVersionId) || !id(value.custodyRef)
+    || !/^[a-f0-9]{64}$/u.test(value.configHash ?? '') || !/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/iu.test(value.databaseId ?? '')
+    || !/^[1-9]\d*$/u.test(identity?.appId ?? '') || !/^[1-9]\d*$/u.test(identity?.botId ?? '')
+    || !/^[A-Za-z0-9_.-]+$/u.test(identity?.clientId ?? '') || !/^[A-Za-z0-9_-]+\[bot\]$/u.test(identity?.botLogin ?? '')) fail();
+  const selected = { format: value.format, accountId: value.accountId, worker: value.worker, databaseId: value.databaseId, configHash: value.configHash, sourceVersionId: value.sourceVersionId, custodyRef: value.custodyRef,
+    identity: { appId: identity.appId, clientId: identity.clientId, botLogin: identity.botLogin, botId: identity.botId } };
+  // Reject unrecognised payloads rather than copying private configuration or arbitrary binding selectors.
+  if (Object.keys(value).some(key => !Object.hasOwn(selected, key)) || Object.keys(identity).some(key => !Object.hasOwn(selected.identity, key))) fail();
+  if (target && ['accountId', 'worker', 'databaseId', 'configHash'].some(key => target[key] !== selected[key])) fail();
+  return selected;
+}
 
 /** Parse the standard multipart bytes emitted by pinned Wrangler --dry-run --outfile. */
 async function nativeBundle(bytes) {
@@ -63,7 +80,7 @@ async function assetSnapshot(config, configPath) {
 }
 
 /** No protected inputs or provider effect: freeze native dry-run output and assets into one new file. */
-export async function prepareCredentialArtifact({ configPath, artifactPath, accountId, worker, runDryRun }) {
+export async function prepareCredentialArtifact({ configPath, artifactPath, accountId, worker, retainedInputsPath, runDryRun }) {
   let file;
   const temporary = await mkdtemp(join(tmpdir(), 'diffdevil-artifact-'));
   try {
@@ -73,18 +90,24 @@ export async function prepareCredentialArtifact({ configPath, artifactPath, acco
     const errors = [];
     const config = parse(source.toString('utf8'), errors, { allowTrailingComma: true });
     if (errors.length || config.name !== worker || (config.account_id && config.account_id !== accountId)) fail();
+    const retainedInputs = retainedInputsPath ? retainedInputSelection(JSON.parse(await readFile(retainedInputsPath, 'utf8')), { accountId, worker, configHash: sha256(source), databaseId: config.d1_databases?.find(binding => binding.binding === 'APP_DB')?.database_id }) : undefined;
     const bundlePath = join(temporary, 'worker.bundle');
     const result = await runDryRun({ bundlePath, directory: temporary });
     if (result.code !== 0) fail();
     const bundle = await readFile(bundlePath);
     if (sha256(await readFile(configPath)) !== sha256(source)) fail();
     const { metadata, modules } = await nativeBundle(bundle);
-    // Inherited state could be selected by a foreign latest version. Every binding must be concrete.
+    // Foreign latest is unsafe by default. Only the explicitly qualified original GitHub group may move.
     if (!Array.isArray(metadata.bindings) || metadata.bindings.some(binding => ['inherit', 'secret_text', 'secret_key'].includes(binding.type))) fail();
     delete metadata.keep_bindings;
     delete metadata.keep_assets;
     delete metadata.annotations;
-    const artifact = { format: ARTIFACT_FORMAT, worker, accountId, configHash: sha256(source), nativeBundleHash: sha256(bundle), metadata, modules, assets: await assetSnapshot(config, configPath) };
+    if (retainedInputs) {
+      const originals = metadata.bindings.filter(binding => RETAINED_INPUT_NAMES.includes(binding.name));
+      if (originals.some(binding => binding.name !== 'GITHUB_APP_ID' || binding.type !== 'plain_text' || String(binding.text) !== retainedInputs.identity.appId)) fail();
+      metadata.bindings = [...metadata.bindings.filter(binding => !RETAINED_INPUT_NAMES.includes(binding.name)), ...RETAINED_INPUT_NAMES.map(name => ({ name, type: 'inherit' }))];
+    }
+    const artifact = { format: ARTIFACT_FORMAT, worker, accountId, configHash: sha256(source), nativeBundleHash: sha256(bundle), metadata, modules, assets: await assetSnapshot(config, configPath), ...(retainedInputs ? { retainedInputs } : {}) };
     validateArtifact(artifact);
     const bytes = Buffer.from(`${JSON.stringify(artifact)}\n`);
     await file.writeFile(bytes);
@@ -105,7 +128,11 @@ function validContent(file) {
 function validateArtifact(artifact) {
   if (artifact?.format !== ARTIFACT_FORMAT || !/^[a-f0-9]{64}$/u.test(artifact.configHash ?? '') || !/^[a-f0-9]{64}$/u.test(artifact.nativeBundleHash ?? '')) fail();
   const { metadata, modules, assets } = artifact;
-  if (!metadata || !Array.isArray(metadata.bindings) || metadata.bindings.some(binding => !binding || typeof binding.name !== 'string' || typeof binding.type !== 'string' || ['inherit', 'secret_text', 'secret_key'].includes(binding.type)) || metadata.keep_bindings || metadata.keep_assets || metadata.assets?.jwt) fail();
+  const retained = artifact.retainedInputs ? retainedInputSelection(artifact.retainedInputs, { ...artifact, databaseId: metadata?.bindings?.find(binding => binding.name === 'APP_DB')?.id }) : undefined;
+  if (!metadata || !Array.isArray(metadata.bindings) || metadata.bindings.some(binding => !binding || typeof binding.name !== 'string' || typeof binding.type !== 'string' || ['secret_text', 'secret_key'].includes(binding.type)
+    || (binding.type === 'inherit' && (!retained || !RETAINED_INPUT_NAMES.includes(binding.name) || Object.keys(binding).some(key => !['name', 'type'].includes(key))))) || metadata.keep_bindings || metadata.keep_assets || metadata.assets?.jwt) fail();
+  if (new Set(metadata.bindings.map(binding => binding.name)).size !== metadata.bindings.length) fail();
+  if (retained && !RETAINED_INPUT_NAMES.every(name => metadata.bindings.some(binding => binding.name === name && binding.type === 'inherit'))) fail();
   if (!Array.isArray(modules) || !modules.length || modules.some(file => typeof file.name !== 'string' || !validContent(file)) || new Set(modules.map(file => file.name)).size !== modules.length) fail();
   if (!modules.some(file => file.name === (metadata.main_module ?? metadata.body_part))) fail();
   const assetBindings = metadata.bindings.filter(binding => binding.type === 'assets');
@@ -122,7 +149,7 @@ function validateArtifact(artifact) {
 }
 
 export function artifactReceipt(artifact, digest) {
-  return { state: 'qualified', sha256: digest, nativeBundleHash: artifact.nativeBundleHash, configHash: artifact.configHash, modules: artifact.modules.length, assets: artifact.assets?.files.length ?? 0 };
+  return { state: 'qualified', sha256: digest, nativeBundleHash: artifact.nativeBundleHash, configHash: artifact.configHash, modules: artifact.modules.length, assets: artifact.assets?.files.length ?? 0, ...(artifact.retainedInputs ? { retainedInputs: retainedInputSelection(artifact.retainedInputs) } : {}) };
 }
 
 /** The independently selected digest binds every module, versioned setting and asset byte. */

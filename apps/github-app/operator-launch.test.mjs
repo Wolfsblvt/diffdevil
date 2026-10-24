@@ -8,6 +8,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { test } from 'node:test';
 import { syntheticArtifact } from './fixtures/operator-artifact.mjs';
+import { sha256, RETAINED_INPUT_NAMES } from './operator-artifact.mjs';
 
 function launch(helper, args, env, { bash, ...options } = {}) {
   const windows = process.platform === 'win32' && !bash;
@@ -57,6 +58,19 @@ for (const bash of entries) test(`public clean ${bash ? 'Git Bash' : process.pla
     // The in-memory provider is fresh: read-only reconciliation cannot invent the version.
     assert.equal(resumed.status, 2);
     assert.equal(await readFile(marker).then(() => true, () => false), false);
+    const retainedInputs = { format: 'diffdevil-retained-inputs-v1', accountId: 'fixture-account', worker: 'diffdevil-app', databaseId: '12345678-1234-1234-1234-123456789abc', configHash: sha256(await readFile(config)), sourceVersionId: 'fixture-before', custodyRef: 'fixture-version-custody', identity: { appId: '123', clientId: 'fixture-client', botLogin: 'diffdevil[bot]', botId: '456' } };
+    const retained = await syntheticArtifact(config, { retainedInputs });
+    const retainedReceipt = join(directory, 'retained-receipt.json');
+    const retainedArguments = ['--fake', '--app-id', '123', '--oauth-client-id', 'fixture-client', '--oauth-client-secret-file', join(directory, 'oauth.txt'), '--seal-key-env', 'TEST_SEAL', '--wirt-signing-key-env', 'TEST_WIRT', '--seal-key-initial', '--seal-key-recovery-ref', 'retained-fixture', '--base-version-id', 'fixture-before', '--account-id', 'fixture-account', '--config', config, '--receipt-file', retainedReceipt, '--artifact-file', retained.artifactPath, '--artifact-sha256', retained.artifactSha256];
+    for (const command of ['check', 'install']) {
+      const result = launch('operator', [command, ...retainedArguments], env, { bash });
+      assert.equal(result.status, 0, result.stderr);
+      const report = JSON.parse(result.stdout);
+      assert.equal(report.state, command === 'check' ? 'ready-for-input' : 'version-created');
+      assert.deepEqual(report.inputProvenance.retained, RETAINED_INPUT_NAMES);
+      assert.equal(await readFile(marker).then(() => true, () => false), false);
+      for (const value of [...Object.values(values), pem]) assert.equal(`${result.stdout}${result.stderr}`.includes(value), false);
+    }
     const status = launch('manifest', ['--help'], env, { bash });
     assert.equal(status.status, 0, status.stderr);
     assert.equal(await readFile(marker).then(() => true, () => false), false);
