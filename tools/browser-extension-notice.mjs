@@ -22,5 +22,5 @@ export function extensionNotice(title, text) {
     const header = /^(#{1,3}) (.+)$/u.exec(block.trim());
     return header ? `<h${header[1].length}>${inline(header[2])}</h${header[1].length}>` : `<p>${inline(block.replaceAll('\n', ' '))}</p>`;
   }).join('\n');
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)} · diffdevil</title><script src="theme.js"></script><link rel="stylesheet" href="options.css"></head><body><main class="app-main"><a href="options.html">← Settings</a>${paragraphs}</main></body></html>`;
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)} · diffdevil</title><script src="theme.js"></script><link rel="stylesheet" href="options.css"></head><body><main class="app-main extension-notice"><a href="options.html">← Settings</a>${paragraphs}</main></body></html>`;
 }
