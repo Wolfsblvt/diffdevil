@@ -2,7 +2,7 @@
 
 Use [Lens Studio](https://diffdevil.dev/playground/), the public learning surface labeled **Playground** in the current interface, to inspect a real change, experiment with policy and leave with reusable inputs before installing anything. It is a read-only learning surface. It does not install an App, request a personal access token or apply repository labels/comments.
 
-The complete configurable experience is implemented in the website source. Public hosting is a separate release step; the earlier measurement-only Worker is not evidence that every view and export described here is deployed. For source-checkout access, use the [website development route](../../../apps/website/README.md) and open its local `/playground/` page. Its configured API must supply the report and head contracts for live acquisition; frozen examples need no GitHub access.
+The complete configurable experience is implemented in the website source. Public hosting is a separate release step; the earlier measurement-only Worker is not evidence that every view and export described here is deployed. For source-checkout access, use the [website development route](../../../apps/website/README.md) and open its local `/playground/` page. Its configured API must supply the report and head contracts for live acquisition. Frozen examples load their retained report from the site and remain usable if a freshness check fails.
 
 ## Start with a frozen source edition
 
@@ -48,7 +48,9 @@ Report JSON, plan JSON and agent text are not interchangeable exports. Use [Repo
 
 Use the explicit live/current-head route when you want new provider evidence. Rechecking whether the head moved is not the same as refreshing the analyzed report. Keep the snapshot identity attached to the result until reacquisition succeeds; do not combine an older count with new file identities.
 
-The share URL records selected example/variant, view and configuration mode. Edited policy may be encoded in the `policy` query parameter. Encoding is **not encryption**: the URL can disclose configuration through copied links, browser history or the host receiving the navigation. Do not put secrets or private repository policy in it. A frozen-example URL without custom policy is the safer reproducible lesson link.
+Opening a saved example can also ask the configured API whether its public PR has a newer head. A successful head ID is cached in the tab's session storage to avoid repeat checks. This check does not replace the frozen comparison; failure leaves the retained lesson usable without claiming that it is current.
+
+The share URL records selected example/variant, view and configuration mode, or the entered public PR's identity. Edited policy may be encoded in the `policy` query parameter. Encoding is **not encryption**: the URL can disclose configuration through copied links, browser history or the host receiving the navigation. Do not put secrets or private repository policy in it. A frozen-example URL without custom policy is the safer reproducible lesson link.
 
 ## Data limits and failure recovery
 

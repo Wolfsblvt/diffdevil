@@ -1,6 +1,6 @@
 # Try a public pull request
 
-Use the Lens Studio to read a real PR result without installing anything, then change its policy and see what that changes. Start with a retained teaching snapshot: it does not depend on GitHub answering a new request, and its revisions stay fixed while you experiment.
+Use the Lens Studio to read a real PR result without installing anything, then change its policy and see what that changes. Start with a retained teaching snapshot: its result does not depend on GitHub answering a new request, and its revisions stay fixed while you experiment. The browser can separately check whether that public PR has a newer head; [the operating guide](../use/playground.md#refresh-and-share-deliberately) explains that request and its tab storage.
 
 You need a browser. No account or token is required. Live acquisition accepts public GitHub.com PRs only; it is not a private-repository route or the managed App.
 
