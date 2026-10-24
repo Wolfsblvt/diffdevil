@@ -6,7 +6,7 @@ import packageJson from '../../../../package.json' with { type: 'json' };
 import provenance from '../generated/source-provenance.json' with { type: 'json' };
 import { pageUrl } from '../../../manual/manifest.mjs';
 import { sourceResolverUrl } from '../lib/source-resolution.mjs';
-import { origins } from '../../public-origins.mjs';
+import { origins, STATUS_URL } from '../../public-origins.mjs';
 
 export const ORIGIN: string = (import.meta.env.DIFFDEVIL_SITE_ORIGIN ?? origins.site).replace(/\/$/u, '');
 export const ORIGIN_IS_PLACEHOLDER = ORIGIN.endsWith('.invalid');
@@ -46,6 +46,7 @@ export const paths = {
   docs: origins.docs + '/', faq: sitePath('/faq/'), app: sitePath('/app/'), extension: sitePath('/extension/'),
   security: pageUrl('security-and-data'), privacy: sitePath('/privacy/'), impressum: sitePath('/impressum/'), terms: sitePath('/terms/'),
   licences: sourceResolverUrl('LICENSES/README.md'), skill: sitePath('/skill/SKILL.md'), skillVersion: sitePath('/skill/version'),
+  status: STATUS_URL,
   download: (asset: 'skill' | 'standalone' | 'bundled') => sitePath(`/downloads/${asset}/`),
   setup: (intent: 'skill' | 'cli' | 'actions' | 'app' | 'everything') => sitePath(`/setup/${intent}.md`),
 } as const;

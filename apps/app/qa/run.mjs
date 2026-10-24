@@ -1069,6 +1069,10 @@ try {
   await startWorker(undefined, STATE, { commercial: COMMERCIAL_PRO });
   const unauthenticated = await context.request.get(`${ORIGIN}/`, { maxRedirects: 0 });
   check('an unauthenticated root visit receives only the neutral public entrance', unauthenticated.status() === 200 && (await unauthenticated.text()).includes('data-public-app-entrance'), `${unauthenticated.status()}`);
+  await go('/');
+  const statusLink = page.getByRole('link', { name: 'Status', exact: true });
+  check('the neutral signed-out entrance visibly links to the canonical Status page', await statusLink.isVisible() && await statusLink.getAttribute('href') === 'https://status.diffdevil.dev/');
+  await shot('app-public-entrance');
   const ping = await context.request.get(`${PROBE}/health/ping`);
   check('the joined Worker answers the managed runtime health route', ping.status() === 200 && /diffdevil-github-app/u.test(await ping.text()));
   const notices = await context.request.get(`${ORIGIN}/third-party-notices.txt`);
@@ -1200,8 +1204,8 @@ try {
   await page.click('.a-me-menu button');
   await page.waitForLoadState('networkidle');
   check('sign out returns to sign-in', new URL(page.url()).pathname === '/sign-in');
-  const afterLogout = await context.request.get(`${ORIGIN}/`, { maxRedirects: 0 });
-  check('the session is revoked after sign out', afterLogout.status() === 303);
+  const afterLogout = await context.request.get(`${ORIGIN}/manage`, { maxRedirects: 0 });
+  check('the session is revoked after sign out', afterLogout.status() === 303 && new URL(afterLogout.headers().location, ORIGIN).pathname === '/sign-in', `${afterLogout.status()} ${afterLogout.headers().location ?? ''}`);
   await stopWorker();
 
   // ── Free pass: the viewer is unfunded on the hosted offer; one shared namespace is funded by its owner ──

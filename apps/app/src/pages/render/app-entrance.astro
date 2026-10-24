@@ -8,6 +8,7 @@ import '../../styles/app.css';
 import Icon from '../../components/Icon.astro';
 import InstallHead from '../../components/InstallHead.astro';
 import { siteHeader } from '../../lib/shell.mjs';
+import { STATUS_URL } from '../../../../website/public-origins.mjs';
 const origin = Astro.locals.app?.config?.origin ?? Astro.site?.origin;
 const siteOrigin = Astro.locals.app?.config?.siteOrigin ?? 'https://diffdevil.dev';
 const header = await siteHeader(Astro.locals, origin);
@@ -45,7 +46,7 @@ const staging = import.meta.env.DIFFDEVIL_APP_TARGET === 'staging';
         <p class="lede">Understand how your repositories change. Follow pull-request activity, explore retained repository history, and see the policy behind each result.</p>
         <p>Sign in with GitHub to see connected repositories you can already access. An administrator chooses which repositories run and whether to retain history. Signing in grants no new repository authority and starts no collection.</p>
         <a class="btn btn-primary btn-l" href="/auth/start" rel="nofollow"><Icon name="github" size={16} />Sign in with GitHub</a>
-        <p class="a-mini a-signin-foot"><a href={`${siteOrigin}/app/`}>About the diffdevil App</a> · <a href="https://docs.diffdevil.dev/use/managed-app/">App guide</a> · <a href={`${siteOrigin}/privacy/`}>Privacy</a></p>
+        <p class="a-mini a-signin-foot"><a href={`${siteOrigin}/app/`}>About the diffdevil App</a> · <a href="https://docs.diffdevil.dev/use/managed-app/">App guide</a> · <a href={`${siteOrigin}/privacy/`}>Privacy</a> · <a href={STATUS_URL}>Status</a></p>
       </div></section>
     </main>
     <div class="live" role="status" aria-live="polite" data-live-region></div>
