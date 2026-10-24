@@ -119,8 +119,8 @@ test('settings shell links only to the product site, the manual, the source repo
   const html = await readFile('apps/browser-extension/options.html', 'utf8');
   const hrefs = [...html.matchAll(/href="(\w+:[^"]*)"/gu)].map(match => match[1]);
   assert.ok(hrefs.length >= 15);
-  for (const href of hrefs) assert.match(href, /^https:\/\/(?:diffdevil\.dev|docs\.diffdevil\.dev|wolfsblvt\.com)\/|^https:\/\/github\.com\/Wolfsblvt\/diffdevil(?:\/|$)/u, href);
-  for (const required of ['https://diffdevil.dev/', 'https://diffdevil.dev/app/', 'https://diffdevil.dev/extension/', 'https://docs.diffdevil.dev/use/browser-extension/', 'https://diffdevil.dev/impressum/', 'https://wolfsblvt.com/']) assert.ok(hrefs.includes(required), required);
+  for (const href of hrefs) assert.match(href, /^https:\/\/(?:diffdevil\.dev|docs\.diffdevil\.dev|wolfsblvt\.works|contact\.wolfsblvt\.works)\/|^https:\/\/github\.com\/Wolfsblvt\/diffdevil(?:\/|$)/u, href);
+  for (const required of ['https://diffdevil.dev/', 'https://diffdevil.dev/app/', 'https://diffdevil.dev/extension/', 'https://docs.diffdevil.dev/use/browser-extension/', 'https://diffdevil.dev/impressum/', 'https://wolfsblvt.works/', 'https://contact.wolfsblvt.works/?product=diffdevil']) assert.ok(hrefs.includes(required), required);
   // Every icon is a catalogue slot resolved at build time; the source document carries no drawn geometry.
   assert.doesNotMatch(html, /<svg\b/u); assert.match(html, /data-icon="github"/u); assert.match(html, /data-icon="theme-dark"/u);
 });
@@ -138,7 +138,7 @@ test('links to the website and manual carry the current theme; everything else i
   const root = { dataset: { themePref: 'auto', themeNext: 'light' } };
   assert.equal(m.themeHandoff('https://diffdevil.dev/app/', root), 'https://diffdevil.dev/app/?dd-theme=auto.light');
   assert.equal(m.themeHandoff('https://docs.diffdevil.dev/use/browser-extension/', root), 'https://docs.diffdevil.dev/use/browser-extension/?dd-theme=auto.light');
-  for (const untouched of ['https://github.com/Wolfsblvt/diffdevil', 'https://wolfsblvt.com/', 'https://diffdevil.dev/skill/SKILL.md', 'privacy.html']) assert.equal(m.themeHandoff(untouched, root), untouched);
+  for (const untouched of ['https://github.com/Wolfsblvt/diffdevil', 'https://wolfsblvt.works/', 'https://contact.wolfsblvt.works/?product=diffdevil', 'https://diffdevil.dev/skill/SKILL.md', 'privacy.html']) assert.equal(m.themeHandoff(untouched, root), untouched);
   assert.equal(m.themeHandoff('https://diffdevil.dev/', { dataset: {} }), 'https://diffdevil.dev/');
 });
 test('extension package is a deterministic readback of the accepted unpacked receipt', async () => { execFileSync(process.execPath, ['tools/browser-extension-package.mjs'], { stdio: 'pipe' }); const receipt = JSON.parse(await readFile('artifacts/browser-extension/package/package-receipt.json', 'utf8')); assert.equal(receipt.kind, 'diffdevil.browser-extension-package/1'); assert.equal(receipt.archive.members.length, JSON.parse(await readFile('artifacts/browser-extension/build-receipt.json', 'utf8')).files.length); assert.deepEqual(receipt.archive.members.map(member => member.path), [...receipt.archive.members.map(member => member.path)].sort()); });

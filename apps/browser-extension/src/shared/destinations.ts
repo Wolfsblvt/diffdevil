@@ -9,7 +9,7 @@ import { isSide } from './theme-state.js';
 export const SITE = 'https://diffdevil.dev';
 export const DOCS = 'https://docs.diffdevil.dev';
 export const GITHUB = 'https://github.com/Wolfsblvt/diffdevil';
-export const WORKS = 'https://wolfsblvt.com/';
+export const WORKS = 'https://wolfsblvt.works/';
 export const destinations = {
   app: `${SITE}/app/`,
   guide: `${DOCS}/use/browser-extension/`,

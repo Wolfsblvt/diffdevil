@@ -43,9 +43,9 @@ capability does not become historical merely because it is not released.
 
 These sources describe selected capabilities and an accepted planned offer, not an
 already deployed dashboard or available paid service. [Commercial decisions](DECISIONS.md#d054-separate-community-from-private-premium-application-capabilities)
-record the edition, funding, price and lifecycle choices. The six analytical pages and
-shell are ratified; chart/cloud co-design precedes Manage/subscription design.
-Renderer qualification, remaining algorithms and numeric monthly import budgets remain implementation work. The public
+record the edition, funding, price and lifecycle choices. The six analytical pages,
+shell, chart/cloud grammar and Manage/subscription console are ratified and implemented in source.
+Real-data, renderer/accessibility, operating and commercial qualification remain separate from that source standing; [current direction](DIRECTION.md) preserves the delivery and undesigned-experience remainder. The public
 manual continues to describe supported operation rather than presenting planned
 features as shipped.
 

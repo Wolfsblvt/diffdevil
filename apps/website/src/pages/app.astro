@@ -45,9 +45,9 @@ const tour = [
 // The hosted offer exactly as docs/app-plans.md selects it. Checkout opens with the App's public access.
 const plans = [
   { name: 'Free', price: '€0', cadence: 'for everyone', annual: '', fit: 'For your own projects and small public ones.', lead: 'Checks, size labels and the history of your pull requests.',
-    items: ['Native checks, size labels and size replies', 'Up to 3 private repositories, any number of public ones', 'Pull-request size, lifecycle and repository history', 'History on up to 10 public repositories, 30 rolling days'] },
+    items: ['Native checks, size labels and size replies', 'Up to 3 private repositories, any number of public ones', 'Pull-request size, lifecycle and repository history', 'History on up to 10 public repositories under the disclosed policy'] },
   { name: 'Pro', price: '€9', cadence: 'per month', annual: 'or €90 a year (€7.50 a month)', fit: 'For people who want to understand their codebase.', lead: 'Everything in Free, plus file-level memory.',
-    items: ['No limit on your own repositories', 'File history, clouds, Turnover and co-change', 'History without automatic age expiry', 'One organisation included, with 3 private repositories'] },
+    items: ['No limit on your own repositories', 'File history, clouds, Turnover and co-change', 'Historical import for all recoverable pull requests', 'One organisation included, with 3 private repositories'] },
   { name: 'Business', price: '€42', cadence: 'per month', annual: 'or €400 a year (€33.33 a month)', fit: 'For teams that run policy across an organisation.', lead: 'Everything in Pro, coordinated across teams.',
     items: ['One organisation included, without repository limits', 'Shared named policies, linked and applied in bulk', 'Eligible repositories set up automatically', 'Delegated administration with a full audit'] },
 ] as const;
@@ -67,7 +67,7 @@ const compare: readonly { group: string; rows: readonly (readonly [string, Cell,
   ] },
   { group: 'History', rows: [
     ['Pull-request size, lifecycle and history', true, true, true],
-    ['How long history is kept', '30 days', 'No expiry', 'No expiry'],
+    ['How long history is kept', 'Disclosed service policy', 'Disclosed service policy', 'Disclosed service policy'],
     ['Historical import', '100 recent PRs', 'All recoverable', 'All recoverable'],
     ['File history, clouds, Turnover and co-change', false, true, true],
   ] },
@@ -167,7 +167,7 @@ const migration = `# 1. Turn off the Action writer. A read-only step may stay.
       <div class="history-grid">
         {history.map(([title, body]) => <div class="panel"><p class="label">{title}</p><p class="small history-body">{body}</p></div>)}
       </div>
-      <p class="history-standing small">Free keeps thirty rolling days. Pro and Business keep history without automatic age expiry while the plan and the service stay active, subject to your deletion and disclosed limits.</p>
+      <p class="history-standing small">History follows the disclosed service/operator retention policy and service-active limits. Stopping collection does not delete retained history. Financial ending uses the disclosed archive/recovery policy and deadline; repository offboarding has its separate thirty-day grace. Current repository access and explicit deletion still apply.</p>
       <SectionLinks links={[['Privacy and data', docPaths.privacyAndData]]} />
     </div>
   </section>
