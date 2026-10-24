@@ -93,8 +93,12 @@ export async function loadingJourney({ page, check, shot, ORIGIN, settled, joine
   check('an inaccessible detail returns a generic shell then an authorised 404 without protected detail', generic.status() === 200 && (await deniedRead).status() === 404 && await page.locator('.a-result').count() === 0 && /Not in your repositories/u.test(await page.locator('#main').innerText()));
   const anonymous = await page.context().browser().newContext();
   try {
-    const denied = await anonymous.request.get(`${ORIGIN}/`, { maxRedirects: 0 });
-    check('a signed-out request still receives no protected shell', denied.status() === 303 && denied.headers().location.startsWith('/sign-in'));
+    const entrance = await anonymous.request.get(`${ORIGIN}/`, { maxRedirects: 0 });
+    const publicHtml = await entrance.text();
+    const denied = await anonymous.request.get(`${ORIGIN}/files`, { maxRedirects: 0 });
+    check('signed-out entry stays public while analytical routes refuse the protected shell', entrance.status() === 200
+      && publicHtml.includes('data-public-app-entrance') && !/data-analytical-loading|parser-guild|qa\.reader/u.test(publicHtml)
+      && denied.status() === 303 && denied.headers().location.startsWith('/sign-in'));
   } finally { await anonymous.close(); }
   await page.unroute(`${ORIGIN}/**`);
   if (joined) {
