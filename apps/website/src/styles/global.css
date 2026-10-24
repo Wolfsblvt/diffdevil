@@ -346,13 +346,23 @@ html[data-theme-pref="auto"][data-theme="light"] .theme-dot { color: #161b24; }
 .site-footer .line { margin: 0; }
 .site-footer .licence { margin: 0; font-size: 12px; color: var(--fg-3); }
 .footer-base { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 26px; padding-top: 14px; border-top: 1px solid var(--hair); }
+/* The maker's compact lockup opens the base row, as in the extension's Settings footer. The artwork is the pinned Works
+   brand bundle export vendored byte for byte at vendor/brand/works/ (all rights reserved, vendor/brand/works/licences/
+   works-artwork.txt); the build binds those bytes here, apps/website/works-sponsor.mjs proves the pin. The appearance
+   follows the site theme by the same cascade as the diffdevil logo variables in packages/design/tokens.css. */
+:root, [data-theme="dark"] { --logo-works: url("../../../../vendor/brand/works/assets/lockup-compact/on-dark.svg"); }
+[data-theme="light"] { --logo-works: url("../../../../vendor/brand/works/assets/lockup-compact/on-light.svg"); }
+@media (prefers-color-scheme: light) { :root:not([data-theme]) { --logo-works: url("../../../../vendor/brand/works/assets/lockup-compact/on-light.svg"); } }
+.footer-maker { display: inline-flex; align-items: center; gap: 14px; margin: 0; min-width: 0; }
+.works-link { display: inline-flex; border-radius: 4px; }
+.logo-works { width: 96px; height: 22px; background-image: var(--logo-works); }
 .site-footer .footer-socials { flex-direction: row; align-items: center; gap: 6px; }
 .footer-social { display: inline-flex; padding: 5px; border-radius: var(--r-control); color: var(--fg-3); transition: color var(--dur) var(--ease); }
 .site-footer a.footer-social:hover { color: var(--fg); text-decoration: none; }
 .footer-arrow { margin-left: 3px; color: var(--fg-3); }
 .footer-coming { color: var(--fg-3); }
 @media (max-width: 900px) { .site-footer .grid { grid-template-columns: 1fr 1fr; } }
-@media (max-width: 640px) { .site-footer .grid { grid-template-columns: 1fr; } .site-footer .footer-row { white-space: normal; } }
+@media (max-width: 640px) { .site-footer .grid { grid-template-columns: 1fr; } .site-footer .footer-row { white-space: normal; } .footer-base { flex-wrap: wrap; } }
 
 /* ── live region toast ── */
 .live { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); background: var(--bg-raised); border: 1px solid var(--hair-strong); border-radius: var(--r-block); padding: 8px 14px; font-size: 13px; opacity: 0; pointer-events: none; transition: opacity var(--dur) var(--ease); z-index: 50; max-width: calc(100vw - 32px); }

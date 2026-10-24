@@ -6,7 +6,8 @@
  * renders as an unavailable (disabled) link; it is never pointed somewhere invented.
  *
  * Header rule: GitHub is the one direct icon, so it is left out of the Community panel.
- * Footer rule: icons only, never collapsed, complete — Works, Discord, Bluesky, GitHub.
+ * Footer rule: icons only, never collapsed, complete — Discord, Bluesky, GitHub. Works is not
+ * among them: the base row opens with the maker's compact lockup, which is the Works link.
  */
 import type { IconName } from './icons';
 import { copy } from './copy';
@@ -22,5 +23,5 @@ const github: Destination = { id: 'github', icon: 'github', label: c.github[0], 
 
 /** Community panel, in panel order. The direct header icon already carries GitHub. */
 export const community: readonly Destination[] = [discord, bluesky, works];
-/** Footer, in footer order. */
-export const footerSocials: readonly Destination[] = [works, discord, bluesky, github];
+/** Footer, in footer order; the Works lockup beside the © line carries the maker link. */
+export const footerSocials: readonly Destination[] = [discord, bluesky, github];

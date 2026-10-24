@@ -1,11 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 /**
- * Build-time binding of the shared Wolfsblvt Works sponsor section. diffdevil vendors only the component's three
- * canonical files (vendor/brand/works/components/works-sponsor.{html,mjs}, vendor/brand/works/css/works-sponsor.css)
- * byte for byte from the pinned Works bundle below: its artwork is inline SVG and it uses the host's typography, so it
- * references no other bundle file. Works owns the copy, artwork, corners, WORKS note and motion; this host supplies only
- * the placement, the enabled sponsor links, the heading level, a unique id prefix and the admitted CSS variables.
- * Update by re-copying the three files from a newer accepted Works bundle and replacing the pin and hashes together.
+ * Build-time binding of the shared Wolfsblvt Works sponsor section, and the pin record of every Works bundle file
+ * diffdevil vendors under vendor/brand/works/. The sponsor component is its three canonical files
+ * (vendor/brand/works/components/works-sponsor.{html,mjs}, vendor/brand/works/css/works-sponsor.css), byte for byte
+ * from the pinned Works bundle below: its artwork is inline SVG and it uses the host's typography, so it references no
+ * other bundle file. Works owns the copy, artwork, corners, WORKS note and motion; this host supplies only the
+ * placement, the enabled sponsor links, the heading level, a unique id prefix and the admitted CSS variables.
+ * The compact lockup (assets/lockup-compact/on-dark.svg, on-light.svg) comes from the same bundle: the website footer
+ * binds it through a CSS url() in src/styles/global.css and the extension build copies it beside its Settings page.
+ * Update by re-copying the files from a newer accepted Works bundle and replacing the pin and hashes together.
  */
 export const worksSponsorSource = Object.freeze({
   repository: 'Wolfsblvt/wolfsblvt.works',
@@ -16,6 +19,8 @@ export const worksSponsorSource = Object.freeze({
     'components/works-sponsor.html': '658bbdd759bb6260520146e358854d20c54587ef1d4570e0335e515a8410c573',
     'components/works-sponsor.mjs': 'cb690b0cb64d7a3c80716a60da4ddfe01993f90bae8703bf9d35b3130947cbb0',
     'css/works-sponsor.css': '4221d7da05fc2ad8761a61af99e3ce61f3b51af0367bf2487dc99a53168ee82c',
+    'assets/lockup-compact/on-dark.svg': '2c92a08479680f8530b332fec1a1d639fe173a41093c5abe44dad872927abe93',
+    'assets/lockup-compact/on-light.svg': '09e851afd7b46bcec0ad989247627e739c69df92f26e4f3b29127e1e4624356a',
   }),
 });
 
