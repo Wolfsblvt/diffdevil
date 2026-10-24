@@ -6,6 +6,65 @@ This document owns the managed App's product side of the Wolfsblvt Works (Wirt) 
 
 The service-connection lifecycle below separates actual funded purpose, browser grants and a durable disconnect preference. Its route-neutral disconnect/reconnect and logout facts are supporting backend contracts for the held Account design.
 
+The environment selection below owns the production/staging relationship. It
+separates that settled model from source support, a configured TEST consumer and
+admitted live commercial operation.
+
+## Wirt environment selection
+
+Each App deployment selects **one complete Wirt environment at a time**.
+Production Wirt is the shared commercial service for active payments and products;
+a product's own maturity does not require another production Wirt server. Persistent
+Wirt staging mirrors the service for development, fixes, tests and new integrations
+without changing production commercial data.
+
+| App deployment | Ordinary Wirt target | Deliberate qualification |
+| --- | --- | --- |
+| Production diffdevil | Production Wirt, when that commercial service is admitted | An explicitly admitted single TEST target may serve a bounded test; it is not the future production topology |
+| Internal development staging | Wirt staging | One production target may be selected when qualification requires its actual production consequences |
+
+An exception still selects one target. There is no simultaneous attachment,
+fan-out, common report cursor or fallback to a historical registration. A staging
+label does not make a request to production Wirt a test-only effect. Neither a
+source configuration edit nor this contract admits a live target change, payment,
+consent or customer operation. [D089](../DECISIONS.md#d089-select-one-complete-wirt-environment-per-app-deployment)
+preserves the decision and its reason.
+
+Treat the selected origin, public OAuth client, registered App callback and
+projection receiver, customer continuation, signing interpretation and mediated
+key custody as one consumer configuration. Its link/grant/application state,
+projection order, outbox and report acknowledgements belong to that relationship
+in that deployment's `APP_DB`. Recognisable account or product names across
+environments do not make those records, commercial benefits or payments shared.
+The [staging handoff](app-staging.md) owns the concrete source assignments and
+operating qualification; [recovery](app-recovery.md) preserves their interpretation.
+
+### Implemented boundary and delivery sequencing
+
+`commercialFromEnv()` constructs one client from the configured `WIRT_ORIGIN`,
+OAuth callback/client and signing set. `createWirtClient()` sends its requests to
+that exact origin and refuses redirects; neither chooses a second environment.
+The source supplies no automatic target-switch or cross-environment transfer of
+stored links, grants, orders or report cursors. Changing configuration alone does
+not reconcile those records with a different producer.
+
+The complete paid-capable App may be delivered before production Works activation.
+Until a complete production target is admitted, absent/refused consumer configuration
+is reported as unavailable/unconfigured through the existing App behavior. It must
+not silently select Wirt staging or be described as replacing the selected program
+with a Free-only build. Existing local Free behavior is distinct from the contents
+of a Community or premium-composed program and from actual Works-funded entitlement.
+The loopback Works stand-in is local fixture behavior, not a hosted fallback.
+
+The current staging TEST consumer and its A/B links, applied orders and report
+history remain with their admitted staging relationship. The original
+production-origin TEST registration, callbacks, valuable history and compatibility
+obligations remain preserved evidence; their existence neither selects an active
+production target nor proves App-held links. Any actual retained relationship
+receives the [existing preservation and admission disposition](app-staging.md#recovery-and-retained-test-state)
+before its target or interpretation changes. None of this documentation switches
+the functioning staging consumer or admits production Wirt/live commerce.
+
 ## Trust boundary
 
 The native Manage link form initiates through an Origin-checked POST to the App.
@@ -189,7 +248,11 @@ independent wire double; actual Wirt/customer adoption remains separate.
 
 ## Configuration
 
-Each deployment consumes one Wirt producer. The [persistent staging configuration and activation handoff](app-staging.md) separate its callbacks, signing set, sessions and retained application state from production. Preserve the original production-origin Wirt TEST client and callback registration, history and exchange/refresh/replay compatibility until their explicit admitted disposition. Registration alone does not establish a deployed commercial App consumer or App-held relationship; any actual retained state follows the [preservation contract](app-staging.md#recovery-and-retained-test-state) at production admission.
+The [single-target environment model](#wirt-environment-selection) governs this
+configuration. Select its fields together for the same admitted producer and App
+deployment; a matching origin alone does not establish client, key, callback or
+stored-state compatibility. Source templates and historical registrations do not
+supply missing protected inputs or a live target selection.
 
 | Binding | Meaning |
 | --- | --- |

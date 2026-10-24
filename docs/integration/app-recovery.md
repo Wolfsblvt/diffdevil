@@ -20,6 +20,24 @@ configuration, seal and signing interpretation. `apps/github-app/recovery.mjs`
 targets the App schema through migration `0016`; verify that compatibility before
 use. Newer source does not reinterpret or replace the original point.
 
+The [selected single Wirt target](app-commercial-link.md#wirt-environment-selection)
+is part of that interpretation: producer origin, client, callback/receiver,
+continuation and signing dependencies must describe the same relationship as the
+restored link/grant, applied order and report history. Production and staging
+commercial records and acknowledgements are independent. A mirrored Wirt staging
+service is a development environment, not proof of an independently recoverable
+production point or authority to replay production state there.
+
+Current-answer reconciliation applies to the selected producer for those restored
+links. It does not translate them to another environment. Before any deliberate
+target change, the delivery owner resolves the actual retained state and its
+compatible preservation/disposition under the [staging and production admission
+contract](app-staging.md#recovery-and-retained-test-state). An unavailable original
+producer is not permission to use staging, resurrect a historical registration or
+redirect reports to a different commercial history. Keep the affected restore
+isolated and return the actual missing producer/state dependency through its
+existing recovery custody. This adds no target registry or new recovery platform.
+
 Run against a separate restored copy, before any HTTP reader, Queue, cron, import
 or participation delivery starts. Isolation prohibits inbound serving and unrelated
 processing; the explicitly supplied commercial reconciliation can make outbound

@@ -6,6 +6,9 @@ This records product/repository choices whose rationale cannot be reconstructed 
 
 The complete predecessor record is preserved byte-for-byte as [Decisions through D073](DECISIONS-through-d053.md), with its existing references to the complete D001–D043 record. Earlier headings remain below to preserve fragment destinations. A new decision supersedes only its named boundary; it does not erase the previous rationale or implementation evidence.
 
+D089 carries the settled single-Wirt-target relationship and the distinction
+between that selected environment model and an admitted live consumer.
+
 [Plans](app-plans.md), [management](app-management.md), [dashboard](dashboard.md), [access](dashboard-access.md) and [privacy/data](PRIVACY-AND-DATA.md) own the joined maintained contracts. Private deliberation and owner transcripts are not part of this public record.
 
 ## D044: Version the tools people install, not the whole repository
@@ -476,6 +479,47 @@ remains partial/unknown and never earns a repeated write.
 [staging operation and recovery](integration/app-staging.md#protected-input-operation),
 and the pinned provider route qualified by the native-bundle, asset-protocol,
 foreign-upload and lost-response specimens in `apps/github-app/`.
+
+## D089: Select one complete Wirt environment per App deployment
+
+**Status:** Settled by Wolf on 2026-10-24 and accepted by the product and technical
+Leads. This records the selected relationship, not a live target change or billing
+activation.
+
+**Decision.** One production Wirt serves active payments and products. Persistent
+mirrored Wirt staging supports development, fixes, tests and new integrations
+without polluting production commercial data. Production diffdevil targets
+production Wirt when admitted. Internal diffdevil staging normally targets Wirt
+staging; a deliberately selected production target can support qualification that
+needs its real effects. Each deployment selects one complete target at a time,
+irrespective of the product's own maturity.
+
+**Why.** Product development needs a useful mirrored commercial environment without
+turning experimental changes into production money or customer data. Once a product
+uses the active commercial service, its staging or beta label does not require a
+separate production Wirt. One explicit relationship keeps consumer state and its
+observed commercial consequences understandable.
+
+**Rejected or superseded.** Simultaneous staging/production attachment, shared
+report cursors or commercial history, and fallback inferred from a surviving TEST
+registration are not selected. The original production-origin TEST bridge remains
+compatibility/history evidence, not the future production topology. This changes
+no consent, report ordering, disconnect, authorisation or preservation semantics.
+
+**Current consequence.** The [commercial contract](integration/app-commercial-link.md#wirt-environment-selection)
+owns the single complete target and source-support boundary; the
+[staging handoff](integration/app-staging.md) owns concrete assignments and admission,
+and [recovery](integration/app-recovery.md#preserve-the-original-point-and-isolation)
+preserves the same interpretation. Existing staging A/B links/history and original
+registration/key continuity remain intact. The complete paid-capable App may be
+delivered before production Works activation, truthfully unconfigured rather than
+silently using staging or substituting a Free-only build. Actual production Wirt,
+protected inputs, target changes and commercial use need their own admitted
+delivery and evidence; source configuration performs none of them.
+
+**Sources.** Wolf's production/staging environment account and explicit ratification
+of 2026-10-24, accepted by the product and technical Leads; the maintained contracts
+linked above preserve the public product consequence without private transcripts.
 
 ## Earlier decisions and retained fragments
 
