@@ -111,6 +111,8 @@ for (const path of pages) {
   const response = await go(path);
   const impressum = await page.locator('footer a', { hasText: 'Impressum' }).first();
   check(`${path} has an Impressum link to the site's own route`, await impressum.count() === 1 && new URL(await impressum.getAttribute('href'),page.url()).pathname === '/impressum/');
+  const status = page.locator('footer.site-footer a', { hasText: 'Status' });
+  check(`${path} exposes the canonical Status destination in its footer`, await status.count() === 1 && await status.getAttribute('href') === 'https://status.diffdevil.dev/');
   check(`${path} has no Company-privacy footer link`, (await page.locator('footer a', { hasText: 'Company privacy' }).count()) === 0);
   check(`${path} has no page-level horizontal overflow at 1280`, (await overflowOf()) <= 0, String(await overflowOf()));
   const shell = await shellOf();
