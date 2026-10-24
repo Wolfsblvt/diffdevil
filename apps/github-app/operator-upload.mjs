@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
 /** Contained credential child: native authentication, immutable assets, one version POST, no deployment/retry. */
 import { resolve } from 'node:path';
+import { readFile } from 'node:fs/promises';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { readCredentialArtifact } from './operator-artifact.mjs';
-import { buildWranglerCommand, createProcessRunner, nativeProcessEnvironment } from './operator-helper.mjs';
+import { readCredentialArtifact, RETAINED_INPUT_NAMES, sha256 } from './operator-artifact.mjs';
+import { assertRetainedSourceCurrent, buildWranglerCommand, createProcessRunner, nativeProcessEnvironment } from './operator-helper.mjs';
 
 const NATIVE_WRANGLER = fileURLToPath(new URL('../../node_modules/wrangler/bin/wrangler.js', import.meta.url));
 const fail = () => { throw new Error('Artifact upload did not complete.'); };
@@ -65,7 +66,14 @@ export async function uploadCredentialArtifact({ artifactPath, artifactSha256, o
     if (!/^[A-Za-z0-9_-]+$/u.test(accountId) || !/^[A-Za-z0-9_-]+$/u.test(worker) || !/^[A-Za-z0-9_-]+$/u.test(operationId)) fail();
     const artifact = await readCredentialArtifact({ artifactPath, artifactSha256 });
     if (artifact.worker !== worker || artifact.accountId !== accountId) fail();
+    if (artifact.retainedInputs && RETAINED_INPUT_NAMES.some(name => Object.hasOwn(values, name))) fail();
     const env = { ...nativeProcessEnvironment(process.env, {}), CLOUDFLARE_ACCOUNT_ID: accountId, WRANGLER_WRITE_LOGS: 'false', WRANGLER_SEND_METRICS: 'false' };
+    const sourceTarget = { runner, wrangler, config, env, accountId, worker, configHash: artifact.configHash, databaseId: artifact.retainedInputs?.databaseId };
+    let sourceDeployment;
+    if (artifact.retainedInputs) {
+      if (sha256(await readFile(config)) !== artifact.configHash) fail();
+      sourceDeployment = await assertRetainedSourceCurrent(sourceTarget, artifact.retainedInputs);
+    }
     const headers = await authentication({ config, env, runner, wrangler });
     const assets = await uploadAssets({ artifact, accountId, worker, headers, fetchImpl });
     const bindings = [...artifact.metadata.bindings.filter(binding => !Object.hasOwn(values, binding.name)), ...Object.entries(values).map(([name, text]) => ({ name, type: 'secret_text', text }))];
@@ -74,6 +82,11 @@ export async function uploadCredentialArtifact({ artifactPath, artifactSha256, o
     const body = new FormData();
     body.set('metadata', JSON.stringify(metadata));
     for (const file of artifact.modules) body.set(file.name, new File([Buffer.from(file.content, 'base64')], file.name, { type: file.type }));
+    if (artifact.retainedInputs) {
+      if (sha256(await readFile(config)) !== artifact.configHash) fail();
+      // Asset staging can take time: check latest and deployment again at the actual version boundary.
+      await assertRetainedSourceCurrent(sourceTarget, artifact.retainedInputs, sourceDeployment);
+    }
     // Exactly one request. A lost acknowledgement is reconciled by the parent receipt, never retried here.
     versionRequest = 'attempted-unknown';
     const result = await providerRequest(fetchImpl, `/accounts/${accountId}/workers/scripts/${worker}/versions?bindings_inherit=strict`, headers, body);

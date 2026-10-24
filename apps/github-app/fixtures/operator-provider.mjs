@@ -21,7 +21,8 @@ assert.equal(process.env.CLOUDFLARE_ACCOUNT_ID, config.account_id);
 for (const name of options.absentEnvironmentNames ?? []) assert.equal(process.env[name], undefined);
 let result;
 let exitCode = 0;
-if (args.includes('whoami')) result = { accounts: [{ id: config.account_id }] };
+if (args.includes('auth') && args.includes('token')) result = { type: 'api_token', token: 'synthetic-native-auth' };
+else if (args.includes('whoami')) result = { accounts: [{ id: config.account_id }] };
 else {
   assert.equal(args[args.indexOf('--name') + 1], config.name);
   if (args.includes('deployments')) result = [
@@ -45,7 +46,7 @@ else {
     for await (const chunk of process.stdin) chunks.push(chunk);
     const input = Buffer.concat(chunks).toString('utf8');
     const values = JSON.parse(input);
-    state.inputs = Object.keys(values);
+    state.inputs = [...Object.keys(values), ...(artifact.retainedInputs ? ['GITHUB_APP_ID', 'GITHUB_WEBHOOK_SECRET', 'GITHUB_APP_PRIVATE_KEY'] : [])];
     state.deliveryHash = createHash('sha256').update(JSON.stringify(values)).digest('hex');
     state.writes += 1;
     state.created = !options.failWrite;

@@ -12,7 +12,7 @@ import { PassThrough } from 'node:stream';
 import { test } from 'node:test';
 import { createProtector } from '../app/src/lib/protector.mjs';
 import { syntheticArtifact } from './fixtures/operator-artifact.mjs';
-import { assetHash, sha256 } from './operator-artifact.mjs';
+import { assetHash, sha256, RETAINED_INPUT_NAMES } from './operator-artifact.mjs';
 import { buildWranglerCommand, checkCredentials as check, createProcessRunner, installCredentials as install, resumeCredentials, readHiddenTerminalSecret, registrationInputs, withoutProtectedInputs } from './operator-helper.mjs';
 
 const databaseId = '12345678-1234-1234-1234-123456789abc';
@@ -64,6 +64,122 @@ function cli(setup, command = 'install', extra = [], { inputArgs, environment = 
 function containsProtectedValues(text, setup) {
   return ['GITHUB_WEBHOOK_SECRET', 'GITHUB_OAUTH_CLIENT_SECRET', 'APP_SEAL_KEY', 'WIRT_SIGNING_KEY_CURRENT'].some(name => text.includes(setup.values[name])) || text.includes('BEGIN RSA PRIVATE KEY');
 }
+
+async function retainedFixture({ community = false } = {}) {
+  const setup = await appFixture();
+  if (community) {
+    const config = JSON.parse(await readFile(setup.config, 'utf8'));
+    delete config.vars.APP_ORIGIN;
+    delete config.vars.WIRT_ORIGIN;
+    await writeFile(setup.config, JSON.stringify(config));
+  }
+  const retainedInputs = { format: 'diffdevil-retained-inputs-v1', accountId: 'account-1', worker: 'diffdevil-app-staging', databaseId, configHash: sha256(await readFile(setup.config)), sourceVersionId: 'version-before', custodyRef: 'exclusive-version-custody', identity: { appId: '123', clientId: setup.options.oauthClientId, botLogin: 'diffdevil[bot]', botId: '456' } };
+  setup.options = { ...setup.options, ...await syntheticArtifact(setup.config, { retainedInputs }), privateKeyPath: undefined, webhookSecretPath: undefined, readWebhookSecret: async () => { throw new Error('Original input must never be read.'); } };
+  if (community) for (const key of ['oauthClientId', 'oauthClientSecretPath', 'sealKeyPath', 'sealKeyRecoveryRef', 'sealKeyInitial', 'wirtSigningKeyPath']) delete setup.options[key];
+  const fake = versionRunner();
+  const runner = async call => {
+    const result = await fake.runner(call);
+    if (call.args.includes('view')) {
+      const viewed = JSON.parse(result.stdout);
+      viewed.resources.bindings.push(...RETAINED_INPUT_NAMES.map(name => ({ name, type: 'secret_text' })));
+      return { ...result, stdout: JSON.stringify(viewed) };
+    }
+    return result;
+  };
+  return { ...setup, retainedInputs, fake, runner };
+}
+
+for (const community of [false, true]) test(`retained ${community ? 'Community' : 'joined App'} installation preserves originals without plaintext or new key authentication`, async () => {
+  const setup = await retainedFixture({ community });
+  try {
+    const checked = await check({ ...setup.options, runner: setup.runner });
+    assert.equal(checked.state, 'ready-for-input');
+    const report = await install({ ...setup.options, runner: setup.runner, githubFetch: fixtureGitHubFetch() });
+    assert.equal(report.state, 'version-created');
+    assert.equal(report.identity.state, 'retained-source');
+    assert.equal(report.retainedSource.state, 'read-back');
+    assert.deepEqual(report.inputProvenance.retained, RETAINED_INPUT_NAMES);
+    assert.equal(report.inputProvenance.independentKeyRecovery, 'not-established');
+    const writes = setup.fake.calls.filter(call => call.args.includes('upload-artifact'));
+    assert.equal(writes.length, 1);
+    const supplied = JSON.parse(writes[0].input);
+    for (const name of RETAINED_INPUT_NAMES) assert.equal(Object.hasOwn(supplied, name), false);
+    assert.deepEqual(Object.keys(supplied), community ? [] : appInputs.slice(3));
+    assert.equal(containsProtectedValues(JSON.stringify(report), setup), false);
+    await rm(setup.options.artifactPath);
+    assert.equal((await resumeCredentials({ ...setup.options, runner: setup.runner })).state, 'version-created');
+    assert.equal(setup.fake.calls.filter(call => call.args.includes('upload-artifact')).length, 1);
+  } finally { await rm(setup.directory, { recursive: true, force: true }); }
+});
+
+test('retained source change after new input acquisition persists a terminal no-write receipt', async () => {
+  const setup = await retainedFixture();
+  let changed = false;
+  const runner = async call => {
+    if (changed && call.args.includes('list') && call.args.includes('versions')) return { code: 0, stdout: '[{"id":"version-before"},{"id":"foreign-version"}]' };
+    return setup.runner(call);
+  };
+  const githubFetch = async (...args) => { const response = await fixtureGitHubFetch()(...args); changed = true; return response; };
+  try {
+    await assert.rejects(install({ ...setup.options, runner, githubFetch }), error => error.code === 'E_OPERATOR_TARGET' && error.receipt.command === 'not-attempted');
+    assert.equal(setup.fake.calls.some(call => call.args.includes('upload-artifact')), false);
+    assert.equal(JSON.parse(await readFile(setup.options.receiptPath, 'utf8')).state, 'not-attempted');
+  } finally { await rm(setup.directory, { recursive: true, force: true }); }
+});
+
+test('retained originals cannot invent missing new inputs, change App identity or accept a foreign source', async () => {
+  const setup = await retainedFixture();
+  try {
+    for (const change of [{ oauthClientSecretPath: undefined }, { sealKeyPath: undefined }, { wirtSigningKeyPath: undefined }, { appId: '999' }, { oauthClientId: 'foreign-client' }, { baseVersionId: 'foreign-version' }]) {
+      await assert.rejects(check({ ...setup.options, ...change, runner: setup.runner }));
+    }
+    const runner = async call => call.args.includes('view') ? { code: 0, stdout: JSON.stringify({ id: 'version-before', resources: { bindings: [{ name: 'APP_DB', type: 'd1', id: databaseId }] } }) } : setup.runner(call);
+    await assert.rejects(check({ ...setup.options, runner }), { code: 'E_OPERATOR_TARGET' });
+    assert.equal(setup.fake.calls.some(call => call.args.includes('upload-artifact')), false);
+  } finally { await rm(setup.directory, { recursive: true, force: true }); }
+});
+
+for (const outcome of ['accepted', 'foreign-during-post', 'lost-acknowledgement']) test(`real retained upload child and durable receipt: ${outcome}`, async () => {
+  const setup = await retainedFixture();
+  const native = createProcessRunner();
+  const provider = resolve('apps/github-app/fixtures/operator-provider.mjs');
+  const runner = call => native({ ...call, args: call.args[0].endsWith('operator-upload.mjs') ? ['--import', pathToFileURL(resolve('apps/github-app/fixtures/operator-upload-transport.mjs')).href, ...call.args] : call.args });
+  try {
+    await writeFile(join(setup.directory, 'fixture-options.json'), JSON.stringify({ existingInputs: RETAINED_INPUT_NAMES, foreignUploadDuringPost: outcome === 'foreign-during-post', loseAcknowledgement: outcome === 'lost-acknowledgement' }));
+    const operation = install({ ...setup.options, wrangler: provider, runner, githubFetch: fixtureGitHubFetch() });
+    if (outcome === 'accepted') assert.equal((await operation).state, 'version-created');
+    else await assert.rejects(operation, error => error.code === 'E_OPERATOR_VERSION' && error.receipt.state === 'partial');
+    const stored = JSON.parse(await readFile(setup.options.receiptPath, 'utf8'));
+    assert.equal(stored.identity.state, 'retained-source');
+    assert.equal(stored.retainedSource.state, outcome === 'foreign-during-post' ? 'changed' : 'read-back');
+    assert.equal(stored.command, outcome === 'lost-acknowledgement' ? 'attempted-unknown' : 'accepted');
+    const state = JSON.parse(await readFile(join(setup.directory, 'fixture-state.json'), 'utf8'));
+    assert.equal(state.writes, 1);
+    assert.equal(state.deliveryHash, createHash('sha256').update(JSON.stringify(Object.fromEntries(Object.entries(setup.values).filter(([name]) => !RETAINED_INPUT_NAMES.includes(name))))).digest('hex'));
+    await rm(setup.options.artifactPath);
+    const resumed = resumeCredentials({ ...setup.options, wrangler: provider, runner });
+    if (outcome === 'accepted') assert.equal((await resumed).state, 'version-created');
+    else await assert.rejects(resumed, { code: 'E_OPERATOR_VERSION' });
+    assert.equal(JSON.parse(await readFile(join(setup.directory, 'fixture-state.json'), 'utf8')).writes, 1);
+    assert.equal(containsProtectedValues(await readFile(setup.options.receiptPath, 'utf8'), setup), false);
+  } finally { await rm(setup.directory, { recursive: true, force: true }); }
+});
+
+test('real retained CLI preflight/install/resume omit original plaintext input paths', async () => {
+  const setup = await retainedFixture();
+  try {
+    await writeFile(join(setup.directory, 'fixture-options.json'), JSON.stringify({ existingInputs: RETAINED_INPUT_NAMES }));
+    const inputArgs = ['--app-id', '123', '--oauth-client-id', setup.options.oauthClientId, '--oauth-client-secret-file', setup.options.oauthClientSecretPath, '--seal-key-file', setup.options.sealKeyPath, '--seal-key-initial', '--seal-key-recovery-ref', setup.options.sealKeyRecoveryRef, '--wirt-signing-key-file', setup.options.wirtSigningKeyPath];
+    for (const command of ['check', 'install', 'resume']) {
+      const result = cli(setup, command, [], { inputArgs: command === 'resume' ? [] : inputArgs });
+      assert.equal(result.status, 0, result.stderr + result.stdout);
+      const report = JSON.parse(result.stdout);
+      assert.equal(report.state, command === 'check' ? 'ready-for-input' : 'version-created');
+      assert.equal(containsProtectedValues(result.stdout + result.stderr, setup), false);
+    }
+    assert.equal(JSON.parse(await readFile(join(setup.directory, 'fixture-state.json'), 'utf8')).writes, 1);
+  } finally { await rm(setup.directory, { recursive: true, force: true }); }
+});
 
 test('credential-bearing native children cannot execute an ambient Node preload or inherit proxy overrides', async () => {
   const setup = await appFixture();

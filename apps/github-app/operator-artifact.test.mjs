@@ -4,7 +4,7 @@ import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { test } from 'node:test';
-import { readCredentialArtifact, sha256, assetHash } from './operator-artifact.mjs';
+import { readCredentialArtifact, sha256, assetHash, RETAINED_INPUT_NAMES } from './operator-artifact.mjs';
 import { uploadCredentialArtifact } from './operator-upload.mjs';
 import { createProcessRunner, nativeProcessEnvironment } from './operator-helper.mjs';
 import { syntheticArtifact } from './fixtures/operator-artifact.mjs';
@@ -35,6 +35,17 @@ test('the real helper prepares pinned native modules/settings and filtered asset
     assert.match(artifact.assets.config._headers, /X-Artifact: retained/u);
     assert.equal(artifact.metadata.keep_bindings, undefined);
     assert.equal(artifact.configHash, sha256(await readFile(config)));
+    const retainedInputsPath = join(directory, 'retained-inputs.json');
+    const retainedInputs = { format: 'diffdevil-retained-inputs-v1', accountId: 'account-1', worker: 'diffdevil-artifact-fixture', databaseId: '12345678-1234-1234-1234-123456789abc', configHash: artifact.configHash, sourceVersionId: 'qualified-original', custodyRef: 'exclusive-source-operation', identity: { appId: '123', clientId: 'fixture-client', botLogin: 'diffdevil[bot]', botId: '456' } };
+    await writeFile(retainedInputsPath, JSON.stringify(retainedInputs));
+    const retainedPath = join(directory, 'retained-artifact.json');
+    const retainedResult = await createProcessRunner({ cwd: process.cwd() })({ args: [resolve('apps/github-app/operator-helper.mjs'), 'prepare-artifact', '--config', config, '--account-id', 'account-1', '--artifact-file', retainedPath, '--retained-inputs-file', retainedInputsPath], input: '', env });
+    assert.equal(retainedResult.code, 0, retainedResult.stdout);
+    const retained = await readCredentialArtifact({ artifactPath: retainedPath, artifactSha256: JSON.parse(retainedResult.stdout).sha256 });
+    assert.deepEqual(retained.retainedInputs, retainedInputs);
+    assert.deepEqual(retained.metadata.bindings.filter(binding => binding.type === 'inherit'), RETAINED_INPUT_NAMES.map(name => ({ name, type: 'inherit' })));
+    assert.deepEqual(retained.modules, artifact.modules);
+    assert.deepEqual(retained.assets, artifact.assets);
     const original = await readFile(path);
     await writeFile(path, `${original}\n`);
     await assert.rejects(readCredentialArtifact({ artifactPath: path, artifactSha256: receipt.sha256 }), { code: 'E_OPERATOR_ARTIFACT' });
@@ -117,5 +128,61 @@ test('native authentication failure attests no version request and makes no prov
   try {
     await assert.rejects(uploadCredentialArtifact({ ...setup, accountId: 'account-1', worker: 'existing-worker', operationId: 'before-effect', values: { APP_SEAL_KEY: 'synthetic-seal' }, runner: async () => ({ code: 2, stdout: '' }), fetchImpl: async () => { requests++; throw new Error('Must not reach provider.'); } }), error => error.versionRequest === 'not-attempted');
     assert.equal(requests, 0);
+  } finally { await rm(setup.directory, { recursive: true, force: true }); }
+});
+
+async function retainedUploadFixture() {
+  const setup = await uploadFixture();
+  const retainedInputs = { format: 'diffdevil-retained-inputs-v1', accountId: 'account-1', worker: 'existing-worker', databaseId: '12345678-1234-1234-1234-123456789abc', configHash: setup.artifact.configHash, sourceVersionId: 'qualified-original', custodyRef: 'exclusive-version-operation', identity: { appId: '123', clientId: 'fixture-client', botLogin: 'diffdevil[bot]', botId: '456' } };
+  setup.artifact.retainedInputs = retainedInputs;
+  setup.artifact.metadata.bindings.push(...RETAINED_INPUT_NAMES.map(name => ({ name, type: 'inherit' })));
+  const bytes = `${JSON.stringify(setup.artifact)}\n`;
+  await writeFile(setup.artifactPath, bytes);
+  return { ...setup, artifactSha256: sha256(bytes) };
+}
+
+for (const outcome of ['accepted', 'source-changed', 'source-unknown', 'missing-original', 'deployment-changed', 'lost-acknowledgement']) test(`retained multipart upload: ${outcome}`, async () => {
+  const setup = await retainedUploadFixture();
+  let staged = false, posts = 0;
+  const runner = async ({ args }) => {
+    if (args.includes('token')) return { code: 0, stdout: '{"type":"api_token","token":"synthetic-auth"}' };
+    if (args.includes('deployments')) return { code: 0, stdout: JSON.stringify([{ id: staged && outcome === 'deployment-changed' ? 'foreign-deployment' : 'original-deployment', versions: [{ version_id: 'qualified-original', percentage: 100 }] }]) };
+    if (args.includes('list')) return staged && outcome === 'source-unknown' ? { code: 1, stdout: '' } : { code: 0, stdout: JSON.stringify([{ id: 'qualified-original' }, ...(staged && outcome === 'source-changed' ? [{ id: 'foreign-version' }] : [])]) };
+    return { code: 0, stdout: JSON.stringify({ id: 'qualified-original', resources: { bindings: [{ name: 'APP_DB', type: 'd1', id: setup.artifact.retainedInputs.databaseId }, ...RETAINED_INPUT_NAMES.filter(name => outcome !== 'missing-original' || name !== 'GITHUB_APP_PRIVATE_KEY').map(name => ({ name, type: 'secret_text' }))] } }) };
+  };
+  const fetchImpl = async (url, request) => {
+    if (url.endsWith('/assets-upload-session')) { staged = true; return { ok: true, json: async () => ({ success: true, result: { jwt: 'synthetic-completion', buckets: [] } }) }; }
+    posts++;
+    assert.ok(url.endsWith('/versions?bindings_inherit=strict'));
+    const metadata = JSON.parse(request.body.get('metadata'));
+    assert.deepEqual(metadata.bindings.filter(binding => binding.type === 'inherit'), RETAINED_INPUT_NAMES.map(name => ({ name, type: 'inherit' })));
+    assert.equal(metadata.bindings.some(binding => RETAINED_INPUT_NAMES.includes(binding.name) && Object.hasOwn(binding, 'text')), false);
+    assert.equal(metadata.bindings.find(binding => binding.name === 'APP_SEAL_KEY').text, 'synthetic-new-seal');
+    if (outcome === 'lost-acknowledgement') throw new Error('synthetic response lost');
+    return { ok: true, json: async () => ({ success: true, result: { id: 'created-retained' } }) };
+  };
+  try {
+    const operation = uploadCredentialArtifact({ ...setup, accountId: 'account-1', worker: 'existing-worker', operationId: 'operation-retained', values: { APP_SEAL_KEY: 'synthetic-new-seal' }, runner, fetchImpl });
+    if (outcome === 'accepted') assert.equal((await operation).id, 'created-retained');
+    else await assert.rejects(operation, error => error.versionRequest === (outcome === 'lost-acknowledgement' ? 'attempted-unknown' : 'not-attempted'));
+    assert.equal(posts, ['accepted', 'lost-acknowledgement'].includes(outcome) ? 1 : 0);
+  } finally { await rm(setup.directory, { recursive: true, force: true }); }
+});
+
+test('retained artifacts refuse arbitrary inheritance, renamed/explicit-version bindings and original replacement values', async () => {
+  const setup = await retainedUploadFixture();
+  try {
+    for (const mutation of [artifact => { delete artifact.retainedInputs; }, artifact => { artifact.metadata.keep_bindings = ['secret_text']; }, artifact => { artifact.metadata.bindings.at(-1).old_name = 'other-key'; }, artifact => { artifact.metadata.bindings.at(-1).version_id = 'qualified-original'; }, artifact => { artifact.metadata.bindings.push({ name: 'ARBITRARY_SECRET', type: 'inherit' }); }, artifact => { artifact.retainedInputs.identity.appId = 'different-id'; }]) {
+      const artifact = structuredClone(setup.artifact);
+      mutation(artifact);
+      const bytes = JSON.stringify(artifact);
+      await writeFile(setup.artifactPath, bytes);
+      await assert.rejects(readCredentialArtifact({ artifactPath: setup.artifactPath, artifactSha256: sha256(bytes) }), { code: 'E_OPERATOR_ARTIFACT' });
+    }
+    const bytes = JSON.stringify(setup.artifact);
+    await writeFile(setup.artifactPath, bytes);
+    let authenticated = false;
+    await assert.rejects(uploadCredentialArtifact({ ...setup, artifactSha256: sha256(bytes), accountId: 'account-1', worker: 'existing-worker', operationId: 'refused-replacement', values: { GITHUB_APP_PRIVATE_KEY: 'synthetic-replacement' }, runner: async () => { authenticated = true; throw new Error(); } }), error => error.versionRequest === 'not-attempted');
+    assert.equal(authenticated, false);
   } finally { await rm(setup.directory, { recursive: true, force: true }); }
 });
