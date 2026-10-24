@@ -112,8 +112,10 @@ script's Upload Version API receives all native modules, versioned settings,
 selected static assets and credential bindings in one new undeployed version.
 The contained upload child uses pinned Wrangler's native `auth token --json`
 internally; its credential-valued response never reaches helper output. The
-version POST is attempted once. No inherited binding/asset selector, deployment,
-resource provisioning or non-versioned settings write is part of that POST.
+version POST is attempted once. Fresh-input artifacts use concrete bindings;
+the bounded retained-input mode below preserves only the original GitHub group.
+No inherited asset selector, deployment, resource provisioning or non-versioned
+settings write is part of that POST.
 
 Prepare the artifact from the **complete built target config**, including the
 joined App's generated server, modules and assets, before protected input:
@@ -129,7 +131,7 @@ freezes the actual multipart modules/settings plus the complete selected assets.
 It applies `.assetsignore`, retains `_headers`/`_redirects` and asset routing, and
 binds the original config hash. Source symlinks and unresolved inherited bindings
 refuse before protected input. The artifact contains executable code/assets and
-no credential bindings; private composites keep their private custody. Qualify
+no raw credential values; private composites keep their private custody. Qualify
 its returned digest against the intended source/composition and retain that
 selection through install. Do not silently regenerate the artifact at upload time.
 
@@ -138,6 +140,70 @@ to `check` and `install` (or the manifest install handoff). Existing consumers a
 this preparation/selection; omitting it refuses before protected input. Existing
 receipt files remain readable through read-only `resume`, including legacy
 receipts without artifact lineage. No raw values need manual transport.
+
+### Preserve an existing GitHub binding group
+
+For an in-place update whose original GitHub credentials remain in provider
+custody, preparation accepts `--retained-inputs-file <operation-source.json>`.
+This is one non-secret source selection for the operation, frozen into the
+artifact and its receipt. It is neither a credential inventory nor independent
+key recovery. Its format is:
+
+```json
+{
+  "format": "diffdevil-retained-inputs-v1",
+  "accountId": "selected-account",
+  "worker": "selected-worker",
+  "databaseId": "12345678-1234-1234-1234-123456789abc",
+  "configHash": "<SHA-256 of the exact complete built configuration bytes>",
+  "sourceVersionId": "qualified-original-version",
+  "custodyRef": "existing-exclusive-version-operation-reference",
+  "identity": {
+    "appId": "123",
+    "clientId": "qualified-oauth-client",
+    "botLogin": "selected-app[bot]",
+    "botId": "456"
+  }
+}
+```
+
+The operating custodian supplies the already-qualified mapping from that exact
+original version to its App identity, configuration and original binding names.
+`custodyRef` points to actual custody excluding other version uploads throughout
+the operation; writing this file does not establish that exclusion. The uploader
+does not extract, rotate or freshly authenticate the retained private key. It
+checks the public bot identity separately and reports `identity.state:
+retained-source`, with key authentication `not-repeated` and independent key
+recovery `not-established`.
+
+Preparation adds only same-name `inherit` descriptors for `GITHUB_APP_ID`,
+`GITHUB_WEBHOOK_SECRET` and `GITHUB_APP_PRIVATE_KEY`. Arbitrary inherited names,
+renaming, explicit version selectors, secret-valued artifact metadata and broad
+`keep_bindings` remain refused. The default fresh route still refuses native
+inheritance because it could silently select a foreign latest upload.
+
+Use the resulting artifact/digest with the existing `check` and `install`
+commands, selecting the same `--base-version-id` and `--app-id`, and omit original
+private-key/webhook inputs. New joined-App OAuth client/secret and seal inputs,
+their continuity/custody selection, and Wirt signing input when configured remain
+required. Retention cannot invent them or justify removing the configured Works
+relationship. A Community configuration without Wirt needs no commercial key.
+
+The script-version API inherits from **latest uploaded**, which may differ from
+deployed; it cannot pin an explicit source version. See the provider's
+[Upload Version contract](https://developers.cloudflare.com/api/resources/workers/subresources/scripts/subresources/versions/methods/create/).
+The helper checks the exact source and original binding names before input and
+again before its ambiguity checkpoint. The contained uploader rechecks before
+asset staging and immediately before the single strict version POST. A changed
+or unknown source/configuration/deployment refuses that POST. These observations
+do not provide atomic source pinning: actual version-write custody remains an
+operating obligation. Reconciliation checks source/version ordering as well as
+the exact artifact tag, all required binding names and unchanged deployment.
+An intervening upload, lost acknowledgement or unknown readback remains partial
+or unknown; resume the existing receipt read-only and never blindly reinstall.
+The receipt lists retained and newly supplied inputs separately. Original
+provider-held values and independently recoverable key custody remain different
+facts. No command activates the created version.
 
 The preferred initial setup is `manifest-helper.mjs`: a local native manifest
 form for personal/organisation registration and explicit visibility, with
