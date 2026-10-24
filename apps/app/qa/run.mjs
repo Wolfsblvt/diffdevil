@@ -484,9 +484,22 @@ async function qualifyCloud(label, selector) {
   await page.waitForFunction(selector => !document.querySelector(`${selector} .cl`)?.classList.contains('is-busy') && document.querySelectorAll(`${selector} .cl-words .cl-w`).length > 0, selector, { timeout: 10_000 }).catch(() => {});
 }
 
-async function signIn() {
+async function signIn({ entry } = {}) {
   // The App redirects to GitHub; the fixture answers GitHub's part, so the callback is reached directly with the state and cookie the App issued.
-  const started = await context.request.get(`${ORIGIN}/auth/start`, { maxRedirects: 0 });
+  let started;
+  if (entry) {
+    await go(entry);
+    const primary = page.getByRole('link', { name: 'Sign in with GitHub', exact: true });
+    check('the ordinary public root starts OAuth directly without a second sign-in page', await primary.getAttribute('href') === '/auth/start');
+    // Capture the real App response and cookie from an ordinary click. Stop at the
+    // external provider boundary; the existing fixture callback below supplies GitHub's part.
+    await page.route(`${ORIGIN}/auth/start`, async route => {
+      started = await route.fetch({ maxRedirects: 0 });
+      await route.fulfill({ status: 200, headers: { ...started.headers(), 'content-type': 'text/plain; charset=utf-8' }, body: 'Fixture GitHub authorization boundary.' });
+    });
+    try { await primary.click(); await page.waitForURL(`${ORIGIN}/auth/start`); }
+    finally { await page.unroute(`${ORIGIN}/auth/start`); }
+  } else started = await context.request.get(`${ORIGIN}/auth/start`, { maxRedirects: 0 });
   check('auth/start redirects to github.com with a bound state', started.status() === 303 && started.headers().location.startsWith('https://github.com/login/oauth/authorize'), `${started.status()} ${started.headers().location}`);
   const state = new URL(started.headers().location).searchParams.get('state');
   await go(`/auth/callback?state=${state}&code=${CODE}`);
@@ -1015,7 +1028,7 @@ try {
   } else if (IDENTITY_ONLY) {
     await startWorker(undefined, STATE, { commercial: COMMERCIAL_PRO });
     await installEntry({page,context,check,ORIGIN,shot,standalone,target});
-    await signIn();
+    await signIn({ entry: '/' });
     for (const [name, path] of [['overview', '/'], ['manage', '/manage']]) {
       await go(path);
       await settled();
