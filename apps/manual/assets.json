@@ -10,5 +10,6 @@
   "docs/manual/assets/visuals/rendered/selection-boundaries-light.svg": "/assets/manual/visuals/selection-boundaries-light.svg",
   "docs/manual/assets/visuals/rendered/selection-boundaries-dark.svg": "/assets/manual/visuals/selection-boundaries-dark.svg",
   "docs/manual/assets/visuals/rendered/provider-readback-light.svg": "/assets/manual/visuals/provider-readback-light.svg",
-  "docs/manual/assets/visuals/rendered/provider-readback-dark.svg": "/assets/manual/visuals/provider-readback-dark.svg"
+  "docs/manual/assets/visuals/rendered/provider-readback-dark.svg": "/assets/manual/visuals/provider-readback-dark.svg",
+  "apps/website/src/assets/app/history.png": "/assets/manual/app-history.png"
 }

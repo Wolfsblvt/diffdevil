@@ -4,6 +4,8 @@
 
 A finite release checklist for an already authored application and source-backed Store kit. Publication, public website changes, developer verification and the final Store submission remain explicit later effects. Do not treat an unverified candidate, ignored artifact or provider-dashboard draft as released product truth.
 
+[The dashboard walkthrough](dashboard.md) is the split-screen operator packet. [Public links](public-links.md) owns final destinations, temporary fallbacks and their launch readback. This file owns package qualification and reviewer instructions; it does not duplicate those fields.
+
 ## Source and reproducibility
 
 Record the accepted commit and base, Node/TypeScript/browser versions, package-lock integrity, build receipt and unpacked file hashes. Use the corresponding source, not a detached binary. Run the normal repository gates, application/core tests, browser DOM/acquisition tests and installed suite. Confirm no unrelated website, deployment or npm publication step is part of the build. Review generated Action-runtime changes and check their freshness.
@@ -12,9 +14,28 @@ Store copy and upload bytes come from `apps/browser-extension/store/`. Run `npm 
 
 The committed visual set renders the Extension Grammar v1 implementation against authored fixtures. Review it against the accepted in-place experience before any Store submission; regenerate it deliberately whenever the rendered interface changes.
 
+Build the selected source after its integration is accepted. A proposal-head build can qualify the candidate, but it must identify that proposal rather than claim accepted-main standing. If main moves, compare the actual extension/browser-engine/build/dependency closure before reusing evidence. Unrelated App changes alone do not require the extension's entire historical acceptance to be repeated.
+
+### Exact package handoff
+
+The technical return records:
+
+- accepted base and candidate/final commit plus tree, clean/dirty standing, extension version, declared engine version and unpublished/released standing;
+- Node, npm, TypeScript and actual browser versions, plus the package-lock SHA-256;
+- ZIP path, SHA-256, byte size and member count; `build-receipt.json`, `package/package-receipt.json` and `bundle-metafile.json` paths;
+- the old accepted archive identity and a comparison covering **every** member of both archives, including added/removed hash-named chunks, with old/new hashes and sizes;
+- an explanation for each executable, import-path, build-metadata, permission, notice, privacy or asset difference, mapped to its actual source inputs;
+- commands, receipts and exercised source identity, with installed fixture, public GitHub and private GitHub results kept distinct;
+- `store/assets/asset-manifest.json`, exact retained/generated image standing and the source-backed dashboard packet; and
+- remaining public readbacks or installed checks, with the receiving operator and exact next action.
+
+Use the actual old archive, or a rebuilt archive whose whole ZIP hash equals its recorded accepted hash. A reconstruction that does not match is not the accepted comparison baseline. Do not equate unchanged file counts with unchanged package contents. Preserve an accepted archive rather than overwriting it in place under the same release identity.
+
 ## Browser release gate
 
 Accept installed MV3 behavior in an unrestricted allowed Chrome profile, including CSP, real settings storage, IndexedDB, worker and browser restart, quotas, disabling/reset and no raw-source persistence. Accept real public and authorized private GitHub PRs and current modern/legacy placement where applicable. Check the full PR and narrowed/commit comparisons, head changes and native label handoff with and without permission. Execute Windows and real Chrome zoom/accessibility acceptance. Managed-policy-blocked evidence and authored fixtures do not satisfy these gates.
+
+For a refresh, retain applicable accepted evidence and exercise the changed boundary proportionately. Changed shared-engine bytes require installed aggregate/file and policy checks on public and authorized private PRs; compare actual facts, bounded evidence and cached revalidation. Link/notice-only changes need the installed Settings/notice navigation and readable narrow/light/dark presentation. A Web environment without the authorized private profile hands that exact check to the local operator; it never relabels a public PR or synthetic fixture as private qualification.
 
 Confirm the full-colour/none choices and the pinned accepted centre-seam monochrome resolver. The build must verify the shared glyph hash and must not redraw or substitute its geometry.
 
@@ -51,7 +72,7 @@ npm run extension:store:generate
 
 That command rewrites tracked source and therefore requires visual inspection plus an ordinary source diff. Routine Store preparation validates and copies; it does not silently regenerate artwork.
 
-Use `listing.md` for the single purpose, short and detailed descriptions. Use `privacy-answers.md` to disclose website content, limited PR-route activity and local/synchronized configuration. Set a real public privacy-policy URL and real owner contact identity. Do not invent a Store URL or hardcode a made-up extension ID into the footer. The source/options/product links can remain the existing repository links until the accepted public website supplies better canonical routes.
+Use `listing.md` for the single purpose, short and detailed descriptions and `privacy-answers.md` for the actual local/synchronized data practices. Consume the accepted website/legal result and complete `public-links.md` before submission: the prepared product/manual/maker/contact links do not prove deployment, and the direct GitHub extension notice stays the explicit fallback until a dedicated replacement is accepted. Do not invent a Store URL or hardcode a made-up extension ID into the footer. Software licences, extension privacy, website Terms and operator contact keep their distinct meanings.
 
 ## Reviewer instructions
 

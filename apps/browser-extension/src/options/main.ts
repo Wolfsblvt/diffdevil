@@ -4,6 +4,8 @@ import { bands, overrides, personalYaml, repositoryKey } from '../shared/setting
 import { request, type Diagnostics } from '../shared/protocol.js';
 import { productIcon, GLYPH_STATUS } from '../shared/icons.js';
 import { node, button, isDark } from '../shared/dom.js';
+import { THEME_KEY, THEME_NEXT_KEY, applyThemeState, describeTheme, isPreference, nextSide, stepTheme, type Side, type ThemeState } from '../shared/theme-state.js';
+import { themeHandoff } from '../shared/destinations.js';
 import { inventoryEditor, pausedEditor, readySection, type DataHost } from './data.js';
 const byId = <T extends HTMLElement>(id: string): T => { const result = document.getElementById(id); if (!result) throw new Error(`Missing options control ${id}.`); return result as T; };
 let settings: Settings = { ...DEFAULTS };
@@ -20,12 +22,19 @@ function announce(message: string, error = false): void {
   clearTimeout(announcementTimer); if (!error) announcementTimer = setTimeout(() => { status.hidden = true; }, 6000);
 }
 const humanBytes = (value: number): string => value < 1024 ? `${value} B` : value < 1024 * 1024 ? `${(value / 1024).toFixed(1)} KiB` : `${(value / 1024 / 1024).toFixed(2)} MiB`;
+// The side the bounce heads for while Automatic is selected; an explicit side always heads to the other one.
+let themeNext: Side | undefined;
+function themeState(): ThemeState {
+  const saved = settings['appearance.theme']; const preference = isPreference(saved) ? saved : 'system';
+  let stored: unknown = themeNext; if (stored === undefined) { try { stored = localStorage.getItem(THEME_NEXT_KEY); } catch { /* no early-paint copy */ } }
+  return { preference, next: nextSide(preference, stored) };
+}
+const themeSetting = (): Setting => SETTINGS.find(item => item.id === 'appearance.theme')!;
 function theme(): void {
-  const choice = String(settings['appearance.theme']);
-  if (choice === 'system') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = choice;
-  try { localStorage.setItem('diffdevil.options.theme', choice); } catch { /* Applied without persistent early-paint state. */ }
-  byId<HTMLImageElement>('wordmark').src = chrome.runtime.getURL(`assets/diffdevil-wordmark-${isDark(document) ? 'dark' : 'light'}.svg`);
-  for (const option of document.querySelectorAll<HTMLButtonElement>('#theme-control button')) option.setAttribute('aria-pressed', String(option.dataset.theme === choice));
+  const state = themeState(); themeNext = state.next; applyThemeState(document.documentElement, state);
+  try { localStorage.setItem(THEME_KEY, state.preference); localStorage.setItem(THEME_NEXT_KEY, state.next); } catch { /* Applied without persistent early-paint state. */ }
+  const control = byId<HTMLButtonElement>('theme-control'); const text = describeTheme(state); control.title = text; control.setAttribute('aria-description', text);
+  const select = document.querySelector<HTMLSelectElement>('[id="control-appearance.theme"]'); if (select) select.value = state.preference;
   // Previews update in place; changing theme must not discard a policy draft.
   for (const preview of document.querySelectorAll<HTMLElement>('[data-icon-preview]')) {
     preview.replaceChildren(); const mark = productIcon(preview.dataset.iconPreview!, isDark(document), chrome.runtime.getURL);
@@ -207,7 +216,17 @@ async function manage(item: Setting, error: HTMLElement): Promise<void> {
 function download(name: string, content: string, type: string): void {
   const url = URL.createObjectURL(new Blob([content], { type })); const link = node('a'); link.href = url; link.download = name; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
-for (const [value, title] of [['dark', 'Dark'], ['system', 'Auto'], ['light', 'Light']]) { const option = button(title!, () => { void save(SETTINGS.find(item => item.id === 'appearance.theme')!, value!); }); option.dataset.theme = value; option.setAttribute('aria-pressed', 'false'); byId('theme-control').append(option); }
+// One cycling control: click, Enter and Space advance; the arrows only supplement it. The saved preference is the setting; the bounce side rides along.
+async function advanceTheme(direction: 1 | -1): Promise<void> {
+  const before = themeNext; const after = stepTheme(themeState(), direction); themeNext = after.next;
+  if (!await save(themeSetting(), after.preference)) { themeNext = before; theme(); }
+}
+byId('theme-control').addEventListener('click', () => { void advanceTheme(1); });
+byId('theme-control').addEventListener('keydown', event => { if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return; event.preventDefault(); void advanceTheme(event.key === 'ArrowRight' ? 1 : -1); });
+// A link to the product site or the manual carries the current theme, so the website opens as it looks here.
+const carryTheme = (event: Event): void => { const link = event.target instanceof Element ? event.target.closest<HTMLAnchorElement>('a[href]') : null; if (!link) return; const target = themeHandoff(link.href, document.documentElement); if (target !== link.href) link.href = target; };
+for (const type of ['pointerdown', 'focusin', 'click', 'auxclick', 'contextmenu']) document.addEventListener(type, carryTheme, true);
+for (const year of document.querySelectorAll<HTMLElement>('[data-year]')) year.textContent = String(new Date().getUTCFullYear());
 for (const option of document.querySelectorAll<HTMLButtonElement>('#view-control button')) option.addEventListener('click', () => { view = option.dataset.view as 'basic' | 'advanced'; revealed.clear(); modifiedOnly = false; render(); });
 search.addEventListener('input', () => { modifiedOnly = false; render(); window.scrollTo({ top: 0, behavior: 'instant' }); });
 byId('show-changed').addEventListener('click', () => { modifiedOnly = true; search.value = ''; render(); });

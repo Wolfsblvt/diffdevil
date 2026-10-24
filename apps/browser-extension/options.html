@@ -1,5 +1,9 @@
 <!doctype html>
 <!-- SPDX-License-Identifier: AGPL-3.0-only -->
+<!-- The header and footer speak the website's shell grammar (apps/website/src/components/Header.astro, Footer.astro),
+     reduced to what Settings needs: identity with its location label, Source on GitHub, the bouncing theme control and
+     one App action; a footer that cross-links the product site, the manual and the project, and closes with the maker.
+     Icon slots (`<span data-icon>`) are resolved at build time from the shared catalogue. -->
 <html lang="en">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark light">
@@ -7,9 +11,18 @@
 </head>
 <body>
 <a class="skip-link" href="#settings-content">Skip to settings</a>
-<header class="app-header"><div class="header-inner">
-  <a class="wordmark" href="https://github.com/Wolfsblvt/diffdevil" target="_blank" rel="noopener noreferrer"><img id="wordmark" src="assets/diffdevil-wordmark-dark.svg" width="126" height="30" alt="diffdevil"></a>
-  <span class="location-label">Settings</span><div class="header-end"><div id="theme-control" class="segmented" role="group" aria-label="Settings theme"></div><a class="header-link" href="https://github.com/Wolfsblvt/diffdevil" target="_blank" rel="noopener noreferrer">GitHub ↗</a></div>
+<header class="site-header" data-site-header><div class="wrap">
+  <div class="brand">
+    <a class="brand-link" href="https://diffdevil.dev/" target="_blank" rel="noopener noreferrer" aria-label="diffdevil home"><span class="logo logo-lockup" role="img" aria-label="diffdevil"></span><span class="logo logo-micro brand-micro" role="img" aria-label="diffdevil"></span></a>
+    <span class="surface-title" data-surface-label>Settings</span>
+  </div>
+  <div class="header-main">
+    <div class="utilities">
+      <a class="utility utility-direct" href="https://github.com/Wolfsblvt/diffdevil" target="_blank" rel="noopener noreferrer" aria-label="Source on GitHub" title="Source on GitHub" data-direct-source><span data-icon="github" data-size="16"></span></a>
+      <button id="theme-control" class="theme-control" type="button" aria-label="Theme" data-theme-control><span class="theme-capsule" aria-hidden="true"></span><span data-icon="theme-dark" data-size="13" class="theme-glyph theme-glyph-dark"></span><span class="theme-dot" aria-hidden="true"></span><span data-icon="theme-light" data-size="13" class="theme-glyph theme-glyph-light"></span></button>
+    </div>
+    <a class="trailing-action" href="https://diffdevil.dev/app/" target="_blank" rel="noopener noreferrer" data-trailing="app">App</a>
+  </div>
 </div></header>
 <main class="app-main">
   <div class="page-heading"><div><p class="eyebrow">#your-view</p><h1>Your view of the diff.</h1><p class="lede">Clearer measurements. Your policy. No source upload.</p></div><span class="local-badge">Local analysis · GitHub only</span></div>
@@ -22,7 +35,45 @@
   <section class="details-panel" aria-labelledby="details-heading"><div class="section-title"><div><p class="eyebrow">#extension-details</p><h2 id="details-heading">Extension details</h2></div><button type="button" id="refresh-details" class="subtle-button">Refresh</button></div><div id="diagnostics"></div></section>
   <section class="portability" aria-labelledby="portability-heading"><h2 id="portability-heading">Keep your configuration portable.</h2><p>Export settings for another browser, or use the same policy with the CLI and Actions. Exports can include personal repository names and policy text.</p><div class="button-row"><button type="button" id="export-settings">Export settings</button><button type="button" id="import-settings">Import settings</button><input id="import-file" type="file" accept="application/json,.json" hidden></div></section>
 </main>
-<footer class="app-footer"><div><strong>diffdevil for GitHub</strong><span>No account. No telemetry. No source upload.</span></div><nav aria-label="Product links"><a href="https://github.com/Wolfsblvt/diffdevil" target="_blank" rel="noopener noreferrer">Product</a><a href="https://github.com/Wolfsblvt/diffdevil/tree/main/docs" target="_blank" rel="noopener noreferrer">Docs</a><a href="https://github.com/Wolfsblvt/diffdevil" target="_blank" rel="noopener noreferrer">Source</a><a href="https://github.com/Wolfsblvt/diffdevil/issues" target="_blank" rel="noopener noreferrer">Issues</a><a href="https://github.com/Wolfsblvt/diffdevil/releases" target="_blank" rel="noopener noreferrer">Releases</a><a href="privacy.html">Privacy</a><a href="licenses.html">Licences</a><a href="https://wolfsblvt.com" target="_blank" rel="noopener noreferrer">Wolfsblvt Works ↗</a></nav></footer>
+<footer class="site-footer"><div class="wrap">
+  <div class="grid">
+    <div class="footer-brand">
+      <span class="logo logo-tail" role="img" aria-label="diffdevil"></span>
+      <p class="line">diffdevil for GitHub puts Changed and your policy directly inside GitHub. No account. No telemetry. No source upload.</p>
+      <p class="licence">Extension AGPL-3.0-only · engine MIT · brand reserved</p>
+    </div>
+    <nav aria-label="Product"><h4>Product</h4><ul>
+      <li><a href="https://diffdevil.dev/" target="_blank" rel="noopener noreferrer">diffdevil.dev</a></li>
+      <li><a href="https://diffdevil.dev/extension/" target="_blank" rel="noopener noreferrer">Browser extension</a></li>
+      <li><a href="https://diffdevil.dev/app/" target="_blank" rel="noopener noreferrer">GitHub App</a></li>
+      <li><a href="https://diffdevil.dev/app/#plans" target="_blank" rel="noopener noreferrer">Plans and pricing</a></li>
+      <li><a href="https://diffdevil.dev/playground/" target="_blank" rel="noopener noreferrer">Playground</a></li>
+    </ul></nav>
+    <nav aria-label="Learn"><h4>Learn</h4><ul>
+      <li><a href="https://docs.diffdevil.dev/use/browser-extension/" target="_blank" rel="noopener noreferrer">Extension guide</a></li>
+      <li><a href="https://docs.diffdevil.dev/start/label-pull-requests/" target="_blank" rel="noopener noreferrer">Get started</a></li>
+      <li><a href="https://docs.diffdevil.dev/policy/from-measurements-to-rules/" target="_blank" rel="noopener noreferrer">Policies and detail</a></li>
+      <li><a href="https://diffdevil.dev/faq/" target="_blank" rel="noopener noreferrer">FAQ</a></li>
+    </ul></nav>
+    <nav aria-label="Project"><h4>Project</h4><ul>
+      <li><a href="https://github.com/Wolfsblvt/diffdevil" target="_blank" rel="noopener noreferrer">Source on GitHub</a></li>
+      <li><a href="https://contact.wolfsblvt.works/?product=diffdevil" target="_blank" rel="noopener noreferrer">Contact</a></li>
+      <li><a href="https://github.com/Wolfsblvt/diffdevil/issues" target="_blank" rel="noopener noreferrer">Issues</a></li>
+      <li><a href="https://github.com/Wolfsblvt/diffdevil/releases" target="_blank" rel="noopener noreferrer">Releases</a></li>
+      <li><a href="https://docs.diffdevil.dev/help/security-and-data/" target="_blank" rel="noopener noreferrer">Security and data</a></li>
+      <li><a href="privacy.html">Privacy</a></li>
+      <li><a href="licenses.html">Licences</a></li>
+      <li><a href="https://diffdevil.dev/terms/" target="_blank" rel="noopener noreferrer">Terms</a></li>
+      <li><a href="https://diffdevil.dev/impressum/" target="_blank" rel="noopener noreferrer">Impressum</a></li>
+    </ul></nav>
+  </div>
+  <div class="footer-base">
+    <p class="footer-maker"><a class="works-link" href="https://wolfsblvt.works/" target="_blank" rel="noopener noreferrer" aria-label="Wolfsblvt Works · About the maker" title="Wolfsblvt Works"><span class="logo logo-works" role="img" aria-label="Wolfsblvt Works"></span></a><span class="licence">© <span data-year>2026</span> Wolfsblvt Works</span></p>
+    <ul class="footer-socials" aria-label="Community">
+      <li><a class="footer-social" href="https://github.com/Wolfsblvt/diffdevil" target="_blank" rel="noopener noreferrer" aria-label="GitHub · Source code" title="GitHub" data-social="github"><span data-icon="github" data-size="15"></span></a></li>
+    </ul>
+  </div>
+</div></footer>
 <div id="save-status" class="save-status" role="status" aria-live="polite" hidden></div>
 <script src="options.js" type="module"></script>
 </body></html>

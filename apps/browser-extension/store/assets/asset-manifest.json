@@ -11,7 +11,7 @@
       "height": 800,
       "depth": 8,
       "colorType": 2,
-      "sha256": "44f53fd6b098e176e597d2092e1616912f07e3e2a727c69d76b7c8d4fc93a564",
+      "sha256": "b8a8941929438d0bb201861e65a14a959393f78215a8d358c8c06017ddc90e55",
       "generatedFrom": "artifacts/browser-extension/qa/github-dark.png",
       "caption": "Changed in GitHub’s own diffstat seats: the pull request with its decomposition, size chip, band rail and local provenance; each file with its own Changed.",
       "standing": "Actual production UI in an explicitly authored fixture; not a live or installed-extension capture."
@@ -22,7 +22,7 @@
       "height": 800,
       "depth": 8,
       "colorType": 2,
-      "sha256": "255f2b4df097942b5966a45f949b5450d9e43c81181078d4a9062249ac33f3a6",
+      "sha256": "b5eeaeab18cb9a01366ceae965ee9a36a047a1bd8c307470700619f84582e3c9",
       "generatedFrom": "artifacts/browser-extension/qa/report-dark.png",
       "caption": "The anchored report: one dominant value with its evidence, the decomposition, raw churn, files, the policy in effect and the effect plan.",
       "standing": "Actual production UI in an explicitly authored fixture; not a live or installed-extension capture."
@@ -44,7 +44,7 @@
       "height": 800,
       "depth": 8,
       "colorType": 2,
-      "sha256": "1de369b2d491c7b0a3c1932ba1a7df76da0f22eaf708b6a6349f146188482d61",
+      "sha256": "0cdf6098ec97d4f12078350ade38fb213f251fad0c64196737573e2d86ea1f9f",
       "generatedFrom": "artifacts/browser-extension/qa/settings-bands-light.png",
       "caption": "Trusted-base repository policy mode alongside editable personal thresholds, colour metadata and optional existing-label mappings in the authored light theme.",
       "standing": "Actual production UI in an explicitly authored fixture; not a live or installed-extension capture."
@@ -55,7 +55,7 @@
       "height": 800,
       "depth": 8,
       "colorType": 2,
-      "sha256": "b9753030bb408636a57b1fd98df847b39c23164a6c5b03d5985280e6c606d466",
+      "sha256": "ea05794555bde15ee5ab997fe50798951cbf8a05f4ae8f1b9b1ac8d40ae6f434",
       "generatedFrom": "artifacts/browser-extension/qa/settings-data-light.png",
       "caption": "Local report inventory with scoped PR/repository clearing and a paused repository with its Resume control. Pausing and deletion are separate choices.",
       "standing": "Actual production UI in an explicitly authored fixture; not a live or installed-extension capture."
@@ -77,9 +77,9 @@
       "height": 560,
       "depth": 8,
       "colorType": 2,
-      "sha256": "15b896d8577ffa3c03c1d609aa1304e2eb93fe98176fa862fba48442619c654f",
+      "sha256": "6f3d73f22d0f372503c4dd06e4b5e657cbfd08130643ad8250d57abd435eed21",
       "editableSource": "promo/marquee-1400x560.svg",
-      "editableSourceSha256": "2489c982188b3e1f49606f0e933c6d0a9d576b6bf87a6ed12321aae093aa4c7a",
+      "editableSourceSha256": "63c4c237a6dc5148c64b315783ecc85f1b21a448c70092612e2ad6898c8391a0",
       "standing": "Authored promotional composition using accepted identity bytes and exact synthetic fixture measurements."
     },
     {

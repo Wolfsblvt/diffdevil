@@ -8,7 +8,7 @@ The browser extension brings Changed into the GitHub review you are already doin
 
 ## Install and update
 
-The source build targets Chrome Manifest V3. Use an unrestricted supported Chrome profile and a diffdevil checkout with Node.js 22.12 or newer. From the checkout root:
+The source build targets Chrome Manifest V3 and requires Chrome 120 or newer. Use a supported Chrome profile whose policy permits the installation and a diffdevil checkout with Node.js 22.12 or newer. From the checkout root:
 
 ```sh
 npm ci --ignore-scripts
@@ -61,7 +61,7 @@ Advanced YAML uses the full policy dialect. A nonempty Advanced document replace
 
 A full settings export contains configuration, including potentially private repository names and policy text. Import only a trusted configuration, inspect its validation result and provenance, and verify the intended saved settings. Do not confuse it with a redacted support snapshot. Repository overrides are explicit per-repository choices, not an automatically discovered organization policy.
 
-Small display and guided-policy preferences use Chrome synchronized storage. Advanced YAML and repository overrides use local extension storage. The bounded least-recently-used cache holds normalized reports, paths, revisions, trusted policy text with its referenced templates and exact-base absence results. It is rebuildable, but it is not independently encrypted and may disclose private repository details to someone with profile access.
+Small display and guided-policy preferences use Chrome synchronized storage. Advanced YAML, repository overrides and repository pause choices use local extension storage. The bounded least-recently-used cache holds normalized reports, paths, revisions, trusted policy text with its referenced templates and exact-base absence results. Its default budget is 16 MiB, configurable from 4 to 128 MiB. It is rebuildable, but it is not independently encrypted and may disclose private repository details to someone with profile access.
 
 Settings lists what the browser holds for each repository and pull request and clears exactly one pull request or one repository (settings, overrides and pause stay), or every report, every repository-policy cache, the overrides, or everything. Destructive operations name their scope and require confirmation. The stored comparison is what lets a tab change, reload or browser restart show the same result at once, labelled as from the cache while GitHub confirms it; when GitHub cannot be reached the result stays and says it is not confirmed.
 
@@ -69,11 +69,11 @@ A pull request with many files is measured automatically up to the limit you set
 
 ## Permissions and limitations
 
-The manifest requests storage, the `github.com` content-script scope needed for PR navigation, and `api.github.com` for anonymous public fallback. Signed-in page acquisition and anonymous API fallback are different access routes. A private PR unavailable through the page cannot be made readable by the anonymous fallback.
+The manifest requests storage, the `github.com` content-script scope needed for PR navigation, and `api.github.com` for anonymous public fallback. On public PRs, the anonymous API route reads paginated file evidence and rechecks the comparison. On signed-in private PRs, acquisition uses GitHub's own page-data routes under your existing access, including its whole-PR `/changes` view and on-demand file lines. It can acquire those lines without forcing GitHub to render every collapsed diff. A private PR unavailable through the page cannot be made readable by the anonymous fallback; a public API 404 is not proof that the PR is absent.
 
-Raw diffs and referenced template content are processed in memory and never persisted; the cache keeps normalized reports and policy, not patches. There is no PAT prompt, cookie permission, browser-history API, all-sites permission, telemetry or diffdevil source-upload service. Browser sync is still a possible data transfer. Read the [extension privacy notice](../../../apps/browser-extension/privacy.md) before using private repositories or sharing configuration.
+Raw diffs and the source contents used for measurement are transient inputs and are not persisted. Trusted policy and its referenced templates **are cached**, alongside normalized reports; clearing the repository-policy cache removes that retained policy material. There is no PAT prompt, cookie permission, browser-history API, all-sites permission, telemetry or diffdevil source-upload service. Browser sync is still a possible data transfer. Read the [extension privacy notice](../../../apps/browser-extension/privacy.md) before using private repositories or sharing configuration.
 
-GitHub Enterprise hosts, Firefox and incognito are not supported by this build. GitHub DOM changes, provider throttling, missing patches, incomplete file acquisition and head movement can limit the result. The live-DOM/Store-assets repair in [PR #45](https://github.com/Wolfsblvt/diffdevil/pull/45) is a launch-target candidate, not landed behavior or a published extension.
+GitHub Enterprise hosts, Firefox and incognito are not supported by this build. GitHub DOM changes, provider throttling, missing patches, incomplete file acquisition and head movement can limit the result. Current source includes the repaired installed experience and signed-in acquisition. The [verification and distribution instructions](../../../apps/browser-extension/README.md#verification-and-distribution) separate source and installed-browser evidence from Chrome Web Store publication. Use [Releases](../help/releases.md) to distinguish the extension version, included engine and actual distribution channel.
 
 ## Recover and remove
 

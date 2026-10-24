@@ -2,11 +2,13 @@
 
 ## Component boundaries
 
-The extension application, UI, settings, browser integration and application tests are AGPL-3.0-only. The reusable browser adapter, engine, policy compiler, report contracts and presentation API under src/diffdevil are MIT. Reusable build tools retain the repository’s MIT tooling boundary. Original documentation prose is CC BY 4.0, attributed to Wolfsblvt Works. The repository’s LICENSES/README.md is the authoritative component map.
+The extension application, UI, settings, browser integration and application tests are AGPL-3.0-only. The reusable browser adapter, engine, policy compiler, report contracts and presentation API under src/diffdevil are MIT. Reusable build tools retain the repository’s MIT tooling boundary. Original documentation prose is CC BY 4.0, attributed to Wolfsblvt Works. The repository’s [component map](https://github.com/Wolfsblvt/diffdevil/blob/main/LICENSES/README.md) is the authoritative licence map.
 
 ## Product identity
 
 The diffdevil name, symbol, wordmark, screenshots and visual assets remain reserved under the repository’s identity terms. Software licences do not grant trademark rights. The monochrome interface mark is the accepted centre-seam `diffdevil/brand` glyph copied unchanged from `Wolfsblvt/wolfsblvt-icons@8596b6bc2ba7c4b950963b7ec26cee1a26974439` under MIT. Full-colour identity artwork remains reserved.
+
+The settings footer closes with the Wolfsblvt Works compact lockup, copied unchanged from the Works brand bundle (`Wolfsblvt/wolfsblvt.works`, bundle export commit `97cbf177df1045d14e4e91b06c305c250d8e3186`, `assets/lockup-compact/on-dark.svg` and `on-light.svg`), vendored at the repository's `vendor/brand/works/` layout beside the website's sponsor section and verified by hash during build. It is Wolfsblvt Works identity artwork, all rights reserved (`licenses/works-artwork.txt`); distribution here identifies the maker and grants no trademark or reuse rights.
 
 ## Bundled dependencies
 
@@ -18,4 +20,4 @@ A normal source build obtains IBM Plex Sans and Mono from the pinned Fontsource 
 
 ## Corresponding source
 
-Corresponding extension source, reusable engine source and build instructions belong to the Wolfsblvt/diffdevil repository. An unpublished local candidate must be accompanied by its exact source patch or snapshot, not represented as an accepted or published release. No Store publication, trademark permission or additional commercial licence is implied by this build.
+Corresponding extension source, reusable engine source and [build instructions](https://github.com/Wolfsblvt/diffdevil/blob/main/apps/browser-extension/README.md#build-and-load) belong to the [Wolfsblvt/diffdevil repository](https://github.com/Wolfsblvt/diffdevil). The packaged `build-info.json` identifies the exact source commit and whether the build was clean; use that commit when obtaining corresponding source. An unpublished local candidate must be accompanied by its exact source patch or snapshot, not represented as an accepted or published release. No Store publication, trademark permission or additional commercial licence is implied by this build.

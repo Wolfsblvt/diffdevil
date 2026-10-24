@@ -1,8 +1,8 @@
-# Playground
+# Lens Studio
 
-Use the [Playground](https://diffdevil.dev/playground/) to inspect a real change, experiment with policy and leave with reusable inputs before installing anything. It is a read-only learning surface. It does not install an App, request a personal access token or apply repository labels/comments.
+Use [Lens Studio](https://diffdevil.dev/playground/), the public learning surface labeled **Playground** in the current interface, to inspect a real change, experiment with policy and leave with reusable inputs before installing anything. It is a read-only learning surface. It does not install an App, request a personal access token or apply repository labels/comments.
 
-The complete configurable experience is implemented in the website source. Public hosting is a separate release step; the earlier measurement-only Worker is not evidence that every view and export described here is deployed. For source-checkout access, use the [website development route](../../../apps/website/README.md) and open its local `/playground/` page. Its configured API must supply the report and head contracts for live acquisition; frozen examples need no GitHub access.
+The complete configurable experience is implemented in the website source. Public hosting is a separate release step; the earlier measurement-only Worker is not evidence that every view and export described here is deployed. For source-checkout access, use the [website development route](../../../apps/website/README.md) and open its local `/playground/` page. Its configured API must supply the report and head contracts for live acquisition. Frozen examples load their retained report from the site and remain usable if a freshness check fails.
 
 ## Start with a frozen source edition
 
@@ -10,7 +10,7 @@ Open the [lockfile lesson, all-files variant](https://diffdevil.dev/playground/?
 
 Switch to the [without-lockfile variant](https://diffdevil.dev/playground/?example=lockfile-scope&variant=without-lockfile). The selected policy excludes `pnpm-lock.yaml`, leaving **1 Changed**, **2 raw churn** and band `xs`. This changes the question, not the acquired patch. [Try a public pull request](../start/try-a-public-pull-request.md) walks through that first experiment.
 
-The [Examples catalogue](https://diffdevil.dev/examples/) and Playground share one set of lessons and source editions. The other guides cover runtime guards, formatting/snapshots, binary material, similar size with different spread, bounded decisions and incomplete file sets. A link carries separate `example` and `variant` identities. Reuse those links rather than copying a detached count or inventing a synthetic gallery entry.
+The [Examples catalogue](https://diffdevil.dev/examples/) and Lens Studio share one set of lessons and source editions. The other guides cover runtime guards, formatting/snapshots, binary material, similar size with different spread, bounded decisions and incomplete file sets. A link carries separate `example` and `variant` identities. Reuse those links rather than copying a detached count or inventing a synthetic gallery entry.
 
 ## Know which comparison you are viewing
 
@@ -48,12 +48,14 @@ Report JSON, plan JSON and agent text are not interchangeable exports. Use [Repo
 
 Use the explicit live/current-head route when you want new provider evidence. Rechecking whether the head moved is not the same as refreshing the analyzed report. Keep the snapshot identity attached to the result until reacquisition succeeds; do not combine an older count with new file identities.
 
-The share URL records selected example/variant, view and configuration mode. Edited policy may be encoded in the `policy` query parameter. Encoding is **not encryption**: the URL can disclose configuration through copied links, browser history or the host receiving the navigation. Do not put secrets or private repository policy in it. A frozen-example URL without custom policy is the safer reproducible lesson link.
+Opening a saved example can also ask the configured API whether its public PR has a newer head. A successful head ID is cached in the tab's session storage to avoid repeat checks. This check does not replace the frozen comparison; failure leaves the retained lesson usable without claiming that it is current.
+
+The share URL records selected example/variant, view and configuration mode, or the entered public PR's identity. Edited policy may be encoded in the `policy` query parameter. Encoding is **not encryption**: the URL can disclose configuration through copied links, browser history or the host receiving the navigation. Do not put secrets or private repository policy in it. A frozen-example URL without custom policy is the safer reproducible lesson link.
 
 ## Data limits and failure recovery
 
 The browser evaluates acquired reports and edited policy locally. Live public acquisition sends the target PR identity to the configured backend, which performs bounded read-only GitHub requests. It must not borrow private App installation credentials. There is no visitor account/history requirement or private-PR mode. Exported files remain under your control and can contain paths, revisions or policy details.
 
-**Invalid URL:** correct the public GitHub PR input; no analysis has succeeded. **Private/unavailable PR:** use an authorized local/CLI route, not a token pasted into the Playground. **Throttled or failed acquisition:** keep the input, inspect the error and retry after the indicated constraint or use a frozen lesson. **Invalid policy:** repair the editor content. **Moved head:** choose an explicit new acquisition. **Incomplete or oversized result:** retain the evidence/limit rather than treating a displayed subset as the whole PR.
+**Invalid URL:** correct the public GitHub PR input; no analysis has succeeded. **Private/unavailable PR:** use an authorized local/CLI route, not a token pasted into the Lens Studio. **Throttled or failed acquisition:** keep the input, inspect the error and retry after the indicated constraint or use a frozen lesson. **Invalid policy:** repair the editor content. **Moved head:** choose an explicit new acquisition. **Incomplete or oversized result:** retain the evidence/limit rather than treating a displayed subset as the whole PR.
 
 A source-only API or older deployed Worker may not provide the complete report/head routes. That is an access/version boundary, not an empty result. The [application/operator home](../../../apps/playground/README.md) owns backend setup, while this guide owns the visitor experience. Continue with [CLI](cli.md) or [With a coding agent](coding-agent.md) when the experiment becomes ordinary work.

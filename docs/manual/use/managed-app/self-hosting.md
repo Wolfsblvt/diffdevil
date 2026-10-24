@@ -5,13 +5,17 @@
 >
 > The supported runtime and operator seams exist in source. The complete self-hosted service, authenticated administration, and production recovery journey still need qualification.
 
-Self-hosting means operating the same managed App under your own GitHub App identity and infrastructure. It does not enroll repositories in the official hosted service or change the policy engine. You own registration, repository scope, Cloudflare resources, credentials, upgrades, incidents, retained data, and the information you give your users.
+Self-hosting means operating the Community App under your own GitHub App identity and infrastructure. You own registration, repository scope, Cloudflare resources, credentials, upgrades, incidents, retained data and the information you give your users. Community supplies the basic Free capability set without the official hosted service's repository-count, import or retention quotas; your resources and selected limits govern it. It needs no hosted subscription.
+
+Rich historical file exploration and Business coordination come from separately maintained private modules. A public checkout or Community release does not contain that premium implementation. Commercial self-hosting is a separately licensed contact route; [Plans and shared access](plans-and-sharing.md#community-and-commercial-self-hosting) explains the distinction. The engine and ordinary policy remain the same.
 
 The supported adapter is **Cloudflare Workers, Queues, and D1**. Application meaning is kept outside those provider bindings, but that does not make an unimplemented Docker image or alternate provider a supported deployment. For a service someone else operates, use [Use the managed service](service.md).
 
 ## Start from a complete source checkout
 
 Use an immutable source revision whose application changes you have reviewed, Node.js 22 or later, npm, Git, and the declared dependencies. Building the npm CLI alone does not install the App application tree. Keep local configuration, credential files, database exports, and provider receipts outside tracked source and access-controlled; the repository's ignored `artifacts/` directory is convenient for non-secret build evidence, not a secure secret store.
+
+The App server and signed-in application share one independent App release family. Current [App metadata](../../../../apps/github-app/release.json) has no named version selected, so qualification currently pins source rather than an available `app-vX.Y.Z` release. When a release is published, verify its actual attached App manifest and source identity. Neither an npm version nor a database migration number identifies your deployed App. [Releases](../../help/releases.md) owns that update boundary.
 
 From the repository root:
 
@@ -24,6 +28,12 @@ npm run check:github-app
 The final command performs the maintained Worker dry-run and default-policy qualification. It does not create a Worker, queue, database, App, credential, installation, or deployment. A passing bundle is necessary but does not establish real permissions, delivery, retention, or useful PR effects. The [operator source](../../../../apps/github-app/README.md) and [Development command register](../../../DEVELOPMENT.md) own the exact supported commands.
 
 Run the ordinary application tests before selecting an upgrade. They exercise signature admission, real application use cases against isolated boundaries, D1 state transitions, retries, and credential-helper failure paths without enrolling a repository. They are not evidence that your production account has those resources.
+
+### Choose the deployment unit
+
+The signed-in Community App lives under `apps/app/`. Its Worker includes the managed runtime routes on the same host and bindings. The standalone webhook Worker under `apps/github-app/` remains buildable; selecting which unit serves your host is a deployment choice, not a second independently versioned App.
+
+For the joined Community unit, also run the maintained `npm run check:app` route and follow the [App build and deployment instructions](../../../../apps/app/README.md). Use that unit's complete assets, routing, OAuth/session configuration and migrations. A working standalone webhook canary does not establish the joined sign-in, history or Manage experience. Premium composition has its own matching source and qualification requirements; connecting billing alone does not install premium modules.
 
 ## Register the intended GitHub App
 
@@ -67,7 +77,7 @@ The current configuration keeps `workers_dev` disabled. A repository hostname, r
 
 ## Initialize and migrate the database
 
-Apply the repository's ordered D1 migrations to the intended database before admitting work. The maintained sequence covers the initial ledger and leases, consent provenance, preservation of already-active consent, revision-checked admission settings, and offboarding consent tombstones. Skipping an intermediate migration can change whether a repository runs or whether a restore respects an opt-out; it is not only a missing-column problem.
+Apply the repository's complete ordered D1 migrations for the selected unit to the intended database before admitting work. The maintained sequence covers ledger/leases, consent and admission, named history and processing, authorization and management state, and offboarding protection. Do not treat an older list of migration topics as a complete current inventory. Skipping an intermediate migration can change whether a repository runs or whether a restore respects an opt-out; it is not only a missing-column problem.
 
 Use the pinned Wrangler D1 migration commands and explicitly select local versus remote state. For a local development database, this command applies only the checked-in migrations to local state:
 

@@ -8,6 +8,7 @@ import { expect } from '@playwright/test';
 import { pageUrl } from '../manifest.mjs';
 import { entries } from '../../website/docs-manifest.mjs';
 import { publishedRelease, downloadKinds } from '../../website/download-source.mjs';
+import { faqRecords, FAQ_SOURCE } from '../../website/faq-content.mjs';
 
 export async function qualifyReconciliation({ page, origins, check, screenshot, handlers, asset, manifest, records, ref }) {
   const state = JSON.parse(readFileSync('apps/manual/authoring-state.json', 'utf8'));
@@ -95,7 +96,9 @@ export async function qualifyReconciliation({ page, origins, check, screenshot, 
     const site = records.records.filter(record => record.kind === 'SITE').map(record => new URL(record.url).pathname).sort();
     assert.deepEqual(site, ['/', '/app/', '/examples/', '/extension/', '/playground/']);
     assert.equal(records.records.filter(record => record.kind === 'DOCS').length, manifest.records.filter(record => record.current).length);
-    assert.equal(records.records.filter(record => record.kind === 'FAQ').length, 20);
+    const faq = records.records.filter(record => record.kind === 'FAQ').map(record => record.url).sort();
+    const authoredQuestions = faqRecords(readFileSync(FAQ_SOURCE, 'utf8')).map(record => record.canonical).sort();
+    assert.deepEqual(faq, authoredQuestions);
     assert.equal(records.records.length, new Set(records.records.map(record => record.url)).size);
     assert.equal(existsSync('apps/website/src/content/docs/index.mdx'), false);
   });

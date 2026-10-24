@@ -1,24 +1,37 @@
 ---
 // SPDX-License-Identifier: AGPL-3.0-only
 import Base from '../layouts/Base.astro';
+import SectionHead from '../components/SectionHead.astro';
 import LegalOperator from '../components/LegalOperator.astro';
 import { paths } from '../data/site';
 ---
-<Base title="Terms" description="The scope and limits of the free diffdevil website and public Playground." noindex>
+<Base title="Terms" description="Service scope, permitted use and statutory rights for the diffdevil website and public Lens Studio." noindex>
   <section class="section section-first"><article class="wrap legal">
-    <h1>Terms</h1>
-    <p>These terms describe the free diffdevil website, manual and public Lens Studio (Playground) API. They do not offer a managed App subscription or replace the licences of software, documentation, examples or third-party material.</p>
-    <h2>Provider and contact</h2><LegalOperator />
-    <h2>Public Playground</h2>
-    <p>No account, payment or API key is required. Submit only public github.com pull-request URLs you are entitled to process. Do not submit private code, secrets or personal information. Saved lessons run in your browser; live acquisition reads GitHub through the public API and performs no repository writes.</p>
-    <p>Use the service lawfully. Do not bypass access controls or rate limits, interfere with other users, or create abusive load. The shared GitHub allowance can be exhausted; unavailable or incomplete evidence is reported rather than invented. Measurements are not quality, security or merge judgments.</p>
-    <h2>Availability and ending use</h2>
-    <p>The free service has no uptime or response-time commitment. Provider limits, maintenance or abuse may interrupt requests; access may be restricted to contain that interference. You can stop using it at any time. No permanent visitor analysis history is collected. Download or copy results you want to keep.</p>
-    <h2>Data, licences and responsibility</h2>
-    <p>The <a href={paths.privacy}>Privacy and data</a> page explains processing and contact rights. A footer link is notice, not evidence that a contract has been concluded. Where a separate agreement is needed, its actual offer and acceptance govern. Statutory liability and mandatory consumer protections remain unaffected. Changes to this notice do not silently amend an existing agreement.</p>
+    <SectionHead id="terms" as="h1" title="Terms" />
+    <p class="lede">Statutory liability rules apply.</p>
+    <p class="small">Last updated: 24 October 2026. These terms describe the free website, manual and public Lens Studio (Playground) service, including its API.</p>
+    <h2 class="h3">Provider and contact</h2><LegalOperator />
+    <h2 class="h3">Service and agreement</h2>
+    <p class="small">You can read the site and use Lens Studio without an account, payment or API key. It lets you explore published lessons, edit analysis policies and request analysis of public GitHub pull requests. These terms describe that service; a footer link or continued browsing alone does not establish agreement to contractual terms. Where a separate agreement is offered, its terms must be presented before acceptance with an opportunity to read and retain them. You can save this page using your browser.</p>
+    <h2 class="h3">Inputs and acceptable use</h2>
+    <p class="small">Submit only public github.com pull-request URLs you are entitled to process. Do not include secrets, private configuration or unnecessary personal information in policies or shared links. Public repository material remains subject to its owners' rights. Saved lessons are evaluated in your browser and may check their current public revision; live acquisition reads GitHub through the API and performs no repository writes.</p>
+    <p class="small">Use the service lawfully and respect other users, repository owners and connected systems. Do not bypass access controls or provider limits, interfere with operation, or create abusive load. The service is not an unrestricted bulk-acquisition API. GitHub allowances, input/size limits and unavailable evidence can prevent or limit a result. Measurements describe changes; they are not quality, security, contributor-performance or merge decisions.</p>
+    <h2 class="h3">Availability and ending use</h2>
+    <p class="small">The free public service has no promised uptime, support response time or API compatibility period. Maintenance, provider restrictions and security incidents can interrupt it. Access may be restricted as necessary to contain abuse or protect operation; contact the provider if you believe a restriction is mistaken. These statements do not exclude statutory rights.</p>
+    <p class="small">You can stop using the service at any time. It does not provide a persistent personal analysis history: copy or download results you want to keep. Clear browser storage and history to remove local preferences and links. Ending a visit does not delete provider request records or copies already shared; <a class="link-quiet" href={paths.privacy}>Privacy and data</a> explains those boundaries.</p>
+    <h2 class="h3">Extension, managed App and self-hosting</h2>
+    <p class="small">The browser extension operates locally with GitHub resources and your existing access; its <a class="link-quiet" href={`${paths.privacy}#extension`}>privacy section</a> explains storage, synchronization and clearing. Installation gives it only the permissions you grant. GitHub and browser-store terms apply to their services. Store availability is shown on the <a class="link-quiet" href={paths.extension}>extension page</a>.</p>
+    <p class="small">The managed GitHub App is being prepared for public access. Descriptions of plans, history or Works benefits on this site are not a purchasable hosted offer. Any hosted admission or sale needs its actual service, permissions, data-processing roles, retention, prices, duration, cancellation and applicable consumer information presented through that offer. A free or preview label does not remove statutory consumer rights. Installing an App, enabling repository operation, opting into history and choosing publication are distinct actions.</p>
+    <p class="small">These public-service terms do not govern another operator's self-hosted service. Its operator is responsible for that deployment and its terms. Software use, modification and distribution remain governed by the applicable licences.</p>
+    <h2 class="h3">Data, licences and changes</h2>
+    <p class="small">The <a class="link-quiet" href={paths.privacy}>Privacy and data</a> page explains personal-data processing and your choices. Agreement to terms is not blanket consent to optional processing or device access. You retain rights in your inputs; requesting analysis permits the processing needed to return that result, not unrelated publication of your content.</p>
+    <p class="small">The <a class="link-quiet" href={paths.licences}>component licence map</a> governs the engine, applications, documentation, visual assets and third-party materials. These terms do not retract those rights or impose a separate liability cap. Mandatory consumer protections and jurisdiction rules remain unaffected. Changes to this notice do not silently amend an existing agreement; a material service or contractual change must be handled through the applicable notice and agreement process.</p>
   </article></section>
 </Base>
 <style>
   .section-first { border-top: 0; padding-block: 40px 64px; }
-  .legal { gap: 16px !important; max-width: 840px; }
+  .legal { gap: 12px !important; }
+  .legal > :global(*) { max-width: 760px; }
+  .legal h2 { margin-top: 18px; }
+  .legal p.small { margin: 0; color: var(--fg-2); }
 </style>

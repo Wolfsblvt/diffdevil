@@ -124,7 +124,7 @@ export function generateManual({root = repositoryRoot, qa = process.env.DIFFDEVI
   fragmentReferences.push(...projection.fragments.map(item=>({...item,from:page.source})));
   const current = pageIsCurrent(page.key,state);
   const front = {
-   title: page.title, editUrl: `https://github.com/Wolfsblvt/diffdevil/edit/${branch}/${page.source}`,
+   title: page.title, ...(page.description ? {description:page.description} : {}), editUrl: `https://github.com/Wolfsblvt/diffdevil/edit/${branch}/${page.source}`,
    pagefind: current,
    head: [{tag:'meta',attrs:{name:'diffdevil-availability',content:page.availability}}, ...(!current ? [{tag:'meta',attrs:{name:'robots',content:'noindex, nosnippet'}}] : [])],
    diffdevil: { key:page.key,source:page.source,sourceUrl:sourceUrl(page.source,ref),sourceRef:ref,packageVersion,availability:page.availability },

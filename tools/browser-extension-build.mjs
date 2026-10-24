@@ -6,6 +6,8 @@ import { resolve, join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { extensionIdentity } from './browser-extension-version.mjs';
+import { inlineIcons } from './browser-extension-icons.mjs';
+import { extensionNotice } from './browser-extension-notice.mjs';
 const root = resolve('apps/browser-extension');
 const out = resolve('artifacts/browser-extension/unpacked');
 const fontFree = process.argv.includes('--without-fonts');
@@ -23,9 +25,12 @@ const modules = await build({ ...common, entryPoints: { background: join(root, '
 // The popover stylesheet is imported as text and adopted by its shadow root.
 const content = await build({ ...common, entryPoints: [join(root, 'src/content/main.ts')], outfile: join(out, 'content.js'), format: 'iife', loader: { '.css': 'text' } });
 await build({ ...common, entryPoints: [join(root, 'src/options/theme.ts')], outfile: join(out, 'theme.js'), format: 'iife' });
-await build({ entryPoints: [join(root, 'src/options/options.css')], outfile: join(out, 'options.css'), bundle: true, target: 'chrome120', loader: { '.svg': 'file' }, assetNames: 'assets/[name]-[hash]' });
+// Identity assets referenced through tokens.css are bundled under hashed names; the Works lockups keep their
+// plain names because this build copies and verifies them itself below.
+await build({ entryPoints: [join(root, 'src/options/options.css')], outfile: join(out, 'options.css'), bundle: true, target: 'chrome120', loader: { '.svg': 'file' }, assetNames: 'assets/[name]-[hash]', external: ['assets/works-*'] });
 await copyFile(join(root, 'src/content/content.css'), join(out, 'content.css'));
-await copyFile(join(root, 'options.html'), join(out, 'options.html'));
+// The shell's icon slots resolve through the shared catalogue at build time; the page ships inline SVG only.
+await writeFile(join(out, 'options.html'), inlineIcons(await readFile(join(root, 'options.html'), 'utf8')));
 await writeFile(join(out, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
 await writeFile(join(out, 'build-info.json'), `${JSON.stringify({ family: 'extension', ...releaseIdentity, source }, null, 2)}\n`);
 const identity = resolve('brand/source/diffdevil'); const identities = [];
@@ -34,7 +39,17 @@ const acceptedBrandHash = createHash('sha256').update(acceptedBrand).digest('hex
 if (acceptedBrandHash !== 'd33cf3b1a7a8ec52706da3311ac82e0500ec6c2eee8e35baeaaa2d5ef2b9b34e') throw new Error('The vendored diffdevil/brand glyph disagrees with its accepted canonical source.');
 await writeFile(join(out, 'assets/diffdevil-brand.svg'), acceptedBrand);
 identities.push({ path: 'Wolfsblvt/wolfsblvt-icons@8596b6bc2ba7c4b950963b7ec26cee1a26974439:src/icons/products/diffdevil/brand.svg', sha256: acceptedBrandHash, license: 'MIT' });
-for (const file of ['diffdevil-symbol-micro-dark.svg', 'diffdevil-symbol-micro-light.svg', 'diffdevil-wordmark-dark.svg', 'diffdevil-wordmark-light.svg']) {
+// The footer's Wolfsblvt Works compact lockup is the pinned Works brand bundle export vendored at its canonical
+// layout under vendor/brand/works/ (reserved artwork, not software); the same pin the website's sponsor section uses.
+const worksVendor = resolve('vendor/brand/works');
+const worksBundle = 'Wolfsblvt/wolfsblvt.works@97cbf177df1045d14e4e91b06c305c250d8e3186:brand/bundle/works/assets/lockup-compact';
+for (const [appearance, expected] of [['on-dark', '2c92a08479680f8530b332fec1a1d639fe173a41093c5abe44dad872927abe93'], ['on-light', '09e851afd7b46bcec0ad989247627e739c69df92f26e4f3b29127e1e4624356a']]) {
+  const bytes = await readFile(join(worksVendor, 'assets/lockup-compact', `${appearance}.svg`)); const sha256 = createHash('sha256').update(bytes).digest('hex');
+  if (sha256 !== expected) throw new Error(`The vendored Wolfsblvt Works lockup ${appearance}.svg disagrees with its bundle export.`);
+  await writeFile(join(out, 'assets', `works-lockup-compact-${appearance.slice(3)}.svg`), bytes);
+  identities.push({ path: `${worksBundle}/${appearance}.svg`, sha256, license: 'reserved' });
+}
+for (const file of ['diffdevil-symbol-micro-dark.svg', 'diffdevil-symbol-micro-light.svg']) {
   const bytes = await readFile(join(identity, file)); await copyFile(join(identity, file), join(out, 'assets', file)); identities.push({ path: `brand/source/diffdevil/${file}`, sha256: createHash('sha256').update(bytes).digest('hex') });
 }
 for (const size of [16, 32, 48, 128]) {
@@ -58,14 +73,9 @@ if (!fontFree) for (const [family, cssName, weights] of [['ibm-plex-sans', 'IBM 
 }
 await writeFile(join(out, 'options.css'), fonts + await readFile(join(out, 'options.css'), 'utf8'));
 await writeFile(join(out, 'content.css'), contentFonts + await readFile(join(out, 'content.css'), 'utf8'));
-const escape = value => value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
-function prose(title, text) {
-  const paragraphs = text.trim().split(/\n\s*\n/u).map(block => { const header = /^(#{1,3}) (.+)$/u.exec(block.trim()); return header ? `<h${header[1].length}>${escape(header[2])}</h${header[1].length}>` : `<p>${escape(block.replaceAll('\n', ' '))}</p>`; }).join('\n');
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escape(title)} · diffdevil</title><script src="theme.js"></script><link rel="stylesheet" href="options.css"></head><body><main class="app-main"><a href="options.html">← Settings</a>${paragraphs}</main></body></html>`;
-}
-for (const [file, page, title] of [['privacy.md', 'privacy.html', 'Privacy'], ['licenses.md', 'licenses.html', 'Licences']]) await writeFile(join(out, page), prose(title, await readFile(join(root, file), 'utf8')));
+for (const [file, page, title] of [['privacy.md', 'privacy.html', 'Privacy'], ['licenses.md', 'licenses.html', 'Licences']]) await writeFile(join(out, page), extensionNotice(title, await readFile(join(root, file), 'utf8')));
 await mkdir(join(out, 'licenses'), { recursive: true });
-for (const [name, path] of Object.entries({ 'AGPL-3.0-only.txt': 'LICENSES/AGPL-3.0-only.txt', 'MIT.txt': 'LICENSES/MIT.txt', 'chevrotain.txt': 'node_modules/chevrotain/LICENSE.txt', 'yaml.txt': 'node_modules/yaml/LICENSE', 'ajv.txt': 'node_modules/ajv/LICENSE', 'fast-deep-equal.txt': 'node_modules/fast-deep-equal/LICENSE', 'fast-uri.txt': 'node_modules/fast-uri/LICENSE', 'json-schema-traverse.txt': 'node_modules/json-schema-traverse/LICENSE', ...(!fontFree ? { 'IBM-Plex-Sans-OFL.txt': 'node_modules/@fontsource/ibm-plex-sans/LICENSE', 'IBM-Plex-Mono-OFL.txt': 'node_modules/@fontsource/ibm-plex-mono/LICENSE' } : {}) })) await copyFile(path, join(out, 'licenses', name));
+for (const [name, path] of Object.entries({ 'AGPL-3.0-only.txt': 'LICENSES/AGPL-3.0-only.txt', 'MIT.txt': 'LICENSES/MIT.txt', 'works-artwork.txt': 'vendor/brand/works/licences/works-artwork.txt', 'chevrotain.txt': 'node_modules/chevrotain/LICENSE.txt', 'yaml.txt': 'node_modules/yaml/LICENSE', 'ajv.txt': 'node_modules/ajv/LICENSE', 'fast-deep-equal.txt': 'node_modules/fast-deep-equal/LICENSE', 'fast-uri.txt': 'node_modules/fast-uri/LICENSE', 'json-schema-traverse.txt': 'node_modules/json-schema-traverse/LICENSE', ...(!fontFree ? { 'IBM-Plex-Sans-OFL.txt': 'node_modules/@fontsource/ibm-plex-sans/LICENSE', 'IBM-Plex-Mono-OFL.txt': 'node_modules/@fontsource/ibm-plex-mono/LICENSE' } : {}) })) await copyFile(path, join(out, 'licenses', name));
 const metadata = { modules: modules.metafile, content: content.metafile };
 const external = Object.values(metadata).flatMap(meta => Object.values(meta.outputs)).flatMap(output => output.imports).filter(item => item.external);
 if (external.length) throw new Error(`Extension contains external executable imports: ${external.map(item => item.path).join(', ')}`);
