@@ -138,7 +138,7 @@ were absent from the change.
 
 <div class="faq-answer" id="measurement-evidence" tabindex="-1">
 
-Because GitHub may return incomplete evidence. A range of 60–70 still proves “below 100”; a range
+Because the available evidence may not prove an exact answer. A range of 60–70 still proves “below 100”; a range
 of 90–110 does not. diffdevil preserves that distinction instead of substituting zero or a guess.
 
 In the extension, large PRs can start partially measured. Open a file or choose **Analyze remaining
@@ -493,8 +493,8 @@ It depends on the route. The CLI processes locally, Actions run on your configur
 extension evaluates in your browser without uploading source to a diffdevil backend or sending
 telemetry.
 
-Hosted routes process data on their server. Lens Studio’s live acquisition reads public PRs only;
-frozen lessons need no GitHub request. The App can transiently acquire authorized repository data
+Hosted routes process data on their server. Lens Studio reads public PRs for live analysis and
+frozen-example freshness checks. The App can transiently acquire authorized repository data
 to calculate results. It retains operational records and opted-in history, including protected
 repository names and file paths, but does not archive source contents or patches.
 [Security and data boundaries](help/security-and-data.md).
