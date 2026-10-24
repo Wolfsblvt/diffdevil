@@ -5,6 +5,7 @@ import { readFileSync, writeFileSync, mkdirSync, rmSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { origins } from '../apps/manual/manifest.mjs';
+import { verifyPublicIdentity } from '../apps/website/identity-output.mjs';
 
 /** Called once by the website's build-done hook, after its static files exist.
  * The manual has no reciprocal hook, so this cannot recursively rebuild the site.
@@ -45,7 +46,11 @@ export function buildManualAndJoin() {
     writeFileSync(join(directory, 'sitemap.xml'), '<?xml version="1.0" encoding="UTF-8"?>\n' +
       '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' +
       paths.map(path => `<url><loc>${host}${path}</loc></url>`).join('') + '</urlset>\n');
+    // Starlight's automatic inventory includes compatibility and qualification routes.
+    // The selected finite public inventory above is the sole discovery source.
+    for (const file of ['sitemap-index.xml','sitemap-0.xml']) rmSync(join(directory,file),{force:true});
   }
+  verifyPublicIdentity(manifest.records);
 }
 
 // Keep the same real website entry point for QA rebuilds and direct invocation.

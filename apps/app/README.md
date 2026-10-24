@@ -279,6 +279,20 @@ that a missing App permission caused a live refusal.
 
 ## Boundaries kept
 
+The App build generates its public `/manifest.webmanifest`, 192/512px mask-safe
+icons and 180px Apple touch icon from the approved identity. Sign-in and authenticated
+shells link the same **diffdevil App** install identity, with ID, start URL and scope
+`/`, standalone presentation and Apple home-screen metadata. Launch follows the
+existing session/access checks. CSP permits only same-origin manifest fetches;
+protected documents and data remain private and `no-store`. There is no service
+worker, offline promise or private browser cache.
+
+`node apps/app/qa/run.mjs --identity` exercises the built Worker's public manifest
+and PNG responses, logged-out launch, fixture OAuth sign-in and protected shell,
+alongside the existing shell checks. Its Chromium standalone media emulation and
+phone viewport are local fixture evidence, not an actual installation, iPhone
+Safari/cookie result or a completed whole-App phone design.
+
 The build carries [third-party notices](THIRD-PARTY-NOTICES.txt) at `/third-party-notices.txt`, including the private extension's additional notices when composed. This records dependency licence inputs and does not publish an App release.
 
 - Reads are authorised per request from the person's current GitHub reach; possession of a link is not access, and a repository or file handle outside the authorised set is refused, not rendered.

@@ -32,6 +32,8 @@ test('document form policy admits only the successfully configured Works origin,
   assert.equal(configured.config.worksOrigin, works);
   assert.equal(destinations(configured), `'self' https://github.com ${works}`);
   assert.equal(pageHeaders(configured)['content-security-policy'], policy(configured));
+  assert.equal(/manifest-src ([^;]+)/u.exec(policy(configured))[1], "'self'");
+  assert.equal(/default-src ([^;]+)/u.exec(policy(configured))[1], "'none'");
   assert.equal(new Headers(pageHeaders(configured)).get('cache-control'), 'private, no-store');
   assert.equal(policy(configured).replace(` ${works}`, ''), policy(compose()));
   for (const invalid of ['https://works.example.test/path', 'https://works.example.test/', 'https://works.example.test; form-action *', 'https://works.example.test;script-src', 'https://*.example.test', 'https://works.example.test,other', "https://works.example.test'other", 'https://works.example.test"other', 'https://user:pass@works.example.test', 'http://works.example.test', 'not a URL']) {
