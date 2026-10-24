@@ -2,7 +2,7 @@
 
 ## Meaning
 
-This document explains the shared facts, detail, policy, host and provider boundaries implemented by diffdevil, together with the package and Action distribution that expose them. It preserves the complete product architecture without turning the current folder layout into a permanent class hierarchy or delivery sequence.
+This document explains the shared facts, detail, policy, host and provider boundaries implemented by diffdevil, together with the package and Action distribution that expose them. The [project map](PROJECT-MAP.md) joins this engine architecture to the browser extension, signed-in App, public hosts and their maintained architecture sources.
 
 ## Source and delivery placement
 
@@ -10,7 +10,8 @@ This document explains the shared facts, detail, policy, host and provider bound
 hosts, tests, executable contracts and presets move together. Module-relative
 paths below are within that directory unless explicitly rooted. `actions/` owns
 committed distribution; `docs/` owns manuals/examples/research; `tools/` owns
-repository builds and qualification. This is not an npm workspace or release split.
+repository builds and qualification. This engine boundary is not an npm workspace
+split; [Releasing](RELEASING.md) owns the independent surface versions.
 [The project map](PROJECT-MAP.md) provides exact current paths.
 
 ## Data movement
@@ -109,6 +110,8 @@ One package exposes these deliberate runtime subpaths:
 @wolfsblvt/diffdevil/policy
 @wolfsblvt/diffdevil/git
 @wolfsblvt/diffdevil/github
+@wolfsblvt/diffdevil/browser
+@wolfsblvt/diffdevil/browser/text
 ```
 
 `/package.json` is also exported. Internal modules are closed; the package does not expose every file merely because it exists.
@@ -117,9 +120,9 @@ One package exposes these deliberate runtime subpaths:
 
 ```text
 action.yml
-analyze/action.yml
-apply/action.yml
-sync-labels/action.yml
+actions/analyze/action.yml
+actions/apply/action.yml
+actions/sync-labels/action.yml
 ```
 
 All entry points use shared compiled implementation. The root is convenience composition, not an alternate engine.

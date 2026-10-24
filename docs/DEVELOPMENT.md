@@ -9,7 +9,12 @@ actually proves. Local Windows execution, live GitHub and publication are differ
 
 ## Prerequisites and selected versions
 
-Use Node.js 22 or later and npm; local comparisons also require Git. The current
+Use Node.js **22.12.0 or later** and npm **9.6.5 or later** for the full repository
+route: the pinned Astro/manual toolchain requires those versions. The published
+library and CLI retain their `>=22` runtime floor. Local comparisons also require
+Git. Ordinary tests start disposable HTTP and D1 fixtures, so the environment must
+permit loopback listeners; a sandbox refusal to bind `127.0.0.1` is not a provider
+or product test result. The current
 native pass exercised Windows 11 with Node **24.19.0**, npm **11.17.0**, and
 PowerShell **7.6.5**. The preceding layout pass exercised Linux x64 with Node
 **22.16.0**, npm **10.9.2**, and Git **2.47.3** at `main@fe3d8b22`. Action
@@ -40,8 +45,14 @@ For a normal source checkout:
 ```sh
 npm ci --ignore-scripts --no-audit --no-fund
 npm run build
+node dist/lib/cli/main.js analyze --diff-file docs/examples/diffs/review.diff --format human
 npm run verify
 ```
+
+The teaching diff is a useful first run without credentials or provider access:
+it reports **10 Changed** and **16 raw churn** across four included files, with
+the default `xs` size band. This exercises the built CLI, checked-in input and
+default policy before the wider verification route. It does not apply effects.
 
 A supplied offline carrier can restore the same exact lock without registry access:
 
@@ -204,8 +215,9 @@ an already installed Chromium executable.
 
 ## Source and distribution ownership
 
-Public exports are root, `/core`, `/language`, `/policy`, `/git`, `/github`, and
-`/package.json`. NodeNext TypeScript imports use `.js` specifiers. Core facts,
+Public exports are root, `/core`, `/language`, `/policy`, `/git`, `/github`,
+`/browser`, `/browser/text`, and `/package.json`. NodeNext TypeScript imports use
+`.js` specifiers. Core facts,
 detail and policy compilation perform no filesystem or provider I/O; hosts
 supply validated data. Compiled handles and correlation frames are process-local,
 while reports and plans are versioned inert data.

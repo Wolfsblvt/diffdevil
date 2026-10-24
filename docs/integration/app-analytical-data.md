@@ -4,10 +4,11 @@
 
 This owns the source contract supporting Overview, Pull requests, History, Files,
 PR detail and File detail. It separates final merged comparisons from PR development
-and from the older pathless, latest-observed history API. The accepted pathless
-foundation and revised privacy/final-merged contracts are now on current `main`.
-This implementation remains a source candidate, not a deployed or adopted App;
-the older pathless export and query contracts retain their original meaning.
+and from the older pathless, latest-observed history API. The implementation follows
+the accepted [privacy contract](../PRIVACY-AND-DATA.md) and is consumed by the
+[signed-in App](../../apps/app/README.md). The older pathless export and query
+contracts retain their original meaning. This source contract does not establish
+which build, adapters or data have been deployed or adopted.
 
 ## Read it
 
@@ -365,13 +366,17 @@ invocation suite exercises actual queued collection and recalculation with D1's
 query ceiling. The storage tests use authored numerical populations; they are not
 a forecast of service capacity or charges.
 
-The current base supplies the accepted pathless foundation and revised
-privacy/final-merged contracts. Remaining adoption work is to select the real
-authorization/entitlement/current-policy adapters and exercise the authenticated
-App. Final squash/rebase boundary recovery and incomplete import coverage remain
-explicit operating seams.
-The analytical App, including its separately selected experience and chart design,
-remains the complete destination; this backend candidate does not close it.
+The [signed-in App composition](../../apps/app/src/lib/runtime.mjs) installs the
+authorization, entitlement and current-policy adapters; its [local qualification
+route](../../apps/app/README.md#build-run-and-qualify-locally) exercises the joined
+consumer with provider doubles. Live qualification must identify the exact serving
+build, bindings, current provider authority and retained-data consequences under
+the [staging](app-staging.md) and [recovery](app-recovery.md) contracts.
+Final squash/rebase boundary recovery and incomplete import coverage remain explicit
+operating seams even though their supported collection paths exist in source.
+The analytical App, including its selected experience and chart design, remains the
+complete destination; backend and fixture evidence do not close its remaining
+[product horizon](../implementation-horizon.md).
 
 ## Community service and premium extension
 
