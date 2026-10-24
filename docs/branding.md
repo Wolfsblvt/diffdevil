@@ -1525,9 +1525,9 @@ hero: The devil is in the diff.
 
 strapline: Measure changes. Match rules. Act on the result.
 
-familyDescriptor: Diff analysis, repository history, and automation.
+productFamilyDescriptor: Diff analysis, repository history, and automation.
 
-category: Composable diff analysis and automation for GitHub and the CLI.
+openProductCategory: Composable diff analysis and automation for GitHub and the CLI.
 
 technicalCategory: A portable diff analysis and policy engine.
 
