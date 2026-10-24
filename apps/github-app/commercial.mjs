@@ -468,6 +468,7 @@ export function createCommercialService({ store, wirt, signing, authorization, p
 
     /** Bind one purchased slot to an organisation the funder currently administers. Refusals are reported to Wirt.
      * Server-only `organisation` identifies a target whose administration and name were established for this action.
+     * Server-only `reportLinkId` scopes post-response delivery to the committed report's link.
      */
     async bind({ session, method, origin, slot, organisationId }) {
       requireLinkRoute();
@@ -502,7 +503,7 @@ export function createCommercialService({ store, wirt, signing, authorization, p
           change = { unbindSlot: replaced?.slot, binding, report: report(link, stream, lastApplied(link), next, refusals) };
           outcome = 'bound';
         }
-        if (await store.transition(link, change)) return { organisation: authority.authority === 'present' && authority.display ? { id: organisationId, display: authority.display } : null,
+        if (await store.transition(link, change)) return { reportLinkId: link.link_id, organisation: authority.authority === 'present' && authority.display ? { id: organisationId, display: authority.display } : null,
           body: { ok: outcome === 'bound', result: outcome, ...(reason ? { code: reason } : {}) }, headers: protectedHeaders() };
       }
       throw refusal('E_COMMERCIAL_CONFLICT', 409);
@@ -510,6 +511,7 @@ export function createCommercialService({ store, wirt, signing, authorization, p
 
     /** The funder may withdraw a binding, and a current organisation administrator may disconnect it.
      * Server-only `changed` and `organisation` distinguish a performed release and its established target from a no-op.
+     * `reportLinkId` is present only when the release committed a report for post-response delivery.
      * The established identity survives an unavailable or scrubbed display name without a new name lookup.
      */
     async unbind({ session, method, origin, organisationId }) {
@@ -527,7 +529,7 @@ export function createCommercialService({ store, wirt, signing, authorization, p
         const change = { unbindSlot: existing.slot, ...(orderOf(link) ? { report: report(link, { worksAccount: link.works_account }, lastApplied(link), remaining, refusals) } : {}) };
         if (await store.transition(link, change)) {
           const display = authority?.display ?? existing.display ?? null;
-          return { changed: true, organisation: { id: existing.organisation_id, display },
+          return { changed: true, ...(change.report ? { reportLinkId: link.link_id } : {}), organisation: { id: existing.organisation_id, display },
             body: { ok: true, result: 'unbound' }, headers: protectedHeaders() };
         }
       }
@@ -538,37 +540,43 @@ export function createCommercialService({ store, wirt, signing, authorization, p
      * Disconnect the session owner's GitHub grant without unbinding or changing commercial standing.
      * Grant revocation commits first. A later observation/outbox failure returns that performed effect
      * explicitly, so the caller cannot present it as an unperformed disconnect and ask for a retry.
-     * A future designed Account router owns the URL and disclosures; this method selects no screen.
+     * The caller owns the screen and URL; server-only `reportLinkId` scopes its pending-report follow-up.
      */
     async revokeFundingAuthorization({ session, method, origin }) {
       if (!authorization?.revokeAuthorization) throw refusal('E_COMMERCIAL_UNAVAILABLE', 503);
       const revoked = await authorization.revokeAuthorization({ session, method, origin });
+      let reportLinkId;
       try {
         const link = await store.activeLink(revoked.userId);
+        reportLinkId = link?.link_id;
         if (link) {
           const observed = (await store.bindings(link.link_id)).map(binding => ({ slot: binding.slot,
             organisationId: binding.organisation_id, authority: 'unknown', display: null }));
           if (observed.length > 0) await recordObservations(link.link_id, observed);
         }
       } catch (error) {
-        return { headers: revoked.headers, body: { ok: false, result: 'authorization-revoked', authorityReconciliation: 'required',
+        return { reportLinkId, headers: revoked.headers, body: { ok: false, result: 'authorization-revoked', authorityReconciliation: 'required',
           code: error?.code === 'E_COMMERCIAL_CONFLICT' ? error.code : 'E_COMMERCIAL_AUTHORITY_RECONCILIATION' } };
       }
-      return { headers: revoked.headers, body: { ok: true, result: 'authorization-revoked', authorityReconciliation: 'recorded' } };
+      return { reportLinkId, headers: revoked.headers, body: { ok: true, result: 'authorization-revoked', authorityReconciliation: 'recorded' } };
     },
 
-    /** Explicit reconnect changes only service preference; authority is re-observed before use. */
+    /** Explicit reconnect changes only service preference; authority is re-observed before use.
+     * Server-only `reportLinkId` scopes the caller's pending-report follow-up.
+     */
     async reconnectFundingAuthorization({ session, method, origin }) {
       if (!authorization?.reconnectService) throw refusal('E_COMMERCIAL_UNAVAILABLE', 503);
       const connected = await authorization.reconnectService({ session, method, origin });
+      let reportLinkId;
       try {
         const link = await store.activeLink(connected.userId);
+        reportLinkId = link?.link_id;
         if (link) await observeBindings(link);
       } catch (error) {
-        return { headers: connected.headers, body: { ok: false, result: 'service-reconnected', authorityReconciliation: 'required',
+        return { reportLinkId, headers: connected.headers, body: { ok: false, result: 'service-reconnected', authorityReconciliation: 'required',
           code: error?.code === 'E_COMMERCIAL_CONFLICT' ? error.code : 'E_COMMERCIAL_AUTHORITY_RECONCILIATION' } };
       }
-      return { headers: connected.headers, body: { ok: true, result: 'service-reconnected', authorityReconciliation: 'recorded' } };
+      return { reportLinkId, headers: connected.headers, body: { ok: true, result: 'service-reconnected', authorityReconciliation: 'recorded' } };
     },
 
     /**

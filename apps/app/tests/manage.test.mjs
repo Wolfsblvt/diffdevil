@@ -256,8 +256,8 @@ async function locals(app, cookie) {
 }
 async function model(app, cookie) { const context = await locals(app, cookie); return { ...context, model: await loadManage({ viewer: context.viewer, session: context.session, runtime: app }) }; }
 const COMMERCIAL_PRO = JSON.stringify({ account: 123, linked: true, since: '2026-10-02', commercial: { standing: 'funded', tier: 'pro', cadence: 'annual', period: { started_on: '2026-03-14', ends_on: '2027-03-14' }, renewal_preference: 'automatic', cancellation_intent: 'none', grace: null, ended: null, next_renewal: { on: '2027-03-14', total_cents: 18000, currency: 'EUR', tax_inclusive: true } }, protection: { kind: 'beta' }, capacity: [{ slot: 'slot-included', funding: 'included', binding: { organisationId: 7001, authority: 'present', display: 'parser-guild' } }, { slot: 'slot-2', funding: 'paid', binding: null }], others: { 7002: 'business' } });
-// The actual commercial service, with the existing GitHub wire double and disposable D1. These funding operations
-// do not call Works; an unexpected provider request still goes only to the fixture's fetch boundary.
+// The actual commercial service, with the existing GitHub wire double and disposable D1. Report delivery also goes
+// through the fixture's fetch boundary; no funding operation reaches a live provider.
 const WORKS_ENV = { WIRT_ORIGIN: 'https://works.example.test', WIRT_OAUTH_CLIENT_ID: 'fixture-works-client',
   WIRT_LINK_CALLBACK_URL: 'https://app.example.test/integrations/wirt/link/callback',
   WIRT_LINK_CONTINUATION_URL: 'https://app.example.test/manage/plan', WIRT_SIGNING_KEY_CURRENT: 'fixture-works-signing-material-at-least-32-bytes' };
@@ -581,8 +581,9 @@ test('real funding and release record server-owned targets and preserve a former
     assert.equal(await store.binding(organisationId), null, 'the funder can withdraw without current GitHub administration');
     const orgAfter = await app.manage.events({ accountIds: [organisationId] });
     assert.equal(orgAfter.length, orgBefore.length + 1, 'the verified withdrawal remains in the organisation Audit');
-    assert.ok(github.calls.slice(githubCallsBefore).every(call => call.method === 'POST' && /^\/applications\/[^/]+\/token$/u.test(call.path)),
-      'the withdrawal permits session authentication but performs no protected organisation lookup');
+    assert.ok(github.calls.slice(githubCallsBefore).every(call => call.method === 'POST'
+      && (/^\/applications\/[^/]+\/token$/u.test(call.path) || /^\/api\/wirt\/diffdevil\/links\/[^/]+\/reports$/u.test(call.path))),
+    'the withdrawal permits session authentication and its scoped report delivery, without a protected organisation lookup');
     const released = orgAfter[0];
     assert.equal(released.accountId, organisationId);
     assert.equal(released.where, `organisation ${organisationId}`, 'unknown names use the server-established identity');
@@ -598,6 +599,59 @@ test('real funding and release record server-owned targets and preserve a former
   } finally {
     github.state.roles.delete('parser-guild');
     app.cache.clear();
+    await app.appStore.database.prepare('DELETE FROM commercial_links WHERE link_id=?').bind(linkId).run();
+  }
+});
+
+test('Manage answers committed funding and connection actions while their scoped report delivery is held or fails', { timeout: 10_000 }, async t => {
+  const { app: compose } = await fixture();
+  const app = compose(undefined, { env: WORKS_ENV });
+  let { cookie } = await signIn(app);
+  let context = await locals(app, cookie);
+  const store = app.commercialStore, linkId = crypto.randomUUID();
+  const originalFlush = app.commercial.flushReports;
+  try {
+    const link = await store.saveEstablishedLink({ linkId, productAccount: context.viewer.userId, worksAccount: '77',
+      intentId: crypto.randomUUID(), protectedGrant: 'unused-fixture-grant' });
+    assert.equal(await store.transition(link, { applied: { epoch: 1, version: 1, result: 'applied', at: app.now(),
+      projectionJson: JSON.stringify({ commercial: JSON.parse(COMMERCIAL_PRO).commercial,
+        benefits: { organisation_capacity: [{ slot: 'report-slot', funding: 'paid', pending_end_on: null }] } }) } }), true);
+
+    for (const [action, organisation, message] of [
+      ['fund', ACCOUNTS['parser-guild'], 'bound'],
+      ['fund', ACCOUNTS['northwind-tools'], 'bind-refused'],
+      ['disconnect', ACCOUNTS['parser-guild'], 'E_FUNDING_DISCONNECTED'],
+      ['reconnect', ACCOUNTS['parser-guild'], 'reconnected'],
+      ['release-slot', ACCOUNTS['parser-guild'], 'unbound']
+    ]) {
+      if (action === 'reconnect') { ({ cookie } = await signIn(app)); context = await locals(app, cookie); }
+      let release;
+      const held = new Promise(resolve => { release = resolve; });
+      t.after(() => release());
+      const sentLinks = [], pending = [];
+      app.commercial.flushReports = async reportLinkId => {
+        sentLinks.push(reportLinkId);
+        await held;
+        throw new Error('fixture delivery failure');
+      };
+      const response = await handleManageAction(new Request(`${ORIGIN}/manage/do`, { method: 'POST', headers: { origin: ORIGIN,
+        'content-type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ action, organisation: String(organisation),
+        slot: 'report-slot', back: '/manage/plan' }) }), { ...context, executionContext: { waitUntil: promise => pending.push(promise) } });
+      assert.equal(response.status, 303, 'the action answers before the held dispatcher finishes');
+      assert.equal(new URL(response.headers.get('location'), ORIGIN).searchParams.get(action === 'disconnect' ? 'reason' : 'm'), message);
+      assert.deepEqual(sentLinks, [linkId], 'only this mutation\'s server-owned link is dispatched');
+      assert.equal(pending.length, 1);
+      assert.equal(Boolean(await store.binding(ACCOUNTS['parser-guild'])), action !== 'release-slot');
+      const report = await store.latestReport(linkId);
+      assert.equal(report.state, 'pending');
+      if (action === 'disconnect' || action === 'reconnect') assert.equal(JSON.parse(report.body).bindings[0].authority, action === 'disconnect' ? 'unknown' : 'present');
+      release();
+      await pending[0];
+      assert.equal((await store.latestReport(linkId)).state, 'pending', 'an unexpected delivery failure cannot acknowledge the report');
+      assert.equal(Boolean(await store.binding(ACCOUNTS['parser-guild'])), action !== 'release-slot', 'delivery failure cannot undo the committed action');
+    }
+  } finally {
+    app.commercial.flushReports = originalFlush;
     await app.appStore.database.prepare('DELETE FROM commercial_links WHERE link_id=?').bind(linkId).run();
   }
 });

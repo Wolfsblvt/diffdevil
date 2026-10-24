@@ -185,7 +185,7 @@ export function briefSettingsFromForm(form) {
   return readBriefSettings({ mode, modules, ...(priority.length ? { priority } : {}), historyWindowDays: HISTORY_WINDOWS.includes(window) ? window : undefined, finalSummary: form.get('finalSummary') === 'on' });
 }
 
-export async function handleManageAction(request, { runtime, session, viewer }) {
+export async function handleManageAction(request, { runtime, session, viewer, executionContext }) {
   if (request.method !== 'POST') return redirect('/manage');
   if (!sameOrigin(request, runtime)) return new Response('The request did not come from the App.', { status: 403, headers: documentHeaders({ 'content-type': 'text/plain; charset=utf-8' }) });
   let form;
@@ -227,6 +227,14 @@ export async function handleManageAction(request, { runtime, session, viewer }) 
     await recordAction(runtime, { viewer, sessionHash, accountId, repositoryId, where: event.where ?? repository?.fullName ?? String(form.get('namespaceLogin') || viewer.login), what: qualifier ?? words, ...(event.result ? { result: event.result, reason: event.reason ?? null } : resultOfMessage(MESSAGES, code)), detail: event.detail ?? null });
   };
   const done = async (code, event, to) => { runtime.cache.clear(); await audit(code, event); return redirect(withMessage(to ?? back, code)); };
+  const flushCommercialReport = reportLinkId => {
+    if (!reportLinkId || typeof runtime.commercial?.flushReports !== 'function') return;
+    // The mutation and its report are already committed. Keep the redirect prompt; a failed delivery remains in the
+    // existing outbox for its normal retry/reconciliation path and cannot change the action's answer.
+    const delivery = Promise.resolve().then(() => runtime.commercial.flushReports(reportLinkId)).catch(() => undefined);
+    if (executionContext?.waitUntil) executionContext.waitUntil(delivery);
+    else return delivery;
+  };
   const fresh = () => loadManage({ viewer, session, runtime, fresh: true });
   /** The Business namespace a coordination action names, or the refusal code. Coordination belongs to the owner or an Account administrator they named. */
   const coordinated = async accountId => {
@@ -388,6 +396,7 @@ export async function handleManageAction(request, { runtime, session, viewer }) 
         if (!organisationId || !slot) return done('invalid');
         const result = await runtime.commercial.bind({ ...mutation, slot, organisationId });
         fundingTarget = result.organisation ?? null;
+        await flushCommercialReport(result.reportLinkId);
         return done(result.body.ok ? 'bound' : 'bind-refused');
       }
       case 'release-slot': {
@@ -398,6 +407,7 @@ export async function handleManageAction(request, { runtime, session, viewer }) 
         // The idempotent no-binding answer changes nothing and must not invent an applied release record.
         if (!result.changed) { runtime.cache.clear(); return redirect(withMessage(back, 'unbound')); }
         fundingTarget = result.organisation ?? null;
+        await flushCommercialReport(result.reportLinkId);
         return done('unbound');
       }
       case 'link': {
@@ -419,12 +429,14 @@ export async function handleManageAction(request, { runtime, session, viewer }) 
       case 'reconnect': {
         if (!runtime.commercial?.reconnectFundingAuthorization) return done('commercial-unavailable');
         const result = await runtime.commercial.reconnectFundingAuthorization(mutation);
+        await flushCommercialReport(result.reportLinkId);
         return done(result.body.ok ? 'reconnected' : 'reconnect-unconfirmed');
       }
       case 'disconnect': {
         if (!runtime.commercial?.revokeFundingAuthorization) return done('commercial-unavailable');
         // Disconnecting removes the retained GitHub grant, which also ends this browser's session; sign-in explains why.
         const result = await runtime.commercial.revokeFundingAuthorization(mutation);
+        await flushCommercialReport(result.reportLinkId);
         runtime.cache.clear();
         return redirect(`/sign-in?reason=E_FUNDING_DISCONNECTED${result.body.authorityReconciliation === 'required' ? '&reconcile=required' : ''}`, result.headers);
       }
