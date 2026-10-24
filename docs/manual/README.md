@@ -7,8 +7,8 @@ comments. The same engine powers a personal browser extension, free open tools,
 and a managed App for repository history and automation.
 
 The CLI, TypeScript library and four GitHub Actions are released. The browser
-extension is in Chrome Web Store preparation, and the managed App is in private
-preview; public installation and paid plans are not open yet. The
+extension is in Chrome Web Store preparation, and the managed App is implemented
+and under private qualification; public installation and paid plans are not open yet. The
 [release guide](help/releases.md) distinguishes the available distributions.
 
 ## A replacement is not six changed lines

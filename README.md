@@ -31,8 +31,8 @@ it never becomes an invented zero. [How the counting works](https://docs.diffdev
 [Documentation](https://docs.diffdevil.dev/) · [Quick start](#run-the-open-tools)
 
 The **CLI, TypeScript library and four GitHub Actions are released**. The extension
-is in Chrome Web Store preparation; the App is in private preview, with public
-installation and paid plans still to come. Lens Studio and the
+is in Chrome Web Store preparation; the App is implemented and under private
+qualification, with public installation and paid plans still to come. Lens Studio and the
 [real-PR Examples](https://diffdevil.dev/examples/) let you explore without an account.
 
 ## See Changed inside GitHub
