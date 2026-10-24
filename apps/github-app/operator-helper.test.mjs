@@ -65,11 +65,11 @@ function containsProtectedValues(text, setup) {
   return ['GITHUB_WEBHOOK_SECRET', 'GITHUB_OAUTH_CLIENT_SECRET', 'APP_SEAL_KEY', 'WIRT_SIGNING_KEY_CURRENT'].some(name => text.includes(setup.values[name])) || text.includes('BEGIN RSA PRIVATE KEY');
 }
 
-async function retainedFixture({ community = false } = {}) {
+async function retainedFixture({ community = false, withoutWirtConfiguration = false } = {}) {
   const setup = await appFixture();
-  if (community) {
+  if (community || withoutWirtConfiguration) {
     const config = JSON.parse(await readFile(setup.config, 'utf8'));
-    delete config.vars.APP_ORIGIN;
+    if (community) delete config.vars.APP_ORIGIN;
     delete config.vars.WIRT_ORIGIN;
     await writeFile(setup.config, JSON.stringify(config));
   }
@@ -89,8 +89,9 @@ async function retainedFixture({ community = false } = {}) {
   return { ...setup, retainedInputs, fake, runner };
 }
 
-for (const community of [false, true]) test(`retained ${community ? 'Community' : 'joined App'} installation preserves originals without plaintext or new key authentication`, async () => {
-  const setup = await retainedFixture({ community });
+for (const mode of ['joined App', 'Community', 'joined App with optional Wirt input']) test(`retained ${mode} installation preserves originals without plaintext or new key authentication`, async () => {
+  const community = mode === 'Community';
+  const setup = await retainedFixture({ community, withoutWirtConfiguration: mode === 'joined App with optional Wirt input' });
   try {
     const checked = await check({ ...setup.options, runner: setup.runner });
     assert.equal(checked.state, 'ready-for-input');
@@ -107,7 +108,9 @@ for (const community of [false, true]) test(`retained ${community ? 'Community' 
     assert.deepEqual(Object.keys(supplied), community ? [] : appInputs.slice(3));
     assert.equal(containsProtectedValues(JSON.stringify(report), setup), false);
     await rm(setup.options.artifactPath);
-    assert.equal((await resumeCredentials({ ...setup.options, runner: setup.runner })).state, 'version-created');
+    const resumed = await resumeCredentials({ ...setup.options, runner: setup.runner });
+    assert.equal(resumed.state, 'version-created');
+    assert.deepEqual(resumed.inputProvenance.supplied, Object.keys(supplied));
     assert.equal(setup.fake.calls.filter(call => call.args.includes('upload-artifact')).length, 1);
   } finally { await rm(setup.directory, { recursive: true, force: true }); }
 });
