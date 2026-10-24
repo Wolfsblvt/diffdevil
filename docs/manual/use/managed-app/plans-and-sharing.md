@@ -13,7 +13,7 @@ These tables are generated from the [canonical App plan contract](../../../app-p
 
 On a narrow screen, scroll each comparison horizontally. Keyboard users can focus the table area and use the arrow keys.
 
-<div role="region" aria-label="Planned prices" tabindex="0" style="overflow-x: auto;">
+<div role="region" aria-label="Planned prices" tabindex="0" style="overflow-x: auto; overflow-wrap: normal;">
 <div style="min-width: 36rem;">
 
 <!-- manual:generated app-plan-prices -->
@@ -31,7 +31,7 @@ An extra organization inherits the parent plan's features, billing cadence and r
 
 ## Capabilities and repository allowances
 
-<div role="region" aria-label="Plan capabilities" tabindex="0" style="overflow-x: auto;">
+<div role="region" aria-label="Plan capabilities" tabindex="0" style="overflow-x: auto; overflow-wrap: normal;">
 <div style="min-width: 42rem;">
 
 <!-- manual:generated app-plan-capabilities -->
