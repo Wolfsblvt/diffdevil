@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { GitHubClient, analyzeGitHub } from '../../dist/lib/index.js';
+import { DiffdevilError, GitHubClient, analyzeGitHub } from '../../dist/lib/index.js';
 import { readPullSnapshot } from '../../dist/lib/github/index.js';
 
 const DEFAULT_FILE_LIMIT = 250;
@@ -166,9 +166,10 @@ export async function readPublicPullRequestHead(input, options = {}) {
   try {
     return headSuccess(parsed.canonicalUrl, await readPullSnapshot(client, parsed.target));
   } catch (error) {
-    const code = typeof error?.code === 'string' ? error.code : error?.status === 404 ? 'E_GITHUB_REQUEST' : 'E_INTERNAL';
-    const diagnostic = code === 'E_INTERNAL' ? { code, message: 'Analysis failed unexpectedly.' } : { code, message: typeof error?.message === 'string' ? error.message : 'GitHub did not answer.' };
-    return playgroundError(errorStatus(code), diagnostic.code, diagnostic.message);
+    // Typed provider failures carry their code on `diagnostic`, as analyze and report already read it.
+    const diagnostic = error instanceof DiffdevilError ? error.diagnostic : { code: 'E_INTERNAL', message: 'Analysis failed unexpectedly.' };
+    const publicError = publicAnalysisError(diagnostic);
+    return playgroundError(errorStatus(diagnostic.code), publicError.code, publicError.message);
   }
 }
 

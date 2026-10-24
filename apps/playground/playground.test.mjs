@@ -8,7 +8,7 @@ import { readFileSync } from 'node:fs';
 import Ajv2020 from 'ajv/dist/2020.js';
 import { DiffdevilError, GitHubClient } from '../../dist/lib/index.js';
 import { FakeGitHub } from '../../src/diffdevil/tests/helpers/github.mjs';
-import { analyzePublicPullRequest, parsePublicPullRequestUrl, projectPlaygroundReport, replayPublicPullRequest } from './app.mjs';
+import { analyzePublicPullRequest, parsePublicPullRequestUrl, projectPlaygroundReport, readPublicPullRequestHead, replayPublicPullRequest } from './app.mjs';
 import { createPlaygroundServer } from './server.mjs';
 import { createPlaygroundWorker } from './worker.mjs';
 
@@ -195,6 +195,37 @@ test('playground reports provider throttling as HTTP 429', async () => {
   });
   assert.equal(result.status, 429);
   assert.equal(result.error.code, 'E_GITHUB_RATE_LIMIT');
+  assertResponse(result);
+});
+
+const providerFailures = [
+  ['primary quota exhausted', 403, { 'x-ratelimit-remaining': '0', 'x-ratelimit-reset': String(Math.floor(Date.now() / 1000) + 3600) }, 429, 'E_GITHUB_RATE_LIMIT'],
+  ['secondary limit', 429, {}, 429, 'E_GITHUB_RATE_LIMIT'],
+  ['denied without a limit signal', 403, {}, 403, 'E_GITHUB_PERMISSION'],
+  ['missing pull request', 404, {}, 502, 'E_GITHUB_REQUEST'],
+  ['provider outage', 503, {}, 502, 'E_GITHUB_REQUEST']
+];
+
+for (const [name, providerStatus, headers, status, code] of providerFailures) {
+  test(`playground keeps ${name} typed on every GitHub-reading route`, async () => {
+    const throttled = () => new GitHubClient({ readRetries: 0, fetch: async () => new Response('{}', { status: providerStatus, headers }) });
+    for (const result of [
+      await readPublicPullRequestHead(PUBLIC_URL, { client: throttled() }),
+      await replayPublicPullRequest(PUBLIC_URL, { client: throttled() }),
+      await analyzePublicPullRequest(PUBLIC_URL, { client: throttled() })
+    ]) {
+      assert.equal(result.status, status);
+      assert.equal(result.error.code, code);
+      assert.doesNotMatch(result.error.message, /unexpected/iu);
+      assertResponse(result);
+    }
+  });
+}
+
+test('playground still hides an unexpected head-route failure behind E_INTERNAL', async () => {
+  const result = await readPublicPullRequestHead(PUBLIC_URL, { client: { async json() { throw new Error('sensitive detail'); } } });
+  assert.equal(result.status, 500);
+  assert.deepEqual(result.error, { code: 'E_INTERNAL', message: 'Analysis failed unexpectedly.' });
   assertResponse(result);
 });
 
