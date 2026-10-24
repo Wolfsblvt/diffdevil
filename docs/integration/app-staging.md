@@ -2,7 +2,8 @@
 
 ## Meaning
 
-The signed-in App can be built as a separate persistent consumer of Wirt staging.
+The signed-in App has a separate persistent internal development build, normally
+targeting Wirt staging under the [single-target commercial model](app-commercial-link.md#wirt-environment-selection).
 Its dashboard, managed backend, sessions, commercial projections, participation
 records, history and background work share one staging Worker and staging D1,
 separate from production. This document owns the source configuration, local
@@ -12,13 +13,16 @@ are committed source assignments from returned provider readbacks. These source 
 that the selected hostname is served, the bindings are deployed or the App's
 live consumer journey works. No participation campaign is currently admitted,
 so its configuration remains unset while the selected survey/reward journey stays
-a later activation prerequisite. Ops returned a protected signing-key custody
-reference and confirmed its active key matches retained custody, but the installer's
-consumer binding has not been read back. Protected reference and key material stay
+a later activation prerequisite. Protected signing-key custody and the actual
+installed consumer binding are separately qualified operating facts. They are not
+established by the source assignments below. Protected reference and key material stay
 in Ops custody and are not repeated in this public source document.
 The original production-origin Wirt TEST client and callback registration remain
 preserved. Registration alone does not establish a deployed commercial App
 consumer or an App-held relationship; the dedicated staging tuple is distinct.
+Existing staging TEST links, projections and report history remain with that
+consumer. This document is its source/operating contract, not a live-state inventory
+or permission to switch it to production Wirt.
 Only a staging build adds a small neutral Staging mark beside the analytical and
 Manage page headings and the `Staging ·` browser-title prefix. Both project the
 existing selected build target; the fixed Works header and production appearance
@@ -38,12 +42,12 @@ is not a second staging backend to deploy beside it.
 | --- | --- | --- |
 | Worker | `diffdevil-app` | `diffdevil-app-staging` |
 | GitHub App identity | Production registration | App `5304708`, OAuth client `Iv23ligyaI03RtvptTAa`, bot `diffdevil-staging[bot]` |
-| Wirt public OAuth client | Production controlled-test client | `01a136df-f666-70e6-9876-ce292de127c8` |
+| Wirt public OAuth client | Admitted production-Wirt client; original TEST registration retained as history | `01a136df-f666-70e6-9876-ce292de127c8` (current staging TEST assignment) |
 | Installation accounts | Production access | Exactly `[9962104,341708115]` |
 | D1 | `diffdevil-github-app` | `diffdevil-github-app-staging` (`6f952779-bd44-42de-adf7-cc03709c8222`) |
 | Work Queue | `diffdevil-github-app-work` | `diffdevil-github-app-staging-work` (`0c99f14931e64ba68c280a6caec96e58`) |
 | Dead-letter Queue | `diffdevil-github-app-dlq` | `diffdevil-github-app-staging-dlq` (`caf7011b0fb840c780cfa614463b8657`) |
-| App and Wirt origins | Production endpoints | `https://app-staging.diffdevil.dev` and `https://wirt-test.wolfsblvt.app` |
+| App and Wirt origins | Production App origin and admitted production Wirt; no implicit TEST fallback | `https://app-staging.diffdevil.dev` and `https://wirt-test.wolfsblvt.app` |
 | Build, notices and edition receipt | `artifacts/app/` | `artifacts/app-staging/` |
 | Local adapter/QA state | `artifacts/app/state/` | `artifacts/app-staging/state/` |
 | Local secret file, when deliberately supplied | `apps/app/.dev.vars` | `apps/app/staging/.dev.vars` |
@@ -54,16 +58,28 @@ campaign, so `APP_PARTICIPATION_CAMPAIGN` stays unset. The staged survey/reward
 journey remains selected and still needs a real campaign before that part can be
 activated. The protected-input operation supplies the GitHub App ID and OAuth
 client ID from their registration; source does not duplicate those runtime
-inputs. Ops has returned the protected Wirt signing-key custody reference and
-matched the active producer key to retained custody, but delivery through the
-staging installer's consumer set remains unobserved. The private reference and
-key are not copied here. The configuration explicitly disables `workers_dev`
+inputs. Prior Ops readbacks established the protected Wirt signing-key custody
+reference and a match to the active producer key. Those observations remain
+evidence of their original target, not qualification of a changed target or its
+installed consumer binding. The private reference and key are not copied here.
+The configuration explicitly disables `workers_dev`
 and `preview_urls`; source assignments do not prove the provider's current
 exposure settings.
-Production configuration and its existing TEST client are unchanged. Do not copy production D1 or its protected
-values into staging. Stage GitHub ingress/installation identity, OAuth client,
-seal and Wirt signing material must belong to the staging registrations, rather
-than reusing production identity by convenience.
+The production source template contains no complete Wirt target; this table does
+not claim production Wirt or live commerce exists. The original TEST registration
+is preserved without becoming the intended production target. The complete
+paid-capable program can be delivered before Works activation, with the consumer
+truthfully unconfigured and its remaining activation outcome retained.
+The existing staging assignment remains unchanged by this contract. A deliberate
+staging-to-production qualification requires the complete single-target tuple and
+its actual effects to be admitted together; the Staging mark, independent GitHub
+registration, account guard, D1 and Queue boundaries still apply. Wirt target
+selection does not change the App's build identity.
+Do not copy production D1 or its protected values into staging. The staging App's
+GitHub ingress/installation identity, GitHub OAuth client and seal remain its own.
+Wirt client/signing material belongs to the deliberately selected Wirt counterpart
+and its registered staging-App callback/receiver; a production-Wirt exception does
+not reuse production diffdevil's GitHub identity or application state.
 
 ## Bound the admitted staging accounts
 
@@ -172,7 +188,8 @@ its actual credential/data assignment. Source acceptance is not activation.
    Record the returned bootstrap version ID with its qualified source, included
    engine and Community/private composition. This becomes the installer's explicit
    `--base-version-id`, not an implicit latest-version selection.
-4. Supply staging-only protected inputs through the maintained
+4. Supply staging-App protected inputs and the selected Wirt counterpart's signing
+   input through the maintained
    [protected-input operation](#protected-input-operation):
    `GITHUB_WEBHOOK_SECRET`, `GITHUB_APP_ID`, `GITHUB_APP_PRIVATE_KEY`,
    `GITHUB_OAUTH_CLIENT_ID`, `GITHUB_OAUTH_CLIENT_SECRET`, `APP_SEAL_KEY` and
@@ -189,20 +206,26 @@ its actual credential/data assignment. Source acceptance is not activation.
    and two writers reconciling the same declared labels. Any co-installation
    requires deliberate acceptance of those effects for the exact named repository;
    this packet grants no installation or acceptance.
-5. The returned Wirt staging public client is
+5. For the ordinary staging-Wirt target, the returned public client is
    `01a136df-f666-70e6-9876-ce292de127c8`, secretless and PKCE-required, with
    callback `<staging origin>/integrations/wirt/link/callback` and receiver
    `<staging origin>/integrations/wirt/projection`; source carries its public ID.
-   The production controlled-test client remains intact until the staging
-   replacement is qualified. Ops returned the protected signing-key custody
+   The original production-origin TEST client remains preserved until its own
+   admitted disposition; the dedicated staging client is not a migration of its
+   state or proof that production should consume the same TEST stream.
+   A deliberately different Wirt target uses its own complete admitted client,
+   callback/receiver, continuation and signing assignment, following the
+   [single-target model](app-commercial-link.md#wirt-environment-selection).
+   Ops returned the protected signing-key custody
    reference and matched the active producer key to retained custody; the exact
-   installer consumer binding and delivery remain a later Ops operation. Do not
+   installer consumer binding and delivery for a changed target remain a separate
+   Ops operation. Do not
    copy the protected reference or key material into this public repository. No
    producer or data reassignment follows merely from the continuation route
    existing. No staging campaign is currently admitted; keep
    `APP_PARTICIPATION_CAMPAIGN` unset. The selected survey/reward journey remains
    a later activation prerequisite. When a campaign is admitted, select the
-   variable with Wirt staging's registered campaign
+   variable with the selected Wirt counterpart's registered campaign
    `key` and `version`, the implemented `survey` (`beta-v1`), public `name`, UTC
    `opensAt`/`closesAt` and `inviteAfterDays`/`reminderAfterDays`. Persist that
    non-secret JSON in staging vars through step 2. The runtime validates the
@@ -272,7 +295,7 @@ IDs and opaque file/custody references from the admitted registration and custod
 handback; these are not requests for Wolf to paste raw values into a conversation.
 The files remain under their custodian's access controls, outside the repository.
 GitHub's OAuth client ID and client secret belong to the same selected GitHub App.
-Wirt's current signing file comes from the admitted staging counterpart.
+Wirt's current signing file comes from the admitted selected Wirt counterpart.
 
 For a separately admitted public staging App, registration preparation can use
 the following non-secret specimen after replacing its name and origin. It emits
@@ -628,6 +651,12 @@ mediated seal/signing dependencies through the established backup/restore route
 before a state-changing recovery. Never delete a staging database to roll back
 code. A previous staging Worker version is code recovery only; its compatibility
 with the current database must be established.
+
+The [selected Wirt environment and its consumer interpretation](app-commercial-link.md#wirt-environment-selection)
+belong to the recovery group. Restoring staging does not copy production links,
+grants or report acknowledgements, and a restored pending report is not delivered
+to another Wirt environment because it has a recognisable account name. Reusing
+the current reconciliation API against a different producer is not a migration.
 
 Commercial state restored from an older snapshot requires the existing Wirt
 restore reconciliation; stale funding or a later disconnect must not be asserted
