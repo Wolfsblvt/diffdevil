@@ -16,7 +16,7 @@
  */
 import { chromium } from '@playwright/test';
 import { createServer } from 'node:http';
-import { readFile, mkdir, writeFile } from 'node:fs/promises';
+import { readFile, mkdir, mkdtemp, writeFile } from 'node:fs/promises';
 import { once } from 'node:events';
 import { join, extname, resolve, sep } from 'node:path';
 import {pathToFileURL} from 'node:url';
@@ -55,14 +55,23 @@ const results = [];
 const failures = [];
 function check(name, condition, detail = '') { results.push({ name, ok: !!condition, detail }); if (!condition) failures.push(`${name}${detail ? ` — ${detail}` : ''}`); }
 
-const browser = await chromium.launch({executablePath:process.env.PLAYWRIGHT_EXECUTABLE_PATH});
-const context = await browser.newContext({ viewport: { width: 1280, height: 900 }, colorScheme: 'dark', permissions: ['clipboard-read', 'clipboard-write'] });
+const standalone = process.argv.includes('--standalone');
+const contextOptions = { viewport: { width: 1280, height: 900 }, colorScheme: 'dark', permissions: ['clipboard-read', 'clipboard-write'] };
+// Full Chromium's headless app window reports real standalone display without installing an OS application.
+// Keep its profile isolated from Wolf and fresh for each qualification.
+const appContext = standalone ? await chromium.launchPersistentContext(await mkdtemp(join(OUT,'standalone-profile-')), {
+  channel:'chromium', headless:true, ignoreDefaultArgs:['--no-startup-window'], args:[`--app=http://127.0.0.1:${SITE_PORT}/playground/`,'--force-app-mode'], ...contextOptions,
+}) : null;
+const browser = appContext?.browser() ?? await chromium.launch({executablePath:process.env.PLAYWRIGHT_EXECUTABLE_PATH});
+const context = appContext ?? await browser.newContext(contextOptions);
 const consoleErrors = [], external = [], pageErrors = [];
-context.on('page', page => {
+const observePage = page => {
   page.on('console', m => { if (m.type() === 'error') consoleErrors.push(`${page.url()} ${m.text()}`); });
   page.on('pageerror', e => pageErrors.push(`${page.url()} ${e.message}`));
   page.on('request', r => { const u = new URL(r.url()); if (!['127.0.0.1', 'localhost', new URL(origins.site).hostname, new URL(origins.docs).hostname].includes(u.hostname)) external.push(r.url()); });
-});
+};
+context.on('page', observePage);
+context.pages().forEach(observePage);
 // Cross-host links use the actual static output and emitted handlers. The local
 // Playground API remains a separate loopback fake; no remote provider is contacted.
 const builtHosts=new Map(await Promise.all([['site','website'],['docs','manual']].map(async([host,name])=>{
@@ -82,7 +91,7 @@ await context.route(/^https:\/\/(?:docs\.)?diffdevil\.dev\//u,async route=>{
  }}});
  await route.fulfill({status:response.status,headers:Object.fromEntries(response.headers),body:Buffer.from(await response.arrayBuffer())});
 });
-const page = await context.newPage();
+const page = appContext?.pages()[0] ?? await context.newPage();
 try {
 const go = (path, opts = {}) => page.goto(/^https?:/u.test(path)?path:`http://127.0.0.1:${SITE_PORT}${path}`, { waitUntil: 'networkidle', ...opts });
 const shot = name => page.screenshot({ path: join(OUT, `${name}.png`), fullPage: true });
@@ -298,6 +307,15 @@ check('the homepage extension chapter shows the real report capture with its sta
 await page.goto(`http://127.0.0.1:${SITE_PORT}/playground/?pr=example/repository/42`, { waitUntil: 'networkidle' });
 
 // ── playground: PR mode through the real API server ──
+// The optional app-window route exercises this same complete journey in standalone display.
+// It proves neither an OS installation nor Safari's home-screen behavior.
+const playgroundDisplay = await context.newCDPSession(page);
+check(`Playground runs the fixture journey in ${standalone ? 'standalone app-window' : 'browser'} display`, await page.evaluate(() => matchMedia('(display-mode: standalone)').matches) === standalone);
+const installedManifest = await playgroundDisplay.send('Page.getAppManifest');
+check('Chromium parses only the independent Playground manifest', installedManifest.url.endsWith('/playground/manifest.webmanifest') && installedManifest.errors.length === 0 && JSON.parse(installedManifest.data).id === '/playground/', JSON.stringify(installedManifest.errors));
+const manifestResponse = await page.request.get(`http://127.0.0.1:${SITE_PORT}/playground/manifest.webmanifest`);
+check('Playground manifest uses the manifest MIME type', manifestResponse.headers()['content-type'] === 'application/manifest+json');
+check('the application manifest stays within Playground', (await manifestResponse.json()).scope === '/playground/');
 await page.waitForSelector('.pg-primary', { timeout: 20000 });
 check('PR mode analyzed through the API and shows the compact PR display', (await page.locator('.pg-analyzed').innerText()).includes('example/repository'));
 check('PR mode primary result is exact 3 changed', /3\s*changed/u.test(await page.locator('.pg-primary').innerText()));
@@ -413,6 +431,7 @@ await page.locator('.pg-input form button[type="submit"]').click();
 check('non-PR URL is refused client-side without a request', (await page.locator('.pg-input [role="alert"]').innerText()).includes('Not a public github.com pull-request URL'));
 
 // ── canonical manual shell and catalogue joins ──
+await playgroundDisplay.detach();
 await go(pageUrl('label-pull-requests'));
 check('manual first-success route renders the complete size workflow', (await page.locator('main').innerText()).includes('pull_request_target'));
 check('manual provenance names canonical source rather than a retired guide', (await page.locator('.docs-provenance').innerText()).includes('docs/manual/start/label-pull-requests.md'));
@@ -503,6 +522,10 @@ check('app page: comparison blocks sit side by side below the lead; internal str
 // ── repository links ──
 for (const path of ['/app/']) {
   await go(path);
+  const entrance = page.getByRole('link', { name:'Open the diffdevil App', exact:true });
+  check('the public App explanation links only the admitted neutral root', process.env.PUBLIC_DASHBOARD_URL
+    ? await entrance.count()===1 && await entrance.getAttribute('href')===new URL('/',process.env.PUBLIC_DASHBOARD_URL).href
+    : await entrance.count()===0);
   const hrefs = await page.locator('a[href*="/blob/"]').evaluateAll(links => links.map(a => a.getAttribute('href')));
   check(`${path} repository links carry the separator once`, hrefs.length > 0 && hrefs.every(h => /\/blob\/[a-f0-9]{40}\//u.test(h) && !/\/blob\/[a-f0-9]{40}\/\//u.test(h)), hrefs.slice(0, 3).join(' '));
 }
@@ -519,7 +542,8 @@ check('no unexpected console errors', unexpectedConsole.length === 0, unexpected
   failures.push(`aborted: ${error instanceof Error ? String(error.message).split(String.fromCharCode(10))[0] : String(error)}`);
   await page.screenshot({ path: join(OUT, 'aborted.png'), fullPage: true }).catch(() => {});
 }
-await browser.close(); site.close(); api.close();
+if (appContext) await appContext.close(); else await browser.close();
+site.close(); api.close();
 await writeFile(join(OUT, 'results.json'), JSON.stringify({ at: new Date().toISOString(), passed: results.filter(r => r.ok).length, failed: failures.length, results }, null, 2) + '\n');
 console.log(`website qa: ${results.filter(r => r.ok).length} passed, ${failures.length} failed → ${OUT}/results.json`);
 for (const failure of failures) console.log(`  ✖ ${failure}`);

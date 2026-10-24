@@ -1,0 +1,12 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only
+import DefaultHead from '@astrojs/starlight/components/Head.astro';
+const route = Astro.locals.starlightRoute;
+if (route.entry.id === '404') {
+  // The missing-page response is an error resource, never a canonical chapter or social subject.
+  route.head = route.head.filter(({ tag, attrs }) => !(tag === 'link' && attrs?.rel === 'canonical')
+    && !(tag === 'meta' && (String(attrs?.property ?? '').startsWith('og:') || String(attrs?.name ?? '').startsWith('twitter:') || attrs?.name === 'robots')));
+  route.head.push({ tag: 'meta', attrs: { name: 'robots', content: 'noindex, nosnippet' } });
+}
+---
+<DefaultHead />

@@ -17,6 +17,13 @@ const PUBLIC = [/^\/sign-in$/u, /^\/auth\//u, /^\/health\//u, /^\/fragments\//u]
 export const onRequest = defineMiddleware(async (context, next) => {
   if (context.isPrerendered) return next();
   const { pathname } = context.url;
+  if (pathname === '/render/app-entrance') {
+    if (!context.locals.publicEntrance) return new Response('Not found', { status: 404, headers: pageHeaders(context.locals.app) });
+    const response = await next();
+    // The same URL may serve a private session on the next request. Never share either variant through a cache.
+    for (const [name,value] of Object.entries({ ...securityHeaders(context.locals.app), 'Cache-Control':'private, no-store', Vary:'Cookie' })) response.headers.set(name,value);
+    return response;
+  }
   // Internal render targets are reachable only by this request's authenticated rewrite.
   if (pathname.startsWith('/render/analytical-')) {
     if (!context.locals.analyticalUrl) return new Response('Not found', { status: 404, headers: pageHeaders(context.locals.app) });
@@ -32,13 +39,23 @@ export const onRequest = defineMiddleware(async (context, next) => {
   try { const { env } = await import('cloudflare:workers'); context.locals.app = createAppRuntime(env as unknown as Env, { premium }); }
   catch (error) { configurationProblem = error instanceof Error ? error.message : 'unknown configuration problem'; }
   context.locals.configurationProblem = configurationProblem;
+  const entranceRequest = pathname === '/' && !context.request.headers.has('x-diffdevil-render');
+  let rootSessionChecked = false;
+  if (entranceRequest) {
+    const refusal = configurationProblem || await openAnalyticalShell(context.request, context.locals.app, cookieValue, SESSION_COOKIE);
+    if (refusal) {
+      context.locals.publicEntrance = true;
+      return context.rewrite('/render/app-entrance');
+    }
+    rootSessionChecked = true;
+  }
   if (configurationProblem && (!isPublic || pathname.startsWith('/auth/'))) {
     return new Response(`The App is not configured: ${configurationProblem}`, { status: 503, headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store', ...securityHeaders() } });
   }
   if (!isPublic) {
     const runtime = context.locals.app;
     if (analytical && !['page', 'navigation', 'notifications', 'enrichment'].includes(render ?? '')) {
-      const refusal = await openAnalyticalShell(context.request, runtime, cookieValue, SESSION_COOKIE);
+      const refusal = rootSessionChecked ? null : await openAnalyticalShell(context.request, runtime, cookieValue, SESSION_COOKIE);
       if (refusal) return context.redirect(`/sign-in?reason=${encodeURIComponent(refusal)}`, 303);
       context.locals.analyticalUrl = context.url.href;
       context.locals.deferChrome = true;

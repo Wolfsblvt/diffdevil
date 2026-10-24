@@ -25,7 +25,7 @@
 import { chromium } from '@playwright/test';
 import { createServer } from 'node:http';
 import { spawn, spawnSync } from 'node:child_process';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, writeFile } from 'node:fs/promises';
 import { existsSync, readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { once } from 'node:events';
@@ -197,11 +197,16 @@ async function holdBusinessHistoryJob() {
   await signIn();
 }
 
-const browser = await chromium.launch({ executablePath: process.env.PLAYWRIGHT_EXECUTABLE_PATH });
-const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, colorScheme: 'dark' });
+const standalone = IDENTITY_ONLY && process.argv.includes('--standalone');
+const contextOptions = { viewport: { width: 1440, height: 900 }, colorScheme: 'dark' };
+const appContext = standalone ? await chromium.launchPersistentContext(await mkdtemp(join(OUT,'standalone-profile-')), {
+  channel:'chromium', headless:true, ignoreDefaultArgs:['--no-startup-window'], args:[`--app=${ORIGIN}/`,'--force-app-mode'], ...contextOptions,
+}) : null;
+const browser = appContext?.browser() ?? await chromium.launch({ executablePath: process.env.PLAYWRIGHT_EXECUTABLE_PATH });
+const context = appContext ?? await browser.newContext(contextOptions);
 const consoleErrors = [], pageErrors = [], external = [];
 let expectPrEnrichmentFailure = false;
-context.on('page', page => {
+const observePage = page => {
   // A deliberately requested 404 (the refused repository or handle) is not a console error worth failing on.
   page.on('console', message => {
     const expectedPrFailure = expectPrEnrichmentFailure && /status of 503/u.test(message.text())
@@ -210,8 +215,10 @@ context.on('page', page => {
   });
   page.on('pageerror', error => pageErrors.push(`${page.url()} ${error.message}`));
   page.on('request', request => { const url = new URL(request.url()); if (!['127.0.0.1', 'localhost'].includes(url.hostname)) external.push(request.url()); });
-});
-const page = await context.newPage();
+};
+context.on('page',observePage);
+context.pages().forEach(observePage);
+const page = appContext?.pages()[0] ?? await context.newPage();
 const go = async (path, options = {}) => {
   const response = await page.goto(/^https?:/u.test(path) ? path : `${ORIGIN}${path}`, { waitUntil: 'networkidle', ...options });
   // These existing journeys inspect the populated document. The loading journey uses page.goto
@@ -1007,7 +1014,7 @@ try {
     check('Stop collecting releases a private history-only place while leaving repository effects off', await page.locator('[data-free-allowance] .m-segs.priv i.on').count() === 1 && /Stopped/u.test(await page.locator('[data-repository-row="parser-guild/parser-lab"]').innerText()));
   } else if (IDENTITY_ONLY) {
     await startWorker(undefined, STATE, { commercial: COMMERCIAL_PRO });
-    await installEntry({page,context,check,ORIGIN,shot});
+    await installEntry({page,context,check,ORIGIN,shot,standalone,target});
     await signIn();
     for (const [name, path] of [['overview', '/'], ['manage', '/manage']]) {
       await go(path);
@@ -1042,7 +1049,7 @@ try {
   // ── Pro pass: the viewer and their organisation are Pro through the Works stand-in, one shared namespace is Business ──
   await startWorker(undefined, STATE, { commercial: COMMERCIAL_PRO });
   const unauthenticated = await context.request.get(`${ORIGIN}/`, { maxRedirects: 0 });
-  check('an unauthenticated visit is sent to sign-in with no page content', unauthenticated.status() === 303 && unauthenticated.headers().location === '/sign-in?reason=E_SESSION_UNAVAILABLE', `${unauthenticated.status()} ${unauthenticated.headers().location}`);
+  check('an unauthenticated root visit receives only the neutral public entrance', unauthenticated.status() === 200 && (await unauthenticated.text()).includes('data-public-app-entrance'), `${unauthenticated.status()}`);
   const ping = await context.request.get(`${PROBE}/health/ping`);
   check('the joined Worker answers the managed runtime health route', ping.status() === 200 && /diffdevil-github-app/u.test(await ping.text()));
   const notices = await context.request.get(`${ORIGIN}/third-party-notices.txt`);
@@ -1336,7 +1343,7 @@ try {
 } catch (error) {
   failures.push(`harness: ${error?.stack ?? error}${error?.cause ? `\n  cause: ${error.cause?.code ?? ''} ${error.cause?.message ?? error.cause}` : ''}`);
 } finally {
-  await browser.close().catch(() => {});
+  if (appContext) await appContext.close().catch(() => {}); else await browser.close().catch(() => {});
   await stopWorker();
   githubServer.closeAllConnections?.();
   githubServer.close();

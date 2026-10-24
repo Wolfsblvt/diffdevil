@@ -39,6 +39,8 @@ apps/app/public/icon-*.svg
 apps/app/public/apple-touch-icon.*
 apps/app/public/manifest.webmanifest
 apps/app/public/favicon.svg
+apps/app/public/robots.txt
+apps/app/public/sitemap.xml
 .wrangler/
 .DS_Store
 Thumbs.db

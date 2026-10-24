@@ -92,5 +92,9 @@ export function verifyPublicIdentity(records) {
   const html=readFileSync(join('artifacts/website/dist',route,'index.html'),'utf8');
   assert.match(meta(html,'robots'),/noindex/u,route);
  }
+ for (const host of ['website','manual']) {
+  const html=readFileSync(`artifacts/${host}/dist/404.html`,'utf8');
+  assert.match(meta(html,'robots'),/noindex/u,`${host}: missing page`);
+ }
  console.log('Identity: exact titles, unique descriptions, canonical/social/icon/manifest output and both public sitemaps verified.');
 }

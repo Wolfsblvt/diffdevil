@@ -4,6 +4,10 @@
 
 This application is the signed-in diffdevil App: the analytical and operating experience of the managed GitHub App, served at `app.diffdevil.dev`. It renders the ratified Overview, Pull requests, History, Files, PR detail and File detail destinations from the managed App's own D1 state through the managed App's analytical data contract, under the signed-in person's current GitHub reach and the server-selected plan of each namespace, and the ratified Manage console (D080): what the plan allows, which repositories run and why, each repository's settings, the plan and its funding as the product-facing Wirt seam, and the account's four relationships. Its Worker also carries the managed App's runtime routes (webhook ingress, Queue consumer, scheduled maintenance, the protected analytics read and the Wirt commercial routes) on the same host and bindings. It is not the public website, not a claim that the hosted App is deployed, that any plan can be bought, or that named history has been collected for a real repository.
 
+The production root also owns a neutral discoverable entrance. Its HTML contains no
+viewer, repository or analytics state; authentication selects the private experience
+at that same root. The product website remains the fuller product explanation.
+
 ## Analytical loading
 
 The six analytical destinations first return the protected shell and navigation links after a local session check.
@@ -279,18 +283,27 @@ that a missing App permission caused a live refusal.
 
 ## Boundaries kept
 
+The production root returns the same useful, indexable `200` entrance to signed-out
+people and crawlers, including its own canonical and social identity. A valid local
+session continues into the protected Overview. The public entrance does not resolve
+a viewer, enumerate repositories or acquire analytics; `/sign-in` remains a separate
+unindexed authentication mechanism. The App origin's sitemap contains only `/`.
+Staging remains unindexed with an empty sitemap. Both root variants remain
+`private, no-store` with `Vary: Cookie`, so a cached response cannot mix their states.
+
 The App build generates its public `/manifest.webmanifest`, 192/512px mask-safe
 icons and 180px Apple touch icon from the approved identity. Sign-in and authenticated
-shells link the same **diffdevil App** install identity, with ID, start URL and scope
+shells and public entrance link the same **diffdevil App** install identity, with ID, start URL and scope
 `/`, standalone presentation and Apple home-screen metadata. Launch follows the
 existing session/access checks. CSP permits only same-origin manifest fetches;
 protected documents and data remain private and `no-store`. There is no service
 worker, offline promise or private browser cache.
 
-`node apps/app/qa/run.mjs --identity` exercises the built Worker's public manifest
-and PNG responses, logged-out launch, fixture OAuth sign-in and protected shell,
-alongside the existing shell checks. Its Chromium standalone media emulation and
-phone viewport are local fixture evidence, not an actual installation, iPhone
+`node apps/app/qa/run.mjs --identity --standalone` exercises the built Worker's public manifest
+and PNG responses, public human/crawler launch, invalid-cookie and direct-renderer
+refusals, the root-only discovery inventory, fixture OAuth sign-in and protected shell,
+alongside the existing shell checks. Its isolated headless Chromium app window and
+phone viewport are local fixture evidence, not an OS installation, iPhone
 Safari/cookie result or a completed whole-App phone design.
 
 The build carries [third-party notices](THIRD-PARTY-NOTICES.txt) at `/third-party-notices.txt`, including the private extension's additional notices when composed. This records dependency licence inputs and does not publish an App release.
