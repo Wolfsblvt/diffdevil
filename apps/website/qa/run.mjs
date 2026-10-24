@@ -136,7 +136,7 @@ await shot('home');
 check('header grammar: search, navigation, one divider, utilities, one trailing action', homeShell.order === 'search-trigger primary-nav header-sep utilities trailing-action', homeShell.order);
 const geometry = await page.evaluate(() => { const b = s => { const r = document.querySelector(s).getBoundingClientRect(); return `${Math.round(r.width)}x${Math.round(r.height)}`; }; return { header: b('.site-header'), search: b('.search-trigger'), source: b('[data-direct-source]'), social: b('.utility-social'), theme: b('.theme-control'), action: Math.round(document.querySelector('.trailing-action').getBoundingClientRect().height), sep: b('.header-sep'), navSize: getComputedStyle(document.querySelector('.site-nav > li > a')).fontSize, navGap: getComputedStyle(document.querySelector('.site-nav')).columnGap }; });
 check('header geometry follows the shared standard', JSON.stringify(geometry) === JSON.stringify({ header: '1265x62', search: '190x30', source: '28x28', social: '42x28', theme: '64x28', action: 30, sep: '1x18', navSize: '13px', navGap: '18px' }), JSON.stringify(geometry));
-check('nav has Docs, Playground, Install and FAQ; Examples lives in the Playground and footer; the App is the one trailing action', (await page.locator('.site-nav > li').allInnerTexts()).map(t => t.trim()).join('|') === 'Docs|Playground|Install|FAQ' && (await page.locator('.trailing-action').count()) === 1 && (await page.locator('[data-trailing="app"]').getAttribute('href')) === '/app/' && (await page.locator('[data-trailing="app"]').innerText()).trim() === 'App');
+check('nav has Docs, Playground, Install and FAQ; Examples lives in the Playground and footer; the App is the one trailing action', (await page.locator('.site-nav > li').allInnerTexts()).map(t => t.trim()).join('|') === 'Docs|Playground|Install|FAQ' && (await page.locator('.trailing-action').count()) === 1 && (await page.locator('[data-trailing="app"]').getAttribute('href')) === (process.env.PUBLIC_DASHBOARD_URL ?? '/app/') && (await page.locator('[data-trailing="app"]').innerText()).trim() === 'App');
 check('hero shows 3 changed = exact from the engine', /3\s*changed/u.test(await page.locator('.specimen-cell').first().innerText()));
 const hero = await page.evaluate(() => {
   const lines = el => Math.round(el.getBoundingClientRect().height / parseFloat(getComputedStyle(el).lineHeight));
@@ -504,8 +504,9 @@ await page.locator('[data-search-input]').fill('browser extension');
 await page.waitForSelector('.search-hit');
 check('search finds the extension page', (await page.locator('.search-hit').evaluateAll(hits => hits.map(h => new URL(h.href).pathname))).includes('/extension/'));
 await page.keyboard.press('Escape');
-await page.waitForTimeout(100);
-check('closing search after the keyboard shortcut returns focus to the visible launcher', await page.evaluate(() => document.activeElement?.matches('[data-search-open]')), await page.evaluate(() => document.activeElement?.outerHTML.slice(0, 120)));
+// The close handler restores focus in a queued task; observe its postcondition rather than a fixed sleep.
+const focusRestored = await page.waitForFunction(() => document.activeElement?.matches('[data-search-open]'), null, { timeout:5000 }).then(() => true, () => false);
+check('closing search after the keyboard shortcut returns focus to the visible launcher', focusRestored, await page.evaluate(() => document.activeElement?.outerHTML.slice(0, 120)));
 
 // ── examples and app pages ──
 await go('/examples/');
