@@ -9,6 +9,7 @@
  * namespaces are on Business.
  */
 import assert from 'node:assert/strict';
+import { explainPolicy } from '@wolfsblvt/diffdevil';
 import { generateKeyPairSync } from 'node:crypto';
 import { after, test } from 'node:test';
 import { loadManage, coordinatesNamespace } from '../src/lib/manage/model.mjs';
@@ -122,8 +123,9 @@ test('on Business a named policy is created by revision, linking applies it as t
   // The published revision is the sole runtime policy: a saved namespace default cannot secretly override it.
   await app.manage.saveNamespaceDefault(7001, { configuration: { scopes: { unrelated: { exclude: ['**/*.lock'] } } }, policyId: 'unused-default', expectedRevision: 0 });
   const currentPolicy = await app.policies.current({ repositoryId: 1001 });
-  assert.equal(currentPolicy.basis, 'stored-app-configuration');
-  assert.equal(currentPolicy.id, configuration.policyId);
+  assert.equal(currentPolicy.basis, 'current-policy');
+  assert.equal(currentPolicy.origin, 'stored');
+  assert.deepEqual(explainPolicy(currentPolicy.compiled).document.scopes.generated.exclude, ['**/*.snap', '**/*.lock']);
   // Link a second repository, then hold it busy with an active delivery: publishing applies one and queues the other.
   assert.equal((await act(app, cookie, { action: 'policy-link', policy: policyId, repository: 'parser-guild/grammar-fuzz', back: '/manage/policies' })).message, 'policy-linked');
   assert.equal((await act(app, cookie, { action: 'policy-save', policy: policyId, revision: '2', document: POLICY, back: '/manage/policies' })).message, 'policy-saved');
@@ -288,7 +290,7 @@ test('automatic setup chosen by an administrator on GitHub is the namespace\'s s
     assert.equal(github.state.installationTokens.length, before, 'a narrowed or removed Account administrator is held before GitHub is asked');
     // A deployment without App credentials cannot ask GitHub, and holds the Account administrator's choice rather than acting.
     await app.manage.grantDelegation({ accountId: 7001, userId: 123, login: 'ada-sample', role: 'account-admin', repositories: null, grantedBy: 999 });
-    const bare = compose(undefined, { env: { APP_COMMERCIAL_FIXTURE: BUSINESS } });
+    const bare = compose(undefined, { env: { APP_COMMERCIAL_FIXTURE: BUSINESS, GITHUB_APP_ID: '', GITHUB_APP_PRIVATE_KEY: '' } });
     assert.equal((await bare.automaticSetup({ installationId: 10, repositoryIds: [1103] }))[0].state, 'held');
     assert.match((await setupEvent(1103)).reason, /This deployment cannot ask GitHub whether ada-renamed, who chose automatic setup, may act on this repository/u);
     await app.manage.revokeDelegation(7001, 123);

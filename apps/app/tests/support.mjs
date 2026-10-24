@@ -5,6 +5,7 @@
  * `app(entitlement, { premium })` composes the runtime with or without a premium extension.
  */
 import assert from 'node:assert/strict';
+import { generateKeyPairSync } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { Miniflare } from 'miniflare';
@@ -20,6 +21,8 @@ export { NOW };
 export const ORIGIN = 'http://127.0.0.1:4412';
 
 let shared;
+// Disposable material for the loopback installation-policy wire double, never a provider credential.
+const policyKey = generateKeyPairSync('rsa', { modulusLength: 2048 }).privateKey.export({ type: 'pkcs1', format: 'pem' });
 export async function fixture({ seed = seedStore } = {}) {
   shared ??= (async () => {
     const clock = { value: NOW };
@@ -32,7 +35,7 @@ export async function fixture({ seed = seedStore } = {}) {
       for (const name of await migrationNames()) await appStore.migrate(await readFile(resolve('apps/github-app/migrations', name), 'utf8'));
       const written = await seed(appStore, clock);
       const github = createFakeGitHub();
-      const env = { APP_DB: database, APP_ORIGIN: ORIGIN, APP_SEAL_KEY: 'fixture-seal-key-with-enough-length', GITHUB_OAUTH_CLIENT_ID: 'fixture-client', GITHUB_OAUTH_CLIENT_SECRET: 'fixture-secret-private', GITHUB_API_BASE: 'http://github.invalid', GITHUB_OAUTH_BASE: 'http://github.invalid' };
+      const env = { APP_DB: database, APP_ORIGIN: ORIGIN, APP_SEAL_KEY: 'fixture-seal-key-with-enough-length', GITHUB_OAUTH_CLIENT_ID: 'fixture-client', GITHUB_OAUTH_CLIENT_SECRET: 'fixture-secret-private', GITHUB_API_BASE: 'http://github.invalid', GITHUB_OAUTH_BASE: 'http://github.invalid', GITHUB_APP_ID: '1', GITHUB_APP_PRIVATE_KEY: policyKey };
       const app = (entitlement, { premium, env: extra = {} } = {}) => { const composed = createAppRuntime({ ...env, ...(entitlement ? { APP_ENTITLEMENT_FIXTURE: JSON.stringify(entitlement) } : {}), ...extra }, { fetch: github.fetch, now: () => clock.value, ...(premium ? { premium } : {}) }); composed.cache.clear(); return composed; };
       return { runtime, app, github, clock, written, env };
     } catch (error) { await runtime.dispose(); throw error; }

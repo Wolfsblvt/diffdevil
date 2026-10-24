@@ -1,31 +1,36 @@
 // SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
 /**
- * The current policy the App interprets retained measurements with (D067): the repository's
- * stored App configuration over the bundled size preset, compiled once per repository per
- * request. The repository's trusted `.diffdevil.yml` takes precedence at execution time and
- * is read from GitHub then; it is not read here, so each analysis also keeps the policy that
- * actually ran as its recorded original. A repository without stored configuration reads with
- * the bundled default; a configuration that no longer compiles reads with unfiltered base facts.
+ * D067's current effective policy, acquired through the same trusted default-branch resolver
+ * as preview/execution. One promise per repository per request or queue invocation; no policy
+ * or provider effects. Failed reads preserve base facts with an explicit unavailable reason.
  */
-import { DEFAULT_SIZE_POLICY, resolveEffectivePolicy } from '../../../github-app/configuration.mjs';
-
-export function createPolicyReader(appStore) {
+export function createPolicyReader(appStore, { repositoryIdentity, resolvePolicy }) {
   const cache = new Map();
   return {
-    /** `{ id, compiled, basis }` for one repository, or null when no policy can be compiled. */
+    /** Current compiled policy and provenance, or an unavailable interpretation with a safe reason. */
     async current({ repositoryId }) {
       if (cache.has(repositoryId)) return cache.get(repositoryId);
       const promise = (async () => {
-        let configuration;
-        try { configuration = await appStore.repositoryConfiguration(repositoryId); } catch { configuration = undefined; }
+        let configuration, identity;
+        try { configuration = await appStore.repositoryConfiguration(repositoryId); }
+        catch { return unavailable('stored-configuration-unavailable'); }
+        try { identity = await repositoryIdentity(repositoryId); }
+        catch { return unavailable('installation-unavailable'); }
+        if (!Number.isSafeInteger(identity?.installation_id) || identity.installation_id < 1) return unavailable('installation-unavailable');
         try {
-          const stored = configuration?.value ?? {};
-          const effective = resolveEffectivePolicy({ preset: DEFAULT_SIZE_POLICY, ...(stored.repository ? { repository: stored.repository } : {}) });
-          return { id: effective.policy.id, compiled: effective.policy, basis: configuration ? 'stored-app-configuration' : 'bundled-default', origin: configuration?.origin ?? 'default' };
-        } catch { return null; }
+          const effective = await resolvePolicy({ repositoryId, installationId: identity.installation_id, configuration: configuration?.value });
+          return { id: effective.policy.id, compiled: effective.policy, basis: 'current-policy',
+            origin: effective.source, sourceIdentity: effective.sourceIdentity, trustedHead: effective.expectedPolicyBase,
+            provenance: effective.provenance };
+        } catch (error) {
+          const code = error?.diagnostic?.code ?? error?.code;
+          return unavailable('trusted-policy-unavailable', typeof code === 'string' && /^[A-Z0-9_]{1,80}$/u.test(code) ? code : null);
+        }
       })();
       cache.set(repositoryId, promise);
       return promise;
     }
   };
 }
+
+function unavailable(reason, code = null) { return { id: null, compiled: null, basis: 'unavailable', reason, code }; }

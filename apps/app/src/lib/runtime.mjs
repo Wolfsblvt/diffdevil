@@ -107,7 +107,8 @@ export function createAppRuntime(env, { fetch = globalThis.fetch, now, premium =
   // The namespace a subscription may fund is the installation's numeric GitHub account, recorded from webhook identities.
   const namespaceOf = async ({ repositoryId }) => { try { return await commercialStore.repositoryNamespace(repositoryId); } catch { return undefined; } };
   // Defaults are adopted and Business revisions are published into repository settings.
-  const policies = createPolicyReader(appStore);
+  const policies = createPolicyReader(appStore, { repositoryIdentity: id => authStore.repositoryIdentity(id),
+    resolvePolicy: createPolicyResolver(env, { fetch: installationFetch }) });
   // The authorization service is composed first so the commercial consumer and the analytics route can share it.
   let auth;
   // The consumer also observes a funder's authority without a session and carries the Account page's disconnect and reconnect.

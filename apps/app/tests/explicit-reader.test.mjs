@@ -89,12 +89,16 @@ test('the actual analytical HTTP caller uses current pull access and namespace f
   assert.equal(all.entitlements.aggregatePlan, 'free');
   assert.equal(all.entitlements.premium.enabled, false);
   await assert.rejects(f.app.auth.readAdmission({ session: f.cookie, repositoryId: 1001 }), { code: 'E_ADMISSION_UNAUTHORIZED' });
-  assert.equal(f.github.state.installationTokens.length, 0, 'reader authorization never borrows an installation credential');
+  assert.ok(f.github.state.installationTokens.length > 0, 'the authorized analytical read resolves current trusted policy');
+  assert.ok(f.github.state.installationTokens.every(token => token.repositoryIds.length === 1
+    && token.repositoryIds[0] === 1001 && token.permissions.contents === 'read'
+    && Object.keys(token.permissions).every(permission => ['metadata', 'contents'].includes(permission))), 'installation credentials are confined to reading this authorized repository policy');
 });
 
 test('a warm viewer never caches explicit authority and backend reads recheck refusals, unknowns and revocation', async () => {
   const f = await readerFixture();
   await f.viewer([fullName]);
+  const policyReads = f.github.state.installationTokens.length;
   for (const [status, code] of [[403, 'E_PROVIDER_REQUEST'], [429, 'E_GITHUB_RATE_LIMIT'], [503, 'E_PROVIDER_REQUEST']]) {
     f.github.state.repositoryStatus.set(1001, status);
     await assert.rejects(f.viewer([fullName]), { code });
@@ -103,6 +107,7 @@ test('a warm viewer never caches explicit authority and backend reads recheck re
     const body = await response.json();
     assert.equal(body.result, undefined);
     assert.equal(body.repositoryIdentities, undefined);
+    assert.equal(f.github.state.installationTokens.length, policyReads, 'unknown current user access prevents policy acquisition');
   }
   f.github.state.repositoryStatus.set(1001, 404);
   const unavailable = await f.viewer([fullName]);
@@ -112,6 +117,7 @@ test('a warm viewer never caches explicit authority and backend reads recheck re
   assert.equal(model.dataStanding, 'scope-unavailable');
   assert.equal(model.data, null);
   assert.equal((await f.api()).status, 403);
+  assert.equal(f.github.state.installationTokens.length, policyReads, 'confirmed user access loss prevents policy acquisition');
   f.github.state.repositoryStatus.clear();
   assert.deepEqual((await f.viewer([fullName])).repositories.map(repository => repository.repositoryId), [1001]);
   assert.equal((await f.api()).status, 200);

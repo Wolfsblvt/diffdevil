@@ -23,6 +23,10 @@ commit independently of premium acquisition; existing premium chart objects rema
 notice until their new models arrive. The premium response renders only the requested regions, without rendering and
 discarding the common page's charts again. Both common and premium updates retain chart instances and keyboard state.
 
+The shared current-policy notice travels with the population that supplied its basis. Files keeps its title and
+period controls in the common response; its public deferred-body wrapper renders policy provenance or unavailable/retry
+beside the premium result. Other page headers use the same notice component. Premium modules do not duplicate it.
+
 A 200 shell establishes only a valid local session and a rendered frame. It does not establish provider, plan or
 analytical health. An inaccessible detail returns 404 from its independently authorized data read and renders the
 existing not-found state; the generic document itself contains no protected detail.
@@ -59,6 +63,9 @@ accepted Overview chart composition through its deferred-region wrappers.
 For held/failed premium-region and chart-continuity checks without private source, build with
 `DIFFDEVIL_PREMIUM=apps/app/qa/loading-premium/index.mjs`, then run the same `--loading` journey. This joins a clearly
 synthetic public extension fixture, not the paid implementation; rebuild with `DIFFDEVIL_PREMIUM=off` afterward.
+The same fixture with `--current-policy` exercises deferred Files and File-detail provenance, unavailable/retry,
+prompt-shell continuity, stale-navigation protection and complete server documents, alongside the common analytical
+headers. This remains public contract evidence, not private composition.
 `DIFFDEVIL_APP_QA_LOADING_SCALE=1` selects the anonymous measured-scale cohort for this local journey: 142 records,
 915 paths and 256,986 logical size observations represented by 265 shared fact sets and 7,563 exact markers. The fixture
 also matches the retained JSON byte envelope and recovery gaps; identities, time distribution and sizes are synthetic,
@@ -72,8 +79,11 @@ file-detail bridge. `qa/loading/file-read.json` separates fetch timing and respo
 paint opportunity; the latter is not a compositor timestamp. It records the complete file count and the number of
 file-population derivations. It remains synthetic consumer evidence, not private-algorithm or Cloudflare qualification.
 
-A file detail reads only its named repository while retaining the broader scope as navigation context. Its second
-file-surface read continues the same request's Files response through `loadSurface`; matching reader, repository,
+A file detail reads only its named repository while retaining the broader scope as navigation context. Its opaque
+identity resolves against authorized retained observations, independently of current analytical inclusion or
+unavailable interpretation. Exclusion does not turn a retained file into 404; the detail keeps its original measurements
+and truthful current-policy standing. Current access, entitlement and readable-history checks still govern exposure.
+Its second file-surface read continues the same request's Files response through `loadSurface`; matching reader, repository,
 period, metric, policy, current access and readable history are required. This avoids a second full interpretation
 and premium file enrichment. A different request or selection reads fresh data and derives its own answer; only
 unchanged deterministic policy interpretations can reuse work across requests. Opaque signatures already calculated
@@ -173,7 +183,7 @@ The same complete App can be built as a [separate persistent staging consumer](.
 - **One data contract** (`src/lib/analytics.mjs`): the managed App's analytical read service (`apps/github-app/analytical-data.mjs`), composed in-process with the reader's authorised set, the entitlement reader, the current-policy reader and the namespace resolver. Each page asks for the surface it renders (`prs`, `history`, `files`, `pr`, `file`); the service decides populations, final merged comparisons, current-policy interpretation, coverage, scope and entitlement. The App re-derives nothing from rows.
 - **A record model on a named basis** (`src/lib/derive.mjs`, `src/lib/intervals.mjs`): the service's rows become one record shape, with retained lifecycle (opened, ready, merged, closed), one final merged comparison per merged PR, the band the current policy judges, the recorded original policy result, desired and observed labels, and interval-aware statistics (`a–b`, `≥ a`, `n/a`, never a silently exact number). Where a repository with history has no retained named record yet, its older pathless analyses drive the page by analysis time, and the page says so.
 - **Entitlement from the Wirt commercial consumer** (`src/lib/entitlement.mjs`): a repository resolves to its installation's numeric GitHub account and that account's active funding link; the viewer resolves to their own account. Without a configured commercial consumer every namespace reads as Free and the App says so. A fixture map keyed by numeric account is honoured only on a loopback origin, for local qualification.
-- **The current policy** (`src/lib/policies.mjs`): the repository's stored App configuration over the bundled size preset, compiled per repository per request. The repository's trusted `.diffdevil.yml` takes precedence at execution time and is read from GitHub then; each analysis keeps that recorded original beside the current interpretation.
+- **The current policy** (`src/lib/policies.mjs`): the existing trusted resolver reads the authorized repository's current default-branch head with its verified installation identity and a repository-scoped Contents-read credential. Trusted `.diffdevil.yml` overrides stored App configuration and the bundled preset, with one acquisition per repository per request or queue invocation. Only positive file absence permits fallback. Failed stored settings, provider/access/credential reads or invalid policy leave retained base measurements readable with unavailable interpretation and a local retry; they never produce a successful default-policy answer. Analytical responses name the compiled identity, source and trusted head. Recalculation records its actual basis and fails honestly when current policy is unavailable. Original measurements, policy/results and provider effects stay intact. Reading never adopts settings or writes repository data.
 - **Opaque file locators** (`src/lib/locator.mjs`): a file-detail address carries an HMAC of (repository, path) under the seal key, never the path, and the document title never names the file. The handle is resolved server-side against the files the reader is entitled to see.
 - **Transient display titles** (`src/lib/viewer.mjs`): titles and GitHub links come from the signed-in person's own read of the 100 most recently updated pull requests per repository in scope, cached for a minute per isolate, never retained, never a population source.
 - **The chart system** of [Chart Grammar v1.1](../../packages/design/chart-grammar-v1.1.md), the owner-accepted analytical charts and cloud. The server builds one JSON model per chart (`src/lib/charts/models.mjs`) from the record population and renders the F1 frame (`src/components/ChartFrame.astro`): the panel header with a chart/table switch, the fixed-geometry readout that is legend, tooltip and keyboard announcement at once, a skeleton in the chart's own shape, the equivalent table and the teach line, all from the same model and the same readout text (`src/lib/charts/readout.mjs`). The browser draws the charts with ECharts 6.1's SVG renderer and one `diffdevil` theme read from the design tokens (`src/client/charts/`): authored custom-series recipes for the mosaic, pull-request flow with its backlog line and range strip, time to merge by size on a log axis with its ruler, the size mix, lifecycle by size, the size lanes and development over size zones; hover, arrow keys, Enter to pin and drill, Escape to clear, linked hover over shared buckets, and an in-place morph when the period changes. The premium file charts (growth and shrinkage, concentration, the Turnover map, recent file activity) and the cloud live in the premium extension (`premium/app/lib/charts/`, `premium/app/client/`) and draw in the same frame: they register their readouts with `registerChartKinds` and their recipes and the cloud's controller with `registerCharts`. The cloud (`premium/app/components/CloudPanel.astro`, `premium/app/client/cloud.ts`) is packed by d3-cloud in a layout Worker over an OffscreenCanvas with the App's own fonts (a main-thread pack is the fallback), steered so words glide from where they were, with the docked readout, co-change partner meter chips from the service's one co-change derivation, the by-folder/by-repository arrangement, the Top column as real space, the metric switch and the ranked list. There is no floating tooltip anywhere; unknown reads as a state, never as `0`; partial coverage reads `≥`. The tiles keep their small marks (`src/lib/charts.mjs`).
@@ -243,6 +253,7 @@ npm run test:app         # derivations, URL state, and the Community sign-in/vie
 npm run qa:app           # seeds local D1, serves a GitHub double, runs the built joined Worker in workerd, drives Chromium (Community journeys always; premium journeys when the build joined the extension)
 node apps/app/qa/run.mjs --thumb # focused browser qualification of chart/table selection movement on the built App
 node apps/app/qa/run.mjs --funding # namespace chips and analytical entitlement for unfunded/funded/shared/unknown scopes
+node apps/app/qa/run.mjs --current-policy # trusted path/band overrides, actual basis, unavailable/retry and delayed/superseded reads against the built Worker and local GitHub double
 node apps/app/qa/run.mjs --explicit-reader # current connected target reads when installation discovery omits them
 npm run check:app        # the build plus a Wrangler dry-run of the generated Worker configuration
 npm run app:dev          # Astro dev with local bindings (needs apps/app/.dev.vars, see below)

@@ -62,7 +62,7 @@ const mix = mixModel({ prs: cur.analysed, period, basis: life ? 'retained' : 'pa
     {life
       ? <ChartFrame id="life" kind="lifecycle" model={lifecycleBySize} title="PR lifecycle by size" span={6} h={40 + Math.max(1, lifecycleBySize.rows.length) * 34 + 10} meta={`merged PRs in ${period} · opened → ready for review → merged, elapsed time · n=${lifecycleBySize.n}`} />
       : <Panel id="life" span={6} title="PR lifecycle by size"><Unavailable what="Lifecycle facts are not retained yet" why={lifecycle.reason} /></Panel>}
-    <ChartFrame id="mix" kind="mix" model={mix} title="PR size mix" span={6} h={40 + Math.max(1, mix.rows.length) * 34 + 10} meta={`${mix.n} ${life ? 'merged PRs with a recovered final comparison' : 'analysed PRs'} in ${period} · size-v1 ${life ? 'under current policy' : 'as recorded'}`} />
+    <ChartFrame id="mix" kind="mix" model={mix} title="PR size mix" span={6} h={40 + Math.max(1, mix.rows.length) * 34 + 10} meta={`${mix.n} ${life ? 'merged PRs with a recovered final comparison' : 'analysed PRs'} in ${period} · size-v1 ${life ? view.policyBasis : 'as recorded'}`} />
   </div>
 
   <h2 class="a-sect" id="list">All pull requests <span class="a-mini">{filtered.length} {life ? 'active' : 'analysed'} in {period}</span></h2>

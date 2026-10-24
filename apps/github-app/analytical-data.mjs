@@ -192,17 +192,18 @@ export function createAnalyticalDataService({ store, authorize, entitlement, nam
       const candidates = [...paths.keys()].map(path => ({ repositoryId, path }));
       const selected = await resolve(candidates);
       if (!candidates.includes(selected)) return undefined;
-      let included = false, hasSelectedPeriodActivity = false;
+      let retained = false, hasSelectedPeriodActivity = false;
       for (const record of paths.get(selected.path)) {
         const report = prior.factsOf(record.final, repositoryId).report;
-        if (!report?.files.some(file => file.path === selected.path && file.included)) continue;
-        included = true;
+        // Current policy selects analytical contributions, not the existence of an authorized retained file.
+        if (!report?.files.some(file => file.path === selected.path)) continue;
+        retained = true;
         hasSelectedPeriodActivity ||= activePullRequests.has(record.pullRequest);
         if (hasSelectedPeriodActivity) break;
       }
       if (!await authorize({ repositoryId, actor: prior.actor, kind: 'read' })) throw fail('E_APP_DATA_UNAUTHORIZED');
       if (!await historyReadable([repositoryId])) throw fail('E_APP_DATA_NOT_FOUND');
-      return included ? { ...selected, hasSelectedPeriodActivity } : undefined;
+      return retained ? { ...selected, hasSelectedPeriodActivity } : undefined;
     },
     async query(input, actor, source) {
       const query = selectedWindow(input);
@@ -291,7 +292,8 @@ export function createAnalyticalDataService({ store, authorize, entitlement, nam
           readyAt: record.readyAt, mergedAt: record.mergedAt, closedAt: record.closedAt, updatedAt: record.updatedAt,
           changed: sum([changed(measured)]), rawChurn: sum([raw(measured)]), band: measured.band,
           composition: summarize([measured]).composition,
-          policy: { id: measured.policyId, basis: measured.basis, requestedId: policies.get(record.repositoryId)?.id ?? null },
+          policy: { id: measured.policyId, basis: measured.basis, requestedId: policies.get(record.repositoryId)?.id ?? null,
+            reason: policies.get(record.repositoryId)?.reason ?? null },
           measurement: { basis: record.state === 'merged' ? 'final-merged-comparison' : 'pull-request-revision',
             standing: measured.report ? 'recovered' : 'unrecovered', quality: measured.report?.measurement.status ?? 'unknown',
             files: measured.report ? { complete: measured.report.fileSet.complete, total: sum([measured.report.fileSet.total]), observed: measured.report.files.length } : null,
@@ -353,7 +355,11 @@ export function createAnalyticalDataService({ store, authorize, entitlement, nam
         population: 'final-merged-comparisons', window: { from: query.from, to: query.to },
         coverage: { completeWindow: false, standing: 'retained-observations', requestedRepositories: query.repositoryIds.length,
           authorizedRepositories: granted.length, representedRepositories: authorized.length, recoveredMerged: merged.filter(record => record.final?.report).length, merged: merged.length },
-        policies: authorized.map(repositoryId => ({ repositoryId, requestedId: policies.get(repositoryId)?.id ?? null, standing: policies.get(repositoryId)?.compiled ? 'current' : 'unfiltered-base-facts' })),
+        policies: authorized.map(repositoryId => {
+          const policy = policies.get(repositoryId);
+          return { repositoryId, requestedId: policy?.id ?? null, standing: policy?.compiled ? 'current' : 'unfiltered-base-facts',
+            reason: policy?.reason ?? null, code: policy?.code ?? null, origin: policy?.origin ?? null, sourceIdentity: policy?.sourceIdentity ?? null, trustedHead: policy?.trustedHead ?? null };
+        }),
         sizeObservation, entitlements, fundedNamespaces, result };
       if (['file', 'files'].includes(query.surface) && query.scope.kind === 'repository' && premium && extension) {
         fileViews.set(response, { actor, query, authorized, premiumIds, policies, all, merged, factsOf, files, sizeObservation });

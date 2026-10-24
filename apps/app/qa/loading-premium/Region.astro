@@ -8,6 +8,7 @@ const model = mixModel({ prs: view.current.analysed, period: view.period.label, 
 <div class="a-deferred-slot" data-loading-view-surface={view.data?.surface} data-fixture-query={view.state.q} data-fixture-period={view.state.per}>
   <ChartFrame id="loading-fixture" kind="loading-fixture" model={model} title="Public loading fixture" span={12} h={260} meta="Synthetic extension boundary; no private implementation" />
 </div>
+{view.data?.surface === 'files' && <ul data-fixture-files>{view.files.filter((file: any) => file.path === 'src/index.ts').map((file: any) => <li><a data-fixture-file-link={file.path} href={view.href(`/file/${view.viewer.repositories.find((repository: any) => repository.repositoryId === file.repositoryId)?.fullName}/${file.locator}`)}>{file.path}</a></li>)}</ul>}
 <script>
   import { registerCharts } from '../../src/client/charts/mount';
   import { RECIPES } from '../../src/client/charts/recipes';

@@ -10,12 +10,15 @@ const detail = await loadSurface(view, Astro.locals.app, 'file', { path: file.pa
 const detailMs = performance.now() - started;
 if (!detail) return new Response('Synthetic file detail unavailable', { status: 503 });
 ---
-<PageHead view={view} title="File history" crumbs={[{ label: 'Files', href: view.href('/files') }]} scope={false}>
+<PageHead view={view} title="File history" crumbs={[{ label: 'Files', href: view.href('/files') }]} scope={false} policyNotice={false}>
   <div class="a-scope" slot="scope">{fullName}<span class="a-dot">·</span>{view.period.label}</div>
 </PageHead>
 <section class="a-pn" data-file-read data-populations={detail.result.populations} data-detail-ms={detailMs}
   data-enriched-files={detail.result.file ? 1 : 0} data-enriched-path={detail.result.file?.path ?? ''}
   data-file-identity={view.fileIdentity?.path ?? ''} data-fixture-period={view.period.key}>
-  <div class="a-pn-b"><h1>{file.path}</h1><p>Synthetic public file-detail consumer. No private algorithms or live data.</p></div>
+  <div class="a-pn-b"><h1>{file.path}</h1><p>Synthetic public file-detail consumer. No private algorithms or live data.</p>
+    <p data-fixture-inclusion={detail.result.file?.inclusion} data-fixture-policy-basis={detail.result.file?.policyBasis}
+      data-fixture-observed-changed={JSON.stringify(detail.result.file?.observedChanged)}>Current interpretation: {detail.result.file?.inclusion}.</p>
+  </div>
 </section>
 <Region view={view} />

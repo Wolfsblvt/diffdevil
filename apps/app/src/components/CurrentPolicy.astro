@@ -1,0 +1,11 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
+// Render beside the population whose current-policy result supplied this view.
+interface Props { view: any }
+const { view } = Astro.props;
+const pagePath = new URL(Astro.locals.analyticalUrl ?? Astro.url.href).pathname;
+const policies = view.data?.policies ?? [];
+const unavailablePolicies = policies.filter((policy: any) => policy.standing !== 'current');
+---
+{unavailablePolicies.length > 0 && <p class="a-note" data-current-policy-unavailable role="status"><span>Current interpretation unavailable for {unavailablePolicies.length} {unavailablePolicies.length === 1 ? 'repository' : 'repositories'}: {unavailablePolicies.some((policy: any) => policy.reason === 'stored-configuration-unavailable') ? 'stored App settings could not be read.' : 'the trusted repository policy could not be resolved; check App credentials, repository access and policy syntax.'} Retained base measurements and recorded original results remain available. <a href={view.href(pagePath)}>Retry current policy</a></span></p>}
+{view.scope.kind === 'repository' && policies.length === 1 && policies[0].standing === 'current' && <p class="a-mini" data-current-policy-basis>Current policy <code>{policies[0].requestedId}</code> · {policies[0].sourceIdentity ?? 'effective repository policy'}</p>}

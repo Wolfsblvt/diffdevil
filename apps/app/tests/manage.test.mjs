@@ -386,7 +386,7 @@ test('a Pro default is saved by revision and adopted explicitly from a repositor
   assert.equal(stored.revision, 1);
   assert.equal((await act(app, cookie, { action: 'default-save', namespace: String(ACCOUNTS['parser-guild']), revision: '0', document: 'version: 1\n', back: '/manage/defaults' })).message, 'stale', 'a stale revision writes nothing');
   // Saving a default changes nothing that runs: Pro has no live layer, and no repository differs silently.
-  assert.equal((await app.policies.current({ repositoryId: 1001 })).basis, 'bundled-default');
+  assert.equal((await app.policies.current({ repositoryId: 1001 })).origin, 'default');
   let projected = (await app.auth.readAdmission({ session: cookie, repositoryId: 1001 })).body;
   const comparison = defaultComparison({ admission: projected, namespaceDefault: stored });
   assert.equal(comparison.compiles, true);
@@ -398,7 +398,7 @@ test('a Pro default is saved by revision and adopted explicitly from a repositor
   assert.equal(adoption.revision, 1); assert.equal(adoption.accountId, 7001);
   projected = (await app.auth.readAdmission({ session: cookie, repositoryId: 1001 })).body;
   assert.deepEqual(projected.configuration.value.repository.scopes, { generated: { exclude: ['**/*.snap'] } });
-  assert.equal((await compose(undefined, { env: { APP_COMMERCIAL_FIXTURE: COMMERCIAL_PRO } }).policies.current({ repositoryId: 1001 })).basis, 'stored-app-configuration');
+  assert.equal((await compose(undefined, { env: { APP_COMMERCIAL_FIXTURE: COMMERCIAL_PRO } }).policies.current({ repositoryId: 1001 })).origin, 'stored');
   const configuration = effectiveConfiguration({ admission: projected, namespace: guild, namespaceDefault: stored, adoption, login: 'parser-guild' });
   assert.deepEqual(configuration.chain.map(layer => layer.key), ['preset', 'repository', 'supplied']);
   assert.match(configuration.chain[1].label, /from parser-guild default rev 1/u, 'the effective origin names the adopted revision');
@@ -411,7 +411,7 @@ test('a Pro default is saved by revision and adopted explicitly from a repositor
   // A saved default is not consulted by interpretation; only the applied settings are.
   const independent = compose(undefined, { env: { APP_COMMERCIAL_FIXTURE: COMMERCIAL_PRO } });
   independent.manage.namespaceDefault = async () => { throw new Error('D1 unavailable'); };
-  assert.equal((await independent.policies.current({ repositoryId: 1001 })).basis, 'stored-app-configuration');
+  assert.equal((await independent.policies.current({ repositoryId: 1001 })).origin, 'stored');
 });
 
 test('the loopback Works stand-in carries the slots, the first link, the return and unlinking the way the consumer does', async () => {

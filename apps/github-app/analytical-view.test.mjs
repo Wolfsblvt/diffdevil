@@ -85,7 +85,7 @@ test('access or readable history lost before or during a continuation exposes no
   }
 });
 
-test('opaque identity resolution still enforces selected-report validation, current policy and current access', async () => {
+test('opaque retained identity survives analytical exclusion while enforcing selected-report validation and current access', async () => {
   const select = rows => rows.find(row => row.path === 'a.txt');
   for (const change of ['access', 'history']) {
     const { service, state } = fixture();
@@ -98,7 +98,7 @@ test('opaque identity resolution still enforces selected-report validation, curr
   const { service, state, rows } = fixture();
   state.policy = { id: 'excluded', compiled: unwrap(compilePolicy({ version: 1, defaults: { paths: { exclude: ['a.txt'] } } })) };
   let source = await service.query(query('file', { scope }), actor);
-  assert.equal(await service.resolveFileCandidate(source, 17, select), undefined);
+  assert.deepEqual(await service.resolveFileCandidate(source, 17, select), { repositoryId: 17, path: 'a.txt', hasSelectedPeriodActivity: true });
   assert.equal(await service.resolveFileCandidate(structuredClone(source), 17, select), undefined, 'HTTP-shaped data cannot supply request-local context');
   rows[0].final.report.totals.lines.changed = { status: 'exact', value: 999 };
   source = await service.query(query('file', { scope }), actor);

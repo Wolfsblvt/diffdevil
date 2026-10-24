@@ -166,7 +166,9 @@ export async function loadView({ url, viewer, session, runtime, surface = 'prs',
   const href = (path, patch = {}) => link(state, path, { ...(patch.s?.startsWith('@') ? namespaceSelection(viewer, patch.s.slice(1)) : {}), ...patch });
   // The plan decides who is entitled; the build decides whether the premium implementation exists. A premium slot renders only when both hold.
   const premiumProvided = runtime.premium.provided, premiumHere = entitlement.premium && premiumProvided;
-  return { state, scope, scopeUnavailable, namespacePartial, historyUnavailable, historyManageable, repositories, historyRepositories, retainedRepositories, ids, actor, contractScope, nowIso, period, periods: Object.values(PERIODS), window, pullRequests, lifecycle, current, previous, bounds, coverage, truncated, entitlement, premiumProvided, premiumHere, data, dataStanding, files, fileIdentity, fileHasSelectedPeriodActivity, titles, href, viewer };
+  const policyBasis = data?.policies?.some(policy => policy.standing !== 'current')
+    ? 'current interpretation partly unavailable; retained base facts shown where unresolved' : 'under current policy';
+  return { state, scope, scopeUnavailable, namespacePartial, historyUnavailable, historyManageable, repositories, historyRepositories, retainedRepositories, ids, actor, contractScope, nowIso, period, periods: Object.values(PERIODS), window, pullRequests, lifecycle, current, previous, bounds, coverage, truncated, entitlement, premiumProvided, premiumHere, data, dataStanding, policyBasis, files, fileIdentity, fileHasSelectedPeriodActivity, titles, href, viewer };
 }
 
 /** A second surface read for a page that composes two (a premium file panel beside the page's pull-request model). */

@@ -189,7 +189,7 @@ test('the original 30-day file consumer resolves one opaque identity without int
   const service = createAnalyticalDataService({ store, authorize: async () => true, entitlement: async () => 'pro', namespace: async () => 9,
     currentPolicy: async () => policy, premium: {
       files: async ({ merged, query }) => ({ files: merged.flatMap(row => row.facts.report?.files
-        .filter(file => file.included && file.path === query.path).map(file => ({ repositoryId: 17, path: file.path, contributions: [row.pullRequest] })) ?? []), sizeObservation: [] }),
+        .filter(file => file.path === query.path).map(file => ({ repositoryId: 17, path: file.path, included: file.included, contributions: [row.pullRequest] })) ?? []), sizeObservation: [] }),
       file: async ({ files }) => files[0]
     } });
   const runtime = { store, now: () => '2026-10-01T00:00:00.000Z', cache: createContextCache(), premium: { provided: true },
@@ -210,8 +210,45 @@ test('the original 30-day file consumer resolves one opaque identity without int
   assert.equal(detail.coverage.merged, 2, 'the complete selected-period population still governs coverage');
   assert.equal(detail.coverage.completeWindow, false);
   assert.equal(reads, 1, 'locator and detail share their request-local retained read');
-  assert.equal((await open('excluded.txt')).fileIdentity, undefined, 'matching an opaque handle does not bypass current path policy');
+  const excluded = await open('excluded.txt');
+  assert.deepEqual(excluded.fileIdentity, { repositoryId: 17, path: 'excluded.txt', hasSelectedPeriodActivity: true }, 'current analytical exclusion does not erase an authorized retained identity');
+  assert.equal((await loadSurface(excluded, runtime, 'file', { path: excluded.fileIdentity.path })).result.included, false, 'the detail retains truthful current exclusion');
   const inactive = await open('older-139.txt');
   assert.deepEqual(inactive.fileIdentity, { repositoryId: 17, path: 'older-139.txt', hasSelectedPeriodActivity: false });
   assert.equal((await open('absent.txt')).fileIdentity, undefined);
+});
+
+test('retained file identity survives policy exclusion and unavailable interpretation while real access and history checks still apply', async () => {
+  const rows = [transition(1, 'a.txt', revisions.slice(0, 2), '2026-09-20T00:00:00.000Z')];
+  const retained = structuredClone(rows);
+  const defaultPolicy = { compiled: unwrap(compilePolicy({ version: 1 })) };
+  const excludedPolicy = { compiled: unwrap(compilePolicy({ version: 1, defaults: { paths: { exclude: ['**'] } } })) };
+  let policy = defaultPolicy, allowed = true, readable = true, plan = 'pro';
+  const service = createAnalyticalDataService({ store: { analyticalRecords: async () => rows, historySettings: async () => ({ readable }) },
+    authorize: async () => allowed, entitlement: async () => plan, namespace: async () => 9, currentPolicy: async () => policy,
+    premium: { files: async () => ({ files: [], sizeObservation: [] }) } });
+  const actor = { userId: 123, authorizedRepositoryIds: [17] };
+  const query = { version: 1, surface: 'file', repositoryIds: [17], scope: { kind: 'repository', repositoryId: 17 }, from: '2026-09-01T00:00:00.000Z', to: '2026-10-01T00:00:00.000Z' };
+  const locator = createLocator({ secret: 'local-non-secret-retained-identity' });
+  const handle = await locator.of(17, 'a.txt');
+  const resolve = candidates => locator.resolve(handle, candidates);
+  const identity = { repositoryId: 17, path: 'a.txt', hasSelectedPeriodActivity: true };
+  for (const current of [defaultPolicy, excludedPolicy, { id: null, compiled: null, reason: 'trusted-policy-unavailable' }, defaultPolicy]) {
+    policy = current;
+    const source = await service.query(query, actor);
+    assert.deepEqual(await service.resolveFileCandidate(source, 17, resolve), identity);
+    assert.deepEqual(rows, retained, 'identity resolution must not change measurements or recorded results');
+  }
+  const source = await service.query(query, actor);
+  assert.equal(await service.resolveFileCandidate({ ...source }, 17, resolve), undefined, 'only the server-held response context may resolve identities');
+  assert.equal(await service.resolveFileCandidate(source, 18, resolve), undefined, 'the selected repository remains binding');
+  const broadSource = await service.query({ ...query, surface: 'files', scope: { kind: 'all' } }, actor);
+  assert.equal(await service.resolveFileCandidate(broadSource, 17, resolve), undefined, 'a broad-scope response cannot supply a repository-detail identity');
+  assert.equal(await service.resolveFileCandidate(source, 17, candidates => ({ ...candidates[0] })), undefined, 'the resolver must select an actual candidate');
+  assert.equal(await service.resolveFileCandidate(source, 17, candidates => locator.resolve('a'.repeat(22), candidates)), undefined, 'a wrong locator reveals no identity');
+  await assert.rejects(service.resolveFileCandidate(source, 17, async candidates => { allowed = false; return resolve(candidates); }), { code: 'E_APP_DATA_UNAUTHORIZED' });
+  allowed = true; readable = false;
+  await assert.rejects(service.resolveFileCandidate(source, 17, resolve), { code: 'E_APP_DATA_NOT_FOUND' });
+  readable = true; plan = 'free';
+  assert.equal(await service.resolveFileCandidate(await service.query(query, actor), 17, resolve), undefined, 'a non-premium response supplies no retained-file identity context');
 });

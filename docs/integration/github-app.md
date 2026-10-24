@@ -62,6 +62,8 @@ Use explicit allowlisted projections rather than retaining whole reports. Conten
 
 General file/repository history is final merged-PR activity. Preserve the earlier statistics work's useful interval/sample/quantity semantics without claiming anonymous rows establish named trajectories. Current-policy replay changes a derived interpretation; original observations and provider effects remain immutable.
 
+The App's analytical and recalculation readers share `createPolicyResolver` with trusted preview: the verified repository installation supplies a repository-scoped Contents-read credential, the current default-branch head pins the file, and trusted repository policy overrides the applicable stored App layer and preset. Acquisition is reused within one request/invocation, never per historical row. A positively missing policy file permits fallback; a missing referenced template, failed settings/provider read or malformed policy does not. Analytical responses retain readable base facts and name unavailable interpretation, while recalculation preserves its progress and reports policy-resolution failure instead of `interpreted`. Successful job receipts retain their actual policy identity, source and trusted head, independently of later policy changes. These reads perform no policy adoption or repository effects.
+
 A query must identify its available policy basis while a manual or automatic refresh is pending. Imported PRs have no fictional original App result. No repository-wide parallel policy-era warehouse is selected.
 
 ## Progressive work and provider-aware scheduling

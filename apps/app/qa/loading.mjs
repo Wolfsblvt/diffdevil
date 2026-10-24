@@ -93,8 +93,12 @@ export async function loadingJourney({ page, check, shot, ORIGIN, settled, joine
   check('an inaccessible detail returns a generic shell then an authorised 404 without protected detail', generic.status() === 200 && (await deniedRead).status() === 404 && await page.locator('.a-result').count() === 0 && /Not in your repositories/u.test(await page.locator('#main').innerText()));
   const anonymous = await page.context().browser().newContext();
   try {
-    const denied = await anonymous.request.get(`${ORIGIN}/`, { maxRedirects: 0 });
-    check('a signed-out request still receives no protected shell', denied.status() === 303 && denied.headers().location.startsWith('/sign-in'));
+    const entrance = await anonymous.request.get(`${ORIGIN}/`, { maxRedirects: 0 });
+    const publicHtml = await entrance.text();
+    const denied = await anonymous.request.get(`${ORIGIN}/files`, { maxRedirects: 0 });
+    check('signed-out entry stays public while analytical routes refuse the protected shell', entrance.status() === 200
+      && publicHtml.includes('data-public-app-entrance') && !/data-analytical-loading|parser-guild|qa\.reader/u.test(publicHtml)
+      && denied.status() === 303 && denied.headers().location.startsWith('/sign-in'));
   } finally { await anonymous.close(); }
   await page.unroute(`${ORIGIN}/**`);
   if (joined) {
@@ -107,7 +111,7 @@ export async function loadingJourney({ page, check, shot, ORIGIN, settled, joine
       if (premiumMode === 'fail') return route.fulfill({ status: 503, body: 'Fixture premium unavailable' });
       return route.continue();
     });
-    for (const [path, title] of [['/pr/parser-guild/parser-lab/452?per=90d', 'Pull request'], ['/file/parser-guild/parser-lab/' + 'a'.repeat(22) + '?s=%40parser-guild&per=90d', 'File history']]) {
+    for (const [path, title] of [['/files?s=parser-guild%2Fparser-lab&per=90d', 'Files'], ['/pr/parser-guild/parser-lab/452?per=90d', 'Pull request'], ['/file/parser-guild/parser-lab/' + 'a'.repeat(22) + '?s=%40parser-guild&per=90d', 'File history']]) {
       premiumMode = 'hold'; premiumGate = new Promise(resolve => { finishPremium = resolve; });
       await page.goto(`${ORIGIN}${path}`, { waitUntil: 'domcontentloaded' });
       await page.locator('[data-analytical-loading]').waitFor({ state: 'detached' });
@@ -121,7 +125,7 @@ export async function loadingJourney({ page, check, shot, ORIGIN, settled, joine
         });
         check('pending file identity reveals no unestablished path', identityTitle === 'File history' && await page.locator('[data-pending-file-head]').innerText().then(text => text.includes('parser-guild/parser-lab')));
       }
-      await shot(`loading-held-premium-${title === 'File history' ? 'file' : 'pr'}`);
+      await shot(`loading-held-premium-${title === 'File history' ? 'file' : title === 'Files' ? 'files' : 'pr'}`);
       premiumMode = 'fail'; finishPremium();
       const retryPremium = page.locator('[data-premium-retry]:visible').first();
       await retryPremium.waitFor();
