@@ -1,9 +1,15 @@
 # What is diffdevil
 
-diffdevil turns a Git diff into facts you can read, query, and use in automation.
-It measures files and lines, evaluates your policy, and can deliberately maintain
-GitHub labels and comments. The same engine works in a terminal, in a workflow,
-in your application, and while you review a pull request in the browser.
+diffdevil helps you understand what changed in a pull request, use those facts in
+automation, and follow how a codebase changes over time. It measures files and
+lines, evaluates your policy, and can deliberately maintain GitHub labels and
+comments. The same engine powers a personal browser extension, free open tools,
+and a managed App for repository history and automation.
+
+The CLI, TypeScript library and four GitHub Actions are released. The browser
+extension is in Chrome Web Store preparation, and the managed App is implemented
+and under private qualification; public installation and paid plans are not open yet. The
+[release guide](help/releases.md) distinguishes the available distributions.
 
 ## A replacement is not six changed lines
 
@@ -49,6 +55,7 @@ keep a script moving.
 ## One engine, different responsibilities
 
 Run diffdevil yourself through the CLI, TypeScript library, or GitHub Actions.
+These are complete free tools; no diffdevil account or hosted subscription is required.
 Use **diffdevil for GitHub**, the browser extension, for a personal Changed view
 without installing repository automation. The optional managed App is the route
 for shared repository history and operated automation. Lens Studio, the public Playground, lets
@@ -60,11 +67,34 @@ says what a host intends to change, not what GitHub has accepted. Only explicit
 application attempts effects, and readback establishes what was observed afterward.
 The [Surfaces guide](use/README.md) separates these operating choices.
 
+## Give your repository a memory
+
+The managed App connects individual changes to the history of a repository. Its
+Overview, PRs, History and Files routes let you follow pull requests through their
+lifecycle, inspect changes over time, and explore file growth, repeated edits and
+files that change together. PR detail and File detail keep the underlying
+measurements and coverage inspectable. [Read repository history](use/managed-app/read-history.md)
+explains each view and what its measurements mean.
+
+The selected hosted offer has **Free** for PR operation and basic repository
+history, **Pro** for deeper file history and context, and **Business** for shared
+policies and delegated administration. Readers with current GitHub access can use
+a connected repository's funded capabilities without buying seats. These are
+planned service terms; [Plans and shared access](use/managed-app/plans-and-sharing.md)
+owns the full offer and its availability note. [Community self-hosting](use/managed-app/self-hosting.md)
+has separate operating responsibilities and does not include the private premium modules.
+
+History collection is explicit. The service retains measurements, paths and
+comparison metadata, not source code or patch contents. Read
+[Security and data](help/security-and-data.md) for permissions, retention and exit.
+Repository and file measurements describe change; they are not ratings of people.
+
 ## Get a first result
 
 | What you want to do | Start here |
 | --- | --- |
 | Read Changed beside GitHub's PR and file statistics | [See changed lines on GitHub](start/see-changed-lines-on-github.md) |
+| Understand repository and file history in the App | [Read repository history](use/managed-app/read-history.md) |
 | Keep a repository's size labels up to date | [Label pull requests](start/label-pull-requests.md) |
 | Inspect a patch or your own working changes | [Analyze local changes](start/analyze-local-changes.md) |
 | Explore a frozen public PR, then change its policy | [Try a public pull request](start/try-a-public-pull-request.md) |
