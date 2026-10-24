@@ -34,6 +34,12 @@ export function packageBin(packageName,bin,args,cwd=manualRoot,options={}) {
  return run(process.execPath,[join(dirname(file),entry),...args],{cwd:root,...options});
 }
 const sha256=file=>createHash('sha256').update(readFileSync(file)).digest('hex');
+export function normalizePackResult(output) {
+ const result=JSON.parse(output);
+ const entries=Array.isArray(result)?result:Object.values(result??{});
+ if(entries.length!==1 || !entries[0] || typeof entries[0]!=='object') throw new Error('npm pack must report exactly one package.');
+ return entries[0];
+}
 export function prepareManual() {
  const offline = process.env.DIFFDEVIL_DOCS_OFFLINE === '1' || process.env.npm_config_offline === 'true';
  mkdirSync(cache,{recursive:true});
@@ -48,10 +54,15 @@ export function prepareManual() {
   const actual=run('git',['-C',checkout,'rev-parse','HEAD'],{encoding:'utf8',stdio:'pipe'}).trim();
   if(actual!==packageSource.commit) throw new Error(`Wrong starlight-works source: ${actual}`);
   npm(['install','--ignore-scripts','--no-audit','--no-fund'],checkout);
-  npm(['run','pack'],checkout);
-  const packed=JSON.parse(readFileSync(join(checkout,'artifacts/package/pack.json'),'utf8'));
+  const packedDirectory=join(checkout,'artifacts/package');
+  mkdirSync(packedDirectory,{recursive:true});
+  run(process.execPath,[join(checkout,'tools/build.mjs')],{cwd:checkout});
+  const packOutput=npm(['pack',`--workspace=${packageSource.name}`,'--ignore-scripts','--json','--pack-destination',packedDirectory],checkout,{encoding:'utf8',stdio:'pipe'});
+  const packed=normalizePackResult(packOutput);
   if(packed.name!==packageSource.name || packed.version!==packageSource.version) throw new Error('The accepted source packed an unexpected package.');
-  copyFileSync(join(checkout,'artifacts/package',packed.filename),tarball);
+  const packedTarball=join(packedDirectory,packed.filename);
+  writeFileSync(join(packedDirectory,'pack.json'),JSON.stringify({...packed,tarball:packedTarball},null,2)+'\n');
+  copyFileSync(packedTarball,tarball);
   receipt={repository:packageSource.repository,commit:actual,name:packed.name,version:packed.version,integrity:packed.integrity,tarballSha256:sha256(tarball)};
   writeFileSync(receiptPath,JSON.stringify(receipt,null,2)+'\n');
  }
