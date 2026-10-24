@@ -8,7 +8,7 @@ description: "Answers about Changed, the browser extension, the App, plans, perm
 Why another diff tool? Start here. Then choose how to use it and check what it reads, writes, and remembers.
 
 <aside class="faq-note" role="note" id="product-status">
-<p><strong>In development.</strong> The extension and complete App are implemented in source; private previews and earlier deployed services do not establish public availability. Chrome Web Store distribution, open App installation, and paid access have separate launch steps. These answers describe the selected experience. Check <a href="https://diffdevil.dev/install/">Install</a> for current access.</p>
+<p><strong>In development.</strong> The extension and complete App are implemented in source; private previews and earlier deployed services do not establish public availability. Chrome Web Store distribution, open App installation, and paid access have separate launch steps. These answers describe the selected experience. Check the <a href="/extension/">extension</a> and <a href="/app/">App</a> pages for current access.</p>
 </aside>
 
 <nav class="faq-categories" aria-label="FAQ categories">
@@ -421,7 +421,7 @@ linked policies, coordinated changes, automatic eligible setup, delegated admini
 Plans change App depth, coordination, and repository allowances. They do not change what Changed
 means or charge per pull request. Free history can retain the base file measurements needed for
 policy replay without granting Pro’s file-exploration views.
-[Plans, allowances, and funding](use/managed-app/service.md).
+[Plans, allowances, and funding](use/managed-app/plans-and-sharing.md).
 
 </div>
 
@@ -445,7 +445,7 @@ organisations; each organisation has one ordinary funder, rather than stacked al
 Paying grants neither repository access nor administrative authority. Shared private links check
 access again when opened. A public repository does not automatically publish its analytics: an
 administrator must explicitly enable that public view.
-[Readers, funding, and access](use/managed-app/service.md).
+[Readers, funding, and access](use/managed-app/plans-and-sharing.md).
 
 </div>
 
@@ -521,7 +521,7 @@ later replay. Names and paths are protected metadata, not anonymous numbers.
 
 Source contents, patches, PR prose, and contributor-performance dimensions are excluded. Repository
 and file trends use one final recoverable comparison per merged PR; open-PR activity is separate.
-Collection can run with automated effects off. [History and retained data](use/managed-app/service.md).
+Collection can run with automated effects off. [History and retained data](use/managed-app/read-history.md).
 
 </div>
 
