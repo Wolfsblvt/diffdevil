@@ -78,8 +78,11 @@ file-detail bridge. `qa/loading/file-read.json` separates fetch timing and respo
 paint opportunity; the latter is not a compositor timestamp. It records the complete file count and the number of
 file-population derivations. It remains synthetic consumer evidence, not private-algorithm or Cloudflare qualification.
 
-A file detail reads only its named repository while retaining the broader scope as navigation context. Its second
-file-surface read continues the same request's Files response through `loadSurface`; matching reader, repository,
+A file detail reads only its named repository while retaining the broader scope as navigation context. Its opaque
+identity resolves against authorized retained observations, independently of current analytical inclusion or
+unavailable interpretation. Exclusion does not turn a retained file into 404; the detail keeps its original measurements
+and truthful current-policy standing. Current access, entitlement and readable-history checks still govern exposure.
+Its second file-surface read continues the same request's Files response through `loadSurface`; matching reader, repository,
 period, metric, policy, current access and readable history are required. This avoids a second full interpretation
 and premium file enrichment. A different request or selection reads fresh data and derives its own answer; only
 unchanged deterministic policy interpretations can reuse work across requests. Opaque signatures already calculated

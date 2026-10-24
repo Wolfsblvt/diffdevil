@@ -1,7 +1,34 @@
 // SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
 /** Trusted policy through the built Worker, local GitHub wire double, real sign-in and retained D1. */
-export async function currentPolicyJourney({ page, go, check, shot, ORIGIN, github, restart, joined, settled }) {
+export async function currentPolicyJourney({ page, go, check, shot, ORIGIN, github, restart, joined, settled, publicFileFixture }) {
   const repository = 'parser-guild/parser-lab';
+  if (publicFileFixture) {
+    let retainedHref, observedChanged;
+    for (const [name, contents, inclusion] of [['default', undefined, 'included'], ['excluded', 'version: 1\ndefaults: { paths: { exclude: ["**"] } }\n', 'excluded'], ['unavailable', 503, 'unavailable'], ['restored', undefined, 'included']]) {
+      if (contents === undefined) github.state.policyFiles.delete(repository);
+      else github.state.policyFiles.set(repository, contents);
+      await go('/files?s=parser-guild%2Fparser-lab&per=90d'); await settled();
+      const link = page.locator('[data-fixture-file-link="src/index.ts"]');
+      const href = await link.getAttribute('href');
+      retainedHref ??= href;
+      check(`${name} policy preserves the same observed opaque file action`, href === retainedHref);
+      await link.focus(); await page.keyboard.press('Enter');
+      await page.locator('[data-file-read]').waitFor(); await settled();
+      const facts = page.locator('[data-fixture-inclusion]');
+      const changed = await facts.getAttribute('data-fixture-observed-changed');
+      observedChanged ??= changed;
+      check(`${name} policy reaches retained detail with truthful interpretation and unchanged facts`, new URL(page.url()).pathname === new URL(retainedHref, ORIGIN).pathname
+        && await facts.getAttribute('data-fixture-inclusion') === inclusion && changed !== null && changed === observedChanged
+        && await facts.getAttribute('data-fixture-policy-basis') === (inclusion === 'unavailable' ? 'unfiltered-base-facts' : 'current-policy')
+        && await page.locator('[data-file-read]').getAttribute('data-file-identity') === 'src/index.ts');
+      const documentUrl = new URL(retainedHref, ORIGIN); documentUrl.searchParams.set('render', 'document');
+      const document = await page.request.get(documentUrl.href);
+      check(`${name} retained file has a real complete document, not just a successful shell`, document.status() === 200
+        && (await document.text()).includes('data-file-read'));
+      if (inclusion === 'unavailable') check('unavailable file interpretation keeps recovery beside retained detail', await page.locator('[data-current-policy-unavailable]').isVisible());
+      if (name === 'excluded') await shot('current-policy-excluded-file-detail');
+    }
+  }
   const query = { version: 1, surface: 'prs', repositoryIds: [1001], scope: { kind: 'repository', repositoryId: 1001 }, from: '2026-01-01T00:00:00.000Z', to: new Date().toISOString() };
   const endpoint = `${ORIGIN}/api/analytics?query=${encodeURIComponent(JSON.stringify(query))}`;
   const read = async () => { const response = await page.request.get(endpoint); check('built analytical API answers the authorized repository', response.ok()); return response.json(); };

@@ -192,17 +192,18 @@ export function createAnalyticalDataService({ store, authorize, entitlement, nam
       const candidates = [...paths.keys()].map(path => ({ repositoryId, path }));
       const selected = await resolve(candidates);
       if (!candidates.includes(selected)) return undefined;
-      let included = false, hasSelectedPeriodActivity = false;
+      let retained = false, hasSelectedPeriodActivity = false;
       for (const record of paths.get(selected.path)) {
         const report = prior.factsOf(record.final, repositoryId).report;
-        if (!report?.files.some(file => file.path === selected.path && file.included)) continue;
-        included = true;
+        // Current policy selects analytical contributions, not the existence of an authorized retained file.
+        if (!report?.files.some(file => file.path === selected.path)) continue;
+        retained = true;
         hasSelectedPeriodActivity ||= activePullRequests.has(record.pullRequest);
         if (hasSelectedPeriodActivity) break;
       }
       if (!await authorize({ repositoryId, actor: prior.actor, kind: 'read' })) throw fail('E_APP_DATA_UNAUTHORIZED');
       if (!await historyReadable([repositoryId])) throw fail('E_APP_DATA_NOT_FOUND');
-      return included ? { ...selected, hasSelectedPeriodActivity } : undefined;
+      return retained ? { ...selected, hasSelectedPeriodActivity } : undefined;
     },
     async query(input, actor, source) {
       const query = selectedWindow(input);

@@ -11,7 +11,10 @@ export default {
         const files = new Map();
         for (const row of merged) for (const file of row.final?.report.files ?? []) {
           if (query.surface === 'file' && file.path !== query.path) continue;
-          files.set(`${row.repositoryId}:${file.path}`, { repositoryId: row.repositoryId, path: file.path, contributions: [] });
+          const current = row.facts.report?.files.find(candidate => candidate.path === file.path);
+          files.set(`${row.repositoryId}:${file.path}`, { repositoryId: row.repositoryId, path: file.path, contributions: [],
+            observedChanged: file.lines.changed, policyBasis: row.facts.basis,
+            inclusion: row.facts.basis !== 'current-policy' ? 'unavailable' : current?.included ? 'included' : 'excluded' });
         }
         return { files: [...files.values()], sizeObservation: [] };
       },

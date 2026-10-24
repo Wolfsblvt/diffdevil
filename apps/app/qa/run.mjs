@@ -906,7 +906,7 @@ try {
   } else if (CURRENT_POLICY_ONLY) {
     await startWorker(ENTITLEMENT_FIXTURE);
     await signIn();
-    await currentPolicyJourney({ ...ctx, github, restart: async policyCredentials => { await stopWorker(); await startWorker(ENTITLEMENT_FIXTURE, STATE, { policyCredentials }); } });
+    await currentPolicyJourney({ ...ctx, github, publicFileFixture: edition.entry?.replaceAll('\\', '/').endsWith('/qa/loading-premium/index.mjs'), restart: async policyCredentials => { await stopWorker(); await startWorker(ENTITLEMENT_FIXTURE, STATE, { policyCredentials }); } });
   } else if (LOADING_ONLY) {
     await startWorker(ENTITLEMENT_FIXTURE);
     await signIn();
