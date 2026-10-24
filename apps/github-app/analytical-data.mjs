@@ -291,7 +291,8 @@ export function createAnalyticalDataService({ store, authorize, entitlement, nam
           readyAt: record.readyAt, mergedAt: record.mergedAt, closedAt: record.closedAt, updatedAt: record.updatedAt,
           changed: sum([changed(measured)]), rawChurn: sum([raw(measured)]), band: measured.band,
           composition: summarize([measured]).composition,
-          policy: { id: measured.policyId, basis: measured.basis, requestedId: policies.get(record.repositoryId)?.id ?? null },
+          policy: { id: measured.policyId, basis: measured.basis, requestedId: policies.get(record.repositoryId)?.id ?? null,
+            reason: policies.get(record.repositoryId)?.reason ?? null },
           measurement: { basis: record.state === 'merged' ? 'final-merged-comparison' : 'pull-request-revision',
             standing: measured.report ? 'recovered' : 'unrecovered', quality: measured.report?.measurement.status ?? 'unknown',
             files: measured.report ? { complete: measured.report.fileSet.complete, total: sum([measured.report.fileSet.total]), observed: measured.report.files.length } : null,
@@ -353,7 +354,11 @@ export function createAnalyticalDataService({ store, authorize, entitlement, nam
         population: 'final-merged-comparisons', window: { from: query.from, to: query.to },
         coverage: { completeWindow: false, standing: 'retained-observations', requestedRepositories: query.repositoryIds.length,
           authorizedRepositories: granted.length, representedRepositories: authorized.length, recoveredMerged: merged.filter(record => record.final?.report).length, merged: merged.length },
-        policies: authorized.map(repositoryId => ({ repositoryId, requestedId: policies.get(repositoryId)?.id ?? null, standing: policies.get(repositoryId)?.compiled ? 'current' : 'unfiltered-base-facts' })),
+        policies: authorized.map(repositoryId => {
+          const policy = policies.get(repositoryId);
+          return { repositoryId, requestedId: policy?.id ?? null, standing: policy?.compiled ? 'current' : 'unfiltered-base-facts',
+            reason: policy?.reason ?? null, code: policy?.code ?? null, origin: policy?.origin ?? null, sourceIdentity: policy?.sourceIdentity ?? null, trustedHead: policy?.trustedHead ?? null };
+        }),
         sizeObservation, entitlements, fundedNamespaces, result };
       if (['file', 'files'].includes(query.surface) && query.scope.kind === 'repository' && premium && extension) {
         fileViews.set(response, { actor, query, authorized, premiumIds, policies, all, merged, factsOf, files, sizeObservation });

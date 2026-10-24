@@ -381,13 +381,16 @@ async function repositoryTarget(client, envelope) {
 /** `account` is the namespace default (Pro) the App supplies as the effective policy's account layer; the repository file still wins. */
 async function trustedPolicy(client, target, base, configuration, account = {}) {
   let supplied = {}, source = configuration ? 'stored' : 'default', sourceIdentity = configuration ? 'stored repository configuration' : 'bundled default policy';
+  let policyRead = false;
   try {
-    const ordinary = await readGitHubPolicy(client, { repository: target.repository, ref: base, path: POLICY_PATH });
+    // Only absence of the policy itself permits fallback. A missing template after a successful
+    // policy read is a broken authored policy, not absence of repository configuration.
+    const ordinary = await readGitHubPolicy({ json: async (...args) => { const value = await client.json(...args); policyRead = true; return value; } }, { repository: target.repository, ref: base, path: POLICY_PATH });
     supplied = { ...explainPolicy(ordinary).document, presets: ordinary.semantics.presets };
     source = 'trusted-base'; sourceIdentity = `.diffdevil.yml@${base}`;
   }
   catch (error) {
-    if (error?.diagnostic?.details?.status !== 404) throw error;
+    if (policyRead || error?.diagnostic?.details?.status !== 404) throw error;
   }
   const layers = { preset: DEFAULT_SIZE_POLICY, account: account ?? {}, ...(configuration?.repository === undefined ? {} : { repository: configuration.repository }), supplied };
   const effective = resolveEffectivePolicy(layers);

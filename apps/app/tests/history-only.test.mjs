@@ -84,7 +84,7 @@ test('consented history imports and repairs three current-API comparisons with r
     return { text: route.includes('/compare/') ? 'diff --git a/a.txt b/a.txt\n--- a/a.txt\n+++ b/a.txt\n@@ -1 +1 @@\n-old\n+new\n' : 'new\n' };
   } };
   const dependencies = { jobs: app.jobs, store: app.appStore, env: { APP_QUEUE: { send: async value => queued.push(value) } }, clientFor: async () => client,
-    now: () => NOW, operating: app.operating.standing, importScope: app.importScope };
+    now: () => NOW, operating: app.operating.standing, importScope: app.importScope, currentPolicy: repositoryId => app.policies.current({ repositoryId }) };
   const drain = async () => { let steps = 0; while (queued.length) { assert.ok(++steps < 10); await runHistoryJob(queued.shift(), dependencies); } };
   assert.equal((await act('import')).message, 'import-queued');
   await drain();

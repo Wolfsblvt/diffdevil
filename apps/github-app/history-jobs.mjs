@@ -291,7 +291,11 @@ async function recalculateStep({ client, store, job, progress, currentPolicy, re
   progress.withoutComparison = records.filter(record => record.state === 'merged' && !record.final).length;
   const policy = currentPolicy ? await currentPolicy(job.repositoryId) : null;
   progress.basis = policy?.id ? 'current-policy' : 'unfiltered-base-facts';
-  return { status: 'complete', reason: 'interpreted', policyId: policy?.id ?? null };
+  progress.policy = policy?.id ? { id: policy.id, origin: policy.origin ?? null, sourceIdentity: policy.sourceIdentity ?? null, trustedHead: policy.trustedHead ?? null }
+    : { id: null, reason: policy?.reason ?? 'current-policy-unavailable' };
+  if (!currentPolicy) return { status: 'complete', reason: 'base-facts-refreshed', policyId: null };
+  if (!policy?.id) throw Object.assign(new Error('Current effective policy is unavailable.'), { code: 'E_EFFECTIVE_POLICY_UNAVAILABLE' });
+  return { status: 'complete', reason: 'interpreted', policyId: policy.id };
 }
 
 /** The scheduled maintenance's share: queue again what lost its message or finished a service pause. */

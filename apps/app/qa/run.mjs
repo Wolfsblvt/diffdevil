@@ -44,9 +44,11 @@ import { fileReadJourney } from './file-read.mjs';
 import { filesQueryJourney } from './files-query.mjs';
 import { seedLoadingScale } from './loading-scale.mjs';
 import { installEntry, installedShell } from './installability.mjs';
+import { currentPolicyJourney } from './current-policy.mjs';
 
 const target = appBuildTarget();
 const IDENTITY_ONLY = process.argv.includes('--identity');
+const CURRENT_POLICY_ONLY = process.argv.includes('--current-policy');
 const EXPLICIT_READER_ONLY = process.argv.includes('--explicit-reader');
 const AUTHORITY_ONLY = process.argv.includes('--authority');
 const ADMISSION_ONLY = process.argv.includes('--admission');
@@ -55,7 +57,7 @@ const FILES_QUERY_ONLY = process.argv.includes('--files-query');
 const FUNDING_ONLY = process.argv.includes('--funding');
 const LOADING_SCALE = process.env.DIFFDEVIL_APP_QA_LOADING_SCALE === '1';
 // Generated specimen material for the local double, never an external App credential.
-const admissionKey = ADMISSION_ONLY ? generateKeyPairSync('rsa', { modulusLength: 2048 }).privateKey.export({ type: 'pkcs1', format: 'pem' }) : null;
+const installationKey = generateKeyPairSync('rsa', { modulusLength: 2048 }).privateKey.export({ type: 'pkcs1', format: 'pem' });
 const HISTORY_ONLY = process.argv.includes('--history');
 const THUMB_ONLY = process.argv.includes('--thumb');
 const PR_SEARCH_DETAIL_ONLY = process.argv.includes('--pr-search-detail');
@@ -63,7 +65,7 @@ const PR_CONFIDENCE_ONLY = process.argv.includes('--pr-confidence-state');
 const PR_FILES_ONLY = process.argv.includes('--pr-files-table');
 const BUSINESS_MANAGE_ONLY = process.argv.includes('--business-manage');
 const PARTICIPATION_ONLY = process.argv.includes('--participation');
-const OUT = join(target.artifacts, 'qa', ...(EXPLICIT_READER_ONLY ? ['explicit-reader'] : FUNDING_ONLY ? ['funding'] : FILES_QUERY_ONLY ? ['files-query'] : LOADING_ONLY ? ['loading'] : ADMISSION_ONLY ? ['admission'] : BUSINESS_MANAGE_ONLY ? ['business-manage'] : PARTICIPATION_ONLY ? ['participation'] : PR_FILES_ONLY ? ['pr-files-table'] : PR_CONFIDENCE_ONLY ? ['pr-confidence-state'] : PR_SEARCH_DETAIL_ONLY ? ['pr-search-detail'] : IDENTITY_ONLY ? ['identity'] : AUTHORITY_ONLY ? ['authority'] : HISTORY_ONLY ? ['history'] : THUMB_ONLY ? ['thumb'] : []));
+const OUT = join(target.artifacts, 'qa', ...(CURRENT_POLICY_ONLY ? ['current-policy'] : EXPLICIT_READER_ONLY ? ['explicit-reader'] : FUNDING_ONLY ? ['funding'] : FILES_QUERY_ONLY ? ['files-query'] : LOADING_ONLY ? ['loading'] : ADMISSION_ONLY ? ['admission'] : BUSINESS_MANAGE_ONLY ? ['business-manage'] : PARTICIPATION_ONLY ? ['participation'] : PR_FILES_ONLY ? ['pr-files-table'] : PR_CONFIDENCE_ONLY ? ['pr-confidence-state'] : PR_SEARCH_DETAIL_ONLY ? ['pr-search-detail'] : IDENTITY_ONLY ? ['identity'] : AUTHORITY_ONLY ? ['authority'] : HISTORY_ONLY ? ['history'] : THUMB_ONLY ? ['thumb'] : []));
 const APP_PORT = Number(process.env.DIFFDEVIL_APP_QA_PORT ?? (target.name === 'staging' ? 4512 : 4412));
 const GITHUB_PORT = Number(process.env.DIFFDEVIL_APP_QA_GITHUB_PORT ?? (target.name === 'staging' ? 4533 : 4433));
 // Chromium accepts Secure (__Host-) cookies from http://localhost, not from a loopback IP, so the browser origin is localhost; the Worker still binds 127.0.0.1.
@@ -115,9 +117,9 @@ console.log(`Seeded ${seeded.written.written} analyses, ${seeded.written.retaine
 if (LOADING_SCALE) console.log(`Anonymous measured-scale cohort: ${JSON.stringify(seeded.written.loadingScale)}`);
 
 /** Local Worker variables as --var flags: fixture values only, never real credentials. `commercial` is the loopback Works stand-in's spec. */
-function workerVars(entitlement, { commercial, allowances, participation, signingKey } = {}) {
+function workerVars(entitlement, { commercial, allowances, participation, signingKey, policyCredentials = true } = {}) {
   const vars = { APP_ORIGIN: ORIGIN, GITHUB_API_BASE: `http://127.0.0.1:${GITHUB_PORT}`, GITHUB_OAUTH_BASE: `http://127.0.0.1:${GITHUB_PORT}`, GITHUB_OAUTH_CLIENT_ID: 'fixture-client', GITHUB_OAUTH_CLIENT_SECRET: 'fixture-secret-private', APP_SEAL_KEY: 'fixture-seal-key-with-enough-length', APP_SESSION_DAYS: '30', GITHUB_WEBHOOK_SECRET: 'fixture-webhook-secret',
-    ...(admissionKey ? { GITHUB_APP_ID: '1', GITHUB_APP_PRIVATE_KEY: admissionKey } : {}),
+    ...(policyCredentials ? { GITHUB_APP_ID: '1', GITHUB_APP_PRIVATE_KEY: installationKey } : { GITHUB_APP_ID: '', GITHUB_APP_PRIVATE_KEY: '' }),
     ...(target.name === 'staging' ? { APP_STAGING_INSTALLATION_ACCOUNT_IDS: JSON.stringify(INSTALLATIONS.map(value => value.account.id)) } : {}),
     ...(entitlement ? { APP_ENTITLEMENT_FIXTURE: JSON.stringify(entitlement) } : {}), ...(commercial ? { APP_COMMERCIAL_FIXTURE: JSON.stringify(commercial) } : {}), ...(allowances ? { APP_PLAN_ALLOWANCES: JSON.stringify(allowances) } : {}), ...(participation ? { APP_PARTICIPATION_CAMPAIGN: JSON.stringify(participation) } : {}), ...(signingKey ? { WIRT_SIGNING_KEY_CURRENT: signingKey, WIRT_LINK_CONTINUATION_URL: 'https://app.example.test/manage/plan' } : {}) };
   return Object.entries(vars).flatMap(([key, value]) => ['--var', `${key}:${value}`]);
@@ -901,6 +903,10 @@ try {
   } else if (FILES_QUERY_ONLY) {
     if (!edition.entry?.replaceAll('\\', '/').endsWith('/qa/loading-premium/index.mjs')) throw new Error('Files-query qualification requires the public loading extension fixture.');
     await startWorker(ENTITLEMENT_FIXTURE); await signIn(); await filesQueryJourney(ctx);
+  } else if (CURRENT_POLICY_ONLY) {
+    await startWorker(ENTITLEMENT_FIXTURE);
+    await signIn();
+    await currentPolicyJourney({ ...ctx, github, restart: async policyCredentials => { await stopWorker(); await startWorker(ENTITLEMENT_FIXTURE, STATE, { policyCredentials }); } });
   } else if (LOADING_ONLY) {
     await startWorker(ENTITLEMENT_FIXTURE);
     await signIn();
@@ -1361,7 +1367,7 @@ try {
   githubServer.closeAllConnections?.();
   githubServer.close();
 }
-await writeFile(join(OUT, 'results.json'), JSON.stringify({ origin: ORIGIN, scope: EXPLICIT_READER_ONLY ? 'explicit-reader' : FUNDING_ONLY ? 'funding' : FILES_QUERY_ONLY ? 'files-query' : LOADING_ONLY ? 'loading' : ADMISSION_ONLY ? 'admission' : BUSINESS_MANAGE_ONLY ? 'business-manage' : PR_FILES_ONLY ? 'pr-files-table' : THUMB_ONLY ? 'thumb' : PR_CONFIDENCE_ONLY ? 'pr-confidence-state' : PR_SEARCH_DETAIL_ONLY ? 'pr-search-detail' : AUTHORITY_ONLY ? 'authority' : HISTORY_ONLY ? 'history' : IDENTITY_ONLY ? 'identity' : PARTICIPATION_ONLY ? 'participation' : 'full', target: target.name, seeded: seeded.written, dense: DENSE && !EXPLICIT_READER_ONLY && !FUNDING_ONLY && !FILES_QUERY_ONLY && !LOADING_ONLY && !ADMISSION_ONLY && !BUSINESS_MANAGE_ONLY && !PR_FILES_ONLY && !THUMB_ONLY && !PR_CONFIDENCE_ONLY && !PR_SEARCH_DETAIL_ONLY && !PARTICIPATION_ONLY && !IDENTITY_ONLY && !AUTHORITY_ONLY && !HISTORY_ONLY, charts: chartTelemetry, results, failures, consoleErrors, pageErrors, external }, null, 2));
+await writeFile(join(OUT, 'results.json'), JSON.stringify({ origin: ORIGIN, scope: CURRENT_POLICY_ONLY ? 'current-policy' : EXPLICIT_READER_ONLY ? 'explicit-reader' : FUNDING_ONLY ? 'funding' : FILES_QUERY_ONLY ? 'files-query' : LOADING_ONLY ? 'loading' : ADMISSION_ONLY ? 'admission' : BUSINESS_MANAGE_ONLY ? 'business-manage' : PR_FILES_ONLY ? 'pr-files-table' : THUMB_ONLY ? 'thumb' : PR_CONFIDENCE_ONLY ? 'pr-confidence-state' : PR_SEARCH_DETAIL_ONLY ? 'pr-search-detail' : AUTHORITY_ONLY ? 'authority' : HISTORY_ONLY ? 'history' : IDENTITY_ONLY ? 'identity' : PARTICIPATION_ONLY ? 'participation' : 'full', target: target.name, seeded: seeded.written, dense: DENSE && !CURRENT_POLICY_ONLY && !EXPLICIT_READER_ONLY && !FUNDING_ONLY && !FILES_QUERY_ONLY && !LOADING_ONLY && !ADMISSION_ONLY && !BUSINESS_MANAGE_ONLY && !PR_FILES_ONLY && !THUMB_ONLY && !PR_CONFIDENCE_ONLY && !PR_SEARCH_DETAIL_ONLY && !PARTICIPATION_ONLY && !IDENTITY_ONLY && !AUTHORITY_ONLY && !HISTORY_ONLY, charts: chartTelemetry, results, failures, consoleErrors, pageErrors, external }, null, 2));
 await writeFile(join(OUT, 'worker.log'), workerLog);
 console.log(`${PARTICIPATION_ONLY ? 'Participation: ' : ''}${results.filter(result => result.ok).length} of ${results.length} checks passed; screenshots and results in ${OUT}`);
 if (failures.length) { console.error(failures.map(failure => ` ✗ ${failure}`).join('\n')); process.exit(1); }

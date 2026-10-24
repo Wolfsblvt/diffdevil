@@ -34,6 +34,7 @@ const multi = view.scope.kind !== 'repository';
 const period = view.period.label;
 const { list, unit, note, selected, bucket, labelOf, nameOf, unitWord, repositoryName, prHref } = historySelection(view);
 const population = life ? 'merged' : 'analysed';
+const policyBasis = view.policyBasis;
 const scopeLabel = view.scope.kind === 'all' ? 'all repositories' : view.scope.kind === 'namespace' ? view.scope.namespace : view.scope.name;
 const mosaic = mosaicModel({ buckets: list, unit, period, population, scopeLabel, labelOf, nameOf, hrefOf: (_: any, index: number) => view.href('/history', { w: String(index) }), sel: selected });
 const totals = mosaic.totals;
@@ -69,7 +70,7 @@ const comp = (parts: { k: string; v: number }[], height = 8) => compositionBar(p
   {note && <p class="a-note"><Icon name="circle-dashed" size={14} /><span>{note}</span></p>}
   {!life && <p class="a-note"><Icon name="circle-dashed" size={13} /><span>Merge times are not retained for this scope ({lifecycle.reason}); buckets use each pull request's latest analysis time instead.</span></p>}
   <div class="a-grid">
-    <ChartFrame id="volume" kind="mosaic" model={mosaic} title="Change volume" span={12} h={320} group="hist" keepSel sel={selected} pickBucket={view.href('/history', { w: '__W__' })} meta={`${population} PRs in ${period} · by ${unit === '2 days' ? '2 days' : unit} · ${scopeLabel} · ${life ? 'one final merged comparison per PR, under current policy' : 'one retained analysis per PR, by analysis time'} · click a bucket to read it below`}>
+    <ChartFrame id="volume" kind="mosaic" model={mosaic} title="Change volume" span={12} h={320} group="hist" keepSel sel={selected} pickBucket={view.href('/history', { w: '__W__' })} meta={`${population} PRs in ${period} · by ${unit === '2 days' ? '2 days' : unit} · ${scopeLabel} · ${life ? `one final merged comparison per PR, ${policyBasis}` : 'one retained analysis per PR, by analysis time'} · click a bucket to read it below`}>
       <span class:list={['a-cov', { inc: incomplete }]} slot="tools" title={`${population} PRs whose ${population === 'merged' ? 'final comparison' : 'analysis'} was recovered`}><Icon name={incomplete ? 'circle-dashed' : 'check'} size={13} /> {totals.recovered} of {totals.count} recovered{totals.partial ? ` · ${totals.partial} partial` : ''}</span>
       <Fragment slot="foot"><span>nothing interpolated · raw churn counts each modified line twice: once removed, once added</span><nav class="a-bucketnav" aria-label="Buckets">{list.map((item: any, index: number) => <a href={view.href('/history', { w: String(index) })} aria-current={index === selected ? 'true' : undefined} title={nameOf(item)}>{labelOf(item)}</a>)}</nav></Fragment>
     </ChartFrame>

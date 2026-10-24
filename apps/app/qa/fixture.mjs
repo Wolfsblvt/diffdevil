@@ -306,9 +306,11 @@ export function createFakeGitHub({ user = USER, token = TOKEN, code = CODE, clie
       }
       const policyRead = /^\/repos\/([^/]+\/[^/]+)\/(commits|contents)\/(.+)$/u.exec(path);
       if (policyRead) {
+        await state.policyGate;
         const repository = reachable.find(value => value.fullName === policyRead[1]);
         if (!repository) return json({ message: 'Not Found' }, 404);
         if (policyRead[2] === 'commits') return json({ sha: state.policyHead });
+        if (decodeURIComponent(policyRead[3]) !== '.diffdevil.yml') return json({ message: 'Not Found' }, 404);
         const contents = state.policyFiles.get(repository.fullName);
         if (contents === undefined) return json({ message: 'Not Found' }, 404);
         if (typeof contents === 'number') return json({ message: 'unavailable' }, contents);
