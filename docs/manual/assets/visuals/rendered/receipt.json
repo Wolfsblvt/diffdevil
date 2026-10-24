@@ -2,9 +2,9 @@
   "formatVersion": 1,
   "renderer": "apps/manual/visuals/render.mjs",
   "runtimes": {
-    "mermaid": "12.1.0",
+    "mermaid": "12.2.0",
     "vega": "6.4.0",
-    "vega-lite": "6.4.3"
+    "vega-lite": "6.5.0"
   },
   "sources": [
     "docs/manual/assets/visuals/evidence-thresholds.vl.json",
@@ -103,9 +103,5 @@
       "narrow": false,
       "source": "docs/manual/assets/visuals/provider-readback.mmd"
     }
-  ],
-  "optimizer": {
-    "name": "svgo",
-    "version": "4.1.0"
-  }
+  ]
 }

@@ -4,7 +4,7 @@
  */
 import { origins } from '../website/public-origins.mjs';
 export { origins };
-export const packageSource = Object.freeze({ repository: 'Wolfsblvt/starlight-works', commit: '22d4567006ec7a33d890fab2f3d3515332498a90', name: '@wolfsblvt/starlight-works', version: '0.1.0', starlight: '0.42.2', astro: '7.3.3' });
+export const packageSource = Object.freeze({ repository: 'Wolfsblvt/starlight-works', commit: '22d4567006ec7a33d890fab2f3d3515332498a90', name: '@wolfsblvt/starlight-works', version: '0.1.0', starlight: '0.42.6', astro: '7.4.0' });
 // key, title, source (relative to docs/manual), route, section, parent, wave,
 // capability standing, old website routes, optional description. Array order is the selected reading order.
 const rows = [
