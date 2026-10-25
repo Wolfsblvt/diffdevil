@@ -46,6 +46,10 @@ The minute is a reuse window, not physical deletion: expired allocations leave o
 specimen, including cold/repeated reads, complete-answer equality, accounted retention and a local forced-GC heap
 delta. It does not measure native D1 wait, private algorithms or the joined live Worker.
 
+The transient provider-context cache shares completed values only. Concurrent misses each own their provider/D1 read,
+so navigating away from a progressive document cannot leave Manage or another request awaiting its cancelled work.
+Expiry, per-user keys and action invalidation still apply; a read started before invalidation cannot repopulate the cache.
+
 A malformed or inaccessible file-detail route keeps the authorised navigation available and reaches its not-found
 page without querying the broader repository population.
 

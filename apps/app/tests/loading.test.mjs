@@ -40,7 +40,7 @@ test('the generic protected shell needs a live local session, never provider or 
   assert.equal(await openAnalyticalShell(new Request('https://app.example/'), runtime, () => 'fixture', 'session'), 'E_SESSION_UNAVAILABLE');
 });
 
-test('concurrent navigation and population share one pending provider read, and failures remain retryable', async () => {
+test('concurrent requests own their pending reads, reuse completed context, and retry failed reads', async () => {
   const cache = createContextCache();
   let release, calls = 0;
   const gate = new Promise(resolve => { release = resolve; });
@@ -48,10 +48,48 @@ test('concurrent navigation and population share one pending provider read, and 
   const first = cache.get('repositories:123:9', load), second = cache.get('repositories:123:9', load);
   release();
   assert.deepEqual(await Promise.all([first, second]), [['current-repository'], ['current-repository']]);
-  assert.equal(calls, 1);
+  assert.equal(calls, 2);
+  assert.deepEqual(await cache.get('repositories:123:9', load), ['current-repository']);
+  assert.equal(calls, 2);
   await assert.rejects(cache.get('profile:456', async () => { throw new Error('unavailable'); }));
   assert.equal(await cache.get('profile:456', async () => 'recovered'), 'recovered');
   assert.equal(await cache.get('repositories:456:9', async () => 'other-user'), 'other-user');
+});
+
+test('an older completion or failure cannot replace newer context or undo invalidation', async () => {
+  const cache = createContextCache();
+  let release, reject;
+  const older = cache.get('profile:123', () => new Promise(resolve => { release = resolve; }));
+  assert.equal(await cache.get('profile:123', async () => 'new'), 'new');
+  release('old');
+  assert.equal(await older, 'old');
+  assert.equal(await cache.get('profile:123', async () => 'unexpected'), 'new');
+
+  cache.clear();
+  const failed = cache.get('profile:123', () => new Promise((_, fail) => { reject = fail; }));
+  assert.equal(await cache.get('profile:123', async () => 'current'), 'current');
+  const rejected = assert.rejects(failed, /provider failed/u);
+  reject(new Error('provider failed'));
+  await rejected;
+  assert.equal(await cache.get('profile:123', async () => 'unexpected'), 'current');
+
+  cache.clear();
+  const invalidated = cache.get('profile:123', () => new Promise(resolve => { release = resolve; }));
+  cache.clear();
+  release('before-action');
+  await invalidated;
+  assert.equal(await cache.get('profile:123', async () => 'after-action'), 'after-action');
+});
+
+test('completed provider context keeps its caller-selected expiry', async () => {
+  let clock = 0, reads = 0;
+  const cache = createContextCache(() => clock);
+  const load = async () => ++reads;
+  assert.equal(await cache.get('profile:123', load, 100), 1);
+  clock = 99;
+  assert.equal(await cache.get('profile:123', load, 100), 1);
+  clock = 100;
+  assert.equal(await cache.get('profile:123', load, 100), 2);
 });
 
 test('unchanged analytical facts are reused across fresh readers, with current data, policy, access and lifetime', async t => {
