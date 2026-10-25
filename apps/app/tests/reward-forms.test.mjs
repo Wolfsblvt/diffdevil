@@ -19,7 +19,7 @@ test('queued earned time preserves the promised term and labels a forecast witho
   assert.equal(reward.units, 30);
   assert.equal(reward.startsOn, null);
   assert.equal(reward.expectedStartOn, '2030-01-01');
-  assert.match(text(cardFor(forms.time)), /queued.*30 date units.*Expected start/isu);
+  assert.match(text(cardFor(forms.time)), /queued.*30 days.*Expected start/isu);
 });
 
 test('finite monthly-only and continuous discounts retain distinct promises and null application ends', () => {
@@ -61,7 +61,7 @@ test('funded component reward provenance and term survive an unbound unusable co
   assert.equal(reward.id, 'specimen-funded-component');
   assert.equal(reward.component.bindingState, 'Unbound');
   assert.equal(reward.component.usable, false);
-  assert.match(text(cardFor(forms.component)), /Community contribution.*30 date units.*Unbound.*Not currently usable/u);
+  assert.match(text(cardFor(forms.component)), /Community contribution.*30 days.*Unbound.*Not currently usable/u);
 });
 
 test('existing finite monthly/annual choice retains both previews; heterogeneous choices remain unavailable', () => {

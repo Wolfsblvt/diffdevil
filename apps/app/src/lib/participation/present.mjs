@@ -83,7 +83,7 @@ function presentTypedReward(card, reward, selected) {
   const date = value => fmtDay(value);
   if (reward.kind === 'time') {
     card.title = ({ queued: 'Your earned time is queued', active: 'Your earned time is active', scheduled: 'Your earned time is accepted', available: 'Your earned time is ready', exhausted: 'Your earned time was used', corrected: 'Works corrected this time reward', expired: 'Your time reward expired' })[card.key] ?? 'Your earned time';
-    card.lines.push(`${selected.tier} access for ${reward.units ? `${reward.units} date units` : `one ${per(selected.cadence)}`}. No payment and no automatic renewal.`);
+    card.lines.push(`${selected.tier} access for ${reward.units ? `${reward.units} days` : `one ${per(selected.cadence)}`}. No payment and no automatic renewal.`);
     if (reward.expectedStartOn && !reward.startsOn) card.lines.push(`Expected start: ${date(reward.expectedStartOn)}. This is a forecast, not an access start.`);
     if (reward.startsOn) card.lines.push(`Access started: ${date(reward.startsOn)}${reward.endsOn ? ` · Ends: ${date(reward.endsOn)}` : ''}.`);
     return card;
@@ -102,7 +102,7 @@ function presentTypedReward(card, reward, selected) {
     const component = reward.component;
     card.title = 'Your participation-funded component';
     card.lines.push(`${selected.name}. ${selected.reason}. Reward standing: ${reward.state}.`);
-    card.lines.push(`Promised term: ${reward.units ? `${reward.units} date units` : `one ${per(selected.cadence)}`}${reward.startsOn ? ` · Starts: ${date(reward.startsOn)}` : ''}${reward.endsOn ? ` · Ends: ${date(reward.endsOn)}` : ''}.`);
+    card.lines.push(`Promised term: ${reward.units ? `${reward.units} days` : `one ${per(selected.cadence)}`}${reward.startsOn ? ` · Starts: ${date(reward.startsOn)}` : ''}${reward.endsOn ? ` · Ends: ${date(reward.endsOn)}` : ''}.`);
     card.lines.push(`Component standing: ${component.state}. ${component.bindingState ?? 'Binding unavailable'}. ${component.usable === true ? 'Currently usable.' : component.usable === false ? 'Not currently usable; the earned reward and its term remain recorded.' : 'Current usability unavailable.'}`);
     return card;
   }

@@ -22,11 +22,11 @@ TYPED_REWARD_SPECIMENS.push([typedForms.finite, { ...typedForms.unsupported, bas
 /** The built Plan & funding page consumes each native-shaped reward through the actual shared reader and presenter. */
 export async function typedRewardJourney({ page, go, check, shot, ORIGIN }) {
   const cases = [
-    ['time', /earned time is queued.*30 date units.*Expected start/isu, 0],
+    ['time', /earned time is queued.*30 days.*Expected start/isu, 0],
     ['finite', /next 6 monthly charges/u, 1],
     ['continuous', /each eligible monthly Pro charge.*No scheduled application end/isu, 0],
     ['protected-price', /Earned, available to review.*Exercise opens/isu, 0],
-    ['component', /30 date units.*Unbound.*Not currently usable/isu, 0],
+    ['component', /30 days.*Unbound.*Not currently usable/isu, 0],
     ['choice', /choose monthly or annual/u, 2],
     ['reserved-option', /Reserved, not yet acquired/u, 0],
     ['acquired-option', /Acquired protection: €9.00/u, 0],
