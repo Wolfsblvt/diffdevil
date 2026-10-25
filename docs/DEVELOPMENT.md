@@ -40,7 +40,7 @@ that every package is latest or independently security-audited.
 
 ## Restore and build
 
-The root npm override replaces Miniflare's exact `undici@7.29.1` input with
+The root npm override scopes Undici to Miniflare, replacing its `7.29.1` input with
 `7.30.1`, the patched 7.x boundary for
 [GHSA-xjj6-f33q-929c](https://github.com/nodejs/undici/security/advisories/GHSA-xjj6-f33q-929c).
 It covers both the direct Miniflare test/QA dependency and Wrangler's nested
