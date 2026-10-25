@@ -7,7 +7,8 @@ This records product/repository choices whose rationale cannot be reconstructed 
 The complete predecessor record is preserved byte-for-byte as [Decisions through D073](DECISIONS-through-d053.md), with its existing references to the complete D001–D043 record. Earlier headings remain below to preserve fragment destinations. A new decision supersedes only its named boundary; it does not erase the previous rationale or implementation evidence.
 
 D089 carries the settled single-Wirt-target relationship and the distinction
-between that selected environment model and an admitted live consumer.
+between that selected environment model and an admitted live consumer. D090 makes
+CI the ordinary publication route for the public family and Playground Worker.
 
 [Plans](app-plans.md), [management](app-management.md), [dashboard](dashboard.md), [access](dashboard-access.md) and [privacy/data](PRIVACY-AND-DATA.md) own the joined maintained contracts. Private deliberation and owner transcripts are not part of this public record.
 
@@ -520,6 +521,47 @@ delivery and evidence; source configuration performs none of them.
 **Sources.** Wolf's production/staging environment account and explicit ratification
 of 2026-10-24, accepted by the product and technical Leads; the maintained contracts
 linked above preserve the public product consequence without private transcripts.
+
+## D090: Accepted main publishes the public family and Playground through CI
+
+**Status:** Wolf's correction of 2026-10-24, accepted by the product and technical
+Leads. This records the selected operating model and its source contract; it is not
+an adopted workflow, a configured secret or a live deployment.
+
+**Decision.** The first frozen Direct Upload was a launch operation, not the
+publication model. One GitHub Actions controller publishes the static public family
+to the two existing Direct Upload Pages projects, manual first and site second, from
+accepted relevant `main`. A separate controller deploys the Playground Worker as its
+own runtime and credential boundary. Both trigger only on their consumed inputs,
+keep pull requests credential-free, expose each protected input to the step that
+needs it, record source, receipt, deployment and rollback coordinates, and read the
+public result back. A workflow or controller-only landing publishes nothing; the
+first production use of each is an explicit adoption dispatch, after which routine
+relevant merges deploy without an approval button.
+
+**Why.** Accepted website, manual and Worker source otherwise waits for somebody to
+remember a laptop ritual, so production silently lags `main`. A reproducible
+controller with a protected Environment is the ordinary route for a public product
+Home; the human remains responsible for adoption, credential scope and recovery, not
+for pressing deploy on every merge.
+
+**Rejected.** Recreating the projects for Pages Git integration (a second controller
+and needless provider churn); one workflow deploying site and Worker together (a
+Worker repair would rebuild both hosts and the static change would redeploy the
+API); an inclusion-only path list (a newly consumed input would silently never
+publish); a controller change that republishes immediately (configuration landing
+would ship an unreconciled cut); an account-wide convenience token; and routine
+owner approval per run.
+
+**Consequences.** [Production publication controllers](integration/production-publication.md)
+own the closures, credential and receipt contracts, adoption and recovery. The
+[website publication carrier](integration/website-publication.md) keeps the guarded
+build and remains the bootstrap record and manual recovery route. Adoption, secrets,
+Environment settings and every live run need their own Ops evidence.
+
+**Sources.** Wolf's direct challenge to the publication posture and the selected
+controller Work, both on 2026-10-24, with the product Lead's public-family semantics
+and the technical Lead's source and credential admission.
 
 ## Earlier decisions and retained fragments
 

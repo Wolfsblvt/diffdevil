@@ -1,0 +1,217 @@
+# The production controller for the static public family: the site, manual, FAQ, search and legal
+# projection on the two existing Direct Upload Pages projects. Accepted main builds the guarded
+# publication pair once, re-checks its frozen receipt immediately before each upload, publishes the
+# manual first and the site second, and reads the public hosts back.
+#
+# The native `paths` list is evaluated before a runner exists. It starts from every file and removes
+# only trees the static build does not consume (tools/publication/consumed-inputs.test.mjs keeps that
+# true). It deliberately omits this workflow and tools/publication/**: a controller-only landing
+# starts no publication. docs/integration/production-publication.md owns the closure, secret
+# contract, adoption and recovery.
+name: Publish website
+on:
+  push:
+    branches: [main]
+    paths:
+      - '**'
+      - '!.github/**'
+      # The manual's generated islands read Action metadata, App stages/release metadata and the
+      # extension manifest; manual pages and the source resolver read the component READMEs.
+      - '!actions/**'
+      - 'actions/*/action.yml'
+      - '!apps/app/**'
+      - 'apps/app/README.md'
+      - '!apps/github-app/**'
+      - 'apps/github-app/README.md'
+      - 'apps/github-app/app.mjs'
+      - 'apps/github-app/release.json'
+      - '!apps/browser-extension/**'
+      - 'apps/browser-extension/README.md'
+      - 'apps/browser-extension/privacy.md'
+      - 'apps/browser-extension/manifest.json'
+      - 'apps/browser-extension/store/assets/screenshots/**'
+      - '!apps/playground/**'
+      - 'apps/playground/README.md'
+      - '!src/diffdevil/tests/**'
+      - '!tools/publication/**'
+      - '!**/*.test.mjs'
+  pull_request:
+    paths:
+      - '.github/workflows/publish-website.yml'
+      - 'tools/publication/**'
+      - 'tools/website-publication.mjs'
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: 'publish an exact accepted main commit, or roll back to one recorded production pair'
+        type: choice
+        options: [publish, rollback]
+        default: publish
+      source_sha:
+        description: 'publish: the full 40-character main commit to publish (empty = the dispatched main head)'
+        type: string
+        default: ''
+      docs_deployment:
+        description: 'rollback: the recorded diffdevil-docs production deployment ID'
+        type: string
+        default: ''
+      site_deployment:
+        description: 'rollback: the recorded diffdevil-site production deployment ID'
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  controller:
+    name: Controller checks
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    concurrency:
+      group: website-controller-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - name: Restore locked project packages
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Workflow boundaries, consumed inputs and controller logic
+        # The controller cases exercise the real Playground handler over the built engine.
+        run: npm run build && node --test "tools/publication/*.test.mjs"
+
+  publish:
+    name: Publish accepted main
+    # Automatic publication starts only after Ops adoption sets the repository variable; until then
+    # a relevant push starts no job. A dispatch is the bounded adoption and recovery route.
+    if: >-
+      github.ref == 'refs/heads/main' && (
+      (github.event_name == 'push' && vars.DIFFDEVIL_WEBSITE_PUBLICATION == 'automatic') ||
+      (github.event_name == 'workflow_dispatch' && inputs.operation == 'publish'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment:
+      name: diffdevil-website
+      url: https://diffdevil.dev
+    # One production slot for publication and rollback. A running publication is never cancelled; a
+    # queued run may be replaced by a newer relevant run, which publishes its own triggering commit.
+    concurrency:
+      group: diffdevil-website-production
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # A push publishes exactly the relevant commit that triggered it, with that commit's own
+          # controller code; a later excluded or controller-only commit cannot reach this run.
+          # A dispatch names one exact accepted main commit, or uses the dispatched main head.
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.source_sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Admit the exact accepted source
+        id: source
+        env:
+          REQUESTED: ${{ github.event_name == 'workflow_dispatch' && inputs.source_sha || github.sha }}
+        run: node tools/publication/source.mjs --requested "$REQUESTED"
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - name: Restore locked project packages
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      # The only step that receives the private legal projection. It never sees a Cloudflare credential.
+      - name: Build the guarded publication pair
+        env:
+          WOLFSBLVT_LEGAL_OPERATOR_B64: ${{ secrets.WOLFSBLVT_LEGAL_OPERATOR_B64 }}
+          DIFFDEVIL_PUBLICATION_STORE_URL: ${{ vars.DIFFDEVIL_PUBLICATION_STORE_URL }}
+          DIFFDEVIL_PUBLICATION_APP_INSTALL_URL: ${{ vars.DIFFDEVIL_PUBLICATION_APP_INSTALL_URL }}
+        run: npm run website:build:publication
+      - name: Record the production pair for rollback
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_PAGES_API_TOKEN }}
+        run: node tools/publication/static-family.mjs prior
+      - name: Verify the receipt and publish the manual
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_PAGES_API_TOKEN }}
+        run: node tools/publication/static-family.mjs deploy --host docs
+      - name: Verify the receipt and publish the site
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_PAGES_API_TOKEN }}
+        run: node tools/publication/static-family.mjs deploy --host site
+      - name: Read back the public hosts
+        run: node tools/publication/static-family.mjs readback
+      - name: Install the repository-selected Chromium
+        run: npx --no-install playwright install --with-deps chromium
+      # Credential-free; never visits legal routes and keeps no screenshots or page bodies.
+      - name: Qualify rendered search and theme on the live hosts
+        run: node tools/publication/rendered.mjs --mode live
+      - name: Write the publication receipt
+        if: always()
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: node tools/publication/static-family.mjs receipt --run "$RUN_URL"
+      # Paths, sizes, hashes and provider coordinates only; the built trees with the legal
+      # projection stay on the runner and leave it only through the Pages upload.
+      - name: Preserve the receipt
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: website-publication-${{ github.run_id }}
+          path: |
+            artifacts/publication/website/
+            artifacts/website/publication.json
+          retention-days: 90
+          if-no-files-found: warn
+
+  rollback:
+    name: Roll back to a recorded pair
+    if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch' && inputs.operation == 'rollback'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: diffdevil-website
+      url: https://diffdevil.dev
+    concurrency:
+      group: diffdevil-website-production
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      # The readback validates the Lens Studio API against its replay contract.
+      - name: Restore locked project packages
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Restore the recorded pair, manual first
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_PAGES_API_TOKEN }}
+          DOCS_DEPLOYMENT: ${{ inputs.docs_deployment }}
+          SITE_DEPLOYMENT: ${{ inputs.site_deployment }}
+        run: node tools/publication/static-family.mjs rollback --docs "$DOCS_DEPLOYMENT" --site "$SITE_DEPLOYMENT"
+      - name: Read back the public hosts
+        run: node tools/publication/static-family.mjs readback
+      - name: Write the rollback receipt
+        if: always()
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: node tools/publication/static-family.mjs receipt --run "$RUN_URL"
+      - name: Preserve the receipt
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: website-rollback-${{ github.run_id }}
+          path: artifacts/publication/website/
+          retention-days: 90
+          if-no-files-found: warn

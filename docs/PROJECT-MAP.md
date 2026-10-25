@@ -24,7 +24,7 @@ and disposable outputs without introducing independently versioned products.
 | `packages/design/` | Canonical reusable visual reference: E3/W1/T2 with Foundation A grammars, tokens, the v1.1 chart grammar and chart tokens, explicit errata, reserved production identity SVGs, and the ratified PR brief message (`pr-brief/`); not executable website source. |
 | `docs/` | Maintained manuals, runnable examples and dated technical research. |
 | `tools/` | Builds, generation and repository/consumer qualification, including the canonical FAQ and manual projections, derived website assets and curated-snapshot capture/audit. |
-| `.github/` | Provider-owned workflow convention, not a second implementation. |
+| `.github/` | Provider-owned workflow convention, not a second implementation. `publish-website.yml` and `deploy-playground.yml` are the [production publication controllers](integration/production-publication.md); their logic and tests live in `tools/publication/`. |
 | `action.yml` | One-step root Action, forwarding to the shared runtime. |
 | `package.json`, `package-lock.json`, `tsconfig.json` | Reusable product package, root development lock and core compiler boundary. The manual's private application toolchain has its own package metadata and qualification lock. |
 | `README.md`, `AGENTS.md` | Public product front door and repository-local contribution contract. |
