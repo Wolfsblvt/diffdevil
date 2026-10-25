@@ -6,6 +6,7 @@ import { rewardFor } from '../src/lib/participation/service.mjs';
 import { presentReward, receiptOf } from '../src/lib/participation/present.mjs';
 import { loadParticipation } from '../src/lib/participation/page.mjs';
 import { rewardForms } from './fixtures/reward-forms.mjs';
+import { createCommercialService } from '../../github-app/commercial.mjs';
 
 const forms = rewardForms();
 const campaign = { key: 'typed-reward' };
@@ -104,4 +105,16 @@ test('continuous next-charge receipts never invent exhaustion or a post-reward p
     unit: 'percent', value: 50, remainingUsesAfter: null, postRewardBaseCents: 900 }] }, { cadence: 'monthly' });
   assert.match(receipt.notes.join(' '), /each eligible monthly charge.*No scheduled application end/u);
   assert.doesNotMatch(receipt.notes.join(' '), /After the reward|Next monthly charge|0 charges/u);
+});
+
+test('completion-refusal reconciliation skips unsafe and unavailable reward members', async () => {
+  let rewards = readProjectionRewards({ participation_rewards: [null, forms.unsupported, forms.finite] });
+  const service = createCommercialService({ signing: {}, store: { activeLink: async () => ({ link_id: 'fixture', product_account: 1 }) },
+    wirt: { completeParticipation: async () => ({ kind: 'refused', status: 409 }), rewards: async () => ({ kind: 'rewards', rewards }) } });
+  const completion = { campaign: campaign.key };
+  const result = await service.deliverParticipation({ userId: 1, completion });
+  assert.equal(result.kind, 'reconciled');
+  assert.equal(result.reward.id, forms.finite.id);
+  rewards = readProjectionRewards({ participation_rewards: [null, forms.unsupported] });
+  assert.equal((await service.deliverParticipation({ userId: 1, completion })).kind, 'refused');
 });

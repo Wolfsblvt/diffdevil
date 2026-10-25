@@ -701,7 +701,7 @@ export function createCommercialService({ store, wirt, signing, authorization, p
       if (result.kind === 'refused') {
         let current;
         try { current = await wirt.rewards({ linkId: link.link_id, productAccount: link.product_account }); } catch { current = undefined; }
-        const reward = current?.kind === 'rewards' ? current.rewards.find(value => value.campaign.key === completion.campaign) : undefined;
+        const reward = current?.kind === 'rewards' ? current.rewards.find(value => value?.available !== false && value?.campaign?.key === completion.campaign) : undefined;
         if (reward) return { kind: 'reconciled', linkId: link.link_id, status: result.status, reward };
       }
       return { ...result, linkId: link.link_id };
