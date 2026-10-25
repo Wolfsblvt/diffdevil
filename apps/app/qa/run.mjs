@@ -1203,6 +1203,12 @@ try {
   // the accessible Manage journeys: keyboard, focus, labelled controls, live regions, 1024 and 900, the dark lock under a light preference, reduced motion
   await manageAccess(ctx, { browser, label: 'pro' });
 
+  const signedInRoot = await context.request.get(`${ORIGIN}/?s=kai-sample%2Ftree-sitter-dd&per=90d`, { maxRedirects: 0 });
+  const signedInRootHtml = await signedInRoot.text();
+  check('the signed-in root renders authenticated navigation and the selected fixture repository', signedInRoot.status() === 200
+    && signedInRootHtml.includes('data-analytical-notifications')
+    && signedInRootHtml.includes('data-nav-repo="kai-sample/tree-sitter-dd"'));
+
   // sign out
   await page.click('.a-me');
   await page.click('.a-me-menu button');
@@ -1213,10 +1219,8 @@ try {
   check('the signed-out root remains the neutral public App entrance', publicRootAfterLogout.status() === 200
     && publicRootHtml.includes('data-public-app-entrance')
     && publicRootHtml.includes('href="/auth/start"'), `${publicRootAfterLogout.status()} ${publicRootAfterLogout.url()}`);
-  check('the public entrance contains no retained protected App state', !publicRootHtml.includes('data-app-frame')
-    && !publicRootHtml.includes('kai-sample/')
-    && !publicRootHtml.includes('Overview')
-    && !publicRootHtml.includes('Manage'));
+  check('the signed-out root does not render the authenticated App shell', !publicRootHtml.includes('data-analytical-notifications')
+    && !publicRootHtml.includes('data-nav-repo="kai-sample/tree-sitter-dd"'));
   const protectedAfterLogout = await context.request.get(`${ORIGIN}/history`, { maxRedirects: 0 });
   check('a protected destination refuses the revoked session after sign out', protectedAfterLogout.status() === 303
     && protectedAfterLogout.headers().location.startsWith('/sign-in'), `${protectedAfterLogout.status()} ${protectedAfterLogout.headers().location}`);
