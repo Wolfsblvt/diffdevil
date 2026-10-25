@@ -22,7 +22,9 @@ main:
   required approval/review: none
   resolved conversations: no
   automatic CI: Verify on main push and pull request (Linux and Windows, Node 22/24)
-  automatic retained branch effects: none
+  automatic retained branch effects:
+    .github/workflows/publish-website.yml — publishes the existing manual/site pair from trusted relevant main after its explicit first adoption and automatic flag
+    .github/workflows/deploy-playground.yml — independently deploys the existing Playground Worker from trusted relevant main after its explicit first adoption and automatic flag
   other pre-update evidence: none
 ```
 
