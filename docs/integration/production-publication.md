@@ -207,9 +207,12 @@ Landing these workflows performs no publication. Ops then supplies, under the ex
 5. The first static run: reconcile what current `main` publishes beyond `4bcb06fd`, then
    dispatch `Publish website` with that exact SHA, read its receipt and public readback, and only
    then set `DIFFDEVIL_WEBSITE_PUBLICATION=automatic`.
-6. The first Worker run: dispatch `Deploy Playground` with the exact selected accepted commit
-   (for example the PR #180 repair at `32b5936d`, without sweeping later Worker changes), read its
-   receipt, then set `DIFFDEVIL_PLAYGROUND_DEPLOYMENT=automatic`.
+6. The first Worker run: select an exact accepted `main` commit that contains these controllers.
+   Reconcile its Worker-consumed changes against the PR #180 repair at `32b5936d`; do not silently
+   sweep later relevant Worker changes into this first run. Dispatch `Deploy Playground` with
+   the selected post-controller SHA, read its receipt, then set
+   `DIFFDEVIL_PLAYGROUND_DEPLOYMENT=automatic`. The older `32b5936d` commit cannot itself run
+   these controllers because it does not contain their scripts.
 
 From then on accepted relevant `main` movement deploys without an approval button. If the first
 run exposes a missing token permission, the failure occurs before traffic moves; correct the token
