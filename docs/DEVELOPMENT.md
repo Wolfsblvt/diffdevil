@@ -40,6 +40,18 @@ that every package is latest or independently security-audited.
 
 ## Restore and build
 
+The root npm override replaces Miniflare's exact `undici@7.29.1` input with
+`7.30.1`, the patched 7.x boundary for
+[GHSA-xjj6-f33q-929c](https://github.com/nodejs/undici/security/advisories/GHSA-xjj6-f33q-929c).
+It covers both the direct Miniflare test/QA dependency and Wrangler's nested
+Miniflare without changing either parent version. Unifont's separately resolved
+Undici 8.x is unaffected. Reconsider the override when updating those parents;
+remove it once their resolved inputs no longer need this correction.
+
+This is a Node development-tooling fetch correction, not a patch to Cloudflare's
+deployed fetch implementation or Node's built-in fetch. It does not change the
+CLI/library runtime dependencies, committed Action distribution or browser engine.
+
 For a normal source checkout:
 
 ```sh

@@ -170,6 +170,7 @@
     "url": "git+https://github.com/Wolfsblvt/diffdevil.git"
   },
   "overrides": {
+    "undici@7.29.1": "7.30.1",
     "@astrojs/check": {
       "typescript": "$typescript"
     },
