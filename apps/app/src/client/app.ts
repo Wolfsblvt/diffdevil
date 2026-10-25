@@ -12,6 +12,7 @@ import { wireSearch } from '../../../website/src/lib/search';
 import { wireCopyButtons } from '../../../website/src/lib/clipboard';
 import { mountCharts, placeThumbs, wireNavigationFeedback } from './charts/mount';
 import { loadAnalyticalDocument } from './loading';
+import './policy-lab';
 
 wirePanels();
 wireSearch();

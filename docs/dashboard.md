@@ -166,6 +166,14 @@ Recalculation changes a derived interpretation, not immutable observations or or
 
 No repository-wide policy-era warehouse or initial rollback UI is required. Audit retains meaningful administrative changes for its own purpose.
 
+### Policy Lab v1
+
+Policy Lab is a public Community capability, included in hosted Free. It previews one existing numeric threshold or one complete band set against the authorized retained final merged comparisons in the selected repository and period. History offers **Try a policy change**; Manage → Configuration offers **Preview against history**. The same trusted current-policy reader supplies execution, current analytics and the Lab. Failed policy reads are unavailable, never a default-policy experiment.
+
+The temporary experiment pins repository, trusted head, current policy, time window, recovered population and candidate identity. A matrix and equivalent narrow linear table account for **Would change**, **Same**, and **Couldn’t evaluate**; evidence filters lead to the existing authorized PR details. Missing comparisons, incompatible reports, absent metrics and crossing bounded evidence stay visible. Counts describe retained observations rather than complete repository coverage. Editing retains the previous named answer; obsolete replies cannot commit, failed evaluation offers Retry, and a changed trusted head supersedes the carried basis.
+
+**Prepare adoption** presents the focused declaration diff and full effective candidate context, with a GitHub file/create-file handoff. The diff is against the effective declaration, not unobserved original file text. Merge it into `.diffdevil.yml`; replace conflicting `size.thresholds` shorthand when supplying `bands.size`. The actual repository authority edits and commits; the policy stays current until a real analysis observes the new trusted head. Preview writes no checks, labels, comments, settings or historical effects. No saved result, cache, arbitrary expression editor, new allowance or premium gate is introduced. Pro/Business use this same implementation over their existing entitled evidence and authority.
+
 ## Historical import and processing management
 
 Connecting an established repository should provide progressively useful context rather than require months of prospective collection. Import all recoverable selected statistics within the chosen scope and allowance. Open-PR scans establish current detail/related-work, while historical imports establish earlier final comparisons and lifecycle evidence.

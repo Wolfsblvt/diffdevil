@@ -563,6 +563,20 @@ Environment settings and every live run need their own Ops evidence.
 controller Work, both on 2026-10-24, with the product Lead's public-family semantics
 and the technical Lead's source and credential admission.
 
+## D091: Keep the single-decision Policy Lab in Community and hosted Free
+
+**Status:** Selected by the product Lead on 2026-10-25, admitted for source implementation by the technical/integration Lead. Live adoption remains separate.
+
+**Decision.** The complete one-question Policy Lab evaluator, editor, transition account, evidence compatibility and focused policy-file handoff belong in the public Community App and hosted Free. Existing Pro/Business evidence and authority enrich this same implementation. Preview remains temporary and effect-free; the actual repository authority adopts through `.diffdevil.yml`.
+
+**Why.** Reinterpreting already-authorized retained numerical facts joins understanding change to shaping the policy that acts on it. It introduces no provider effect, new retained history, service, allowance or saved-result store. Withholding the useful experiment from a reader who can already inspect current policy and basic history would leave that basic product incomplete.
+
+**Superseded.** The provisional premium-only placement for this v1 interaction is not selected. Broader paid historical exploration remains distinct; richer retention and file evidence follow existing entitlements, not a second evaluator or a paywall around the transition account.
+
+**Consequence.** [Policy and history interpretation](dashboard.md#policy-lab-v1) owns the current behavior. Matrix cells and an equivalent semantic linear table share one result. Missing and incompatible evidence remain explicit. The current trusted policy reader is reused; a failed read cannot become a fallback experiment. Candidate, head, window and retained population are pinned, with supersession rather than silent relabelling. No automatic provider apply, arbitrary formula editor or persistent result cache follows.
+
+**Sources.** The product Lead’s Policy Lab contract and settled Community/Free module judgment, followed by the technical/integration Lead’s source Assignment of 2026-10-25. This record preserves their product consequence without private workplace material.
+
 ## Earlier decisions and retained fragments
 
 The headings below preserve earlier links. Their full text remains in the exact predecessor record; follow its references for D001–D043. Later decisions above supersede only the stated portions. Historical source is not automatically current implementation.
