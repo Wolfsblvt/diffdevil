@@ -392,6 +392,9 @@ await page.waitForTimeout(250);
 check('lesson navigation does not repeat freshness automatically during a known throttle', headRequests === headCountAtThrottle);
 await shot('playground-lesson-rate-limit');
 await page.waitForFunction(() => !document.querySelector('.pg-main [role="alert"]'), null, { timeout: 20000 });
+// The timed retry clears its alert when the request starts. Wait for its returned
+// head before clearing sessionStorage or the next page can inherit this late result.
+await page.getByRole('button', { name: /Analyze latest/u }).waitFor({ state: 'visible', timeout: 20000 });
 check('lesson freshness resumes once at the known time for the current lesson', headRequests === headCountAtThrottle + 1);
 
 // Unknown timing remains manual instead of guessing a retry delay.
