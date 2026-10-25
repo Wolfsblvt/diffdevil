@@ -379,8 +379,25 @@ async function qualifyFrame(label, selector) {
   return { pin };
 }
 
+/** Wait for the cloud view itself and its latest layout, not merely retained words from the previous view. */
+async function waitForCloudView(selector, timeout = 10_000) {
+  await page.waitForFunction(selector => {
+    const host = document.querySelector(selector);
+    const cloud = host?.querySelector('.cl');
+    const stage = host?.querySelector('.cl-wrap');
+    const list = host?.querySelector('.cl-list');
+    return host?.classList.contains('is-mounted')
+      && !document.body.classList.contains('is-drawing')
+      && cloud && !cloud.classList.contains('is-busy')
+      && stage && getComputedStyle(stage).display !== 'none'
+      && list && getComputedStyle(list).display === 'none'
+      && host.querySelectorAll('.cl-words .cl-w').length > 0;
+  }, selector, { timeout });
+}
+
 /** The cloud: words packed (in the Worker where available), partners on focus, Top column, arrangement, metric switch, keyboard walk and list view. */
 async function qualifyCloud(label, selector) {
+  await waitForCloudView(selector);
   const words = () => page.evaluate(selector => document.querySelectorAll(`${selector} .cl-words .cl-w`).length, selector);
   const placed = await words();
   const timings = await page.evaluate(() => window.__diffdevilCharts?.cloud() ?? []);
@@ -471,24 +488,32 @@ async function qualifyCloud(label, selector) {
   check(`${label}: Top opens as a real 300 px column and the cloud re-packs beside it`, top.on && top.width >= 299 && top.rows > 0 && top.stageWidth < top.wrapWidth - 250, JSON.stringify(top));
   await page.click(`${selector} [data-top]`);
   await page.click(`${selector} [data-concept="groups"]`);
-  await page.waitForFunction(selector => document.querySelectorAll(`${selector} .cl-island`).length > 0 && !document.querySelector(`${selector} .cl`)?.classList.contains('is-busy'), selector, { timeout: 10_000 }).catch(() => {});
+  await page.waitForFunction(selector => document.querySelectorAll(`${selector} .cl-island`).length > 0 && !document.querySelector(`${selector} .cl`)?.classList.contains('is-busy') && !document.body.classList.contains('is-drawing'), selector, { timeout: 10_000 });
   const grouped = await page.evaluate(selector => ({ cells: document.querySelectorAll(`${selector} .cl-island`).length, words: document.querySelectorAll(`${selector} .cl-words .cl-w`).length }), selector);
   check(`${label}: the by-folder arrangement draws treemap cells with their words`, grouped.cells > 0 && grouped.words > 0, JSON.stringify(grouped));
   await page.click(`${selector} [data-concept="cloud"]`);
   // On Files the metric also travels in the URL and swaps the page around the live cloud; the next frame's checks must not start while that swap is in flight.
-  const swapped = pattern => page.waitForFunction(pattern => new RegExp(pattern, 'u').test(location.search) && !document.body.classList.contains('is-drawing'), pattern, { timeout: 15_000 }).catch(() => {});
+  const swapped = pattern => page.waitForFunction(pattern => new RegExp(pattern, 'u').test(location.search) && !document.body.classList.contains('is-drawing'), pattern, { timeout: 15_000 });
   await page.click(`${selector} [data-metric="turnover"]`);
-  await page.waitForFunction(selector => !document.querySelector(`${selector} .cl`)?.classList.contains('is-busy'), selector, { timeout: 10_000 }).catch(() => {});
   await swapped('m=turnover');
+  await waitForCloudView(selector);
   const switched = await page.evaluate(selector => ({ pressed: document.querySelector(`${selector} [data-metric="turnover"]`)?.getAttribute('aria-pressed'), words: document.querySelectorAll(`${selector} .cl-words .cl-w:not([style*="opacity: 0"])`).length, sum: document.querySelector(`${selector} [data-readout] .fr-vals .sum dt`)?.textContent ?? '', url: location.search }), selector);
   check(`${label}: the metric switch re-sizes the cloud, emphasises Turnover in the readout and travels in the URL`, switched.pressed === 'true' && switched.words > 0 && /Turnover/u.test(switched.sum) && /m=turnover/u.test(switched.url), JSON.stringify(switched));
   await page.click(`${selector} [data-metric="freq"]`);
   await swapped('^(?!.*m=turnover)');
+  await waitForCloudView(selector);
   await page.click(`${selector} [data-cloud-view="list"]`);
   const list = await page.evaluate(selector => ({ rows: document.querySelectorAll(`${selector} .cl-list tbody tr`).length, stageHidden: getComputedStyle(document.querySelector(`${selector} .cl-wrap`)).display === 'none' }), selector);
   check(`${label}: the list view is the equivalent ranked table`, list.rows > 0 && list.stageHidden, JSON.stringify(list));
   await page.click(`${selector} [data-cloud-view="cloud"]`);
-  await page.waitForFunction(selector => !document.querySelector(`${selector} .cl`)?.classList.contains('is-busy') && document.querySelectorAll(`${selector} .cl-words .cl-w`).length > 0, selector, { timeout: 10_000 }).catch(() => {});
+  await waitForCloudView(selector);
+  const cloud = await page.evaluate(selector => ({
+    listHidden: getComputedStyle(document.querySelector(`${selector} .cl-list`)).display === 'none',
+    stageVisible: getComputedStyle(document.querySelector(`${selector} .cl-wrap`)).display !== 'none',
+    words: document.querySelectorAll(`${selector} .cl-words .cl-w`).length,
+    busy: document.querySelector(`${selector} .cl`)?.classList.contains('is-busy') ?? true,
+  }), selector);
+  check(`${label}: returning from the ranked list completes the visible cloud draw`, cloud.listHidden && cloud.stageVisible && cloud.words > 0 && !cloud.busy, JSON.stringify(cloud));
 }
 
 async function signIn({ entry } = {}) {
