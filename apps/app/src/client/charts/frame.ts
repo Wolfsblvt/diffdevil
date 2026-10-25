@@ -148,9 +148,9 @@ export class Frame {
   }
 
   private drillTo(index: number): void {
-    index = this.rowIndex(index);
-    if (index === null) return;
-    const target = this.spec.drill?.(index);
+    const validatedIndex = this.rowIndex(index);
+    if (validatedIndex === null) return;
+    const target = this.spec.drill?.(validatedIndex);
     if (target) location.href = target.href;
   }
 
