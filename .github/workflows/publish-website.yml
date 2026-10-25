@@ -83,7 +83,8 @@ jobs:
       - name: Restore locked project packages
         run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Workflow boundaries, consumed inputs and controller logic
-        run: node --test tools/publication/
+        # The controller cases exercise the real Playground handler over the built engine.
+        run: npm run build && node --test "tools/publication/*.test.mjs"
 
   publish:
     name: Publish accepted main

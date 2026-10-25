@@ -83,7 +83,7 @@ exceeds GitHub's comparison limit may start no run, and the retained dispatch pu
 ## Pull requests
 
 Pull requests that change a controller file run its `Controller checks` job: credential-free
-Node 24 `node --test tools/publication/` over the workflow boundaries, consumed inputs and
+Node 24 `npm run build && node --test "tools/publication/*.test.mjs"` over the workflow boundaries, consumed inputs and
 controller logic with fake Wrangler, fake Cloudflare API and the real Playground handler over the
 GitHub double. The same suite runs in ordinary `npm test`, so Verify carries it on all four
 platform cells. Site and manual content pull requests keep their existing Verify, public-manual
