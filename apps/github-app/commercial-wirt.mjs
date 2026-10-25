@@ -207,8 +207,9 @@ export function readWirtMessage(value) {
 // only what the customer may see or what reconciliation needs: the public campaign name and reason, the typed standing,
 // the alternatives with Wirt's remaining-use and first-eligible facts, and confirmed applications with Wirt's amounts.
 // Operation identities, actor records and correction evidence stay in Wirt.
-export const REWARD_STATES = Object.freeze(['available', 'accepted', 'reserved', 'partially-consumed', 'consumed', 'expired', 'corrected']);
-const ALTERNATIVE_STANDINGS = Object.freeze([...REWARD_STATES, 'retired']);
+export const REWARD_STATES = Object.freeze(['available', 'accepted', 'queued', 'active', 'reserved', 'partially-consumed', 'consumed', 'exercised', 'expired', 'ended', 'corrected', 'withdrawn']);
+const ALTERNATIVE_STANDINGS = Object.freeze([...REWARD_STATES, 'retired', 'waiting']);
+const REWARD_KINDS = ['discount', 'time', 'protected-price', 'funded-component'];
 const cents = value => Number.isSafeInteger(value) && value >= 0;
 const nullableCents = value => value === null || value === undefined || cents(value);
 const shortText = (value, limit = 240) => typeof value === 'string' && value.length > 0 && value.length <= limit;
@@ -221,6 +222,8 @@ function readDiscountLine(value) {
   return { amountCents: value.amount_cents, reason: shortText(promise.campaign?.reason) ? promise.campaign.reason : null,
     campaignKey: typeof promise.campaign?.key === 'string' ? promise.campaign.key : null, campaignVersion: Number.isSafeInteger(promise.campaign?.version) ? promise.campaign.version : null,
     rewardKey: typeof promise.key === 'string' ? promise.key : null, cadence: oneOf(promise.cadence, ['monthly', 'annual']) ? promise.cadence : null,
+    frequency: oneOf(promise.frequency, ['finite', 'continuous']) ? promise.frequency : null,
+    validUntil: timestamp(promise.valid_until) ? promise.valid_until : null,
     unit: oneOf(promise.unit, ['percent', 'fixed']) ? promise.unit : null, value: Number.isSafeInteger(promise.value) ? promise.value : null,
     remainingUsesAfter: Number.isSafeInteger(value.remaining_uses_after) ? value.remaining_uses_after : null,
     postRewardBaseCents: cents(value.post_reward_base_cents) ? value.post_reward_base_cents : null };
@@ -228,36 +231,106 @@ function readDiscountLine(value) {
 
 /** One participation reward as Wirt's customer-visible facts describe it. */
 export function readRewardFacts(value) {
-  shape(object(value) && object(value.basis) && object(value.basis.campaign) && typeof value.basis.campaign.key === 'string'
+  shape(object(value) && object(value.basis) && object(value.basis.campaign) && shortText(value.basis.campaign.key)
     && Number.isSafeInteger(value.basis.campaign.version) && shortText(value.basis.campaign.reason) && typeof value.state === 'string'
     && Array.isArray(value.alternatives) && value.alternatives.length >= 1 && value.alternatives.length <= 8
     && (value.applications === undefined || (Array.isArray(value.applications) && value.applications.length <= 64)));
   const basis = value.basis;
   const alternatives = value.alternatives.map(alternative => {
-    shape(object(alternative) && typeof alternative.key === 'string' && oneOf(alternative.kind, ['discount', 'time'])
-      && oneOf(alternative.cadence, ['monthly', 'annual']) && typeof alternative.tier === 'string');
-    return { key: alternative.key, kind: alternative.kind, tier: alternative.tier, cadence: alternative.cadence,
+    shape(object(alternative) && shortText(alternative.key) && oneOf(alternative.kind, REWARD_KINDS)
+      && alternative.kind === basis.kind && oneOf(alternative.cadence, ['monthly', 'annual'])
+      && (typeof alternative.tier === 'string' || (alternative.kind === 'funded-component' && alternative.tier === null)));
+    const common = { key: alternative.key, kind: alternative.kind, tier: alternative.tier, cadence: alternative.cadence,
+      standing: oneOf(alternative.standing, ALTERNATIVE_STANDINGS) ? alternative.standing : 'unknown',
+      firstEligibleOn: day(alternative.first_eligible_on), remainingUses: null };
+    if (alternative.kind === 'time') return common;
+    if (alternative.kind === 'funded-component') {
+      shape(shortText(alternative.name, 160) && shortText(alternative.reason) && alternative.component_kind === 'paid-subject' && alternative.capacity_type === 'organisation');
+      return { ...common, name: alternative.name, reason: alternative.reason, componentKind: alternative.component_kind, capacityType: alternative.capacity_type };
+    }
+    if (alternative.kind === 'protected-price') {
+      shape(oneOf(alternative.component_kind, ['base', 'paid-subject']) && shortText(alternative.line_id)
+        && cents(alternative.cap_cents) && alternative.currency === 'EUR'
+        && timestamp(alternative.exercise_opens_at) && timestamp(alternative.exercise_closes_at));
+      const acquisition = alternative.acquisition;
+      shape(acquisition == null || (object(acquisition) && oneOf(acquisition.state, ['reserved', 'exercised', 'corrected'])));
+      return { ...common, componentKind: alternative.component_kind, lineId: alternative.line_id, currency: alternative.currency, capCents: alternative.cap_cents,
+        exerciseOpensAt: alternative.exercise_opens_at, exerciseClosesAt: alternative.exercise_closes_at,
+        promisedExerciseClosesAt: timestamp(alternative.promised_exercise_closes_at) ? alternative.promised_exercise_closes_at : null,
+        expiryReminderAt: timestamp(alternative.expiry_reminder_at) ? alternative.expiry_reminder_at : null,
+        exercisePaused: typeof alternative.exercise_paused === 'boolean' ? alternative.exercise_paused : null,
+        exercisePauseSeconds: Number.isSafeInteger(alternative.exercise_pause_seconds) ? alternative.exercise_pause_seconds : null,
+        exerciseClockAsOf: timestamp(alternative.exercise_clock_as_of) ? alternative.exercise_clock_as_of : null,
+        mutuallyExclusive: typeof alternative.mutually_exclusive === 'boolean' ? alternative.mutually_exclusive : null,
+        requiresProductLink: typeof alternative.requires_product_link === 'boolean' ? alternative.requires_product_link : null,
+        operationClasses: Array.isArray(alternative.operation_classes) ? alternative.operation_classes.filter(item => oneOf(item, ['first-purchase', 'fresh-period-upgrade', 'same-period-addition', 'renewal'])) : null,
+        acquisition: acquisition == null ? null : { state: acquisition.state, componentId: shortText(acquisition.component_id) ? acquisition.component_id : null, capCents: cents(acquisition.cap_cents) ? acquisition.cap_cents : null } };
+    }
+    const frequency = alternative.frequency ?? 'finite';
+    shape(oneOf(frequency, ['finite', 'continuous']) && oneOf(alternative.unit, ['percent', 'fixed']) && Number.isSafeInteger(alternative.value) && alternative.value > 0
+      && (frequency === 'continuous' ? alternative.uses == null && alternative.remaining_uses == null : Number.isSafeInteger(alternative.uses) && alternative.uses > 0));
+    return { ...common, frequency,
       unit: oneOf(alternative.unit, ['percent', 'fixed']) ? alternative.unit : null, value: Number.isSafeInteger(alternative.value) ? alternative.value : null,
       uses: Number.isSafeInteger(alternative.uses) ? alternative.uses : null,
       remainingUses: Number.isSafeInteger(alternative.remaining_uses) ? alternative.remaining_uses : null,
-      firstEligibleOn: day(alternative.first_eligible_on), standing: oneOf(alternative.standing, ALTERNATIVE_STANDINGS) ? alternative.standing : 'unknown' };
+      chargeClasses: Array.isArray(alternative.charge_classes) ? alternative.charge_classes.filter(item => oneOf(item, ['first-purchase', 'renewal', 'fresh-period-upgrade', 'same-period-addition'])) : null,
+      scope: Array.isArray(basis.scope) ? basis.scope.filter(item => oneOf(item, ['base', 'included-subject'])) : null };
   });
+  // Native choices are homogeneous; preserving typed facts does not invent heterogeneous choice support.
+  shape(alternatives.length === 1 || basis.kind === 'protected-price' || (basis.kind === 'discount' && alternatives.length === 2
+    && new Set(alternatives.map(item => item.cadence)).size === 2 && alternatives.every(item => item.frequency === 'finite')));
   const applications = (value.applications ?? []).map(application => {
+    if (basis.kind === 'protected-price') {
+      shape(object(application) && application.kind === 'option-exercised' && shortText(application.option) && cents(application.cap_cents) && nullableTimestamp(application.at));
+      return { kind: application.kind, option: application.option, capCents: application.cap_cents, catalogueCents: cents(application.catalogue_cents) ? application.catalogue_cents : null, at: application.at ?? null };
+    }
     shape(object(application) && nullableTimestamp(application.at) && object(application.discount));
     return { at: application.at ?? null, ...readDiscountLine(application.discount) };
   });
-  return { id: String(value.id ?? ''), campaign: { key: basis.campaign.key, version: basis.campaign.version, name: shortText(basis.campaign.name, 160) ? basis.campaign.name : null, reason: basis.campaign.reason },
-    kind: oneOf(basis.kind, ['discount', 'time']) ? basis.kind : 'discount', state: oneOf(value.state, REWARD_STATES) ? value.state : 'unknown',
+  return { available: true, id: String(value.id ?? ''), campaign: { key: basis.campaign.key, version: basis.campaign.version, name: shortText(basis.campaign.name, 160) ? basis.campaign.name : null, reason: basis.campaign.reason },
+    kind: basis.kind, state: oneOf(value.state, REWARD_STATES) ? value.state : 'unknown',
+    startsOn: day(value.starts_on), endsOn: day(value.ends_on), expectedStartOn: day(value.queued_starts_on),
+    claimedAt: timestamp(value.claimed_at) ? value.claimed_at : null,
+    units: Number.isSafeInteger(basis.units) && basis.units > 0 ? basis.units : null, duration: oneOf(basis.duration, ['monthly', 'annual']) ? basis.duration : null,
     selected: typeof value.selected_reward === 'string' ? value.selected_reward : null,
     claimClosesAt: timestamp(basis.claim_closes_at) ? basis.claim_closes_at : null, validUntil: timestamp(basis.valid_until) ? basis.valid_until : null,
+    component: basis.kind === 'funded-component' ? readRewardComponent(value.component) : null,
     alternatives, applications };
+}
+
+function readRewardComponent(value) {
+  shape(object(value) && shortText(value.component_id) && typeof value.state === 'string');
+  return { id: value.component_id, state: oneOf(value.state, REWARD_STATES) ? value.state : 'unknown',
+    startsOn: day(value.starts_on), endsOn: day(value.ends_on), originalEndsOn: day(value.original_ends_on),
+    bindingState: oneOf(value.binding_state, ['Bound', 'Unbound', 'Binding unavailable']) ? value.binding_state : null,
+    usable: typeof value.usable === 'boolean' ? value.usable : null, funded: typeof value.funded === 'boolean' ? value.funded : null,
+    baseFunded: typeof value.base_funded === 'boolean' ? value.base_funded : null,
+    binding: object(value.binding) ? { authority: oneOf(value.binding.authority, ['present', 'absent', 'unknown']) ? value.binding.authority : 'unknown',
+      display: shortText(value.binding.display, 160) ? value.binding.display : null,
+      since: timestamp(value.binding.since) ? value.binding.since : null } : null,
+    productApplication: object(value.product_application) ? { result: shortText(value.product_application.result) ? value.product_application.result : null } : null,
+    bindingObservationCurrent: typeof value.binding_observation_current === 'boolean' ? value.binding_observation_current : null };
+}
+
+/** Isolate a bad member while retaining only a validated public envelope for matching and an explicit refusal. */
+export function readRewardList(values) {
+  return values.map(value => {
+    try { return readRewardFacts(value); }
+    catch {
+      const campaign = value?.basis?.campaign;
+      const safe = object(campaign) && shortText(campaign.key) && Number.isSafeInteger(campaign.version) && shortText(campaign.reason);
+      return { available: false, reason: 'unreadable-reward', id: shortText(value?.id) || Number.isSafeInteger(value?.id) ? String(value.id) : null,
+        campaign: safe ? { key: campaign.key, version: campaign.version, name: shortText(campaign.name, 160) ? campaign.name : null, reason: campaign.reason } : null,
+        kind: null, state: 'unavailable', alternatives: [], applications: [] };
+    }
+  });
 }
 
 /** A projection's optional participation rewards: `null` when Wirt did not send the field, never an invented empty list. */
 export function readProjectionRewards(benefits) {
   if (!object(benefits) || benefits.participation_rewards === undefined) return null;
   if (!Array.isArray(benefits.participation_rewards) || benefits.participation_rewards.length > 64) return null;
-  try { return benefits.participation_rewards.map(readRewardFacts); } catch { return null; }
+  return readRewardList(benefits.participation_rewards);
 }
 
 /** Display-only component rewards; absent or unreadable facts stay unknown and never select access or capacity. */
@@ -437,7 +510,7 @@ export function createWirtClient({ origin, oauthClientId, callbackUrl, signing, 
       if (result.status !== 200) return { kind: 'unavailable', status: result.status };
       const value = parseJsonBytes(result.bytes);
       shape(object(value) && value.schema === 'wirt.participation-result/v1' && Array.isArray(value.rewards) && value.rewards.length <= 64);
-      return { kind: 'rewards', nextCharge: readNextCharge(value.next_charge), rewards: value.rewards.map(readRewardFacts) };
+      return { kind: 'rewards', nextCharge: readNextCharge(value.next_charge), rewards: readRewardList(value.rewards) };
     },
     /** A Pro continuation preview through Wirt's own quote. A preview reserves nothing; acceptance stays at Works. */
     async rewardQuote({ linkId, productAccount, cadence }) {

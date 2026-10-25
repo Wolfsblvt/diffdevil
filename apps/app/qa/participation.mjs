@@ -7,6 +7,48 @@
  * export, and narrower widths without overflow. Every figure is the stand-in's; none is a real quote or payment.
  */
 import { readSigningKeys, signedHeaders } from '../../github-app/commercial-wirt.mjs';
+import { rewardForms } from '../tests/fixtures/reward-forms.mjs';
+
+const typedForms = rewardForms('qa-beta-survey');
+const reservedOption = structuredClone(typedForms.protectedPrice);
+reservedOption.state = reservedOption.alternatives[0].standing = 'reserved';
+reservedOption.alternatives[0].acquisition = { state: 'reserved' };
+const acquiredOption = structuredClone(typedForms.protectedPrice);
+acquiredOption.state = acquiredOption.alternatives[0].standing = 'exercised';
+acquiredOption.alternatives[0].acquisition = { state: 'exercised', component_id: 'base', cap_cents: 900 };
+export const TYPED_REWARD_SPECIMENS = [typedForms.time, typedForms.finite, typedForms.continuous, typedForms.protectedPrice, typedForms.component, typedForms.choice, reservedOption, acquiredOption, typedForms.unsupported].map(form => [form]);
+TYPED_REWARD_SPECIMENS.push([typedForms.finite, { ...typedForms.unsupported, basis: { ...typedForms.unsupported.basis, campaign: { ...typedForms.unsupported.basis.campaign, key: 'another-campaign' } } }, null]);
+
+/** The built Plan & funding page consumes each native-shaped reward through the actual shared reader and presenter. */
+export async function typedRewardJourney({ page, go, check, shot, ORIGIN }) {
+  const cases = [
+    ['time', /earned time is queued.*30 date units.*Expected start/isu, 0],
+    ['finite', /next 6 monthly charges/u, 1],
+    ['continuous', /each eligible monthly Pro charge.*No scheduled application end/isu, 0],
+    ['protected-price', /Earned, available to review.*Exercise opens/isu, 0],
+    ['component', /30 date units.*Unbound.*Not currently usable/isu, 0],
+    ['choice', /choose monthly or annual/u, 2],
+    ['reserved-option', /Reserved, not yet acquired/u, 0],
+    ['acquired-option', /Acquired protection: €9.00/u, 0],
+    ['unavailable', /Reward details unavailable/u, 0],
+    ['mixed', /next 6 monthly charges.*2 unreadable rewards/isu, 1]
+  ];
+  for (const [index, [name, expected, previews]] of cases.entries()) {
+    const changed = await page.request.post(`${ORIGIN}/manage/do`, { form: { action: 'fixture-simulate', kind: `reward-specimen:${index}`, back: '/manage/plan' }, headers: { origin: ORIGIN }, maxRedirects: 0 });
+    check(`typed ${name}: fixture transition accepted`, changed.status() === 303);
+    await go('/manage/plan');
+    const card = page.locator('[data-reward]');
+    const text = await card.innerText();
+    check(`typed ${name}: actual built card preserves public meaning`, expected.test(text), text);
+    check(`typed ${name}: preview controls match the actual finite choice`, await card.locator('[data-preview-form] button').count() === previews);
+    check(`typed ${name}: no invented numbers or unsafe placeholder fields`, !/0 monthly charges|NaN|undefined|\[object Object\]/u.test(text));
+    if (name === 'finite') check('monthly-only reward never offers annual choice', !/choose monthly or annual/u.test(text) && await card.locator('button[value="annual"]').count() === 0);
+    await page.setViewportSize({ width: 760, height: 900 });
+    check(`typed ${name}: narrow page has no horizontal overflow`, await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth));
+    await shot(`typed-reward-${name}`);
+    await page.setViewportSize({ width: 1440, height: 900 });
+  }
+}
 
 const addUtcDays = (day, days) => {
   const date = new Date(`${day}T00:00:00.000Z`);

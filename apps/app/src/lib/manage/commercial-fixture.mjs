@@ -12,7 +12,7 @@
  * payment or a plan.
  */
 import { protectedHeaders, validOrigin } from '../../../../github-app/authorization.mjs';
-import { readProjectionFundedComponents, readRewardFacts } from '../../../../github-app/commercial-wirt.mjs';
+import { readProjectionFundedComponents, readRewardFacts, readRewardList } from '../../../../github-app/commercial-wirt.mjs';
 
 const states = new Map();
 const PREMIUM = new Set(['funded', 'renewal-in-grace']);
@@ -55,7 +55,10 @@ export function createCommercialFixture(spec, { authorization, namespaceOf, allo
         first_eligible_on: !earned.reserved && !['consumed', 'expired', 'corrected'].includes(standing) && paidCadence === reward.cadence && (selected === null || selected === reward.key) ? state.commercial.period.ends_on : null,
         standing: selected !== null && selected !== reward.key ? 'retired' : standing })) };
   };
-  const rewardFacts = () => { const raw = rewardRaw(); return raw ? [readRewardFacts(raw)] : []; };
+  const rewardFacts = () => {
+    if (spec.rewardSpecimens) return readRewardList(spec.rewardSpecimens[state.rewardSpecimen ?? 0]);
+    const raw = rewardRaw(); return raw ? [readRewardFacts(raw)] : [];
+  };
   const discountLine = cadence => {
     const earned = state.participation?.earned, campaign = state.participation?.campaign;
     if (!earned || earned.corrected || earned.expired || (earned.selected && campaign.rewards.find(reward => reward.key === earned.selected).cadence !== cadence)) return null;
@@ -68,7 +71,7 @@ export function createCommercialFixture(spec, { authorization, namespaceOf, allo
   const readLine = line => ({ amountCents: line.amount_cents, reason: line.promise.campaign.reason, campaignKey: line.promise.campaign.key, campaignVersion: line.promise.campaign.version, rewardKey: line.promise.key,
     cadence: line.promise.cadence, unit: line.promise.unit, value: line.promise.value, remainingUsesAfter: line.remaining_uses_after, postRewardBaseCents: line.post_reward_base_cents });
   const body = () => ({ linked: state.linked, plan: ownPlan(), reconciling: false, commercial: state.commercial ? { standing: state.commercial.standing, tier: state.commercial.tier, cadence: state.commercial.cadence, period: state.commercial.period, renewalPreference: state.commercial.renewal_preference, cancellationIntent: state.commercial.cancellation_intent, grace: state.commercial.grace ?? null, ended: state.commercial.ended ?? null, nextRenewal: state.commercial.next_renewal ?? null } : null,
-    pending: state.pending, grants: state.grants, betaGrants: state.betaGrants, betaTimeZone: spec.betaTimeZone ?? null, protection: state.protection, capacity: state.capacity.map(slot => ({ ...slot, binding: slot.binding ? { ...slot.binding, display: slot.binding.authority === 'present' ? slot.binding.display : null } : null })), order: state.order, linkedSince: state.since, participationRewards: state.participation ? rewardFacts() : null, fundedComponents: readProjectionFundedComponents({ funded_components: spec.fundedComponents }), fixture: true });
+    pending: state.pending, grants: state.grants, betaGrants: state.betaGrants, betaTimeZone: spec.betaTimeZone ?? null, protection: state.protection, capacity: state.capacity.map(slot => ({ ...slot, binding: slot.binding ? { ...slot.binding, display: slot.binding.authority === 'present' ? slot.binding.display : null } : null })), order: state.order, linkedSince: state.since, participationRewards: state.participation || spec.rewardSpecimens ? rewardFacts() : null, fundedComponents: readProjectionFundedComponents({ funded_components: spec.fundedComponents }), fixture: true });
 
   return {
     source: 'fixture',
@@ -162,6 +165,7 @@ export function createCommercialFixture(spec, { authorization, namespaceOf, allo
     },
     async rewardStanding({ session }) {
       await actor(session);
+      if (state.linked && spec.rewardSpecimens) return { available: true, nextCharge: null, rewards: rewardFacts() };
       if (!state.linked || !state.participation) return { available: false, reason: state.linked ? 'unavailable' : 'not-linked' };
       if (state.participation.answer === 'unavailable') return { available: false, reason: 'unavailable' };
       const cadence = state.participation.paid ? state.commercial.cadence : null;
@@ -181,6 +185,7 @@ export function createCommercialFixture(spec, { authorization, namespaceOf, allo
     simulate(kind) {
       const earned = state.participation?.earned;
       const [verb, argument] = kind.split(':');
+      if (verb === 'reward-specimen' && spec.rewardSpecimens?.[Number(argument)]) { state.rewardSpecimen = Number(argument); return 'set'; }
       if (verb === 'wirt' && state.participation && ['recorded', 'unavailable', 'unknown', 'refused'].includes(argument)) { state.participation.answer = argument; return 'set'; }
       if (verb === 'reward-reserve' && earned && !earned.reserved && ['monthly', 'annual'].includes(argument) && discountLine(argument)) {
         // Accepting an eligible quote selects and reserves its branch; the payment is now being confirmed.
