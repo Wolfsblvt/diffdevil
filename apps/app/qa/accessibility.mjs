@@ -25,8 +25,9 @@ export async function accessibilityJourney({ page, check, go, settled, shot, OUT
         nodes.filter(node => node.role?.value === 'main').length === 1
           && nodes.some(node => node.role?.value === 'navigation' && node.name?.value)
           && nodes.some(node => node.role?.value === 'heading' && node.properties?.some(property => property.name === 'level' && property.value.value === 1)));
-      for (const host of await page.locator('[data-chart]:not([data-chart="hero"])').all()) {
-        const id = await host.getAttribute('data-chart-id');
+      const ids = await page.locator('[data-chart]:not([data-chart="hero"])').evaluateAll(hosts => hosts.map(host => host.dataset.chartId));
+      for (const id of ids) {
+        const host = page.locator(`[data-chart-id="${id}"]`);
         if (!await host.locator('[data-plot]').count()) continue;
         const plot = host.locator('[data-plot]');
         await plot.focus(); await page.keyboard.press('Home');
@@ -34,6 +35,8 @@ export async function accessibilityJourney({ page, check, go, settled, shot, OUT
         const keyedTree = await tree(`${label}/${id}/keyboard`);
         check(`${label}/${id}: keyboard values are exposed through a polite browser live region`, liveContains(keyedTree, keyed?.trim()));
         await page.keyboard.press('Enter');
+        // History's retained bucket pin starts a page swap; do not race the neighboring frame's controls.
+        await settled();
         check(`${label}/${id}: pin state is announced`, /pinned/u.test(await host.locator('[data-announce]').textContent()));
         const clear = host.locator('.fr-clear');
         if (await clear.count()) {
@@ -65,6 +68,43 @@ export async function accessibilityJourney({ page, check, go, settled, shot, OUT
         await host.getByRole('button', { name: 'Chart', exact: true }).focus(); await page.keyboard.press('Enter');
       }
     }
+    // Pointer inspection can preselect the keyboard's entry date without ever touching its live region.
+    // Entry and a boundary arrow still owe that date's values, even when no visual update is needed.
+    for (const reducedMotion of ['no-preference', 'reduce']) {
+      await page.emulateMedia({ reducedMotion });
+      await go('/'); await settled();
+      const stage = page.locator('[data-hero-plot]');
+      const live = page.locator('[data-chart="hero"] [data-announce]');
+      await page.locator('[data-period] a').last().focus();
+      await stage.scrollIntoViewIfNeeded();
+      const point = await stage.evaluate(element => {
+        const host = element.closest('[data-chart]');
+        const model = JSON.parse(host.querySelector('[data-chart-model]').textContent);
+        const last = model.rows.length - 1;
+        const [x, y] = host.__hero.chart.convertToPixel({ gridIndex: 0 }, [last, model.rows[last].cur]);
+        const box = element.getBoundingClientRect();
+        return { x: box.left + x, y: box.top + y };
+      });
+      const before = await live.innerText();
+      await page.mouse.move(point.x - 8, point.y); await page.mouse.move(point.x, point.y);
+      const pointer = await page.locator('[data-hero-dl]').innerText();
+      const readout = page.locator('[data-hero-dl]');
+      const visual = await readout.boundingBox();
+      const visualNode = await readout.locator('span').first().elementHandle();
+      check(`Hero ${reducedMotion}: pointer selects a date without announcing it`, /^by /u.test(pointer) && await live.innerText() === before, pointer);
+      for (let step = 0; step < 8 && !await stage.evaluate(element => element === document.activeElement); step++) await page.keyboard.press('Tab');
+      check(`Hero ${reducedMotion}: Tab reaches the pointer-selected date and announces it`,
+        await stage.evaluate(element => element === document.activeElement) && await live.innerText() === pointer, await live.innerText());
+      await page.keyboard.press('ArrowRight');
+      const boundary = await page.locator('[data-hero-dl]').innerText();
+      check(`Hero ${reducedMotion}: the right boundary arrow retains the date and its announcement`, boundary === pointer && await live.innerText() === boundary, JSON.stringify({ pointer, boundary, live: await live.innerText() }));
+      check(`Hero ${reducedMotion}: the same-date handoff retains the visual readout and its geometry`,
+        await visualNode.evaluate(element => element.isConnected) && JSON.stringify(await readout.boundingBox()) === JSON.stringify(visual));
+      await visualNode.dispose();
+      const nodes = await tree(`hero/pointer-keyboard/${reducedMotion}`);
+      check(`Hero ${reducedMotion}: the handoff values reach the browser's polite region`, liveContains(nodes, boundary));
+    }
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
     await go('/'); await settled();
     const hero = page.locator('[data-hero-plot]');
     await hero.focus(); await page.keyboard.press('ArrowLeft');
