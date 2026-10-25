@@ -21,7 +21,7 @@ export function createPolicyReader(appStore, { repositoryIdentity, resolvePolicy
           const effective = await resolvePolicy({ repositoryId, installationId: identity.installation_id, configuration: configuration?.value });
           return { id: effective.policy.id, compiled: effective.policy, basis: 'current-policy',
             origin: effective.source, sourceIdentity: effective.sourceIdentity, trustedHead: effective.expectedPolicyBase,
-            provenance: effective.provenance };
+            provenance: effective.provenance, document: effective.document };
         } catch (error) {
           const code = error?.diagnostic?.code ?? error?.code;
           return unavailable('trusted-policy-unavailable', typeof code === 'string' && /^[A-Z0-9_]{1,80}$/u.test(code) ? code : null);

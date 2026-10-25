@@ -35,6 +35,7 @@ const period = view.period.label;
 const { list, unit, note, selected, bucket, labelOf, nameOf, unitWord, repositoryName, prHref } = historySelection(view);
 const population = life ? 'merged' : 'analysed';
 const policyBasis = view.policyBasis;
+const labReady = view.scope.kind === 'repository' && life && view.data?.policies?.every((policy: any) => policy.standing === 'current') && cur.mergedRecovered > 0;
 const scopeLabel = view.scope.kind === 'all' ? 'all repositories' : view.scope.kind === 'namespace' ? view.scope.namespace : view.scope.name;
 const mosaic = mosaicModel({ buckets: list, unit, period, population, scopeLabel, labelOf, nameOf, hrefOf: (_: any, index: number) => view.href('/history', { w: String(index) }), sel: selected });
 const totals = mosaic.totals;
@@ -66,6 +67,7 @@ const comp = (parts: { k: string; v: number }[], height = 8) => compositionBar(p
 ---
 <AppShell title="History" nav={navModel(view, 'history')} view={view}>
   <PageHead view={view} title="History" />
+  {view.scope.kind === 'repository' && <p class="a-note">{labReady ? <a href={view.href('/policy-lab')}>Try a policy change</a> : <span>Policy Lab needs a current trusted policy and retained merged comparisons in this period.</span>}<span>One numeric decision against this repository’s retained merged PRs; unavailable evidence stays explicit.</span></p>}
   {life && lifecycle.coverageFrom && !cur.windowCovered && <p class="a-note"><Icon name="circle-dashed" size={14} /><span>Retained lifecycle begins {fmtDate(lifecycle.coverageFrom)}; earlier buckets in this period hold only what was retained.</span></p>}
   {note && <p class="a-note"><Icon name="circle-dashed" size={14} /><span>{note}</span></p>}
   {!life && <p class="a-note"><Icon name="circle-dashed" size={13} /><span>Merge times are not retained for this scope ({lifecycle.reason}); buckets use each pull request's latest analysis time instead.</span></p>}

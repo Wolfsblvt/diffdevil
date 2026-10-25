@@ -4,7 +4,7 @@ import { describeScope, readViewState } from './scope.mjs';
 
 /** Only names actually selected by a supported analytical URL; no namespace or All-repository discovery. */
 export function analyticalRepositoryNames(url) {
-  if (!analyticalRoute(url.pathname)) return [];
+  if (!analyticalRoute(url.pathname) && url.pathname !== '/api/policy-lab') return [];
   const state = readViewState(url), scope = describeScope(state.s), names = [];
   if (scope.kind === 'repository') names.push(scope.repository);
   if (scope.kind === 'namespace' && state.r) names.push(state.r);
@@ -17,6 +17,7 @@ export function analyticalRoute(pathname) {
   if (pathname === '/') return { section: 'overview', title: 'Overview' };
   if (pathname === '/prs') return { section: 'prs', title: 'Pull requests' };
   if (pathname === '/history') return { section: 'history', title: 'History' };
+  if (pathname === '/policy-lab') return { section: 'history', title: 'Policy Lab' };
   if (pathname === '/files') return { section: 'files', title: 'Files' };
   if (/^\/pr\/[^/]+\/[^/]+\/[1-9]\d*$/u.test(pathname)) return { section: 'pr', title: 'Pull request' };
   if (/^\/file\/[^/]+\/[^/]+\/[A-Za-z0-9_-]{22}$/u.test(pathname)) return { section: 'file', title: 'File history' };

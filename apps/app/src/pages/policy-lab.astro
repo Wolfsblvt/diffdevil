@@ -1,0 +1,41 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
+import AppShell from '../layouts/AppShell.astro';
+import { readViewState, describeScope, periodOf, link } from '../lib/scope.mjs';
+import { readPolicyLab } from '../lib/policy-lab-request.mjs';
+const state = readViewState(Astro.url), scope = describeScope(state.s), period = periodOf(state);
+const repository = Astro.locals.viewer.repositories.find((item: any) => item.fullName.toLowerCase() === state.s.toLowerCase());
+const view = { state, scope, href: (path: string) => link(state, path) };
+// The acquired document is cheap: the editor and policy/result regions load independently of chrome.
+let initial: any = null;
+if (Astro.url.searchParams.get('render') === 'document' && repository) {
+  try { initial = await readPolicyLab({ locals: Astro.locals, url: Astro.url }); }
+  catch { initial = { standing: 'unavailable', reason: 'policy-or-history-unavailable', decisions: [] }; }
+}
+---
+<AppShell title="Policy Lab" view={view} nav={{ section: 'history', active: null, premium: false }}>
+  <div class="a-head"><div class="ttl"><nav class="crumb" aria-label="Breadcrumb"><a href={link(state, '/history')}>History</a></nav><h1>Policy Lab</h1><div class="a-scope">{repository?.fullName ?? 'Choose one repository in History'} · {period.label} · retained merged pull requests</div></div></div>
+  {repository ? <section class="pl" data-policy-lab data-endpoint={`/api/policy-lab?s=${encodeURIComponent(repository.fullName)}&per=${state.per}`}>
+    <p class="a-note">Preview only. No checks, labels, comments, repository settings or historical provider effects are changed.</p>
+    <section class="pl-basis" aria-label="Pinned experiment basis" data-lab-basis>Resolving trusted current policy and retained coverage…</section>
+    <p id="lab-status" role="status" aria-live="polite" data-lab-status>Loading the experiment. History and navigation remain available.</p>
+    <button class="btn btn-quiet" type="button" data-lab-retry hidden>Retry policy and history</button>
+    <div class="pl-layout">
+      <section class="a-pn" aria-labelledby="lab-edit-title"><header class="a-pn-h"><h2 id="lab-edit-title">Change one thing</h2></header><div class="a-pn-b">
+        <form data-lab-editor aria-describedby="lab-status" hidden>
+          <label>Rule or band set<select name="decision"></select></label>
+          <label>Retained numeric metric<select name="metric"></select></label>
+          <div data-lab-fields></div>
+          <p class="a-mini" data-lab-origin></p>
+          <div class="pl-actions"><button class="btn" type="submit">Preview change</button><button class="btn btn-quiet" type="button" data-lab-reset>Reset</button></div>
+          <p class="a-mini">One existing numeric decision. No formula, path or full-policy editing.</p>
+        </form>
+      </div></section>
+      <section class="a-pn" aria-labelledby="lab-result-title"><header class="a-pn-h"><h2 id="lab-result-title">What would change</h2></header><div class="a-pn-b" data-lab-result><p>Classification has not answered yet.</p></div></section>
+    </div>
+    <section class="a-pn"><header class="a-pn-h"><h2>Evidence</h2></header><div class="a-pn-b"><div class="pl-actions" data-lab-filters></div><div class="pl-scroll" data-lab-evidence></div></div></section>
+    <section class="a-pn"><header class="a-pn-h"><h2>Prepare adoption</h2></header><div class="a-pn-b" data-lab-adoption><p>The focused patch appears after a valid experiment.</p></div></section>
+    {initial && <script type="application/json" data-lab-initial set:html={JSON.stringify(initial).replaceAll('<', '\\u003c')} />}
+    <noscript><p>The interactive editor needs JavaScript. <a href={link(state, '/history')}>Read retained History</a>. The experiment performs no provider writes.</p>{initial && <pre>{JSON.stringify(initial, null, 2)}</pre>}</noscript>
+  </section> : <p class="a-note">Select one authorized repository in <a href={link(state, '/history')}>History</a> to try a policy change.</p>}
+</AppShell>
