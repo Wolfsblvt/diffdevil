@@ -103,7 +103,6 @@ export function Rail(props: Props) {
               </p>
             )}
             {refused && <p className="status" role="alert">{refused}</p>}
-            {error && !refused && <p className="status" role="alert">{errorText(error)}</p>}
           </div>
         ) : (
           <div className="stack">
@@ -142,7 +141,7 @@ export function errorText(error: ApiError): string {
   const c = copy.playground.states;
   switch (error.code) {
     case 'E_PLAYGROUND_URL': case 'E_GITHUB_PERMISSION': return c.refused('the pull request');
-    case 'E_GITHUB_RATE_LIMIT': return c.budget(error.retryMinutes);
+    case 'E_GITHUB_RATE_LIMIT': return c.budget(error.retryAt);
     case 'UNREACHABLE': return c.unreachable;
     case 'E_LIMIT': return error.message;
     default: return `${c.upstream} (${error.code})`;

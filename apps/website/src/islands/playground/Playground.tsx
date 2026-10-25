@@ -35,11 +35,14 @@ export interface Acquired {
   readonly acquiredAt: number;
 }
 
-export type ApiError = { code: string; message: string; retryMinutes?: number | undefined };
+export type ApiError = { code: string; message: string; retryAt?: string | undefined };
 
 interface Props { readonly catalogue: readonly ExampleCard[]; readonly defaultExample: string }
 
 const PRESET_POLICY = 'version: 1\npresets: [size@1]\n';
+const MAX_TIMER_DELAY = 2_147_000_000;
+
+type RetryGate = { readonly kind: 'timed'; readonly at: number } | { readonly kind: 'unknown' };
 
 /**
  * One request to the playground API. The caller's AbortSignal travels with the fetch so
@@ -57,10 +60,10 @@ export async function fetchApi(path: string, url: string, signal?: AbortSignal):
   let body: any;
   try { body = await response.json(); } catch { return { ok: false, error: { code: 'UPSTREAM_ERROR', message: copy.playground.states.upstream } }; }
   if (body?.ok) return { ok: true, value: body };
-  const retryAfter = response.headers.get('retry-after');
-  const reset = response.headers.get('x-ratelimit-reset');
-  const retryMinutes = retryAfter ? Math.ceil(Number(retryAfter) / 60) : reset ? Math.max(1, Math.ceil((Number(reset) * 1000 - Date.now()) / 60000)) : undefined;
-  return { ok: false, error: { code: body?.error?.code ?? 'UPSTREAM_ERROR', message: body?.error?.message ?? copy.playground.states.upstream, retryMinutes } };
+  const rawRetryAt = body?.error?.retryAt;
+  const retryTime = typeof rawRetryAt === 'string' ? Date.parse(rawRetryAt) : Number.NaN;
+  const retryAt = Number.isFinite(retryTime) && retryTime > Date.now() ? new Date(retryTime).toISOString() : undefined;
+  return { ok: false, error: { code: body?.error?.code ?? 'UPSTREAM_ERROR', message: body?.error?.message ?? copy.playground.states.upstream, retryAt } };
 }
 
 export default function Playground({ catalogue, defaultExample }: Props) {
@@ -68,9 +71,14 @@ export default function Playground({ catalogue, defaultExample }: Props) {
   const [acquired, setAcquired] = useState<Acquired | undefined>();
   const [previous, setPrevious] = useState<Acquired | undefined>();
   const [working, setWorking] = useState(false);
-  const [error, setError] = useState<ApiError | undefined>();
   const [policyText, setPolicyText] = useState<string>('');
   const [newerHead, setNewerHead] = useState<string | undefined>();
+  const retryGateRef = useRef<RetryGate | undefined>(undefined);
+  const [retryGate, setRetryGate] = useState<RetryGate | undefined>(retryGateRef.current);
+  const [error, setError] = useState<ApiError | undefined>(() => {
+    const gate = retryGateRef.current;
+    return gate ? { code: 'E_GITHUB_RATE_LIMIT', message: '', ...(gate.kind === 'timed' ? { retryAt: new Date(gate.at).toISOString() } : {}) } : undefined;
+  });
   // Re-submitting the same public PR (after a cancel or a failure) is a new acquisition.
   const [attempt, setAttempt] = useState(0);
   const examples = useRef(new Map<string, ExamplePayload>());
@@ -78,6 +86,44 @@ export default function Playground({ catalogue, defaultExample }: Props) {
   // Every acquisition gets an identity; only the latest may commit state. A cancelled or
   // superseded request that later resolves is ignored, whatever its outcome.
   const requestId = useRef(0);
+
+  const clearRetryGate = useCallback(() => {
+    retryGateRef.current = undefined;
+    setRetryGate(undefined);
+  }, []);
+
+  const rememberThrottle = useCallback((apiError: ApiError) => {
+    const retryTime = typeof apiError.retryAt === 'string' ? Date.parse(apiError.retryAt) : Number.NaN;
+    const current = retryGateRef.current;
+    const next: RetryGate = Number.isFinite(retryTime) && retryTime > Date.now()
+      ? current?.kind === 'timed' && current.at > retryTime ? current : { kind: 'timed', at: retryTime }
+      : current?.kind === 'timed' ? current : { kind: 'unknown' };
+    retryGateRef.current = next;
+    setRetryGate(next);
+  }, []);
+
+  const retryNow = useCallback(() => {
+    clearRetryGate();
+    setAttempt(value => value + 1);
+  }, [clearRetryGate]);
+
+  useEffect(() => {
+    if (retryGate?.kind !== 'timed') return;
+    let timer: number | undefined;
+    const resumeWhenAllowed = () => {
+      const remaining = retryGate.at - Date.now();
+      if (remaining > 0) {
+        timer = window.setTimeout(resumeWhenAllowed, Math.min(remaining, MAX_TIMER_DELAY));
+        return;
+      }
+      if (retryGateRef.current?.kind !== 'timed' || retryGateRef.current.at !== retryGate.at) return;
+      retryGateRef.current = undefined;
+      setRetryGate(undefined);
+      setAttempt(value => value + 1);
+    };
+    resumeWhenAllowed();
+    return () => { if (timer !== undefined) window.clearTimeout(timer); };
+  }, [retryGate]);
 
   // Reflect state into the URL (shareable, reloadable) without adding history entries per keystroke.
   useEffect(() => {
@@ -114,12 +160,15 @@ export default function Playground({ catalogue, defaultExample }: Props) {
     const stale = () => cancelled || controller.signal.aborted || requestId.current !== id;
     (async () => {
       if (state.mode === 'pr' && state.pr) {
+        const gate = retryGateRef.current;
+        if (gate?.kind === 'unknown' || gate?.kind === 'timed' && gate.at > Date.now()) { setWorking(false); return; }
         setWorking(true); setError(undefined);
         announce(copy.playground.working);
         const result = await fetchApi('/api/report', prUrl(state.pr), controller.signal);
         if (stale()) return;
         setWorking(false);
-        if (!result.ok) { setError(result.error); return; }
+        if (!result.ok) { setError(result.error); if (result.error.code === 'E_GITHUB_RATE_LIMIT') rememberThrottle(result.error); return; }
+        clearRetryGate(); setError(undefined);
         const report = readSavedReport(result.value.report);
         if (!report.ok) { setError({ code: 'UPSTREAM_ERROR', message: copy.playground.states.upstream }); return; }
         const next: Acquired = { kind: 'pr', report: report.value, pr: state.pr, policyName: '.diffdevil.yml', basePolicy: PRESET_POLICY, acquiredAt: Date.now() };
@@ -132,15 +181,17 @@ export default function Playground({ catalogue, defaultExample }: Props) {
       const example = await loadExample(exampleId, state.variant);
       if (stale()) return;
       if (!example) { setError({ code: 'NOT_FOUND', message: `No example named "${exampleId}".` }); return; }
-      setError(undefined);
       const pr = example.repository && example.pullRequest ? { owner: example.repository.split('/')[0]!, repo: example.repository.split('/')[1]!, number: example.pullRequest } : undefined;
-      if (state.head === 'live' && pr) {
-        setWorking(true);
+      const gate = retryGateRef.current;
+      const waitingForRetry = gate?.kind === 'unknown' || gate?.kind === 'timed' && gate.at > Date.now();
+      if (state.head === 'live' && pr && !waitingForRetry) {
+        setWorking(true); setError(undefined);
         announce(copy.playground.working);
         const result = await fetchApi('/api/report', prUrl(pr), controller.signal);
         if (stale()) return;
         setWorking(false);
-        if (!result.ok) { setError(result.error); setAcquired({ kind: 'snapshot', report: example.report, example, pr, policyName: example.policy.name, basePolicy: example.policy.text, acquiredAt: Date.now() }); return; }
+        if (!result.ok) { setError(result.error); if (result.error.code === 'E_GITHUB_RATE_LIMIT') rememberThrottle(result.error); setAcquired({ kind: 'snapshot', report: example.report, example, pr, policyName: example.policy.name, basePolicy: example.policy.text, acquiredAt: Date.now() }); return; }
+        clearRetryGate(); setError(undefined);
         const report = readSavedReport(result.value.report);
         if (!report.ok) { setError({ code: 'UPSTREAM_ERROR', message: copy.playground.states.upstream }); return; }
         setAcquired({ kind: 'live', report: report.value, example, pr, policyName: example.policy.name, basePolicy: example.policy.text, liveHead: report.value.source.head, acquiredAt: Date.now() });
@@ -153,17 +204,20 @@ export default function Playground({ catalogue, defaultExample }: Props) {
       if (pr && example.snapshot) {
         const key = `diffdevil.head.${example.key}`;
         const cachedHead = sessionStorage.getItem(key);
-        if (cachedHead !== null) { setNewerHead(cachedHead && cachedHead !== example.snapshot.head ? cachedHead : undefined); }
+        if (cachedHead !== null) { if (!waitingForRetry) setError(undefined); setNewerHead(cachedHead && cachedHead !== example.snapshot.head ? cachedHead : undefined); }
         else {
+          if (waitingForRetry) return;
+          setError(undefined);
           fetchApi('/api/head', prUrl(pr), controller.signal).then(result => {
             if (stale()) return;
-            if (result.ok) { sessionStorage.setItem(key, result.value.head.head); setNewerHead(result.value.head.head !== example.snapshot!.head ? result.value.head.head : undefined); }
+            if (result.ok) { clearRetryGate(); setError(undefined); sessionStorage.setItem(key, result.value.head.head); setNewerHead(result.value.head.head !== example.snapshot!.head ? result.value.head.head : undefined); }
+            else if (result.error.code === 'E_GITHUB_RATE_LIMIT') { setError(result.error); rememberThrottle(result.error); }
           });
         }
-      } else setNewerHead(undefined);
+      } else { setError(undefined); setNewerHead(undefined); }
     })();
     return () => { cancelled = true; controller.abort(); };
-  }, [state.mode, state.pr?.owner, state.pr?.repo, state.pr?.number, state.example, state.variant, state.head, attempt, defaultExample, loadExample]);
+  }, [state.mode, state.pr?.owner, state.pr?.repo, state.pr?.number, state.example, state.variant, state.head, attempt, defaultExample, loadExample, clearRetryGate, rememberThrottle]);
 
   const evaluation = useMemo<Evaluation | EvaluationFailure | undefined>(() => {
     if (!acquired || !policyText) return undefined;
@@ -179,8 +233,9 @@ export default function Playground({ catalogue, defaultExample }: Props) {
     setState(current => ({ ...current, policy: acquired && text === acquired.basePolicy ? undefined : encodePolicy(text) }));
   }, [acquired]);
 
-  const selectExample = useCallback((id: string, variant: string) => setState(current => ({ ...current, mode: 'examples', example: id, variant, head: 'snapshot', pr: undefined, policy: undefined })), []);
-  const analyzePr = useCallback((pr: { owner: string; repo: string; number: number }) => { setAttempt(a => a + 1); setState(current => ({ ...current, mode: 'pr', pr, example: undefined, variant: undefined, head: 'snapshot', policy: undefined })); }, []);
+  const selectExample = useCallback((id: string, variant: string) => { setError(current => current?.code === 'E_GITHUB_RATE_LIMIT' ? current : undefined); setState(current => ({ ...current, mode: 'examples', example: id, variant, head: 'snapshot', pr: undefined, policy: undefined })); }, []);
+  const analyzePr = useCallback((pr: { owner: string; repo: string; number: number }) => { clearRetryGate(); setError(undefined); setAttempt(a => a + 1); setState(current => ({ ...current, mode: 'pr', pr, example: undefined, variant: undefined, head: 'snapshot', policy: undefined })); }, [clearRetryGate]);
+  const selectHead = useCallback((head: 'snapshot' | 'live') => { if (head === 'live') { clearRetryGate(); setError(undefined); } setState(current => ({ ...current, head })); }, [clearRetryGate]);
   // Cancel aborts the in-flight request and retires its identity, so a late response
   // (success or failure) cannot commit state; the input and the previous result stay.
   const cancel = useCallback(() => { abort.current?.abort(); requestId.current += 1; setWorking(false); announce('Cancelled. Your input is kept.'); }, []);
@@ -194,7 +249,7 @@ export default function Playground({ catalogue, defaultExample }: Props) {
       />
       <Result
         state={state} acquired={acquired} previous={previous} evaluation={evaluation} lastValid={lastValid.current} working={working} error={error} newerHead={newerHead} policyText={policyText}
-        onView={(view: View) => update({ view })} onHead={(head) => update({ head })}
+        onView={(view: View) => update({ view })} onHead={selectHead} onRetry={retryNow}
       />
     </div>
   );

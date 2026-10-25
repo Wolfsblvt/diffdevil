@@ -13,8 +13,10 @@ effects, no analysis history, and no private credential supplied by the visitor.
 
 GitHub's unauthenticated read quota is shared provider capacity rather than a
 diffdevil entitlement. When GitHub refuses a read, the playground returns its
-versioned `E_GITHUB_RATE_LIMIT` response with HTTP `429`; retry later rather than
-treating that response as an analysis result.
+versioned `E_GITHUB_RATE_LIMIT` response with HTTP `429`. If GitHub supplies a
+valid future `Retry-After` or primary-quota reset time, the response carries that
+time and Lens Studio resumes the current analysis when it arrives. Without a
+reliable time, the reader keeps the input and offers an explicit retry.
 
 ## Run locally
 

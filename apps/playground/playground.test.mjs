@@ -15,13 +15,16 @@ import { createPlaygroundWorker } from './worker.mjs';
 const PUBLIC_URL = 'https://github.com/example/repository/pull/42';
 const client = fake => new GitHubClient({ fetch: fake.fetch, readRetries: 0 });
 const responseSchema = JSON.parse(readFileSync('apps/playground/contracts/response-v1.schema.json', 'utf8'));
+const replayResponseSchema = JSON.parse(readFileSync('apps/playground/contracts/replay-response-v1.schema.json', 'utf8'));
 const reportSchema = JSON.parse(readFileSync('src/diffdevil/contracts/schemas/report-v1.schema.json', 'utf8'));
 const valuesSchema = JSON.parse(readFileSync('src/diffdevil/contracts/detail/v1/values.schema.json', 'utf8'));
 const ajv = new Ajv2020({ strict: true, strictTypes: false, strictRequired: false, allErrors: true });
 ajv.addSchema(valuesSchema);
 ajv.addSchema(reportSchema);
 const validateResponse = ajv.compile(responseSchema);
+const validateReplayResponse = ajv.compile(replayResponseSchema);
 const assertResponse = value => assert.equal(validateResponse(value), true, ajv.errorsText(validateResponse.errors));
+const assertReplayResponse = value => assert.equal(validateReplayResponse(value), true, ajv.errorsText(validateReplayResponse.errors));
 const envelope = { kind: 'diffdevil.playground-response', schemaVersion: '1.0' };
 
 function requestWithoutFetch(url, method) {
@@ -196,6 +199,55 @@ test('playground reports provider throttling as HTTP 429', async () => {
   assert.equal(result.status, 429);
   assert.equal(result.error.code, 'E_GITHUB_RATE_LIMIT');
   assertResponse(result);
+});
+
+test('playground returns valid upstream retry timing on all reader routes', async () => {
+  const now = Date.UTC(2026, 9, 25, 0, 0, 0);
+  const expected = new Date(now + 17_000).toISOString();
+  const options = {
+    now: () => now,
+    readRetries: 0,
+    fetch: async () => new Response('{}', { status: 429, headers: { 'retry-after': '17' } })
+  };
+  const head = await readPublicPullRequestHead(PUBLIC_URL, options);
+  const replay = await replayPublicPullRequest(PUBLIC_URL, options);
+  const analysis = await analyzePublicPullRequest(PUBLIC_URL, options);
+  for (const result of [head, replay, analysis]) {
+    assert.equal(result.status, 429);
+    assert.equal(result.error.code, 'E_GITHUB_RATE_LIMIT');
+    assert.equal(result.error.retryAt, expected);
+  }
+  assertReplayResponse(head);
+  assertReplayResponse(replay);
+  assertResponse(analysis);
+});
+
+test('playground leaves unusable or elapsed upstream retry timing unknown', async () => {
+  const now = Date.UTC(2026, 9, 25, 0, 0, 0);
+  const result = await analyzePublicPullRequest(PUBLIC_URL, {
+    now: () => now,
+    readRetries: 0,
+    fetch: async () => new Response('{}', { status: 429, headers: { 'retry-after': 'not-a-time' } })
+  });
+  assert.equal(result.error.code, 'E_GITHUB_RATE_LIMIT');
+  assert.equal('retryAt' in result.error, false);
+  assertResponse(result);
+});
+
+test('playground exposes a future primary-quota reset as retry timing', async () => {
+  const now = Date.UTC(2026, 9, 25, 0, 0, 0);
+  const expected = new Date(now + 3600_000).toISOString();
+  const result = await replayPublicPullRequest(PUBLIC_URL, {
+    now: () => now,
+    readRetries: 0,
+    fetch: async () => new Response('{}', { status: 403, headers: {
+      'x-ratelimit-remaining': '0',
+      'x-ratelimit-reset': String((now + 3600_000) / 1000)
+    } })
+  });
+  assert.equal(result.error.code, 'E_GITHUB_RATE_LIMIT');
+  assert.equal(result.error.retryAt, expected);
+  assertReplayResponse(result);
 });
 
 const providerFailures = [

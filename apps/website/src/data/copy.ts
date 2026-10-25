@@ -265,7 +265,8 @@ export const copy = {
     whyThisPr: 'Why this PR',
     states: {
       refused: (input: string) => `× Not a public github.com pull-request URL. "${input}" is private or absent. The playground reads public pull requests only, never asks for a token, and does not fetch arbitrary URLs. Accepted shape: https://github.com/owner/repo/pull/123`,
-      budget: (minutes: number | undefined) => `GitHub read budget exhausted for this playground${minutes ? ` · retry in ${minutes} min` : ''}. The public playground shares GitHub’s 60 unauthenticated requests per hour per address. Saved real-PR lessons and your previous result remain available. For an immediate answer locally: npx @wolfsblvt/diffdevil analyze`,
+      budget: (retryAt: string | undefined) => `GitHub is limiting public reads for this playground. ${retryAt ? `This page will retry automatically after ${new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit', timeZoneName: 'short' }).format(new Date(retryAt))}.` : 'GitHub did not provide a reliable retry time, so no automatic retry is scheduled.'} Your input and saved lessons remain available. For a local analysis: npx @wolfsblvt/diffdevil analyze`,
+      retryNow: 'Retry now', retrying: 'Retrying…',
       upstream: 'GitHub did not answer; your input is kept. Retry.',
       unreachable: 'The playground API could not be reached; your input is kept. Saved real-PR lessons still work without it.',
       previous: 'from previous analysis',

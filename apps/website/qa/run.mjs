@@ -24,7 +24,7 @@ import {origins, pageUrl} from '../../manual/manifest.mjs';
 import { GitHubClient } from '../../../dist/lib/index.js';
 import { FakeGitHub } from '../../../src/diffdevil/tests/helpers/github.mjs';
 import { createPlaygroundServer } from '../../playground/server.mjs';
-import { replayPublicPullRequest } from '../../playground/app.mjs';
+import { readPublicPullRequestHead, replayPublicPullRequest } from '../../playground/app.mjs';
 import { worksSponsorSource } from '../works-sponsor.mjs';
 
 const DIST = 'artifacts/website/dist';
@@ -48,7 +48,30 @@ const fake = new FakeGitHub();
 const apiClient = () => new GitHubClient({ fetch: fake.fetch, readRetries: 0 });
 // The next replay request can be held back on demand so a cancel-then-late-success can be exercised.
 let holdNextReplayMs = 0;
-const api = createPlaygroundServer({ clientFactory: apiClient, replay: async input => { const result = await replayPublicPullRequest(input, { client: apiClient() }); if (holdNextReplayMs) { const ms = holdNextReplayMs; holdNextReplayMs = 0; await new Promise(r => setTimeout(r, ms)); } return result; } });
+let nextReplayThrottle;
+let nextHeadThrottle;
+let replayRequests = 0;
+let headRequests = 0;
+let resumeHeadAfterThrottle = false;
+const throttleResponse = retryAt => ({ kind: 'diffdevil.playground-response', schemaVersion: '1.0', ok: false, status: 429, error: { code: 'E_GITHUB_RATE_LIMIT', message: 'GitHub rate limited the request.', ...(retryAt ? { retryAt } : {}) } });
+const recoveredHeadResponse = input => ({ kind: 'diffdevil.playground-response', schemaVersion: '1.0', ok: true, status: 200, canonicalUrl: input, head: { head: 'recovered-head', base: 'recovered-base', state: 'open', changedFiles: 2 } });
+const api = createPlaygroundServer({
+  clientFactory: apiClient,
+  replay: async input => {
+    replayRequests++;
+    if (nextReplayThrottle !== undefined) { const throttle = nextReplayThrottle; nextReplayThrottle = undefined; return throttleResponse(throttle.retryAt); }
+    const result = await replayPublicPullRequest(input, { client: apiClient() });
+    if (holdNextReplayMs) { const ms = holdNextReplayMs; holdNextReplayMs = 0; await new Promise(r => setTimeout(r, ms)); }
+    return result;
+  },
+  head: async input => {
+    headRequests++;
+    if (nextHeadThrottle !== undefined) { const throttle = nextHeadThrottle; nextHeadThrottle = undefined; resumeHeadAfterThrottle = true; return throttleResponse(throttle.retryAt); }
+    if (resumeHeadAfterThrottle) { resumeHeadAfterThrottle = false; return recoveredHeadResponse(input); }
+    const result = await readPublicPullRequestHead(input, { client: apiClient() });
+    return result;
+  }
+});
 api.listen(API_PORT, '127.0.0.1'); await once(api, 'listening');
 
 const results = [];
@@ -339,6 +362,51 @@ await page.locator('.pg-input form button[type="submit"]').click();
 await page.waitForSelector('.pg-analyzed', { timeout: 15000 });
 check('re-submitting after cancel analyzes normally', /3\s*changed/u.test(await page.locator('.pg-primary').innerText()));
 
+// ── playground: timed throttling resumes the current reader intent ──
+await go('/playground/');
+await page.waitForSelector('.pg-primary');
+await page.locator('#tab-pr').click();
+await page.locator('#pg-url').fill('https://github.com/example/repository/pull/42');
+nextReplayThrottle = { retryAt: new Date(Date.now() + 8000).toISOString() };
+const replayCountBeforeThrottle = replayRequests;
+await page.locator('.pg-input form button[type="submit"]').click();
+await page.waitForFunction(() => document.querySelector('.pg-main [role="alert"]')?.textContent.includes('retry automatically'));
+check('timed throttle keeps the public PR input and URL intent', (await page.locator('#pg-url').inputValue()) === 'https://github.com/example/repository/pull/42' && new URL(page.url()).searchParams.get('pr') === 'example/repository/42');
+check('timed throttle offers a manual retry while scheduling the known time', await page.getByRole('button', { name: 'Retry now' }).isVisible());
+await page.setViewportSize({ width: 390, height: 844 });
+check('timed throttle status and retry remain usable at a narrow viewport', await page.locator('.pg-main [role="alert"]').isVisible() && (await overflowOf()) <= 0);
+await shot('playground-rate-limit-timed');
+await page.setViewportSize({ width: 1280, height: 900 });
+await page.waitForSelector('.pg-analyzed', { timeout: 20000 });
+check('known retry time resumes the retained public PR automatically', replayRequests === replayCountBeforeThrottle + 2 && /3\s*changed/u.test(await page.locator('.pg-primary').innerText()));
+
+// One lesson freshness throttle suppresses automatic checks after lesson navigation.
+await page.evaluate(() => sessionStorage.clear());
+nextHeadThrottle = { retryAt: new Date(Date.now() + 8000).toISOString() };
+await go('/playground/?example=lockfile-scope&variant=without-lockfile');
+await page.waitForSelector('.pg-primary');
+await page.waitForFunction(() => document.querySelector('.pg-main [role="alert"]')?.textContent.includes('retry automatically'));
+const headCountAtThrottle = headRequests;
+await page.locator('.pg-examples .pg-variant').nth(1).click();
+await page.waitForTimeout(250);
+check('lesson navigation does not repeat freshness automatically during a known throttle', headRequests === headCountAtThrottle);
+await shot('playground-lesson-rate-limit');
+await page.waitForFunction(() => !document.querySelector('.pg-main [role="alert"]'), null, { timeout: 20000 });
+check('lesson freshness resumes once at the known time for the current lesson', headRequests === headCountAtThrottle + 1);
+
+// Unknown timing remains manual instead of guessing a retry delay.
+await page.evaluate(() => sessionStorage.clear());
+nextHeadThrottle = {};
+await go('/playground/?example=lockfile-scope&variant=without-lockfile');
+await page.waitForSelector('.pg-main [role="alert"]');
+check('unknown throttle timing is stated honestly and keeps explicit Retry', (await page.locator('.pg-main [role="alert"]').innerText()).includes('no automatic retry is scheduled') && await page.getByRole('button', { name: 'Retry now' }).isVisible());
+const unknownHeadCount = headRequests;
+await page.waitForTimeout(600);
+check('unknown retry timing does not trigger a guessed automatic freshness request', headRequests === unknownHeadCount);
+await page.getByRole('button', { name: 'Retry now' }).click();
+await page.waitForFunction(() => !document.querySelector('.pg-main [role="alert"]'), null, { timeout: 10000 });
+check('explicit Retry recovers a lesson after unknown timing', headRequests === unknownHeadCount + 1);
+
 // ── playground: shared real-PR catalogue, tiles, controls, editor, export ──
 await go('/playground/');
 await page.waitForSelector('.pg-primary');
@@ -421,11 +489,12 @@ check('real-PR snapshot names its exact catalogue source', (await page.locator('
 await shot('playground-snapshot');
 // error state: API unreachable keeps input and previous result
 api.close(); await once(api, 'close');
+await go('/playground/');
 await page.locator('#tab-pr').click();
 await page.locator('#pg-url').fill('https://github.com/example/repository/pull/42');
 await page.locator('.pg-input form button[type="submit"]').click();
-await page.waitForSelector('.pg-input [role="alert"]', { timeout: 15000 });
-check('unreachable API yields an honest alert and keeps the input', (await page.locator('.pg-input [role="alert"]').innerText()).includes('could not be reached') && (await page.locator('#pg-url').inputValue()).includes('pull/42'));
+await page.waitForSelector('.pg-main [role="alert"]', { timeout: 15000 });
+check('unreachable API yields an honest result alert and keeps the input', (await page.locator('.pg-main [role="alert"]').innerText()).includes('could not be reached') && (await page.locator('#pg-url').inputValue()).includes('pull/42'));
 await page.locator('#pg-url').fill('https://github.com/example/repository/issues/42');
 await page.locator('.pg-input form button[type="submit"]').click();
 check('non-PR URL is refused client-side without a request', (await page.locator('.pg-input [role="alert"]').innerText()).includes('Not a public github.com pull-request URL'));

@@ -17,8 +17,9 @@ function parsePositiveInteger(value, label) {
   return parsed;
 }
 
-function playgroundError(status, code, message) {
-  return { kind: RESPONSE_KIND, schemaVersion: RESPONSE_VERSION, ok: false, status, error: { code, message } };
+function playgroundError(status, code, message, retryAt) {
+  return { kind: RESPONSE_KIND, schemaVersion: RESPONSE_VERSION, ok: false, status,
+    error: { code, message, ...(retryAt ? { retryAt } : {}) } };
 }
 
 export function unexpectedServerFailureResponse(method = 'GET') {
@@ -39,8 +40,56 @@ function headSuccess(canonicalUrl, snapshot) {
   return { kind: RESPONSE_KIND, schemaVersion: RESPONSE_VERSION, ok: true, status: 200, canonicalUrl, head: { head: snapshot.head, base: snapshot.base, state: snapshot.state, changedFiles: snapshot.changedFiles } };
 }
 
-function createPublicGitHubClient() {
-  return new GitHubClient({ readRetries: 1, timeoutMs: 15000 });
+function parseRetryAt(headers, now = Date.now()) {
+  const asIso = value => {
+    if (!Number.isFinite(value) || value <= now) return undefined;
+    const date = new Date(value);
+    return Number.isFinite(date.getTime()) ? date.toISOString() : undefined;
+  };
+  const retryAfter = headers.get('retry-after');
+  if (retryAfter !== null) {
+    const value = /^\d+(?:\.\d+)?$/u.test(retryAfter)
+      ? now + Number(retryAfter) * 1000
+      : Date.parse(retryAfter);
+    const retryAt = asIso(value);
+    if (retryAt) return retryAt;
+  }
+
+  if (headers.get('x-ratelimit-remaining') === '0') {
+    const reset = Number(headers.get('x-ratelimit-reset')) * 1000;
+    return asIso(reset);
+  }
+  return undefined;
+}
+
+function createPublicGitHubClient(options = {}) {
+  let retryAt;
+  const fetcher = options.fetch ?? globalThis.fetch.bind(globalThis);
+  const client = new GitHubClient({
+    readRetries: options.readRetries ?? 1,
+    timeoutMs: options.timeoutMs ?? 15000,
+    now: options.now,
+    fetch: async (input, init) => {
+      retryAt = undefined;
+      const response = await fetcher(input, init);
+      const rateLimited = response.status === 429 || response.status === 403
+        && (response.headers.has('retry-after') || response.headers.get('x-ratelimit-remaining') === '0');
+      if (rateLimited) retryAt = parseRetryAt(response.headers, options.now?.() ?? Date.now());
+      return response;
+    }
+  });
+  return { client, retryAt: () => retryAt };
+}
+
+function clientFor(options) {
+  if (options.client) return { client: options.client, retryAt: options.retryAt ?? (() => undefined) };
+  return createPublicGitHubClient(options);
+}
+
+function failureFor(diagnostic, retryAt) {
+  const error = publicAnalysisError(diagnostic);
+  return playgroundError(errorStatus(diagnostic.code), error.code, error.message,
+    diagnostic.code === 'E_GITHUB_RATE_LIMIT' ? retryAt : undefined);
 }
 
 export function parsePublicPullRequestUrl(input) {
@@ -124,12 +173,11 @@ export async function analyzePublicPullRequest(input, options = {}) {
   const parsed = parsePublicPullRequestUrl(input);
   if (!parsed.ok) return playgroundError(400, 'E_PLAYGROUND_URL', parsed.message);
 
-  const client = options.client ?? createPublicGitHubClient();
+  const { client, retryAt } = clientFor(options);
   const result = await analyzeGitHub(client, parsed.target);
   if (!result.ok) {
     const diagnostic = result.diagnostics[0] ?? { code: 'E_INTERNAL', message: 'Analysis failed without a diagnostic.' };
-    const error = publicAnalysisError(diagnostic);
-    return playgroundError(errorStatus(diagnostic.code), error.code, error.message);
+    return failureFor(diagnostic, retryAt());
   }
 
   return playgroundSuccess(parsed.canonicalUrl, projectPlaygroundReport(result.value, { maximumFiles: options.maximumFiles }));
@@ -145,12 +193,11 @@ export async function replayPublicPullRequest(input, options = {}) {
   const parsed = parsePublicPullRequestUrl(input);
   if (!parsed.ok) return playgroundError(400, 'E_PLAYGROUND_URL', parsed.message);
   const limit = options.maximumReportFiles ?? DEFAULT_REPORT_FILE_LIMIT;
-  const client = options.client ?? createPublicGitHubClient();
+  const { client, retryAt } = clientFor(options);
   const result = await analyzeGitHub(client, parsed.target);
   if (!result.ok) {
     const diagnostic = result.diagnostics[0] ?? { code: 'E_INTERNAL', message: 'Analysis failed without a diagnostic.' };
-    const error = publicAnalysisError(diagnostic);
-    return playgroundError(errorStatus(diagnostic.code), error.code, error.message);
+    return failureFor(diagnostic, retryAt());
   }
   if (result.value.files.length > limit) {
     return playgroundError(413, 'E_LIMIT', `The pull request has ${result.value.files.length} changed files; the playground replays at most ${limit}. Analyze it locally with the CLI.`);
@@ -162,14 +209,15 @@ export async function replayPublicPullRequest(input, options = {}) {
 export async function readPublicPullRequestHead(input, options = {}) {
   const parsed = parsePublicPullRequestUrl(input);
   if (!parsed.ok) return playgroundError(400, 'E_PLAYGROUND_URL', parsed.message);
-  const client = options.client ?? createPublicGitHubClient();
+  const { client, retryAt } = clientFor(options);
   try {
     return headSuccess(parsed.canonicalUrl, await readPullSnapshot(client, parsed.target));
   } catch (error) {
     // Typed provider failures carry their code on `diagnostic`, as analyze and report already read it.
     const diagnostic = error instanceof DiffdevilError ? error.diagnostic : { code: 'E_INTERNAL', message: 'Analysis failed unexpectedly.' };
     const publicError = publicAnalysisError(diagnostic);
-    return playgroundError(errorStatus(diagnostic.code), publicError.code, publicError.message);
+    return playgroundError(errorStatus(diagnostic.code), publicError.code, publicError.message,
+      diagnostic.code === 'E_GITHUB_RATE_LIMIT' ? retryAt() : undefined);
   }
 }
 
@@ -210,10 +258,12 @@ export async function handlePlaygroundRequest(request, options = {}) {
     if (method === 'HEAD') {
       return jsonResponse(405, playgroundError(405, 'E_METHOD', 'Analyze with GET.'), method);
     }
-    const analyze = options.analyze ?? (value => analyzePublicPullRequest(value, {
-      client: options.clientFactory?.() ?? createPublicGitHubClient(),
-      maximumFiles: options.maximumFiles
-    }));
+    const analyze = options.analyze ?? (value => {
+      const provider = options.clientFactory
+        ? { client: options.clientFactory(), retryAt: () => undefined }
+        : createPublicGitHubClient();
+      return analyzePublicPullRequest(value, { ...provider, maximumFiles: options.maximumFiles });
+    });
     const result = await analyze(url.searchParams.get('url') ?? '');
     return jsonResponse(result.status, result, method);
   }
@@ -222,11 +272,13 @@ export async function handlePlaygroundRequest(request, options = {}) {
     if (method === 'HEAD') {
       return jsonResponse(405, playgroundError(405, 'E_METHOD', 'Request with GET.'), method);
     }
-    const client = options.clientFactory?.() ?? createPublicGitHubClient();
     const value = url.searchParams.get('url') ?? '';
+    const provider = options.clientFactory
+      ? { client: options.clientFactory(), retryAt: () => undefined }
+      : createPublicGitHubClient();
     const result = url.pathname === '/api/report'
-      ? await (options.replay ?? (input => replayPublicPullRequest(input, { client, maximumReportFiles: options.maximumReportFiles })))(value)
-      : await (options.head ?? (input => readPublicPullRequestHead(input, { client })))(value);
+      ? await (options.replay ?? (input => replayPublicPullRequest(input, { ...provider, maximumReportFiles: options.maximumReportFiles })))(value)
+      : await (options.head ?? (input => readPublicPullRequestHead(input, provider)))(value);
     return jsonResponse(result.status, result, method);
   }
 
