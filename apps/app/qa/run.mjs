@@ -1208,8 +1208,18 @@ try {
   await page.click('.a-me-menu button');
   await page.waitForLoadState('networkidle');
   check('sign out returns to sign-in', new URL(page.url()).pathname === '/sign-in');
-  const afterLogout = await context.request.get(`${ORIGIN}/`, { maxRedirects: 0 });
-  check('the session is revoked after sign out', afterLogout.status() === 303);
+  const publicRootAfterLogout = await context.request.get(`${ORIGIN}/`, { maxRedirects: 0 });
+  const publicRootHtml = await publicRootAfterLogout.text();
+  check('the signed-out root remains the neutral public App entrance', publicRootAfterLogout.status() === 200
+    && publicRootHtml.includes('data-public-app-entrance')
+    && publicRootHtml.includes('href="/auth/start"'), `${publicRootAfterLogout.status()} ${publicRootAfterLogout.url()}`);
+  check('the public entrance contains no retained protected App state', !publicRootHtml.includes('data-app-frame')
+    && !publicRootHtml.includes('kai-sample/')
+    && !publicRootHtml.includes('Overview')
+    && !publicRootHtml.includes('Manage'));
+  const protectedAfterLogout = await context.request.get(`${ORIGIN}/history`, { maxRedirects: 0 });
+  check('a protected destination refuses the revoked session after sign out', protectedAfterLogout.status() === 303
+    && protectedAfterLogout.headers().location.startsWith('/sign-in'), `${protectedAfterLogout.status()} ${protectedAfterLogout.headers().location}`);
   await stopWorker();
 
   // ── Free pass: the viewer is unfunded on the hosted offer; one shared namespace is funded by its owner ──
