@@ -64,9 +64,11 @@ export class Frame {
     this.announce = host.querySelector<HTMLElement>('[data-announce]');
     this.group = host.dataset.chartGroup ?? null;
     this.model = JSON.parse(host.querySelector<HTMLScriptElement>('[data-chart-model]')!.textContent || 'null');
-    this.state = { focus: null, sel: host.dataset.sel ? Number(host.dataset.sel) : null, view: 'chart' };
+    const initialSelection = host.dataset.sel ? Number(host.dataset.sel) : null;
+    this.state = { focus: null, sel: null, view: 'chart' };
     this.spec = recipe(this.model, this.tokens, { host });
     if (host.dataset.keepSel === 'true') this.spec.keepSel = true;
+    this.state.sel = this.rowIndex(initialSelection);
     this.plot.replaceChildren();
     this.chart = echarts.init(this.plot, 'diffdevil', { renderer: 'svg' });
     const first = this.option();
@@ -112,13 +114,21 @@ export class Frame {
     this.announce.textContent = `${readoutText(readoutOf(this.model, index))}${this.state.sel !== null && this.state.sel === index ? ' · pinned' : ''}`;
   }
 
+  /** Keep chart state inside the model rows before it reaches a recipe or readout. */
+  private rowIndex(index: number | null): number | null {
+    if (index === null || !Number.isInteger(index) || index < 0 || index >= this.spec.rows) return null;
+    return index;
+  }
+
   private indexAt(point: [number, number]): number | null {
-    if (this.spec.pick) return this.spec.pick(this.chart, point);
+    if (this.spec.rows <= 0) return null;
+    if (this.spec.pick) return this.rowIndex(this.spec.pick(this.chart, point));
     const value = this.chart.convertFromPixel({ gridIndex: 0 }, point) as number[] | undefined;
-    return Math.max(0, Math.min(this.spec.rows - 1, Math.round(value ? value[0] : 0)));
+    return this.rowIndex(Math.max(0, Math.min(this.spec.rows - 1, Math.round(value ? value[0] : 0))));
   }
 
   setFocus(index: number | null, { quiet = false, announce = false } = {}): void {
+    index = this.rowIndex(index);
     if (index === this.state.focus) return;
     this.state.focus = index;
     this.paint();
@@ -127,6 +137,7 @@ export class Frame {
   }
 
   setSelection(index: number | null, { quiet = false } = {}): void {
+    index = this.rowIndex(index);
     this.state.sel = index;
     this.paint();
     this.say();
@@ -137,6 +148,8 @@ export class Frame {
   }
 
   private drillTo(index: number): void {
+    index = this.rowIndex(index);
+    if (index === null) return;
     const target = this.spec.drill?.(index);
     if (target) location.href = target.href;
   }
@@ -155,7 +168,11 @@ export class Frame {
       this.setSelection(index);
     });
     this.plot.addEventListener('keydown', event => {
-      if (['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp', 'Home', 'End'].includes(event.key)) this.keyed = true;
+      const navigationKeys = ['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp', 'Home', 'End'];
+      if (navigationKeys.includes(event.key)) {
+        this.keyed = true;
+        if (this.spec.rows <= 0) { event.preventDefault(); return; }
+      }
       const last = this.spec.rows - 1;
       const current = this.state.focus ?? this.state.sel ?? last;
       if (event.key === 'ArrowRight' || event.key === 'ArrowDown') { event.preventDefault(); this.setFocus(Math.min(last, (this.state.focus === null ? current - 1 : current) + 1), { announce: true }); }
@@ -190,10 +207,10 @@ export class Frame {
    */
   restoreKeyboard({ focus, sel, when }: { focus: number | null; sel: number | null; when: string }): void {
     this.restoredAt = performance.now();
-    const index = focus ?? sel;
-    if (index === null || index >= this.spec.rows || readoutOf(this.model, index).when !== when) return;
+    const index = this.rowIndex(focus ?? sel);
+    if (index === null || readoutOf(this.model, index).when !== when) return;
     this.keyed = true;
-    if (sel !== null && this.state.sel === null) this.state.sel = sel;
+    if (sel !== null && this.state.sel === null) this.state.sel = this.rowIndex(sel);
     if (focus !== null) this.setFocus(focus, { quiet: true }); else this.paint();
   }
 
@@ -218,7 +235,7 @@ export class Frame {
     if (this.host.dataset.keepSel === 'true') this.spec.keepSel = true;
     if (onSelect) this.spec.onSelect = onSelect;
     this.state.focus = null;
-    this.state.sel = sel === undefined ? null : sel;
+    this.state.sel = this.rowIndex(sel === undefined ? null : sel);
     if (meta !== undefined) { const element = this.host.querySelector('[data-meta]'); if (element) element.textContent = meta; }
     if (teach !== undefined) { const element = this.host.querySelector('[data-teach]'); if (element) element.textContent = teach; }
     if (table !== undefined) this.table.innerHTML = table;
