@@ -1200,16 +1200,34 @@ try {
 
   // ── the Manage console on Pro: capacity, repositories, settings, the message preview, Plan & funding, the return from Works, Account ──
   await proManage(ctx);
-  // the accessible Manage journeys: keyboard, focus, labelled controls, live regions, 1024 and 900, the dark lock under a light preference, reduced motion
-  await manageAccess(ctx, { browser, label: 'pro' });
+
+  const signedInRoot = await context.request.get(`${ORIGIN}/?s=parser-guild%2Fparser-lab&per=90d`, { maxRedirects: 0 });
+  const signedInRootHtml = await signedInRoot.text();
+  const hasAppNavigation = /\bdata-nav(?:\s|=|>)/u.test(signedInRootHtml);
+  check('the signed-in root renders the authenticated App navigation', signedInRoot.status() === 200
+    && signedInRootHtml.includes('data-analytical-notifications')
+    && hasAppNavigation
+    && !signedInRootHtml.includes('data-public-app-entrance'), JSON.stringify({ status: signedInRoot.status(), authenticatedShell: signedInRootHtml.includes('data-analytical-notifications'), navigation: hasAppNavigation, publicEntrance: signedInRootHtml.includes('data-public-app-entrance') }));
 
   // sign out
   await page.click('.a-me');
   await page.click('.a-me-menu button');
   await page.waitForLoadState('networkidle');
   check('sign out returns to sign-in', new URL(page.url()).pathname === '/sign-in');
-  const afterLogout = await context.request.get(`${ORIGIN}/`, { maxRedirects: 0 });
-  check('the session is revoked after sign out', afterLogout.status() === 303);
+  const publicRootAfterLogout = await context.request.get(`${ORIGIN}/`, { maxRedirects: 0 });
+  const publicRootHtml = await publicRootAfterLogout.text();
+  check('the signed-out root remains the neutral public App entrance', publicRootAfterLogout.status() === 200
+    && publicRootHtml.includes('data-public-app-entrance')
+    && publicRootHtml.includes('href="/auth/start"'), `${publicRootAfterLogout.status()} ${publicRootAfterLogout.url()}`);
+  check('the signed-out root does not render the authenticated App shell', !publicRootHtml.includes('data-analytical-notifications')
+    && !/\bdata-nav(?:\s|=|>)/u.test(publicRootHtml));
+  const protectedAfterLogout = await context.request.get(`${ORIGIN}/history`, { maxRedirects: 0 });
+  check('a protected destination refuses the revoked session after sign out', protectedAfterLogout.status() === 303
+    && protectedAfterLogout.headers().location.startsWith('/sign-in'), `${protectedAfterLogout.status()} ${protectedAfterLogout.headers().location}`);
+  await signIn();
+
+  // the accessible Manage journeys: keyboard, focus, labelled controls, live regions, 1024 and 900, the dark lock under a light preference, reduced motion
+  await manageAccess(ctx, { browser, label: 'pro' });
   await stopWorker();
 
   // ── Free pass: the viewer is unfunded on the hosted offer; one shared namespace is funded by its owner ──
