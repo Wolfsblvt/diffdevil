@@ -3,7 +3,7 @@ diffdevil App third-party notices
 Community application, fonts, icons and shared chart/runtime dependencies.
 These notices preserve the licence and copyright inputs of the qualified build. The application and engine keep their own licences; this is not a customer licence or an App release.
 
-@astrojs/cloudflare 14.3.4
+@astrojs/cloudflare 14.4.2
 Declared licence: MIT
 
 LICENSE
@@ -69,7 +69,7 @@ SOFTWARE.
 
 -----------------------------------------------------------------------
 
-@astrojs/internal-helpers 0.12.0
+@astrojs/internal-helpers 0.13.0
 Declared licence: MIT
 
 LICENSE
@@ -1056,7 +1056,7 @@ SOFTWARE.
 
 -----------------------------------------------------------------------
 
-@wolfsblvt/icons 0.1.0
+@wolfsblvt/icons 0.4.0
 Declared licence: SEE LICENSE IN LICENSE.md
 
 LICENSE.md
@@ -1093,7 +1093,7 @@ This record identifies the upstream icon and framework material selected by `@wo
 
 ## Simple Icons
 
-- **Use:** curated third-party brand geometry for GitHub and Discord
+- **Use:** curated third-party brand geometry for GitHub, Discord and Bluesky
 - **Dependency:** `@iconify-json/simple-icons` 1.2.96
 - **Upstream:** [Simple Icons](https://simpleicons.org/)
 - **Licence:** CC0-1.0 for the icon data
@@ -1114,7 +1114,7 @@ Neither framework is copied into this repository. Exact resolved dependency term
 Lucide icon data
 Declared licence: ISC; the icons derived from the Feather project are MIT
 
-The App renders Lucide glyphs through @wolfsblvt/icons 0.1.0 (generated from @iconify-json/lucide 1.2.133) and through its own icon projection, tools/app-icons.mjs (from @iconify-json/lucide 1.2.135). Neither @iconify-json package ships the licence text. This is the upstream LICENSE its metadata names, https://github.com/lucide-icons/lucide/blob/main/LICENSE (git blob 718bb3f0e44153809972abed31839375804bf652).
+The App serves the website header, which renders Lucide glyphs through @wolfsblvt/icons 0.4.0 (generated from @iconify-json/lucide 1.2.133), and projects its own named Lucide glyphs through tools/app-icons.mjs (from @iconify-json/lucide 1.2.147). Neither @iconify-json package ships the licence text. This is the upstream LICENSE its metadata names, https://github.com/lucide-icons/lucide/blob/main/LICENSE (git blob 718bb3f0e44153809972abed31839375804bf652).
 
 LICENSE
 ISC License
@@ -1167,7 +1167,9 @@ SOFTWARE.
 Simple Icons data
 Declared licence: CC0-1.0
 
-The App renders the GitHub mark through @wolfsblvt/icons 0.1.0 (generated from @iconify-json/simple-icons 1.2.96) and through its own icon projection, tools/app-icons.mjs (from @iconify-json/simple-icons 1.2.97). Neither @iconify-json package ships the licence text. This is the upstream LICENSE.md its metadata names, https://github.com/simple-icons/simple-icons/blob/develop/LICENSE.md (git blob 70d4a7b6740c5d9b594ff2fc27d3ea7e89413185). The dedication covers the icon data, not the owners' trademark rights.
+The App serves the website header, whose GitHub and Discord marks use @wolfsblvt/icons 0.4.0; Bluesky, Google Chrome and GitHub Actions marks use the shared website resolver's direct @iconify-json/simple-icons 1.2.100 input. The App also projects its own GitHub mark through tools/app-icons.mjs using that same direct Simple Icons input. Neither @iconify-json package ships the licence text. This is the upstream LICENSE.md its metadata names, https://github.com/simple-icons/simple-icons/blob/develop/LICENSE.md (git blob 70d4a7b6740c5d9b594ff2fc27d3ea7e89413185).
+
+Brand names and marks remain subject to their owners' trademark rights and current brand guidelines. Catalogue inclusion means only that this project selected a source and recorded its standing; it does not imply sponsorship, affiliation, or endorsement. The CC0 dedication covers the icon data, not the owners' trademark rights.
 
 LICENSE.md
 # CC0 1.0 Universal
@@ -1232,7 +1234,7 @@ SOFTWARE.
 
 -----------------------------------------------------------------------
 
-astro 7.3.3
+astro 7.4.2
 Declared licence: MIT
 
 LICENSE
@@ -1553,7 +1555,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 -----------------------------------------------------------------------
 
-devalue 5.9.2
+devalue 5.9.4
 Declared licence: MIT
 
 LICENSE
@@ -1947,7 +1949,7 @@ THIS SOFTWARE.
 
 -----------------------------------------------------------------------
 
-zod 4.6.5
+zod 4.6.7
 Declared licence: MIT
 
 LICENSE
