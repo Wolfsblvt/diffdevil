@@ -13,9 +13,10 @@ Use a current patched Node.js **22.23.4+ on the 22 line or 24.22.1+ on the 24 li
 and npm for source builds, including the website, manual and App toolchains.
 Astro 7.4.2 requires Node >=22.23.4; the separate manual's freshly resolved
 transitive graph also declares that floor. The published CLI/library retains its independent
-Node **22 or later** runtime contract. Local comparisons also require Git. The current
-native pass exercised Windows 11 with Node **24.19.0**, npm **11.17.0**, and
-PowerShell **7.6.5**. The preceding layout pass exercised Linux x64 with Node
+Node **22 or later** runtime contract. Local comparisons also require Git. An earlier
+native pass on the pre-floor candidate exercised Windows 11 with Node **24.19.0**,
+npm **11.17.0**, and PowerShell **7.6.5**; it does not qualify the patched source-build
+floor above. The preceding layout pass exercised Linux x64 with Node
 **22.16.0**, npm **10.9.2**, and Git **2.47.3** at `main@fe3d8b22`. Action
 metadata selects **node24** independently of the npm package's `>=22` floor.
 Native macOS remains unobserved; [Qualification](qualification.md) binds each
