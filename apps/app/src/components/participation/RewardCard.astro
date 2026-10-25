@@ -8,9 +8,9 @@ import Icon from '../Icon.astro';
 import Receipt from './Receipt.astro';
 interface Props { card: any; surveyLink?: boolean; next?: any; quote?: any; depart?: string | null }
 const { card, surveyLink = true, next = null, quote = null, depart = null } = Astro.props;
-const STANDING: Record<string, string> = { available: 'Open', accepted: 'Applies next', reserved: 'Reserved', retired: 'Set aside', 'partially-consumed': 'In use', consumed: 'Used', expired: 'Expired', corrected: 'Corrected' };
+const STANDING: Record<string, string> = { available: 'Open', accepted: 'Applies next', queued: 'Queued', active: 'Active', waiting: 'Waiting', exercised: 'Acquired', ended: 'Ended', withdrawn: 'Withdrawn', reserved: 'Reserved', retired: 'Set aside', 'partially-consumed': 'In use', consumed: 'Used', expired: 'Expired', corrected: 'Corrected' };
 const ICON: Record<string, string> = { ok: 'gift', warn: 'alert-triangle', muted: 'clock', info: 'gift' };
-const choosing = card.key === 'available' && !card.alternatives.some((alternative: any) => alternative.firstEligibleOn);
+const choosing = card.previewCadences?.length > 0;
 const answering = ['invite', 'draft'].includes(card.key);
 ---
 <section class:list={['m-sec', 'p-reward', `tone-${card.tone}`]} data-reward={card.key} aria-labelledby="p-reward-title">
@@ -23,7 +23,7 @@ const answering = ['invite', 'draft'].includes(card.key);
     {next && <Receipt receipt={next} title="Your next charge" />}
     {choosing && <div class="p-preview"><span class="m-k">See the price with your reward</span>
       <form class="m-form" method="post" action="/manage/do" data-preview-form><input type="hidden" name="action" value="reward-preview" />
-        <div class="a-seg sm" role="group" aria-label="Preview a Pro continuation">{['monthly', 'annual'].map(cadence => <button type="submit" name="cadence" value={cadence} aria-pressed={quote?.cadence === cadence ? 'true' : 'false'}>{cadence === 'monthly' ? 'Monthly' : 'Annual'}</button>)}</div></form>
+        <div class="a-seg sm" role="group" aria-label="Preview a Pro continuation">{card.previewCadences.map((cadence: string) => <button type="submit" name="cadence" value={cadence} aria-pressed={quote?.cadence === cadence ? 'true' : 'false'}>{cadence === 'monthly' ? 'Monthly' : 'Annual'}</button>)}</div></form>
       <span class="m-note" style="margin:0">A preview is Works' own quote. It reserves nothing.</span></div>}
     {quote?.receipt && <div data-preview={quote.cadence}><Receipt receipt={quote.receipt} title={`Pro ${quote.cadence} with your reward`} />
       {depart && <div class="m-acts" style="margin-top:10px"><a class="m-btn pri" href={depart}>Continue with Pro at Works <Icon name="arrow-up-right" size={13} /></a><span class="m-note" style="margin:0">Accepting there reserves this discount for that payment.</span></div>}</div>}

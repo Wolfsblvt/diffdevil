@@ -38,7 +38,8 @@ export function eligibilityOf(commercial) {
 
 /** Wirt's reward for this campaign from the facts it sent, or null. Wirt issues once per campaign key, across versions. */
 export function rewardFor(campaign, rewards) {
-  return (rewards ?? []).find(reward => reward.campaign.key === campaign.key) ?? null;
+  const matching = (rewards ?? []).filter(reward => reward?.campaign?.key === campaign.key);
+  return matching.find(reward => reward.available !== false) ?? matching[0] ?? null;
 }
 
 export function createParticipation({ store, commercial, campaign, now = () => new Date().toISOString() }) {

@@ -34,7 +34,7 @@ import { dirname, join, resolve } from 'node:path';
 import { createFakeGitHub, CODE, ENTITLEMENT_FIXTURE, INSTALLATIONS, LONG_RETAINED_PATHS, pullRequests, setScale } from './fixture.mjs';
 import { seedLocalState, executeLocal, recordLocalDelivery } from './seed.mjs';
 import { proManage, historyOnlyManage, planChoiceReturn, freeManage, businessManage, delegateManage, setupRecovery, manageAccess, COMMERCIAL_PRO, COMMERCIAL_FREE, COMMERCIAL_BUSINESS } from './manage.mjs';
-import { participationJourney, rewardOnlyJourney, nullableReceiverJourney, COMMERCIAL_BETA, COMMERCIAL_REWARD_ONLY, NULLABLE_LINK, NULLABLE_SIGNING_KEY, QA_CAMPAIGN } from './participation.mjs';
+import { participationJourney, typedRewardJourney, TYPED_REWARD_SPECIMENS, rewardOnlyJourney, nullableReceiverJourney, COMMERCIAL_BETA, COMMERCIAL_REWARD_ONLY, NULLABLE_LINK, NULLABLE_SIGNING_KEY, QA_CAMPAIGN } from './participation.mjs';
 import { appBuildTarget } from '../build-target.mjs';
 import { admissionJourney, seedAdmissionStore } from './admission.mjs';
 import { loadingJourney } from './loading.mjs';
@@ -1362,6 +1362,11 @@ try {
   await startWorker(undefined, STATE, { commercial: COMMERCIAL_BETA, participation: QA_CAMPAIGN });
   await signIn();
   await participationJourney(ctx);
+
+  await stopWorker();
+  await startWorker(undefined, STATE, { commercial: { ...COMMERCIAL_BETA, rewardSpecimens: TYPED_REWARD_SPECIMENS }, participation: QA_CAMPAIGN });
+  await signIn();
+  await typedRewardJourney(ctx);
 
   for (const [state, unlimited] of [['queued', false], ['expired', false], ['queued', true]]) {
     await stopWorker();
