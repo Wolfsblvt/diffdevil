@@ -45,6 +45,7 @@ An extra organization inherits the parent plan's features, billing cadence and r
 | Additional organisations | Not included | Paid add-on; same Pro capabilities and 3-private allowance | Paid add-on; same Business capabilities |
 | PR size, lifecycle and basic repository history | Included when history is enabled | Included | Included |
 | Base file measurements needed for policy replay | Retained with history, including excluded observations | Included | Included |
+| Policy Lab: one threshold or complete band-set experiment and policy-file handoff | Included over already-authorized retained history | Same Lab, with existing richer retained evidence | Same Lab, with existing evidence and authority context |
 | File-history exploration, clouds, Turnover and co-change | Preview/approved repository grant only | Included | Included |
 | Premium file-context modules in optional PR briefs | Approved repository grant only | Included | Included |
 | Progressive historical import | Up to 100 recent PRs per selected repository import | Recent first, followed by older recoverable history | Same, with coordinated onboarding |
