@@ -70,7 +70,7 @@ if (participation?.nextCharge) for (const row of presented.rows) if (row.term ==
             {['reward-only', 'no-coverage'].includes(presented.key) && personal && <AllowanceGroups capacity={personal.capacity} model={model} />}</div>
             <div class="m-exits"><span class="m-k"><Icon name="arrow-up-right" size={12} />At Wolfsblvt Works</span>
               {WORKS_EXITS.map((exit: any) => (works as any)[exit.key] ? <a href={depart(exit.key, exit.purpose)}><Icon name={exit.icon} size={16} /><span>{exit.label}</span><Icon name="arrow-up-right" size={13} class="go" /></a> : <span class="off"><Icon name={exit.icon} size={16} /><span>{exit.label}</span></span>)}
-              <span class="cap">{model.worksOrigin ? <>Opens at {model.commercialSource === 'fixture' ? 'a local stand-in for' : ''} account.wolfsblvt.works in a diffdevil frame. <b>Return to DiffDevil</b> brings you back to this page.</> : 'Works is not configured on this deployment, so its pages cannot be opened from here.'}</span></div></div></section>
+              <span class="cap">{model.worksOrigin ? <>Opens at {model.commercialSource === 'fixture' ? 'a local stand-in for' : ''} account.wolfsblvt.works in a diffdevil frame. <b>Return to diffdevil</b> brings you back to this page.</> : 'Works is not configured on this deployment, so its pages cannot be opened from here.'}</span></div></div></section>
 
           {participation?.card && <RewardCard card={participation.card} next={participation.next} quote={participation.quote} depart={depart('experience', 'change-plan')} />}
 

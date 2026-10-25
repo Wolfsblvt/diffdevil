@@ -1,6 +1,7 @@
 import { readFile, readdir } from "node:fs/promises";
 import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
+import { findProductNameViolations } from "./product-name-check.mjs";
 
 const root = new URL("../", import.meta.url);
 const failures = [];
@@ -32,6 +33,13 @@ for (const file of jsonFiles) {
   }
 }
 
+const productNameViolations = await findProductNameViolations(rootPath);
+for (const violation of productNameViolations) {
+  failures.push(
+    `prohibited product spelling ${JSON.stringify(violation.value)} at ${violation.path}:${violation.line}:${violation.column}`,
+  );
+}
+
 const conformanceRoot = new URL("src/diffdevil/contracts/detail/v1/conformance/", root);
 let cases = 0;
 const caseIds = new Set();
@@ -55,8 +63,8 @@ for (const entry of await readdir(conformanceRoot, { withFileTypes: true })) {
 
 if (cases === 0) failures.push('No declared conformance cases were found.');
 
-// Documentation meaning and branding are reviewed from their maintained sources.
-// Parsing machine contracts does not prove narrative quality or freeze a corpus quota.
+// Narrative quality remains an authored judgment. This check protects only the settled
+// canonical spelling and machine-readable contracts instead of freezing public prose.
 if (failures.length > 0) {
   console.error("diffdevil preparation check failed:");
   for (const failure of failures) {
@@ -64,5 +72,7 @@ if (failures.length > 0) {
   }
   process.exitCode = 1;
 } else {
-  console.log(`diffdevil preparation check passed: ${jsonFiles.length} JSON assets, ${cases} declared conformance cases.`);
+  console.log(
+    `diffdevil preparation check passed: ${jsonFiles.length} JSON assets, ${cases} declared conformance cases, canonical product spelling.`,
+  );
 }

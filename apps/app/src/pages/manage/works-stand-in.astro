@@ -1,7 +1,7 @@
 ---
 // SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
 // A stand-in for the Wirt-hosted destinations, served only when the loopback commercial fixture is active: the real
-// pages open at account.wolfsblvt.works in the DiffDevil frame. Its buttons simulate what Works would have done before
+// pages open at account.wolfsblvt.works in the diffdevil frame. Its buttons simulate what Works would have done before
 // the person returns to diffdevil's one admitted manage-plan destination.
 import AppShell from '../../layouts/AppShell.astro';
 import ActionForm from '../../components/manage/ActionForm.astro';
@@ -14,11 +14,11 @@ const link = dest === 'link';
   <section class="m-sec" style="max-width:560px;margin:40px auto" data-works-stand-in={dest}>
     <header><h2>{link ? 'Choose your plan' : 'Manage your plan'} <span class="m-none">at Wolfsblvt Works · stand-in</span></h2></header>
     <div class="b">
-      <p class="m-lede">{link ? 'Local stand-in for the first upgrade. At Works you would sign in, approve linking this diffdevil account, and diffdevil would forward you straight to Works\' DiffDevil plan page.' : `Local stand-in for Wirt's /diffdevil/manage-plan/${dest} page. Return to DiffDevil lands on diffdevil's one admitted manage-plan destination; diffdevil itself remembers what you were doing.`}</p>
+      <p class="m-lede">{link ? 'Local stand-in for the first upgrade. At Works you would sign in, approve linking this diffdevil account, and diffdevil would forward you straight to Works\' diffdevil plan page.' : `Local stand-in for Wirt's /diffdevil/manage-plan/${dest} page. Return to diffdevil lands on diffdevil's one admitted manage-plan destination; diffdevil itself remembers what you were doing.`}</p>
       <div class="m-acts" style="margin-top:14px">
         {link
           ? <><ActionForm action="fixture-simulate" fields={{ kind: 'link-complete' }} label="Continue: linked, now the plan page" class="pri" back="/manage/plan" /><a class="m-btn" href="/manage/plan?works-link=pending">Simulate: link didn't finish</a></>
-          : <><ActionForm action="fixture-simulate" fields={{ kind: 'nothing' }} label="Return after paying (unconfirmed)" class="pri" back="/manage/plan" /><ActionForm action="fixture-simulate" fields={{ kind: 'add-slot' }} label="…after Works confirmed a new slot" back="/manage/plan" /><ActionForm action="fixture-simulate" fields={{ kind: 'pay' }} label="…after Works confirmed payment" back="/manage/plan" /><ActionForm action="fixture-simulate" fields={{ kind: 'reduce-to-free' }} label="…after the plan ended (its date passed)" back="/manage/plan" /><a class="m-btn ghost" href="/manage/plan">Return to DiffDevil</a></>}
+          : <><ActionForm action="fixture-simulate" fields={{ kind: 'nothing' }} label="Return after paying (unconfirmed)" class="pri" back="/manage/plan" /><ActionForm action="fixture-simulate" fields={{ kind: 'add-slot' }} label="…after Works confirmed a new slot" back="/manage/plan" /><ActionForm action="fixture-simulate" fields={{ kind: 'pay' }} label="…after Works confirmed payment" back="/manage/plan" /><ActionForm action="fixture-simulate" fields={{ kind: 'reduce-to-free' }} label="…after the plan ended (its date passed)" back="/manage/plan" /><a class="m-btn ghost" href="/manage/plan">Return to diffdevil</a></>}
       </div>
       {!link && runtime.participation && <div data-stand-in-reward style="margin-top:18px"><span class="m-k">Participation reward · what Works would do</span>
         <div class="m-acts" style="margin-top:8px;flex-wrap:wrap">

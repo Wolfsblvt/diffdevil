@@ -31,7 +31,7 @@ const WIRT = 'https://works.example.test';
 const KEY = 'fixture-signing-key-material-of-at-least-32-bytes';
 const USER = 123, OTHER = 456, BUSINESS = 789;
 const CAMPAIGN = readCampaign({ key: 'diffdevil-beta-survey', version: 1, survey: 'beta-v1', name: 'Beta survey', opensAt: '2027-03-01T00:00:00Z', closesAt: '2027-04-01T00:00:00Z', inviteAfterDays: 10, reminderAfterDays: 7 });
-const REASON = 'Participation reward · DiffDevil beta survey';
+const REASON = 'Participation reward · diffdevil beta survey';
 const REWARDS = [
   { key: 'monthly', kind: 'discount', tier: 'Pro', cadence: 'monthly', unit: 'percent', value: 50, uses: 3, charge_classes: ['first-purchase', 'renewal'], combinable: false },
   { key: 'annual', kind: 'discount', tier: 'Pro', cadence: 'annual', unit: 'percent', value: 20, uses: 1, charge_classes: ['first-purchase', 'renewal'], combinable: false }
@@ -55,7 +55,7 @@ function wirtDouble(clock) {
     const standing = reward.corrected ? 'corrected' : reward.reserved ? 'reserved' : reward.expired ? 'expired'
       : reward.selected && consumed >= REWARDS.find(value => value.key === reward.selected).uses ? 'consumed' : consumed > 0 ? 'partially-consumed' : subscription.paid ? 'accepted' : 'available';
     return { id: reward.id, state: standing, selected_reward: reward.selected, provenance: 'participation',
-      basis: { kind: 'discount', product: 'diffdevil', campaign: { id: 4, key: CAMPAIGN.key, version: CAMPAIGN.version, name: 'DiffDevil beta survey', reason: REASON }, claim_closes_at: '2027-05-01T00:00:00Z', valid_until: '2027-08-01T00:00:00Z', alternatives: REWARDS },
+      basis: { kind: 'discount', product: 'diffdevil', campaign: { id: 4, key: CAMPAIGN.key, version: CAMPAIGN.version, name: 'diffdevil beta survey', reason: REASON }, claim_closes_at: '2027-05-01T00:00:00Z', valid_until: '2027-08-01T00:00:00Z', alternatives: REWARDS },
       applications: reward.applications.map(entry => ({ operation_id: entry.operation, discount: entry.line, at: entry.at })),
       alternatives: REWARDS.map(value => ({ ...value, remaining_uses: value.uses - (reward.selected === value.key ? consumed : 0),
         first_eligible_on: subscription.paid && !reward.reserved && !['consumed', 'expired', 'corrected'].includes(standing) && subscription.cadence === value.cadence ? subscription.renewsOn : null,
@@ -68,7 +68,7 @@ function wirtDouble(clock) {
     const remaining = definition.uses - (reward.selected === definition.key ? reward.applications.length : 0);
     if (remaining < 1) return null;
     return { benefit_id: reward.id, amount_cents: PRICES[cadence] * definition.value / 100, component_id: 'discount', remaining_uses_after: remaining - 1, post_reward_base_cents: PRICES[cadence],
-      promise: { ...definition, product: 'diffdevil', currency: 'EUR', frequency: 'finite', campaign: { id: 4, key: CAMPAIGN.key, version: CAMPAIGN.version, name: 'DiffDevil beta survey', reason: REASON }, remaining_uses: remaining } };
+      promise: { ...definition, product: 'diffdevil', currency: 'EUR', frequency: 'finite', campaign: { id: 4, key: CAMPAIGN.key, version: CAMPAIGN.version, name: 'diffdevil beta survey', reason: REASON }, remaining_uses: remaining } };
   };
   const rewardOf = works => [...state.rewards.values()].find(reward => reward.works === works);
   async function fetch(input, init) {
@@ -311,9 +311,9 @@ test('pre-conversion previews are Wirt quotes rendered as receipts, monthly and 
   const monthly = await commercial.rewardQuote({ session: session(USER), cadence: 'monthly' });
   const annual = await commercial.rewardQuote({ session: session(USER), cadence: 'annual' });
   assert.equal(monthly.available && annual.available, true);
-  assert.deepEqual(receiptOf(monthly.quote, { cadence: 'monthly', protectedPrice: true }), { lines: [{ label: 'DiffDevil Pro monthly', amount: '€9.00' }, { label: REASON, amount: '−€4.50', reward: true }],
+  assert.deepEqual(receiptOf(monthly.quote, { cadence: 'monthly', protectedPrice: true }), { lines: [{ label: 'diffdevil Pro monthly', amount: '€9.00' }, { label: REASON, amount: '−€4.50', reward: true }],
     total: { label: 'Due now', amount: '€4.50' }, notes: ['50% off this and your next 2 monthly charges.', 'After the reward: €9/month at your protected beta price.'], on: null, reviewUrl: `${WIRT}/wirt/experience/quotes/1`, expiresOn: '25 Mar 2027' });
-  assert.deepEqual(receiptOf(annual.quote, { cadence: 'annual', protectedPrice: true }).lines, [{ label: 'DiffDevil Pro annual', amount: '€90.00' }, { label: REASON, amount: '−€18.00', reward: true }]);
+  assert.deepEqual(receiptOf(annual.quote, { cadence: 'annual', protectedPrice: true }).lines, [{ label: 'diffdevil Pro annual', amount: '€90.00' }, { label: REASON, amount: '−€18.00', reward: true }]);
   assert.deepEqual(receiptOf(annual.quote, { cadence: 'annual', protectedPrice: true }).total, { label: 'Due now', amount: '€72.00' });
   assert.deepEqual(receiptOf(annual.quote, { cadence: 'annual', protectedPrice: true }).notes, ['20% off this annual term.', 'Next annual renewal: €90 at your protected beta price.']);
   // Changing what Wirt says changes the receipt: nothing is derived from the percentage.
@@ -658,7 +658,7 @@ test('a preview is created only by the Origin-checked POST; any GET, including a
   assert.equal(posted.headers.get('location'), '/manage/plan?preview=annual&m=preview-ready');
   assert.equal(quotes(), before + 1);
   const shown = await loadParticipation({ runtime, viewer, session: sessionValue, model: await model(), preview: 'annual' });
-  assert.deepEqual(shown.quote.receipt.lines.map(line => `${line.label}=${line.amount}`), ['DiffDevil Pro annual=€90.00', `${REASON}=−€18.00`]);
+  assert.deepEqual(shown.quote.receipt.lines.map(line => `${line.label}=${line.amount}`), ['diffdevil Pro annual=€90.00', `${REASON}=−€18.00`]);
   assert.equal(shown.quote.receipt.total.amount, '€72.00');
   assert.equal(quotes(), before + 1, 'showing the requested preview again creates no further quote');
   assert.match((await post('weekly', { origin: APP })).headers.get('location'), /m=invalid/u);

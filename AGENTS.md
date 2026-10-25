@@ -33,8 +33,11 @@ separate integration cycle.
 ## Start with the relevant source
 
 Read `docs/VISION.md`, `docs/DIRECTION.md`, and `docs/branding.md` for product intent
-and naming, then use `docs/README.md` to enter the subject being changed. Maintained
-manuals plus `src/diffdevil/contracts/schemas/`, `src/diffdevil/contracts/detail/v1/`, and `src/diffdevil/presets/` own executable contracts.
+and naming, then use `docs/README.md` to enter the subject being changed. The product
+display name is case-sensitive: write `diffdevil` in lowercase everywhere, including at
+the beginning of a sentence. PascalCase is reserved for genuine implementation identifiers.
+Never normalize the display name from nearby room prose; resolve it from `docs/branding.md`.
+The maintained manuals plus `src/diffdevil/contracts/schemas/`, `src/diffdevil/contracts/detail/v1/`, and `src/diffdevil/presets/` own executable contracts.
 `docs/reference/` retains dated rationale and evidence, not newer authority over those
 contracts. A disagreement among code, schema, catalog, examples, and prose is a
 specific defect to reconcile, not permission to choose the easiest behavior.

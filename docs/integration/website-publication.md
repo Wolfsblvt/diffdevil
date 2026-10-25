@@ -134,7 +134,7 @@ operating readback must establish the actual canonical URL, successful submissio
 and receipt/handling route, and its channel-specific privacy information. Only then
 does the authorized custodian update the **private** canonical record with
 `additionalDirectContact: { label: "Contact Wolfsblvt Works", href: <observed HTTPS URL>,
-standing: "provisioned" }`. Diffdevil then consumes a fresh projection and rebuilds.
+standing: "provisioned" }`. diffdevil then consumes a fresh projection and rebuilds.
 Do not stage a real-looking provisioned pointer in public source, substitute another
 email or GitHub issues, or weaken the guard while waiting for that event.
 

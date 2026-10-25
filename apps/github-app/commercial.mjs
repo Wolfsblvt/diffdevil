@@ -132,7 +132,7 @@ export function createCommercialService({ store, wirt, signing, authorization, p
       let change;
       if (decision.kind === 'apply' || decision.kind === 'apply-and-rekey') {
         const slots = new Set(message.projection.benefits.organisation_capacity.map(value => value.slot));
-        // DiffDevil's documented unbinding rule: a slot absent from the applied capacity no longer funds its organisation.
+        // diffdevil's documented unbinding rule: a slot absent from the applied capacity no longer funds its organisation.
         const removedSlots = bindings.filter(binding => !slots.has(binding.slot)).map(binding => binding.slot);
         const remaining = bindings.filter(binding => slots.has(binding.slot));
         // The whole order is applied. Organisation authority is a separate product fact carried on
