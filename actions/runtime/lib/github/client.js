@@ -22,6 +22,7 @@ export class GitHubClient {
     #signal;
     #timeout;
     #retries;
+    #retryRateLimits;
     #sleep;
     #now;
     constructor(options = {}) {
@@ -42,6 +43,7 @@ export class GitHubClient {
         this.#signal = options.signal;
         this.#timeout = options.timeoutMs ?? 30000;
         this.#retries = options.readRetries ?? 2;
+        this.#retryRateLimits = options.retryRateLimits ?? true;
         this.responseBytes = options.responseBytes ?? DEFAULT_LIMITS.resultBytes;
         for (const [name, value] of [['timeoutMs', this.#timeout], ['readRetries', this.#retries], ['responseBytes', this.responseBytes]]) {
             if (!Number.isSafeInteger(value) || value < (name === 'readRetries' ? 0 : 1))
@@ -85,7 +87,7 @@ export class GitHubClient {
                 throw new GitHubRequestError(undefined, method !== 'GET', `GitHub ${method} request did not return a response. ${method === 'GET' ? 'Check network access and retry.' : 'Read back the intended state before retrying this write.'}`, phase);
             }
             const rateLimited = response.status === 429 || response.status === 403 && (response.headers.has('retry-after') || response.headers.get('x-ratelimit-remaining') === '0');
-            if (method === 'GET' && attempt < this.#retries && (rateLimited || response.status >= 500)) {
+            if (method === 'GET' && attempt < this.#retries && (response.status >= 500 || rateLimited && this.#retryRateLimits)) {
                 await this.discardBody(response);
                 await this.#sleep(this.retryDelay(response.headers, attempt, rateLimited));
                 continue;
