@@ -9,7 +9,9 @@ actually proves. Local Windows execution, live GitHub and publication are differ
 
 ## Prerequisites and selected versions
 
-Use Node.js 22 or later and npm; local comparisons also require Git. The current
+Use Node.js **22.22.0 or later** and npm for source builds, including the website,
+manual and App toolchains. The published CLI/library retains its independent
+Node **22 or later** runtime contract. Local comparisons also require Git. The current
 native pass exercised Windows 11 with Node **24.19.0**, npm **11.17.0**, and
 PowerShell **7.6.5**. The preceding layout pass exercised Linux x64 with Node
 **22.16.0**, npm **10.9.2**, and Git **2.47.3** at `main@fe3d8b22`. Action
@@ -289,8 +291,8 @@ and exact current [Qualification](qualification.md).
 
 ## Public-manual toolchain and qualification
 
-The manual uses an isolated supported peer graph: Node >=22.12, Astro 7.3.3,
-Starlight 0.42.2 and the source-only `@wolfsblvt/starlight-works` package from
+The manual uses an isolated supported peer graph: Node >=22.22.0, Astro 7.4.0,
+Starlight 0.42.6 and the source-only `@wolfsblvt/starlight-works` package from
 `Wolfsblvt/starlight-works@22d4567006ec7a33d890fab2f3d3515332498a90`.
 `npm --prefix apps/manual run toolchain` fetches that exact source and invokes its
 own build/pack route. The website's existing locked graph is not upgraded for this
