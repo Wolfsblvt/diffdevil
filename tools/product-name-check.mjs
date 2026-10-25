@@ -21,6 +21,8 @@ const IGNORED_DIRECTORIES = new Set([
 // These files necessarily contain the forbidden examples as contract or regression data.
 const IGNORED_FILES = new Set([
   'apps/website/product-name-check.test.mjs',
+  // Decisions preserve attributable historical rationale rather than current product copy.
+  'docs/DECISIONS.md',
   'docs/branding.md',
   'tools/product-name-check.mjs',
 ]);

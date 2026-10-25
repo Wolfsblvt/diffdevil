@@ -258,7 +258,7 @@ its actual credential/data assignment. Source acceptance is not activation.
    original Wirt TEST registration remain intact during staging admission. Before
    production Wirt admission, resolve any actual App-held TEST state and its
    preservation at the admission seam described below.
-   Wirt payment/login/mail receipts do not prove DiffDevil
+   Wirt payment/login/mail receipts do not prove diffdevil
    application, and HTTP acceptance does not prove projected entitlement.
 
 The activation owner also resolves actual recurring Worker/D1/Queue cost and

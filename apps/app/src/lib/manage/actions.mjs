@@ -723,7 +723,7 @@ export async function handleManageAction(request, { runtime, session, viewer, ex
 
 /**
  * Leaving for Works: record what the person was doing (purpose, where from, the applied order) so the return can say
- * what it waits for, then send them to the Works destination in the DiffDevil frame. A GET, because the exits are links.
+ * what it waits for, then send them to the Works destination in the diffdevil frame. A GET, because the exits are links.
  */
 export async function handleDeparture(request, { runtime, session, viewer }) {
   const url = new URL(request.url);

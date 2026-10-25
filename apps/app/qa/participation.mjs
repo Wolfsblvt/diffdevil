@@ -28,7 +28,7 @@ export const COMMERCIAL_BETA = Object.freeze({ account: 123, linked: true, since
     original_window: { started_on: betaStartsOn, until: betaEndsOn }, access_windows: [{ started_on: betaStartsOn, until: betaEndsOn }],
     current_access: { started_on: betaStartsOn, until: betaEndsOn }, remaining_units: utcDaysBetween(today, betaEndsOn) }],
   grants: [{ kind: 'beta', until: betaEndsOn }], protection: { kind: 'beta' }, capacity: [{ slot: 'slot-included', funding: 'included', binding: null }],
-  participation: { campaign: { key: 'qa-beta-survey', version: 1, name: 'DiffDevil beta survey', reason: 'Participation reward · DiffDevil beta survey', claim_closes_at: campaignClosesAt, valid_until: `${addUtcDays(today, 44)}T00:00:00Z`,
+  participation: { campaign: { key: 'qa-beta-survey', version: 1, name: 'diffdevil beta survey', reason: 'Participation reward · diffdevil beta survey', claim_closes_at: campaignClosesAt, valid_until: `${addUtcDays(today, 44)}T00:00:00Z`,
     rewards: [{ key: 'monthly', kind: 'discount', tier: 'Pro', cadence: 'monthly', unit: 'percent', value: 50, uses: 3, charge_classes: ['first-purchase', 'renewal'], combinable: false }, { key: 'annual', kind: 'discount', tier: 'Pro', cadence: 'annual', unit: 'percent', value: 20, uses: 1, charge_classes: ['first-purchase', 'renewal'], combinable: false }] } } });
 /** QA's campaign window surrounds the real run date; it does not change the App clock or launch defaults. */
 export const QA_CAMPAIGN = Object.freeze({ key: 'qa-beta-survey', version: 1, survey: 'beta-v1', name: 'Beta survey', opensAt: campaignOpensAt, closesAt: campaignClosesAt, inviteAfterDays: 0, reminderAfterDays: 1 });
@@ -206,12 +206,12 @@ export async function participationJourney(ctx) {
   await Promise.all([page.waitForURL(url => new URL(url).searchParams.get('preview') === 'monthly' && new URL(url).searchParams.get('m') === 'preview-ready'), page.getByRole('button', { name: 'Monthly' }).click()]);
   await page.waitForLoadState('networkidle');
   const monthly = (await reward()).receipts[0];
-  check('the monthly preview is Works\' receipt: €9.00, the reward under its public reason, €4.50 due, then the protected price', monthly?.rows.join('|') === 'DiffDevil Pro monthly=€9.00|Participation reward · DiffDevil beta survey=−€4.50|Due now=€4.50'
+  check('the monthly preview is Works\' receipt: €9.00, the reward under its public reason, €4.50 due, then the protected price', monthly?.rows.join('|') === 'diffdevil Pro monthly=€9.00|Participation reward · diffdevil beta survey=−€4.50|Due now=€4.50'
     && monthly.notes.join(' ') === '50% off this and your next 2 monthly charges. After the reward: €9/month at your protected beta price.', JSON.stringify(monthly));
   await Promise.all([page.waitForURL(url => new URL(url).searchParams.get('preview') === 'annual'), page.getByRole('button', { name: 'Annual' }).click()]);
   await page.waitForLoadState('networkidle');
   const annual = (await reward()).receipts[0];
-  check('the annual preview reads €90.00, −€18.00, €72.00 due, then €90 at the protected price', annual?.rows.join('|') === 'DiffDevil Pro annual=€90.00|Participation reward · DiffDevil beta survey=−€18.00|Due now=€72.00'
+  check('the annual preview reads €90.00, −€18.00, €72.00 due, then €90 at the protected price', annual?.rows.join('|') === 'diffdevil Pro annual=€90.00|Participation reward · diffdevil beta survey=−€18.00|Due now=€72.00'
     && annual.notes.join(' ') === '20% off this annual term. Next annual renewal: €90 at your protected beta price.', JSON.stringify(annual));
   check('the preview offers the way to continue at Works and says a preview reserves nothing', /reserves nothing/u.test(await text()) && (await page.locator('[data-preview] a.m-btn').count()) === 1);
   await shot('participation-preview-annual');
@@ -226,7 +226,7 @@ export async function participationJourney(ctx) {
   const partial = await reward();
   const nextRow = await page.evaluate(() => [...document.querySelectorAll('.m-dl dt')].find(dt => dt.textContent === 'Next renewal')?.nextElementSibling?.textContent ?? '');
   check('the confirmed payment applies one use: two remain, one application is listed and the next charge is Works\' discounted receipt', partial.key === 'partially-consumed' && partial.title === '2 discounted charges remain' && partial.applied === 1
-    && partial.receipts[0]?.rows.join('|').startsWith('DiffDevil Pro monthly=€9.00|Participation reward · DiffDevil beta survey=−€4.50|Due on') && /50% off this and your next monthly charge\./u.test(partial.receipts[0].notes.join(' ')), JSON.stringify(partial));
+    && partial.receipts[0]?.rows.join('|').startsWith('diffdevil Pro monthly=€9.00|Participation reward · diffdevil beta survey=−€4.50|Due on') && /50% off this and your next monthly charge\./u.test(partial.receipts[0].notes.join(' ')), JSON.stringify(partial));
   check('the standing card names the discounted next renewal from the same Works answer', /€4\.50 on/u.test(nextRow) && /with your participation reward/u.test(nextRow), nextRow);
   await shot('participation-partially-consumed');
   await simulate('reward-renew'); await simulate('reward-renew');

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
 /**
- * The product-facing Wirt seam of Plan & funding: the six Works destinations the standing card opens in the DiffDevil
+ * The product-facing Wirt seam of Plan & funding: the six Works destinations the standing card opens in the diffdevil
  * frame, and the presentation of a benefit projection (wirt.benefit-projection/v1, restricted renewal presentation) as
  * the commercial consumer's status route reports it. diffdevil never calculates an amount; the renewal total is the
  * display-only figure Works supplies. No grace length or countdown is invented; supplied component dates stay visible.

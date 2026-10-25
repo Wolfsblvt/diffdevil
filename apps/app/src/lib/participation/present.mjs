@@ -147,7 +147,7 @@ export function presentReward(view, { now, protectedPrice = false } = {}) {
   return card;
 }
 
-const lineLabel = (charge, cadence, index) => (index === 0 ? `DiffDevil Pro ${cadence === 'annual' ? 'annual' : 'monthly'}` : 'Additional organisation');
+const lineLabel = (charge, cadence, index) => (index === 0 ? `diffdevil Pro ${cadence === 'annual' ? 'annual' : 'monthly'}` : 'Additional organisation');
 
 /**
  * A receipt from one Wirt quote or next-charge answer: the underlying price, each reward line under its public reason,
