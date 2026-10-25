@@ -18,7 +18,7 @@ interface Props {
   state: PlaygroundState; acquired: Acquired | undefined; previous: Acquired | undefined;
   evaluation: Evaluation | EvaluationFailure | undefined; lastValid: Evaluation | undefined;
   working: boolean; error: ApiError | undefined; newerHead: string | undefined; policyText: string;
-  onView: (view: View) => void; onHead: (head: 'snapshot' | 'live') => void;
+  onView: (view: View) => void; onHead: (head: 'snapshot' | 'live') => void; onRetry: () => void;
 }
 
 /** One right-aligned numeric sub-column per figure, so file rows line up digit under digit. */
@@ -37,6 +37,11 @@ export function Result(props: Props) {
   const tiles = useRef<(HTMLButtonElement | null)[]>([]);
   const current = evaluation?.ok ? evaluation : lastValid;
   const stale = !!(evaluation && !evaluation.ok);
+  const errorNotice = error && <p className="status" role="alert">
+    {errorText(error)}
+    {error.code === 'E_GITHUB_RATE_LIMIT' && <button type="button" className="link-plain small" disabled={working} onClick={props.onRetry}>{working ? c.states.retrying : c.states.retryNow}</button>}
+    {props.previous ? ` (${c.states.previous})` : ''}
+  </p>;
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -52,7 +57,7 @@ export function Result(props: Props) {
   if (!acquired || !current) {
     return (
       <section className="pg-main pg-main-empty" aria-live="polite">
-        {error ? <p className="status" role="alert">{errorText(error)}</p> : <p className="status"><span className="spinner" aria-hidden="true" />{working ? c.working : 'Loading the example…'}</p>}
+        {errorNotice ?? <p className="status"><span className="spinner" aria-hidden="true" />{working ? c.working : 'Loading the example…'}</p>}
       </section>
     );
   }
@@ -107,7 +112,7 @@ export function Result(props: Props) {
           </div>
         )}
         {example && <p className="pg-why"><strong>{c.whyThisPr}</strong> — {example.id} · {example.variant} · source {example.sourceId}</p>}
-        {error && acquired && <p className="status" role="alert">{errorText(error)} {props.previous ? `(${c.states.previous})` : ''}</p>}
+        {errorNotice}
         {stale && <p className="status" role="alert">Configuration error in the policy — showing the result {c.states.previousPolicy}.</p>}
       </div>
 

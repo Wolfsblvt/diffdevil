@@ -12,6 +12,8 @@ export interface GitHubClientOptions {
   readonly signal?: AbortSignal;
   readonly timeoutMs?: number;
   readonly readRetries?: number;
+  /** Surface rate limits immediately instead of retrying them; transient read retries remain enabled. */
+  readonly retryRateLimits?: boolean;
   readonly responseBytes?: number;
   readonly sleep?: (milliseconds: number) => Promise<void>;
   readonly now?: () => number;
@@ -44,6 +46,7 @@ export class GitHubClient {
   #signal: AbortSignal | undefined;
   #timeout: number;
   #retries: number;
+  #retryRateLimits: boolean;
   #sleep: (ms: number) => Promise<void>;
   #now: () => number;
   constructor(options: GitHubClientOptions = {}) {
@@ -58,6 +61,7 @@ export class GitHubClient {
     this.#signal = options.signal;
     this.#timeout = options.timeoutMs ?? 30000;
     this.#retries = options.readRetries ?? 2;
+    this.#retryRateLimits = options.retryRateLimits ?? true;
     this.responseBytes = options.responseBytes ?? DEFAULT_LIMITS.resultBytes;
     for (const [name, value] of [['timeoutMs', this.#timeout], ['readRetries', this.#retries], ['responseBytes', this.responseBytes]] as const) {
       if (!Number.isSafeInteger(value) || value < (name === 'readRetries' ? 0 : 1)) fail('E_CONFIG', `${name} must be a valid nonnegative safe integer (positive for sizes and timeouts).`, 'config');
@@ -92,7 +96,7 @@ export class GitHubClient {
         throw new GitHubRequestError(undefined, method !== 'GET', `GitHub ${method} request did not return a response. ${method === 'GET' ? 'Check network access and retry.' : 'Read back the intended state before retrying this write.'}`, phase);
       }
       const rateLimited = response.status === 429 || response.status === 403 && (response.headers.has('retry-after') || response.headers.get('x-ratelimit-remaining') === '0');
-      if (method === 'GET' && attempt < this.#retries && (rateLimited || response.status >= 500)) {
+      if (method === 'GET' && attempt < this.#retries && (response.status >= 500 || rateLimited && this.#retryRateLimits)) {
         await this.discardBody(response);
         await this.#sleep(this.retryDelay(response.headers, attempt, rateLimited)); continue;
       }

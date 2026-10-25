@@ -32,7 +32,10 @@ A client accepts an HTTPS API base, including an Enterprise `/api/v3/` prefix,
 optional abort signal, response budget, read-retry policy and injected fetch for
 host integration. Defaults bind requests and pagination to the selected origin
 and endpoint, reject redirects, bound response bytes and honor rate-limit
-backoff. The token is not serialized into results or provider error bodies.
+backoff. A host can set `retryRateLimits: false` to return typed throttle errors
+immediately while retaining `readRetries` for network and server failures. The
+default preserves rate-limit retries. The token is not serialized into results
+or provider error bodies.
 No inline CLI token option is exposed.
 
 For private data, the caller supplies a token that can read the selected PR and
