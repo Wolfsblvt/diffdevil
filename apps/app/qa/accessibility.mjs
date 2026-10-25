@@ -2,6 +2,7 @@
 /** Browser-exposed semantics and real keyboard transitions on the common App, not spoken screen-reader output. */
 import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { mosaicModel } from '../src/lib/charts/models.mjs';
 
 export async function accessibilityJourney({ page, check, go, settled, shot, OUT, ORIGIN, qualifyFrame }) {
   const session = await page.context().newCDPSession(page);
@@ -68,6 +69,32 @@ export async function accessibilityJourney({ page, check, go, settled, shot, OUT
         await host.getByRole('button', { name: 'Chart', exact: true }).focus(); await page.keyboard.press('Enter');
       }
     }
+    // Exercise the shared frame with an honestly empty model, as private file charts can have named files but no rows.
+    await go('/'); await settled();
+    const emptyHost = page.locator('[data-chart-id="volume"]');
+    const populatedModel = await emptyHost.evaluate(host => host.__frame.model);
+    const emptyModel = mosaicModel({ buckets: [], unit: 'week', period: '90 days', labelOf: () => '', nameOf: () => '' });
+    await emptyHost.evaluate((host, model) => host.__frame.update(model), emptyModel);
+    const emptyPlot = emptyHost.locator('[data-plot]');
+    await emptyPlot.focus();
+    for (const key of ['Home', 'End', 'ArrowDown', 'ArrowUp', 'Enter']) await page.keyboard.press(key);
+    await emptyHost.evaluate(host => {
+      host.__frame.setFocus(-1);
+      host.__frame.setSelection(0);
+      host.__frame.update({ ...host.__frame.model, sel: 0 });
+    });
+    const emptyState = await emptyHost.evaluate(host => ({
+      rowCount: host.__frame.spec.rows,
+      focus: host.__frame.state.focus,
+      selection: host.__frame.state.sel,
+      plotFocused: host.querySelector('[data-plot]') === document.activeElement,
+      readout: host.querySelector('[data-announce]').textContent
+    }));
+    check('Empty chart: navigation and invalid indices preserve null row state and the truthful empty summary',
+      emptyState.rowCount === 0 && emptyState.focus === null && emptyState.selection === null
+        && emptyState.plotFocused && /0 weeks · 0 of 0 merged PRs recovered/u.test(emptyState.readout), JSON.stringify(emptyState));
+    await emptyHost.evaluate((host, model) => host.__frame.update(model), populatedModel);
+
     // Pointer inspection can preselect the keyboard's entry date without ever touching its live region.
     // Entry and a boundary arrow still owe that date's values, even when no visual update is needed.
     for (const reducedMotion of ['no-preference', 'reduce']) {
@@ -176,8 +203,13 @@ export async function accessibilityJourney({ page, check, go, settled, shot, OUT
     } finally { release(); await page.unroute(`${ORIGIN}/**`, intercept); }
     await page.locator('[data-loading-retry]').focus(); await page.keyboard.press('Enter');
     await page.locator('[data-analytical-loading]').waitFor({ state: 'detached' }); await settled();
-    check('Retry: Enter loads the data and restores keyboard focus to main', await page.locator('#main').evaluate(element => element === document.activeElement)
-      && /Data loaded/u.test(await page.locator('[data-live-region]').innerText()));
+    await page.waitForFunction(() => ['Data loaded.', 'File history loaded.'].includes(document.querySelector('[data-live-region]')?.textContent?.trim() ?? ''));
+    const retryCompletion = await page.locator('[data-live-region]').innerText();
+    check('Retry: Enter completes the common read, accepts its later file-history enrichment announcement, and restores focus to main',
+      await page.locator('#main').evaluate(element => element === document.activeElement)
+        && /^(Data loaded\.|File history loaded\.)$/u.test(retryCompletion)
+        && await page.locator('[data-analytical-loading]').count() === 0,
+      JSON.stringify({ completion: retryCompletion, focus: await page.evaluate(() => document.activeElement?.id) }));
     await tree('History/recovered');
   } finally {
     await writeFile(join(OUT, 'accessibility-trees.json'), JSON.stringify(trees, null, 2));
