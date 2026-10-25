@@ -47,6 +47,7 @@ import { installEntry, installedShell } from './installability.mjs';
 import { currentPolicyJourney } from './current-policy.mjs';
 import { policyLabJourney } from './policy-lab.mjs';
 import { accessibilityJourney } from './accessibility.mjs';
+import { cloudViewIsReady } from './cloud-view-readiness.mjs';
 
 const target = appBuildTarget();
 const IDENTITY_ONLY = process.argv.includes('--identity');
@@ -383,18 +384,7 @@ async function qualifyFrame(label, selector) {
 
 /** Wait for the cloud view itself and its latest layout, not merely retained words from the previous view. */
 async function waitForCloudView(selector, timeout = 10_000) {
-  await page.waitForFunction(selector => {
-    const host = document.querySelector(selector);
-    const cloud = host?.querySelector('.cl');
-    const stage = host?.querySelector('.cl-wrap');
-    const list = host?.querySelector('.cl-list');
-    return host?.classList.contains('is-mounted')
-      && !document.body.classList.contains('is-drawing')
-      && cloud && !cloud.classList.contains('is-busy')
-      && stage && getComputedStyle(stage).display !== 'none'
-      && list && getComputedStyle(list).display === 'none'
-      && host.querySelectorAll('.cl-words .cl-w').length > 0;
-  }, selector, { timeout });
+  await page.waitForFunction(cloudViewIsReady, selector, { timeout });
 }
 
 /** The cloud: words packed (in the Worker where available), partners on focus, Top column, arrangement, metric switch, keyboard walk and list view. */

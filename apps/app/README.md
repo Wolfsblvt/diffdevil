@@ -276,6 +276,12 @@ The existing Manage keyboard journey also checks confirmation, focus, reduced mo
 Results, browser trees and screenshots are written to `artifacts/app/qa/accessibility/`.
 This establishes the common browser interface; it does not exercise spoken screen-reader output, a real device, the private charts or live accounts.
 
+`node --test apps/app/qa/cloud-view-readiness.browser.mjs` exercises the public browser helper against both supported
+cloud-table visibility forms: Community hides the table itself, while a premium join may hide its containing wrapper.
+It also retains the settled, not-busy and populated readiness conditions without starting the Worker or reading private
+premium source. This focused browser check uses an installed Chromium; set `PLAYWRIGHT_EXECUTABLE_PATH` when it is not
+Playwright's bundled browser. It stays outside ordinary test discovery because root CI does not install a browser.
+
 Local variables live in `apps/app/.dev.vars` (ignored): `APP_ORIGIN` (an https origin, or an http loopback origin), `GITHUB_OAUTH_CLIENT_ID`, `GITHUB_OAUTH_CLIENT_SECRET`, `APP_SEAL_KEY` (at least 16 characters; it also keys the file locators), optional `APP_SESSION_DAYS` (default 30), optional `GITHUB_API_BASE` / `GITHUB_OAUTH_BASE` (defaults are GitHub; the sign-in destination is always github.com), `APP_ENTITLEMENT_FIXTURE` (a JSON map of numeric account to plan, honoured only on a loopback origin), `APP_COMMERCIAL_FIXTURE` (the loopback-only Works stand-in: the account's link, projection, capacity and bindings as JSON, see `qa/manage.mjs`), `APP_PLAN_ALLOWANCES` (optional operator allowances as JSON; the hosted offer applies when a subscription source is connected, no limit otherwise), `APP_HISTORY_RETENTION_DAYS` (retention of enabled history, 1–3660, default 3660), the managed runtime's `GITHUB_WEBHOOK_SECRET`, `GITHUB_APP_ID` and `GITHUB_APP_PRIVATE_KEY`, and the Wirt consumer's `WIRT_*` bindings from [the commercial link contract](../../docs/integration/app-commercial-link.md).
 
 ## Operator posture
