@@ -1,0 +1,185 @@
+# The Playground API Worker's production controller. It is a separate runtime and credential
+# boundary from the static website: only Worker or shared-engine inputs start it, and it never
+# builds or uploads the two Pages hosts. Accepted main uploads an immutable version, qualifies its
+# preview, promotes exactly that version and reads back the canonical Workers.dev Home.
+#
+# The native `paths` list is evaluated before a runner exists. It deliberately omits this file and
+# tools/publication/**: a controller-only landing starts no deployment, and controller changes take
+# effect at the next relevant change or a deliberate dispatch. docs/integration/production-publication.md
+# owns the input closure, secret contract, adoption and recovery.
+name: Deploy Playground
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/playground/**'
+      - '!apps/playground/README.md'
+      - '!apps/playground/**/*.test.mjs'
+      - 'src/diffdevil/**'
+      - '!src/diffdevil/tests/**'
+      - 'tools/build.mjs'
+      - 'tools/schema-build.mjs'
+      - 'tools/browser-library-build.mjs'
+      - 'tools/run-wrangler.mjs'
+      - 'tsconfig.json'
+      - 'package.json'
+      - 'package-lock.json'
+  pull_request:
+    paths:
+      - '.github/workflows/deploy-playground.yml'
+      - 'tools/publication/**'
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: 'deploy an exact accepted main commit, or roll back to one recorded version'
+        type: choice
+        options: [deploy, rollback]
+        default: deploy
+      source_sha:
+        description: 'deploy: the full 40-character main commit to deploy (empty = current main)'
+        type: string
+        default: ''
+      version_id:
+        description: 'rollback: the recorded Worker version ID to restore at 100%'
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  controller:
+    name: Controller checks
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    concurrency:
+      group: playground-controller-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - name: Restore locked project packages
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Workflow boundaries and controller logic
+        run: node --test tools/publication/
+
+  deploy:
+    name: Deploy accepted main
+    # Automatic deployment starts only after Ops adoption sets the repository variable; until then
+    # a relevant push starts no job. A dispatch is the bounded adoption and recovery route.
+    if: >-
+      github.ref == 'refs/heads/main' && (
+      (github.event_name == 'push' && vars.DIFFDEVIL_PLAYGROUND_DEPLOYMENT == 'automatic') ||
+      (github.event_name == 'workflow_dispatch' && inputs.operation == 'deploy'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: diffdevil-playground
+      url: https://diffdevil-playground.wolfsblvt.workers.dev
+    # One production slot. A queued run is replaced only by a newer one, which resolves current main.
+    concurrency:
+      group: diffdevil-playground-production
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Production resolves main after entering its slot, so an older queued event cannot
+          # restore an older Worker. A dispatch may name one exact accepted main commit.
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.source_sha || 'main' }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Admit the exact accepted source
+        id: source
+        env:
+          REQUESTED: ${{ github.event_name == 'workflow_dispatch' && inputs.source_sha || '' }}
+        run: node tools/publication/source.mjs --requested "$REQUESTED"
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - name: Restore locked project packages
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Build the engine and dry-run the Worker bundle
+        run: npm run build && npm run check:workers
+      - name: Record the active version for rollback
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_WORKERS_API_TOKEN }}
+        run: node tools/publication/playground.mjs prior
+      - name: Upload an immutable version without traffic
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_WORKERS_API_TOKEN }}
+          SOURCE_SHA: ${{ steps.source.outputs.sha }}
+        run: node tools/publication/playground.mjs upload --source "$SOURCE_SHA"
+      - name: Qualify the version preview
+        run: node tools/publication/playground.mjs qualify --phase preview
+      - name: Promote exactly that version
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_WORKERS_API_TOKEN }}
+        run: node tools/publication/playground.mjs promote
+      - name: Read back the canonical Home
+        run: node tools/publication/playground.mjs qualify --phase production
+      - name: Write the deployment receipt
+        if: always()
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: node tools/publication/playground.mjs receipt --run "$RUN_URL"
+      - name: Preserve the receipt
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: playground-deployment-${{ github.run_id }}
+          path: artifacts/publication/playground/
+          retention-days: 90
+          if-no-files-found: warn
+
+  rollback:
+    name: Roll back to a recorded version
+    if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch' && inputs.operation == 'rollback'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: diffdevil-playground
+      url: https://diffdevil-playground.wolfsblvt.workers.dev
+    concurrency:
+      group: diffdevil-playground-production
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - name: Restore locked project packages
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Promote the recorded version
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_WORKERS_API_TOKEN }}
+          VERSION_ID: ${{ inputs.version_id }}
+        run: node tools/publication/playground.mjs rollback --version "$VERSION_ID"
+      - name: Read back the canonical Home
+        run: node tools/publication/playground.mjs qualify --phase production
+      - name: Write the rollback receipt
+        if: always()
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: node tools/publication/playground.mjs receipt --run "$RUN_URL"
+      - name: Preserve the receipt
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: playground-rollback-${{ github.run_id }}
+          path: artifacts/publication/playground/
+          retention-days: 90
+          if-no-files-found: warn

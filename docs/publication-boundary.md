@@ -17,7 +17,9 @@ extension, App or Skill releases.
 
 The public site/manual family uses the dedicated [website publication carrier](integration/website-publication.md).
 `npm run website:build:publication` builds its exact two-host artifact and never deploys.
-It does not release the managed App, extension, npm package or Action aliases.
+After Ops adoption, the [production publication controllers](integration/production-publication.md)
+publish that family and the Playground Worker from accepted relevant `main`; neither
+controller releases the managed App, extension, npm package or Action aliases.
 
 The open-tool family contains npm/library, CLI, Actions and standalone runtime.
 The extension, App server/dashboard and canonical Skill each have independent

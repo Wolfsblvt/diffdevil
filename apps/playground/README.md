@@ -102,9 +102,13 @@ wrangler versions deploy <version-id>@100% --message "Promote diffdevil playgrou
 ```
 
 Read back the deployment/version identity, then enable the production Workers.dev
-route and exercise the same journey at the canonical URL. For later changes, keep the
-preceding accepted version ID and use `wrangler versions deploy
-<previous-version-id>@100%` to roll back. This first Worker has no preceding
+route and exercise the same journey at the canonical URL. Later accepted versions use
+the [`Deploy Playground` controller](../../docs/integration/production-publication.md):
+after Ops adoption, a relevant `main` change uploads an immutable version, qualifies
+its preview, promotes exactly that version and reads back the canonical Home, while
+recording the preceding version. Its `rollback` dispatch performs `wrangler versions
+deploy <previous-version-id>@100%`; the same command by hand is the recovery route
+when Actions is unavailable. This first Worker has no preceding
 production version: if production exposure succeeds but its immediate readback fails,
 disable only its Workers.dev route and preserve the uploaded version and evidence for
 repair; do not delete the Worker or blindly upload another version.

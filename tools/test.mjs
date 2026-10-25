@@ -13,7 +13,9 @@ function discover(root) {
   });
 }
 // The premium extension's tests run where the extension is present; a Community checkout has no premium/ directory.
-const roots = ['src/diffdevil/tests', 'apps', ...(existsSync('premium') ? ['premium'] : [])];
+// The production publication controllers keep their tests beside their tools.
+const optional = ['tools/publication', 'premium'].filter(root => existsSync(root));
+const roots = ['src/diffdevil/tests', 'apps', ...optional];
 const files = roots.flatMap(discover).sort();
 if (files.length === 0) {
   console.error(`No ordinary test files were discovered under ${roots.join(' or ')}.`);

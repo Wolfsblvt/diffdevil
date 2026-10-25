@@ -3,27 +3,35 @@
 ## Meaning
 
 This is the build and operator carrier for publishing the existing product site,
-manual, FAQ and Lens Studio. It is publication preparation, not deployment
-authority, a public App launch, or evidence that the selected Cloudflare resources
-already exist. The accepted visual baseline remains in place. The separate App,
+manual, FAQ and Lens Studio: the guarded publication build, its legal input, emitted
+handlers, operating facts and readback meaning. It is not deployment authority or a
+public App launch. The accepted visual baseline remains in place. The separate App,
 extension Store and package releases keep their own availability boundaries.
 
-## Selected outputs and proposed hosting
+**Ordinary publication is CI-owned.** The first frozen two-host publication at
+`4bcb06fd` (2026-10-24) was performed by hand under this document as a finite launch
+operation: it created the projects, bound the legal projection, moved DNS and proved
+the first coherent cut. That bootstrap is not the steady-state model. After Ops
+adoption, the [production publication controllers](production-publication.md) build,
+upload and read back accepted relevant `main` automatically; the manual operator
+sections below remain the bootstrap record and the recovery route when Actions is
+unavailable.
+
+## Selected outputs and hosting
 
 Use two Cloudflare Pages **Direct Upload** projects with the generated advanced-mode
 `_worker.js` handlers. This fits the existing emitted artifacts without a runtime
-migration or a new deployment workflow. The concrete proposed names below require
-the operating owner's current account readback and technical judgment before use;
-they are not observed existing projects. Reuse a fitting existing project if one
-already owns the host, and record its exact name in the publication card.
+migration. Both projects exist since the 2026-10-24 bootstrap and own the hosts below;
+ordinary runs never create, recreate or reconfigure them.
 
-| Proposed project | Upload directory | Canonical host | Additional host |
+| Project | Upload directory | Canonical host | Additional host |
 | --- | --- | --- | --- |
 | `diffdevil-site` | `artifacts/website/dist` | `diffdevil.dev` | `www.diffdevil.dev` |
 | `diffdevil-docs` | `artifacts/manual/dist` | `docs.diffdevil.dev` | none |
 
 Production branch is `main`. Direct Upload is deliberate: pushing a source branch
-or opening a PR must not publish the site or expose a preview. Use the existing
+or opening a PR must not publish the site or expose a preview, and the GitHub
+Actions controller is the only automatic writer. It and any manual recovery use the
 locked Wrangler CLI through `node node_modules/wrangler/bin/wrangler.js`, with
 `WRANGLER_SEND_METRICS=false`; no global installation is required. The existing
 `tools/run-wrangler.mjs` accepts only Worker dev/deploy and is not a Pages wrapper.
@@ -272,6 +280,10 @@ Legal/provider anchors checked on 2026-10-24:
 and [Chrome storage](https://developer.chrome.com/docs/extensions/reference/api/storage).
 
 ## Operator effects after explicit publication authorization
+
+This section is the bootstrap record and the manual recovery route. The
+[production controllers](production-publication.md) carry the same order, receipt
+check, rollback coordinates and readback for ordinary publication.
 
 The finite publication card identifies the source, artifact hashes, actual account
 and project IDs, prior deployment/DNS state, approved operator data and readback
