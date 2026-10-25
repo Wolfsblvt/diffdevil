@@ -204,10 +204,12 @@ test('playground reports provider throttling as HTTP 429', async () => {
 test('playground returns valid upstream retry timing on all reader routes', async () => {
   const now = Date.UTC(2026, 9, 25, 0, 0, 0);
   const expected = new Date(now + 17_000).toISOString();
+  let calls = 0;
+  const delays = [];
   const options = {
     now: () => now,
-    readRetries: 0,
-    fetch: async () => new Response('{}', { status: 429, headers: { 'retry-after': '17' } })
+    sleep: async ms => { delays.push(ms); },
+    fetch: async () => { calls++; return new Response('{}', { status: 429, headers: { 'retry-after': '17' } }); }
   };
   const head = await readPublicPullRequestHead(PUBLIC_URL, options);
   const replay = await replayPublicPullRequest(PUBLIC_URL, options);
@@ -217,6 +219,8 @@ test('playground returns valid upstream retry timing on all reader routes', asyn
     assert.equal(result.error.code, 'E_GITHUB_RATE_LIMIT');
     assert.equal(result.error.retryAt, expected);
   }
+  assert.equal(calls, 3);
+  assert.deepEqual(delays, []);
   assertReplayResponse(head);
   assertReplayResponse(replay);
   assertResponse(analysis);
@@ -237,17 +241,37 @@ test('playground leaves unusable or elapsed upstream retry timing unknown', asyn
 test('playground exposes a future primary-quota reset as retry timing', async () => {
   const now = Date.UTC(2026, 9, 25, 0, 0, 0);
   const expected = new Date(now + 3600_000).toISOString();
+  const delays = [];
+  let calls = 0;
   const result = await replayPublicPullRequest(PUBLIC_URL, {
     now: () => now,
-    readRetries: 0,
-    fetch: async () => new Response('{}', { status: 403, headers: {
+    sleep: async ms => { delays.push(ms); },
+    fetch: async () => { calls++; return new Response('{}', { status: 403, headers: {
       'x-ratelimit-remaining': '0',
       'x-ratelimit-reset': String((now + 3600_000) / 1000)
-    } })
+    } }); }
   });
   assert.equal(result.error.code, 'E_GITHUB_RATE_LIMIT');
   assert.equal(result.error.retryAt, expected);
+  assert.equal(calls, 1);
+  assert.deepEqual(delays, []);
   assertReplayResponse(result);
+});
+
+test('public reader still retries a transient GitHub server error once', async () => {
+  const fake = new FakeGitHub();
+  const delays = [];
+  fake.before = call => fake.calls.length === 1
+    ? new Response('{}', { status: 502 })
+    : undefined;
+  const result = await analyzePublicPullRequest(PUBLIC_URL, {
+    sleep: async ms => { delays.push(ms); },
+    fetch: fake.fetch
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(fake.calls.length, 4);
+  assert.deepEqual(delays, [1000]);
 });
 
 const providerFailures = [

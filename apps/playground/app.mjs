@@ -67,8 +67,10 @@ function createPublicGitHubClient(options = {}) {
   const fetcher = options.fetch ?? globalThis.fetch.bind(globalThis);
   const client = new GitHubClient({
     readRetries: options.readRetries ?? 1,
+    retryRateLimits: false,
     timeoutMs: options.timeoutMs ?? 15000,
     now: options.now,
+    sleep: options.sleep,
     fetch: async (input, init) => {
       retryAt = undefined;
       const response = await fetcher(input, init);

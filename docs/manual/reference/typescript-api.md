@@ -960,6 +960,7 @@ export interface GitHubClientOptions {
     readonly signal?: AbortSignal;
     readonly timeoutMs?: number;
     readonly readRetries?: number;
+    readonly retryRateLimits?: boolean;
     readonly responseBytes?: number;
     readonly sleep?: (milliseconds: number) => Promise<void>;
     readonly now?: () => number;

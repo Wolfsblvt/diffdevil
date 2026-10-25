@@ -68,6 +68,23 @@ test('GitHub client honors server delays and does not retry permission denials',
   await assert.rejects(denied.json('/repos/test/repo'), e => e.diagnostic.code === 'E_GITHUB_PERMISSION' && !e.message.includes('fixture-token'));
   assert.equal(calls, before + 1);
 });
+test('GitHub client can return rate limits promptly while retaining server-error retries', async () => {
+  const delays = []; let calls = 0;
+  const client = new GitHubClient({ retryRateLimits: false, sleep: async ms => { delays.push(ms); }, fetch: async () => {
+    calls++;
+    if (calls === 1) return json({}, 429, { 'retry-after': '2' });
+    if (calls === 2) return json({}, 502);
+    return json({ recovered: true });
+  } });
+
+  await assert.rejects(client.json('/repos/test/repo'), error => error.diagnostic.code === 'E_GITHUB_RATE_LIMIT');
+  assert.equal(calls, 1);
+  assert.deepEqual(delays, []);
+
+  assert.deepEqual(await client.json('/repos/test/repo'), { recovered: true });
+  assert.equal(calls, 3);
+  assert.deepEqual(delays, [1000]);
+});
 test('GitHub client retries a read when response cleanup fails', async () => {
   const delays = []; let calls = 0;
   const client = new GitHubClient({ readRetries: 1, sleep: async ms => { delays.push(ms); }, fetch: async () => ++calls === 1 ? rejectedCleanup(502) : json({ recovered: true }) });
