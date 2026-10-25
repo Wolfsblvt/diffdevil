@@ -49,6 +49,7 @@ export class Frame {
   private restoredAt = -1;
   private pointerAt: [number, number] | null = null;
   private morphing = false;
+  private readoutMarkup = '';
   private observer: ResizeObserver;
 
   constructor(host: HTMLElement, recipe: Recipe) {
@@ -98,7 +99,11 @@ export class Frame {
     const index = this.state.focus ?? this.state.sel;
     const pinned = this.state.sel !== null && (this.state.focus === null || this.state.focus === this.state.sel);
     const drill = pinned && this.spec.drill ? this.spec.drill(this.state.sel!) : null;
-    this.readout.innerHTML = readoutHtml(readoutOf(this.model, index), { pinned, clearable: pinned && !this.spec.keepSel, drill, hint: index === null });
+    const markup = readoutHtml(readoutOf(this.model, index), { pinned, clearable: pinned && !this.spec.keepSel, drill, hint: index === null });
+    // Blurring the plot into its pinned controls must not replace those controls before focus reaches them.
+    if (markup === this.readoutMarkup) return;
+    this.readoutMarkup = markup;
+    this.readout.innerHTML = markup;
   }
 
   private say(): void {
@@ -164,7 +169,7 @@ export class Frame {
     this.plot.addEventListener('blur', () => { this.keyed = false; this.setFocus(null); });
     this.host.addEventListener('click', event => {
       const target = event.target as HTMLElement;
-      if (target.closest('.fr-clear')) { this.setSelection(null); return; }
+      if (target.closest('.fr-clear')) { this.setSelection(null); this.plot.focus({ preventScroll: true }); return; }
       const view = target.closest<HTMLButtonElement>('[data-view]');
       if (view) this.setView(view.dataset.view as 'chart' | 'table');
     });
