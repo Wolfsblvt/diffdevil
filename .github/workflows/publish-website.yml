@@ -78,7 +78,8 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: '24'
+          node-version: '>=24.22.1 <25'
+          check-latest: true
           package-manager-cache: false
       - name: Restore locked project packages
         run: npm ci --ignore-scripts --no-audit --no-fund
@@ -120,7 +121,8 @@ jobs:
         run: node tools/publication/source.mjs --requested "$REQUESTED"
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: '24'
+          node-version: '>=24.22.1 <25'
+          check-latest: true
           package-manager-cache: false
       - name: Restore locked project packages
         run: npm ci --ignore-scripts --no-audit --no-fund
@@ -188,7 +190,8 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: '24'
+          node-version: '>=24.22.1 <25'
+          check-latest: true
           package-manager-cache: false
       # The readback validates the Lens Studio API against its replay contract.
       - name: Restore locked project packages

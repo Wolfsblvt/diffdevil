@@ -9,8 +9,10 @@ actually proves. Local Windows execution, live GitHub and publication are differ
 
 ## Prerequisites and selected versions
 
-Use Node.js **22.22.0 or later** and npm for source builds, including the website,
-manual and App toolchains. The published CLI/library retains its independent
+Use a current patched Node.js **22.23.4+ on the 22 line or 24.22.1+ on the 24 line**
+and npm for source builds, including the website, manual and App toolchains.
+Astro 7.4.2 requires Node >=22.23.4; the separate manual's freshly resolved
+transitive graph also declares that floor. The published CLI/library retains its independent
 Node **22 or later** runtime contract. Local comparisons also require Git. The current
 native pass exercised Windows 11 with Node **24.19.0**, npm **11.17.0**, and
 PowerShell **7.6.5**. The preceding layout pass exercised Linux x64 with Node
@@ -281,7 +283,12 @@ launcher for version and scalar query. It inspects the installed CMD and
 PowerShell launcher files separately. The Linux POSIX path remains its own result.
 
 The read-only repository CI runs these same commands on Linux Node 22/24 and
-Windows Node 22/24. A source-authored matrix is not a passed hosted run. The native
+Windows Node 22/24. Runtime acquisition uses the patched minimums above and
+`check-latest: true`: setup-node's default cache-first major selection can otherwise
+reuse an older runner-image patch. Dependency caching is independent of this Node
+runtime selection. The existing publication controllers use the same patched
+Node 24 acquisition without changing their events or publication boundaries.
+A source-authored matrix is not a passed hosted run. The native
 Windows result is recorded in [Qualification](qualification.md); hosted Windows
 and Linux checks still require exact-head observation after publication.
 
@@ -291,12 +298,14 @@ and exact current [Qualification](qualification.md).
 
 ## Public-manual toolchain and qualification
 
-The manual uses an isolated supported peer graph: Node >=22.22.0, Astro 7.4.0,
+The manual uses an isolated supported peer graph: Astro 7.4.0,
 Starlight 0.42.6 and the source-only `@wolfsblvt/starlight-works` package from
 `Wolfsblvt/starlight-works@22d4567006ec7a33d890fab2f3d3515332498a90`.
 `npm --prefix apps/manual run toolchain` fetches that exact source and invokes its
 own build/pack route. The website's existing locked graph is not upgraded for this
-consumer. Prepared source/package and consumer receipts live under
+consumer. Use the source-build Node versions above for both toolchains: the fresh
+manual closure can require a newer Node patch than its Astro peer alone declares.
+Prepared source/package and consumer receipts live under
 `artifacts/manual-toolchain`. The generated child lock is retained in qualification
 artifacts; a clean transitive resolution is a new graph, not automatically reusable
 prior evidence.
