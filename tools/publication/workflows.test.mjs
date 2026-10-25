@@ -84,6 +84,22 @@ test('automatic deployment waits for its explicit Ops adoption switch; dispatch 
   }
 });
 
+test('a production push runs and publishes exactly its triggering commit, never a later main', () => {
+  // Sequence guarded here: relevant A queues, controller-only B lands, A starts. A must still check
+  // out, admit and execute A; resolving `main` at start would publish B with B's controller code.
+  const source = "${{ github.event_name == 'workflow_dispatch' && inputs.source_sha || github.sha }}";
+  for (const [workflow, job] of [[website, 'publish'], [playground, 'deploy']]) {
+    const [checkout, admit] = steps(workflow, job);
+    assert.match(checkout.uses, /^actions\/checkout@/u);
+    assert.equal(checkout.with.ref, source, `${workflow.name} checks out the triggering commit or the exact dispatch`);
+    assert.equal(admit.name, 'Admit the exact accepted source', 'admission runs before any other repository code');
+    assert.equal(admit.env.REQUESTED, source, `${workflow.name} admits only that same commit`);
+    for (const step of steps(workflow, job)) {
+      assert.doesNotMatch(JSON.stringify(step), /refs\/heads\/main|'main'|git (?:checkout|switch|pull|reset)/u, `${step.name ?? step.uses} never moves the source`);
+    }
+  }
+});
+
 test('production runs queue in one slot per surface and are never cancelled', () => {
   const groups = {};
   for (const workflow of [website, playground]) {
@@ -115,7 +131,8 @@ test('third-party actions are pinned to reviewed commits', () => {
 
 test('the static family admits its source, builds once and publishes manual first, site second', () => {
   const order = ['Admit the exact accepted source', 'Build the guarded publication pair', 'Record the production pair for rollback',
-    'Verify the receipt and publish the manual', 'Verify the receipt and publish the site', 'Read back the public hosts'];
+    'Verify the receipt and publish the manual', 'Verify the receipt and publish the site', 'Read back the public hosts',
+    'Qualify rendered search and theme on the live hosts'];
   const positions = order.map(name => named(website, 'publish', name));
   assert.ok(positions.every(position => position >= 0), 'every publication step exists');
   assert.deepEqual([...positions].sort((a, b) => a - b), positions, 'steps run in contract order');

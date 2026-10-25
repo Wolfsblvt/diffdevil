@@ -19,6 +19,7 @@ import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { api, entry, wrangler } from './cloudflare.mjs';
+import { qualificationChecks, replaySchema } from './playground.mjs';
 import { readback, summarize } from './readback.mjs';
 import { compareTree, listTree } from './tree.mjs';
 
@@ -137,7 +138,7 @@ export const SEARCH_ENTRY = 'pagefind/pagefind-entry.json';
  * from the previous one through the real custom domains. After a publication, `search` holds the
  * receipt digest of each host's search entry, so the served bytes are compared with the frozen pair.
  */
-export function publicChecks({ sources, redirect, search }) {
+export function publicChecks({ sources, redirect, search, lensStudio = [] }) {
   const site = HOSTS.site.origin;
   const docs = HOSTS.docs.origin;
   const html = { 'content-type': /text\/html/u };
@@ -151,8 +152,8 @@ export function publicChecks({ sources, redirect, search }) {
     { name: 'www compatibility redirect', url: `${COMPATIBILITY}/faq/?readback=1`, expect: { status: 308, location: `${site}/faq/?readback=1` } },
     { name: 'FAQ', url: `${site}/faq/`, expect: { status: 200, headers: html } },
     { name: 'Lens Studio page', url: `${site}/playground/`, expect: { status: 200, headers: html } },
-    { name: 'Lens Studio API from the site origin', url: `${PLAYGROUND_API}/health/ping`, origin: site,
-      expect: { status: 200, headers: { 'access-control-allow-origin': /^\*$/u } } },
+    // The page is only coherent when its live-analysis dependency answers the real journey.
+    ...lensStudio.map(check => ({ ...check, name: `Lens Studio API ${check.name}` })),
     ...['impressum', 'privacy', 'terms'].map(page => ({ name: `legal ${page}`, url: `${site}/${page}/`, expect: { status: 200, headers: legal } })),
     ...ORDER.map(host => ({ name: `${host} search index`, url: `${HOSTS[host].origin}/${SEARCH_ENTRY}`,
       expect: { status: 200, ...(search?.[host] ? { sha256: search[host] } : {}) } })),
@@ -162,14 +163,15 @@ export function publicChecks({ sources, redirect, search }) {
   return checks;
 }
 
-export async function readPublic({ fetch, sleep } = {}) {
+export async function readPublic({ fetch, sleep, schema = replaySchema(), pullRequest } = {}) {
   const sources = Object.fromEntries(ORDER.map(host => [host, load(`deploy-${host}`).commit]));
   // A publication also compares served bytes with its own frozen receipt; a rollback has none.
   const published = ORDER.every(host => load(`deploy-${host}`).rollback === false);
   const receipt = published ? JSON.parse(readFileSync(RECEIPT, 'utf8')) : null;
   const search = receipt ? Object.fromEntries(ORDER.map(host => [host, receipt[host].find(file => file.path === SEARCH_ENTRY)?.sha256])) : null;
   const redirect = receipt ? legacyRedirect(readFileSync(join(HOSTS.site.directory, '_redirects'), 'utf8')) : null;
-  const results = await readback(publicChecks({ sources, redirect, search }), { fetch, sleep });
+  const lensStudio = qualificationChecks(PLAYGROUND_API, schema, pullRequest);
+  const results = await readback(publicChecks({ sources, redirect, search, lensStudio }), { fetch, sleep });
   save('readback', { sources, results });
   summary(`Public readback:\n\n\`\`\`\n${summarize(results)}\n\`\`\``);
   if (results.some(result => !result.ok)) throw new Error('Public readback failed; the run summary names the recorded pair to restore.');
@@ -190,6 +192,7 @@ export function receipt({ run: runUrl = null } = {}) {
     source: publication?.source ?? null, publication,
     previous, deployed: { docs: loadOptional('deploy-docs'), site: loadOptional('deploy-site') },
     readback: loadOptional('readback'),
+    rendered: loadOptional('rendered-live'),
   };
   save('receipt', value);
   if (previous?.docs?.id && previous?.site?.id) {

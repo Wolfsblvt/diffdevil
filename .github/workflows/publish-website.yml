@@ -48,7 +48,7 @@ on:
         options: [publish, rollback]
         default: publish
       source_sha:
-        description: 'publish: the full 40-character main commit to publish (empty = current main)'
+        description: 'publish: the full 40-character main commit to publish (empty = the dispatched main head)'
         type: string
         default: ''
       docs_deployment:
@@ -99,23 +99,24 @@ jobs:
     environment:
       name: diffdevil-website
       url: https://diffdevil.dev
-    # One production slot for publication and rollback. A needed publication is never cancelled; a
-    # queued run is replaced only by a newer one, which resolves current main.
+    # One production slot for publication and rollback. A running publication is never cancelled; a
+    # queued run may be replaced by a newer relevant run, which publishes its own triggering commit.
     concurrency:
       group: diffdevil-website-production
       cancel-in-progress: false
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          # Production resolves main after entering its slot, so an older queued event cannot
-          # restore an older website. A dispatch may name one exact accepted main commit.
-          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.source_sha || 'main' }}
+          # A push publishes exactly the relevant commit that triggered it, with that commit's own
+          # controller code; a later excluded or controller-only commit cannot reach this run.
+          # A dispatch names one exact accepted main commit, or uses the dispatched main head.
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.source_sha || github.sha }}
           fetch-depth: 0
           persist-credentials: false
       - name: Admit the exact accepted source
         id: source
         env:
-          REQUESTED: ${{ github.event_name == 'workflow_dispatch' && inputs.source_sha || '' }}
+          REQUESTED: ${{ github.event_name == 'workflow_dispatch' && inputs.source_sha || github.sha }}
         run: node tools/publication/source.mjs --requested "$REQUESTED"
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
@@ -147,6 +148,11 @@ jobs:
         run: node tools/publication/static-family.mjs deploy --host site
       - name: Read back the public hosts
         run: node tools/publication/static-family.mjs readback
+      - name: Install the repository-selected Chromium
+        run: npx --no-install playwright install --with-deps chromium
+      # Credential-free; never visits legal routes and keeps no screenshots or page bodies.
+      - name: Qualify rendered search and theme on the live hosts
+        run: node tools/publication/rendered.mjs --mode live
       - name: Write the publication receipt
         if: always()
         env:
@@ -184,6 +190,9 @@ jobs:
         with:
           node-version: '24'
           package-manager-cache: false
+      # The readback validates the Lens Studio API against its replay contract.
+      - name: Restore locked project packages
+        run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Restore the recorded pair, manual first
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}

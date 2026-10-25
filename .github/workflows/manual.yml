@@ -8,6 +8,7 @@ on:
       - 'docs/manual/**'
       - 'tools/manual-*.mjs'
       - 'tools/public-build.mjs'
+      - 'tools/publication/rendered.mjs'
       - 'tools/website-*.mjs'
       - 'package*.json'
       - '.github/workflows/manual.yml'
@@ -44,6 +45,8 @@ jobs:
       - run: npx --no-install playwright install --with-deps chromium
       - run: npm --prefix apps/manual run render:visuals
       - run: npm run website:build
+      - name: Rendered search and theme on the built pair
+        run: node tools/publication/rendered.mjs --mode built
       - run: npm --prefix apps/manual test
       - run: npm --prefix apps/manual run test:projection
       - run: npm --prefix apps/manual run check
@@ -85,6 +88,7 @@ jobs:
             artifacts/website/dist/
             artifacts/website/qa/
             artifacts/website/faq-qa/
+            artifacts/publication/website/rendered-built.json
             artifacts/public-search/records.json
             artifacts/manual-toolchain/source-receipt.json
             artifacts/manual-toolchain/consumer-receipt.json

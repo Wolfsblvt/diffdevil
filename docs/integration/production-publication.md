@@ -87,7 +87,9 @@ Node 24 `npm run build && node --test "tools/publication/*.test.mjs"` over the w
 controller logic with fake Wrangler, fake Cloudflare API and the real Playground handler over the
 GitHub double. The same suite runs in ordinary `npm test`, so Verify carries it on all four
 platform cells. Site and manual content pull requests keep their existing Verify, public-manual
-and FAQ qualification. No pull-request job names an Environment or secret, `pull_request_target`
+and FAQ qualification; the public-manual two-host job also runs
+[`rendered.mjs --mode built`](../../tools/publication/rendered.mjs) over the real built pair, served
+at the canonical origins by its emitted handlers. No pull-request job names an Environment or secret, `pull_request_target`
 is never used, and no remote preview is deployed. Fork pull requests receive no secrets from
 GitHub in any case.
 
@@ -104,8 +106,11 @@ secrets. Third-party actions are pinned to reviewed commits; checkout never pers
 `GITHUB_TOKEN` stays `contents: read`. Dispatch input reaches scripts only through environment
 variables, never interpolated shell source.
 
-A push run checks out current `main` after entering its concurrency slot, so a queued older event
-cannot restore an older cut. A dispatch may name one full 40-character SHA.
+A push run checks out and admits exactly the commit that triggered it (`github.sha`), so the
+workflow, the controller code it executes and the published payload all come from that relevant
+commit. A later excluded or controller-only commit that lands while the run is queued cannot change
+its source or its executable controller. A dispatch may name one full 40-character SHA; without one
+it uses the main head the dispatch was created at.
 [`source.mjs`](../../tools/publication/source.mjs) admits the checkout only when it is clean,
 equals that requested commit and is contained in `origin/main`.
 
@@ -127,9 +132,22 @@ equals that requested commit and is contained in `origin/main`.
 6. Read back the public hosts without credentials: the site `/source/` page and the docs root
    must contain the published SHA (bounded retry for propagation, ten attempts 15 s apart); the
    joined search entry on both hosts must equal the receipt's bytes; then apex, `www` → apex 308
-   with path and query, FAQ, Lens Studio page, the Playground API's CORS answer from the site
-   origin, the three legal routes with `X-Robots-Tag: noindex`, both `robots.txt` and the first
-   moved legacy apex URL's 308 from the published `_redirects`. Bodies are never retained.
+   with path and query, FAQ, Lens Studio page, the three legal routes with
+   `X-Robots-Tag: noindex`, both `robots.txt` and the first moved legacy apex URL's 308 from the
+   published `_redirects`. The Lens Studio page is coherent only when its live API works, so the
+   same readback runs the Worker's own qualification journey against the canonical Playground Home
+   from the site origin: health identifying `diffdevil-playground`, the URL refusal, and
+   successful replay-contract `/api/head` and `/api/report` answers for the maintained public PR
+   with wildcard CORS and `no-store`. A health-only answer with missing analysis routes, the state
+   observed on 2026-10-21, fails publication readback. This checks the dependency; it never
+   deploys the Worker. Bodies are never retained.
+7. Qualify the rendered behavior in Chromium on the live hosts
+   ([`rendered.mjs --mode live`](../../tools/publication/rendered.mjs)): choose light with the site
+   theme control, search on the site for a manual page title taken from this build's joined
+   records, follow the DOCS hit to the docs host and confirm the preference arrived without a
+   leftover `dd-theme` parameter; search on the docs host for an FAQ question, follow it to its
+   answer on the site; choose dark on the docs host and confirm the site receives it. It visits no
+   legal route and retains only check names, outcomes, URLs and errors.
 
 The built trees, which carry the legal identity on its legal routes, leave the runner only through
 the Pages upload; the preserved artifact holds paths, sizes, hashes and provider coordinates.
@@ -142,7 +160,8 @@ the local bytes Wrangler received, and readback proves the served behavior.
 2. Record the active 100% version; a split deployment is refused for reconciliation.
 3. `wrangler versions upload --tag source-<sha8> --message "diffdevil playground <sha>"`: an
    immutable version with no traffic. It must return a version ID and preview URL.
-4. Qualify the preview: health, static front door, public-URL refusal, and one bounded journey
+4. Qualify the preview: health with the exact `{ "status": "ok", "service": "diffdevil-playground" }`
+   identity, static front door, public-URL refusal, and one bounded journey
    over [Wolfsblvt/diffdevil#128](https://github.com/Wolfsblvt/diffdevil/pull/128) through
    `/api/head` and `/api/report`, validated against the replay contract with
    `Access-Control-Allow-Origin: *` and `Cache-Control: no-store` from the site origin. A GitHub
@@ -166,6 +185,7 @@ publication                   sha256 of publication.json, its source, availabili
 previous.docs | previous.site canonical deployment before the run: id, url, commit, stage, createdOn
 deployed.docs | deployed.site published or restored deployment, files, rollback flag
 readback                      sources per host and each check's name, url, status, attempts, failures
+rendered                      live rendered search/theme checks: queries, browser, outcomes, errors
 ```
 
 `artifacts/publication/playground/receipt.json`:
@@ -185,9 +205,13 @@ remain recoverable from Cloudflare if an artifact expires.
 
 Each surface has one production group with `cancel-in-progress: false`; publication and
 rollback share it. A running deployment is never cancelled. GitHub keeps at most one queued run
-per group and replaces an older queued run with a newer one; because a push run resolves current
-`main`, the survivor publishes the newest accepted cut. A queued dispatch can be replaced the same
-way, which is visible in the run list. Pull-request checks cancel their own superseded runs.
+per group and replaces an older queued run with a newer one. Because each push run publishes its
+own triggering commit, the survivor is the newer relevant commit, which on linear `main` already
+contains the replaced one. GitHub's queue is the only ordering mechanism: nothing here proves that
+runs can never start out of push order, and each receipt therefore names its exact source. If an
+older cut were ever published after a newer one, the next relevant push or a dispatch of the
+current head restores the newest. A queued dispatch can be replaced the same way, which is visible
+in the run list. Pull-request checks cancel their own superseded runs.
 
 ## Adoption: the exact Ops inputs
 
@@ -204,12 +228,16 @@ Landing these workflows performs no publication. Ops then supplies, under the ex
 4. Repository variable `CLOUDFLARE_ACCOUNT_ID` (that account's 32-character ID); optional
    `diffdevil-website` variables `DIFFDEVIL_PUBLICATION_STORE_URL` and
    `DIFFDEVIL_PUBLICATION_APP_INSTALL_URL`, left unset while those surfaces are coming.
-5. The first static run: reconcile what current `main` publishes beyond `4bcb06fd`, then
+5. The first static run: reconcile what the selected commit publishes beyond `4bcb06fd` with
+   `node tools/publication/paths.mjs --workflow publish-website.yml --from 4bcb06fd --to <sha>`, then
    dispatch `Publish website` with that exact SHA, read its receipt and public readback, and only
    then set `DIFFDEVIL_WEBSITE_PUBLICATION=automatic`.
 6. The first Worker run: select an exact accepted `main` commit that contains these controllers.
-   Reconcile its Worker-consumed changes against the PR #180 repair at `32b5936d`; do not silently
-   sweep later relevant Worker changes into this first run. Dispatch `Deploy Playground` with
+   Reconcile its Worker-consumed changes against the PR #180 repair at `32b5936d` with
+   `node tools/publication/paths.mjs --workflow deploy-playground.yml --from 32b5936d --to <sha>`;
+   do not silently sweep later relevant Worker changes into this first run. At this controller's
+   source candidate on `main@434bea7d`, that command reports no Worker-consumed change: the only
+   Playground-tree difference is its README, which the Worker does not bundle. Dispatch `Deploy Playground` with
    the selected post-controller SHA, read its receipt, then set
    `DIFFDEVIL_PLAYGROUND_DEPLOYMENT=automatic`. The older `32b5936d` commit cannot itself run
    these controllers because it does not contain their scripts.
@@ -242,8 +270,11 @@ following [website publication](website-publication.md) and the Playground READM
 
 ## What source evidence does not establish
 
-Local and pull-request checks exercise workflow structure, consumed-input matching and controller
-logic against doubles. They do not establish GitHub's live path evaluation, Environment branch
-policy, secret availability, token permissions, Cloudflare upload behavior, propagation time,
-rollback through the real API, runner cost or the public reader journey in a browser. The
-automated readback is HTTP-level; it is not a rendered Lens Studio or legal-page review.
+Local and pull-request checks exercise workflow structure, consumed-input matching, controller
+logic against doubles and the rendered search/theme journey over the built pair at intercepted
+canonical origins. They do not establish GitHub's live path evaluation, Environment branch policy,
+secret availability, token permissions, Cloudflare upload behavior, propagation time, rollback
+through the real API or runner cost. After publication the controller exercises rendered search and
+theme on the live hosts; it does not run a rendered Lens Studio analysis or review legal pages,
+which stay HTTP-level checks. A rollback run reads back over HTTP only: it has no fresh build to
+draw rendered queries from.

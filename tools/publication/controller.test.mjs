@@ -19,6 +19,7 @@ import { readback } from './readback.mjs';
 import { activeVersion, qualificationChecks, replaySchema } from './playground.mjs';
 import * as playground from './playground.mjs';
 import * as family from './static-family.mjs';
+import { selectQueries } from './rendered.mjs';
 
 const repository = fileURLToPath(new URL('../../', import.meta.url));
 const SHA = 'a'.repeat(40);
@@ -37,6 +38,34 @@ async function inScratch(body) {
 
 const json = (value, status = 200) => new Response(JSON.stringify(value), { status, headers: { 'content-type': 'application/json' } });
 
+/** The real Playground Worker over the GitHub double, reached as `fetch`, with the double's one public PR. */
+const PUBLIC_PR = 'https://github.com/example/repository/pull/42';
+function realWorker() {
+  const fake = new FakeGitHub();
+  const worker = createPlaygroundWorker({ clientFactory: () => new GitHubClient({ fetch: fake.fetch, readRetries: 0 }), onError: () => {} });
+  const assets = { fetch: async () => new Response('<!doctype html><title>diffdevil playground</title>', { headers: { 'content-type': 'text/html; charset=utf-8' } }) };
+  return { fake, fetch: (url, init) => worker.fetch(new Request(url, init), { ASSETS: assets }) };
+}
+
+test('rendered qualification derives its searches from the build it is checking', () => {
+  const records = [
+    { kind: 'DOCS', url: 'https://docs.diffdevil.dev/use/short/' },
+    { kind: 'DOCS', url: 'https://docs.diffdevil.dev/use/policies/' },
+    { kind: 'FAQ', url: 'https://diffdevil.dev/faq/#why-diffdevil', id: 'why-diffdevil' },
+  ];
+  const pages = {
+    'use/short': '<h1>Short</h1>',
+    'use/policies': '<h1 id="x">Write <em>repository</em> policies</h1>',
+    faq: '<h2>Basics</h2><article class="faq-question" data-faq-id="why-diffdevil"><details id="why-diffdevil"><summary>Why use diffdevil at all?</summary></details></article>',
+  };
+  const read = path => pages[path.split('\\').join('/').replace(/^artifacts\/(?:manual|website)\/dist\//u, '').replace(/\/index\.html$/u, '')];
+  assert.deepEqual(selectQueries(records, read), {
+    docs: { url: 'https://docs.diffdevil.dev/use/policies/', query: 'Write repository policies' },
+    faq: { id: 'why-diffdevil', query: 'Why use diffdevil at all?' },
+  });
+  assert.throws(() => selectQueries(records.slice(0, 1), read), /no qualifiable/u);
+});
+
 test('source admission accepts only clean accepted main history and the exact requested commit', () => {
   const git = ({ head = SHA, main = SHA, ancestor = true, dirty = '' } = {}) => args => {
     if (args[0] === 'rev-parse') return args[1] === 'HEAD' ? head : main;
@@ -48,6 +77,8 @@ test('source admission accepts only clean accepted main history and the exact re
   assert.equal(admitSource({ git: git({ main: OLD }), requested: SHA }).current, false);
   assert.throws(() => admitSource({ git: git(), requested: 'main' }), /full 40-character/u);
   assert.throws(() => admitSource({ git: git(), requested: OLD }), /not the requested/u);
+  // A push admits its triggering commit even after main has moved on to a later commit.
+  assert.deepEqual(admitSource({ git: git({ head: OLD, main: SHA }), requested: OLD }), { source: OLD, main: SHA, requested: OLD, current: false });
   assert.throws(() => admitSource({ git: git({ ancestor: false }) }), /not contained in accepted main/u);
   assert.throws(() => admitSource({ git: git({ dirty: ' M package.json' }) }), /not clean/u);
 });
@@ -93,12 +124,8 @@ test('the active Worker version is one 100% version; a split deployment is refus
 });
 
 test('the Worker qualification journey passes against the real Playground handler', async () => {
-  const PR = 'https://github.com/example/repository/pull/42';
-  const fake = new FakeGitHub();
-  const worker = createPlaygroundWorker({ clientFactory: () => new GitHubClient({ fetch: fake.fetch, readRetries: 0 }), onError: () => {} });
-  const assets = { fetch: async () => new Response('<!doctype html><title>diffdevil playground</title>', { headers: { 'content-type': 'text/html; charset=utf-8' } }) };
-  const fetch = (url, init) => worker.fetch(new Request(url, init), { ASSETS: assets });
-  const results = await readback(qualificationChecks('https://candidate.example.workers.dev', replaySchema(repository), PR), { fetch, sleep: noSleep });
+  const { fake, fetch } = realWorker();
+  const results = await readback(qualificationChecks('https://candidate.example.workers.dev', replaySchema(repository), PUBLIC_PR), { fetch, sleep: noSleep });
   assert.deepEqual(results.filter(result => !result.ok).map(result => `${result.name}: ${result.failures.join('; ')}`), []);
   assert.equal(fake.writes().length, 0);
 });
@@ -109,7 +136,8 @@ test('the Worker qualification refuses a rate-limited or contract-breaking answe
     : url.endsWith('/health/ping') ? json({ status: 'ok' }) : new Response('<html>', { headers: { 'content-type': 'text/html' } });
   const results = await readback(qualificationChecks('https://candidate.example', replaySchema(repository)), { fetch, sleep: noSleep });
   const failed = results.filter(result => !result.ok).map(result => result.name);
-  assert.deepEqual(failed, ['public-URL refusal', 'pull-request head', 'pull-request report']);
+  // The bare { status: "ok" } also fails: health must identify the diffdevil-playground service.
+  assert.deepEqual(failed, ['health', 'public-URL refusal', 'pull-request head', 'pull-request report']);
 });
 
 test('a Worker upload must return a version and a preview before anything is promoted', () => inScratch(async () => {
@@ -229,31 +257,39 @@ test('public readback proves the new cut through the custom domains and compares
   await family.deploy({ host: 'docs', source: SHA, run: () => api.upload('diffdevil-docs', id('3')), ...options });
   await family.deploy({ host: 'site', source: SHA, run: () => api.upload('diffdevil-site', id('4')), ...options });
   let searchEntry = `{"index":"${SHA}"}`;
+  let lensStudio = realWorker().fetch;
   const served = async (url, init) => {
     const { origin, pathname, search } = new URL(url);
     if (origin === family.COMPATIBILITY) return new Response(null, { status: 308, headers: { location: `${family.HOSTS.site.origin}${pathname}${search}` } });
     if (pathname === '/robots.txt') return new Response('User-agent: *');
     if (pathname === `/${family.SEARCH_ENTRY}`) return new Response(searchEntry, { headers: { 'content-type': 'application/json' } });
     if (pathname === '/docs/cli/') return new Response(null, { status: 308, headers: { location: 'https://docs.diffdevil.dev/use/cli/' } });
-    if (origin === family.PLAYGROUND_API) return json({ status: 'ok' }, 200);
+    if (origin === family.PLAYGROUND_API) return lensStudio(url, init);
     const legal = ['/impressum/', '/privacy/', '/terms/'].includes(pathname);
     const headers = { 'content-type': 'text/html; charset=utf-8', ...(legal ? { 'x-robots-tag': 'noindex, nosnippet' } : {}) };
     return new Response(`<html>${SHA}</html>`, { headers });
   };
-  const withCors = async (url, init) => {
-    const response = await served(url, init);
-    if (url.startsWith(family.PLAYGROUND_API)) response.headers.set('access-control-allow-origin', '*');
-    return response;
-  };
-  const results = await family.readPublic({ fetch: withCors, sleep: noSleep });
+  const withCors = served;
+  const lensOptions = { schema: replaySchema(repository), pullRequest: PUBLIC_PR };
+  const failedChecks = () => JSON.parse(readFileSync('artifacts/publication/website/readback.json', 'utf8')).results.filter(result => !result.ok).map(result => result.name);
+  const results = await family.readPublic({ fetch: withCors, sleep: noSleep, ...lensOptions });
   assert.deepEqual(results.filter(result => !result.ok).map(result => `${result.name}: ${result.failures.join('; ')}`), []);
   assert.ok(results.some(result => result.name === 'moved legacy apex URL'));
   searchEntry = '{"index":"previous cut"}';
-  const drifted = await family.readPublic({ fetch: withCors, sleep: noSleep }).catch(error => error);
+  const drifted = await family.readPublic({ fetch: withCors, sleep: noSleep, ...lensOptions }).catch(error => error);
   assert.match(drifted.message, /Public readback failed/u);
-  assert.deepEqual(JSON.parse(readFileSync('artifacts/publication/website/readback.json', 'utf8')).results.filter(result => !result.ok).map(result => result.name), ['docs search index', 'site search index']);
+  assert.deepEqual(failedChecks(), ['docs search index', 'site search index']);
   searchEntry = `{"index":"${SHA}"}`;
-  const stale = await family.readPublic({ fetch: async (url, init) => url.endsWith('/source/') ? new Response('<html>old cut</html>', { headers: { 'content-type': 'text/html' } }) : withCors(url, init), sleep: noSleep }).catch(error => error);
+  // The production state observed on 2026-10-21: health answers, the analysis routes are missing.
+  const healthy = realWorker().fetch;
+  lensStudio = async (url, init) => new URL(url).pathname.startsWith('/api/')
+    ? new Response(JSON.stringify({ kind: 'diffdevil.playground-response', schemaVersion: '1.0', ok: false, status: 404, error: { code: 'E_NOT_FOUND', message: 'Not found.' } }), { status: 404, headers: { 'content-type': 'application/json' } })
+    : healthy(url, init);
+  const broken = await family.readPublic({ fetch: withCors, sleep: noSleep, ...lensOptions }).catch(error => error);
+  assert.match(broken.message, /Public readback failed/u);
+  assert.deepEqual(failedChecks(), ['Lens Studio API public-URL refusal', 'Lens Studio API pull-request head', 'Lens Studio API pull-request report']);
+  lensStudio = realWorker().fetch;
+  const stale = await family.readPublic({ fetch: async (url, init) => url.endsWith('/source/') ? new Response('<html>old cut</html>', { headers: { 'content-type': 'text/html' } }) : withCors(url, init), sleep: noSleep, ...lensOptions }).catch(error => error);
   assert.match(stale.message, /Public readback failed/u);
   assert.equal(JSON.parse(readFileSync('artifacts/publication/website/readback.json', 'utf8')).results[0].attempts, 10);
 }));

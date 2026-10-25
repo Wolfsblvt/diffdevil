@@ -12,32 +12,13 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { dirname, join, posix, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parse } from 'yaml';
+import { triggers } from './paths.mjs';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const workflow = name => parse(readFileSync(join(root, '.github/workflows', name), 'utf8'));
 const website = workflow('publish-website.yml');
 const playground = workflow('deploy-playground.yml');
 
-/** GitHub's filter-pattern subset used here: `**`, `*`, `?`, with later patterns overriding earlier ones. */
-function pattern(glob) {
-  let source = '';
-  for (let index = 0; index < glob.length; index += 1) {
-    if (glob.startsWith('**/', index)) { source += '(?:.*/)?'; index += 2; }
-    else if (glob.startsWith('**', index)) { source += '.*'; index += 1; }
-    else if (glob[index] === '*') source += '[^/]*';
-    else if (glob[index] === '?') source += '[^/]?';
-    else source += glob[index].replace(/[.+^${}()|[\]\\]/u, '\\$&');
-  }
-  return new RegExp(`^${source}$`, 'u');
-}
-export function triggers(paths, file) {
-  let included = false;
-  for (const entry of paths) {
-    const negated = entry.startsWith('!');
-    if (pattern(negated ? entry.slice(1) : entry).test(file)) included = !negated;
-  }
-  return included;
-}
 const publishes = file => triggers(website.on.push.paths, file);
 const deploys = file => triggers(playground.on.push.paths, file);
 

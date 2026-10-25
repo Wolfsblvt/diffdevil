@@ -48,7 +48,7 @@ export function qualificationChecks(origin, schema, pullRequest = QUALIFICATION_
   const publicJson = { 'access-control-allow-origin': /^\*$/u, 'cache-control': /no-store/u };
   return [
     { name: 'health', url: `${origin}/health/ping`, settle: true, origin: SITE_ORIGIN,
-      expect: { status: 200, json: value => value?.status === 'ok' ? [] : ['health did not report ok'] } },
+      expect: { status: 200, json: value => value?.status === 'ok' && value?.service === WORKER ? [] : [`health did not identify ${WORKER} as ok`] } },
     { name: 'static front door', url: `${origin}/`, expect: { status: 200, headers: { 'content-type': /text\/html/u } } },
     { name: 'public-URL refusal', url: `${origin}/api/head?url=${encodeURIComponent('https://example.com/not-a-pull-request')}`, origin: SITE_ORIGIN,
       expect: { status: 400, headers: publicJson, json: value => value?.error?.code === 'E_PLAYGROUND_URL' ? contract(value) : ['refusal did not use E_PLAYGROUND_URL'] } },
