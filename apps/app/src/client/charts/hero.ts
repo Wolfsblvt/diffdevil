@@ -34,14 +34,22 @@ export function mountHero(host: HTMLElement): Chart | null {
     ]
   });
   chart.setOption(option());
-  const set = (index: number | null) => {
-    if (index === focus) return;
-    focus = index;
-    chart.setOption(option(), { replaceMerge: ['series'] });
-    if (index === null) { delta!.innerHTML = base; return; }
-    const row = rows[index];
-    const compare = model.comparable && row.prev !== null ? ` · previous by then <b>${row.prev}</b> · <b>${row.cur - row.prev >= 0 ? '+' : '−'}${Math.abs(row.cur - row.prev)}</b>` : '';
-    delta!.innerHTML = `<span>by <b>${dateText(row.at)}</b> · <b>${row.cur}</b> ${model.kindWord}${compare}</span>`;
+  const set = (index: number | null, announce = false) => {
+    if (index !== focus) {
+      focus = index;
+      chart.setOption(option(), { replaceMerge: ['series'] });
+      if (index === null) delta!.innerHTML = base;
+      else {
+        const row = rows[index];
+        const compare = model.comparable && row.prev !== null ? ` · previous by then <b>${row.prev}</b> · <b>${row.cur - row.prev >= 0 ? '+' : '−'}${Math.abs(row.cur - row.prev)}</b>` : '';
+        delta!.innerHTML = `<span>by <b>${dateText(row.at)}</b> · <b>${row.cur}</b> ${model.kindWord}${compare}</span>`;
+      }
+    }
+    // Keyboard entry still needs the values when the pointer already selected the same date.
+    if (!announce) return;
+    // Query the current region: a period swap retains the plot but replaces the surrounding hero text.
+    const live = host.querySelector<HTMLElement>('[data-announce]');
+    if (live) live.textContent = index === null ? `Period summary · ${host.querySelector('.val')?.textContent} · ${delta!.textContent}` : delta!.textContent;
   };
   const zr = chart.getZr();
   let pointerAt: [number, number] | null = null;
@@ -50,8 +58,9 @@ export function mountHero(host: HTMLElement): Chart | null {
   zr.on('globalout', () => set(null));
   stage.tabIndex = 0;
   stage.setAttribute('role', 'application');
-  stage.setAttribute('aria-label', `Cumulative ${model.kindWord} pull requests: arrow keys step through the period`);
-  stage.addEventListener('keydown', event => { if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') { event.preventDefault(); set(Math.max(0, Math.min(last, (focus ?? last) + (event.key === 'ArrowRight' ? 1 : -1)))); } if (event.key === 'Escape') set(null); });
+  stage.setAttribute('aria-label', `Cumulative ${model.kindWord} pull requests: arrow keys step through the period, Escape restores the summary`);
+  stage.addEventListener('focus', () => set(last, true));
+  stage.addEventListener('keydown', event => { if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') { event.preventDefault(); set(Math.max(0, Math.min(last, (focus ?? last) + (event.key === 'ArrowRight' ? 1 : -1))), true); } if (event.key === 'Escape') { event.preventDefault(); set(null, true); } });
   stage.addEventListener('blur', () => set(null));
   const observer = new ResizeObserver(() => { if (!stage.isConnected || chart.isDisposed()) { observer.disconnect(); return; } chart.resize(); });
   observer.observe(stage);

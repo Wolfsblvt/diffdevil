@@ -101,6 +101,7 @@ const populationWord = life ? 'merged' : 'analysed';
         <div class="val"><span class="n">{!cur.windowCovered ? '≥ ' : ''}{leadNow}</span><span class="u">{leadKind}</span></div>
         <div class="dl" data-hero-dl>{comparable ? <span><b>{sgn(leadNow - leadPrev)}</b> {vs}</span> : <span title="The previous period begins before the first retained observation, so the comparison is withheld">previous period not fully retained</span>}<span>previous <b>{!prev.windowCovered ? '≥ ' : ''}{leadPrev}</b></span></div>
         <div class="chart hero-chart" data-hero-plot set:html={skeletonHtml('hero')} />
+        <p class="visually-hidden" aria-live="polite" aria-atomic="true" data-announce></p>
         <script type="application/json" data-chart-model set:html={JSON.stringify(hero)} />
         <div class="a-legend"><span><i class="line" style="background:var(--fg)"></i>this period</span>{comparable && <span><i class="dash"></i>previous period</span>}<span>cumulative · hover or ← → for a day</span></div>
         {!life && <p class="a-basis"><Icon name="circle-dashed" size={13} /><span>Opened, merged and closed facts are not retained for this scope ({lifecycle.reason}). Counts here are pull requests the App analysed in the period, by analysis time.</span></p>}
