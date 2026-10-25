@@ -32,8 +32,10 @@ export function termsOf(alternative) {
   if (alternative.frequency === 'continuous') return `${off(alternative)} each eligible ${alternative.cadence} ${alternative.tier} charge, base plan only`;
   const started = ['partially-consumed', 'consumed'].includes(alternative.standing);
   const word = alternative.cadence === 'annual' ? 'annual' : 'monthly';
-  if (started) return `${off(alternative)} ${charges(alternative.uses ?? 0, alternative.cadence)} in all, base plan only`;
-  return `${off(alternative)} ${alternative.uses === 1 ? `the next eligible ${word} charge` : `the next ${charges(alternative.uses ?? 0, alternative.cadence)}`}, base plan only`;
+  const renewalOnly = alternative.chargeClasses?.length === 1 && alternative.chargeClasses[0] === 'renewal';
+  const covered = (count, all = false) => `${count} ${word} ${count === 1 ? 'renewal' : 'renewals'}${all ? ' in all' : ''}`;
+  if (started) return `${off(alternative)} ${renewalOnly ? covered(alternative.uses ?? 0, true) : charges(alternative.uses ?? 0, alternative.cadence)}, base plan only`;
+  return `${off(alternative)} ${alternative.uses === 1 ? `the next eligible ${word} ${renewalOnly ? 'renewal' : 'charge'}` : `the next ${renewalOnly ? covered(alternative.uses ?? 0) : charges(alternative.uses ?? 0, alternative.cadence)}`}, base plan only`;
 }
 
 /** Mirror Wirt's own visible-expiry rule on facts that may be a few minutes old: past the deadline, unspent is expired. */
@@ -149,7 +151,8 @@ export function presentReward(view, { now, protectedPrice = false } = {}) {
   const selected = chosen(reward);
   const typed = presentTypedReward(card, reward, selected);
   if (typed) return typed;
-  if (key === 'available' && !reward.alternatives.some(alternative => alternative.firstEligibleOn)) card.previewCadences = reward.alternatives.filter(alternative => alternative.kind === 'discount' && alternative.tier === 'Pro' && alternative.standing === 'available').map(alternative => alternative.cadence);
+  if (key === 'available' && !reward.alternatives.some(alternative => alternative.firstEligibleOn)) card.previewCadences = reward.alternatives.filter(alternative => alternative.kind === 'discount' && alternative.tier === 'Pro' && alternative.standing === 'available'
+    && alternative.chargeClasses.includes('first-purchase')).map(alternative => alternative.cadence);
   switch (key) {
     case 'available':
       card.title = 'Your reward is ready';
@@ -171,7 +174,7 @@ export function presentReward(view, { now, protectedPrice = false } = {}) {
       break;
     case 'partially-consumed':
       card.title = selected?.remainingUses === 1 ? 'One discounted charge remains' : `${selected?.remainingUses ?? 'Some'} discounted charges remain`;
-      card.lines.push(selected ? `${off(selected)} each remaining ${selected.cadence} charge, base plan only.` : 'On the remaining eligible charges, base plan only.');
+      card.lines.push(selected ? `${off(selected)} each remaining ${selected.cadence} ${selected.chargeClasses.length === 1 && selected.chargeClasses[0] === 'renewal' ? 'renewal' : 'charge'}, base plan only.` : 'On the remaining eligible charges, base plan only.');
       card.tone = 'ok';
       break;
     case 'exhausted': {

@@ -5,7 +5,7 @@
 export function rewardForms(campaignKey = 'typed-reward') {
   const campaign = { key: campaignKey, version: 1, name: 'Participation', reason: 'Community contribution' };
   const monthly = { key: 'monthly', kind: 'discount', tier: 'Pro', cadence: 'monthly', unit: 'percent', value: 50,
-    frequency: 'finite', uses: 6, charge_classes: ['first-purchase', 'renewal'], combinable: false, remaining_uses: 4, first_eligible_on: null, standing: 'available' };
+    frequency: 'finite', uses: 6, charge_classes: ['renewal'], combinable: false, remaining_uses: 4, first_eligible_on: null, standing: 'available' };
   const raw = (kind, alternatives, extra = {}, basis = {}) => ({ id: `specimen-${kind}`, state: 'available', selected_reward: null, claimed_at: null,
     starts_on: null, ends_on: null, basis: { kind, product: 'diffdevil', tier: 'Pro', campaign, scope: ['base'],
       claim_closes_at: '2030-12-01T00:00:00Z', valid_until: null, alternatives, ...basis }, alternatives, applications: [], ...extra });
@@ -26,7 +26,8 @@ export function rewardForms(campaignKey = 'typed-reward') {
     selected_reward: 'organisation', component: { component_id: 'reward-component:1', state: 'active', funded: true, base_funded: false, usable: false,
       starts_on: '2026-10-20', ends_on: '2026-11-19', original_ends_on: '2026-11-19', binding_state: 'Unbound', binding: null,
       binding_observation_current: false, product_application: null } }, { tier: null, units: 30, valid_until: '2030-12-01T00:00:00Z' });
-  const choice = raw('discount', [{ ...monthly, uses: 3, remaining_uses: 3 }, { ...monthly, key: 'annual', cadence: 'annual', value: 20, uses: 1, remaining_uses: 1 }]);
+  const choice = raw('discount', [{ ...monthly, uses: 3, charge_classes: ['first-purchase', 'renewal'], remaining_uses: 3 },
+    { ...monthly, key: 'annual', cadence: 'annual', value: 20, uses: 1, charge_classes: ['first-purchase', 'renewal'], remaining_uses: 1 }]);
   const unsupported = raw('future-kind', [{ key: 'future', kind: 'future-kind' }]);
   return { time, finite, continuous, protectedPrice, component, choice, unsupported };
 }

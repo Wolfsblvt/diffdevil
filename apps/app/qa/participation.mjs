@@ -23,7 +23,7 @@ TYPED_REWARD_SPECIMENS.push([typedForms.finite, { ...typedForms.unsupported, bas
 export async function typedRewardJourney({ page, go, check, shot, ORIGIN }) {
   const cases = [
     ['time', /earned time is queued.*30 days.*Expected start/isu, 0],
-    ['finite', /next 6 monthly charges/u, 1],
+    ['renewal-only-finite', /next 6 monthly renewals/u, 0],
     ['continuous', /each eligible monthly Pro charge.*No scheduled application end/isu, 0],
     ['protected-price', /Earned, available to review.*Exercise opens/isu, 0],
     ['component', /30 days.*Unbound.*Not currently usable/isu, 0],
@@ -31,7 +31,7 @@ export async function typedRewardJourney({ page, go, check, shot, ORIGIN }) {
     ['reserved-option', /Reserved, not yet acquired/u, 0],
     ['acquired-option', /Acquired protection: €9.00/u, 0],
     ['unavailable', /Reward details unavailable/u, 0],
-    ['mixed', /next 6 monthly charges.*2 unreadable rewards/isu, 1]
+    ['mixed', /next 6 monthly renewals.*2 unreadable rewards/isu, 0]
   ];
   for (const [index, [name, expected, previews]] of cases.entries()) {
     const changed = await page.request.post(`${ORIGIN}/manage/do`, { form: { action: 'fixture-simulate', kind: `reward-specimen:${index}`, back: '/manage/plan' }, headers: { origin: ORIGIN }, maxRedirects: 0 });
@@ -42,7 +42,9 @@ export async function typedRewardJourney({ page, go, check, shot, ORIGIN }) {
     check(`typed ${name}: actual built card preserves public meaning`, expected.test(text), text);
     check(`typed ${name}: preview controls match the actual finite choice`, await card.locator('[data-preview-form] button').count() === previews);
     check(`typed ${name}: no invented numbers or unsafe placeholder fields`, !/0 monthly charges|NaN|undefined|\[object Object\]/u.test(text));
-    if (name === 'finite') check('monthly-only reward never offers annual choice', !/choose monthly or annual/u.test(text) && await card.locator('button[value="annual"]').count() === 0);
+    if (name === 'renewal-only-finite') check('renewal-only reward offers no first-purchase quote preview', await card.locator('[data-preview-form] button').count() === 0
+      && !/preview.*with your reward|with your reward.*preview/iu.test(text));
+    if (name === 'choice') check('first-purchase monthly/annual reward keeps both matching quote previews', await card.locator('button[value="monthly"]').count() === 1 && await card.locator('button[value="annual"]').count() === 1);
     await page.setViewportSize({ width: 760, height: 900 });
     check(`typed ${name}: narrow page has no horizontal overflow`, await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth));
     await shot(`typed-reward-${name}`);

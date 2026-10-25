@@ -23,15 +23,21 @@ test('queued earned time preserves the promised term and labels a forecast witho
   assert.match(text(cardFor(forms.time)), /queued.*30 days.*Expected start/isu);
 });
 
-test('finite monthly-only and continuous discounts retain distinct promises and null application ends', () => {
+test('renewal-only finite and continuous discounts retain distinct promises and null application ends', () => {
   const finite = readRewardFacts(forms.finite);
   assert.equal(finite.validUntil, null);
   assert.equal(finite.alternatives[0].frequency, 'finite');
-  assert.deepEqual(finite.alternatives[0].chargeClasses, ['first-purchase', 'renewal']);
+  assert.deepEqual(finite.alternatives[0].chargeClasses, ['renewal']);
   assert.equal(finite.alternatives[0].remainingUses, 4);
-  assert.match(text(cardFor(forms.finite)), /next 6 monthly charges/u);
+  assert.match(text(cardFor(forms.finite)), /next 6 monthly renewals/u);
   assert.doesNotMatch(text(cardFor(forms.finite)), /choose monthly or annual/u);
-  assert.deepEqual(cardFor(forms.finite).previewCadences, ['monthly']);
+  assert.deepEqual(cardFor(forms.finite).previewCadences, []);
+  const partiallyConsumed = structuredClone(forms.finite);
+  partiallyConsumed.state = 'partially-consumed';
+  partiallyConsumed.alternatives[0].standing = 'partially-consumed';
+  const partialText = text(cardFor(partiallyConsumed));
+  assert.match(partialText, /6 monthly renewals in all/u);
+  assert.match(partialText, /4 discounted charges remain 50% off each remaining monthly renewal/u);
   const continuous = readRewardFacts(forms.continuous);
   assert.equal(continuous.alternatives[0].frequency, 'continuous');
   assert.equal(continuous.alternatives[0].uses, null);
@@ -65,7 +71,7 @@ test('funded component reward provenance and term survive an unbound unusable co
   assert.match(text(cardFor(forms.component)), /Community contribution.*30 days.*Unbound.*Not currently usable/u);
 });
 
-test('existing finite monthly/annual choice retains both previews; heterogeneous choices remain unavailable', () => {
+test('first-purchase monthly/annual choice retains both previews; heterogeneous choices remain unavailable', () => {
   assert.deepEqual(cardFor(forms.choice).previewCadences, ['monthly', 'annual']);
   const heterogeneous = { ...forms.choice, alternatives: [forms.choice.alternatives[0], forms.time.alternatives[0]] };
   assert.equal(readProjectionRewards({ participation_rewards: [heterogeneous] })[0].available, false);
