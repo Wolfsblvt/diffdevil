@@ -438,7 +438,8 @@ serialized weight and count; it does not measure total JavaScript object allocat
 An entry over either byte budget is returned without retention, so one large comparison cannot evict useful small ones.
 Insertion order supplies FIFO eviction and fixed one-minute expiry; warm hits neither reorder nor extend lifetime.
 Each removed entry is visited once, plus constant live-head checks; insertion never walks the remaining live map.
-The provider-context cache keeps its own values, pending-read coalescing and lifetime independently.
+The provider-context cache keeps its completed values and lifetime independently. Pending reads remain with their
+request, so leaving a progressive document cannot make a later request await cancelled provider or D1 work.
 There is no timer, durable projection, migration or new job. This is transient process memory, not a one-minute
 physical-deletion guarantee: expired allocations can remain until a later cache operation or isolate disposal.
 The private extension's independent derivations are not cached by this seam.

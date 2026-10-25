@@ -114,20 +114,21 @@ test('a broad retained-history read keeps its entire answer when its interpretat
   assert.equal(computations, before + 1, 'an evicted interpretation recomputes the complete detail');
 });
 
-test('analytical pressure leaves provider context, pending coalescing, expiry and retry independent', async () => {
+test('analytical pressure leaves request-owned provider reads, completed context, expiry and retry independent', async () => {
   let clock = 0, loads = 0, release;
   const provider = createContextCache(() => clock), analytical = createAnalyticalCache();
   const pending = provider.get('profile:123', () => { loads++; return new Promise(resolve => { release = resolve; }); });
   await Promise.resolve();
   for (let index = 0; index < 10_000; index++) analytical.memo(`report:${index}`, () => ({ changed: index }));
-  const concurrent = provider.get('profile:123', () => { throw new Error('lost pending provider read'); });
+  const concurrent = provider.get('profile:123', () => { loads++; return { login: 'current' }; });
   release({ login: 'reader' });
-  assert.deepEqual(await pending, await concurrent);
-  assert.equal(loads, 1);
+  assert.deepEqual(await pending, { login: 'reader' });
+  assert.deepEqual(await concurrent, { login: 'current' });
+  assert.equal(loads, 2);
   analytical.clear();
-  assert.deepEqual(await provider.get('profile:123', () => { throw new Error('analytical clear removed provider context'); }), { login: 'reader' });
+  assert.deepEqual(await provider.get('profile:123', () => { throw new Error('analytical clear removed provider context'); }), { login: 'current' });
   clock = 60_001;
-  assert.deepEqual(await provider.get('profile:123', () => ({ login: 'current' })), { login: 'current' });
+  assert.deepEqual(await provider.get('profile:123', () => ({ login: 'refreshed' })), { login: 'refreshed' });
   await assert.rejects(provider.get('failed', () => { throw new Error('provider unavailable'); }), /provider unavailable/);
   assert.equal(await provider.get('failed', () => 'recovered'), 'recovered');
 });

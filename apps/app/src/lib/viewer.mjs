@@ -12,25 +12,28 @@ const TTL_MS = 60_000;
 const TITLE_SCOPE_LIMIT = 25;
 const ROLE_ERRORS = new Set(['E_GITHUB_RATE_LIMIT', 'E_PROVIDER_NOT_FOUND', 'E_PROVIDER_UNAUTHORIZED', 'E_PROVIDER_REQUEST', 'E_PROVIDER_RESPONSE']);
 
-/** A per-isolate, per-user TTL cache for transient provider context. Expiry is the only invalidation. */
+/** A per-isolate, per-user TTL cache of completed transient context; actions can clear it. */
 export function createContextCache(now = () => Date.now()) {
   const entries = new Map();
   return {
     async get(key, load, ttl = TTL_MS) {
       const hit = entries.get(key);
-      if (hit?.pending) return hit.pending;
       if (hit && hit.until > now()) return hit.value;
+      // Pending provider/D1 work belongs to the request that started it. In particular,
+      // leaving the progressive shell must not make Manage await an abandoned request.
+      // Only completed values cross requests; the marker prevents an older read from
+      // repopulating the cache after a newer miss or an action's clear().
       const entry = {};
-      entry.pending = Promise.resolve().then(load).then(value => {
+      entries.set(key, entry);
+      try {
+        const value = await load();
         if (entries.get(key) === entry) entries.set(key, { value, until: now() + ttl });
         if (entries.size > 2000) for (const [stale, candidate] of entries) { if (candidate.until <= now()) entries.delete(stale); }
         return value;
-      }, error => {
+      } catch (error) {
         if (entries.get(key) === entry) entries.delete(key);
         throw error;
-      });
-      entries.set(key, entry);
-      return entry.pending;
+      }
     },
     clear() { entries.clear(); }
   };
