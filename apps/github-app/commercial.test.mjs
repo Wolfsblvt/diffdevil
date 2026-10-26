@@ -15,6 +15,8 @@ import { D1AppStore } from './storage.mjs';
 import { D1AuthorizationStore } from './authorization-storage.mjs';
 import { createAuthorizationService } from './authorization.mjs';
 import { presentProjection } from '../app/src/lib/manage/works.mjs';
+import { presentCommercialClock } from '../app/src/lib/manage/works.mjs';
+import { loadParticipation } from '../app/src/lib/participation/page.mjs';
 import { closeLocalAccount } from '../app/src/lib/manage/account-closure.mjs';
 import { migrationNames } from '../app/qa/seed.mjs';
 
@@ -353,6 +355,85 @@ test('account closure and in-flight Works establishment have one local conflict 
 async function push(source, value, { account = String(value.stream.link.product_account.github_user_id), key = KEY, keyId = 'current', path = COMMERCIAL_ROUTES.projection, body = JSON.stringify(value), nonce } = {}) {
   return source.call(path, { method: 'POST', headers: { 'content-type': 'application/json', ...wirtHeaders(key, { method: 'POST', path: path.split('?')[0], account, body, clock: source.clock, keyId, nonce }) }, body });
 }
+
+test('signed TEST time follows applied order through D1 restart and customer presentation, never transport time or entitlement', async () => {
+  const source = await fixture();
+  try {
+    await link(source, { owner: 77 });
+    const linkId = (await source.store.activeLink(USER)).link_id;
+    const ordinary = projection({ linkId });
+    assert.equal((await push(source, ordinary)).status, 200);
+    let status = (await source.commercial.status({ session: SESSION })).body;
+    assert.equal(status.commercialClock, null);
+    assert.equal(presentCommercialClock(status, source.clock.value), null);
+    const clock = { offset_seconds: 31 * 86_400, effective_at: source.clock.value };
+    const advanced = { ...ordinary, schema: 'wirt.benefit-projection/v2', order: { epoch: 1, version: 2 }, commercial_clock: clock };
+    const access = { started_on: '2027-04-01', until: '2027-05-01', real_started_at: '2027-03-01T00:00:00Z', real_until: '2027-03-31T00:00:00Z' };
+    advanced.benefits = { ...ordinary.benefits, beta_grants: [{ id: 1, kind: 'beta', product: 'diffdevil', tier: 'pro', promised_units: 30,
+      remaining_units: 30, original_window: { started_on: '2027-04-01', until: '2027-05-01' }, access_windows: [access], current_access: access }] };
+    const nonce = randomUUID();
+    assert.equal((await push(source, advanced, { nonce })).status, 200);
+    assert.equal((await push(source, advanced, { nonce })).status, 409, 'transport nonce remains single-use');
+    const stored = await source.store.activeLink(USER);
+    assert.deepEqual(JSON.parse(stored.projection_json).commercial_clock, clock);
+    assert.equal(JSON.parse(stored.projection_json).generated_at, ordinary.generated_at, 'real producer observation is unchanged');
+    // Recreate the service and store on the same durable D1 state, with no process-local clock state.
+    const restarted = commercialFromEnv(source.env, { store: new D1CommercialStore(source.database, { now: () => source.clock.value }),
+      authorization: source.authorization, protector: { seal: async value => value, open: async value => value },
+      fetch: source.wirt.fetch, now: () => source.clock.value });
+    status = (await restarted.status({ session: SESSION })).body;
+    assert.deepEqual(status.commercialClock, clock);
+    assert.deepEqual(status.betaGrants[0].access_windows, [access], 'signed historical real bounds survive storage and an account-owned read');
+    assert.equal(status.plan, 'pro', 'commercial expiry does not independently revoke Wirt-funded coverage');
+    assert.deepEqual(status.commercial.period, ordinary.commercial.period);
+    const marker = presentCommercialClock(status, source.clock.value);
+    assert.match(marker.text, /Commercial: 2027-04-01 06:00:20 UTC/u);
+    assert.match(marker.text, /Real: 2027-03-01 06:00:20 UTC/u);
+    const reward = { available: true, kind: 'discount', state: 'available', selected: null, claimClosesAt: '2027-04-01T00:00:00Z',
+      campaign: { key: 'survey', reason: 'Participation reward' }, alternatives: [], applications: [] };
+    const runtime = { now: () => source.clock.value, commercial: restarted, participation: {
+      view: async () => ({ reward, completed: false, campaign: { key: 'survey' } }) } };
+    const page = () => loadParticipation({ runtime, viewer: { userId: USER }, session: { session: SESSION }, model: { commercial: { status } } });
+    assert.equal((await page()).card.key, 'expired', 'the real page loader compares discount deadlines on commercial time');
+    source.clock.value = '2027-03-01T06:01:20.000Z';
+    assert.match(presentCommercialClock(status, source.clock.value).text, /2027-04-01 06:01:20 UTC/u, 'commercial time keeps running');
+    assert.equal((await push(source, ordinary)).status, 200, 'stale ordinary projection is harmless');
+    assert.deepEqual((await restarted.status({ session: SESSION })).body.commercialClock, clock);
+    const bad = { ...advanced, order: { epoch: 1, version: 3 }, commercial_clock: { offset_seconds: 0, effective_at: clock.effective_at } };
+    assert.equal((await push(source, bad)).status, 422);
+    assert.deepEqual((await restarted.status({ session: SESSION })).body.commercialClock, clock, 'invalid update preserves the prior state');
+    const missingBounds = structuredClone(advanced);
+    missingBounds.order.version = 3;
+    delete missingBounds.benefits.beta_grants[0].access_windows[0].real_until;
+    assert.equal((await push(source, missingBounds)).status, 422, 'missing v2 historical bounds refuses the whole signed message');
+    assert.deepEqual((await restarted.status({ session: SESSION })).body.betaGrants[0].access_windows, [access]);
+    const fresh = { ...ordinary, order: { epoch: 1, version: 3 } };
+    assert.equal((await push(source, fresh)).status, 200);
+    status = (await restarted.status({ session: SESSION })).body;
+    assert.equal(status.commercialClock, null, 'a newer ordinary message supplies zero offset through existing ordering');
+    assert.equal((await page()).card.key, 'available');
+    const skewed = { ...advanced, order: { epoch: 1, version: 4 } };
+    const body = JSON.stringify(skewed);
+    const headers = wirtHeaders(KEY, { method: 'POST', path: COMMERCIAL_ROUTES.projection, account: String(USER), body,
+      clock: { value: '2027-04-01T06:01:20.000Z' } });
+    assert.equal((await source.call(COMMERCIAL_ROUTES.projection, { method: 'POST', headers, body })).status, 401, 'commercial date never authenticates a transport timestamp');
+    assert.equal((await push(source, notice({ linkId }))).status, 200);
+    assert.deepEqual((await restarted.status({ session: SESSION })).body, { linked: false });
+  } finally { await source.runtime.dispose(); }
+});
+
+test('v2 clock requires exactly a positive safe offset and a real UTC instant; v1 remains the field-free calendar', () => {
+  const value = { ...projection({ linkId: 'clock-shape' }), schema: 'wirt.benefit-projection/v2' };
+  const valid = { offset_seconds: 1, effective_at: '2026-10-26T01:02:03Z' };
+  assert.equal(readWirtMessage({ ...value, commercial_clock: valid }).kind, 'projection');
+  assert.equal(readWirtMessage({ ...value, commercial_clock: { ...valid, offset_seconds: Number.MAX_SAFE_INTEGER } }).kind, 'projection');
+  for (const clock of [undefined, null, [], {}, { ...valid, extra: true }, { offset_seconds: 1 }, { effective_at: valid.effective_at },
+    ...[0, -1, 0.5, '1', Number.MAX_SAFE_INTEGER + 1].map(offset_seconds => ({ ...valid, offset_seconds })),
+    ...['2026-02-30T01:02:03Z', '2026-10-26', '2026-10-26T01:02:03+02:00', '2026-10-26T24:00:00Z', 'invalid'].map(effective_at => ({ ...valid, effective_at }))]) {
+    assert.throws(() => readWirtMessage({ ...value, commercial_clock: clock }), { code: 'E_COMMERCIAL_SHAPE' });
+  }
+  assert.throws(() => readWirtMessage({ ...value, schema: 'wirt.benefit-projection/v1', commercial_clock: valid }), { code: 'E_COMMERCIAL_SHAPE' });
+});
 
 test('outbound signing matches an independent implementation of the Wirt byte grammar', async () => {
   const clock = { value: '2027-03-01T00:00:00.000Z' };

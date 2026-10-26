@@ -6,7 +6,7 @@
  * its time, because the reward they earned is Wirt's commercial fact; closing the account forgets every row.
  */
 
-import { operationDate } from './calendar.mjs';
+import { accessContains } from './calendar.mjs';
 import { browserWriteGuard } from '../../../../github-app/authorization-storage.mjs';
 
 const parse = text => { try { return JSON.parse(text); } catch { return undefined; } };
@@ -121,19 +121,22 @@ export class D1ParticipationStore {
   /** Any finished managed operation in the account's funded namespaces, including one hidden by a newer retry. */
   async qualifyingUse(userId, windows, timeZone) {
     let first = null;
-    for (const { from, until } of windows) {
+    for (const window of windows) {
+      const { from, until, realFrom, realUntil } = window;
       // One day on either side includes every IANA offset. Match the actual date in JS;
       // SQLite's UTC date or a fixed offset would be wrong near midnight and DST.
-      const lower = new Date(Date.parse(from) - 86_400_000).toISOString();
-      const upper = new Date(Date.parse(until) + 86_400_000).toISOString();
+      const lower = realFrom ?? new Date(Date.parse(from) - 86_400_000).toISOString();
+      const upper = realUntil ?? new Date(Date.parse(until) + 86_400_000).toISOString();
+      // D1 compares instants here, including equivalent Z / fractional-second spellings from retained records.
+      const range = realFrom === undefined ? 'd.completed_at >= ? AND d.completed_at < ?'
+        : 'julianday(d.completed_at) >= julianday(?) AND julianday(d.completed_at) < julianday(?)';
       const rows = await this.statement(`SELECT d.completed_at AS at FROM deliveries d JOIN repositories r ON r.repository_id=d.repository_id
         JOIN installations i ON i.installation_id=r.installation_id WHERE d.state IN ('complete','rejected','terminal','repair')
-        AND d.completed_at >= ? AND d.completed_at < ? AND (i.account_id=? OR EXISTS
+        AND ${range} AND (i.account_id=? OR EXISTS
           (SELECT 1 FROM commercial_bindings b JOIN commercial_links l ON l.link_id=b.link_id
            WHERE b.organisation_id=i.account_id AND l.product_account=? AND l.state='active' AND b.authority_observed='present'))`, lower, upper, userId, userId).all();
       for (const row of rows.results ?? []) {
-        const day = operationDate(row.at, timeZone);
-        if (day && day >= from && day < until && (!first || row.at < first)) first = row.at;
+        if (accessContains(row.at, window, timeZone) && (!first || Date.parse(row.at) < Date.parse(first))) first = row.at;
       }
     }
     return first;

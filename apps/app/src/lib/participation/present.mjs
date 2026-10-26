@@ -6,6 +6,7 @@
  * source is Wirt's curated reason, never a campaign key, an event identity or the person's answers.
  */
 import { fmtDay } from '../manage/works.mjs';
+import { commercialNow } from '../../../../github-app/commercial-wirt.mjs';
 
 export function money(cents, currency = 'EUR') {
   if (!Number.isSafeInteger(cents)) return null;
@@ -39,11 +40,11 @@ export function termsOf(alternative) {
 }
 
 /** Mirror Wirt's own visible-expiry rule on facts that may be a few minutes old: past the deadline, unspent is expired. */
-export function currentState(reward, now) {
+export function currentState(reward, now, commercialClock = null) {
   if (reward.kind && reward.kind !== 'discount') return reward.state;
   if (!['available', 'accepted', 'partially-consumed'].includes(reward.state)) return reward.state;
   const deadline = reward.selected ? reward.validUntil : reward.claimClosesAt;
-  return deadline && Date.parse(now) >= Date.parse(deadline) ? 'expired' : reward.state;
+  return deadline && commercialNow(now, commercialClock) >= Date.parse(deadline) ? 'expired' : reward.state;
 }
 
 /**
@@ -51,7 +52,7 @@ export function currentState(reward, now) {
  * Wirt's `available`, `scheduled` (accepted after an early paid conversion), `reserved`, `partially-consumed`,
  * `exhausted`, `expired`, `corrected`, or `unknown` when Wirt's standing cannot be read.
  */
-export function standingOf(view, { now } = {}) {
+export function standingOf(view, { now, commercialClock = null } = {}) {
   if (!view.completed && !view.reward) {
     if (view.window === 'closed') return view.response?.state === 'draft' ? 'closed' : null;
     if (view.window !== 'open' || view.eligibility !== 'participant') return null;
@@ -59,7 +60,7 @@ export function standingOf(view, { now } = {}) {
   }
   if (view.reward) {
     if (view.reward.available === false) return 'unavailable';
-    const state = currentState(view.reward, now);
+    const state = currentState(view.reward, now, commercialClock);
     if (state === 'consumed') return 'exhausted';
     if (state === 'accepted') return 'scheduled';
     return ['available', 'queued', 'active', 'reserved', 'partially-consumed', 'exercised', 'expired', 'ended', 'withdrawn', 'corrected'].includes(state) ? state : 'unknown';
@@ -122,13 +123,13 @@ function presentTypedReward(card, reward, selected) {
  * The reward card: a title, plain sentences, the alternatives with their standing and the confirmed applications.
  * `protectedPrice` adds the beta-price sentence only when the projection says that price is protected.
  */
-export function presentReward(view, { now, protectedPrice = false } = {}) {
-  const key = standingOf(view, { now });
+export function presentReward(view, { now, protectedPrice = false, commercialClock = null } = {}) {
+  const key = standingOf(view, { now, commercialClock });
   if (!key) return null;
   const reward = view.reward;
   const reason = reward?.campaign?.reason ?? 'Participation reward';
   const until = value => fmtDay(value) ?? 'the deadline';
-  const card = { key, reason, title: '', lines: [], alternatives: [], applications: [], previewCadences: [], tone: 'info' };
+  const card = { key, reason, title: '', lines: [], alternatives: [], applications: [], previewCadences: [], tone: 'info', realOccurrenceDates: commercialClock !== null };
   const after = protectedPrice ? ' at your protected beta price' : '';
   switch (key) {
     case 'invite': card.title = `Take the ${view.campaign.name.toLowerCase()}`; card.lines.push(`About ${view.survey.minutes} minutes. Completing it earns a discount on continuing with Pro, whatever you answer.`); break;

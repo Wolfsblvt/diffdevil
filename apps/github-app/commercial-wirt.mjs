@@ -106,7 +106,29 @@ const positive = value => Number.isSafeInteger(value) && value > 0;
 const date = value => typeof value === 'string' && datePattern.test(value);
 const nullableDate = value => value === null || date(value);
 const timestamp = value => typeof value === 'string' && value.length <= 40 && Number.isFinite(Date.parse(value));
+// Date.parse alone normalizes impossible dates such as 30 February.
+const utcTimestamp = value => typeof value === 'string'
+  && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?Z$/u.test(value) && timestamp(value)
+  && new Date(value).toISOString().slice(0, 19) === value.slice(0, 19);
 const oneOf = (value, values) => values.includes(value);
+
+/** The signed TEST offset belongs to the applied projection, never to the host or transport clock. */
+export function readCommercialClock(projection) {
+  if (projection.schema === 'wirt.benefit-projection/v1') {
+    shape(!Object.hasOwn(projection, 'commercial_clock'));
+    return null;
+  }
+  shape(projection.schema === 'wirt.benefit-projection/v2');
+  const clock = projection.commercial_clock;
+  shape(object(clock) && Object.keys(clock).length === 2 && positive(clock.offset_seconds)
+    && utcTimestamp(clock.effective_at));
+  return { offset_seconds: clock.offset_seconds, effective_at: clock.effective_at };
+}
+
+/** Compare commercial deadlines in milliseconds; genuine occurrences and security continue using realNow. */
+export function commercialNow(realNow, clock = null) {
+  return Date.parse(realNow) + (clock?.offset_seconds ?? 0) * 1000;
+}
 
 function readStream(value) {
   shape(object(value) && typeof value.works_account === 'string' && identifierPattern.test(value.works_account)
@@ -144,7 +166,7 @@ export function readPaidContinuation(value) {
     cadence: value.cadence, period: { started_on: value.period.started_on, ends_on: value.period.ends_on } };
 }
 
-function readBenefits(value) {
+function readBenefits(value, schema) {
   shape(object(value) && Array.isArray(value.organisation_capacity) && value.organisation_capacity.length <= 256
     && Array.isArray(value.grants) && (value.protection === null || object(value.protection)));
   const slots = new Set();
@@ -154,7 +176,7 @@ function readBenefits(value) {
     slots.add(slot.slot);
   }
   for (const grant of value.grants) shape(object(grant) && typeof grant.kind === 'string' && date(grant.until));
-  const betaGrants = readProjectionBetaGrants(value);
+  const betaGrants = readProjectionBetaGrants(value, schema);
   return { ...value, ...(betaGrants === null ? {} : { beta_grants: betaGrants }),
     ...(value.commercial_timezone === undefined ? {} : { commercial_timezone: readProjectionCommercialTimeZone(value) }) };
 }
@@ -168,12 +190,18 @@ export function readProjectionCommercialTimeZone(benefits) {
 }
 
 /** Native beta facts: null is a legacy unknown; an empty array is an explicit absence. Private basis stays in Wirt. */
-export function readProjectionBetaGrants(benefits) {
+export function readProjectionBetaGrants(benefits, schema = 'wirt.benefit-projection/v1') {
   if (benefits?.beta_grants === undefined) return null;
   shape(Array.isArray(benefits.beta_grants));
   const ids = new Set();
-  const window = value => {
+  const window = (value, realBounds = false) => {
     shape(object(value) && date(value.started_on) && date(value.until) && value.started_on < value.until);
+    if (realBounds) {
+      shape(utcTimestamp(value.real_started_at) && utcTimestamp(value.real_until)
+        && Date.parse(value.real_started_at) <= Date.parse(value.real_until));
+      return { started_on: value.started_on, until: value.until, real_started_at: value.real_started_at, real_until: value.real_until };
+    }
+    shape(!Object.hasOwn(value, 'real_started_at') && !Object.hasOwn(value, 'real_until'));
     return { started_on: value.started_on, until: value.until };
   };
   return benefits.beta_grants.map(value => {
@@ -183,8 +211,9 @@ export function readProjectionBetaGrants(benefits) {
       && (value.original_window === null || object(value.original_window)) && (value.current_access === null || object(value.current_access)));
     ids.add(value.id);
     return { id: value.id, kind: value.kind, product: value.product, tier: value.tier, promised_units: value.promised_units,
-      original_window: value.original_window === null ? null : window(value.original_window), access_windows: value.access_windows.map(window),
-      current_access: value.current_access === null ? null : window(value.current_access), remaining_units: value.remaining_units };
+      original_window: value.original_window === null ? null : window(value.original_window),
+      access_windows: value.access_windows.map(value => window(value, schema === 'wirt.benefit-projection/v2')),
+      current_access: value.current_access === null ? null : window(value.current_access, schema === 'wirt.benefit-projection/v2'), remaining_units: value.remaining_units };
   });
 }
 
@@ -195,13 +224,13 @@ export function readWirtMessage(value) {
     shape(timestamp(value.ended_at));
     return { kind: 'link-ended', stream: readStream(value.stream), order: readOrder(value.order), endedAt: value.ended_at };
   }
-  shape(value.schema === 'wirt.benefit-projection/v1');
+  readCommercialClock(value);
   shape(Array.isArray(value.account_lineage) && value.account_lineage.length <= 64
     && value.account_lineage.every(account => typeof account === 'string' && identifierPattern.test(account))
     && timestamp(value.generated_at) && (value.source_operation === null || (typeof value.source_operation === 'string' && value.source_operation.length <= 128))
     && Array.isArray(value.pending) && Array.isArray(value.bindings_seen));
   if (value.commercial !== null) readCommercial(value.commercial);
-  const benefits = readBenefits(value.benefits);
+  const benefits = readBenefits(value.benefits, value.schema);
   // Null commercial never supplies base coverage. Empty coverage requires explicit absence in every benefit family;
   // missing or unreadable facts cannot turn an unavailable source into a confirmed empty answer.
   if (value.commercial === null) {

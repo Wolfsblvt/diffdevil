@@ -544,7 +544,7 @@ test('real funding and release record server-owned targets and preserve a former
     const link = await store.saveEstablishedLink({ linkId, productAccount: viewer.userId, worksAccount: '77',
       intentId: crypto.randomUUID(), protectedGrant: 'unused-fixture-grant' });
     assert.equal(await store.transition(link, { applied: { epoch: 1, version: 1, result: 'applied', at: app.now(),
-      projectionJson: JSON.stringify({ commercial: JSON.parse(COMMERCIAL_PRO).commercial,
+      projectionJson: JSON.stringify({ schema: 'wirt.benefit-projection/v1', commercial: JSON.parse(COMMERCIAL_PRO).commercial,
         benefits: { organisation_capacity: [{ slot: 'review-slot', funding: 'paid', pending_end_on: null }] } }) } }), true);
     const fields = { slot: 'review-slot', organisation: String(organisationId), namespace: String(foreign),
       namespaceLogin: 'submitted-false-name', back: '/manage/plan' };
@@ -614,7 +614,7 @@ test('Manage answers committed funding and connection actions while their scoped
     const link = await store.saveEstablishedLink({ linkId, productAccount: context.viewer.userId, worksAccount: '77',
       intentId: crypto.randomUUID(), protectedGrant: 'unused-fixture-grant' });
     assert.equal(await store.transition(link, { applied: { epoch: 1, version: 1, result: 'applied', at: app.now(),
-      projectionJson: JSON.stringify({ commercial: JSON.parse(COMMERCIAL_PRO).commercial,
+      projectionJson: JSON.stringify({ schema: 'wirt.benefit-projection/v1', commercial: JSON.parse(COMMERCIAL_PRO).commercial,
         benefits: { organisation_capacity: [{ slot: 'report-slot', funding: 'paid', pending_end_on: null }] } }) } }), true);
 
     for (const [action, organisation, message] of [

@@ -577,6 +577,20 @@ and the technical Lead's source and credential admission.
 
 **Sources.** The product Lead’s Policy Lab contract and settled Community/Free module judgment, followed by the technical/integration Lead’s source Assignment of 2026-10-25. This record preserves their product consequence without private workplace material.
 
+## D092: Advance only the TEST commercial calendar
+
+**Status:** Selected by Wolf on 2026-10-26; paired App consumer admitted by the technical/integration Lead. Source qualification and installed adoption remain distinct.
+
+**Decision.** Consume Wirt's ordered signed v2 TEST offset through the existing projection/store and customer presentation. Ordinary v1 has no offset field. Commercial comparisons use real now plus the applied offset. Genuine feedback/activity windows, raw occurrences, security and operational clocks remain real; entitlement continues to trust Wirt's derived standing.
+
+**Why.** The later TEST journey can traverse its full commercial calendar without waiting the same elapsed real-world time. Wolf selected that route after the shared A/B calendar consequence was disclosed: advancing TEST preserves annual calendar dates and money/history, but shortens the elapsed real time available to use existing TEST coverage. It does not prove a year of genuine use.
+
+**Rejected or superseded.** A host-clock change, global time mock, scheduler-only interpretation, accelerated genuine feedback, fabricated completion or rewritten payment history cannot supply the selected result. The field does not select a second clock store, acknowledgement ledger or history interpreter.
+
+**Current consequence.** [The integration contract](integration/app-commercial-link.md#signed-test-commercial-time) owns the wire validation, persistence, presentation and real/commercial split. Producer-derived real bounds on actual beta windows supply historical occurrence membership and genuine invitation delay; today's offset is not a history interpreter. The existing preserved real-use timestamp remains sufficient without a new per-operation store. Actual producer/consumer installation, independent security disposition and separately admitted advancement/use remain required at their own boundaries. The complete App and commercial journey are retained.
+
+**Sources.** Wolf's selection of “Implement and qualify TEST commercial time (Recommended)” after the complete shared-calendar tradeoff card, accepted by the App technical/integration Lead on 2026-10-26; the Wirt responsible Lead's settled signed v2 contract and explicit clarification that genuine feedback/activity stays real. Private workplace references remain in the owning Return rather than this public record.
+
 ## Earlier decisions and retained fragments
 
 The headings below preserve earlier links. Their full text remains in the exact predecessor record; follow its references for D001–D043. Later decisions above supersede only the stated portions. Historical source is not automatically current implementation.
