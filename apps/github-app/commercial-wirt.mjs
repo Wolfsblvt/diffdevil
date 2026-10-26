@@ -108,6 +108,28 @@ const nullableDate = value => value === null || date(value);
 const timestamp = value => typeof value === 'string' && value.length <= 40 && Number.isFinite(Date.parse(value));
 const oneOf = (value, values) => values.includes(value);
 
+/** The signed TEST offset belongs to the applied projection, never to the host or transport clock. */
+export function readCommercialClock(projection) {
+  if (projection.schema === 'wirt.benefit-projection/v1') {
+    shape(!Object.hasOwn(projection, 'commercial_clock'));
+    return null;
+  }
+  shape(projection.schema === 'wirt.benefit-projection/v2');
+  const clock = projection.commercial_clock;
+  shape(object(clock) && Object.keys(clock).length === 2 && positive(clock.offset_seconds)
+    && typeof clock.effective_at === 'string'
+    && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?Z$/u.test(clock.effective_at)
+    && timestamp(clock.effective_at));
+  // Date.parse normalizes impossible dates such as 30 February. Those are not real UTC instants.
+  shape(new Date(clock.effective_at).toISOString().slice(0, 19) === clock.effective_at.slice(0, 19));
+  return { offset_seconds: clock.offset_seconds, effective_at: clock.effective_at };
+}
+
+/** Compare commercial deadlines in milliseconds; genuine occurrences and security continue using realNow. */
+export function commercialNow(realNow, clock = null) {
+  return Date.parse(realNow) + (clock?.offset_seconds ?? 0) * 1000;
+}
+
 function readStream(value) {
   shape(object(value) && typeof value.works_account === 'string' && identifierPattern.test(value.works_account)
     && object(value.link) && typeof value.link.id === 'string' && identifierPattern.test(value.link.id)
@@ -195,7 +217,7 @@ export function readWirtMessage(value) {
     shape(timestamp(value.ended_at));
     return { kind: 'link-ended', stream: readStream(value.stream), order: readOrder(value.order), endedAt: value.ended_at };
   }
-  shape(value.schema === 'wirt.benefit-projection/v1');
+  readCommercialClock(value);
   shape(Array.isArray(value.account_lineage) && value.account_lineage.length <= 64
     && value.account_lineage.every(account => typeof account === 'string' && identifierPattern.test(account))
     && timestamp(value.generated_at) && (value.source_operation === null || (typeof value.source_operation === 'string' && value.source_operation.length <= 128))

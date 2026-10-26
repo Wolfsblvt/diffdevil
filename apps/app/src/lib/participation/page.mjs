@@ -7,6 +7,7 @@
  */
 import { rewardFor } from './service.mjs';
 import { presentReward, receiptOf } from './present.mjs';
+import { commercialNow } from '../../../../github-app/commercial-wirt.mjs';
 
 const CADENCES = ['monthly', 'annual'];
 
@@ -25,10 +26,11 @@ export async function loadParticipation({ runtime, viewer, session, model, previ
     const current = live.available ? rewardFor(view.campaign, live.rewards) : null;
     if (current) view = { ...view, reward: current, rewardSource: 'live' };
   }
-  let card = presentReward(view, { now: runtime.now(), protectedPrice });
+  const commercialClock = status?.commercialClock ?? null;
+  let card = presentReward(view, { now: runtime.now(), protectedPrice, commercialClock });
   const rewards = live?.available ? live.rewards : status?.participationRewards;
   const unavailable = (rewards ?? []).filter(reward => reward?.available === false && reward !== view.reward).length;
-  if (!card && unavailable) card = presentReward({ ...view, reward: rewards.find(reward => reward?.available === false) }, { now: runtime.now() });
+  if (!card && unavailable) card = presentReward({ ...view, reward: rewards.find(reward => reward?.available === false) }, { now: runtime.now(), commercialClock });
   if (card && unavailable) card.lines.push(`Works also sent ${unavailable} unreadable reward${unavailable === 1 ? '' : 's'}. Those details are unavailable here; review them at Works. Readable rewards remain shown.`);
   if (card && live && !live.available && view.reward) card.stale = true;
   const nextCharge = live?.available && live.nextCharge?.discounts.some(line => line.campaignKey === view.campaign.key) ? live.nextCharge : null;
@@ -36,7 +38,9 @@ export async function loadParticipation({ runtime, viewer, session, model, previ
   let quote = null;
   if (card?.previewCadences.includes(cadence)) {
     const stored = await participation.preview(viewer.userId, cadence);
-    if (stored) quote = { cadence, receipt: receiptOf(stored.quote, { cadence, protectedPrice }) };
+    // A later ordered clock step can lapse a preview before its real cache deadline.
+    const deadline = stored?.quote.expiresOn ? Date.parse(`${stored.quote.expiresOn}T00:00:00Z`) + 86_400_000 : null;
+    if (stored && (deadline === null || commercialNow(runtime.now(), commercialClock) < deadline)) quote = { cadence, receipt: receiptOf(stored.quote, { cadence, protectedPrice }) };
   }
   const nextCadence = status?.commercial?.cadence ?? 'monthly';
   return { view, card, live, quote, next: nextCharge ? receiptOf(nextCharge, { cadence: nextCadence, protectedPrice, label: `Due on ${receiptOf(nextCharge, { cadence: nextCadence }).on ?? 'the renewal date'}` }) : null, nextCharge };
