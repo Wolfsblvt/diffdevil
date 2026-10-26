@@ -27,7 +27,7 @@ import { createServer } from 'node:http';
 import { spawn, spawnSync } from 'node:child_process';
 import { mkdir, mkdtemp, writeFile } from 'node:fs/promises';
 import { existsSync, readFileSync } from 'node:fs';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { once } from 'node:events';
 import { generateKeyPairSync } from 'node:crypto';
 import { dirname, join, resolve } from 'node:path';
@@ -88,6 +88,7 @@ if (!existsSync(CONFIG)) { console.error('Build the App first: npm run app:build
 const EDITION = join(target.artifacts, 'edition.json');
 if (!existsSync(EDITION)) { console.error('The build carries no edition record; rebuild with npm run app:build.'); process.exit(2); }
 const edition = JSON.parse(readFileSync(EDITION, 'utf8'));
+const iconPackage = JSON.parse(readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), '../../../package.json'), 'utf8'));
 const premium = edition.premium && edition.qa ? (await import(pathToFileURL(resolve(edition.qa)).href)).default : null;
 console.log(`Qualifying the ${premium ? 'premium-joined' : edition.premium ? 'extension-boundary fixture' : 'Community'} build (${edition.reason}).`);
 // A local variables file copied into the build output would silently override the pass's --var flags.
@@ -500,7 +501,11 @@ async function qualifyCloud(label, selector) {
   await page.click(`${selector} [data-cloud-view="cloud"]`);
   await waitForCloudView(selector);
   const cloud = await page.evaluate(selector => ({
-    listHidden: getComputedStyle(document.querySelector(`${selector} .cl-list`)).display === 'none',
+    listHidden: (() => {
+      const list = document.querySelector(`${selector} .cl-list`);
+      const view = list?.closest('.cl-listwrap') ?? list;
+      return !!view && (getComputedStyle(view).display === 'none' || view.getClientRects().length === 0);
+    })(),
     stageVisible: getComputedStyle(document.querySelector(`${selector} .cl-wrap`)).display !== 'none',
     words: document.querySelectorAll(`${selector} .cl-words .cl-w`).length,
     busy: document.querySelector(`${selector} .cl`)?.classList.contains('is-busy') ?? true,
@@ -698,10 +703,10 @@ async function qualifyPrConfidenceState(consumerReturn = null) {
     if (!host || !frame) return;
     const interval = { status: 'bounded', lower: 2240, upper: 4335 };
     const delta = { status: 'bounded', lower: -2095, upper: 2095 };
-    frame.model = { ...frame.model, rows: [
+    frame.update({ ...frame.model, rows: [
       { index: 0, sha: 'before1', at: now - 1, changed: interval.lower, upper: interval.upper, status: interval.status, bandShort: null, color: null, changedFrom: null, sinceOpened: { status: 'exact', lower: 0, upper: 0 }, transition: null },
       { index: 1, sha: 'after01', at: now, changed: interval.lower, upper: interval.upper, status: interval.status, bandShort: null, color: null, changedFrom: delta, sinceOpened: delta, transition: null },
-    ] };
+    ] });
     frame.setFocus(1, { announce: true });
   }, now);
   const boundedReadout = await inspectBoundedReadout(1280);
@@ -730,9 +735,9 @@ async function qualifyPrConfidenceState(consumerReturn = null) {
     const host = document.querySelector('[data-chart-id="dev"]');
     const frame = host?.__frame;
     if (!frame) return;
-    frame.model = { ...frame.model, rows: frame.model.rows.map((row, index) => index === 1
+    frame.update({ ...frame.model, rows: frame.model.rows.map((row, index) => index === 1
       ? { ...row, changedFrom: { status: 'bounded', lower: -2095, upper: 1234 } }
-      : row) };
+      : row) });
     frame.setFocus(null, { quiet: true });
     frame.setFocus(1, { announce: true });
   });
@@ -1105,7 +1110,7 @@ try {
   const noticeText = await notices.text();
   check('the built application serves retained third-party licence notices', notices.status() === 200 && /echarts 6\.1\.0/u.test(noticeText) && /Apache License/u.test(noticeText), String(notices.status()));
   // The header's glyphs are prerendered into the page HTML from @wolfsblvt/icons, so its notice, the Lucide ISC and the Simple Icons CC0 text travel with the build; a non-UTF-8 reading would corrupt their © and quotation marks.
-  check('the served notices carry the shared icon package, Lucide ISC and Simple Icons CC0 notices as UTF-8', /charset=utf-8/iu.test(notices.headers()['content-type'] ?? '') && /^@wolfsblvt\/icons 0\.1\.0$/mu.test(noticeText) && /Copyright © 2026 Wolfsblvt Works/u.test(noticeText) && /^ISC License$/mu.test(noticeText) && /^# CC0 1\.0 Universal$/mu.test(noticeText), notices.headers()['content-type']);
+  check('the served notices carry the current shared icon package, Lucide ISC and Simple Icons CC0 notices as UTF-8', /charset=utf-8/iu.test(notices.headers()['content-type'] ?? '') && new RegExp(`^@wolfsblvt/icons ${iconPackage.devDependencies['@wolfsblvt/icons']}$`, 'mu').test(noticeText) && /Copyright © 2026 Wolfsblvt Works/u.test(noticeText) && /^ISC License$/mu.test(noticeText) && /^# CC0 1\.0 Universal$/mu.test(noticeText), notices.headers()['content-type']);
   const webhook = await context.request.post(`${PROBE}/webhooks/github`, { data: '{}', headers: { 'content-type': 'application/json' } });
   check('the joined Worker keeps the webhook ingress and refuses an unsigned delivery', webhook.status() === 400 || webhook.status() === 401, String(webhook.status()));
   await go('/sign-in');

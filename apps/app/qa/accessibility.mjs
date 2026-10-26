@@ -31,16 +31,32 @@ export async function accessibilityJourney({ page, check, go, settled, shot, OUT
         const host = page.locator(`[data-chart-id="${id}"]`);
         if (!await host.locator('[data-plot]').count()) continue;
         const plot = host.locator('[data-plot]');
+        const rowCount = await host.evaluate(host => host.__frame.spec.rows);
+        const announcementBefore = await host.locator('[data-announce]').textContent();
         await plot.focus(); await page.keyboard.press('Home');
         const keyed = await host.locator('[data-announce]').textContent();
-        const keyedTree = await tree(`${label}/${id}/keyboard`);
-        check(`${label}/${id}: keyboard values are exposed through a polite browser live region`, liveContains(keyedTree, keyed?.trim()));
-        await page.keyboard.press('Enter');
-        // History's retained bucket pin starts a page swap; do not race the neighboring frame's controls.
-        await settled();
-        check(`${label}/${id}: pin state is announced`, /pinned/u.test(await host.locator('[data-announce]').textContent()));
+        if (rowCount === 0) {
+          const emptyFocus = await host.evaluate(host => ({ focus: host.__frame.state.focus, selection: host.__frame.state.sel,
+            plotFocused: host.querySelector('[data-plot]') === document.activeElement }));
+          check(`${label}/${id}: an empty chart keeps focus and its truthful announcement without inventing a keyboard row`,
+            emptyFocus.focus === null && emptyFocus.selection === null && emptyFocus.plotFocused && keyed === announcementBefore, JSON.stringify(emptyFocus));
+          await page.keyboard.press('Enter');
+          await settled();
+          const emptyPin = await host.evaluate(host => ({ selection: host.__frame.state.sel,
+            plotFocused: host.querySelector('[data-plot]') === document.activeElement,
+            announcement: host.querySelector('[data-announce]').textContent }));
+          check(`${label}/${id}: Enter cannot pin or announce a nonexistent row`, emptyPin.selection === null
+            && emptyPin.plotFocused && emptyPin.announcement === announcementBefore && !/pinned/u.test(emptyPin.announcement), JSON.stringify(emptyPin));
+        } else {
+          const keyedTree = await tree(`${label}/${id}/keyboard`);
+          check(`${label}/${id}: keyboard values are exposed through a polite browser live region`, liveContains(keyedTree, keyed?.trim()));
+          await page.keyboard.press('Enter');
+          // History's retained bucket pin starts a page swap; do not race the neighboring frame's controls.
+          await settled();
+          check(`${label}/${id}: pin state is announced`, /pinned/u.test(await host.locator('[data-announce]').textContent()));
+        }
         const clear = host.locator('.fr-clear');
-        if (await clear.count()) {
+        if (rowCount > 0 && await clear.count()) {
           // A drill link may come between the plot and its clear button.
           const stops = [];
           for (let step = 0; step < 3; step++) {
@@ -62,7 +78,7 @@ export async function accessibilityJourney({ page, check, go, settled, shot, OUT
         check(`${label}/${id}: Table exposes its caption, column headers and data rows in the browser tree`,
           tableTree.some(node => node.role?.value === 'table' && node.name?.value === caption)
           && tableTree.some(node => node.role?.value === 'columnheader')
-          && await host.locator('tbody tr').count() > 0);
+          && (rowCount === 0 ? await host.locator('tbody tr').count() === 0 : await host.locator('tbody tr').count() > 0));
         const plotName = await plot.getAttribute('aria-label');
         check(`${label}/${id}: the chart is absent from the accessibility tree in Table view`,
           !tableTree.some(node => node.role?.value === 'application' && node.name?.value === plotName));
