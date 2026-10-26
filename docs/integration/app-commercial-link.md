@@ -50,14 +50,29 @@ that the producer is installed, a TEST clock was advanced, or the two installed
 services agree. [D092](../DECISIONS.md#d092-advance-only-the-test-commercial-calendar)
 preserves the selected tradeoff and genuine-use boundary.
 
-**Unresolved producer consequence:** the current two-field clock cannot map a
-retained real operation to its historical commercial beta-access date or establish
-the real start of genuine invitation delay after a prior step. The existing
-`qualifyingUse`/`betaAccessWindows` comparison is unchanged; this candidate does
-not claim it works across advanced history. Wirt retains the bounded authoritative
-time/access facts and amended signed contract. That interpretation remains
-incomplete, rather than selecting permanent unresolved eligibility, a general App
-history interpreter or a smaller invitation capability.
+The two-field clock does not reconstruct historical access. The amended v2
+producer contract instead adds `real_started_at` and `real_until` to every actual
+`benefits.beta_grants[].access_windows[]` entry and non-null `current_access`.
+These are real UTC instants at which the commercial calendar reached the supplied
+local-date boundaries. A skipped boundary maps to its step instant; a future
+boundary projects at the current offset until the next ordered republish. The
+original promised window remains a commercial date pair, without real fields.
+
+The receiver requires both actual-window bounds in v2 and rejects non-UTC,
+impossible or backwards instants for the whole projection. Equal bounds are
+valid: a step skipped that entire window, so no real occurrence belongs to it.
+Either real field on a v1 window is invalid; ordinary v1 retains its existing
+timezone/local-date interpretation.
+
+`qualifyingUse` queries retained deliveries by those half-open real bounds,
+including equivalent UTC timestamp spellings. Maintenance preserves the same
+single qualifying real occurrence before pruning. The invitation compares that
+occurrence with the applied real windows and measures its genuine elapsed delay
+from the first non-empty real access start. Empty and future windows cannot
+advance that delay. Later offset changes do not reinterpret the saved occurrence.
+No per-operation store or local step/history interpreter is introduced. This
+source consumer implements the amended producer commitment; native producer
+qualification and installed agreement remain independent.
 
 ## Wirt environment selection
 

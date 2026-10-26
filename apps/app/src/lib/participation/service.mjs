@@ -7,8 +7,8 @@
  */
 import { windowOf } from './campaign.mjs';
 import { missingForCompletion, surveyOf } from './survey.mjs';
-import { readProjectionBetaGrants, readProjectionCommercialTimeZone, sha256Hex } from '../../../../github-app/commercial-wirt.mjs';
-import { operationDate } from './calendar.mjs';
+import { readCommercialClock, readProjectionBetaGrants, readProjectionCommercialTimeZone, sha256Hex } from '../../../../github-app/commercial-wirt.mjs';
+import { accessContains, operationDate } from './calendar.mjs';
 
 const DAY = 86_400_000;
 // The same bounded backoff as Wirt reports, but a completion is never abandoned: after the last step it keeps that pace.
@@ -17,11 +17,12 @@ const BACKOFF_SECONDS = [60, 300, 900, 3600, 14400];
 const ACCEPTED = new Set(['accepted', 'replayed', 'reconciled']);
 const RETRY = new Set(['unavailable', 'unknown', 'unreadable', 'link-required']);
 
-/** Actual native access segments, in commercial date units. Promises, queued time and paid/grace terms are not access. */
+/** Actual access: ordinary local dates or producer-derived real bounds in advanced TEST. Promises are not access. */
 export function betaAccessWindows(status) {
   if (!status?.linked || status.reconciling || status.commercial?.tier !== 'pro') return null;
-  if (!Array.isArray(status.betaGrants) || !operationDate('2000-01-01T00:00:00Z', status.betaTimeZone)) return null;
-  return status.betaGrants.flatMap(grant => grant.access_windows).map(window => ({ from: window.started_on, until: window.until }));
+  if (!Array.isArray(status.betaGrants) || (!status.commercialClock && !operationDate('2000-01-01T00:00:00Z', status.betaTimeZone))) return null;
+  return status.betaGrants.flatMap(grant => grant.access_windows).map(window => ({ from: window.started_on, until: window.until,
+    ...(status.commercialClock ? { realFrom: window.real_started_at, realUntil: window.real_until } : {}) }));
 }
 
 /**
@@ -48,6 +49,11 @@ export function createParticipation({ store, commercial, campaign, now = () => n
 
   /** Meaningful use: Pro for at least the configured delay, and a managed-operation outcome observed during beta access. */
   function usedEnough({ access, observed, timeZone }) {
+    if (access?.some(window => window.realFrom !== undefined)) {
+      // Skipped whole windows supplied no elapsed access; future starts cannot satisfy the real delay.
+      const starts = access.filter(window => Date.parse(window.realFrom) < Date.parse(window.realUntil)).map(window => Date.parse(window.realFrom));
+      return starts.length > 0 && Date.parse(now()) - Math.min(...starts) >= campaign.inviteAfterDays * DAY && observed;
+    }
     const first = access?.map(window => window.from).sort()[0];
     // This is an invitation delay in calendar days after actual access began, not an entitlement duration.
     return first && (Date.parse(operationDate(now(), timeZone)) - Date.parse(first)) / DAY >= campaign.inviteAfterDays && observed;
@@ -95,8 +101,7 @@ export function createParticipation({ store, commercial, campaign, now = () => n
       const completed = response?.state === 'completed';
       // Maintenance records any qualifying outcome before pruning; a page visit does not establish use.
       const access = betaAccessWindows(status);
-      const day = operationDate(prompt?.useObservedAt, status?.betaTimeZone);
-      const observed = access?.some(window => day && day >= window.from && day < window.until);
+      const observed = access?.some(window => accessContains(prompt?.useObservedAt, window, status?.betaTimeZone));
       const stage = eligibility === 'participant' && window === 'open' && !completed && usedEnough({ access, observed, timeZone: status?.betaTimeZone }) ? promptStage(prompt) : null;
       return { campaign, survey, window, eligibility, proactiveEligibility: access === null ? 'unknown' : access.length ? 'known' : 'not-beta', response, delivery, completed, invitation: stage, prompt,
         // Wirt's projected facts are the reward; its answer to our own delivery stands in only until a projection carries it.
@@ -109,7 +114,8 @@ export function createParticipation({ store, commercial, campaign, now = () => n
       for await (const link of store.fundedLinks()) {
         const projection = JSON.parse(link.projection_json);
         const timeZone = readProjectionCommercialTimeZone(projection.benefits);
-        const access = betaAccessWindows({ linked: true, reconciling: false, commercial: projection.commercial, betaGrants: readProjectionBetaGrants(projection.benefits), betaTimeZone: timeZone });
+        const access = betaAccessWindows({ linked: true, reconciling: false, commercial: projection.commercial,
+          commercialClock: readCommercialClock(projection), betaGrants: readProjectionBetaGrants(projection.benefits, projection.schema), betaTimeZone: timeZone });
         if (!access) continue;
         const at = await store.qualifyingUse(link.product_account, access, timeZone);
         if (at) await store.recordUse(link.product_account, campaign, at, link.link_id);
