@@ -21,11 +21,25 @@ export async function scopeUnavailableJourney({ page, check, shot, settled, ORIG
         const response = await page.goto(`${ORIGIN}${path}?s=${selection.scope}&per=90d`, { waitUntil: 'networkidle' });
         await settled();
         const status = page.locator('[data-scope-unavailable]');
+        const pageTitle = await page.title();
+        const staging = pageTitle.startsWith('Staging · ');
+        const heading = page.locator('h1').first();
+        const stagingBadge = heading.locator('[data-staging-mark]');
+        const headingText = (await heading.innerText()).replace(/\s+/gu, ' ').trim();
+        const expectedHeadingText = `${title}${staging ? ' Staging' : ''}`;
+        const stagingBadgeCount = await stagingBadge.count();
+        const stagingBadgeText = stagingBadgeCount === 1 ? (await stagingBadge.innerText()).trim() : '';
+        const headingMatchesPageTitle = headingText === expectedHeadingText
+          && pageTitle === `${staging ? 'Staging · ' : ''}${title} · diffdevil App`
+          && (staging
+            ? stagingBadgeCount === 1 && await stagingBadge.isVisible() && stagingBadgeText === 'Staging'
+            : stagingBadgeCount === 0);
         check(`${title} keeps its frame and reports lost ${selection.name} scope`, response.status() === 200
-          && await page.locator('h1').first().innerText() === title
+          && headingMatchesPageTitle
           && await page.locator('[data-nav]').count() === 1
           && await status.count() === 1
-          && (await status.innerText()).includes(`Current GitHub access to ${selection.name} could not be confirmed`));
+          && (await status.innerText()).includes(`Current GitHub access to ${selection.name} could not be confirmed`),
+          `document title: ${pageTitle}; heading: ${headingText}; expected: ${expectedHeadingText}; staging badge count/text: ${stagingBadgeCount}/${stagingBadgeText}`);
         check(`${title} does not present inaccessible ${selection.name} scope as measured data or an upgrade offer`, await page.locator('[data-chart], [data-premium-region], .a-result').count() === 0
           && !/Data loaded|0 repositories|0 with history|See Pro|Upgrade to Pro/u.test(await page.locator('#main').innerText())
           && await page.locator('.a-nav-sec a[href^="/files"] .a-plan').count() === 0
