@@ -48,7 +48,7 @@ import { currentPolicyJourney } from './current-policy.mjs';
 import { policyLabJourney } from './policy-lab.mjs';
 import { accessibilityJourney } from './accessibility.mjs';
 import { cloudViewIsReady } from './cloud-view-readiness.mjs';
-import { QUEUED_LINK, QUEUED_KEY, queuedCoverageJourney } from './queued-coverage.mjs';
+import { QUEUED_LINK, QUEUED_KEY, queuedCoverageJourney, queuedCoverageWorksAvailabilityJourney } from './queued-coverage.mjs';
 
 const target = appBuildTarget();
 const IDENTITY_ONLY = process.argv.includes('--identity');
@@ -125,11 +125,11 @@ console.log(`Seeded ${seeded.written.written} analyses, ${seeded.written.retaine
 if (LOADING_SCALE) console.log(`Anonymous measured-scale cohort: ${JSON.stringify(seeded.written.loadingScale)}`);
 
 /** Local Worker variables as --var flags: fixture values only, never real credentials. `commercial` is the loopback Works stand-in's spec. */
-function workerVars(entitlement, { commercial, allowances, participation, signingKey, policyCredentials = true } = {}) {
+function workerVars(entitlement, { commercial, allowances, participation, signingKey, wirtOrigin, policyCredentials = true } = {}) {
   const vars = { APP_ORIGIN: ORIGIN, GITHUB_API_BASE: `http://127.0.0.1:${GITHUB_PORT}`, GITHUB_OAUTH_BASE: `http://127.0.0.1:${GITHUB_PORT}`, GITHUB_OAUTH_CLIENT_ID: 'fixture-client', GITHUB_OAUTH_CLIENT_SECRET: 'fixture-secret-private', APP_SEAL_KEY: 'fixture-seal-key-with-enough-length', APP_SESSION_DAYS: '30', GITHUB_WEBHOOK_SECRET: 'fixture-webhook-secret',
     ...(policyCredentials ? { GITHUB_APP_ID: '1', GITHUB_APP_PRIVATE_KEY: installationKey } : { GITHUB_APP_ID: '', GITHUB_APP_PRIVATE_KEY: '' }),
     ...(target.name === 'staging' ? { APP_STAGING_INSTALLATION_ACCOUNT_IDS: JSON.stringify(INSTALLATIONS.map(value => value.account.id)) } : {}),
-    ...(entitlement ? { APP_ENTITLEMENT_FIXTURE: JSON.stringify(entitlement) } : {}), ...(commercial ? { APP_COMMERCIAL_FIXTURE: JSON.stringify(commercial) } : {}), ...(allowances ? { APP_PLAN_ALLOWANCES: JSON.stringify(allowances) } : {}), ...(participation ? { APP_PARTICIPATION_CAMPAIGN: JSON.stringify(participation) } : {}), ...(signingKey ? { WIRT_SIGNING_KEY_CURRENT: signingKey, WIRT_LINK_CONTINUATION_URL: 'https://app.example.test/manage/plan' } : {}) };
+    ...(entitlement ? { APP_ENTITLEMENT_FIXTURE: JSON.stringify(entitlement) } : {}), ...(commercial ? { APP_COMMERCIAL_FIXTURE: JSON.stringify(commercial) } : {}), ...(allowances ? { APP_PLAN_ALLOWANCES: JSON.stringify(allowances) } : {}), ...(participation ? { APP_PARTICIPATION_CAMPAIGN: JSON.stringify(participation) } : {}), ...(signingKey ? { WIRT_SIGNING_KEY_CURRENT: signingKey, WIRT_LINK_CONTINUATION_URL: 'https://app.example.test/manage/plan' } : {}), ...(wirtOrigin !== undefined ? { WIRT_ORIGIN: wirtOrigin } : {}) };
   return Object.entries(vars).flatMap(([key, value]) => ['--var', `${key}:${value}`]);
 }
 
@@ -847,8 +847,17 @@ async function qualifyPrConfidenceState(consumerReturn = null) {
 
 try {
   if (QUEUED_COVERAGE_ONLY) {
+    const configuredState = join(target.artifacts, 'state-queued-coverage-configured');
+    await seedLocalState(configuredState);
+    executeLocal(`INSERT INTO commercial_links (link_id, product_account, works_account, state, established_at, updated_at) VALUES ('${QUEUED_LINK}', 123, '77', 'active', '2026-10-02T00:00:00Z', '2026-10-02T00:00:00Z')`, configuredState);
+    await startWorker(undefined, configuredState, { commercial: COMMERCIAL_PRO, wirtOrigin: '' });
+    await signIn();
+    await queuedCoverageWorksAvailabilityJourney({ ...ctx, ORIGIN });
+    await stopWorker();
+    await page.context().clearCookies();
+
     executeLocal(`INSERT INTO commercial_links (link_id, product_account, works_account, state, established_at, updated_at) VALUES ('${QUEUED_LINK}', 123, '77', 'active', '2026-10-02T00:00:00Z', '2026-10-02T00:00:00Z')`, STATE);
-    await startWorker(undefined, STATE, { signingKey: QUEUED_KEY });
+    await startWorker(undefined, STATE, { signingKey: QUEUED_KEY, wirtOrigin: '' });
     await signIn();
     await queuedCoverageJourney(ctx);
   } else if (EXPLICIT_READER_ONLY) {
