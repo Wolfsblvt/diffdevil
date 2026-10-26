@@ -625,7 +625,7 @@ export function createCommercialService({ store, wirt, signing, authorization, p
         pending: projection?.pending ?? [],
         // Display-only benefit facts the designed Plan & funding page names: grants and price protection, as Wirt sent them.
         grants: projection?.benefits?.grants ?? [], protection: projection?.benefits?.protection ?? null, linkedSince: link.established_at,
-        betaGrants: readProjectionBetaGrants(projection?.benefits),
+        betaGrants: readProjectionBetaGrants(projection?.benefits, projection?.schema),
         betaTimeZone: readProjectionCommercialTimeZone(projection?.benefits),
         // Wirt's participation reward facts from the applied projection: `null` when this projection carries none.
         participationRewards: readProjectionRewards(projection?.benefits),

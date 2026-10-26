@@ -181,7 +181,8 @@ test('advanced commercial time leaves the genuine survey window, invitation dela
     const wire = projection({ linkId, works: 'works-810', account: user, version: 2 }).projection;
     wire.schema = 'wirt.benefit-projection/v2';
     wire.commercial_clock = { offset_seconds: 365 * 86_400, effective_at: clock.value };
-    wire.benefits.beta_grants = [nativeBeta('2027-03-11', '2027-03-31')];
+    const access = { started_on: '2028-03-11', until: '2028-03-31', real_started_at: '2027-03-11T00:00:00Z', real_until: '2027-03-31T00:00:00Z' };
+    wire.benefits.beta_grants = [{ ...nativeBeta(), access_windows: [access], current_access: access }];
     await commercial.applyMessage(readWirtMessage(wire));
     await store.recordUse(user, CAMPAIGN, clock.value, linkId);
     let view = await participation.view({ userId: user, commercial: await standing(user) });
@@ -716,4 +717,48 @@ test('closing the account forgets every participation fact; the export carries t
   await store.forgetAccount(OTHER);
   for (const table of ['participation_responses', 'participation_deliveries', 'participation_prompts']) assert.equal((await rows(table, 'user_id=?', OTHER)).length, 0, table);
   assert.equal((await rows('participation_responses', 'user_id=?', USER)).length, 1, 'another account keeps its own');
+});
+
+test('advanced beta bounds place retained deliveries in real access and preserve genuine invitation delay after pruning', async () => {
+  const prior = clock.value, user = 811;
+  try {
+    clock.value = '2027-03-10T00:00:00.000Z';
+    const linkId = await link(user, 'works-811');
+    const wire = projection({ linkId, works: 'works-811', account: user, version: 2 }).projection;
+    const window = (from, until, real_started_at, real_until) => ({ started_on: from, until, real_started_at, real_until });
+    const empty = window('2028-01-01', '2028-02-01', '2027-02-01T00:00:00Z', '2027-02-01T00:00:00Z');
+    const first = window('2028-03-01', '2028-03-03', '2027-03-01T00:00:00Z', '2027-03-03T00:00:00Z');
+    const resumed = window('2028-06-01', '2028-07-01', '2027-03-10T00:00:00Z', '2027-03-20T00:00:00Z');
+    const future = window('2028-08-01', '2028-09-01', '2027-04-10T00:00:00Z', '2027-04-20T00:00:00Z');
+    wire.schema = 'wirt.benefit-projection/v2';
+    wire.commercial_clock = { offset_seconds: 450 * 86_400, effective_at: clock.value };
+    wire.benefits.beta_grants = [{ ...nativeBeta(), access_windows: [empty, first, resumed, future], current_access: resumed }];
+    await commercial.applyMessage(readWirtMessage(wire));
+    await db.prepare("INSERT INTO installations(installation_id,state,updated_at,account_id) VALUES (811,'active',?,?)").bind(clock.value,user).run();
+    await db.prepare("INSERT INTO repositories(repository_id,installation_id,state,updated_at) VALUES (811,811,'enabled',?)").bind(clock.value).run();
+    const insert = (id, at) => db.prepare("INSERT INTO deliveries(delivery_id,installation_id,repository_id,state,received_at,completed_at) VALUES (?,811,811,'repair',?,?)").bind(id,at,at).run();
+    for (const [id, at] of [['advanced-skipped','2027-02-01T00:00:00Z'], ['advanced-exclusive','2027-03-03T00:00:00Z'],
+      ['advanced-gap','2027-03-05T00:00:00Z'], ['advanced-before','2027-03-09T23:59:59.999Z'], ['advanced-end','2027-03-20T00:00:00Z']]) await insert(id, at);
+    await participation.preserveUse();
+    assert.equal(await store.prompt(user, CAMPAIGN), null, 'empty, gap and exclusive-end occurrences cannot qualify');
+    await insert('advanced-use', '2027-03-10T00:00:00Z');
+    await participation.preserveUse();
+    assert.equal((await store.prompt(user, CAMPAIGN)).useObservedAt, '2027-03-10T00:00:00Z');
+    let status = await standing(user);
+    assert.deepEqual(status.status.betaGrants[0].current_access, resumed);
+    assert.equal((await participation.view({ userId: user, commercial: status })).invitation, null, 'a skipped earlier window cannot shorten nine genuine elapsed days');
+    clock.value = '2027-03-11T00:00:00.000Z';
+    assert.equal((await participation.view({ userId: user, commercial: status })).invitation, 'invite', 'ten real days from actual first access qualifies');
+    // A subsequent ordered step changes future bounds, not the historical real occurrence or its interpretation.
+    wire.order.version = 3;
+    wire.commercial_clock = { offset_seconds: 550 * 86_400, effective_at: clock.value };
+    wire.benefits.beta_grants[0].access_windows[3] = { ...future, real_started_at: clock.value, real_until: clock.value };
+    await commercial.applyMessage(readWirtMessage(wire));
+    clock.value = '2027-03-19T00:00:00.000Z';
+    await new D1AppStore(db, { now: () => clock.value }).maintain();
+    assert.equal((await rows('deliveries', 'delivery_id=?', 'advanced-use')).length, 0);
+    status = await standing(user);
+    assert.equal((await participation.view({ userId: user, commercial: status })).invitation, 'invite', 'the preserved real occurrence survives pruning and a later offset');
+    assert.equal((await store.prompt(user, CAMPAIGN)).useObservedAt, '2027-03-10T00:00:00Z');
+  } finally { clock.value = prior; }
 });

@@ -368,6 +368,9 @@ test('signed TEST time follows applied order through D1 restart and customer pre
     assert.equal(presentCommercialClock(status, source.clock.value), null);
     const clock = { offset_seconds: 31 * 86_400, effective_at: source.clock.value };
     const advanced = { ...ordinary, schema: 'wirt.benefit-projection/v2', order: { epoch: 1, version: 2 }, commercial_clock: clock };
+    const access = { started_on: '2027-04-01', until: '2027-05-01', real_started_at: '2027-03-01T00:00:00Z', real_until: '2027-03-31T00:00:00Z' };
+    advanced.benefits = { ...ordinary.benefits, beta_grants: [{ id: 1, kind: 'beta', product: 'diffdevil', tier: 'pro', promised_units: 30,
+      remaining_units: 30, original_window: { started_on: '2027-04-01', until: '2027-05-01' }, access_windows: [access], current_access: access }] };
     const nonce = randomUUID();
     assert.equal((await push(source, advanced, { nonce })).status, 200);
     assert.equal((await push(source, advanced, { nonce })).status, 409, 'transport nonce remains single-use');
@@ -380,6 +383,7 @@ test('signed TEST time follows applied order through D1 restart and customer pre
       fetch: source.wirt.fetch, now: () => source.clock.value });
     status = (await restarted.status({ session: SESSION })).body;
     assert.deepEqual(status.commercialClock, clock);
+    assert.deepEqual(status.betaGrants[0].access_windows, [access], 'signed historical real bounds survive storage and an account-owned read');
     assert.equal(status.plan, 'pro', 'commercial expiry does not independently revoke Wirt-funded coverage');
     assert.deepEqual(status.commercial.period, ordinary.commercial.period);
     const marker = presentCommercialClock(status, source.clock.value);
@@ -398,6 +402,11 @@ test('signed TEST time follows applied order through D1 restart and customer pre
     const bad = { ...advanced, order: { epoch: 1, version: 3 }, commercial_clock: { offset_seconds: 0, effective_at: clock.effective_at } };
     assert.equal((await push(source, bad)).status, 422);
     assert.deepEqual((await restarted.status({ session: SESSION })).body.commercialClock, clock, 'invalid update preserves the prior state');
+    const missingBounds = structuredClone(advanced);
+    missingBounds.order.version = 3;
+    delete missingBounds.benefits.beta_grants[0].access_windows[0].real_until;
+    assert.equal((await push(source, missingBounds)).status, 422, 'missing v2 historical bounds refuses the whole signed message');
+    assert.deepEqual((await restarted.status({ session: SESSION })).body.betaGrants[0].access_windows, [access]);
     const fresh = { ...ordinary, order: { epoch: 1, version: 3 } };
     assert.equal((await push(source, fresh)).status, 200);
     status = (await restarted.status({ session: SESSION })).body;
