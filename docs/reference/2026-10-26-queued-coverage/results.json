@@ -1,0 +1,133 @@
+{
+  "origin": "http://localhost:4412",
+  "scope": "queued-coverage",
+  "target": "production",
+  "seeded": {
+    "written": 138,
+    "retained": 70,
+    "observations": 127
+  },
+  "dense": false,
+  "charts": [],
+  "results": [
+    {
+      "name": "auth/start redirects to github.com with a bound state",
+      "ok": true,
+      "detail": "303 https://github.com/login/oauth/authorize?client_id=fixture-client&redirect_uri=http%3A%2F%2Flocalhost%3A4412%2Fauth%2Fcallback&state=LHVfo5jO8qznOC4zcL3BIzzsjQLgwjYPebF6OJ411eo"
+    },
+    {
+      "name": "callback continues into a session and lands on the overview",
+      "ok": true,
+      "detail": "http://localhost:4412/ :: Skip to content App Search Ctrl K Docs Playground Install FAQ App Overview Pull requests 12 active History Files PRO REPOSITORIES All repositories 7 YOURS ad ada-sample you dotfiles notes-site Labels only pa parser-guild grammar-fuzz History off lexer-kit parser-lab SHARED WITH YOU ka kai-sample tre"
+    },
+    {
+      "name": "queued coverage: signed full projection applied",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "queued coverage: current grants, full queued year and later renewal render together",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "queued coverage: the card stays current Pro with private response headers",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "queued coverage: configured Works exits retain their ordinary unavailable state",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "queued coverage: benefit signed projection applied",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "queued coverage: benefit renders its supplied standing",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "queued coverage: held signed projection applied",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "queued coverage: held renders its supplied standing",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "queued coverage: renewal-unavailable signed projection applied",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "queued coverage: renewal-unavailable renders its supplied standing",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "queued coverage: legacy signed projection applied",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "queued coverage: legacy renders its supplied standing",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "queued coverage: malformed future dates are refused",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "queued coverage: mismatched signed account cannot update the link",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "queued coverage: refused updates preserve the previous applied view",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "queued coverage: pending payment projection applied",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "queued coverage: a future paid period never confirms current payment",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "queued coverage: definition rows remain readable at compact desktop width",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "no console errors",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "no page errors",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "no external requests left the loopback",
+      "ok": true,
+      "detail": ""
+    }
+  ],
+  "failures": [],
+  "consoleErrors": [],
+  "pageErrors": [],
+  "external": []
+}

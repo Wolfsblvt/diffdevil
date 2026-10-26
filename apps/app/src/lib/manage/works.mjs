@@ -85,6 +85,7 @@ export function projectionKey(status) {
 export function presentProjection(status, { works, ended = false } = {}) {
   const key = projectionKey(status);
   const commercial = status?.commercial ?? null;
+  const continuation = commercial?.paidContinuation ?? null;
   const tier = tierLabel(commercial?.tier ?? status?.plan);
   const total = formatMoney(commercial?.nextRenewal);
   const renewsOn = fmtDay(commercial?.nextRenewal?.on);
@@ -101,6 +102,8 @@ export function presentProjection(status, { works, ended = false } = {}) {
   let head = null;
   const planName = ['ended', 'ended-unresolved', 'free'].includes(key) ? 'Free' : tier;
   let planSub = commercial ? `${cadenceWord(commercial.cadence) ?? 'Subscription'}${paidSlots ? ` · with ${paidSlots} additional ${paidSlots === 1 ? 'organisation' : 'organisations'}` : ''}${total ? ` · ${total} ${perWord(commercial.cadence)}${commercial.nextRenewal?.tax_inclusive ? ', tax included' : ''}` : ''}` : '';
+  if (continuation) planSub = commercial.standing === 'first-payment-pending' ? 'Awaiting current payment confirmation'
+    : commercial.standing === 'ended' ? 'Previous coverage' : 'Current coverage';
   switch (key) {
     case 'no-coverage': head = banner('info', 'info', 'Linked to Wolfsblvt Works', 'Works has confirmed that this account has no commercial coverage or rewards. Free remains your plan.'); planSub = 'No Works-funded benefits'; rows.push({ term: 'Works benefits', value: 'None' }); break;
     case 'reward-only': head = banner('info', 'info', 'Works benefits are linked', 'Works has confirmed benefits without a funded subscription. Free remains your plan; a reward alone does not fund repository access or an organisation slot. Manage your gifts and benefits at Works.'); planSub = 'No funded subscription'; rows.push({ term: 'Subscription', value: 'None funded' }); break;
@@ -128,11 +131,27 @@ export function presentProjection(status, { works, ended = false } = {}) {
     const term = component.endsOn ? `Through ${dayBefore(component.endsOn) ?? '—'}` : null;
     rows.push({ term: component.name, value: componentStates[component.state] ?? 'Unknown', sub: [component.reason, start, term].filter(Boolean).join(' · ') });
   }
-  // A grant names what funds the period (the beta month is one); whether anything follows it is Works' renewal preference.
+  // Queued coverage is display-only: only Wirt can activate it or establish the following renewal.
+  if (continuation) {
+    const held = continuation.state === 'needs-reconciliation';
+    const queued = { term: held ? 'Continuation' : continuation.funding === 'paid' ? 'Paid period queued' : 'Funded period queued',
+      value: `${tierLabel(continuation.tier)} · ${cadenceWord(continuation.cadence)}`,
+      sub: `${fmtDay(continuation.period.started_on)} through ${dayBefore(continuation.period.ends_on)} · ${held ? 'Needs reconciliation at Works; no new active period confirmed' : `Confirmed at Works on ${fmtDay(continuation.confirmedOn)}; awaiting its start`}` };
+    const current = rows.findIndex(row => row.term === 'Funded through');
+    rows.splice(current < 0 ? rows.length : current + 1, 0, queued);
+    const renewal = rows.find(row => row.term === 'Next renewal');
+    if (renewal) {
+      if (!commercial.nextRenewal) renewal.value = 'Not supplied by Works';
+      renewal.sub = held ? 'Continuation needs reconciliation at Works'
+        : `${commercial.renewalPreference === 'manual' ? 'Renewed manually at Works' : 'Renews automatically'} · after the queued ${cadenceWord(continuation.cadence).toLowerCase()} period${commercial.nextRenewal?.tax_inclusive ? ' · tax included' : ''}`;
+    }
+  }
+  // A grant names what funds the current period; a confirmed continuation is a separate future fact.
   // Its `until` is the end date Works sends, like the period's `ends_on`, so both read as the last funded day.
   const grantWord = kind => ({ gift: 'A gift', beta: 'Beta access' })[kind] ?? 'Funded access';
   for (const grant of grants) rows.push({ term: 'Funded by', value: `${grantWord(grant.kind)}, through ${dayBefore(grant.until) ?? '—'}`,
-    sub: commercial?.renewalPreference === 'manual' ? 'No charge and no card. Nothing renews automatically; continuing with Pro is your choice at Works.' : 'No charge until then. Renewal after it is set at Works.' });
+    sub: continuation ? 'Grant reported by Works; continuation shown separately.'
+      : commercial?.renewalPreference === 'manual' ? 'No charge and no card. Nothing renews automatically; continuing with Pro is your choice at Works.' : 'No charge until then. Renewal after it is set at Works.' });
   const slotBanners = slotEnding.map(slot => {
     const component = slot.funding === 'grant' ? status?.fundedComponents?.find(value => value.id === slot.slot) : null;
     if (component) return { tone: 'warn', icon: 'info', title: `${component.name} ends on ${fmtDay(slot.pendingEndOn)}`,

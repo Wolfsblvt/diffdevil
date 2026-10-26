@@ -2,6 +2,7 @@
 
 import { protectedHeaders, validOrigin } from './authorization.mjs';
 import { D1CommercialStore } from './commercial-storage.mjs';
+import { readPaidContinuation } from './commercial-wirt.mjs';
 import { WIRT_CLIENT, WIRT_NONCE_MS, createWirtClient, parseJsonBytes, readBoundedBody, readExactHttpsUrl, readProjectionBetaGrants, readProjectionCommercialTimeZone, readProjectionFundedComponents, readProjectionRewards, readSigningKeys, readWirtMessage, sha256Hex, verifySignedMessage } from './commercial-wirt.mjs';
 
 export const COMMERCIAL_LINK_COOKIE = '__Host-diffdevil-works-link';
@@ -618,7 +619,8 @@ export function createCommercialService({ store, wirt, signing, authorization, p
       return { headers: protectedHeaders(), body: { linked: true, plan: planForLink(link), reconciling: Boolean(link.restored_at), order: orderOf(link) ?? null,
         commercial: commercial ? { standing: commercial.standing, tier: commercial.tier, cadence: commercial.cadence, period: commercial.period,
           renewalPreference: commercial.renewal_preference, cancellationIntent: commercial.cancellation_intent, grace: commercial.grace,
-          ended: commercial.ended, nextRenewal: commercial.next_renewal } : null,
+          ended: commercial.ended, nextRenewal: commercial.next_renewal,
+          paidContinuation: readPaidContinuation(commercial.paid_continuation) } : null,
         pending: projection?.pending ?? [],
         // Display-only benefit facts the designed Plan & funding page names: grants and price protection, as Wirt sent them.
         grants: projection?.benefits?.grants ?? [], protection: projection?.benefits?.protection ?? null, linkedSince: link.established_at,

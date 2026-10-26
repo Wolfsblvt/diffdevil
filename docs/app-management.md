@@ -87,6 +87,13 @@ Store long-running progress independently of an execution message's lifetime. Re
 
 The subscription view shows its plan, tax-inclusive recurring total, cadence, funded-through/renewal date, price-protection standing, included organisation and add-ons. The shared billing service owns the authoritative quote, tax, credits, payment and entitlement result.
 
+When Works has confirmed a continuation after beta or gift coverage, Plan & funding
+keeps current coverage and its grants visible, names the queued period's supplied
+plan, cadence and dates, and shows the supplied next renewal separately. A queued
+period is not current entitlement or a pending payment. A continuation needing
+reconciliation says so; absent renewal facts supply no inferred amount or date.
+The ordinary Works exits retain commercial detail and confirmation.
+
 ### Upgrade into a new full period
 
 Credit unused value from the actual paid old components and start a new full period on the selected cadence. Existing add-ons move to that same new anchor, with their own unused old value credited and their new full period included. Do not leave separate renewal dates behind.

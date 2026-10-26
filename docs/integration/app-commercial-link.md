@@ -246,6 +246,25 @@ new recurring worker or whole-App lock. New sign-in and deliberate later consent
 remain ordinary new operations. Source fixtures qualify the local conflict and
 independent wire double; actual Wirt/customer adoption remains separate.
 
+### Queued paid coverage in Manage
+
+The optional `commercial.paid_continuation` is read from Wirt's public projection
+contract: `state` (`paid-awaiting-start`, `benefit-awaiting-start`, or
+`needs-reconciliation`), `confirmed_on`, `funding` (`paid` or `benefit`), `tier`
+(`pro`), `cadence`, and the half-open commercial-date `period` (`started_on`,
+`ends_on`). The account's authenticated status exposes only these fields as
+`commercial.paidContinuation`, with `confirmedOn`; private financial identifiers
+and provenance are excluded. Missing legacy data remains unknown. Malformed
+continuations refuse a new projection, preserving the last applied state.
+
+Manage places the queued period beside current coverage and the producer's
+`next_renewal`. It does not compute an anchor, amount, payment result or entitlement,
+and does not activate a future period from the App's clock. Wirt supplies the
+following renewal and performs activation. A reconciliation state stays explicit;
+Works' existing plan and benefits pages retain detail and confirmation. Local
+signed-message/D1 and browser qualification establish this consumer boundary,
+separately from installed Wirt/App compatibility or real commercial use.
+
 ## Configuration
 
 The [single-target environment model](#wirt-environment-selection) governs this

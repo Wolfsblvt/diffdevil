@@ -256,6 +256,7 @@ npm run app:build        # engine, website provenance, icon projection, Astro bu
 npm run test:app         # derivations, URL state, and the Community sign-in/viewer/service/locator journey against local D1 (premium cases: premium/tests)
 npm run qa:app           # seeds local D1, serves a GitHub double, runs the built joined Worker in workerd, drives Chromium (Community journeys always; premium journeys when the build joined the extension)
 node apps/app/qa/run.mjs --thumb # focused browser qualification of chart/table selection movement on the built App
+node apps/app/qa/run.mjs --queued-coverage # signed projection → D1 → authenticated current/queued Plan & funding facts
 node apps/app/qa/run.mjs --accessibility # common charts and Manage through Chromium's accessibility tree and keyboard input
 node apps/app/qa/run.mjs --funding # namespace chips and analytical entitlement for unfunded/funded/shared/unknown scopes
 node apps/app/qa/run.mjs --current-policy # trusted path/band overrides, actual basis, unavailable/retry and delayed/superseded reads against the built Worker and local GitHub double

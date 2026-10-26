@@ -12,7 +12,7 @@
  * payment or a plan.
  */
 import { protectedHeaders, validOrigin } from '../../../../github-app/authorization.mjs';
-import { readProjectionFundedComponents, readRewardFacts, readRewardList } from '../../../../github-app/commercial-wirt.mjs';
+import { readPaidContinuation, readProjectionFundedComponents, readRewardFacts, readRewardList } from '../../../../github-app/commercial-wirt.mjs';
 
 const states = new Map();
 const PREMIUM = new Set(['funded', 'renewal-in-grace']);
@@ -70,7 +70,7 @@ export function createCommercialFixture(spec, { authorization, namespaceOf, allo
   };
   const readLine = line => ({ amountCents: line.amount_cents, reason: line.promise.campaign.reason, campaignKey: line.promise.campaign.key, campaignVersion: line.promise.campaign.version, rewardKey: line.promise.key,
     cadence: line.promise.cadence, unit: line.promise.unit, value: line.promise.value, remainingUsesAfter: line.remaining_uses_after, postRewardBaseCents: line.post_reward_base_cents });
-  const body = () => ({ linked: state.linked, plan: ownPlan(), reconciling: false, commercial: state.commercial ? { standing: state.commercial.standing, tier: state.commercial.tier, cadence: state.commercial.cadence, period: state.commercial.period, renewalPreference: state.commercial.renewal_preference, cancellationIntent: state.commercial.cancellation_intent, grace: state.commercial.grace ?? null, ended: state.commercial.ended ?? null, nextRenewal: state.commercial.next_renewal ?? null } : null,
+  const body = () => ({ linked: state.linked, plan: ownPlan(), reconciling: false, commercial: state.commercial ? { standing: state.commercial.standing, tier: state.commercial.tier, cadence: state.commercial.cadence, period: state.commercial.period, renewalPreference: state.commercial.renewal_preference, cancellationIntent: state.commercial.cancellation_intent, grace: state.commercial.grace ?? null, ended: state.commercial.ended ?? null, nextRenewal: state.commercial.next_renewal ?? null, paidContinuation: readPaidContinuation(state.commercial.paid_continuation) } : null,
     pending: state.pending, grants: state.grants, betaGrants: state.betaGrants, betaTimeZone: spec.betaTimeZone ?? null, protection: state.protection, capacity: state.capacity.map(slot => ({ ...slot, binding: slot.binding ? { ...slot.binding, display: slot.binding.authority === 'present' ? slot.binding.display : null } : null })), order: state.order, linkedSince: state.since, participationRewards: state.participation || spec.rewardSpecimens ? rewardFacts() : null, fundedComponents: readProjectionFundedComponents({ funded_components: spec.fundedComponents }), fixture: true });
 
   return {
