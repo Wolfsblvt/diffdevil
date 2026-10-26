@@ -10,6 +10,55 @@ The environment selection below owns the production/staging relationship. It
 separates that settled model from source support, a configured TEST consumer and
 admitted live commercial operation.
 
+## Signed TEST commercial time
+
+Unadvanced and production producers retain `wirt.benefit-projection/v1`, with no
+`commercial_clock` field and zero offset. An advanced TEST producer uses
+`wirt.benefit-projection/v2`, adding the signed top-level object
+`commercial_clock: { offset_seconds, effective_at }`. It has exactly those two
+keys: a safe integer offset of at least one second and a real UTC instant ending
+in `Z`. Missing, additional or invalid clock fields refuse the entire projection
+with `E_COMMERCIAL_SHAPE`; they never select zero. A v1 message carrying a clock
+is also refused rather than silently discarding that time basis.
+
+The full applied projection remains the only durable clock source. Existing
+stream order, lineage, replay and restore protections apply unchanged. Commercial
+now is the current real instant plus the latest applied offset, running at normal
+speed between deliberate producer steps. `effective_at` is diagnostic and does
+not reinterpret historical observations. A fresh service reads the offset from
+the same stored projection; there is no clock ledger or second ordering scheme.
+
+The account-owned status exposes `commercialClock` for the existing Manage
+presentation. Advanced context shows commercial and real UTC time beside plan
+and reward dates, preserving current and queued coverage. Discount claim and
+validity presentation compares against commercial now. Exercise/application and
+other commercial dates retain their producer values; their authoritative state
+and actions remain at Works. Quote expiry dates are commercial, while cached
+preview creation/expiry records are real instants. A later applied offset can
+also lapse a displayed preview before its previously stored real expiry.
+
+Survey campaign windows, genuine invitation/reminder delays, recorded use and raw
+completion occurrences remain real. No historical offset is inferred for a
+retained operation from the latest projection or `effective_at`. Security/session
+clocks, HMAC skew, nonces, record/retry/cache timing, provider observations and
+`generated_at`/`ended_at` keep real time. Entitlement still trusts Wirt's funded
+or grace standing; passing a commercial term date does not create a local billing
+or entitlement transition. `wirt.link-ended/v1` is unchanged.
+
+This is paired source support for the settled producer interface, not evidence
+that the producer is installed, a TEST clock was advanced, or the two installed
+services agree. [D092](../DECISIONS.md#d092-advance-only-the-test-commercial-calendar)
+preserves the selected tradeoff and genuine-use boundary.
+
+**Unresolved producer consequence:** the current two-field clock cannot map a
+retained real operation to its historical commercial beta-access date or establish
+the real start of genuine invitation delay after a prior step. The existing
+`qualifyingUse`/`betaAccessWindows` comparison is unchanged; this candidate does
+not claim it works across advanced history. Wirt retains the bounded authoritative
+time/access facts and amended signed contract. That interpretation remains
+incomplete, rather than selecting permanent unresolved eligibility, a general App
+history interpreter or a smaller invitation capability.
+
 ## Wirt environment selection
 
 Each App deployment selects **one complete Wirt environment at a time**.

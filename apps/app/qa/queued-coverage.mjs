@@ -72,4 +72,24 @@ export async function queuedCoverageJourney({ page, go, check, shot, ORIGIN }) {
   check('queued coverage: definition rows remain readable at compact desktop width',
     await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth));
   await shot('queued-coverage-pending-payment');
+
+  const advanced = { ...projection(7), schema: 'wirt.benefit-projection/v2',
+    commercial_clock: { offset_seconds: 365 * 86_400, effective_at: new Date().toISOString() } };
+  check('commercial time: signed advanced projection applied', (await push(advanced)).status === 200);
+  await go('/manage/plan');
+  const marker = page.locator('[data-commercial-time]');
+  const context = await marker.textContent();
+  check('commercial time: commercial and real UTC dates are distinct and explicit', /TEST commercial time/u.test(context)
+    && /Commercial: /u.test(context) && /Real: /u.test(context) && /survey activity and security use real time/u.test(context));
+  check('commercial time: advanced calendar preserves current and queued full-year coverage',
+    /Paid period queued\s+Pro · Annual/u.test(await facts()) && /1 May 2027 through 30 Apr 2028/u.test(await facts()));
+  check('commercial time: marker fits the existing page', await marker.evaluate(element => element.scrollWidth <= element.clientWidth));
+  await shot('commercial-time-plan');
+  const invalid = { ...advanced, order: { epoch: 1, version: 8 }, commercial_clock: { ...advanced.commercial_clock, offset_seconds: 0 } };
+  check('commercial time: invalid clock refuses the complete update', (await push(invalid)).status === 422);
+  await go('/manage/plan');
+  check('commercial time: prior commercial context remains after refusal', await marker.count() === 1);
+  check('commercial time: a newer ordinary projection applies', (await push(projection(8))).status === 200);
+  await go('/manage/plan');
+  check('commercial time: ordinary presentation has no TEST marker', await marker.count() === 0);
 }

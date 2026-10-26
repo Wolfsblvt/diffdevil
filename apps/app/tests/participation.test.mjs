@@ -172,6 +172,41 @@ const form = entries => { const value = new FormData(); for (const [name, item] 
 const rows = async (table, where = '1=1', ...values) => (await db.prepare(`SELECT * FROM ${table} WHERE ${where}`).bind(...values).all()).results;
 const completions = () => double.state.requests.filter(request => request.path.endsWith('/participation-completions'));
 
+test('advanced commercial time leaves the genuine survey window, invitation delay and outbound completion occurrence real', async () => {
+  const priorTime = clock.value, priorAnswer = double.state.answer;
+  const user = 810;
+  try {
+    clock.value = '2027-03-12T09:30:15.250Z';
+    const linkId = await link(user, 'works-810');
+    const wire = projection({ linkId, works: 'works-810', account: user, version: 2 }).projection;
+    wire.schema = 'wirt.benefit-projection/v2';
+    wire.commercial_clock = { offset_seconds: 365 * 86_400, effective_at: clock.value };
+    wire.benefits.beta_grants = [nativeBeta('2027-03-11', '2027-03-31')];
+    await commercial.applyMessage(readWirtMessage(wire));
+    await store.recordUse(user, CAMPAIGN, clock.value, linkId);
+    let view = await participation.view({ userId: user, commercial: await standing(user) });
+    assert.equal(view.window, 'open', 'commercial time beyond the survey close cannot close genuine feedback');
+    assert.equal(view.invitation, null, 'one real day of access cannot become ten days by advancing commercial time');
+    clock.value = '2027-03-22T09:30:15.250Z';
+    view = await participation.view({ userId: user, commercial: await standing(user) });
+    assert.equal(view.invitation, 'invite', 'the real invitation delay can still elapse');
+    double.state.answer = 503;
+    const answers = readAnswers(SURVEYS['beta-v1'], form([['used', 'size-labels']]));
+    assert.equal(await participation.complete({ userId: user, commercial: await standing(user), answers }), 'completed');
+    await participation.flush({ userId: user });
+    const sent = JSON.parse(completions().filter(request => request.account === String(user)).at(-1).text);
+    assert.equal(sent.completed_at, '2027-03-22T09:30:15Z');
+    const delivery = (await rows('participation_deliveries', 'user_id=?', user))[0];
+    assert.equal(delivery.next_attempt_at, '2027-03-22T09:31:15.250Z', 'retry records remain real');
+    clock.value = '2027-04-01T00:00:00.000Z';
+    assert.equal((await participation.view({ userId: user, commercial: await standing(user) })).window, 'closed');
+  } finally {
+    await store.forgetAccount(user);
+    double.state.requests = double.state.requests.filter(request => request.account !== String(user));
+    clock.value = priorTime; double.state.answer = priorAnswer;
+  }
+});
+
 before(async () => {
   mf = new Miniflare({ workers: [{ config: { name: 'participation-test', compatibilityDate: '2026-09-17', env: { APP_DB: { type: 'd1', id: `participation-${randomUUID()}` } },
     manifest: { mainModule: 'worker.mjs', modulesRoot: resolve('.'), modules: { 'worker.mjs': { type: 'esm', contents: 'export default { fetch() { return new Response("ok"); } };' } } } } }] });

@@ -2,7 +2,7 @@
 
 import { protectedHeaders, validOrigin } from './authorization.mjs';
 import { D1CommercialStore } from './commercial-storage.mjs';
-import { readPaidContinuation } from './commercial-wirt.mjs';
+import { readPaidContinuation, readCommercialClock } from './commercial-wirt.mjs';
 import { WIRT_CLIENT, WIRT_NONCE_MS, createWirtClient, parseJsonBytes, readBoundedBody, readExactHttpsUrl, readProjectionBetaGrants, readProjectionCommercialTimeZone, readProjectionFundedComponents, readProjectionRewards, readSigningKeys, readWirtMessage, sha256Hex, verifySignedMessage } from './commercial-wirt.mjs';
 
 export const COMMERCIAL_LINK_COOKIE = '__Host-diffdevil-works-link';
@@ -617,6 +617,7 @@ export function createCommercialService({ store, wirt, signing, authorization, p
       const bindings = await store.bindings(link.link_id);
       const commercial = projection?.commercial;
       return { headers: protectedHeaders(), body: { linked: true, plan: planForLink(link), reconciling: Boolean(link.restored_at), order: orderOf(link) ?? null,
+        ...(projection ? { commercialClock: readCommercialClock(projection) } : {}),
         commercial: commercial ? { standing: commercial.standing, tier: commercial.tier, cadence: commercial.cadence, period: commercial.period,
           renewalPreference: commercial.renewal_preference, cancellationIntent: commercial.cancellation_intent, grace: commercial.grace,
           ended: commercial.ended, nextRenewal: commercial.next_renewal,
@@ -730,7 +731,10 @@ export function createCommercialService({ store, wirt, signing, authorization, p
       if (!link || !wirt || link.restored_at) return { available: false, reason: !link ? 'not-linked' : link.restored_at ? 'reconciling' : 'unavailable' };
       try {
         const result = await wirt.rewardQuote({ linkId: link.link_id, productAccount: link.product_account, cadence });
-        if (result.kind === 'quote') return { available: true, quote: result.quote };
+        if (result.kind === 'quote') {
+          const projection = plannedProjection(link);
+          return { available: true, quote: result.quote, commercialClock: projection ? readCommercialClock(projection) : null };
+        }
         return { available: false, reason: result.kind === 'not-quotable' ? 'not-quotable' : 'unavailable' };
       } catch { return { available: false, reason: 'unavailable' }; }
     },
