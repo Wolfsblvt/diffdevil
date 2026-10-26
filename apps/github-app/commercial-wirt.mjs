@@ -128,6 +128,20 @@ function readCommercial(value) {
     && (value.ended === null || (object(value.ended) && date(value.ended.on) && typeof value.ended.reason === 'string' && oneOf(value.ended.earlier_attempt, ['none', 'unresolved'])))
     && (value.next_renewal === null || (object(value.next_renewal) && date(value.next_renewal.on) && Number.isSafeInteger(value.next_renewal.total_cents)
       && value.next_renewal.total_cents >= 0 && typeof value.next_renewal.currency === 'string' && typeof value.next_renewal.tax_inclusive === 'boolean')));
+  readPaidContinuation(value.paid_continuation);
+}
+
+/** Wirt's public queued-term contract. Missing legacy facts are unknown, never a new entitlement or a price. */
+export function readPaidContinuation(value) {
+  if (value === undefined || value === null) return null;
+  const commercialDate = value => date(value) && Number.isFinite(Date.parse(`${value}T00:00:00Z`))
+    && new Date(`${value}T00:00:00Z`).toISOString().slice(0, 10) === value;
+  shape(object(value) && oneOf(value.state, ['paid-awaiting-start', 'benefit-awaiting-start', 'needs-reconciliation'])
+    && commercialDate(value.confirmed_on) && oneOf(value.funding, ['paid', 'benefit']) && value.tier === 'pro'
+    && oneOf(value.cadence, ['monthly', 'annual']) && object(value.period)
+    && commercialDate(value.period.started_on) && commercialDate(value.period.ends_on) && value.period.started_on < value.period.ends_on);
+  return { state: value.state, confirmedOn: value.confirmed_on, funding: value.funding, tier: value.tier,
+    cadence: value.cadence, period: { started_on: value.period.started_on, ends_on: value.period.ends_on } };
 }
 
 function readBenefits(value) {

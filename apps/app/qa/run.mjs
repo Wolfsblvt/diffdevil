@@ -48,6 +48,7 @@ import { currentPolicyJourney } from './current-policy.mjs';
 import { policyLabJourney } from './policy-lab.mjs';
 import { accessibilityJourney } from './accessibility.mjs';
 import { cloudViewIsReady } from './cloud-view-readiness.mjs';
+import { QUEUED_LINK, QUEUED_KEY, queuedCoverageJourney } from './queued-coverage.mjs';
 
 const target = appBuildTarget();
 const IDENTITY_ONLY = process.argv.includes('--identity');
@@ -70,7 +71,8 @@ const PR_CONFIDENCE_ONLY = process.argv.includes('--pr-confidence-state');
 const PR_FILES_ONLY = process.argv.includes('--pr-files-table');
 const BUSINESS_MANAGE_ONLY = process.argv.includes('--business-manage');
 const PARTICIPATION_ONLY = process.argv.includes('--participation');
-const OUT = join(target.artifacts, 'qa', ...(ACCESSIBILITY_ONLY ? ['accessibility'] : POLICY_LAB_ONLY ? ['policy-lab'] : CURRENT_POLICY_ONLY ? ['current-policy'] : EXPLICIT_READER_ONLY ? ['explicit-reader'] : FUNDING_ONLY ? ['funding'] : FILES_QUERY_ONLY ? ['files-query'] : LOADING_ONLY ? ['loading'] : ADMISSION_ONLY ? ['admission'] : BUSINESS_MANAGE_ONLY ? ['business-manage'] : PARTICIPATION_ONLY ? ['participation'] : PR_FILES_ONLY ? ['pr-files-table'] : PR_CONFIDENCE_ONLY ? ['pr-confidence-state'] : PR_SEARCH_DETAIL_ONLY ? ['pr-search-detail'] : IDENTITY_ONLY ? ['identity'] : AUTHORITY_ONLY ? ['authority'] : HISTORY_ONLY ? ['history'] : THUMB_ONLY ? ['thumb'] : []));
+const QUEUED_COVERAGE_ONLY = process.argv.includes('--queued-coverage');
+const OUT = join(target.artifacts, 'qa', ...(QUEUED_COVERAGE_ONLY ? ['queued-coverage'] : ACCESSIBILITY_ONLY ? ['accessibility'] : POLICY_LAB_ONLY ? ['policy-lab'] : CURRENT_POLICY_ONLY ? ['current-policy'] : EXPLICIT_READER_ONLY ? ['explicit-reader'] : FUNDING_ONLY ? ['funding'] : FILES_QUERY_ONLY ? ['files-query'] : LOADING_ONLY ? ['loading'] : ADMISSION_ONLY ? ['admission'] : BUSINESS_MANAGE_ONLY ? ['business-manage'] : PARTICIPATION_ONLY ? ['participation'] : PR_FILES_ONLY ? ['pr-files-table'] : PR_CONFIDENCE_ONLY ? ['pr-confidence-state'] : PR_SEARCH_DETAIL_ONLY ? ['pr-search-detail'] : IDENTITY_ONLY ? ['identity'] : AUTHORITY_ONLY ? ['authority'] : HISTORY_ONLY ? ['history'] : THUMB_ONLY ? ['thumb'] : []));
 const APP_PORT = Number(process.env.DIFFDEVIL_APP_QA_PORT ?? (target.name === 'staging' ? 4512 : 4412));
 const GITHUB_PORT = Number(process.env.DIFFDEVIL_APP_QA_GITHUB_PORT ?? (target.name === 'staging' ? 4533 : 4433));
 // Chromium accepts Secure (__Host-) cookies from http://localhost, not from a loopback IP, so the browser origin is localhost; the Worker still binds 127.0.0.1.
@@ -78,7 +80,7 @@ const ORIGIN = `http://localhost:${APP_PORT}`;
 const PROBE = `http://127.0.0.1:${APP_PORT}`;
 const CONFIG = join(target.artifacts, 'dist/server/wrangler.json');
 const DENSE = process.env.DIFFDEVIL_APP_QA_DENSE === '1';
-const STATE = join(target.artifacts, EXPLICIT_READER_ONLY ? 'state-explicit-reader' : FUNDING_ONLY ? 'state-funding' : BUSINESS_MANAGE_ONLY ? 'state-business-manage' : 'state');
+const STATE = join(target.artifacts, QUEUED_COVERAGE_ONLY ? 'state-queued-coverage' : EXPLICIT_READER_ONLY ? 'state-explicit-reader' : FUNDING_ONLY ? 'state-funding' : BUSINESS_MANAGE_ONLY ? 'state-business-manage' : 'state');
 const DENSE_STATE = join(target.artifacts, 'state-dense');
 const chartTelemetry = [];
 
@@ -844,7 +846,12 @@ async function qualifyPrConfidenceState(consumerReturn = null) {
 }
 
 try {
-  if (EXPLICIT_READER_ONLY) {
+  if (QUEUED_COVERAGE_ONLY) {
+    executeLocal(`INSERT INTO commercial_links (link_id, product_account, works_account, state, established_at, updated_at) VALUES ('${QUEUED_LINK}', 123, '77', 'active', '2026-10-02T00:00:00Z', '2026-10-02T00:00:00Z')`, STATE);
+    await startWorker(undefined, STATE, { signingKey: QUEUED_KEY });
+    await signIn();
+    await queuedCoverageJourney(ctx);
+  } else if (EXPLICIT_READER_ONLY) {
     github.state.installations = [];
     github.state.roles.set('parser-guild', 'member');
     github.state.push.set(1002, false); github.state.admin.set(1002, false);
@@ -1425,7 +1432,7 @@ try {
   githubServer.closeAllConnections?.();
   githubServer.close();
 }
-await writeFile(join(OUT, 'results.json'), JSON.stringify({ origin: ORIGIN, scope: ACCESSIBILITY_ONLY ? 'accessibility' : POLICY_LAB_ONLY ? 'policy-lab' : CURRENT_POLICY_ONLY ? 'current-policy' : EXPLICIT_READER_ONLY ? 'explicit-reader' : FUNDING_ONLY ? 'funding' : FILES_QUERY_ONLY ? 'files-query' : LOADING_ONLY ? 'loading' : ADMISSION_ONLY ? 'admission' : BUSINESS_MANAGE_ONLY ? 'business-manage' : PR_FILES_ONLY ? 'pr-files-table' : THUMB_ONLY ? 'thumb' : PR_CONFIDENCE_ONLY ? 'pr-confidence-state' : PR_SEARCH_DETAIL_ONLY ? 'pr-search-detail' : AUTHORITY_ONLY ? 'authority' : HISTORY_ONLY ? 'history' : IDENTITY_ONLY ? 'identity' : PARTICIPATION_ONLY ? 'participation' : 'full', target: target.name, seeded: seeded.written, dense: DENSE && !ACCESSIBILITY_ONLY && !POLICY_LAB_ONLY && !CURRENT_POLICY_ONLY && !EXPLICIT_READER_ONLY && !FUNDING_ONLY && !FILES_QUERY_ONLY && !LOADING_ONLY && !ADMISSION_ONLY && !BUSINESS_MANAGE_ONLY && !PR_FILES_ONLY && !THUMB_ONLY && !PR_CONFIDENCE_ONLY && !PR_SEARCH_DETAIL_ONLY && !PARTICIPATION_ONLY && !IDENTITY_ONLY && !AUTHORITY_ONLY && !HISTORY_ONLY, charts: chartTelemetry, results, failures, consoleErrors, pageErrors, external }, null, 2));
+await writeFile(join(OUT, 'results.json'), JSON.stringify({ origin: ORIGIN, scope: QUEUED_COVERAGE_ONLY ? 'queued-coverage' : ACCESSIBILITY_ONLY ? 'accessibility' : POLICY_LAB_ONLY ? 'policy-lab' : CURRENT_POLICY_ONLY ? 'current-policy' : EXPLICIT_READER_ONLY ? 'explicit-reader' : FUNDING_ONLY ? 'funding' : FILES_QUERY_ONLY ? 'files-query' : LOADING_ONLY ? 'loading' : ADMISSION_ONLY ? 'admission' : BUSINESS_MANAGE_ONLY ? 'business-manage' : PR_FILES_ONLY ? 'pr-files-table' : THUMB_ONLY ? 'thumb' : PR_CONFIDENCE_ONLY ? 'pr-confidence-state' : PR_SEARCH_DETAIL_ONLY ? 'pr-search-detail' : AUTHORITY_ONLY ? 'authority' : HISTORY_ONLY ? 'history' : IDENTITY_ONLY ? 'identity' : PARTICIPATION_ONLY ? 'participation' : 'full', target: target.name, seeded: seeded.written, dense: DENSE && !QUEUED_COVERAGE_ONLY && !ACCESSIBILITY_ONLY && !POLICY_LAB_ONLY && !CURRENT_POLICY_ONLY && !EXPLICIT_READER_ONLY && !FUNDING_ONLY && !FILES_QUERY_ONLY && !LOADING_ONLY && !ADMISSION_ONLY && !BUSINESS_MANAGE_ONLY && !PR_FILES_ONLY && !THUMB_ONLY && !PR_CONFIDENCE_ONLY && !PR_SEARCH_DETAIL_ONLY && !PARTICIPATION_ONLY && !IDENTITY_ONLY && !AUTHORITY_ONLY && !HISTORY_ONLY, charts: chartTelemetry, results, failures, consoleErrors, pageErrors, external }, null, 2));
 await writeFile(join(OUT, 'worker.log'), workerLog);
 console.log(`${PARTICIPATION_ONLY ? 'Participation: ' : ''}${results.filter(result => result.ok).length} of ${results.length} checks passed; screenshots and results in ${OUT}`);
 if (failures.length) { console.error(failures.map(failure => ` ✗ ${failure}`).join('\n')); process.exit(1); }

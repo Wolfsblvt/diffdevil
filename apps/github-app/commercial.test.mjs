@@ -395,6 +395,32 @@ test('component display facts preserve unknown versus empty and exclude producer
     state: 'unknown', startsOn: null, endsOn: null, applicationDeadline: null }]);
 });
 
+test('authenticated status preserves queued coverage without activating it or disclosing another account', async () => {
+  const source = await fixture();
+  try {
+    await link(source, { owner: 77 });
+    const linkId = (await source.store.activeLink(USER)).link_id;
+    const value = projection({ linkId, standing: 'first-payment-pending' });
+    value.commercial.paid_continuation = { state: 'paid-awaiting-start', confirmed_on: '2027-03-05', funding: 'paid', tier: 'pro', cadence: 'annual',
+      period: { started_on: '2027-05-01', ends_on: '2028-05-01', private_basis: 'excluded' }, invoice_id: 'excluded' };
+    assert.equal((await push(source, value)).status, 200);
+    const status = (await source.commercial.status({ session: SESSION })).body;
+    assert.deepEqual(status.commercial.paidContinuation, { state: 'paid-awaiting-start', confirmedOn: '2027-03-05', funding: 'paid', tier: 'pro', cadence: 'annual',
+      period: { started_on: '2027-05-01', ends_on: '2028-05-01' } });
+    assert.equal(status.commercial.standing, 'first-payment-pending');
+    assert.equal(status.plan, 'free');
+    assert.equal(await source.commercial.entitlement({ repositoryId: null, actor: { userId: USER } }), 'free');
+    assert.deepEqual((await source.commercial.status({ session: OTHER_SESSION })).body, { linked: false });
+    assert.equal(JSON.stringify(status).includes('excluded'), false);
+    const malformed = structuredClone(value);
+    malformed.order.version++;
+    malformed.commercial.paid_continuation.period.ends_on = null;
+    assert.equal((await push(source, malformed)).status, 422);
+    assert.deepEqual((await source.commercial.status({ session: SESSION })).body.commercial.paidContinuation, status.commercial.paidContinuation,
+      'a refused update preserves the last applied facts');
+  } finally { await source.runtime.dispose(); }
+});
+
 test('null commercial requires confirmed empty coverage or readable queued or expired components', () => {
   const component = { component_id: 'reward-component:1', funding: 'participation-reward', component_kind: 'paid-subject', capacity_type: 'organisation',
     name: 'Additional organisation slot', reason: 'Community contribution', state: 'queued', starts_on: null, ends_on: null, application_deadline: '2027-04-08T00:00:00Z' };
