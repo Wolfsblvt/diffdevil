@@ -75,10 +75,24 @@ export async function accessibilityJourney({ page, check, go, settled, shot, OUT
         await tableButton.focus(); await page.keyboard.press('Enter');
         const tableTree = await tree(`${label}/${id}/table`);
         const caption = await host.locator('caption').textContent();
+        const table = tableTree.find(node => node.role?.value === 'table' && node.name?.value === caption);
+        const allById = new Map(trees.at(-1).nodes.map(node => [node.nodeId, node]));
+        const tableNodes = tableTree.filter(node => {
+          if (node.nodeId === table?.nodeId) return true;
+          for (let parentId = node.parentId; parentId; parentId = allById.get(parentId)?.parentId) {
+            if (parentId === table?.nodeId) return true;
+          }
+          return false;
+        });
+        const bodyRows = await host.locator('tbody tr').count();
+        const headerRows = await host.locator('thead tr').count();
+        const headers = await host.locator('thead th').count();
+        const cells = await host.locator('thead th, tbody td').count();
         check(`${label}/${id}: Table exposes its caption, column headers and data rows in the browser tree`,
-          tableTree.some(node => node.role?.value === 'table' && node.name?.value === caption)
-          && tableTree.some(node => node.role?.value === 'columnheader')
-          && (rowCount === 0 ? await host.locator('tbody tr').count() === 0 : await host.locator('tbody tr').count() > 0));
+          Boolean(table)
+          && tableNodes.filter(node => node.role?.value === 'columnheader').length === headers
+          && tableNodes.filter(node => node.role?.value === 'row').length === headerRows + bodyRows
+          && tableNodes.filter(node => ['columnheader', 'cell', 'gridcell'].includes(node.role?.value)).length === cells);
         const plotName = await plot.getAttribute('aria-label');
         check(`${label}/${id}: the chart is absent from the accessibility tree in Table view`,
           !tableTree.some(node => node.role?.value === 'application' && node.name?.value === plotName));
