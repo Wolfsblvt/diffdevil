@@ -54,12 +54,15 @@ Older no-step producers without `calendar` remain supported when the applied
 ordinary projection supplies an explicit valid commercial timezone. The App finds
 the end of that actual local calendar day through native timezone formatting,
 including DST, and stores the derived real boundary with the quote. A legacy
-date-bearing quote without that timezone, or issued on an advanced calendar
-without its own bound facts, is unavailable: the missing producer fact is not
-invented. Date-less local stand-in previews retain their existing real cache TTL.
-Previously cached legacy quotes likewise need a known ordinary calendar for
-display. This limitation is separate from the additive producer's native and
-installed qualification.
+date-bearing quote without that timezone remains an issued snapshot: the App
+preserves Wirt's amounts and receipt with its real receipt timestamp, explicitly
+unknown current validity, and the normal Works confirmation route. Its existing
+one-hour real preview-cache retention is not a claim about Wirt's expiry. It
+labels the total as a quoted amount rather than currently due. A later advanced
+projection suppresses an unbound snapshot; an advanced producer without its own
+bound facts remains unavailable. No timezone or expiry is invented. Date-less
+local stand-in previews retain their existing real cache TTL. These source
+behaviors are separate from native producer and installed qualification.
 
 Survey campaign windows, genuine invitation/reminder delays, recorded use and raw
 completion occurrences remain real. No historical offset is inferred for a

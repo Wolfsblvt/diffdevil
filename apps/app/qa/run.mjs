@@ -240,7 +240,11 @@ const go = async (path, options = {}) => {
   return response;
 };
 const shot = name => page.screenshot({ path: join(OUT, `${name}.png`), fullPage: true });
-const ctx = { check, go, page, shot, ORIGIN, OUT, settled, qualifyFrame, qualifyCloud, premium: Boolean(premium), joined: edition.premium, signIn: () => signIn(), holdBusinessHistoryJob, releaseBusinessHistoryJob };
+const ctx = { check, go, page, shot, ORIGIN, OUT, settled, qualifyFrame, qualifyCloud, premium: Boolean(premium), joined: edition.premium, signIn: () => signIn(), holdBusinessHistoryJob, releaseBusinessHistoryJob,
+  legacyPreviewSnapshot() {
+    // Rendering specimen only: decoder/service/D1 qualification owns creation from the actual legacy wire response.
+    executeLocal("UPDATE participation_previews SET quote_json=json_set(quote_json, '$.validity', 'unknown', '$.expiresOn', '2020-01-01') WHERE user_id=123 AND cadence='monthly'", STATE);
+  } };
 const overflow = () => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
 const offenders = () => page.evaluate(() => { const width = document.documentElement.clientWidth; return [...document.querySelectorAll('body *')].filter(element => element.getBoundingClientRect().right > width + 1).slice(0, 4).map(element => `${element.tagName.toLowerCase()}.${String(element.className).split(' ')[0]}@${Math.round(element.getBoundingClientRect().right)}`).join(', '); });
 const pageFacts = () => page.evaluate(() => ({

@@ -148,7 +148,8 @@ export function createParticipation({ store, commercial, campaign, now = () => n
 
     /**
      * The person's explicit preview request, from the Origin-checked POST only: Wirt quotes the continuation and the
-     * answer is kept until Wirt's own quote lapses. A preview reserves nothing. Rendering a page never calls this.
+     * answer is kept until Wirt's known lapse, or the existing real cache limit for an unknown-validity snapshot.
+     * A preview reserves nothing. Rendering a page never calls this.
      */
     async requestPreview({ userId, session, cadence }) {
       const answer = await commercial.rewardQuote({ session, cadence }).catch(() => ({ available: false, reason: 'unavailable' }));

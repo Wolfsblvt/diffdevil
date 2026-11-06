@@ -252,6 +252,20 @@ export async function participationJourney(ctx) {
   const monthly = (await reward()).receipts[0];
   check('the monthly preview is Works\' receipt: €9.00, the reward under its public reason, €4.50 due, then the protected price', monthly?.rows.join('|') === 'diffdevil Pro monthly=€9.00|Participation reward · diffdevil beta survey=−€4.50|Due now=€4.50'
     && monthly.notes.join(' ') === '50% off this and your next 2 monthly charges. After the reward: €9/month at your protected beta price.', JSON.stringify(monthly));
+  ctx.legacyPreviewSnapshot();
+  await go('/manage/plan?preview=monthly');
+  const snapshot = page.locator('[data-preview][data-validity="unknown"]');
+  const snapshotText = await snapshot.innerText();
+  check('legacy issued snapshot retains amounts without claiming a currently due quote', /Quoted amount\s*€4.50/u.test(snapshotText)
+    && /€9.00/u.test(snapshotText) && !/Due now|Accepting there reserves/u.test(snapshotText), snapshotText);
+  check('legacy issued snapshot names its real receipt time, unknown validity and Works confirmation', /Current validity is unknown/u.test(snapshotText)
+    && Boolean(await snapshot.locator('time[datetime]').getAttribute('datetime'))
+    && await snapshot.getByRole('link', { name: 'Confirm current offer at Works' }).count() === 1, snapshotText);
+  await shot('participation-legacy-snapshot-desktop');
+  await page.setViewportSize({ width: 390, height: 844 });
+  check('legacy snapshot and confirmation fit a narrow viewport', await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+  await shot('participation-legacy-snapshot-mobile');
+  await page.setViewportSize({ width: 1440, height: 900 });
   await Promise.all([page.waitForURL(url => new URL(url).searchParams.get('preview') === 'annual'), page.getByRole('button', { name: 'Annual' }).click()]);
   await page.waitForLoadState('networkidle');
   const annual = (await reward()).receipts[0];

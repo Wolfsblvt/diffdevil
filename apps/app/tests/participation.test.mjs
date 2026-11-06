@@ -724,6 +724,56 @@ test('closing the account forgets every participation fact; the export carries t
   assert.equal((await rows('participation_responses', 'user_id=?', USER)).length, 1, 'another account keeps its own');
 });
 
+test('a valid ordinary v1 quote without calendar or timezone keeps its issued receipt with unknown validity', async () => {
+  const priorTime = clock.value, user = 813;
+  try {
+    clock.value = '2027-03-12T09:30:15.250Z';
+    const linkId = await link(user, 'works-813');
+    const wire = projection({ linkId, works: 'works-813', account: user, version: 2 }).projection;
+    delete wire.benefits.commercial_timezone;
+    await commercial.applyMessage(readWirtMessage(wire));
+    await db.prepare('INSERT INTO browser_sessions(session_hash,user_id,return_context,expires_at) VALUES (?,?,?,?)')
+      .bind(createHash('sha256').update(session(user)).digest('hex'), user, 'app', '2028-05-01T00:00:00.000Z').run();
+    const answers = readAnswers(SURVEYS['beta-v1'], form([['used', 'size-labels']]));
+    assert.equal(await participation.complete({ userId: user, commercial: await standing(user), answers }), 'completed');
+    await participation.flush({ userId: user });
+    double.state.legacyQuote = true;
+    double.state.quoteExpiresOn = '2027-03-11'; // Even an apparently past date has no known local lapse.
+    const decoded = await commercial.rewardQuote({ session: session(user), cadence: 'monthly' });
+    assert.equal(decoded.available, true);
+    assert.equal(decoded.quote.expiresOn, '2027-03-11');
+    assert.equal(decoded.quote.calendar, undefined);
+    assert.equal(decoded.quote.validity, 'unknown');
+    assert.equal(decoded.quote.dueNowCents, 450);
+    assert.equal(await participation.requestPreview({ userId: user, session: session(user), cadence: 'monthly' }), 'ready');
+    const cached = (await rows('participation_previews', 'user_id=?', user))[0];
+    assert.equal(cached.expires_at, '2027-03-12T10:30:15.250Z', 'the existing one-hour real cache policy is retention, not Wirt expiry');
+    const show = () => loadParticipation({ runtime: { participation, commercial, now: () => clock.value }, viewer: { userId: user },
+      session: { session: session(user) }, model: { commercial: { standing: 'available', status: { linked: true, betaTimeZone: null } } }, preview: 'monthly' });
+    const before = JSON.stringify(await rows('participation_previews', 'user_id=?', user));
+    let shown = await show();
+    assert.equal(shown.quote.validity, 'unknown');
+    assert.equal(shown.quote.createdAt, clock.value);
+    assert.deepEqual(shown.quote.receipt.total, { label: 'Quoted amount', amount: '€4.50' });
+    assert.equal(shown.quote.receipt.lines[0].amount, '€9.00');
+    assert.equal(JSON.stringify(await rows('participation_previews', 'user_id=?', user)), before, 'rendering writes no preview');
+    double.state.down = true;
+    assert.equal((await show()).quote.validity, 'unknown', 'an unavailable live standing cannot promote the snapshot to current');
+    double.state.down = false;
+    clock.value = cached.expires_at;
+    assert.equal((await show()).quote, null, 'real retention is exclusive');
+    clock.value = '2027-03-12T09:45:00.000Z';
+    wire.schema = 'wirt.benefit-projection/v2'; wire.order.version = 3;
+    wire.commercial_clock = { offset_seconds: 86_400, effective_at: clock.value };
+    wire.benefits.beta_grants = [];
+    await commercial.applyMessage(readWirtMessage(wire));
+    assert.equal(await store.preview(user, 'monthly'), null, 'a later applied step cannot expose an unbound legacy snapshot');
+    assert.equal(await participation.requestPreview({ userId: user, session: session(user), cadence: 'monthly' }), 'unavailable', 'an advanced producer still needs quote-bound facts');
+  } finally {
+    clock.value = priorTime; double.state.down = false; delete double.state.legacyQuote; delete double.state.quoteExpiresOn;
+  }
+});
+
 test('quote-time calendar survives a producer step during the request and later status failure without extending cached visibility', async () => {
   const priorTime = clock.value, user = 812;
   try {

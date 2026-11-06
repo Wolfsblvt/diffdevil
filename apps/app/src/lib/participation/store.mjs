@@ -164,7 +164,7 @@ export class D1ParticipationStore {
     ]);
   }
 
-  /** The preview a person asked for by POST, kept as Wirt quoted it until that quote lapses. Reading it writes nothing. */
+  /** The requested preview, within its known quote lapse or real snapshot retention. Reading it writes nothing. */
   async savePreview(userId, cadence, quote, expiresAt, sessionHash) {
     const guard = browserWriteGuard(userId, sessionHash, this.now());
     await this.statement(`INSERT INTO participation_previews (user_id, cadence, quote_json, created_at, expires_at) SELECT ?, ?, ?, ?, ? WHERE ${guard.sql}

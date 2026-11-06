@@ -443,6 +443,8 @@ export function legacyQuoteCalendar(expiresOn, timeZone) {
 
 /** Quote-bound initial real lapse; a later greater applied offset may shorten it, never extend it. */
 export function quoteRealDeadline(quote, appliedClock = null, legacyTimeZone = null) {
+  // An ordinary legacy snapshot has no claimed commercial lapse. Its cache retention is real time only.
+  if (quote.validity === 'unknown' && !quote.calendar) return appliedClock ? NaN : Infinity;
   const calendar = quote.calendar ?? (!appliedClock ? legacyQuoteCalendar(quote.expiresOn, legacyTimeZone) : null);
   if (!calendar) return quote.expiresOn ? NaN : Infinity;
   const realLapse = Date.parse(calendar.realExpiresBefore);

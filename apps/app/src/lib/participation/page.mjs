@@ -39,7 +39,11 @@ export async function loadParticipation({ runtime, viewer, session, model, previ
   if (card?.previewCadences.includes(cadence)) {
     const stored = await participation.preview(viewer.userId, cadence);
     const deadline = stored ? quoteRealDeadline(stored.quote, commercialClock, status?.betaTimeZone) : NaN;
-    if (stored && Date.parse(runtime.now()) < deadline) quote = { cadence, receipt: receiptOf(stored.quote, { cadence, protectedPrice }) };
+    if (stored && Date.parse(runtime.now()) < deadline) {
+      const unknown = stored.quote.validity === 'unknown';
+      quote = { cadence, validity: unknown ? 'unknown' : 'current', createdAt: stored.createdAt,
+        receipt: receiptOf(stored.quote, { cadence, protectedPrice, label: unknown ? 'Quoted amount' : 'Due now' }) };
+    }
   }
   const nextCadence = status?.commercial?.cadence ?? 'monthly';
   return { view, card, live, quote, next: nextCharge ? receiptOf(nextCharge, { cadence: nextCadence, protectedPrice, label: `Due on ${receiptOf(nextCharge, { cadence: nextCadence }).on ?? 'the renewal date'}` }) : null, nextCharge };

@@ -733,12 +733,13 @@ export function createCommercialService({ store, wirt, signing, authorization, p
         const result = await wirt.rewardQuote({ linkId: link.link_id, productAccount: link.product_account, cadence });
         if (result.kind === 'quote') {
           if (result.quote.calendar || !result.quote.expiresOn) return { available: true, quote: result.quote };
-          // Legacy is supported only on a known ordinary calendar. Read it after the request;
+          // Read the ordinary legacy calendar after the request;
           // a present quote calendar always wins over any delayed projection.
           const projection = plannedProjection(await store.activeLink(userId));
           const clock = projection ? readCommercialClock(projection) : null;
           const calendar = !clock && projection ? legacyQuoteCalendar(result.quote.expiresOn, readProjectionCommercialTimeZone(projection.benefits)) : null;
-          return calendar ? { available: true, quote: { ...result.quote, calendar } } : { available: false, reason: 'unavailable' };
+          if (clock) return { available: false, reason: 'unavailable' };
+          return { available: true, quote: calendar ? { ...result.quote, calendar } : { ...result.quote, validity: 'unknown' } };
         }
         return { available: false, reason: result.kind === 'not-quotable' ? 'not-quotable' : 'unavailable' };
       } catch { return { available: false, reason: 'unavailable' }; }
