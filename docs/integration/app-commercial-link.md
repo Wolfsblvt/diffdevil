@@ -10,6 +10,97 @@ The environment selection below owns the production/staging relationship. It
 separates that settled model from source support, a configured TEST consumer and
 admitted live commercial operation.
 
+## Signed TEST commercial time
+
+Unadvanced and production producers retain `wirt.benefit-projection/v1`, with no
+`commercial_clock` field and zero offset. An advanced TEST producer uses
+`wirt.benefit-projection/v2`, adding the signed top-level object
+`commercial_clock: { offset_seconds, effective_at }`. It has exactly those two
+keys: a safe integer offset of at least one second and a real UTC instant ending
+in `Z`. Missing, additional or invalid clock fields refuse the entire projection
+with `E_COMMERCIAL_SHAPE`; they never select zero. A v1 message carrying a clock
+is also refused rather than silently discarding that time basis.
+
+The full applied projection remains the only durable clock source. Existing
+stream order, lineage, replay and restore protections apply unchanged. Commercial
+now is the current real instant plus the latest applied offset, running at normal
+speed between deliberate producer steps. `effective_at` is diagnostic and does
+not reinterpret historical observations. A fresh service reads the offset from
+the same stored projection; there is no clock ledger or second ordering scheme.
+
+The account-owned status exposes `commercialClock` for the existing Manage
+presentation. Advanced context shows commercial and real UTC time beside plan
+and reward dates, preserving current and queued coverage. Discount claim and
+validity presentation compares against commercial now. Exercise/application and
+other commercial dates retain their producer values; their authoritative state
+and actions remain at Works. Quote expiry dates are commercial local dates.
+The live `wirt.participation-quote/v1` response's additive `calendar` binds
+`commercial_timezone`, exclusive commercial `expires_before`, real
+`real_expires_before` and issuing `commercial_clock` (null for ordinary time)
+to that quote. The initial cache lapse is the producer's real bound, rather than
+UTC midnight or the projection read before the request. DST and a producer step
+during the request are therefore already represented by the returned facts.
+
+A malformed-present calendar is unavailable, without a UTC fallback. Its UTC
+bounds must be actual instants, its real lapse cannot follow the commercial lapse,
+and an ordinary clock has equal lapses. Cache creation/expiry records stay real.
+A greater later applied offset can shorten the quote's lapse to
+`expires_before - offset_seconds`; it never extends the issuing real lapse.
+The cache read also checks the durable applied projection, independently of a
+stale or unavailable live status. Page reads create no quote or persistence write.
+Wirt remains authoritative for acceptance and all prices.
+
+Older no-step producers without `calendar` remain supported when the applied
+ordinary projection supplies an explicit valid commercial timezone. The App finds
+the end of that actual local calendar day through native timezone formatting,
+including DST, and stores the derived real boundary with the quote. A legacy
+date-bearing quote without that timezone remains an issued snapshot: the App
+preserves Wirt's amounts and receipt with its real receipt timestamp, explicitly
+unknown current validity, and the normal Works confirmation route. Its existing
+one-hour real preview-cache retention is not a claim about Wirt's expiry. It
+labels the total as a quoted amount rather than currently due. A later advanced
+projection suppresses an unbound snapshot; an advanced producer without its own
+bound facts remains unavailable. No timezone or expiry is invented. Date-less
+local stand-in previews retain their existing real cache TTL. These source
+behaviors are separate from native producer and installed qualification.
+
+Survey campaign windows, genuine invitation/reminder delays, recorded use and raw
+completion occurrences remain real. No historical offset is inferred for a
+retained operation from the latest projection or `effective_at`. Security/session
+clocks, HMAC skew, nonces, record/retry/cache timing, provider observations and
+`generated_at`/`ended_at` keep real time. Entitlement still trusts Wirt's funded
+or grace standing; passing a commercial term date does not create a local billing
+or entitlement transition. `wirt.link-ended/v1` is unchanged.
+
+This is paired source support for the settled producer interface, not evidence
+that the producer is installed, a TEST clock was advanced, or the two installed
+services agree. [D092](../DECISIONS.md#d092-advance-only-the-test-commercial-calendar)
+preserves the selected tradeoff and genuine-use boundary.
+
+The two-field clock does not reconstruct historical access. The amended v2
+producer contract instead adds `real_started_at` and `real_until` to every actual
+`benefits.beta_grants[].access_windows[]` entry and non-null `current_access`.
+These are real UTC instants at which the commercial calendar reached the supplied
+local-date boundaries. A skipped boundary maps to its step instant; a future
+boundary projects at the current offset until the next ordered republish. The
+original promised window remains a commercial date pair, without real fields.
+
+The receiver requires both actual-window bounds in v2 and rejects non-UTC,
+impossible or backwards instants for the whole projection. Equal bounds are
+valid: a step skipped that entire window, so no real occurrence belongs to it.
+Either real field on a v1 window is invalid; ordinary v1 retains its existing
+timezone/local-date interpretation.
+
+`qualifyingUse` queries retained deliveries by those half-open real bounds,
+including equivalent UTC timestamp spellings. Maintenance preserves the same
+single qualifying real occurrence before pruning. The invitation compares that
+occurrence with the applied real windows and measures its genuine elapsed delay
+from the first non-empty real access start. Empty and future windows cannot
+advance that delay. Later offset changes do not reinterpret the saved occurrence.
+No per-operation store or local step/history interpreter is introduced. This
+source consumer implements the amended producer commitment; native producer
+qualification and installed agreement remain independent.
+
 ## Wirt environment selection
 
 Each App deployment selects **one complete Wirt environment at a time**.

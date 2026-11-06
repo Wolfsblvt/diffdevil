@@ -6,6 +6,19 @@
  * display-only figure Works supplies. No grace length or countdown is invented; supplied component dates stay visible.
  */
 
+import { commercialNow } from '../../../../github-app/commercial-wirt.mjs';
+
+/** TEST context for commercial dates; real observations and activity are explicitly separate. */
+export function presentCommercialClock(status, realNow) {
+  const clock = status?.commercialClock;
+  if (!status?.linked || !clock) return null;
+  const display = milliseconds => {
+    const value = new Date(milliseconds);
+    return Number.isFinite(value.getTime()) ? value.toISOString().replace('T', ' ').replace('.000Z', 'Z').replace('Z', ' UTC') : 'outside the displayable date range';
+  };
+  return { title: 'TEST commercial time', text: `Commercial: ${display(commercialNow(realNow, clock))}. Real: ${display(Date.parse(realNow))}. Plan periods and reward deadlines use the commercial calendar. Recorded occurrences, survey activity and security use real time.` };
+}
+
 /** Works-hosted pages. `null` origin (no Works configured) leaves every exit unavailable rather than guessed. */
 export function worksDestinations(origin) {
   const at = path => (origin ? `${origin}${path}` : null);

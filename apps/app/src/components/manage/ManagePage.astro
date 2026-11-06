@@ -6,11 +6,13 @@ import AppShell from '../../layouts/AppShell.astro';
 import Icon from '../Icon.astro';
 import ManageTabs from './ManageTabs.astro';
 import { MESSAGES } from '../../lib/manage/actions.mjs';
+import { presentCommercialClock } from '../../lib/manage/works.mjs';
 interface Props { model: any; tab: string; title?: string; crumbs?: { label: string; href?: string }[]; sub?: string | undefined; documentTitle?: string | undefined }
 const { model, tab, title = 'Manage', crumbs = [], sub = 'Your plan, what it funds, and the repositories you administer', documentTitle } = Astro.props;
 const trail = [{ label: 'Manage', href: title === 'Manage' ? undefined : '/manage' }, ...crumbs];
 const code = Astro.url.searchParams.get('m') ?? '';
 const message = (MESSAGES as Record<string, { tone: string; text: string }>)[code];
+const commercialTime = ['overview', 'plan'].includes(tab) ? presentCommercialClock(model.commercial?.status, Astro.locals.app.now()) : null;
 ---
 <AppShell title={documentTitle ?? (title === 'Manage' ? ({ overview: 'Manage', repositories: 'Repositories', defaults: 'Defaults', policies: 'Policies', people: 'People', audit: 'Audit', plan: 'Plan & funding', account: 'Account' } as Record<string, string>)[tab] ?? 'Manage' : title)} nav={{ section: 'manage', active: null, premium: model.viewerPlan !== 'Free' }}>
   <div class="a-head">
@@ -22,6 +24,7 @@ const message = (MESSAGES as Record<string, { tone: string; text: string }>)[cod
     <div class="tools"><slot name="tools" /></div>
   </div>
   <ManageTabs model={model} current={tab} />
+  {commercialTime && <div class="m-banner info" data-commercial-time><Icon name="clock" size={18} /><div><b>{commercialTime.title}</b><p>{commercialTime.text}</p></div></div>}
   {message && <div class:list={['m-banner', 'm-msg', message.tone]} role={message.tone === 'err' ? 'alert' : 'status'}><Icon name={message.tone === 'ok' ? 'circle-check' : message.tone === 'err' ? 'circle-alert' : 'info'} size={18} /><div><b>{message.text}</b></div><div></div></div>}
   <slot />
 </AppShell>

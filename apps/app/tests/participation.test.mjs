@@ -123,7 +123,12 @@ function wirtDouble(clock) {
     assert.equal(tier, 'Pro');
     if (reward?.reserved) return json(409, { error: 'commercial-quote-unavailable' });
     const discount = line(reward, cadence);
-    return json(200, { schema: 'wirt.participation-quote/v1', quote_id: randomUUID(), review_url: `${WIRT}/wirt/experience/quotes/1`, expires_on: new Date(Date.parse(clock.value) + 13 * 86_400_000).toISOString().slice(0, 10), tier: 'Pro', cadence, currency: 'EUR',
+    await state.beforeQuote?.();
+    const expiresOn = state.quoteExpiresOn ?? new Date(Date.parse(clock.value) + 13 * 86_400_000).toISOString().slice(0, 10);
+    const end = new Date(Date.parse(`${expiresOn}T00:00:00Z`) + 86_400_000).toISOString();
+    const calendar = state.quoteCalendar === undefined ? { commercial_timezone: 'UTC', expires_before: end, real_expires_before: end, commercial_clock: null } : state.quoteCalendar;
+    return json(200, { schema: 'wirt.participation-quote/v1', quote_id: randomUUID(), review_url: `${WIRT}/wirt/experience/quotes/1`, expires_on: expiresOn, tier: 'Pro', cadence, currency: 'EUR',
+      ...(state.legacyQuote ? {} : { calendar }),
       charges: [{ component_id: 'base', amount_cents: PRICES[cadence] }], discounts: discount ? [discount] : [], due_now_cents: PRICES[cadence] - (discount?.amount_cents ?? 0), post_reward_total_cents: PRICES[cadence] });
   }
   // What Works does between product visits: accept an eligible quote (reserve), confirm or fail its payment, renew, expire, correct.
@@ -171,6 +176,42 @@ const standing = async account => ({ standing: 'available', status: (await comme
 const form = entries => { const value = new FormData(); for (const [name, item] of entries) value.append(name, item); return value; };
 const rows = async (table, where = '1=1', ...values) => (await db.prepare(`SELECT * FROM ${table} WHERE ${where}`).bind(...values).all()).results;
 const completions = () => double.state.requests.filter(request => request.path.endsWith('/participation-completions'));
+
+test('advanced commercial time leaves the genuine survey window, invitation delay and outbound completion occurrence real', async () => {
+  const priorTime = clock.value, priorAnswer = double.state.answer;
+  const user = 810;
+  try {
+    clock.value = '2027-03-12T09:30:15.250Z';
+    const linkId = await link(user, 'works-810');
+    const wire = projection({ linkId, works: 'works-810', account: user, version: 2 }).projection;
+    wire.schema = 'wirt.benefit-projection/v2';
+    wire.commercial_clock = { offset_seconds: 365 * 86_400, effective_at: clock.value };
+    const access = { started_on: '2028-03-11', until: '2028-03-31', real_started_at: '2027-03-11T00:00:00Z', real_until: '2027-03-31T00:00:00Z' };
+    wire.benefits.beta_grants = [{ ...nativeBeta(), access_windows: [access], current_access: access }];
+    await commercial.applyMessage(readWirtMessage(wire));
+    await store.recordUse(user, CAMPAIGN, clock.value, linkId);
+    let view = await participation.view({ userId: user, commercial: await standing(user) });
+    assert.equal(view.window, 'open', 'commercial time beyond the survey close cannot close genuine feedback');
+    assert.equal(view.invitation, null, 'one real day of access cannot become ten days by advancing commercial time');
+    clock.value = '2027-03-22T09:30:15.250Z';
+    view = await participation.view({ userId: user, commercial: await standing(user) });
+    assert.equal(view.invitation, 'invite', 'the real invitation delay can still elapse');
+    double.state.answer = 503;
+    const answers = readAnswers(SURVEYS['beta-v1'], form([['used', 'size-labels']]));
+    assert.equal(await participation.complete({ userId: user, commercial: await standing(user), answers }), 'completed');
+    await participation.flush({ userId: user });
+    const sent = JSON.parse(completions().filter(request => request.account === String(user)).at(-1).text);
+    assert.equal(sent.completed_at, '2027-03-22T09:30:15Z');
+    const delivery = (await rows('participation_deliveries', 'user_id=?', user))[0];
+    assert.equal(delivery.next_attempt_at, '2027-03-22T09:31:15.250Z', 'retry records remain real');
+    clock.value = '2027-04-01T00:00:00.000Z';
+    assert.equal((await participation.view({ userId: user, commercial: await standing(user) })).window, 'closed');
+  } finally {
+    await store.forgetAccount(user);
+    double.state.requests = double.state.requests.filter(request => request.account !== String(user));
+    clock.value = priorTime; double.state.answer = priorAnswer;
+  }
+});
 
 before(async () => {
   mf = new Miniflare({ workers: [{ config: { name: 'participation-test', compatibilityDate: '2026-09-17', env: { APP_DB: { type: 'd1', id: `participation-${randomUUID()}` } },
@@ -681,4 +722,150 @@ test('closing the account forgets every participation fact; the export carries t
   await store.forgetAccount(OTHER);
   for (const table of ['participation_responses', 'participation_deliveries', 'participation_prompts']) assert.equal((await rows(table, 'user_id=?', OTHER)).length, 0, table);
   assert.equal((await rows('participation_responses', 'user_id=?', USER)).length, 1, 'another account keeps its own');
+});
+
+test('a valid ordinary v1 quote without calendar or timezone keeps its issued receipt with unknown validity', async () => {
+  const priorTime = clock.value, user = 813;
+  try {
+    clock.value = '2027-03-12T09:30:15.250Z';
+    const linkId = await link(user, 'works-813');
+    const wire = projection({ linkId, works: 'works-813', account: user, version: 2 }).projection;
+    delete wire.benefits.commercial_timezone;
+    await commercial.applyMessage(readWirtMessage(wire));
+    await db.prepare('INSERT INTO browser_sessions(session_hash,user_id,return_context,expires_at) VALUES (?,?,?,?)')
+      .bind(createHash('sha256').update(session(user)).digest('hex'), user, 'app', '2028-05-01T00:00:00.000Z').run();
+    const answers = readAnswers(SURVEYS['beta-v1'], form([['used', 'size-labels']]));
+    assert.equal(await participation.complete({ userId: user, commercial: await standing(user), answers }), 'completed');
+    await participation.flush({ userId: user });
+    double.state.legacyQuote = true;
+    double.state.quoteExpiresOn = '2027-03-11'; // Even an apparently past date has no known local lapse.
+    const decoded = await commercial.rewardQuote({ session: session(user), cadence: 'monthly' });
+    assert.equal(decoded.available, true);
+    assert.equal(decoded.quote.expiresOn, '2027-03-11');
+    assert.equal(decoded.quote.calendar, undefined);
+    assert.equal(decoded.quote.validity, 'unknown');
+    assert.equal(decoded.quote.dueNowCents, 450);
+    assert.equal(await participation.requestPreview({ userId: user, session: session(user), cadence: 'monthly' }), 'ready');
+    const cached = (await rows('participation_previews', 'user_id=?', user))[0];
+    assert.equal(cached.expires_at, '2027-03-12T10:30:15.250Z', 'the existing one-hour real cache policy is retention, not Wirt expiry');
+    const show = () => loadParticipation({ runtime: { participation, commercial, now: () => clock.value }, viewer: { userId: user },
+      session: { session: session(user) }, model: { commercial: { standing: 'available', status: { linked: true, betaTimeZone: null } } }, preview: 'monthly' });
+    const before = JSON.stringify(await rows('participation_previews', 'user_id=?', user));
+    let shown = await show();
+    assert.equal(shown.quote.validity, 'unknown');
+    assert.equal(shown.quote.createdAt, clock.value);
+    assert.deepEqual(shown.quote.receipt.total, { label: 'Quoted amount', amount: '€4.50' });
+    assert.equal(shown.quote.receipt.lines[0].amount, '€9.00');
+    assert.equal(JSON.stringify(await rows('participation_previews', 'user_id=?', user)), before, 'rendering writes no preview');
+    double.state.down = true;
+    assert.equal((await show()).quote.validity, 'unknown', 'an unavailable live standing cannot promote the snapshot to current');
+    double.state.down = false;
+    clock.value = cached.expires_at;
+    assert.equal((await show()).quote, null, 'real retention is exclusive');
+    clock.value = '2027-03-12T09:45:00.000Z';
+    wire.schema = 'wirt.benefit-projection/v2'; wire.order.version = 3;
+    wire.commercial_clock = { offset_seconds: 86_400, effective_at: clock.value };
+    wire.benefits.beta_grants = [];
+    await commercial.applyMessage(readWirtMessage(wire));
+    assert.equal(await store.preview(user, 'monthly'), null, 'a later applied step cannot expose an unbound legacy snapshot');
+    assert.equal(await participation.requestPreview({ userId: user, session: session(user), cadence: 'monthly' }), 'unavailable', 'an advanced producer still needs quote-bound facts');
+  } finally {
+    clock.value = priorTime; double.state.down = false; delete double.state.legacyQuote; delete double.state.quoteExpiresOn;
+  }
+});
+
+test('quote-time calendar survives a producer step during the request and later status failure without extending cached visibility', async () => {
+  const priorTime = clock.value, user = 812;
+  try {
+    clock.value = '2027-03-02T09:00:00.000Z';
+    const linkId = await link(user, 'works-812');
+    await db.prepare('INSERT INTO browser_sessions(session_hash,user_id,return_context,expires_at) VALUES (?,?,?,?)')
+      .bind(createHash('sha256').update(session(user)).digest('hex'), user, 'app', '2028-05-01T00:00:00.000Z').run();
+    const request = () => participation.requestPreview({ userId: user, session: session(user), cadence: 'monthly' });
+    double.state.legacyQuote = true;
+    assert.equal(await request(), 'ready', 'a legacy no-step quote retains the explicitly projected UTC calendar');
+    assert.equal((await store.preview(user, 'monthly')).quote.calendar.timeZone, 'UTC');
+    delete double.state.legacyQuote;
+    // The live quote supplies its own real boundary, including ordinary Berlin winter/summer and DST dates.
+    for (const [day, real] of [['2027-01-15', '2027-01-15T23:00:00Z'], ['2027-07-15', '2027-07-15T22:00:00Z'], ['2027-03-28', '2027-03-28T22:00:00Z']]) {
+      clock.value = `${day}T12:00:00.000Z`;
+      double.state.quoteExpiresOn = day;
+      double.state.quoteCalendar = { commercial_timezone: 'Europe/Berlin', expires_before: real, real_expires_before: real, commercial_clock: null };
+      assert.equal(await request(), 'ready');
+      assert.equal((await rows('participation_previews', 'user_id=?', user))[0].expires_at, new Date(real).toISOString());
+    }
+    clock.value = '2027-03-02T09:00:00.000Z';
+    const issuedClock = { offset_seconds: 31 * 86_400, effective_at: clock.value };
+    double.state.beforeQuote = async () => {
+      double.state.quoteExpiresOn = '2027-04-02';
+      double.state.quoteCalendar = { commercial_timezone: 'Europe/Berlin', expires_before: '2027-04-02T22:00:00Z',
+        real_expires_before: '2027-03-02T22:00:00Z', commercial_clock: issuedClock };
+    };
+    assert.equal((await standing(user)).status.commercialClock, null);
+    assert.equal(await request(), 'ready');
+    const cached = (await rows('participation_previews', 'user_id=?', user))[0];
+    assert.equal(cached.created_at, clock.value);
+    assert.equal(cached.expires_at, '2027-03-02T22:00:00.000Z', 'the old zero-offset projection cannot extend the quote-time lapse');
+    assert.deepEqual((await store.preview(user, 'monthly')).quote.calendar.commercialClock, issuedClock);
+    clock.value = '2027-03-02T21:00:00.000Z';
+    assert.ok(await store.preview(user, 'monthly'));
+    const next = projection({ linkId, works: 'works-812', account: user, version: 2 }).projection;
+    next.schema = 'wirt.benefit-projection/v2'; next.commercial_clock = { ...issuedClock, offset_seconds: 32 * 86_400 };
+    const beta = next.benefits.beta_grants[0];
+    beta.access_windows = beta.access_windows.map(window => ({ ...window, real_started_at: '2027-02-20T00:00:00Z', real_until: '2027-03-20T00:00:00Z' }));
+    beta.current_access = beta.access_windows[0];
+    await commercial.applyMessage(readWirtMessage(next));
+    assert.equal(await store.preview(user, 'monthly'), null, 'a later applied forward step invalidates through durable state, independently of live status');
+    clock.value = '2027-03-02T22:00:00.000Z';
+    assert.equal(await store.preview(user, 'monthly'), null, 'the initial real cache lapse is exclusive even without any usable live status');
+    double.state.beforeQuote = undefined;
+    double.state.quoteCalendar = { ...double.state.quoteCalendar, real_expires_before: 'not-UTC' };
+    assert.equal(await request(), 'unavailable', 'malformed-present facts do not fall back to the local projection');
+  } finally {
+    clock.value = priorTime; delete double.state.beforeQuote; delete double.state.quoteCalendar; delete double.state.quoteExpiresOn; delete double.state.legacyQuote;
+  }
+});
+
+test('advanced beta bounds place retained deliveries in real access and preserve genuine invitation delay after pruning', async () => {
+  const prior = clock.value, user = 811;
+  try {
+    clock.value = '2027-03-10T00:00:00.000Z';
+    const linkId = await link(user, 'works-811');
+    const wire = projection({ linkId, works: 'works-811', account: user, version: 2 }).projection;
+    const window = (from, until, real_started_at, real_until) => ({ started_on: from, until, real_started_at, real_until });
+    const empty = window('2028-01-01', '2028-02-01', '2027-02-01T00:00:00Z', '2027-02-01T00:00:00Z');
+    const first = window('2028-03-01', '2028-03-03', '2027-03-01T00:00:00Z', '2027-03-03T00:00:00Z');
+    const resumed = window('2028-06-01', '2028-07-01', '2027-03-10T00:00:00Z', '2027-03-20T00:00:00Z');
+    const future = window('2028-08-01', '2028-09-01', '2027-04-10T00:00:00Z', '2027-04-20T00:00:00Z');
+    wire.schema = 'wirt.benefit-projection/v2';
+    wire.commercial_clock = { offset_seconds: 450 * 86_400, effective_at: clock.value };
+    wire.benefits.beta_grants = [{ ...nativeBeta(), access_windows: [empty, first, resumed, future], current_access: resumed }];
+    await commercial.applyMessage(readWirtMessage(wire));
+    await db.prepare("INSERT INTO installations(installation_id,state,updated_at,account_id) VALUES (811,'active',?,?)").bind(clock.value,user).run();
+    await db.prepare("INSERT INTO repositories(repository_id,installation_id,state,updated_at) VALUES (811,811,'enabled',?)").bind(clock.value).run();
+    const insert = (id, at) => db.prepare("INSERT INTO deliveries(delivery_id,installation_id,repository_id,state,received_at,completed_at) VALUES (?,811,811,'repair',?,?)").bind(id,at,at).run();
+    for (const [id, at] of [['advanced-skipped','2027-02-01T00:00:00Z'], ['advanced-exclusive','2027-03-03T00:00:00Z'],
+      ['advanced-gap','2027-03-05T00:00:00Z'], ['advanced-before','2027-03-09T23:59:59.999Z'], ['advanced-end','2027-03-20T00:00:00Z']]) await insert(id, at);
+    await participation.preserveUse();
+    assert.equal(await store.prompt(user, CAMPAIGN), null, 'empty, gap and exclusive-end occurrences cannot qualify');
+    await insert('advanced-use', '2027-03-10T00:00:00Z');
+    await participation.preserveUse();
+    assert.equal((await store.prompt(user, CAMPAIGN)).useObservedAt, '2027-03-10T00:00:00Z');
+    let status = await standing(user);
+    assert.deepEqual(status.status.betaGrants[0].current_access, resumed);
+    assert.equal((await participation.view({ userId: user, commercial: status })).invitation, null, 'a skipped earlier window cannot shorten nine genuine elapsed days');
+    clock.value = '2027-03-11T00:00:00.000Z';
+    assert.equal((await participation.view({ userId: user, commercial: status })).invitation, 'invite', 'ten real days from actual first access qualifies');
+    // A subsequent ordered step changes future bounds, not the historical real occurrence or its interpretation.
+    wire.order.version = 3;
+    wire.commercial_clock = { offset_seconds: 550 * 86_400, effective_at: clock.value };
+    wire.benefits.beta_grants[0].access_windows[3] = { ...future, real_started_at: clock.value, real_until: clock.value };
+    await commercial.applyMessage(readWirtMessage(wire));
+    clock.value = '2027-03-19T00:00:00.000Z';
+    await new D1AppStore(db, { now: () => clock.value }).maintain();
+    assert.equal((await rows('deliveries', 'delivery_id=?', 'advanced-use')).length, 0);
+    status = await standing(user);
+    assert.equal((await participation.view({ userId: user, commercial: status })).invitation, 'invite', 'the preserved real occurrence survives pruning and a later offset');
+    assert.equal((await store.prompt(user, CAMPAIGN)).useObservedAt, '2027-03-10T00:00:00Z');
+  } finally { clock.value = prior; }
 });

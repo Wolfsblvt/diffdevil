@@ -10,3 +10,13 @@ export function operationDate(at, timeZone) {
     return `${part('year')}-${part('month')}-${part('day')}`;
   } catch { return null; }
 }
+
+/** Membership uses producer-owned real bounds in advanced TEST; ordinary v1 retains its local-date rule. */
+export function accessContains(at, window, timeZone) {
+  if (window.realFrom !== undefined) {
+    const instant = Date.parse(at ?? '');
+    return instant >= Date.parse(window.realFrom) && instant < Date.parse(window.realUntil);
+  }
+  const day = operationDate(at, timeZone);
+  return Boolean(day && day >= window.from && day < window.until);
+}
