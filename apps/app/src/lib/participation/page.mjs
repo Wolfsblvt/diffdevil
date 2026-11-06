@@ -7,7 +7,7 @@
  */
 import { rewardFor } from './service.mjs';
 import { presentReward, receiptOf } from './present.mjs';
-import { commercialNow } from '../../../../github-app/commercial-wirt.mjs';
+import { quoteRealDeadline } from '../../../../github-app/commercial-wirt.mjs';
 
 const CADENCES = ['monthly', 'annual'];
 
@@ -38,9 +38,8 @@ export async function loadParticipation({ runtime, viewer, session, model, previ
   let quote = null;
   if (card?.previewCadences.includes(cadence)) {
     const stored = await participation.preview(viewer.userId, cadence);
-    // A later ordered clock step can lapse a preview before its real cache deadline.
-    const deadline = stored?.quote.expiresOn ? Date.parse(`${stored.quote.expiresOn}T00:00:00Z`) + 86_400_000 : null;
-    if (stored && (deadline === null || commercialNow(runtime.now(), commercialClock) < deadline)) quote = { cadence, receipt: receiptOf(stored.quote, { cadence, protectedPrice }) };
+    const deadline = stored ? quoteRealDeadline(stored.quote, commercialClock, status?.betaTimeZone) : NaN;
+    if (stored && Date.parse(runtime.now()) < deadline) quote = { cadence, receipt: receiptOf(stored.quote, { cadence, protectedPrice }) };
   }
   const nextCadence = status?.commercial?.cadence ?? 'monthly';
   return { view, card, live, quote, next: nextCharge ? receiptOf(nextCharge, { cadence: nextCadence, protectedPrice, label: `Due on ${receiptOf(nextCharge, { cadence: nextCadence }).on ?? 'the renewal date'}` }) : null, nextCharge };

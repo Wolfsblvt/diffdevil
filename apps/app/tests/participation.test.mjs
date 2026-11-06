@@ -123,7 +123,12 @@ function wirtDouble(clock) {
     assert.equal(tier, 'Pro');
     if (reward?.reserved) return json(409, { error: 'commercial-quote-unavailable' });
     const discount = line(reward, cadence);
-    return json(200, { schema: 'wirt.participation-quote/v1', quote_id: randomUUID(), review_url: `${WIRT}/wirt/experience/quotes/1`, expires_on: new Date(Date.parse(clock.value) + 13 * 86_400_000).toISOString().slice(0, 10), tier: 'Pro', cadence, currency: 'EUR',
+    await state.beforeQuote?.();
+    const expiresOn = state.quoteExpiresOn ?? new Date(Date.parse(clock.value) + 13 * 86_400_000).toISOString().slice(0, 10);
+    const end = new Date(Date.parse(`${expiresOn}T00:00:00Z`) + 86_400_000).toISOString();
+    const calendar = state.quoteCalendar === undefined ? { commercial_timezone: 'UTC', expires_before: end, real_expires_before: end, commercial_clock: null } : state.quoteCalendar;
+    return json(200, { schema: 'wirt.participation-quote/v1', quote_id: randomUUID(), review_url: `${WIRT}/wirt/experience/quotes/1`, expires_on: expiresOn, tier: 'Pro', cadence, currency: 'EUR',
+      ...(state.legacyQuote ? {} : { calendar }),
       charges: [{ component_id: 'base', amount_cents: PRICES[cadence] }], discounts: discount ? [discount] : [], due_now_cents: PRICES[cadence] - (discount?.amount_cents ?? 0), post_reward_total_cents: PRICES[cadence] });
   }
   // What Works does between product visits: accept an eligible quote (reserve), confirm or fail its payment, renew, expire, correct.
@@ -717,6 +722,58 @@ test('closing the account forgets every participation fact; the export carries t
   await store.forgetAccount(OTHER);
   for (const table of ['participation_responses', 'participation_deliveries', 'participation_prompts']) assert.equal((await rows(table, 'user_id=?', OTHER)).length, 0, table);
   assert.equal((await rows('participation_responses', 'user_id=?', USER)).length, 1, 'another account keeps its own');
+});
+
+test('quote-time calendar survives a producer step during the request and later status failure without extending cached visibility', async () => {
+  const priorTime = clock.value, user = 812;
+  try {
+    clock.value = '2027-03-02T09:00:00.000Z';
+    const linkId = await link(user, 'works-812');
+    await db.prepare('INSERT INTO browser_sessions(session_hash,user_id,return_context,expires_at) VALUES (?,?,?,?)')
+      .bind(createHash('sha256').update(session(user)).digest('hex'), user, 'app', '2028-05-01T00:00:00.000Z').run();
+    const request = () => participation.requestPreview({ userId: user, session: session(user), cadence: 'monthly' });
+    double.state.legacyQuote = true;
+    assert.equal(await request(), 'ready', 'a legacy no-step quote retains the explicitly projected UTC calendar');
+    assert.equal((await store.preview(user, 'monthly')).quote.calendar.timeZone, 'UTC');
+    delete double.state.legacyQuote;
+    // The live quote supplies its own real boundary, including ordinary Berlin winter/summer and DST dates.
+    for (const [day, real] of [['2027-01-15', '2027-01-15T23:00:00Z'], ['2027-07-15', '2027-07-15T22:00:00Z'], ['2027-03-28', '2027-03-28T22:00:00Z']]) {
+      clock.value = `${day}T12:00:00.000Z`;
+      double.state.quoteExpiresOn = day;
+      double.state.quoteCalendar = { commercial_timezone: 'Europe/Berlin', expires_before: real, real_expires_before: real, commercial_clock: null };
+      assert.equal(await request(), 'ready');
+      assert.equal((await rows('participation_previews', 'user_id=?', user))[0].expires_at, new Date(real).toISOString());
+    }
+    clock.value = '2027-03-02T09:00:00.000Z';
+    const issuedClock = { offset_seconds: 31 * 86_400, effective_at: clock.value };
+    double.state.beforeQuote = async () => {
+      double.state.quoteExpiresOn = '2027-04-02';
+      double.state.quoteCalendar = { commercial_timezone: 'Europe/Berlin', expires_before: '2027-04-02T22:00:00Z',
+        real_expires_before: '2027-03-02T22:00:00Z', commercial_clock: issuedClock };
+    };
+    assert.equal((await standing(user)).status.commercialClock, null);
+    assert.equal(await request(), 'ready');
+    const cached = (await rows('participation_previews', 'user_id=?', user))[0];
+    assert.equal(cached.created_at, clock.value);
+    assert.equal(cached.expires_at, '2027-03-02T22:00:00.000Z', 'the old zero-offset projection cannot extend the quote-time lapse');
+    assert.deepEqual((await store.preview(user, 'monthly')).quote.calendar.commercialClock, issuedClock);
+    clock.value = '2027-03-02T21:00:00.000Z';
+    assert.ok(await store.preview(user, 'monthly'));
+    const next = projection({ linkId, works: 'works-812', account: user, version: 2 }).projection;
+    next.schema = 'wirt.benefit-projection/v2'; next.commercial_clock = { ...issuedClock, offset_seconds: 32 * 86_400 };
+    const beta = next.benefits.beta_grants[0];
+    beta.access_windows = beta.access_windows.map(window => ({ ...window, real_started_at: '2027-02-20T00:00:00Z', real_until: '2027-03-20T00:00:00Z' }));
+    beta.current_access = beta.access_windows[0];
+    await commercial.applyMessage(readWirtMessage(next));
+    assert.equal(await store.preview(user, 'monthly'), null, 'a later applied forward step invalidates through durable state, independently of live status');
+    clock.value = '2027-03-02T22:00:00.000Z';
+    assert.equal(await store.preview(user, 'monthly'), null, 'the initial real cache lapse is exclusive even without any usable live status');
+    double.state.beforeQuote = undefined;
+    double.state.quoteCalendar = { ...double.state.quoteCalendar, real_expires_before: 'not-UTC' };
+    assert.equal(await request(), 'unavailable', 'malformed-present facts do not fall back to the local projection');
+  } finally {
+    clock.value = priorTime; delete double.state.beforeQuote; delete double.state.quoteCalendar; delete double.state.quoteExpiresOn; delete double.state.legacyQuote;
+  }
 });
 
 test('advanced beta bounds place retained deliveries in real access and preserve genuine invitation delay after pruning', async () => {

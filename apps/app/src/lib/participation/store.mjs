@@ -7,6 +7,7 @@
  */
 
 import { accessContains } from './calendar.mjs';
+import { quoteRealDeadline, readCommercialClock, readProjectionCommercialTimeZone } from '../../../../github-app/commercial-wirt.mjs';
 import { browserWriteGuard } from '../../../../github-app/authorization-storage.mjs';
 
 const parse = text => { try { return JSON.parse(text); } catch { return undefined; } };
@@ -171,9 +172,16 @@ export class D1ParticipationStore {
     userId, cadence, JSON.stringify(quote), this.now(), expiresAt, ...guard.values).run();
   }
   async preview(userId, cadence) {
-    const row = await this.statement('SELECT quote_json, created_at FROM participation_previews WHERE user_id=? AND cadence=? AND expires_at > ?', userId, cadence, this.now()).first();
+    const row = await this.statement(`SELECT p.quote_json, p.created_at, l.projection_json FROM participation_previews p
+      LEFT JOIN commercial_links l ON l.product_account=p.user_id AND l.state='active'
+      WHERE p.user_id=? AND p.cadence=? AND p.expires_at > ?`, userId, cadence, this.now()).first();
     const quote = row ? parse(row.quote_json) : undefined;
-    return quote ? { quote, createdAt: row.created_at } : null;
+    if (!quote) return null;
+    // The durable applied projection can shorten visibility even if the live status read is unavailable or stale.
+    const projection = parse(row.projection_json);
+    const clock = projection ? readCommercialClock(projection) : null;
+    const deadline = quoteRealDeadline(quote, clock, readProjectionCommercialTimeZone(projection?.benefits));
+    return Date.parse(this.now()) < deadline ? { quote, createdAt: row.created_at } : null;
   }
 
   /** Every participation fact of one account, for the account export. */

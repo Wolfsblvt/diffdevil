@@ -2,7 +2,7 @@
 
 import { protectedHeaders, validOrigin } from './authorization.mjs';
 import { D1CommercialStore } from './commercial-storage.mjs';
-import { readPaidContinuation, readCommercialClock } from './commercial-wirt.mjs';
+import { legacyQuoteCalendar, readPaidContinuation, readCommercialClock } from './commercial-wirt.mjs';
 import { WIRT_CLIENT, WIRT_NONCE_MS, createWirtClient, parseJsonBytes, readBoundedBody, readExactHttpsUrl, readProjectionBetaGrants, readProjectionCommercialTimeZone, readProjectionFundedComponents, readProjectionRewards, readSigningKeys, readWirtMessage, sha256Hex, verifySignedMessage } from './commercial-wirt.mjs';
 
 export const COMMERCIAL_LINK_COOKIE = '__Host-diffdevil-works-link';
@@ -732,8 +732,13 @@ export function createCommercialService({ store, wirt, signing, authorization, p
       try {
         const result = await wirt.rewardQuote({ linkId: link.link_id, productAccount: link.product_account, cadence });
         if (result.kind === 'quote') {
-          const projection = plannedProjection(link);
-          return { available: true, quote: result.quote, commercialClock: projection ? readCommercialClock(projection) : null };
+          if (result.quote.calendar || !result.quote.expiresOn) return { available: true, quote: result.quote };
+          // Legacy is supported only on a known ordinary calendar. Read it after the request;
+          // a present quote calendar always wins over any delayed projection.
+          const projection = plannedProjection(await store.activeLink(userId));
+          const clock = projection ? readCommercialClock(projection) : null;
+          const calendar = !clock && projection ? legacyQuoteCalendar(result.quote.expiresOn, readProjectionCommercialTimeZone(projection.benefits)) : null;
+          return calendar ? { available: true, quote: { ...result.quote, calendar } } : { available: false, reason: 'unavailable' };
         }
         return { available: false, reason: result.kind === 'not-quotable' ? 'not-quotable' : 'unavailable' };
       } catch { return { available: false, reason: 'unavailable' }; }

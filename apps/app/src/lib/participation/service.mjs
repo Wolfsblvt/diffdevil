@@ -7,7 +7,7 @@
  */
 import { windowOf } from './campaign.mjs';
 import { missingForCompletion, surveyOf } from './survey.mjs';
-import { readCommercialClock, readProjectionBetaGrants, readProjectionCommercialTimeZone, sha256Hex } from '../../../../github-app/commercial-wirt.mjs';
+import { quoteRealDeadline, readCommercialClock, readProjectionBetaGrants, readProjectionCommercialTimeZone, sha256Hex } from '../../../../github-app/commercial-wirt.mjs';
 import { accessContains, operationDate } from './calendar.mjs';
 
 const DAY = 86_400_000;
@@ -153,10 +153,10 @@ export function createParticipation({ store, commercial, campaign, now = () => n
     async requestPreview({ userId, session, cadence }) {
       const answer = await commercial.rewardQuote({ session, cadence }).catch(() => ({ available: false, reason: 'unavailable' }));
       if (!answer.available) return answer.reason === 'not-quotable' ? 'not-quotable' : 'unavailable';
-      // The quote's date is commercial; the cache's expiry and creation records remain real instants.
-      const deadline = answer.quote.expiresOn ? Date.parse(`${answer.quote.expiresOn}T00:00:00Z`) + DAY - (answer.commercialClock?.offset_seconds ?? 0) * 1000 : null;
-      if (deadline !== null && deadline <= Date.parse(now())) return 'not-quotable';
-      const lapses = deadline === null ? later(3600) : new Date(deadline).toISOString();
+      const deadline = quoteRealDeadline(answer.quote);
+      if (Number.isNaN(deadline)) return 'unavailable';
+      if (deadline <= Date.parse(now())) return 'not-quotable';
+      const lapses = deadline === Infinity ? later(3600) : new Date(deadline).toISOString();
       await store.savePreview(userId, cadence, answer.quote, lapses, await sha256Hex(session));
       return 'ready';
     },

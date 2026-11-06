@@ -33,9 +33,33 @@ presentation. Advanced context shows commercial and real UTC time beside plan
 and reward dates, preserving current and queued coverage. Discount claim and
 validity presentation compares against commercial now. Exercise/application and
 other commercial dates retain their producer values; their authoritative state
-and actions remain at Works. Quote expiry dates are commercial, while cached
-preview creation/expiry records are real instants. A later applied offset can
-also lapse a displayed preview before its previously stored real expiry.
+and actions remain at Works. Quote expiry dates are commercial local dates.
+The live `wirt.participation-quote/v1` response's additive `calendar` binds
+`commercial_timezone`, exclusive commercial `expires_before`, real
+`real_expires_before` and issuing `commercial_clock` (null for ordinary time)
+to that quote. The initial cache lapse is the producer's real bound, rather than
+UTC midnight or the projection read before the request. DST and a producer step
+during the request are therefore already represented by the returned facts.
+
+A malformed-present calendar is unavailable, without a UTC fallback. Its UTC
+bounds must be actual instants, its real lapse cannot follow the commercial lapse,
+and an ordinary clock has equal lapses. Cache creation/expiry records stay real.
+A greater later applied offset can shorten the quote's lapse to
+`expires_before - offset_seconds`; it never extends the issuing real lapse.
+The cache read also checks the durable applied projection, independently of a
+stale or unavailable live status. Page reads create no quote or persistence write.
+Wirt remains authoritative for acceptance and all prices.
+
+Older no-step producers without `calendar` remain supported when the applied
+ordinary projection supplies an explicit valid commercial timezone. The App finds
+the end of that actual local calendar day through native timezone formatting,
+including DST, and stores the derived real boundary with the quote. A legacy
+date-bearing quote without that timezone, or issued on an advanced calendar
+without its own bound facts, is unavailable: the missing producer fact is not
+invented. Date-less local stand-in previews retain their existing real cache TTL.
+Previously cached legacy quotes likewise need a known ordinary calendar for
+display. This limitation is separate from the additive producer's native and
+installed qualification.
 
 Survey campaign windows, genuine invitation/reminder delays, recorded use and raw
 completion occurrences remain real. No historical offset is inferred for a

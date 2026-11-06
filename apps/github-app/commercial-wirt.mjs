@@ -403,8 +403,52 @@ function readQuote(value, cadence) {
     && Array.isArray(value.charges) && value.charges.length <= 32 && Array.isArray(value.discounts) && cents(value.due_now_cents) && nullableCents(value.post_reward_total_cents));
   return { quoteId: value.quote_id, cadence, tier: typeof value.tier === 'string' ? value.tier : null, currency: typeof value.currency === 'string' ? value.currency : 'EUR',
     reviewUrl: typeof value.review_url === 'string' ? value.review_url : null, expiresOn: day(value.expires_on),
+    ...(Object.hasOwn(value, 'calendar') ? { calendar: readQuoteCalendar(value.calendar) } : {}),
     charges: value.charges.map(charge => { shape(object(charge) && cents(charge.amount_cents)); return { component: typeof charge.component_id === 'string' ? charge.component_id : null, amountCents: charge.amount_cents }; }),
     discounts: value.discounts.map(readDiscountLine), dueNowCents: value.due_now_cents, postRewardTotalCents: value.post_reward_total_cents ?? null };
+}
+
+function readQuoteCalendar(value) {
+  shape(object(value) && readProjectionCommercialTimeZone({ commercial_timezone: value.commercial_timezone }) !== null
+    && utcTimestamp(value.expires_before) && utcTimestamp(value.real_expires_before)
+    && Date.parse(value.real_expires_before) <= Date.parse(value.expires_before)
+    && Object.hasOwn(value, 'commercial_clock'));
+  const commercialClock = value.commercial_clock === null ? null
+    : readCommercialClock({ schema: 'wirt.benefit-projection/v2', commercial_clock: value.commercial_clock });
+  shape(commercialClock !== null || Date.parse(value.expires_before) === Date.parse(value.real_expires_before));
+  return { timeZone: value.commercial_timezone, expiresBefore: value.expires_before,
+    realExpiresBefore: value.real_expires_before, commercialClock };
+}
+
+/** Older no-step producers can use their explicitly projected local calendar, never an assumed UTC day. */
+export function legacyQuoteCalendar(expiresOn, timeZone) {
+  if (!date(expiresOn) || !readProjectionCommercialTimeZone({ commercial_timezone: timeZone })) return null;
+  const dayStart = Date.parse(`${expiresOn}T00:00:00Z`);
+  if (!Number.isFinite(dayStart) || new Date(dayStart).toISOString().slice(0, 10) !== expiresOn) return null;
+  const formatter = new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' });
+  const localDay = at => {
+    const parts = formatter.formatToParts(at);
+    return ['year', 'month', 'day'].map(type => parts.find(part => part.type === type).value).join('-');
+  };
+  // Find the first real instant after this local day; this also handles a midnight skipped by DST.
+  let lower = dayStart - 86_400_000, upper = dayStart + 3 * 86_400_000;
+  while (upper - lower > 1) {
+    const middle = Math.floor((lower + upper) / 2);
+    if (localDay(middle) <= expiresOn) lower = middle;
+    else upper = middle;
+  }
+  const end = new Date(upper).toISOString();
+  return { timeZone, expiresBefore: end, realExpiresBefore: end, commercialClock: null };
+}
+
+/** Quote-bound initial real lapse; a later greater applied offset may shorten it, never extend it. */
+export function quoteRealDeadline(quote, appliedClock = null, legacyTimeZone = null) {
+  const calendar = quote.calendar ?? (!appliedClock ? legacyQuoteCalendar(quote.expiresOn, legacyTimeZone) : null);
+  if (!calendar) return quote.expiresOn ? NaN : Infinity;
+  const realLapse = Date.parse(calendar.realExpiresBefore);
+  const issuedOffset = calendar.commercialClock?.offset_seconds ?? 0;
+  return (appliedClock?.offset_seconds ?? 0) > issuedOffset
+    ? Math.min(realLapse, Date.parse(calendar.expiresBefore) - appliedClock.offset_seconds * 1000) : realLapse;
 }
 
 function readOrigin(value) {
