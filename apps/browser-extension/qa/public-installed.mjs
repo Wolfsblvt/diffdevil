@@ -5,23 +5,27 @@ import { chromium } from 'playwright-core';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { resolve, join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { isExtensionConsoleError } from './console.mjs';
 
 const target = process.env.DIFFDEVIL_PUBLIC_PR ?? 'https://github.com/Wolfsblvt/diffdevil/pull/48';
 const output = resolve('artifacts/browser-extension/qa/public-installed');
 const extension = resolve(process.argv.find(arg => arg.startsWith('--extension='))?.slice('--extension='.length) ?? 'artifacts/browser-extension/unpacked');
 await mkdir(output, { recursive: true });
 const profile = await mkdtemp(join(tmpdir(), 'diffdevil-public-installed-'));
-const receipt = { kind: 'diffdevil.public-installed-qa/1', target, checks: [], errors: [], console: [], status: 'incomplete' };
+const receipt = { kind: 'diffdevil.public-installed-qa/1', target, platform: process.platform, node: process.version, checks: [], errors: [], console: [], status: 'incomplete' };
 let context;
 const startedAt = Date.now();
+const watchedPages = new WeakSet();
 function watchPage(page, surface = 'page-console') {
+  if (watchedPages.has(page)) return;
+  watchedPages.add(page);
   page.on('pageerror', error => receipt.errors.push({ surface: `${surface}-uncaught`, text: error.message }));
   page.on('console', message => {
     if (message.type() !== 'error') return;
     const location = message.location();
     const item = { surface, text: message.text(), ...(location.url ? { sourceUrl: location.url } : {}) };
     receipt.console.push(item);
-    if (location.url.startsWith('chrome-extension://')) receipt.errors.push(item);
+    if (isExtensionConsoleError(location.url, item.text)) receipt.errors.push(item);
   });
 }
 try {
@@ -30,6 +34,7 @@ try {
     ignoreDefaultArgs: ['--disable-extensions'],
     args: [`--disable-extensions-except=${extension}`, `--load-extension=${extension}`],
   });
+  receipt.browser = context.browser()?.version();
   await context.tracing.start({ screenshots: true, snapshots: true });
   for (const existingPage of context.pages()) watchPage(existingPage);
   context.on('page', page => watchPage(page));
@@ -45,14 +50,21 @@ try {
   context.on('serviceworker', watchWorker);
   const worker = context.serviceWorkers()[0] ?? await context.waitForEvent('serviceworker', { timeout: 20_000 });
   watchWorker(worker);
-  const firstInstallTab = context.pages().find(candidate => candidate.url().endsWith('/options.html#ready')) ?? await firstInstallPageOpened;
-  assert.ok(firstInstallTab, 'the first install must open Settings at its ready section');
-  const firstInstallReady = firstInstallTab.locator('.setting').first().waitFor({ timeout: 45_000 }).then(async () => {
+  // Observe Settings in parallel: GitHub still opens immediately after worker discovery.
+  const firstInstallReady = (async () => {
+    const firstInstallTab = context.pages().find(candidate => candidate.url().endsWith('/options.html#ready')) ?? await firstInstallPageOpened;
+    assert.ok(firstInstallTab, 'the first install must open Settings at its ready section');
+    await firstInstallTab.locator('#ready-heading').waitFor({ state: 'visible', timeout: 45_000 });
+    await firstInstallTab.getByRole('link', { name: 'Open the public example PR' }).waitFor({ state: 'visible' });
+    assert.equal(await firstInstallTab.locator('.ready-defaults dd').count(), 4, 'first use must explain the four defaults in effect');
     const result = { elapsedMs: Date.now() - startedAt, title: await firstInstallTab.title(), url: firstInstallTab.url() };
+    assert.ok(result.url.endsWith('/options.html#ready'), `first install opened the wrong Settings route: ${result.url}`);
+    assert.equal(result.title, 'Settings · diffdevil for GitHub');
     receipt.firstInstallSettings = result;
+    await firstInstallTab.screenshot({ path: join(output, 'first-install-settings-1228x778.png'), animations: 'disabled' });
     receipt.checks.push('first-install Settings reaches its ready section while the public GitHub journey runs');
     return result;
-  });
+  })().then(value => ({ value }), error => ({ error }));
   const page = await context.newPage();
   const githubStartedAt = Date.now();
   const files = `${target.replace(/\/$/u, '')}/files`;
@@ -133,7 +145,6 @@ try {
     });
   });
   const historyPage = await context.newPage();
-  watchPage(historyPage, 'history-console');
   await historyPage.goto('https://github.com/Wolfsblvt/diffdevil', { waitUntil: 'domcontentloaded' });
   await historyPage.evaluate(url => {
     history.pushState({}, '', url);
@@ -146,9 +157,8 @@ try {
   receipt.routeAgreement = await worker.evaluate(() => globalThis.__diffdevilRouteProbe);
   assert.ok(receipt.routeAgreement, 'The passing route step must record Chrome sender agreement.');
   receipt.checks.push('same-document route change reaches the installed worker');
-  receipt.firstInstallSettings = await firstInstallReady;
-  assert.ok(receipt.firstInstallSettings.url.endsWith('/options.html#ready'), `first install opened the wrong Settings route: ${receipt.firstInstallSettings.url}`);
-  assert.equal(receipt.firstInstallSettings.title, 'Settings · diffdevil for GitHub');
+  const firstInstallResult = await firstInstallReady;
+  if (firstInstallResult.error) throw firstInstallResult.error;
   assert.deepEqual(receipt.errors, []);
   receipt.status = 'passed';
 } catch (error) {
