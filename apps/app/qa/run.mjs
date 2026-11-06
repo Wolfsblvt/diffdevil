@@ -31,7 +31,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { once } from 'node:events';
 import { generateKeyPairSync } from 'node:crypto';
 import { dirname, join, resolve } from 'node:path';
-import { createFakeGitHub, CODE, ENTITLEMENT_FIXTURE, INSTALLATIONS, LONG_RETAINED_PATHS, pullRequests, setScale } from './fixture.mjs';
+import { createFakeGitHub, CODE, ENTITLEMENT_FIXTURE, INSTALLATIONS, LONG_RETAINED_PATHS, NOW, pullRequests, setScale } from './fixture.mjs';
 import { seedLocalState, executeLocal, recordLocalDelivery } from './seed.mjs';
 import { proManage, historyOnlyManage, planChoiceReturn, freeManage, businessManage, delegateManage, setupRecovery, manageAccess, COMMERCIAL_PRO, COMMERCIAL_FREE, COMMERCIAL_BUSINESS } from './manage.mjs';
 import { participationJourney, typedRewardJourney, TYPED_REWARD_SPECIMENS, rewardOnlyJourney, nullableReceiverJourney, COMMERCIAL_BETA, COMMERCIAL_REWARD_ONLY, NULLABLE_LINK, NULLABLE_SIGNING_KEY, QA_CAMPAIGN } from './participation.mjs';
@@ -545,6 +545,16 @@ async function signIn({ entry } = {}) {
   check('callback continues into a session and lands on the overview', new URL(page.url()).pathname === '/', `${page.url()} :: ${(await page.evaluate(() => document.body.innerText)).replace(/\s+/gu, ' ').slice(0, 300)}`);
 }
 
+async function qualifyRollingOverviewPopulations() {
+  const response = await go('/?per=30d');
+  await settled();
+  const populations = await page.evaluate(() => {
+    const value = selector => Number((document.querySelector(selector)?.textContent ?? '').replace(/[^0-9]/gu, ''));
+    return { period: document.querySelector('[data-period] [aria-current="true"]')?.textContent.trim(), current: value('.a-hero-l .val .n'), previous: value('[data-hero-dl] span:nth-child(2) b'), comparison: document.querySelector('[data-hero-dl] span:first-child')?.textContent ?? '' };
+  });
+  check('the built 30-day overview retains current and previous merged populations', response.status() === 200 && populations.period === '30 days' && populations.current > 0 && populations.previous > 0 && !/previous period not fully retained/u.test(populations.comparison), JSON.stringify(populations));
+}
+
 async function qualifyPages(label, { pro }) {
   // Plan chips in panel titles belong to the premium panels, which exist only in a build that joined the extension.
   const premiumPanels = pro && Boolean(premium);
@@ -578,6 +588,7 @@ async function qualifyPages(label, { pro }) {
   check(`${label} overview shows ${premiumPanels ? 'premium panels with plan chips' : 'Free panels with bounded See Pro placeholders and no premium chips in panel titles'}`, premiumPanels ? (await page.evaluate(() => document.querySelectorAll('.a-pn-t .a-plan').length)) > 0 : (await page.evaluate(() => document.querySelectorAll('.a-pn-t .a-plan').length)) === 0, `chips=${proChips} hints=${hints}`);
   check(`${label} overview hero names its merged population from retained lifecycle`, await page.evaluate(() => /Merged pull requests/u.test(document.querySelector('.a-hero-l .eb')?.textContent ?? '')));
   await settled();
+  if (label === 'pro') await qualifyRollingOverviewPopulations();
   check(`${label} overview composes the accepted rows (${premiumPanels ? 'cloud, ' : ''}Change volume, flow, time to merge by size, size mix${premiumPanels ? ', Turnover map' : ''})`, await page.evaluate(pro => { const kinds = [...document.querySelectorAll('.a-grid > [data-chart], .a-grid > [data-premium-region] [data-chart]')].map(host => host.dataset.chart); const want = pro ? ['cloud', 'mosaic', 'flow', 'ttm', 'mix', 'turnover'] : ['mosaic', 'flow', 'ttm', 'mix']; return want.every(kind => kinds.includes(kind)) && (pro || !kinds.includes('cloud')) && !document.querySelector('[data-chart-provisional]'); }, premiumPanels), await page.evaluate(() => [...document.querySelectorAll('[data-chart]')].map(host => host.dataset.chart).join(',')));
   const hero = await page.evaluate(() => ({ svg: Boolean(document.querySelector('[data-hero-plot] svg')), dl: document.querySelector('[data-hero-dl]')?.textContent ?? '' }));
   await page.focus('[data-hero-plot]'); await page.keyboard.press('ArrowLeft');
@@ -980,6 +991,7 @@ try {
     await signIn();
     await go('/');
     await settled();
+    await qualifyRollingOverviewPopulations();
     await qualifyFrame('pro overview', '[data-chart-id="volume"]');
     await qualifyFrame('pro overview', '[data-chart-id="ttm"]');
   } else if (PR_SEARCH_DETAIL_ONLY) {
@@ -1182,7 +1194,8 @@ try {
   await qualifyPages('pro', { pro: true });
 
   // the protected analytics route answers the signed-in browser through the installed adapter
-  const analytics = await context.request.post(`${ORIGIN}/api/analytics`, { headers: { origin: ORIGIN, 'content-type': 'application/json' }, data: JSON.stringify({ version: 1, surface: 'overview', repositoryIds: [1001, 1002], from: '2026-07-11T14:00:00.000Z', to: '2026-10-09T14:00:00.000Z' }) });
+  const analyticsFrom = new Date(Date.parse(NOW) - 90 * 86_400_000).toISOString();
+  const analytics = await context.request.post(`${ORIGIN}/api/analytics`, { headers: { origin: ORIGIN, 'content-type': 'application/json' }, data: JSON.stringify({ version: 1, surface: 'overview', repositoryIds: [1001, 1002], from: analyticsFrom, to: NOW }) });
   check('the protected analytics route answers the signed-in session with the contract', analytics.status() === 200 && (await analytics.json()).kind === 'diffdevil.app-analytics', String(analytics.status()));
   const analyticsAnonymous = await context.request.post(`${ORIGIN}/api/analytics`, { headers: { origin: ORIGIN, 'content-type': 'application/json', cookie: '' }, data: '{}' });
   check('the analytics route refuses a malformed query', analyticsAnonymous.status() === 400 || analyticsAnonymous.status() === 401, String(analyticsAnonymous.status()));

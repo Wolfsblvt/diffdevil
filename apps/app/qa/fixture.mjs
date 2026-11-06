@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
 /**
- * One deterministic fixture for tests and local qualification: a GitHub account with four
+ * One run-relative deterministic fixture for tests and local qualification: a GitHub account with four
  * installations (each with its numeric account), seven repositories in three standings, pull
  * requests with lifecycle facts, the older pathless analyses projected through the managed
  * App's history projection, and the named analytical records the analytical data contract
@@ -12,7 +12,7 @@
 import { analyzeDiff, compilePolicy, evaluatePolicy, unwrap } from '../../../dist/lib/index.js';
 import { historyProjection } from '../../github-app/contracts.mjs';
 
-export const NOW = '2026-10-09T14:00:00.000Z';
+export const NOW = new Date().toISOString();
 const DAY = 86_400_000;
 const at = (daysAgo, hours = 0) => new Date(Date.parse(NOW) - daysAgo * DAY - hours * 3_600_000).toISOString();
 
