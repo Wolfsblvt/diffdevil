@@ -125,16 +125,16 @@
   },
   "devDependencies": {
     "@astrojs/check": "0.9.12",
-    "@astrojs/cloudflare": "14.4.3",
+    "@astrojs/cloudflare": "14.4.6",
     "@astrojs/react": "6.0.6",
-    "@astrojs/starlight": "0.42.7",
+    "@astrojs/starlight": "0.42.9",
     "@codemirror/commands": "6.11.1",
     "@codemirror/lang-yaml": "6.1.3",
     "@codemirror/language": "6.13.1",
     "@codemirror/lint": "6.9.7",
     "@fontsource/ibm-plex-mono": "5.3.0",
     "@fontsource/ibm-plex-sans": "5.3.0",
-    "@iconify-json/lucide": "1.2.149",
+    "@iconify-json/lucide": "1.2.151",
     "@iconify-json/simple-icons": "1.2.101",
     "@lezer/highlight": "1.2.5",
     "@playwright/test": "1.64.1",
@@ -143,7 +143,7 @@
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
     "@wolfsblvt/icons": "0.5.0",
-    "astro": "7.4.4",
+    "astro": "7.4.7",
     "astro-icon": "1.2.0",
     "blake3-wasm": "2.1.5",
     "codemirror": "6.0.2",
@@ -158,7 +158,7 @@
     "shiki": "4.5.0",
     "typescript": "7.0.2",
     "typescript-6": "npm:typescript@6.0.3",
-    "wrangler": "4.156.0"
+    "wrangler": "4.158.0"
   },
   "dependencies": {
     "ajv": "8.20.0",
