@@ -9,6 +9,7 @@ import { windowOf } from './campaign.mjs';
 import { missingForCompletion, surveyOf } from './survey.mjs';
 import { quoteRealDeadline, readCommercialClock, readProjectionBetaGrants, readProjectionCommercialTimeZone, sha256Hex } from '../../../../github-app/commercial-wirt.mjs';
 import { accessContains, operationDate } from './calendar.mjs';
+import { activityReadiness, audienceAllows } from './activity.mjs';
 
 const DAY = 86_400_000;
 // The same bounded backoff as Wirt reports, but a completion is never abandoned: after the last step it keeps that pace.
@@ -91,6 +92,7 @@ export function createParticipation({ store, commercial, campaign, now = () => n
 
     /** Everything the survey page, the invitation and Plan & funding need for one account. */
     async view({ userId, commercial: commercialStanding }) {
+      if (!audienceAllows(campaign, userId)) return { eligibility: 'not-invited', canAnswer: false, canSave: false, completed: false };
       const [response, prompt] = await Promise.all([store.response(userId, campaign), store.prompt(userId, campaign)]);
       const delivery = response?.state === 'completed' ? await store.delivery(response.responseId) : null;
       const eligibility = eligibilityOf(commercialStanding);
@@ -103,10 +105,12 @@ export function createParticipation({ store, commercial, campaign, now = () => n
       const access = betaAccessWindows(status);
       const observed = access?.some(window => accessContains(prompt?.useObservedAt, window, status?.betaTimeZone));
       const stage = eligibility === 'participant' && window === 'open' && !completed && usedEnough({ access, observed, timeZone: status?.betaTimeZone }) ? promptStage(prompt) : null;
+      const activity = eligibility === 'participant' && window === 'open' && !completed ? await activityReadiness({ campaign, store, userId, status }) : null;
       return { campaign, survey, window, eligibility, proactiveEligibility: access === null ? 'unknown' : access.length ? 'known' : 'not-beta', response, delivery, completed, invitation: stage, prompt,
         // Wirt's projected facts are the reward; its answer to our own delivery stands in only until a projection carries it.
         reward: projected ?? receipt, rewardSource: projected ? 'projection' : receipt ? 'receipt' : null,
-        canAnswer: eligibility === 'participant' && window === 'open' && !completed };
+        activity, canSave: eligibility === 'participant' && window === 'open' && !completed,
+        canAnswer: eligibility === 'participant' && window === 'open' && !completed && activity?.state === 'ready' };
     },
 
     /** Preserve use before the operational ledger is pruned, without a visit or a provider request. */
@@ -129,6 +133,7 @@ export function createParticipation({ store, commercial, campaign, now = () => n
     dismiss(userId, sessionHash) { return store.dismiss(userId, campaign, sessionHash); },
 
     async saveDraft({ userId, commercial: commercialStanding, answers, sessionHash }) {
+      if (!audienceAllows(campaign, userId)) return 'not-eligible';
       if (eligibilityOf(commercialStanding) !== 'participant') return 'not-eligible';
       if (windowOf(campaign, now()) !== 'open') return 'closed';
       return await store.saveDraft(userId, campaign, answers, sessionHash) ? 'saved' : 'already-completed';
@@ -136,10 +141,13 @@ export function createParticipation({ store, commercial, campaign, now = () => n
 
     /** Complete the survey: the response and its outbound completion fact commit together. The caller then tries delivery. */
     async complete({ userId, commercial: commercialStanding, answers, sessionHash }) {
+      if (!audienceAllows(campaign, userId)) return 'not-eligible';
       if (eligibilityOf(commercialStanding) !== 'participant') return 'not-eligible';
       if (windowOf(campaign, now()) !== 'open') return 'closed';
       if ((await store.response(userId, campaign))?.state === 'completed') return 'already-completed';
       if (missingForCompletion(survey, answers).length > 0) { await store.saveDraft(userId, campaign, answers, sessionHash); return 'incomplete'; }
+      const activity = await activityReadiness({ campaign, store, userId, status: commercialStanding?.status });
+      if (activity.state !== 'ready') { await store.saveDraft(userId, campaign, answers, sessionHash); return 'activity-unavailable'; }
       const { result } = await store.complete(userId, campaign, answers, sessionHash);
       return result;
     },
@@ -152,6 +160,7 @@ export function createParticipation({ store, commercial, campaign, now = () => n
      * A preview reserves nothing. Rendering a page never calls this.
      */
     async requestPreview({ userId, session, cadence }) {
+      if (!audienceAllows(campaign, userId)) return 'not-eligible';
       const answer = await commercial.rewardQuote({ session, cadence }).catch(() => ({ available: false, reason: 'unavailable' }));
       if (!answer.available) return answer.reason === 'not-quotable' ? 'not-quotable' : 'unavailable';
       const deadline = quoteRealDeadline(answer.quote);

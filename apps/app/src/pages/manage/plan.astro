@@ -17,7 +17,8 @@ import { loadManage } from '../../lib/manage/model.mjs';
 import { presentProjection, worksDestinations, WORKS_EXITS, fmtDay, tierLabel } from '../../lib/manage/works.mjs';
 import { holdsSlot, namespacePath } from '../../lib/manage/states.mjs';
 import RewardCard from '../../components/participation/RewardCard.astro';
-import { loadParticipation } from '../../lib/participation/page.mjs';
+import { loadParticipation, loadActivities } from '../../lib/participation/page.mjs';
+import Activities from '../../components/participation/Activities.astro';
 
 const runtime = Astro.locals.app;
 const model = await loadManage({ viewer: Astro.locals.viewer, session: Astro.locals.session, runtime });
@@ -39,6 +40,7 @@ const unavailableNote = model.commercial?.standing === 'unavailable';
 const orgWord = (count: number) => `${count} ${count === 1 ? 'organisation' : 'organisations'}`;
 // The participation reward joins the plan it discounts: its card, the next charge Wirt will make, or a requested preview.
 const participation = linked ? await loadParticipation({ runtime, viewer: Astro.locals.viewer, session: Astro.locals.session, model, preview: Astro.url.searchParams.get('preview') }) : null;
+const activities = await loadActivities({ runtime, viewer: Astro.locals.viewer, model });
 // When Wirt's next charge carries the reward, the standing card names that amount rather than the undiscounted total.
 if (participation?.nextCharge) for (const row of presented.rows) if (row.term === 'Next renewal') { row.value = `${participation.next.total.amount} on ${participation.next.on ?? '—'}`; row.sub = `${row.sub ?? ''}${row.sub ? ' · ' : ''}with your participation reward`; }
 ---
@@ -73,6 +75,7 @@ if (participation?.nextCharge) for (const row of presented.rows) if (row.term ==
               <span class="cap">{model.worksOrigin ? <>Opens at {model.commercialSource === 'fixture' ? 'a local stand-in for' : ''} account.wolfsblvt.works in a diffdevil frame. <b>Return to diffdevil</b> brings you back to this page.</> : 'Works is not configured on this deployment, so its pages cannot be opened from here.'}</span></div></div></section>
 
           {participation?.card && <RewardCard card={participation.card} next={participation.next} quote={participation.quote} depart={depart('experience', 'change-plan')} />}
+          <Activities activities={activities} unavailable={runtime.participationConfiguration === 'unavailable'} />
 
           <ChooseStays model={model} choosing={choosing} tier={tier} />
 

@@ -30,7 +30,7 @@ export function createCommercialFixture(spec, { authorization, namespaceOf, allo
   if (!states.has(key)) {
     states.set(key, { linked: spec.linked === true, since: spec.since ?? now().slice(0, 10), commercial: spec.commercial ? structuredClone(spec.commercial) : null, pending: structuredClone(spec.pending ?? []), grants: structuredClone(spec.grants ?? []), betaGrants: spec.betaGrants ? structuredClone(spec.betaGrants) : null,
       protection: spec.protection ? structuredClone(spec.protection) : null, capacity: structuredClone(spec.capacity ?? []).map(slot => ({ slot: slot.slot, funding: slot.funding ?? 'paid', pendingEndOn: slot.pending_end_on ?? slot.pendingEndOn ?? null, binding: slot.binding ? { organisationId: slot.binding.organisationId, authority: slot.binding.authority ?? 'present', authorityCheckedAt: now(), display: slot.binding.display ?? null } : null })),
-      others: { ...(spec.others ?? {}) }, order: 1,
+      others: { ...(spec.others ?? {}) }, order: 1, activityCompletions: new Map(),
       participation: spec.participation ? { campaign: structuredClone(spec.participation.campaign), answer: spec.participation.answer ?? 'recorded', paid: spec.participation.paid === true, earned: null, completions: [] } : null });
   }
   const state = states.get(key);
@@ -57,7 +57,9 @@ export function createCommercialFixture(spec, { authorization, namespaceOf, allo
   };
   const rewardFacts = () => {
     if (spec.rewardSpecimens) return readRewardList(spec.rewardSpecimens[state.rewardSpecimen ?? 0]);
-    const raw = rewardRaw(); return raw ? [readRewardFacts(raw)] : [];
+    const raw = rewardRaw();
+    const activities = (spec.participation?.activities ?? []).filter(activity => state.activityCompletions.has(activity.campaign)).map(activity => readRewardFacts(activity.reward));
+    return [...(raw ? [readRewardFacts(raw)] : []), ...activities];
   };
   const discountLine = cadence => {
     const earned = state.participation?.earned, campaign = state.participation?.campaign;
@@ -146,6 +148,17 @@ export function createCommercialFixture(spec, { authorization, namespaceOf, allo
       return { headers: connected.headers, body: { ok: true, result: 'service-reconnected', authorityReconciliation: 'recorded' } };
     },
     async deliverParticipation({ userId, completion }) {
+      const activity = (spec.participation?.activities ?? []).find(value => value.campaign === completion.campaign && value.version === completion.version);
+      if (activity) {
+        if (userId !== spec.account || !state.linked) return { kind: 'link-required' };
+        if (state.participation.answer === 'unavailable') return { kind: 'unavailable' };
+        if (state.participation.answer === 'refused') return { kind: 'refused' };
+        const existing = state.activityCompletions.get(activity.campaign);
+        if (existing && JSON.stringify(existing) !== JSON.stringify(completion)) return { kind: 'refused' };
+        if (!existing && [...state.activityCompletions.values()].some(value => value.eventId === completion.eventId || value.completionId === completion.completionId)) return { kind: 'refused' };
+        state.activityCompletions.set(activity.campaign, structuredClone(completion));
+        return { kind: existing ? 'replayed' : 'accepted', reward: readRewardFacts(activity.reward) };
+      }
       const participation = state.participation;
       if (!participation) return { kind: 'unavailable', code: 'E_COMMERCIAL_UNAVAILABLE' };
       if (userId !== spec.account || !state.linked) return { kind: 'link-required' };

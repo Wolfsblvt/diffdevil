@@ -6,15 +6,15 @@
 // Monthly and Annual buttons); the page then shows the stored answer and never creates a quote by being viewed.
 import Icon from '../Icon.astro';
 import Receipt from './Receipt.astro';
-interface Props { card: any; surveyLink?: boolean; next?: any; quote?: any; depart?: string | null }
-const { card, surveyLink = true, next = null, quote = null, depart = null } = Astro.props;
+interface Props { card: any; surveyLink?: boolean; next?: any; quote?: any; depart?: string | null; headingId?: string }
+const { card, surveyLink = true, next = null, quote = null, depart = null, headingId = 'p-reward-title' } = Astro.props;
 const STANDING: Record<string, string> = { available: 'Open', accepted: 'Applies next', queued: 'Queued', active: 'Active', waiting: 'Waiting', exercised: 'Acquired', ended: 'Ended', withdrawn: 'Withdrawn', reserved: 'Reserved', retired: 'Set aside', 'partially-consumed': 'In use', consumed: 'Used', expired: 'Expired', corrected: 'Corrected' };
 const ICON: Record<string, string> = { ok: 'gift', warn: 'alert-triangle', muted: 'clock', info: 'gift' };
 const choosing = card.previewCadences?.length > 0;
 const answering = ['invite', 'draft'].includes(card.key);
 ---
-<section class:list={['m-sec', 'p-reward', `tone-${card.tone}`]} data-reward={card.key} aria-labelledby="p-reward-title">
-  <header><h2 id="p-reward-title"><Icon name={ICON[card.tone] ?? 'gift'} size={16} /> {card.title}</h2><span class="d">{card.reason}</span></header>
+<section class:list={['m-sec', 'p-reward', `tone-${card.tone}`]} data-reward={card.key} aria-labelledby={headingId}>
+  <header><h2 id={headingId}><Icon name={ICON[card.tone] ?? 'gift'} size={16} /> {card.title}</h2><span class="d">{card.reason}</span></header>
   <div class="b">
     {card.lines.map((line: string) => <p class="p-line">{line}</p>)}
     {card.stale && <p class="m-note" data-reward-stale>Works can't be reached right now, so this is the standing it last sent.</p>}

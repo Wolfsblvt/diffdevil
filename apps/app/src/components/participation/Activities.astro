@@ -1,0 +1,16 @@
+---
+// SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
+import RewardCard from './RewardCard.astro';
+import { activityPath } from '../../lib/participation/campaign.mjs';
+interface Props { activities: any[]; unavailable?: boolean }
+const { activities, unavailable = false } = Astro.props;
+---
+{unavailable && <section class="m-sec" data-activities-unavailable><div class="b"><p class="m-note">Later participation is unavailable on this deployment. Your existing answers and the original survey are unchanged.</p></div></section>}
+{activities.length > 0 && <section class="m-sec" data-activities><header><h2>Contribute through real use</h2><span class="d">Separate activities · separate completions</span></header><div class="b">
+  <p class="m-note">The original beta survey and its monthly/annual reward choice stay separate. These later contributions describe different work; one response cannot earn several rewards.</p>
+  <dl class="m-dl">{activities.map(({ view }: any) => <><dt><a href={activityPath(view.campaign)}>{view.survey.name}</a></dt><dd>{view.survey.reason}<span class="sub">{view.completed ? 'Completed · reward standing below' : !view.canSave ? 'Not available to complete now' : view.activity?.reason ?? (view.response?.state === 'draft' ? 'Draft saved' : 'Ready for your account of the actual activity')}</span></dd></>)}</dl>
+</div></section>}
+{activities.map(({ view, card }: any) => card && <div data-activity-reward={view.survey.id}><RewardCard card={card} surveyLink={false} headingId={`reward-${view.survey.id}`} /><a class="m-btn ghost sm" href={activityPath(view.campaign)}>Your {view.survey.name} answers</a>
+  <a class="m-btn ghost sm" href="/manage/depart?to=experience&purpose=change-plan&from=%2Fmanage%2Fplan">Quote and payment at Works</a>
+  <a class="m-btn ghost sm" href="/manage/depart?to=relationship&purpose=review&from=%2Fmanage%2Fplan">Canonical history at Works</a>
+</div>)}

@@ -10,7 +10,7 @@ import { protectedHeaders } from '../../../../github-app/authorization.mjs';
 import { DEFAULT_SIZE_POLICY, resolveEffectivePolicy } from '../../../../github-app/configuration.mjs';
 import { loadManage } from './model.mjs';
 import { SETUP_BELONGS } from './setup.mjs';
-import { SURVEYS, describeAnswers, surveyOf } from '../participation/survey.mjs';
+import { SURVEYS, ACTIVITIES, describeAnswers, surveyOf } from '../participation/survey.mjs';
 
 /** The signed-in export route; each repository requires current administration and retained-history read access. */
 export async function handleManageExport({ url, locals }) {
@@ -48,7 +48,7 @@ export async function handleManageExport({ url, locals }) {
   }
   // The whole-account export also carries the person's own survey answers and the completion facts diffdevil sent.
   const participation = only ? undefined : (await runtime.participationStore.exportAccount(viewer.userId)).map(entry => ({ ...entry,
-    answers: entry.answers ? (SURVEYS[entry.survey] ? describeAnswers(surveyOf(entry.survey), entry.answers) : entry.answers) : null }));
+    answers: entry.answers ? (Object.hasOwn(SURVEYS, entry.survey) || Object.hasOwn(ACTIVITIES, entry.survey) ? describeAnswers(surveyOf(entry.survey), entry.answers) : entry.answers) : null }));
   const body = { kind: 'diffdevil.manage-export', version: 1, exportedAt: runtime.now(), account: viewer.login, defaults, repositories: out, notAdministered: refused, ...(participation ? { participation } : {}), ...(business.length ? { business } : {}) };
   const name = only ? `diffdevil-${only.replace('/', '-')}-export.json` : `diffdevil-${viewer.login}-export.json`;
   return new Response(JSON.stringify(body, null, 2), { status: 200, headers: { ...protectedHeaders(), 'content-type': 'application/json; charset=utf-8', 'content-disposition': `attachment; filename="${name}"` } });

@@ -13,6 +13,7 @@ import { documentHeaders } from '../routes.mjs';
 import { escapeHtml } from '../format.mjs';
 import { commercialStatus, loadManage, coordinatesNamespace } from './model.mjs';
 import { readAnswers } from '../participation/survey.mjs';
+import { participationOf } from '../participation/campaign.mjs';
 import { holdsSlot, isRemoved } from './states.mjs';
 import { worksDestinations, fmtDay } from './works.mjs';
 import { recordAction, resultOfMessage } from './audit.mjs';
@@ -121,7 +122,8 @@ export const MESSAGES = Object.freeze({
   'survey-saved': { tone: 'ok', text: 'Saved. Finish the survey whenever you like before it closes; completing it is what earns the reward.' },
   'survey-completed': { tone: 'ok', text: 'Thank you. The survey is complete. Only the completion fact is queued for Wolfsblvt Works; your answers stay in diffdevil.' },
   'survey-already-completed': { tone: 'ok', text: 'This survey was already complete. Nothing was sent again.' },
-  'survey-incomplete': { tone: 'err', text: 'Choose at least one answer to "What did you actually use diffdevil for?" to complete the survey. Your other answers are saved.' },
+  'survey-incomplete': { tone: 'err', text: 'Answer each question marked “needed to complete”. Your other answers are saved.' },
+  'survey-activity-unavailable': { tone: 'warn', text: 'The activity prerequisite cannot be confirmed yet. Your draft is saved; no completion or reward was claimed.' },
   'survey-closed': { tone: 'err', text: 'The survey isn\'t open right now, so nothing was saved.' },
   'survey-not-eligible': { tone: 'err', text: 'This survey is for beta participants with a linked Works account, so nothing was saved.' },
   'survey-unavailable': { tone: 'err', text: 'No survey is running on this deployment.' },
@@ -664,28 +666,35 @@ export async function handleManageAction(request, { runtime, session, viewer, ex
         return done('delegate-added', { ...place, what: `Named ${user.login} ${role === 'account-admin' ? 'Account administrator' : `Repository administrator of ${repositories.map(id => namespace.repositories.find(repository => repository.repositoryId === id)?.name ?? id).join(', ')}`}`, result: 'applied', reason: WRITE_CEILING }, home);
       }
       case 'survey-save': case 'survey-complete': {
-        const participation = runtime.participation;
+        const participation = participationOf(runtime, form.get('campaign'));
         if (!participation) return done('survey-unavailable');
         const answers = readAnswers(participation.survey, form);
         const commercialStanding = await commercialStatus({ session, runtime, fresh: true });
         const result = action === 'survey-save' ? await participation.saveDraft({ userId: viewer.userId, sessionHash, commercial: commercialStanding, answers })
           : await participation.complete({ userId: viewer.userId, sessionHash, commercial: commercialStanding, answers });
         // Delivery is tried once right away; an unanswered attempt stays in the outbox for the next visit and maintenance.
-        if (result === 'completed') await participation.flush({ userId: viewer.userId }).catch(() => undefined);
-        return done({ saved: 'survey-saved', completed: 'survey-completed', 'already-completed': 'survey-already-completed', incomplete: 'survey-incomplete', closed: 'survey-closed', 'not-eligible': 'survey-not-eligible' }[result] ?? 'unknown');
+        if (result === 'completed') {
+          const delivery = participation.flush({ userId: viewer.userId }).catch(() => undefined);
+          if (participation.campaign.survey !== 'beta-v1' && executionContext?.waitUntil) executionContext.waitUntil(delivery);
+          else await delivery;
+        }
+        return done({ saved: 'survey-saved', completed: 'survey-completed', 'already-completed': 'survey-already-completed', incomplete: 'survey-incomplete', 'activity-unavailable': 'survey-activity-unavailable', closed: 'survey-closed', 'not-eligible': 'survey-not-eligible' }[result] ?? 'unknown');
       }
       case 'reward-preview': {
         // A preview creates a Wirt quote, so it is made only here, by the person's same-origin POST; rendering Plan & funding never creates one.
-        if (!runtime.participation) return done('survey-unavailable');
+        const participation = participationOf(runtime, form.get('campaign'));
+        if (!participation) return done('survey-unavailable');
         const cadence = String(form.get('cadence') ?? '');
         if (!['monthly', 'annual'].includes(cadence)) return done('invalid');
-        const result = await runtime.participation.requestPreview({ userId: viewer.userId, session: cookie, cadence });
+        const result = await participation.requestPreview({ userId: viewer.userId, session: cookie, cadence });
         runtime.cache.clear();
+        if (participation.campaign.survey !== 'beta-v1') return done(result === 'ready' ? 'preview-ready' : 'preview-unavailable');
         return redirect(withMessage(`/manage/plan?preview=${cadence}`, { ready: 'preview-ready', 'not-quotable': 'preview-not-quotable' }[result] ?? 'preview-unavailable'));
       }
       case 'survey-delete': {
-        if (!runtime.participation) return done('survey-unavailable');
-        await runtime.participation.deleteAnswers(viewer.userId, sessionHash);
+        const participation = participationOf(runtime, form.get('campaign'));
+        if (!participation) return done('survey-unavailable');
+        await participation.deleteAnswers(viewer.userId, sessionHash);
         return done('survey-deleted');
       }
       case 'survey-dismiss': {

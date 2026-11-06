@@ -24,7 +24,7 @@ export async function typedRewardJourney({ page, go, check, shot, ORIGIN }) {
   const cases = [
     ['time', /earned time is queued.*30 days.*Expected start/isu, 0],
     ['renewal-only-finite', /next 6 monthly renewals/u, 0],
-    ['continuous', /each eligible monthly Pro charge.*No scheduled application end/isu, 0],
+    ['continuous', /each eligible monthly Pro charge.*No scheduled end/isu, 0],
     ['protected-price', /Earned, available to review.*Exercise opens/isu, 0],
     ['component', /30 days.*Unbound.*Not currently usable/isu, 0],
     ['choice', /choose monthly or annual/u, 2],

@@ -37,10 +37,64 @@ export const SURVEYS = Object.freeze({
   })
 });
 
-const TEXT_FIELDS = ['usedDetail', 'frictionDetail', 'keep', 'ideas'];
+/** Later contributions have independent responses and completion events, never answers reused from beta-v1. */
+export const ACTIVITIES = Object.freeze({
+  'return-v1': {
+    name: 'Return journey thank-you', minutes: 8,
+    reason: 'You completed the cancellation, funded end and explicit return journey and explained what happened to continuity, history, price and remaining benefits.',
+    introduction: 'Describe your full cancellation → funded end → explicit return journey. Reviewing a quote is a separate contribution. A draft does not earn a reward.',
+    questions: [
+      { id: 'ending', kind: 'text', required: true, label: 'When did you cancel, and when did the funded term actually end?', hint: 'Describe the actual sequence, including what remained available after the end.' },
+      { id: 'return', kind: 'text', required: true, label: 'When and how did you explicitly return?' },
+      { id: 'continuity', kind: 'text', required: true, label: 'What happened to your history, price and remaining benefits when you returned?' },
+      { id: 'friction', kind: 'text', label: 'What should be clearer about leaving and returning?' }
+    ]
+  },
+  'walkthrough-v1': {
+    name: 'Beta walkthrough thank-you', minutes: 8,
+    reason: 'You completed an end-to-end diffdevil beta walkthrough and showed us where setup, analysis, explanation or trust became unclear.',
+    introduction: 'Walk through a real setup and analysis, then explain what the result meant to you. Critical and positive accounts count equally; this is separate from the original beta survey.',
+    questions: [
+      { id: 'setup', kind: 'text', required: true, label: 'What did you set up, and where did setup become unclear?' },
+      { id: 'analysis', kind: 'text', required: true, label: 'Which actual pull request or analysis did you follow through?' },
+      { id: 'explanation', kind: 'text', required: true, label: 'What did its explanation help you understand, or leave unclear?' },
+      { id: 'trust', kind: 'text', required: true, label: 'What made you trust or question the result?' }
+    ]
+  },
+  'quote-review-v1': {
+    name: 'Contributor price option', minutes: 5,
+    reason: 'You reviewed a real continuation quote and helped us make its price, protection, next charge and alternatives clearer.',
+    introduction: 'Review a real continuation or renewal quote at Works. This focused price review does not complete the separate leaving-and-returning journey. Earning an option does not acquire a protected price.',
+    questions: [
+      { id: 'quote', kind: 'text', required: true, label: 'Which actual quote did you review, and when?', hint: 'Describe it without copying payment details.' },
+      { id: 'price', kind: 'text', required: true, label: 'How clearly did it explain the price basis and protection?' },
+      { id: 'charge', kind: 'text', required: true, label: 'What did you understand about the next charge and alternatives?' }
+    ]
+  },
+  'ongoing-v1': {
+    name: 'Ongoing beta contributor', minutes: 6,
+    reason: 'You returned after sustained ordinary use and explained what changed in practice, not only what happened in one session.',
+    introduction: 'Return after ordinary use across time. Tell us what changed in practice, including anything that did not improve. The reward is 20% off six eligible future monthly Pro base renewals; Works owns its actual standing.',
+    questions: [
+      { id: 'period', kind: 'text', required: true, label: 'Over what actual period did you use diffdevil regularly?' },
+      { id: 'practice', kind: 'text', required: true, label: 'What changed in your ordinary work across that period?' },
+      { id: 'comparison', kind: 'text', required: true, label: 'What became more useful, stayed unclear, or stopped helping?' }
+    ]
+  },
+  'organisation-v1': {
+    name: 'Organisation setup thank-you', minutes: 6,
+    reason: 'You connected and administered one genuine additional organisation scope and helped us improve authority, binding and capacity setup.',
+    introduction: 'Connect and administer one genuine additional organisation scope. The thank-you funds Additional organisation capacity. An included slot or already-paid capacity does not stand in for that reward. The funded calendar continues while unbound.',
+    questions: [
+      { id: 'organisation', kind: 'text', required: true, label: 'Which additional organisation did you actually connect and administer?' },
+      { id: 'authority', kind: 'text', required: true, label: 'What happened while confirming authority and binding or rebinding its capacity?' },
+      { id: 'capacity', kind: 'text', required: true, label: 'What was clear or unclear about capacity, funded dates and usability?' }
+    ]
+  }
+});
 
 export function surveyOf(id) {
-  const survey = SURVEYS[id];
+  const survey = Object.hasOwn(SURVEYS, id) ? SURVEYS[id] : Object.hasOwn(ACTIVITIES, id) ? { id, ...ACTIVITIES[id] } : null;
   if (!survey) throw new TypeError(`Unknown survey ${id}.`);
   return survey;
 }
@@ -69,7 +123,7 @@ export function missingForCompletion(survey, answers) {
 }
 
 /** Whether a stored response holds any free text: deletion is offered and confirmed on this. */
-export function hasText(answers) { return TEXT_FIELDS.some(field => typeof answers?.[field] === 'string' && answers[field].length > 0); }
+export function hasText(answers) { return Object.values(answers ?? {}).some(value => typeof value === 'string' && value.length > 0); }
 
 /** The labelled answers, for the export and the person's own review of what they sent. */
 export function describeAnswers(survey, answers) {

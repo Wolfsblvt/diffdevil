@@ -32,7 +32,7 @@ import { delegationReaches } from './manage/people.mjs';
 import { createAutomaticSetup } from './manage/setup.mjs';
 import { createOperating } from './manage/operating.mjs';
 import { D1HistoryJobStore } from '../../../github-app/history-jobs.mjs';
-import { readCampaign } from './participation/campaign.mjs';
+import { readCampaign, readActivityCampaigns } from './participation/campaign.mjs';
 import { D1ParticipationStore } from './participation/store.mjs';
 import { createParticipation } from './participation/service.mjs';
 
@@ -148,6 +148,13 @@ export function createAppRuntime(env, { fetch = globalThis.fetch, now, premium =
     try { const campaign = readCampaign(env.APP_PARTICIPATION_CAMPAIGN); if (campaign) participation = createParticipation({ store: participationStore, commercial, campaign, now: clock }); }
     catch { participation = undefined; }
   }
+  let participations = participation ? [participation] : [];
+  let participationConfiguration = 'available';
+  if (commercial) {
+    try { participations.push(...readActivityCampaigns(env.APP_PARTICIPATION_ACTIVITIES, participation?.campaign)
+      .map(campaign => createParticipation({ store: participationStore, commercial, campaign, now: clock }))); }
+    catch { participationConfiguration = 'unavailable'; }
+  }
   // History retention is service configuration: the admission contract needs a bounded number of days and the terms are not published yet.
   const retentionDays = Number(env.APP_HISTORY_RETENTION_DAYS ?? 3660);
   if (!Number.isSafeInteger(retentionDays) || retentionDays < 1 || retentionDays > 3660) throw new TypeError('APP_HISTORY_RETENTION_DAYS must be a whole number of days between 1 and 3660.');
@@ -182,7 +189,7 @@ export function createAppRuntime(env, { fetch = globalThis.fetch, now, premium =
   return {
     config: { origin, loopback, sessionDays, callbackUrl, siteOrigin: env.SITE_ORIGIN ?? 'https://diffdevil.dev', worksOrigin, retentionDays, allowedOrigins,
       admissionService: admissionServiceIdentity(origin, env.CF_VERSION_METADATA) },
-    now: clock, store, appStore, commercialStore, auth, provider, entitlement, policies, analytics, baseAnalytics, locator, commercial, commercialSource, namespaceOf, premium, manage, participation, participationStore, allowances, automaticSetup,
+    now: clock, store, appStore, commercialStore, auth, provider, entitlement, policies, analytics, baseAnalytics, locator, commercial, commercialSource, namespaceOf, premium, manage, participation, participations, participationConfiguration, participationStore, allowances, automaticSetup,
     operating, jobs, importScope, queue: env.APP_QUEUE, cache
   };
 }

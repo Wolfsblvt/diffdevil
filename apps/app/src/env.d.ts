@@ -13,6 +13,7 @@ interface Env {
   GITHUB_OAUTH_BASE?: string;
   APP_ENTITLEMENT_FIXTURE?: string;
   APP_PARTICIPATION_CAMPAIGN?: string;
+  APP_PARTICIPATION_ACTIVITIES?: string;
   APP_QUEUE?: Queue;
   GITHUB_WEBHOOK_SECRET?: string;
   GITHUB_APP_ID?: string;

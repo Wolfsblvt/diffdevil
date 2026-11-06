@@ -17,14 +17,15 @@ import { D1CommercialStore } from '../../github-app/commercial-storage.mjs';
 import { createCommercialService } from '../../github-app/commercial.mjs';
 import { createWirtClient, readSigningKeys, readWirtMessage, readProjectionBetaGrants, readProjectionCommercialTimeZone } from '../../github-app/commercial-wirt.mjs';
 import { migrationNames } from '../qa/seed.mjs';
-import { readCampaign } from '../src/lib/participation/campaign.mjs';
+import { readCampaign, readActivityCampaigns, participationOf } from '../src/lib/participation/campaign.mjs';
 import { D1ParticipationStore } from '../src/lib/participation/store.mjs';
 import { createParticipation, eligibilityOf, rewardFor, betaAccessWindows } from '../src/lib/participation/service.mjs';
 import { operationDate } from '../src/lib/participation/calendar.mjs';
 import { loadParticipation } from '../src/lib/participation/page.mjs';
 import { handleManageAction } from '../src/lib/manage/actions.mjs';
 import { presentReward, receiptOf, standingOf } from '../src/lib/participation/present.mjs';
-import { SURVEYS, readAnswers } from '../src/lib/participation/survey.mjs';
+import { SURVEYS, ACTIVITIES, readAnswers, surveyOf, hasText } from '../src/lib/participation/survey.mjs';
+import { loadActivities } from '../src/lib/participation/page.mjs';
 
 const APP = 'https://app.example.test';
 const WIRT = 'https://works.example.test';
@@ -32,6 +33,8 @@ const KEY = 'fixture-signing-key-material-of-at-least-32-bytes';
 const USER = 123, OTHER = 456, BUSINESS = 789;
 const CAMPAIGN = readCampaign({ key: 'diffdevil-beta-survey', version: 1, survey: 'beta-v1', name: 'Beta survey', opensAt: '2027-03-01T00:00:00Z', closesAt: '2027-04-01T00:00:00Z', inviteAfterDays: 10, reminderAfterDays: 7 });
 const REASON = 'Participation reward · diffdevil beta survey';
+const laterCampaigns = account => readActivityCampaigns(Object.entries(ACTIVITIES).map(([survey, activity]) => ({ ...CAMPAIGN, key: `later-${survey}`, survey, name: activity.name, participantUserId: account })), CAMPAIGN);
+const activityAnswers = survey => readAnswers(survey, form(survey.questions.map(question => [question.id, `Synthetic actual-task account: ${question.id}`])));
 const REWARDS = [
   { key: 'monthly', kind: 'discount', tier: 'Pro', cadence: 'monthly', unit: 'percent', value: 50, uses: 3, charge_classes: ['first-purchase', 'renewal'], combinable: false },
   { key: 'annual', kind: 'discount', tier: 'Pro', cadence: 'annual', unit: 'percent', value: 20, uses: 1, charge_classes: ['first-purchase', 'renewal'], combinable: false }
@@ -868,4 +871,120 @@ test('advanced beta bounds place retained deliveries in real access and preserve
     assert.equal((await participation.view({ userId: user, commercial: status })).invitation, 'invite', 'the preserved real occurrence survives pruning and a later offset');
     assert.equal((await store.prompt(user, CAMPAIGN)).useObservedAt, '2027-03-10T00:00:00Z');
   } finally { clock.value = prior; }
+});
+
+test('later activities require one private audience, unique campaigns and distinct selected forms', () => {
+  const campaigns = laterCampaigns(8801);
+  assert.equal(campaigns.length, 5);
+  assert.throws(() => readActivityCampaigns(campaigns.map((campaign, index) => ({ ...campaign, participantUserId: index ? 8801 : 8802 }))), /same participant/u);
+  assert.throws(() => readActivityCampaigns([{ ...campaigns[0], participantUserId: undefined }]), /participantUserId/u);
+  assert.throws(() => readActivityCampaigns([campaigns[0], campaigns[0]]), /own campaign/u);
+  assert.throws(() => readActivityCampaigns([{ ...campaigns[0], key: CAMPAIGN.key }], CAMPAIGN), /own campaign/u);
+  assert.throws(() => readActivityCampaigns([CAMPAIGN]), /only later/u);
+  assert.equal(participationOf({ participation }, 'unconfigured'), undefined, 'an unknown explicit campaign never falls back to beta-v1');
+  assert.equal(participationOf({ participation }, null), participation);
+});
+
+test('all five later forms refuse another linked Pro account on reads and direct writes', async () => {
+  clock.value = '2027-03-12T09:30:15.250Z';
+  await link(8801, 'works-later-a'); await link(8802, 'works-later-b');
+  for (const campaign of laterCampaigns(8801)) {
+    const service = createParticipation({ store, commercial, campaign, now: () => clock.value });
+    const input = { userId: 8802, commercial: await standing(8802), answers: activityAnswers(service.survey) };
+    assert.equal((await service.view(input)).eligibility, 'not-invited');
+    assert.equal(await service.saveDraft(input), 'not-eligible');
+    assert.equal(await service.complete(input), 'not-eligible');
+    assert.equal(await service.requestPreview({ userId: 8802, session: session(8802), cadence: 'monthly' }), 'not-eligible');
+  }
+  assert.equal((await store.exportAccount(8802)).length, 0);
+  const services = laterCampaigns(8801).map(campaign => createParticipation({ store, commercial, campaign, now: () => clock.value }));
+  assert.deepEqual(await loadActivities({ runtime: { participations: services, now: () => clock.value }, viewer: { userId: 8802 }, model: { commercial: await standing(8802) } }), []);
+  assert.equal(eligibilityOf(await standing(8802)), 'participant', 'B retains the original broad survey eligibility');
+});
+
+test('later drafts preserve private answers while missing activity facts cannot create a completion', async () => {
+  const services = laterCampaigns(8801).map(campaign => createParticipation({ store, commercial, campaign, now: () => clock.value }));
+  const commercialStanding = await standing(8801);
+  for (const service of services) {
+    const input = { userId: 8801, commercial: commercialStanding, answers: activityAnswers(service.survey) };
+    assert.equal(await service.saveDraft(input), 'saved');
+    assert.equal(hasText(input.answers), true);
+    const view = await service.view(input);
+    assert.equal(view.canSave, true);
+    assert.equal(view.canAnswer, false);
+    assert.equal(await service.complete(input), 'activity-unavailable');
+    const response = await store.response(8801, service.campaign);
+    assert.equal(response.state, 'draft'); assert.equal(await store.delivery(response.responseId), null);
+  }
+});
+
+test('independent actual-operation and quote contributions keep real completion times and opaque replay identities', async () => {
+  const account = 8801;
+  await db.prepare("INSERT INTO installations (installation_id, state, updated_at, account_id) VALUES (8801, 'active', ?, ?)").bind(clock.value, account).run();
+  await db.prepare("INSERT INTO repositories (repository_id, installation_id, full_name, state, updated_at) VALUES (8801, 8801, 'synthetic/later', 'enabled', ?)").bind(clock.value).run();
+  await db.prepare("INSERT INTO deliveries (delivery_id, installation_id, repository_id, state, received_at, completed_at) VALUES ('later-use', 8801, 8801, 'complete', ?, ?)").bind(clock.value, clock.value).run();
+  assert.equal((await store.activityUse(account)).firstAt, clock.value);
+  const commercialStanding = await standing(account);
+  // Advancing only commercial coverage does not advance the product's recorded activity/completion clock.
+  commercialStanding.status.commercial.period = { started_on: '2030-01-01', ends_on: '2031-01-01' };
+  await store.savePreview(account, 'monthly', { quoteId: 'synthetic-real-reader-quote', cadence: 'monthly' }, '2027-03-13T00:00:00Z');
+  const events = [], outgoing = { deliverParticipation: async ({ completion }) => { events.push(completion); return { kind: 'accepted' }; } };
+  const services = laterCampaigns(account).filter(campaign => ['quote-review-v1', 'walkthrough-v1', 'ongoing-v1'].includes(campaign.survey))
+    .map(campaign => createParticipation({ store, commercial: outgoing, campaign, now: () => clock.value }));
+  for (const service of services) {
+    const input = { userId: account, commercial: commercialStanding, answers: activityAnswers(service.survey) };
+    assert.equal(await service.complete(input), 'completed');
+    assert.equal(await service.complete(input), 'already-completed');
+    assert.deepEqual(await service.flush({ userId: account }), ['accepted']);
+    assert.deepEqual(await service.flush({ userId: account }), []);
+  }
+  assert.equal(new Set(events.map(value => value.eventId)).size, 3);
+  assert.equal(new Set(events.map(value => value.completionId)).size, 3);
+  for (const event of events) {
+    assert.deepEqual(Object.keys(event).sort(), ['campaign', 'completedAt', 'completionId', 'eventId', 'version']);
+    assert.equal(event.completedAt, '2027-03-12T09:30:15Z');
+  }
+  const returnService = createParticipation({ store, commercial: outgoing, campaign: laterCampaigns(account)[0], now: () => clock.value });
+  assert.equal(await returnService.complete({ userId: account, commercial: commercialStanding, answers: activityAnswers(returnService.survey) }), 'activity-unavailable', 'a quote cannot prove the full return journey');
+});
+
+test('organisation completion requires actual reward capacity and current bound authority; paid and included slots cannot substitute', async () => {
+  const campaign = laterCampaigns(8801).find(value => value.survey === 'organisation-v1');
+  const service = createParticipation({ store, commercial, campaign, now: () => clock.value });
+  const input = { userId: 8801, commercial: await standing(8801), answers: activityAnswers(service.survey) };
+  const status = input.commercial.status;
+  status.capacity = [{ slot: 'already-paid', funding: 'paid', binding: { organisationId: 8808, authority: 'present' } }];
+  status.fundedComponents = [];
+  assert.equal(await service.complete(input), 'activity-unavailable');
+  status.fundedComponents = [{ id: 'reward-component:actual', state: 'active', startsOn: '2027-03-01', endsOn: '2027-03-31' }];
+  const slot = { slot: 'reward-component:actual', funding: 'grant', binding: null };
+  status.capacity.push(slot);
+  assert.match((await service.view(input)).activity.reason, /Active unbound/u);
+  slot.binding = { organisationId: 8808, authority: 'unknown' };
+  assert.equal(await service.complete(input), 'activity-unavailable');
+  slot.binding.authority = 'absent';
+  assert.equal(await service.complete(input), 'activity-unavailable');
+  slot.binding.authority = 'present';
+  assert.equal(await service.complete(input), 'completed');
+  const exported = await store.exportAccount(8801);
+  assert.equal(exported.length, 5);
+  await service.deleteAnswers(8801);
+  assert.equal((await store.response(8801, campaign)).answers, null);
+  assert.ok(await store.delivery((await store.response(8801, campaign)).responseId));
+  assert.equal(exported.find(value => value.survey === 'return-v1').state, 'draft');
+});
+
+test('a newly configured campaign still delivers an older pending fact with its original identity', async () => {
+  const account = 8803;
+  const previous = { ...CAMPAIGN, key: 'previous-campaign' };
+  await store.complete(account, previous, { used: ['barely'] });
+  const pending = await store.delivery((await store.response(account, previous)).responseId);
+  const received = [];
+  const next = createParticipation({ store, campaign: { ...CAMPAIGN, key: 'replacement-campaign' }, now: () => clock.value,
+    commercial: { deliverParticipation: async ({ completion }) => { received.push(completion); return { kind: 'accepted' }; } } });
+  assert.deepEqual(await next.flush({ userId: account }), ['accepted']);
+  assert.equal(received[0].campaign, previous.key);
+  assert.equal(received[0].eventId, pending.eventId);
+  assert.equal(received[0].completionId, pending.responseId);
+  assert.deepEqual(await next.flush({ userId: account }), []);
 });
