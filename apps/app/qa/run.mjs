@@ -1120,7 +1120,29 @@ try {
     await startWorker(undefined, STATE, { commercial: LATER_COMMERCIAL, participation: QA_CAMPAIGN, activities: LATER_CAMPAIGNS });
     await signIn();
     await laterParticipationJourney(ctx);
+    // Finish the original survey while delivery is unavailable, then remove every new-response campaign.
+    await page.request.post(`${ORIGIN}/manage/do`, { form: { action: 'fixture-simulate', kind: 'wirt:unavailable' }, headers: { origin: ORIGIN } });
+    await go('/manage/plan/survey');
+    await page.locator('input[name="used"]').first().check();
+    await page.getByRole('button', { name: 'Complete the survey', exact: true }).click();
+    await page.waitForURL(/m=survey-completed/u);
     await stopWorker();
+    const readDelivery = () => JSON.parse(executeLocal(`SELECT response_id,event_id,campaign_key,campaign_version,completed_at,state,outcome FROM participation_deliveries WHERE campaign_key='${QA_CAMPAIGN.key}'`, STATE, { json: true }))[0].results[0];
+    const original = readDelivery();
+    check('the original survey has a durable pending completion before campaign removal', original?.state === 'pending' && original?.outcome === 'unavailable');
+    // Make the existing retry due without altering completion time or any runtime/commercial clock.
+    executeLocal(`UPDATE participation_deliveries SET next_attempt_at=NULL WHERE campaign_key='${QA_CAMPAIGN.key}'`, STATE);
+    await startWorker(undefined, STATE, { commercial: LATER_COMMERCIAL });
+    await signIn();
+    await go('/manage/plan/survey');
+    check('zero configured campaigns admit no new original response', await page.locator('[data-survey-form]').count() === 0);
+    const scheduled = await page.request.get(`${ORIGIN}/cdn-cgi/local/scheduled?cron=${encodeURIComponent('17 3 * * *')}`);
+    check('the built Worker accepts its local scheduled maintenance trigger', scheduled.ok(), `${scheduled.status()} ${await scheduled.text()}`);
+    await stopWorker();
+    const delivered = readDelivery();
+    const { state: oldState, outcome: oldOutcome, ...identity } = original;
+    check('zero-campaign scheduled delivery preserves the original opaque identities and real completion time', delivered?.state === 'accepted' && delivered?.outcome === 'accepted'
+      && Object.entries(identity).every(([key, value]) => delivered[key] === value));
     await startWorker(undefined, STATE, { commercial: LATER_COMMERCIAL, participation: QA_CAMPAIGN, activities: LATER_CAMPAIGNS.map(campaign => ({ ...campaign, participantUserId: 456 })) });
     await signIn();
     await go('/manage/plan');
@@ -1132,7 +1154,7 @@ try {
       check(`${campaign.survey}: forged completion is refused on the server`, response.status() === 303 && /survey-not-eligible/u.test(response.headers().location));
     }
     await go('/manage/plan/survey');
-    check('the same account can still reach the separate original survey', await page.locator('[data-survey-form]').count() === 1);
+    check('the same account can still reach its separate completed original survey', await page.locator('[data-survey-answers]').count() === 1);
   } else if (BUSINESS_MANAGE_ONLY) {
     await startWorker(undefined, STATE, { commercial: COMMERCIAL_BUSINESS });
     await signIn();

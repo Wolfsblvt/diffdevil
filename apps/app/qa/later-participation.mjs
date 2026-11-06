@@ -38,6 +38,16 @@ export async function laterParticipationJourney({ page, go, check, shot, ORIGIN 
   await go('/manage/plan');
   check('all five contextual activities are discoverable in the accepted Manage composition', await page.locator('[data-activities] dt a').count() === 5);
   check('the original A/B survey remains separate', await page.locator('a[href="/manage/plan/survey"]').count() > 0);
+  await go('/manage/plan/survey?activity=');
+  check('an explicit empty activity GET cannot render the original survey', await page.locator('[data-survey-form]').count() === 0);
+  for (const action of ['survey-save', 'survey-complete', 'survey-delete', 'reward-preview']) {
+    const response = await page.request.post(`${ORIGIN}/manage/do`, { form: { action, campaign: '', cadence: 'monthly' }, headers: { origin: ORIGIN }, maxRedirects: 0 });
+    check(`${action}: an explicit empty campaign refuses instead of targeting beta`, response.status() === 303 && /m=survey-unavailable/u.test(response.headers().location));
+  }
+  for (const campaign of LATER_CAMPAIGNS.filter(value => value.survey !== 'quote-review-v1')) {
+    const response = await page.request.post(`${ORIGIN}/manage/do`, { form: { action: 'reward-preview', campaign: campaign.key, cadence: 'monthly' }, headers: { origin: ORIGIN }, maxRedirects: 0 });
+    check(`${campaign.survey}: the selected participant cannot create a quote for the wrong purpose`, response.status() === 303 && /m=survey-not-eligible/u.test(response.headers().location));
+  }
   await go(path('return-v1'));
   check('the controlled return activity records a separate structured account without machine-verifying commercial history', await page.getByRole('button', { name: 'Complete this contribution' }).isEnabled()
     && /not automatic proof/u.test(await page.locator('.m-stack').innerText()));
@@ -55,10 +65,16 @@ export async function laterParticipationJourney({ page, go, check, shot, ORIGIN 
   check('a native Works quote review stays usable without an App-requested preview', await page.getByRole('button', { name: 'Complete this contribution' }).isEnabled()
     && /No App-requested quote is retained/u.test(await page.locator('[data-activity-quote]').innerText()));
   await capture('later-native-quote-review');
+  await page.getByRole('button', { name: 'Request monthly quote', exact: true }).click();
+  await page.waitForURL(/m=preview-ready/u);
+  check('the open Contributor price option explicitly requests and retains its own quote', await page.locator('[data-activity-quote]').getByRole('group', { name: /^Issued /u }).count() === 1);
+  await capture('later-quote-preview');
   await fill();
   await page.getByRole('button', { name: 'Complete this contribution' }).click();
   await page.waitForURL(/m=survey-completed/u);
   check('quote feedback completes its own response', await page.locator('[data-survey-answers]').count() === 1);
+  const afterCompletion = await page.request.post(`${ORIGIN}/manage/do`, { form: { action: 'reward-preview', campaign: LATER_CAMPAIGNS.find(value => value.survey === 'quote-review-v1').key, cadence: 'annual' }, headers: { origin: ORIGIN }, maxRedirects: 0 });
+  check('a completed Contributor price option no longer authorizes quote creation', /m=survey-not-eligible/u.test(afterCompletion.headers().location));
   await go(path('return-v1'));
   check('quote completion does not complete or overwrite the separate return response', await page.locator('textarea[name="continuity"]').inputValue().then(value => value.endsWith('Retained while waiting.'))
     && await page.locator('[data-survey-answers]').count() === 0);

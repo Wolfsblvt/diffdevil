@@ -44,7 +44,7 @@ export function rewardFor(campaign, rewards) {
   return matching.find(reward => reward.available !== false) ?? matching[0] ?? null;
 }
 
-export function createParticipation({ store, commercial, campaign, now = () => new Date().toISOString() }) {
+export function createParticipation({ store, commercial, campaign, now = () => new Date().toISOString(), delivery = createParticipationDelivery({ store, commercial, now }) }) {
   const survey = surveyOf(campaign.survey);
   const later = seconds => new Date(Date.parse(now()) + seconds * 1000).toISOString();
 
@@ -66,24 +66,6 @@ export function createParticipation({ store, commercial, campaign, now = () => n
     if (!prompt.dismissedAt) return 'invite';
     if (!prompt.remindedAt) return Date.parse(now()) - Date.parse(prompt.dismissedAt) >= campaign.reminderAfterDays * DAY ? 'remind' : null;
     return prompt.reminderDismissedAt ? null : 'remind';
-  }
-
-  async function deliver(row) {
-    const outcome = await commercial.deliverParticipation({ userId: row.userId, completion: { campaign: row.campaign, version: row.version, eventId: row.eventId, completionId: row.responseId, completedAt: row.completedAt } })
-      .catch(() => ({ kind: 'unknown' }));
-    const attempts = row.attempts + 1;
-    if (ACCEPTED.has(outcome.kind)) {
-      const recorded = await store.recordAttempt(row.responseId, { state: 'accepted', outcome: outcome.kind, attempts, status: outcome.status ?? null, linkId: outcome.linkId ?? null, rewardId: outcome.reward?.id || null, receipt: outcome.reward ?? null });
-      return recorded ? outcome.kind : 'skipped';
-    }
-    if (outcome.kind === 'refused') {
-      const recorded = await store.recordAttempt(row.responseId, { state: 'refused', outcome: 'refused', attempts, status: outcome.status ?? null, linkId: outcome.linkId ?? null });
-      return recorded ? 'refused' : 'skipped';
-    }
-    const kind = RETRY.has(outcome.kind) ? outcome.kind : 'unknown';
-    const delay = BACKOFF_SECONDS[Math.min(attempts, BACKOFF_SECONDS.length) - 1];
-    const recorded = await store.recordAttempt(row.responseId, { state: 'pending', outcome: kind, attempts, nextAttemptAt: later(delay), status: outcome.status ?? null, linkId: outcome.linkId ?? null });
-    return recorded ? kind : 'skipped';
   }
 
   return {
@@ -159,8 +141,14 @@ export function createParticipation({ store, commercial, campaign, now = () => n
      * answer is kept until Wirt's known lapse, or the existing real cache limit for an unknown-validity snapshot.
      * A preview reserves nothing. Rendering a page never calls this.
      */
-    async requestPreview({ userId, session, cadence }) {
+    async requestPreview({ userId, session, cadence, commercial: commercialStanding }) {
       if (!audienceAllows(campaign, userId)) return 'not-eligible';
+      // The original reward preview has its own Works authorization. Later contributions grant quote creation
+      // only to Contributor price option, while its authenticated form is still open for this account.
+      if (campaign.survey !== 'beta-v1') {
+        if (campaign.survey !== 'quote-review-v1') return 'not-eligible';
+        if (!(await this.view({ userId, commercial: commercialStanding })).canSave) return 'not-eligible';
+      }
       const answer = await commercial.rewardQuote({ session, cadence }).catch(() => ({ available: false, reason: 'unavailable' }));
       if (!answer.available) return answer.reason === 'not-quotable' ? 'not-quotable' : 'unavailable';
       const deadline = quoteRealDeadline(answer.quote);
@@ -174,14 +162,40 @@ export function createParticipation({ store, commercial, campaign, now = () => n
     preview: (userId, cadence) => store.preview(userId, cadence),
 
     /** Deliver due completions, for one account right after its completion or for every account from maintenance. */
+    flush: options => delivery.flush(options),
+
+    exportAccount: userId => store.exportAccount(userId),
+    forgetAccount: userId => store.forgetAccount(userId)
+  };
+}
+
+/** The existing durable outbox outlives campaign configuration for admitting new responses. */
+export function createParticipationDelivery({ store, commercial, now = () => new Date().toISOString() }) {
+  async function deliver(row) {
+    const outcome = await commercial.deliverParticipation({ userId: row.userId, completion: { campaign: row.campaign, version: row.version, eventId: row.eventId, completionId: row.responseId, completedAt: row.completedAt } })
+      .catch(() => ({ kind: 'unknown' }));
+    const attempts = row.attempts + 1;
+    if (ACCEPTED.has(outcome.kind)) {
+      const recorded = await store.recordAttempt(row.responseId, { state: 'accepted', outcome: outcome.kind, attempts, status: outcome.status ?? null, linkId: outcome.linkId ?? null, rewardId: outcome.reward?.id || null, receipt: outcome.reward ?? null });
+      return recorded ? outcome.kind : 'skipped';
+    }
+    if (outcome.kind === 'refused') {
+      const recorded = await store.recordAttempt(row.responseId, { state: 'refused', outcome: 'refused', attempts, status: outcome.status ?? null, linkId: outcome.linkId ?? null });
+      return recorded ? 'refused' : 'skipped';
+    }
+    const kind = RETRY.has(outcome.kind) ? outcome.kind : 'unknown';
+    const delay = BACKOFF_SECONDS[Math.min(attempts, BACKOFF_SECONDS.length) - 1];
+    const nextAttemptAt = new Date(Date.parse(now()) + delay * 1000).toISOString();
+    const recorded = await store.recordAttempt(row.responseId, { state: 'pending', outcome: kind, attempts, nextAttemptAt, status: outcome.status ?? null, linkId: outcome.linkId ?? null });
+    return recorded ? kind : 'skipped';
+  }
+  return {
+    /** Deliver due completions for an account or scheduled maintenance, irrespective of current campaign admission. */
     async flush({ userId } = {}) {
       if (userId !== undefined) await store.wakeLinkWaits(userId).catch(() => undefined);
       const results = [];
       for (const row of await store.dueDeliveries(userId === undefined ? {} : { userId })) results.push(await deliver(row));
       return results;
-    },
-
-    exportAccount: userId => store.exportAccount(userId),
-    forgetAccount: userId => store.forgetAccount(userId)
+    }
   };
 }

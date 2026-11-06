@@ -23,7 +23,7 @@ function managedRuntime(env) {
   let app;
   try { app = createAppRuntime(env, { premium }); } catch { app = undefined; }
   // One existing outbox delivers every recorded campaign, including one no longer configured for new responses.
-  const participationDelivery = app?.participation ?? app?.participations[0];
+  const participationDelivery = app?.participationDelivery;
   return createGitHubAppWorker(app ? { authorization: app.auth, commercial: app.commercial, briefProvider: premium.brief, automaticSetup: app.automaticSetup,
     // The selected allowances govern execution, collection and history jobs; jobs read the plan's import scope and the current policy.
     operating: app.operating.standing, importScope: app.importScope, currentPolicy: repositoryId => app.policies.current({ repositoryId }), maintain: app.operating.maintain, beforePrune: app.participation ? () => app.participation.preserveUse() : undefined, maintenance: participationDelivery ? [() => participationDelivery.flush()] : [] } : { briefProvider: premium.brief });

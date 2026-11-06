@@ -32,7 +32,7 @@ test('a later applied step lapses a previously cached preview even before its re
     campaign: { key: 'survey', reason: 'Participation reward' }, alternatives: [{ key: 'monthly', kind: 'discount', cadence: 'monthly', tier: 'Pro',
       standing: 'available', chargeClasses: ['first-purchase'], frequency: 'finite', uses: 3, unit: 'percent', value: 50 }], applications: [] };
   const status = { linked: true, commercialClock: clock, participationRewards: [reward] };
-  const runtime = { now, commercial: {}, participation: { view: async () => ({ campaign, reward, completed: false }), preview: async () => ({ quote, createdAt: now() }) } };
+  const runtime = { now, commercial: {}, participation: { campaign, view: async () => ({ campaign, reward, completed: false }), preview: async () => ({ quote, createdAt: now() }) } };
   const load = () => loadParticipation({ runtime, viewer: { userId: 123 }, session: {}, model: { commercial: { status } }, preview: 'monthly' });
   assert.ok((await load()).quote);
   status.commercialClock = { ...clock, offset_seconds: 40 * 86_400 };

@@ -991,3 +991,62 @@ test('a newly configured campaign still delivers an older pending fact with its 
   assert.equal(received[0].completionId, pending.responseId);
   assert.deepEqual(await next.flush({ userId: account }), []);
 });
+
+test('later quote creation is an explicit open contribution capability, including definite not-quotable standing', async () => {
+  const userId = 8910;
+  await link(userId, 'works-preview-capability');
+  await db.prepare('INSERT INTO browser_sessions(session_hash,user_id,return_context,expires_at) VALUES (?,?,?,?)')
+    .bind(sha(session(userId)), userId, 'app', '2028-05-01T00:00:00.000Z').run();
+  const standingValue = await standing(userId);
+  let calls = 0, answer = { available: false, reason: 'not-quotable' };
+  const provider = { status: async () => ({ body: standingValue.status }), rewardQuote: async () => { calls++; return answer; } };
+  const services = laterCampaigns(userId).map(campaign => createParticipation({ store, commercial: provider, campaign, now: () => clock.value }));
+  const runtime = { participations: services, commercial: provider, config: { allowedOrigins: [APP] }, cache: { clear() {} } };
+  const post = campaign => handleManageAction(new Request(`${APP}/manage/do`, { method: 'POST', headers: { origin: APP },
+    body: new URLSearchParams({ action: 'reward-preview', campaign: campaign.key, cadence: 'monthly' }) }), { runtime, viewer: { userId }, session: { session: session(userId) } });
+  for (const service of services.filter(value => value.campaign.survey !== 'quote-review-v1')) {
+    assert.match((await post(service.campaign)).headers.get('location'), /m=survey-not-eligible/u, service.campaign.survey);
+    assert.equal(calls, 0, 'a selected participant cannot use another activity to call Wirt');
+    assert.equal((await rows('participation_previews', 'user_id=?', userId)).length, 0);
+  }
+  const quote = services.find(value => value.campaign.survey === 'quote-review-v1');
+  assert.match((await post(quote.campaign)).headers.get('location'), /m=preview-not-quotable/u);
+  assert.equal(calls, 1);
+  assert.equal(await store.preview(userId, 'monthly'), null);
+  answer = { available: true, quote: { quoteId: 'capability-quote', validity: 'unknown', cadence: 'monthly', currency: 'EUR', charges: [], discounts: [], dueNowCents: 900 } };
+  assert.match((await post(quote.campaign)).headers.get('location'), /m=preview-ready/u);
+  assert.equal(calls, 2);
+  assert.equal((await store.preview(userId, 'monthly')).quote.quoteId, 'capability-quote');
+  const request = service => service.requestPreview({ userId, session: session(userId), cadence: 'annual', commercial: standingValue });
+  for (const change of [{ opensAt: '2028-01-01T00:00:00Z' }, { closesAt: clock.value }]) {
+    const service = createParticipation({ store, commercial: provider, campaign: { ...quote.campaign, ...change }, now: () => clock.value });
+    assert.equal(await request(service), 'not-eligible');
+  }
+  assert.equal(await quote.requestPreview({ userId, session: session(userId), cadence: 'annual', commercial: { standing: 'unavailable' } }), 'not-eligible');
+  assert.equal(await quote.complete({ userId, commercial: standingValue, answers: activityAnswers(quote.survey) }), 'completed');
+  assert.equal(await request(quote), 'not-eligible', 'a completed contribution cannot create another quote');
+  assert.equal(calls, 2);
+  assert.equal(await store.preview(userId, 'annual'), null);
+});
+
+test('an explicit empty activity refuses reads and all targeted mutations instead of aliasing beta-v1', async () => {
+  const userId = 8911;
+  await link(userId, 'works-empty-key');
+  await store.saveDraft(userId, CAMPAIGN, { used: ['barely'], experience: 'Original draft stays' });
+  const before = await store.exportAccount(userId);
+  let calls = 0;
+  const runtime = { participation, commercial: { rewardQuote: async () => { calls++; throw new Error('unexpected quote'); } }, now: () => clock.value,
+    config: { allowedOrigins: [APP] }, cache: { clear() {} } };
+  const viewer = { userId }, sessionValue = { session: session(userId) };
+  assert.equal(participationOf(runtime, ''), undefined);
+  assert.equal(await loadParticipation({ runtime, viewer, session: sessionValue, model: { commercial: await standing(userId) }, campaignKey: '' }), null);
+  for (const action of ['survey-save', 'survey-complete', 'survey-delete', 'reward-preview']) {
+    const response = await handleManageAction(new Request(`${APP}/manage/do`, { method: 'POST', headers: { origin: APP },
+      body: new URLSearchParams({ action, campaign: '', cadence: 'monthly', used: 'size-labels' }) }), { runtime, viewer, session: sessionValue });
+    assert.match(response.headers.get('location'), /m=survey-unavailable/u, action);
+  }
+  assert.deepEqual(await store.exportAccount(userId), before);
+  assert.equal(calls, 0);
+  assert.equal(participationOf(runtime, null), participation);
+  assert.equal(participationOf(runtime, undefined), participation);
+});

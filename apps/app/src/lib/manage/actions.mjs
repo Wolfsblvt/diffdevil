@@ -686,9 +686,10 @@ export async function handleManageAction(request, { runtime, session, viewer, ex
         if (!participation) return done('survey-unavailable');
         const cadence = String(form.get('cadence') ?? '');
         if (!['monthly', 'annual'].includes(cadence)) return done('invalid');
-        const result = await participation.requestPreview({ userId: viewer.userId, session: cookie, cadence });
+        const standing = participation.campaign.survey === 'quote-review-v1' ? await commercialStatus({ session, runtime, fresh: true }) : undefined;
+        const result = await participation.requestPreview({ userId: viewer.userId, session: cookie, cadence, commercial: standing });
         runtime.cache.clear();
-        if (participation.campaign.survey !== 'beta-v1') return done(result === 'ready' ? 'preview-ready' : 'preview-unavailable');
+        if (participation.campaign.survey !== 'beta-v1') return done({ ready: 'preview-ready', 'not-quotable': 'preview-not-quotable', 'not-eligible': 'survey-not-eligible' }[result] ?? 'preview-unavailable');
         return redirect(withMessage(`/manage/plan?preview=${cadence}`, { ready: 'preview-ready', 'not-quotable': 'preview-not-quotable' }[result] ?? 'preview-unavailable'));
       }
       case 'survey-delete': {

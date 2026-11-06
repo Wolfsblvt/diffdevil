@@ -48,7 +48,8 @@ export function readActivityCampaigns(value, original) {
 
 /** Explicit unknown keys never fall back to the broad original survey. */
 export function participationOf(runtime, key) {
-  if (key === undefined || key === null || key === '') return runtime.participation;
+  if (key === undefined || key === null) return runtime.participation;
+  if (key === '') return undefined;
   return (runtime.participations ?? [runtime.participation]).find(service => service?.campaign.key === key);
 }
 

@@ -34,7 +34,7 @@ import { createOperating } from './manage/operating.mjs';
 import { D1HistoryJobStore } from '../../../github-app/history-jobs.mjs';
 import { readCampaign, readActivityCampaigns } from './participation/campaign.mjs';
 import { D1ParticipationStore } from './participation/store.mjs';
-import { createParticipation } from './participation/service.mjs';
+import { createParticipation, createParticipationDelivery } from './participation/service.mjs';
 
 const DAY = 86_400_000;
 const DEFAULT_SESSION_DAYS = 30;
@@ -143,16 +143,17 @@ export function createAppRuntime(env, { fetch = globalThis.fetch, now, premium =
   // A participation reward campaign runs only where Works can issue its reward. Invalid configuration leaves it off; it never blocks pages.
   // The store is composed regardless, so export and closure reach responses kept from an earlier campaign.
   const participationStore = new D1ParticipationStore(env.APP_DB, { now: clock });
+  const participationDelivery = commercial ? createParticipationDelivery({ store: participationStore, commercial, now: clock }) : undefined;
   let participation;
   if (commercial) {
-    try { const campaign = readCampaign(env.APP_PARTICIPATION_CAMPAIGN); if (campaign) participation = createParticipation({ store: participationStore, commercial, campaign, now: clock }); }
+    try { const campaign = readCampaign(env.APP_PARTICIPATION_CAMPAIGN); if (campaign) participation = createParticipation({ store: participationStore, commercial, campaign, now: clock, delivery: participationDelivery }); }
     catch { participation = undefined; }
   }
   let participations = participation ? [participation] : [];
   let participationConfiguration = 'available';
   if (commercial) {
     try { participations.push(...readActivityCampaigns(env.APP_PARTICIPATION_ACTIVITIES, participation?.campaign)
-      .map(campaign => createParticipation({ store: participationStore, commercial, campaign, now: clock }))); }
+      .map(campaign => createParticipation({ store: participationStore, commercial, campaign, now: clock, delivery: participationDelivery }))); }
     catch { participationConfiguration = 'unavailable'; }
   }
   // History retention is service configuration: the admission contract needs a bounded number of days and the terms are not published yet.
@@ -189,7 +190,7 @@ export function createAppRuntime(env, { fetch = globalThis.fetch, now, premium =
   return {
     config: { origin, loopback, sessionDays, callbackUrl, siteOrigin: env.SITE_ORIGIN ?? 'https://diffdevil.dev', worksOrigin, retentionDays, allowedOrigins,
       admissionService: admissionServiceIdentity(origin, env.CF_VERSION_METADATA) },
-    now: clock, store, appStore, commercialStore, auth, provider, entitlement, policies, analytics, baseAnalytics, locator, commercial, commercialSource, namespaceOf, premium, manage, participation, participations, participationConfiguration, participationStore, allowances, automaticSetup,
+    now: clock, store, appStore, commercialStore, auth, provider, entitlement, policies, analytics, baseAnalytics, locator, commercial, commercialSource, namespaceOf, premium, manage, participation, participations, participationDelivery, participationConfiguration, participationStore, allowances, automaticSetup,
     operating, jobs, importScope, queue: env.APP_QUEUE, cache
   };
 }
