@@ -45,7 +45,7 @@ export const ACTIVITIES = Object.freeze({
     introduction: 'Describe your full cancellation → funded end → explicit return journey. Reviewing a quote is a separate contribution. A draft does not earn a reward.',
     questions: [
       { id: 'ending', kind: 'text', required: true, label: 'When did you cancel, and when did the funded term actually end?', hint: 'Describe the actual sequence, including what remained available after the end.' },
-      { id: 'return', kind: 'text', required: true, label: 'When and how did you explicitly return?' },
+      { id: 'return', kind: 'text', required: true, label: 'When was your paid return confirmed, and how did you explicitly return?' },
       { id: 'continuity', kind: 'text', required: true, label: 'What happened to your history, price and remaining benefits when you returned?' },
       { id: 'friction', kind: 'text', label: 'What should be clearer about leaving and returning?' }
     ]

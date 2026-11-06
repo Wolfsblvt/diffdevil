@@ -12,6 +12,10 @@ const rewards = LATER_CAMPAIGNS.map(campaign => {
   reward.id = `qa-reward-${campaign.survey}`;
   reward.basis.campaign.name = campaign.name;
   reward.basis.campaign.reason = ACTIVITIES[campaign.survey].reason;
+  if (campaign.survey === 'return-v1') {
+    reward.state = 'active';
+    for (const option of [reward.basis.alternatives[0], reward.alternatives[0]]) { option.unit = 'fixed'; option.value = 100; option.standing = 'active'; }
+  }
   if (campaign.survey === 'ongoing-v1') for (const option of [reward.basis.alternatives[0], reward.alternatives[0]]) { option.value = 20; option.remaining_uses = 6; }
   if (campaign.survey === 'organisation-v1') for (const option of [reward.basis.alternatives[0], reward.alternatives[0]]) {
     option.name = 'Additional organisation capacity'; option.reason = 'Funded by your Organisation setup thank-you reward.';
@@ -35,16 +39,16 @@ export async function laterParticipationJourney({ page, go, check, shot, ORIGIN 
   check('all five contextual activities are discoverable in the accepted Manage composition', await page.locator('[data-activities] dt a').count() === 5);
   check('the original A/B survey remains separate', await page.locator('a[href="/manage/plan/survey"]').count() > 0);
   await go(path('return-v1'));
-  check('full return journey is distinct and cannot be claimed from a quote', await page.getByRole('button', { name: 'Complete this contribution' }).isDisabled()
-    && /cancellation, funded end and explicit return sequence/u.test(await page.locator('.m-stack').innerText()));
+  check('the controlled return activity records a separate structured account without machine-verifying commercial history', await page.getByRole('button', { name: 'Complete this contribution' }).isEnabled()
+    && /not automatic proof/u.test(await page.locator('.m-stack').innerText()));
   await fill();
   await page.getByRole('button', { name: 'Save and finish later' }).click();
   await page.waitForURL(/m=survey-saved/u);
   await page.locator('textarea[name="continuity"]').focus();
   await page.keyboard.press('End'); await page.keyboard.type(' Retained while waiting.');
-  check('a waiting prerequisite leaves the draft editable and keyboard focus in place', await page.locator('textarea[name="continuity"]:focus').count() === 1
+  check('the separate private return draft remains editable with keyboard focus in place', await page.locator('textarea[name="continuity"]:focus').count() === 1
     && (await page.locator('textarea[name="continuity"]').inputValue()).endsWith('Retained while waiting.'));
-  await capture('later-return-waiting-draft');
+  await capture('later-return-private-draft');
   await page.getByRole('button', { name: 'Save and finish later' }).click();
   await page.waitForURL(/m=survey-saved/u);
   await go(path('quote-review-v1'));
@@ -60,7 +64,11 @@ export async function laterParticipationJourney({ page, go, check, shot, ORIGIN 
   check('quote feedback completes its own response', await page.locator('[data-survey-answers]').count() === 1);
   await go(path('return-v1'));
   check('quote completion does not complete or overwrite the separate return response', await page.locator('textarea[name="continuity"]').inputValue().then(value => value.endsWith('Retained while waiting.'))
-    && await page.getByRole('button', { name: 'Complete this contribution' }).isDisabled());
+    && await page.locator('[data-survey-answers]').count() === 0);
+  await page.getByRole('button', { name: 'Complete this contribution' }).click();
+  await page.waitForURL(/m=survey-completed/u);
+  check('its own completion renders Wirt-owned Return journey standing with no scheduled end', await page.locator('[data-reward]').innerText().then(value => /Return journey thank-you.*€1 off.*No scheduled end/isu.test(value)));
+  await capture('later-return-completed');
   await page.request.post(`${ORIGIN}/manage/do`, { form: { action: 'fixture-simulate', kind: 'wirt:unavailable' }, headers: { origin: ORIGIN } });
   await go(path('walkthrough-v1'));
   await fill();
@@ -86,13 +94,15 @@ export async function laterParticipationJourney({ page, go, check, shot, ORIGIN 
   await capacity.getByRole('button', { name: 'Fund', exact: true }).click();
   await page.waitForURL(/m=bound/u);
   await go(path('organisation-v1')); await fill();
-  check('actual binding route and current authority make the additional-unit task usable', await page.getByRole('button', { name: 'Complete this contribution' }).isEnabled());
-  await page.getByRole('button', { name: 'Complete this contribution' }).click();
-  await page.waitForURL(/m=survey-completed/u);
-  check('the additional organisation has its own completed response', await page.locator('[data-survey-answers]').count() === 1);
+  check('the actual binding route stays usable without bypassing the unresolved programme-unit premise', await page.getByRole('button', { name: 'Complete this contribution' }).isDisabled()
+    && /present organisation authority.*unit provenance/isu.test(await page.locator('.m-stack').innerText()));
+  await page.getByRole('button', { name: 'Save and finish later' }).click();
+  await page.waitForURL(/m=survey-saved/u);
+  check('the additional organisation keeps its separate draft without claiming completion', await page.locator('textarea[name="authority"]').inputValue().then(value => value.includes('Synthetic task account'))
+    && await page.locator('[data-survey-answers]').count() === 0);
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await go(path('return-v1'));
-  check('reduced motion preserves the waiting draft and keyboard action', await page.locator('textarea[name="continuity"]').inputValue().then(value => value.endsWith('Retained while waiting.'))
+  await go(path('organisation-v1'));
+  check('reduced motion preserves the waiting draft and keyboard action', await page.locator('textarea[name="authority"]').inputValue().then(value => value.includes('Synthetic task account'))
     && await page.getByRole('button', { name: 'Save and finish later' }).isEnabled());
-  await capture('later-return-reduced-motion');
+  await capture('later-organisation-reduced-motion');
 }

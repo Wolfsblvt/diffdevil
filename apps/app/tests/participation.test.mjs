@@ -911,6 +911,10 @@ test('later drafts preserve private answers while missing activity facts cannot 
     assert.equal(hasText(input.answers), true);
     const view = await service.view(input);
     assert.equal(view.canSave, true);
+    if (service.campaign.survey === 'return-v1') {
+      assert.equal(view.canAnswer, true, 'the admitted controlled activity records the separate structured participant account');
+      continue;
+    }
     assert.equal(view.canAnswer, false);
     assert.equal(await service.complete(input), 'activity-unavailable');
     const response = await store.response(8801, service.campaign);
@@ -929,7 +933,7 @@ test('independent actual-operation and quote contributions keep real completion 
   commercialStanding.status.commercial.period = { started_on: '2030-01-01', ends_on: '2031-01-01' };
   await store.savePreview(account, 'monthly', { quoteId: 'synthetic-real-reader-quote', cadence: 'monthly' }, '2027-03-13T00:00:00Z');
   const events = [], outgoing = { deliverParticipation: async ({ completion }) => { events.push(completion); return { kind: 'accepted' }; } };
-  const services = laterCampaigns(account).filter(campaign => ['quote-review-v1', 'walkthrough-v1', 'ongoing-v1'].includes(campaign.survey))
+  const services = laterCampaigns(account).filter(campaign => ['return-v1', 'quote-review-v1', 'walkthrough-v1', 'ongoing-v1'].includes(campaign.survey))
     .map(campaign => createParticipation({ store, commercial: outgoing, campaign, now: () => clock.value }));
   for (const service of services) {
     const input = { userId: account, commercial: commercialStanding, answers: activityAnswers(service.survey) };
@@ -938,17 +942,19 @@ test('independent actual-operation and quote contributions keep real completion 
     assert.deepEqual(await service.flush({ userId: account }), ['accepted']);
     assert.deepEqual(await service.flush({ userId: account }), []);
   }
-  assert.equal(new Set(events.map(value => value.eventId)).size, 3);
-  assert.equal(new Set(events.map(value => value.completionId)).size, 3);
+  assert.equal(new Set(events.map(value => value.eventId)).size, 4);
+  assert.equal(new Set(events.map(value => value.completionId)).size, 4);
   for (const event of events) {
     assert.deepEqual(Object.keys(event).sort(), ['campaign', 'completedAt', 'completionId', 'eventId', 'version']);
     assert.equal(event.completedAt, '2027-03-12T09:30:15Z');
   }
-  const returnService = createParticipation({ store, commercial: outgoing, campaign: laterCampaigns(account)[0], now: () => clock.value });
-  assert.equal(await returnService.complete({ userId: account, commercial: commercialStanding, answers: activityAnswers(returnService.survey) }), 'activity-unavailable', 'a quote cannot prove the full return journey');
+  const returnEvent = events.find(value => value.campaign === 'later-return-v1');
+  const quoteEvent = events.find(value => value.campaign === 'later-quote-review-v1');
+  assert.notEqual(returnEvent.eventId, quoteEvent.eventId);
+  assert.notEqual(returnEvent.completionId, quoteEvent.completionId);
 });
 
-test('organisation completion requires actual reward capacity and current bound authority; paid and included slots cannot substitute', async () => {
+test('organisation drafts and authority context remain usable while the unsettled programme-unit basis holds completion', async () => {
   const campaign = laterCampaigns(8801).find(value => value.survey === 'organisation-v1');
   const service = createParticipation({ store, commercial, campaign, now: () => clock.value });
   const input = { userId: 8801, commercial: await standing(8801), answers: activityAnswers(service.survey) };
@@ -965,13 +971,13 @@ test('organisation completion requires actual reward capacity and current bound 
   slot.binding.authority = 'absent';
   assert.equal(await service.complete(input), 'activity-unavailable');
   slot.binding.authority = 'present';
-  assert.equal(await service.complete(input), 'completed');
+  assert.equal(await service.complete(input), 'activity-unavailable', 'a bound unrelated unit cannot settle this contribution or bypass the programme-unit hold');
+  assert.match((await service.view(input)).activity.reason, /present organisation authority.*unit provenance/u);
   const exported = await store.exportAccount(8801);
   assert.equal(exported.length, 5);
   await service.deleteAnswers(8801);
-  assert.equal((await store.response(8801, campaign)).answers, null);
-  assert.ok(await store.delivery((await store.response(8801, campaign)).responseId));
-  assert.equal(exported.find(value => value.survey === 'return-v1').state, 'draft');
+  assert.equal(await store.response(8801, campaign), null, 'deleting an uncompleted draft erases it');
+  assert.equal(exported.find(value => value.survey === 'return-v1').state, 'completed');
 });
 
 test('a newly configured campaign still delivers an older pending fact with its original identity', async () => {
