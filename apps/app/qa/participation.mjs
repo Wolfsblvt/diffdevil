@@ -207,8 +207,9 @@ export async function participationJourney(ctx) {
   // ── the survey: fieldsets, labelled controls, keyboard, an incomplete attempt, a saved draft ──
   await go('/manage/plan/survey');
   const form = await page.evaluate(() => ({ state: document.querySelector('[data-survey]')?.getAttribute('data-survey'), fieldsets: [...document.querySelectorAll('.p-q')].map(node => Boolean(node.querySelector('legend')?.textContent?.trim())),
+    required: [...document.querySelectorAll('.p-q')].filter(node => node.querySelector('.req')).map(node => node.dataset.question),
     unlabeled: [...document.querySelectorAll('.p-survey input[type="checkbox"], .p-survey textarea')].filter(control => !control.closest('label') && !control.getAttribute('aria-label')).length, buttons: [...document.querySelectorAll('.p-submit button')].map(button => button.textContent.trim()), privacy: document.querySelector('[data-survey-form] footer')?.textContent ?? '' }));
-  check('the survey is five fieldsets with legends and every control has an accessible name', form.state === 'open' && form.fieldsets.length === 5 && form.fieldsets.every(Boolean) && form.unlabeled === 0, JSON.stringify(form));
+  check('the survey marks only its required first question and gives every control an accessible name', form.state === 'open' && form.fieldsets.length === 5 && form.fieldsets.every(Boolean) && form.required.join(',') === 'used' && form.unlabeled === 0, JSON.stringify(form));
   check('the survey says Works learns only that it was completed, and offers complete and save-for-later', /never receives what you wrote/u.test(form.privacy) && form.buttons.join('|') === 'Complete the survey|Save and finish later', JSON.stringify(form.buttons));
   await page.getByRole('checkbox', { name: 'Results that looked wrong' }).focus();
   await page.keyboard.press('Space');
@@ -217,7 +218,8 @@ export async function participationJourney(ctx) {
   await Promise.all([page.waitForURL(url => new URL(url).searchParams.get('m') === 'survey-incomplete'), page.keyboard.press('Enter')]);
   await page.waitForLoadState('networkidle');
   const incomplete = await message();
-  check('completing without the first answer is refused as an alert and keeps the other answers', incomplete.role === 'alert' && /What did you actually use/u.test(incomplete.text) && await page.getByRole('checkbox', { name: 'Results that looked wrong' }).isChecked(), JSON.stringify(incomplete));
+  const incompleteState = await page.getAttribute('[data-survey]', 'data-survey');
+  check('completing without the required answer is refused with guidance and keeps the saved other answer', incomplete.role === 'alert' && /Answer each question marked “needed to complete”/u.test(incomplete.text) && /Your other answers are saved/u.test(incomplete.text) && incompleteState === 'draft' && await page.getByRole('checkbox', { name: 'Results that looked wrong' }).isChecked(), JSON.stringify({ ...incomplete, state: incompleteState }));
   await page.getByRole('checkbox', { name: 'I hardly used it' }).check();
   await page.fill('textarea[name="keep"]', 'Honestly, nothing yet. The labels were wrong twice.');
   await page.getByRole('button', { name: 'Save and finish later' }).click();
