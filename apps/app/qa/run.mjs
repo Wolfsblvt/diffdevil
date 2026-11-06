@@ -649,6 +649,14 @@ async function qualifyPrFilesMinimum() {
         columnWidths: [...(table?.querySelectorAll('tbody tr:first-child td') ?? [])].map(cell => Math.round(cell.getBoundingClientRect().width)), clippedNames };
     });
   };
+  const reportedWidthLayout = await inspectAt(535);
+  check('PR detail Files keeps every complete filename visible at the reported 535px viewport',
+    reportedWidthLayout.pathCount === LONG_RETAINED_PATHS.length + 1
+      && reportedWidthLayout.filenameCount === reportedWidthLayout.pathCount && reportedWidthLayout.clippedNames.length === 0
+      && reportedWidthLayout.scrollWidth <= reportedWidthLayout.clientWidth + 1 && reportedWidthLayout.pageWidth <= reportedWidthLayout.viewport + 1,
+    JSON.stringify(reportedWidthLayout));
+  await page.screenshot({ path: join(OUT, 'pr-files-reported-535px.png'), fullPage: true });
+
   let narrow = 320, wide = 1180;
   while (narrow < wide) {
     const middle = Math.floor((narrow + wide) / 2);
