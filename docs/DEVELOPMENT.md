@@ -333,6 +333,11 @@ Action distribution metadata unchanged. After preparation and engine build,
 generated inventories. The complete command contract lives in the
 [manual application README](../apps/manual/README.md).
 
+The manual bundles Starlight's `js-yaml` dependency into its prerender output.
+That output lives under root `artifacts/manual/dist/`, outside the isolated manual
+dependency graph; it must not depend on an incidental root-toolchain copy of the
+parser. The React 7 integration no longer brings that copy through Babel.
+
 Manual browser qualification builds an isolated noindex reading fixture and
 exercises both actual outputs, including the emitted static request handler, in
 Chromium. The normal production build excludes that fixture. The existing FAQ

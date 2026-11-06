@@ -126,7 +126,7 @@
   "devDependencies": {
     "@astrojs/check": "0.9.12",
     "@astrojs/cloudflare": "14.4.6",
-    "@astrojs/react": "6.0.6",
+    "@astrojs/react": "7.1.2",
     "@astrojs/starlight": "0.42.9",
     "@codemirror/commands": "6.11.1",
     "@codemirror/lang-yaml": "6.1.3",
