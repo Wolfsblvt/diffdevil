@@ -11,8 +11,8 @@ actually proves. Local Windows execution, live GitHub and publication are differ
 
 Use a current patched Node.js **22.23.4+ on the 22 line or 24.22.1+ on the 24 line**
 and npm for source builds, including the website, manual and App toolchains.
-Astro 7.4.2 requires Node >=22.23.4; the separate manual's freshly resolved
-transitive graph also declares that floor. The published CLI/library retains its independent
+Astro 7.4.4 and the isolated manual dependency graph require Node >=22.23.4;
+`apps/manual/package.json` declares that manual-build floor. The published CLI/library retains its independent
 Node **22 or later** runtime contract. Local comparisons also require Git. An earlier
 native pass on the pre-floor candidate exercised Windows 11 with Node **24.19.0**,
 npm **11.17.0**, and PowerShell **7.6.5**; it does not qualify the patched source-build
@@ -311,13 +311,14 @@ and exact current [Qualification](qualification.md).
 
 ## Public-manual toolchain and qualification
 
-The manual uses an isolated supported peer graph: Astro 7.4.0,
-Starlight 0.42.6 and the source-only `@wolfsblvt/starlight-works` package from
+The manual uses an isolated supported peer graph: Astro 7.4.4,
+Starlight 0.42.7 and the source-only `@wolfsblvt/starlight-works` package from
 `Wolfsblvt/starlight-works@22d4567006ec7a33d890fab2f3d3515332498a90`.
 `npm --prefix apps/manual run toolchain` fetches that exact source and invokes its
 own build/pack route. The website's existing locked graph is not upgraded for this
-consumer. Use the source-build Node versions above for both toolchains: the fresh
-manual closure can require a newer Node patch than its Astro peer alone declares.
+consumer. Use the source-build Node versions above for both toolchains. The manual's
+package contract requires Node >=22.23.4, matching the selected Astro peer; the CLI,
+library, Action and App runtime floors remain independent.
 Prepared source/package and consumer receipts live under
 `artifacts/manual-toolchain`. The generated child lock is retained in qualification
 artifacts; a clean transitive resolution is a new graph, not automatically reusable
