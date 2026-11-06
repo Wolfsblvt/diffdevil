@@ -32,5 +32,10 @@ export default defineConfig({
   pagination:true,lastUpdated:false,credits:false,favicon:'/favicon.svg',
  })],
  markdown:{shikiConfig:{theme:diffdevilSyntax}},
- vite:{resolve:{alias:engineAliases},server:{fs:{allow:[root]}}},
+ vite:{
+  resolve:{alias:engineAliases},server:{fs:{allow:[root]}},
+  // Prerender output lives outside the isolated manual graph. Bundle Starlight's
+  // YAML parser instead of resolving an unrelated root-toolchain copy at runtime.
+  environments:{prerender:{resolve:{noExternal:['js-yaml']}}},
+ },
 });
