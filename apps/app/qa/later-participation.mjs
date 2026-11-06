@@ -68,6 +68,8 @@ export async function laterParticipationJourney({ page, go, check, shot, ORIGIN 
   await page.getByRole('button', { name: 'Complete this contribution' }).click();
   await page.waitForURL(/m=survey-completed/u);
   check('its own completion renders Wirt-owned Return journey standing with no scheduled end', await page.locator('[data-reward]').innerText().then(value => /Return journey thank-you.*€1 off.*No scheduled end/isu.test(value)));
+  check('the contextual return card keeps quote, payment and history actions canonical', await page.locator('[data-reward] a[href*="to=experience"]').count() === 1
+    && await page.locator('[data-reward] a[href*="to=invoices"]').count() === 1 && await page.locator('[data-reward] a[href*="to=relationship"]').count() === 1);
   await capture('later-return-completed');
   await page.request.post(`${ORIGIN}/manage/do`, { form: { action: 'fixture-simulate', kind: 'wirt:unavailable' }, headers: { origin: ORIGIN } });
   await go(path('walkthrough-v1'));

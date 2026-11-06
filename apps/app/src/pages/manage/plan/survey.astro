@@ -42,7 +42,7 @@ const checked = (question: string, value: string) => (answers[question] ?? []).i
     {!view && <Banner tone="info" icon="info" title="No participation form is available here" text="This activity may not be configured or available to your account. Available contributions appear in Plan & funding." />}
     {why && <Banner tone="info" icon="info" title="The survey can't be answered right now" text={why}><a class="m-btn" href="/manage/plan">Plan & funding</a></Banner>}
 
-    {view?.completed && card && <RewardCard card={card} surveyLink={false} />}
+    {view?.completed && card && <RewardCard card={card} surveyLink={false} worksActions={later} />}
 
     {later && view?.activity?.reason && <Banner tone="info" icon="info" title="This contribution is waiting" text={view.activity.reason}><a class="m-btn" href="/manage/plan">Plan & funding</a></Banner>}
     {later && survey.id === 'quote-review-v1' && view?.canSave && <section class="m-sec" data-activity-quote><header><h2>The quote you are reviewing</h2></header><div class="b">
