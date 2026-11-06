@@ -47,6 +47,7 @@ const checked = (question: string, value: string) => (answers[question] ?? []).i
     {later && view?.activity?.reason && <Banner tone="info" icon="info" title="This contribution is waiting" text={view.activity.reason}><a class="m-btn" href="/manage/plan">Plan & funding</a></Banner>}
     {later && survey.id === 'quote-review-v1' && view?.canSave && <section class="m-sec" data-activity-quote><header><h2>The quote you are reviewing</h2></header><div class="b">
       {view.activity?.preview && <Receipt receipt={receiptOf(view.activity.preview.quote, { cadence: view.activity.preview.quote.cadence })} title={`Issued ${fmtDay(view.activity.preview.createdAt)}`} />}
+      {!view.activity?.preview && <p class="m-note">No App-requested quote is retained here. You can describe a real quote you reviewed directly at Works; identify that quote and its review time in your private answer below.</p>}
       <p class="m-note">A preview does not purchase, renew or acquire protection. Works confirms the current quote and keeps its canonical payment and history.</p>
       <form method="post" action="/manage/do" class="m-acts"><input type="hidden" name="action" value="reward-preview" /><input type="hidden" name="campaign" value={view.campaign.key} /><input type="hidden" name="back" value={back} />
         <button class="m-btn" name="cadence" value="monthly">Request monthly quote</button><button class="m-btn" name="cadence" value="annual">Request annual quote</button>

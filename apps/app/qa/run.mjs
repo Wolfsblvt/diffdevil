@@ -1117,7 +1117,6 @@ try {
       await shot(`identity-${name}`);
     }
   } else if (LATER_PARTICIPATION_ONLY) {
-    await recordLocalDelivery(STATE, { repositoryId: 1004, installationId: 9, state: 'complete' });
     await startWorker(undefined, STATE, { commercial: LATER_COMMERCIAL, participation: QA_CAMPAIGN, activities: LATER_CAMPAIGNS });
     await signIn();
     await laterParticipationJourney(ctx);

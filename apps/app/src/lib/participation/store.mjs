@@ -102,15 +102,6 @@ export class D1ParticipationStore {
     const row = await this.statement('SELECT use_observed_at, invited_at, dismissed_at, reminded_at, reminder_dismissed_at FROM participation_prompts WHERE user_id=? AND campaign_key=? AND campaign_version=?', userId, campaign.key, campaign.version).first();
     return row ? { useObservedAt: row.use_observed_at ?? null, invitedAt: row.invited_at ?? null, dismissedAt: row.dismissed_at ?? null, remindedAt: row.reminded_at ?? null, reminderDismissedAt: row.reminder_dismissed_at ?? null } : null;
   }
-  /** Existing operation evidence only, across the account's currently funded scopes. No activity tracker is created. */
-  async activityUse(userId) {
-    const row = await this.statement(`SELECT MIN(d.completed_at) AS first_at, MAX(d.completed_at) AS last_at FROM deliveries d
-      JOIN repositories r ON r.repository_id=d.repository_id JOIN installations i ON i.installation_id=r.installation_id
-      WHERE d.state IN ('complete','rejected','terminal','repair') AND d.completed_at IS NOT NULL AND
-      (i.account_id=? OR EXISTS (SELECT 1 FROM commercial_bindings b JOIN commercial_links l ON l.link_id=b.link_id
-       WHERE b.organisation_id=i.account_id AND l.product_account=? AND l.state='active' AND b.authority_observed='present'))`, userId, userId).first();
-    return row?.first_at ? { firstAt: row.first_at, lastAt: row.last_at } : null;
-  }
   /** One qualifying managed-operation timestamp; kept because the delivery ledger is pruned. */
   async recordUse(userId, campaign, at = this.now(), linkId) {
     await this.statement(`INSERT INTO participation_prompts (user_id, campaign_key, campaign_version, use_observed_at) SELECT ?, ?, ?, ?

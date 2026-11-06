@@ -10,7 +10,9 @@ export async function activityReadiness({ campaign, store, userId, status }) {
   if (campaign.survey === 'quote-review-v1') {
     const previews = await Promise.all(['monthly', 'annual'].map(cadence => store.preview(userId, cadence)));
     const preview = previews.find(value => value?.quote?.quoteId);
-    return preview ? ready({ preview }) : waiting('Review a real continuation quote first. Request a quote below or open the canonical quote journey at Works. A price description alone is not a recorded quote.');
+    // A quote reviewed directly at Works is equally valid contribution material. The App cache is context, not
+    // an eligibility authority or a demand to create another quote before giving feedback.
+    return ready({ preview: preview ?? null });
   }
   if (campaign.survey === 'organisation-v1') {
     const components = status?.fundedComponents;
@@ -27,9 +29,9 @@ export async function activityReadiness({ campaign, store, userId, status }) {
     // eligibility, and requiring the very reward issued after completion would be circular.
     return waiting(`${context} This contribution is not open to complete yet. You can save your separate setup account. Included, already-paid or unrelated capacity cannot qualify it.`);
   }
-  const use = await store.activityUse(userId);
-  if (!use) return waiting('No completed managed operation in your funded scopes is recorded here yet. Follow an actual analysis before completing this contribution.');
-  return ready({ use });
+  // The structured account records walkthrough/ordinary-use feedback. The short operational recovery ledger is
+  // neither a complete activity record nor an eligibility authority; its pruning must not refuse genuine use.
+  return ready();
 }
 
 /** Account identity is checked on every read and write; fixture names and posted fields have no authority. */

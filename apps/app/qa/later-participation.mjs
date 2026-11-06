@@ -52,12 +52,9 @@ export async function laterParticipationJourney({ page, go, check, shot, ORIGIN 
   await page.getByRole('button', { name: 'Save and finish later' }).click();
   await page.waitForURL(/m=survey-saved/u);
   await go(path('quote-review-v1'));
-  check('quote review waits for an actual recorded quote', await page.getByRole('button', { name: 'Complete this contribution' }).isDisabled());
-  await page.getByRole('button', { name: 'Request monthly quote' }).click();
-  await page.waitForURL(/m=preview-ready/u);
-  check('an explicitly requested native-shaped quote is rendered before feedback', await page.locator('[data-activity-quote]').getByRole('group', { name: /^Issued /u }).count() === 1
-    && await page.getByRole('button', { name: 'Complete this contribution' }).isEnabled());
-  await capture('later-quote-reviewed');
+  check('a native Works quote review stays usable without an App-requested preview', await page.getByRole('button', { name: 'Complete this contribution' }).isEnabled()
+    && /No App-requested quote is retained/u.test(await page.locator('[data-activity-quote]').innerText()));
+  await capture('later-native-quote-review');
   await fill();
   await page.getByRole('button', { name: 'Complete this contribution' }).click();
   await page.waitForURL(/m=survey-completed/u);

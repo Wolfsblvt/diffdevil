@@ -902,7 +902,7 @@ test('all five later forms refuse another linked Pro account on reads and direct
   assert.equal(eligibilityOf(await standing(8802)), 'participant', 'B retains the original broad survey eligibility');
 });
 
-test('later drafts preserve private answers while missing activity facts cannot create a completion', async () => {
+test('later task accounts stay usable without invented local proof gates while the organisation prerequisite remains held', async () => {
   const services = laterCampaigns(8801).map(campaign => createParticipation({ store, commercial, campaign, now: () => clock.value }));
   const commercialStanding = await standing(8801);
   for (const service of services) {
@@ -911,8 +911,8 @@ test('later drafts preserve private answers while missing activity facts cannot 
     assert.equal(hasText(input.answers), true);
     const view = await service.view(input);
     assert.equal(view.canSave, true);
-    if (service.campaign.survey === 'return-v1') {
-      assert.equal(view.canAnswer, true, 'the admitted controlled activity records the separate structured participant account');
+    if (service.campaign.survey !== 'organisation-v1') {
+      assert.equal(view.canAnswer, true, 'the controlled activity records the separate structured participant account without an invented local-proof gate');
       continue;
     }
     assert.equal(view.canAnswer, false);
@@ -922,21 +922,18 @@ test('later drafts preserve private answers while missing activity facts cannot 
   }
 });
 
-test('independent actual-operation and quote contributions keep real completion times and opaque replay identities', async () => {
+test('independent task accounts and native quote review keep real completion times and opaque replay identities', async () => {
   const account = 8801;
-  await db.prepare("INSERT INTO installations (installation_id, state, updated_at, account_id) VALUES (8801, 'active', ?, ?)").bind(clock.value, account).run();
-  await db.prepare("INSERT INTO repositories (repository_id, installation_id, full_name, state, updated_at) VALUES (8801, 8801, 'synthetic/later', 'enabled', ?)").bind(clock.value).run();
-  await db.prepare("INSERT INTO deliveries (delivery_id, installation_id, repository_id, state, received_at, completed_at) VALUES ('later-use', 8801, 8801, 'complete', ?, ?)").bind(clock.value, clock.value).run();
-  assert.equal((await store.activityUse(account)).firstAt, clock.value);
   const commercialStanding = await standing(account);
   // Advancing only commercial coverage does not advance the product's recorded activity/completion clock.
   commercialStanding.status.commercial.period = { started_on: '2030-01-01', ends_on: '2031-01-01' };
-  await store.savePreview(account, 'monthly', { quoteId: 'synthetic-real-reader-quote', cadence: 'monthly' }, '2027-03-13T00:00:00Z');
+  assert.equal(await store.preview(account, 'monthly'), null, 'a native quote reviewed at Works need not be requested again through the App');
   const events = [], outgoing = { deliverParticipation: async ({ completion }) => { events.push(completion); return { kind: 'accepted' }; } };
   const services = laterCampaigns(account).filter(campaign => ['return-v1', 'quote-review-v1', 'walkthrough-v1', 'ongoing-v1'].includes(campaign.survey))
     .map(campaign => createParticipation({ store, commercial: outgoing, campaign, now: () => clock.value }));
   for (const service of services) {
     const input = { userId: account, commercial: commercialStanding, answers: activityAnswers(service.survey) };
+    assert.equal(await service.complete({ ...input, answers: {} }), 'incomplete', 'the task-specific structured account is still required');
     assert.equal(await service.complete(input), 'completed');
     assert.equal(await service.complete(input), 'already-completed');
     assert.deepEqual(await service.flush({ userId: account }), ['accepted']);
