@@ -38,16 +38,16 @@ function wrangler(args, persist) {
 export function executeLocal(command, persist, { json = false } = {}) { return wrangler(['d1', 'execute', 'APP_DB', '--command', command, ...(json ? ['--json'] : [])], persist); }
 
 /** Write the fixture through the real store, then dump it as grouped INSERT statements. */
-export async function fixtureSql({ seed = seedStore } = {}) {
+export async function fixtureSql({ seed = seedStore, now = NOW } = {}) {
   const runtime = new Miniflare({ workers: [{
     config: { name: 'app-seed', compatibilityDate: '2026-09-17', env: { APP_DB: { type: 'd1', id: `seed-${crypto.randomUUID()}` } }, manifest: { mainModule: 'worker.mjs', modulesRoot: resolve('.'), modules: { 'worker.mjs': { type: 'esm', contents: 'export default { fetch() { return new Response("ok"); } };' } } } }
   }] });
   try {
     const database = await runtime.getD1Database('APP_DB');
-    const clock = { value: NOW };
+    const clock = { value: now };
     const appStore = new D1AppStore(database, { now: () => clock.value });
     for (const name of await migrationNames()) await appStore.migrate(await readFile(resolve('apps/github-app/migrations', name), 'utf8'));
-    const written = await seed(appStore, clock);
+    const written = await seed(appStore, clock, { now });
     const statements = CLEARED.map(table => `DELETE FROM ${table};`);
     for (const table of TABLES) {
       const rows = (await database.prepare(`SELECT ${table === 'analytical_size_observations' ? 'rowid,' : ''}* FROM ${table}`).all()).results ?? [];

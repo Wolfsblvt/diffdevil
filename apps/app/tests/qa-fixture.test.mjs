@@ -18,6 +18,18 @@ test('the Pro Files fixture includes a recent isolated file and positive co-chan
   assert.ok(records.some(record => Date.parse(record.mergedAt) >= recentCutoff && record.final.report.files.length > 1));
 });
 
+test('the analytical fixture keeps merged PRs in both current and previous rolling 30-day windows', () => {
+  const anchor = '2026-11-06T14:00:00.000Z';
+  const now = Date.parse(anchor);
+  const thirtyDays = 30 * 86_400_000;
+  const merged = analyticalRecords({ now: anchor }).records.filter(record => record.repositoryId === 1001 && record.final).map(record => Date.parse(record.mergedAt));
+  const current = merged.filter(at => at > now - thirtyDays && at <= now);
+  const previous = merged.filter(at => at > now - 2 * thirtyDays && at <= now - thirtyDays);
+
+  assert.ok(current.length > 0, 'the current rolling window needs merged PRs');
+  assert.ok(previous.length > 0, 'the previous rolling window needs merged PRs');
+});
+
 test('the participation fixture preserves beta and campaign window boundaries around the real run date', () => {
   const now = Date.now();
   const beta = COMMERCIAL_BETA.betaGrants[0].access_windows[0];
