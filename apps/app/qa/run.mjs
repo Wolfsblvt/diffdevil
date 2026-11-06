@@ -48,6 +48,7 @@ import { currentPolicyJourney } from './current-policy.mjs';
 import { policyLabJourney } from './policy-lab.mjs';
 import { accessibilityJourney } from './accessibility.mjs';
 import { cloudViewIsReady } from './cloud-view-readiness.mjs';
+import { laterParticipationJourney, LATER_CAMPAIGNS, LATER_COMMERCIAL } from './later-participation.mjs';
 import { QUEUED_LINK, QUEUED_KEY, queuedCoverageJourney, queuedCoverageWorksAvailabilityJourney } from './queued-coverage.mjs';
 
 const target = appBuildTarget();
@@ -71,8 +72,9 @@ const PR_CONFIDENCE_ONLY = process.argv.includes('--pr-confidence-state');
 const PR_FILES_ONLY = process.argv.includes('--pr-files-table');
 const BUSINESS_MANAGE_ONLY = process.argv.includes('--business-manage');
 const PARTICIPATION_ONLY = process.argv.includes('--participation');
+const LATER_PARTICIPATION_ONLY = process.argv.includes('--later-participation');
 const QUEUED_COVERAGE_ONLY = process.argv.includes('--queued-coverage');
-const OUT = join(target.artifacts, 'qa', ...(QUEUED_COVERAGE_ONLY ? ['queued-coverage'] : ACCESSIBILITY_ONLY ? ['accessibility'] : POLICY_LAB_ONLY ? ['policy-lab'] : CURRENT_POLICY_ONLY ? ['current-policy'] : EXPLICIT_READER_ONLY ? ['explicit-reader'] : FUNDING_ONLY ? ['funding'] : FILES_QUERY_ONLY ? ['files-query'] : LOADING_ONLY ? ['loading'] : ADMISSION_ONLY ? ['admission'] : BUSINESS_MANAGE_ONLY ? ['business-manage'] : PARTICIPATION_ONLY ? ['participation'] : PR_FILES_ONLY ? ['pr-files-table'] : PR_CONFIDENCE_ONLY ? ['pr-confidence-state'] : PR_SEARCH_DETAIL_ONLY ? ['pr-search-detail'] : IDENTITY_ONLY ? ['identity'] : AUTHORITY_ONLY ? ['authority'] : HISTORY_ONLY ? ['history'] : THUMB_ONLY ? ['thumb'] : []));
+const OUT = join(target.artifacts, 'qa', ...(LATER_PARTICIPATION_ONLY ? ['later-participation'] : QUEUED_COVERAGE_ONLY ? ['queued-coverage'] : ACCESSIBILITY_ONLY ? ['accessibility'] : POLICY_LAB_ONLY ? ['policy-lab'] : CURRENT_POLICY_ONLY ? ['current-policy'] : EXPLICIT_READER_ONLY ? ['explicit-reader'] : FUNDING_ONLY ? ['funding'] : FILES_QUERY_ONLY ? ['files-query'] : LOADING_ONLY ? ['loading'] : ADMISSION_ONLY ? ['admission'] : BUSINESS_MANAGE_ONLY ? ['business-manage'] : PARTICIPATION_ONLY ? ['participation'] : PR_FILES_ONLY ? ['pr-files-table'] : PR_CONFIDENCE_ONLY ? ['pr-confidence-state'] : PR_SEARCH_DETAIL_ONLY ? ['pr-search-detail'] : IDENTITY_ONLY ? ['identity'] : AUTHORITY_ONLY ? ['authority'] : HISTORY_ONLY ? ['history'] : THUMB_ONLY ? ['thumb'] : []));
 const APP_PORT = Number(process.env.DIFFDEVIL_APP_QA_PORT ?? (target.name === 'staging' ? 4512 : 4412));
 const GITHUB_PORT = Number(process.env.DIFFDEVIL_APP_QA_GITHUB_PORT ?? (target.name === 'staging' ? 4533 : 4433));
 // Chromium accepts Secure (__Host-) cookies from http://localhost, not from a loopback IP, so the browser origin is localhost; the Worker still binds 127.0.0.1.
@@ -80,7 +82,7 @@ const ORIGIN = `http://localhost:${APP_PORT}`;
 const PROBE = `http://127.0.0.1:${APP_PORT}`;
 const CONFIG = join(target.artifacts, 'dist/server/wrangler.json');
 const DENSE = process.env.DIFFDEVIL_APP_QA_DENSE === '1';
-const STATE = join(target.artifacts, QUEUED_COVERAGE_ONLY ? 'state-queued-coverage' : EXPLICIT_READER_ONLY ? 'state-explicit-reader' : FUNDING_ONLY ? 'state-funding' : BUSINESS_MANAGE_ONLY ? 'state-business-manage' : 'state');
+const STATE = join(target.artifacts, LATER_PARTICIPATION_ONLY ? 'state-later-participation' : QUEUED_COVERAGE_ONLY ? 'state-queued-coverage' : EXPLICIT_READER_ONLY ? 'state-explicit-reader' : FUNDING_ONLY ? 'state-funding' : BUSINESS_MANAGE_ONLY ? 'state-business-manage' : 'state');
 const DENSE_STATE = join(target.artifacts, 'state-dense');
 const chartTelemetry = [];
 
@@ -125,11 +127,12 @@ console.log(`Seeded ${seeded.written.written} analyses, ${seeded.written.retaine
 if (LOADING_SCALE) console.log(`Anonymous measured-scale cohort: ${JSON.stringify(seeded.written.loadingScale)}`);
 
 /** Local Worker variables as --var flags: fixture values only, never real credentials. `commercial` is the loopback Works stand-in's spec. */
-function workerVars(entitlement, { commercial, allowances, participation, signingKey, wirtOrigin, policyCredentials = true } = {}) {
+function workerVars(entitlement, { commercial, allowances, participation, activities, signingKey, wirtOrigin, policyCredentials = true } = {}) {
   const vars = { APP_ORIGIN: ORIGIN, GITHUB_API_BASE: `http://127.0.0.1:${GITHUB_PORT}`, GITHUB_OAUTH_BASE: `http://127.0.0.1:${GITHUB_PORT}`, GITHUB_OAUTH_CLIENT_ID: 'fixture-client', GITHUB_OAUTH_CLIENT_SECRET: 'fixture-secret-private', APP_SEAL_KEY: 'fixture-seal-key-with-enough-length', APP_SESSION_DAYS: '30', GITHUB_WEBHOOK_SECRET: 'fixture-webhook-secret',
     ...(policyCredentials ? { GITHUB_APP_ID: '1', GITHUB_APP_PRIVATE_KEY: installationKey } : { GITHUB_APP_ID: '', GITHUB_APP_PRIVATE_KEY: '' }),
     ...(target.name === 'staging' ? { APP_STAGING_INSTALLATION_ACCOUNT_IDS: JSON.stringify(INSTALLATIONS.map(value => value.account.id)) } : {}),
     ...(entitlement ? { APP_ENTITLEMENT_FIXTURE: JSON.stringify(entitlement) } : {}), ...(commercial ? { APP_COMMERCIAL_FIXTURE: JSON.stringify(commercial) } : {}), ...(allowances ? { APP_PLAN_ALLOWANCES: JSON.stringify(allowances) } : {}), ...(participation ? { APP_PARTICIPATION_CAMPAIGN: JSON.stringify(participation) } : {}), ...(signingKey ? { WIRT_SIGNING_KEY_CURRENT: signingKey, WIRT_LINK_CONTINUATION_URL: 'https://app.example.test/manage/plan' } : {}), ...(wirtOrigin !== undefined ? { WIRT_ORIGIN: wirtOrigin } : {}) };
+  if (activities) vars.APP_PARTICIPATION_ACTIVITIES = JSON.stringify(activities);
   return Object.entries(vars).flatMap(([key, value]) => ['--var', `${key}:${value}`]);
 }
 
@@ -1113,6 +1116,45 @@ try {
       check(`${name}: keyboard navigation reaches the unchanged Works header`, await page.locator('.site-header :focus').count() === 1);
       await shot(`identity-${name}`);
     }
+  } else if (LATER_PARTICIPATION_ONLY) {
+    await startWorker(undefined, STATE, { commercial: LATER_COMMERCIAL, participation: QA_CAMPAIGN, activities: LATER_CAMPAIGNS });
+    await signIn();
+    await laterParticipationJourney(ctx);
+    // Finish the original survey while delivery is unavailable, then remove every new-response campaign.
+    await page.request.post(`${ORIGIN}/manage/do`, { form: { action: 'fixture-simulate', kind: 'wirt:unavailable' }, headers: { origin: ORIGIN } });
+    await go('/manage/plan/survey');
+    await page.locator('input[name="used"]').first().check();
+    await page.getByRole('button', { name: 'Complete the survey', exact: true }).click();
+    await page.waitForURL(/m=survey-completed/u);
+    await stopWorker();
+    const readDelivery = () => JSON.parse(executeLocal(`SELECT response_id,event_id,campaign_key,campaign_version,completed_at,state,outcome FROM participation_deliveries WHERE campaign_key='${QA_CAMPAIGN.key}'`, STATE, { json: true }))[0].results[0];
+    const original = readDelivery();
+    check('the original survey has a durable pending completion before campaign removal', original?.state === 'pending' && original?.outcome === 'unavailable');
+    // Make the existing retry due without altering completion time or any runtime/commercial clock.
+    executeLocal(`UPDATE participation_deliveries SET next_attempt_at=NULL WHERE campaign_key='${QA_CAMPAIGN.key}'`, STATE);
+    await startWorker(undefined, STATE, { commercial: LATER_COMMERCIAL });
+    await signIn();
+    await go('/manage/plan/survey');
+    check('zero configured campaigns admit no new original response', await page.locator('[data-survey-form]').count() === 0);
+    const scheduled = await page.request.get(`${ORIGIN}/cdn-cgi/local/scheduled?cron=${encodeURIComponent('17 3 * * *')}`);
+    check('the built Worker accepts its local scheduled maintenance trigger', scheduled.ok(), `${scheduled.status()} ${await scheduled.text()}`);
+    await stopWorker();
+    const delivered = readDelivery();
+    const { state: oldState, outcome: oldOutcome, ...identity } = original;
+    check('zero-campaign scheduled delivery preserves the original opaque identities and real completion time', delivered?.state === 'accepted' && delivered?.outcome === 'accepted'
+      && Object.entries(identity).every(([key, value]) => delivered[key] === value));
+    await startWorker(undefined, STATE, { commercial: LATER_COMMERCIAL, participation: QA_CAMPAIGN, activities: LATER_CAMPAIGNS.map(campaign => ({ ...campaign, participantUserId: 456 })) });
+    await signIn();
+    await go('/manage/plan');
+    check('another authenticated account sees no later activity invitations', await page.locator('[data-activities]').count() === 0);
+    for (const campaign of LATER_CAMPAIGNS) {
+      await go(`/manage/plan/survey?activity=${campaign.key}`);
+      check(`${campaign.survey}: direct navigation refuses the other account without revealing the form`, await page.locator('[data-survey-form]').count() === 0 && !(await page.locator('main').innerText()).includes(campaign.name));
+      const response = await page.request.post(`${ORIGIN}/manage/do`, { form: { action: 'survey-complete', campaign: campaign.key }, headers: { origin: ORIGIN }, maxRedirects: 0 });
+      check(`${campaign.survey}: forged completion is refused on the server`, response.status() === 303 && /survey-not-eligible/u.test(response.headers().location));
+    }
+    await go('/manage/plan/survey');
+    check('the same account can still reach its separate completed original survey', await page.locator('[data-survey-answers]').count() === 1);
   } else if (BUSINESS_MANAGE_ONLY) {
     await startWorker(undefined, STATE, { commercial: COMMERCIAL_BUSINESS });
     await signIn();

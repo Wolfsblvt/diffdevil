@@ -392,6 +392,7 @@ test('signed TEST time follows applied order through D1 restart and customer pre
     const reward = { available: true, kind: 'discount', state: 'available', selected: null, claimClosesAt: '2027-04-01T00:00:00Z',
       campaign: { key: 'survey', reason: 'Participation reward' }, alternatives: [], applications: [] };
     const runtime = { now: () => source.clock.value, commercial: restarted, participation: {
+      campaign: { key: 'survey', survey: 'beta-v1' },
       view: async () => ({ reward, completed: false, campaign: { key: 'survey' } }) } };
     const page = () => loadParticipation({ runtime, viewer: { userId: USER }, session: { session: SESSION }, model: { commercial: { status } } });
     assert.equal((await page()).card.key, 'expired', 'the real page loader compares discount deadlines on commercial time');

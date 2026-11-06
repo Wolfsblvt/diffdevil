@@ -35,7 +35,7 @@ function wrangler(args, persist) {
 }
 
 /** One SQL statement against a stopped Worker's local D1 state, for a pass that needs a fact no journey can create. */
-export function executeLocal(command, persist) { return wrangler(['d1', 'execute', 'APP_DB', '--command', command], persist); }
+export function executeLocal(command, persist, { json = false } = {}) { return wrangler(['d1', 'execute', 'APP_DB', '--command', command, ...(json ? ['--json'] : [])], persist); }
 
 /** Write the fixture through the real store, then dump it as grouped INSERT statements. */
 export async function fixtureSql({ seed = seedStore } = {}) {

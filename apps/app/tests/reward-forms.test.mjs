@@ -41,10 +41,27 @@ test('renewal-only finite and continuous discounts retain distinct promises and 
   const continuous = readRewardFacts(forms.continuous);
   assert.equal(continuous.alternatives[0].frequency, 'continuous');
   assert.equal(continuous.alternatives[0].uses, null);
-  assert.match(text(cardFor(forms.continuous)), /each eligible monthly Pro charge.*No scheduled application end/u);
+  assert.match(text(cardFor(forms.continuous)), /each eligible monthly Pro charge.*No scheduled end/u);
   assert.doesNotMatch(text(cardFor(forms.continuous)), /0 monthly|zero|next eligible Pro charge/u);
   assert.deepEqual(cardFor(forms.continuous).previewCadences, []);
   assert.match(text(cardFor({ ...forms.continuous, basis: { ...forms.continuous.basis, valid_until: '2030-12-01T00:00:00Z' } })), /Application ends/u);
+});
+
+test('return-journey context mirrors the continuing reward without claiming a purchase or a historical journey', () => {
+  const raw = structuredClone(forms.continuous);
+  for (const alternative of [raw.alternatives[0], raw.basis.alternatives[0]]) { alternative.unit = 'fixed'; alternative.value = 100; }
+  raw.state = 'active';
+  const contextual = state => presentReward({ ...view(readRewardFacts({ ...raw, state })), survey: { id: 'return-v1' } });
+  const active = contextual('active');
+  assert.equal(active.key, 'active');
+  assert.match(text(active), /€1 off.*eligible monthly diffdevil Pro renewal.*No scheduled end/u);
+  assert.equal(active.applications.length, 0, 'active standing does not invent a confirmed charge');
+  assert.match(text(contextual('reserved')), /payment result is confirmed/u);
+  const earned = presentReward({ ...view(readRewardFacts({ ...raw, state: 'available', selected_reward: null })), survey: { id: 'return-v1' } });
+  assert.match(text(earned), /does not start a purchase or renewal/u);
+  const expired = presentReward({ ...view(readRewardFacts({ ...raw, state: 'expired', selected_reward: null })), survey: { id: 'return-v1' } });
+  assert.equal(expired.key, 'expired');
+  assert.doesNotMatch(text(expired), /No scheduled end/u, 'an expired unactivated reward is not described as active');
 });
 
 test('protected-price options preserve exercise clocks, reserved standing and acquired public facts separately', () => {
@@ -89,7 +106,7 @@ test('mixed lists preserve valid rewards and safe visible refusals; unsafe envel
   const refused = presentReward(view(list[1]));
   assert.equal(refused.key, 'unavailable');
   assert.deepEqual(refused.previewCadences, []);
-  const runtime = { now: () => '2026-10-25T00:00:00Z', participation: { view: async () => view(list[0]), preview: () => { throw Error('not requested'); } },
+  const runtime = { now: () => '2026-10-25T00:00:00Z', participation: { campaign: { ...campaign, survey: 'beta-v1' }, view: async () => view(list[0]), preview: () => { throw Error('not requested'); } },
     commercial: { rewardStanding: async () => ({ available: true, rewards: list }) } };
   const page = await loadParticipation({ runtime, viewer: { userId: 1 }, session: { session: 'fixture' }, model: { commercial: { status: { linked: true } } } });
   assert.match(text(page.card), /3 unreadable rewards/u);

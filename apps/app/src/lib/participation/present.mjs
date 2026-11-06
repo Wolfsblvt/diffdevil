@@ -82,7 +82,7 @@ function chosen(reward) {
 }
 
 /** Typed context only. Exercise, payment, binding and correction remain in Works' existing journey. */
-function presentTypedReward(card, reward, selected) {
+function presentTypedReward(card, reward, selected, { returnJourney = false } = {}) {
   const date = value => fmtDay(value);
   if (reward.kind === 'time') {
     card.title = ({ queued: 'Your earned time is queued', active: 'Your earned time is active', scheduled: 'Your earned time is accepted', available: 'Your earned time is ready', exhausted: 'Your earned time was used', corrected: 'Works corrected this time reward', expired: 'Your time reward expired' })[card.key] ?? 'Your earned time';
@@ -103,15 +103,29 @@ function presentTypedReward(card, reward, selected) {
   }
   if (reward.kind === 'funded-component') {
     const component = reward.component;
-    card.title = 'Your participation-funded component';
+    card.title = component.state === 'active' && component.bindingState === 'Unbound' ? 'Active unbound · additional organisation capacity' : 'Your participation-funded component';
     card.lines.push(`${selected.name}. ${selected.reason}. Reward standing: ${reward.state}.`);
     card.lines.push(`Promised term: ${reward.units ? `${reward.units} days` : `one ${per(selected.cadence)}`}${reward.startsOn ? ` · Starts: ${date(reward.startsOn)}` : ''}${reward.endsOn ? ` · Ends: ${date(reward.endsOn)}` : ''}.`);
     card.lines.push(`Component standing: ${component.state}. ${component.bindingState ?? 'Binding unavailable'}. ${component.usable === true ? 'Currently usable.' : component.usable === false ? 'Not currently usable; the earned reward and its term remain recorded.' : 'Current usability unavailable.'}`);
+    if (reward.expectedStartOn && !component.startsOn) card.lines.push(`Expected start: ${date(reward.expectedStartOn)}. This is a forecast from Works; the actual start remains authoritative.`);
+    if (component.startsOn) card.lines.push(`Funded from ${date(component.startsOn)}${component.endsOn ? ` until ${date(component.endsOn)}` : ''}.`);
+    if (component.state === 'active' && component.bindingState === 'Unbound') card.lines.push('The funded calendar continues while unbound. Bind or rebind the actual unit from Plan & funding; its term does not restart or re-queue.');
     return card;
   }
   if (selected?.frequency === 'continuous') {
+    if (returnJourney) {
+      const standing = { available: 'Earned', reserved: 'Reserved', active: 'Active', scheduled: 'Accepted', expired: 'Expired', corrected: 'Corrected' }[card.key] ?? 'Standing from Works';
+      card.title = `Return journey thank-you · ${standing}`;
+      if (card.key === 'available') card.lines.push(`${off(selected)} every eligible future ${selected.cadence} diffdevil Pro renewal.${reward.claimClosesAt ? ` Select it on an eligible renewal by ${date(reward.claimClosesAt)}.` : ''} This reward does not start a purchase or renewal.`);
+      else if (card.key === 'reserved') card.lines.push('Your issued renewal holds this reward while its payment result is confirmed.');
+      else if (card.key === 'expired' && !reward.selected && reward.applications.length === 0) card.lines.push('The claim period ended before a first eligible discounted renewal was confirmed. No discounted renewal was used.');
+      else card.lines.push(`${off(selected)} each eligible ${selected.cadence} diffdevil Pro renewal. ${reward.validUntil === null ? 'No scheduled end.' : `Application ends: ${date(reward.validUntil)}.`}`);
+      if (selected.firstEligibleOn) card.lines.push(`Eligible renewal: ${date(selected.firstEligibleOn)}.`);
+      card.lines.push('This reward came from your separate return-journey contribution. Quote selection, payment, correction and canonical history remain at Works.');
+      return card;
+    }
     card.title = ({ available: 'Your continuing discount is ready', scheduled: 'Your continuing discount is accepted', reserved: 'Continuing discount reserved', expired: 'Your continuing discount expired', corrected: 'Works corrected this continuing discount' })[card.key] ?? 'Your continuing discount';
-    card.lines.push(`${termsOf(selected)}. ${reward.validUntil === null ? 'No scheduled application end.' : `Application ends: ${date(reward.validUntil)}.`}`);
+    card.lines.push(`${termsOf(selected)}. ${reward.validUntil === null ? 'No scheduled end.' : `Application ends: ${date(reward.validUntil)}.`}`);
     if (selected.firstEligibleOn) card.lines.push(`First eligible charge: ${date(selected.firstEligibleOn)}.`);
     card.lines.push('This continuing discount is separate from protected-price acquisition.');
     return card;
@@ -150,7 +164,7 @@ export function presentReward(view, { now, protectedPrice = false, commercialClo
   card.applications = reward.applications.filter(application => application.kind !== 'option-exercised').map(application => ({ on: fmtDay(application.at), amount: money(application.amountCents), remainingAfter: application.remainingUsesAfter,
     after: application.postRewardBaseCents === null ? null : `${shortMoney(application.postRewardBaseCents)}/${per(application.cadence)}` }));
   const selected = chosen(reward);
-  const typed = presentTypedReward(card, reward, selected);
+  const typed = presentTypedReward(card, reward, selected, { returnJourney: view.survey?.id === 'return-v1' });
   if (typed) return typed;
   if (key === 'available' && !reward.alternatives.some(alternative => alternative.firstEligibleOn)) card.previewCadences = reward.alternatives.filter(alternative => alternative.kind === 'discount' && alternative.tier === 'Pro' && alternative.standing === 'available'
     && alternative.chargeClasses.includes('first-purchase')).map(alternative => alternative.cadence);

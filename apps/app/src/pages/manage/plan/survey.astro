@@ -13,15 +13,21 @@ import { loadManage } from '../../../lib/manage/model.mjs';
 import { fmtDay } from '../../../lib/manage/works.mjs';
 import { describeAnswers, hasText } from '../../../lib/participation/survey.mjs';
 import { loadParticipation } from '../../../lib/participation/page.mjs';
+import { activityPath } from '../../../lib/participation/campaign.mjs';
+import Receipt from '../../../components/participation/Receipt.astro';
+import { receiptOf } from '../../../lib/participation/present.mjs';
 
 const runtime = Astro.locals.app;
 const viewer = Astro.locals.viewer;
 const model = await loadManage({ viewer, session: Astro.locals.session, runtime });
-const loaded = await loadParticipation({ runtime, viewer, session: Astro.locals.session, model });
+const loaded = await loadParticipation({ runtime, viewer, session: Astro.locals.session, model, campaignKey: Astro.url.searchParams.get('activity') });
 const view = loaded?.view ?? null;
 const survey = view?.survey;
 const answers = view?.response?.answers ?? {};
 const card = loaded?.card ?? null;
+const later = survey && survey.id !== 'beta-v1';
+const back = later ? activityPath(view.campaign) : '/manage/plan/survey';
+const fields = later ? { campaign: view.campaign.key } : {};
 const closesOn = view ? fmtDay(view.campaign.closesAt) : null;
 const why = view && !view.canAnswer && !view.completed ? (
   view.eligibility === 'not-linked' ? 'The survey is for beta participants. Link your Wolfsblvt Works account from Plan & funding first; the reward needs somewhere to go.'
@@ -33,17 +39,29 @@ const checked = (question: string, value: string) => (answers[question] ?? []).i
 ---
 <ManagePage model={model} tab="plan" title={view ? view.campaign.name : 'Survey'} crumbs={[{ label: 'Plan & funding', href: '/manage/plan' }, { label: view?.campaign.name ?? 'Survey' }]} sub={view ? `About ${survey.minutes} minutes · open until ${closesOn}` : 'No survey is running'}>
   <div class="m-stack" data-survey={view ? (view.completed ? 'completed' : view.canAnswer ? (view.response?.state === 'draft' ? 'draft' : 'open') : 'unavailable') : 'none'}>
-    {!view && <Banner tone="info" icon="info" title="No survey is running on this deployment" text="When diffdevil runs a participation campaign, its survey appears here and in Plan & funding." />}
+    {!view && <Banner tone="info" icon="info" title="No participation form is available here" text="This activity may not be configured or available to your account. Available contributions appear in Plan & funding." />}
     {why && <Banner tone="info" icon="info" title="The survey can't be answered right now" text={why}><a class="m-btn" href="/manage/plan">Plan & funding</a></Banner>}
 
-    {view?.completed && card && <RewardCard card={card} surveyLink={false} />}
+    {view?.completed && card && <RewardCard card={card} surveyLink={false} worksActions={later} />}
 
-    {view?.canAnswer && <section class="m-sec" data-survey-form>
-      <header><h2>Tell us how the beta went</h2><span class="d">{view.response?.state === 'draft' ? `Draft saved ${fmtDay(view.response.updatedAt)}` : 'Nothing is saved until you save or complete'}</span></header>
+    {later && view?.activity?.reason && <Banner tone="info" icon="info" title="This contribution is waiting" text={view.activity.reason}><a class="m-btn" href="/manage/plan">Plan & funding</a></Banner>}
+    {later && survey.id === 'quote-review-v1' && view?.canSave && <section class="m-sec" data-activity-quote><header><h2>The quote you are reviewing</h2></header><div class="b">
+      {view.activity?.preview && <Receipt receipt={receiptOf(view.activity.preview.quote, { cadence: view.activity.preview.quote.cadence })} title={`Issued ${fmtDay(view.activity.preview.createdAt)}`} />}
+      {!view.activity?.preview && <p class="m-note">No App-requested quote is retained here. You can describe a real quote you reviewed directly at Works; identify that quote and its review time in your private answer below.</p>}
+      <p class="m-note">A preview does not purchase, renew or acquire protection. Works confirms the current quote and keeps its canonical payment and history.</p>
+      <form method="post" action="/manage/do" class="m-acts"><input type="hidden" name="action" value="reward-preview" /><input type="hidden" name="campaign" value={view.campaign.key} /><input type="hidden" name="back" value={back} />
+        <button class="m-btn" name="cadence" value="monthly">Request monthly quote</button><button class="m-btn" name="cadence" value="annual">Request annual quote</button>
+      </form><a class="m-btn ghost" href={`/manage/depart?to=experience&purpose=change-plan&from=${encodeURIComponent(back)}`}>Review at Works</a>
+    </div></section>}
+
+    {(view?.canSave ?? view?.canAnswer) && <section class="m-sec" data-survey-form>
+      <header><h2>{later ? survey.name : 'Tell us how the beta went'}</h2><span class="d">{view.response?.state === 'draft' ? `Draft saved ${fmtDay(view.response.updatedAt)}` : 'Nothing is saved until you save or complete'}</span></header>
       <div class="b">
-        <p class="m-lede">Completing the survey earns a discount on continuing with Pro. Critical, mixed and enthusiastic answers all count the same, and nobody reviews them before the reward is issued. Only the first question needs an answer.</p>
+        <p class="m-lede">{later ? survey.introduction : 'Completing the survey earns a discount on continuing with Pro. Critical, mixed and enthusiastic answers all count the same, and nobody reviews them before the reward is issued. Only the first question needs an answer.'}</p>
+        {later && <p class="m-note">Describe only activity you actually performed. Your account is authenticated; your answers are your own account of the task, not automatic proof of every step. Commercial calendar changes do not advance your activity or completion time.</p>}
         <form class="p-survey" method="post" action="/manage/do">
-          <input type="hidden" name="back" value="/manage/plan/survey" />
+          <input type="hidden" name="back" value={back} />
+          {later && <input type="hidden" name="campaign" value={view.campaign.key} />}
           {survey.questions.map((question: any, index: number) => <fieldset class="p-q" aria-describedby={question.hint ? `hint-${question.id}` : undefined} data-question={question.id}>
             <legend><span class="n">{index + 1}</span>{question.label}{question.required && <span class="req"> · needed to complete</span>}</legend>
             {question.hint && <p class="m-note" id={`hint-${question.id}`}>{question.hint}</p>}
@@ -53,7 +71,7 @@ const checked = (question: string, value: string) => (answers[question] ?? []).i
             {question.detail && <label class="p-detail"><span class="m-k">{question.detail.label}</span><textarea class="m-input p-text" name={question.detail.id} rows="2" maxlength="4000">{answers[question.detail.id] ?? ''}</textarea></label>}
           </fieldset>)}
           <div class="m-acts p-submit">
-            <button class="m-btn pri" type="submit" name="action" value="survey-complete">Complete the survey</button>
+            <button class="m-btn pri" type="submit" name="action" value="survey-complete" disabled={!view.canAnswer}>{later ? 'Complete this contribution' : 'Complete the survey'}</button>
             <button class="m-btn ghost" type="submit" name="action" value="survey-save">Save and finish later</button>
           </div>
         </form>
@@ -67,10 +85,10 @@ const checked = (question: string, value: string) => (answers[question] ?? []).i
         {view.response.answersDeletedAt
           ? <p class="m-note" style="margin:0" data-answers-deleted>You deleted your answers on {fmtDay(view.response.answersDeletedAt)}. The completion and its reward stay; Works was never sent the answers.</p>
           : <><dl class="m-dl p-answers">{describeAnswers(survey, view.response.answers).map((entry: any) => <><dt>{entry.question}</dt><dd>{entry.choices.length > 0 && <span>{entry.choices.join(' · ')}</span>}{entry.text && <span class:list={['p-said', { sub: entry.choices.length > 0 }]}>{entry.text}</span>}{!entry.choices.length && !entry.text && <span class="sub">No answer</span>}</dd></>)}</dl>
-            <div class="m-acts" style="margin-top:14px"><ActionForm action="survey-delete" label={hasText(view.response.answers) ? 'Delete my answers and comments' : 'Delete my answers'} class="sm ghost dng" back="/manage/plan/survey" /><span class="m-note" style="margin:0">Deleting removes every answer from diffdevil. It doesn't take back the reward, and there's nothing to undo at Works.</span></div></>}
+            <div class="m-acts" style="margin-top:14px"><ActionForm action="survey-delete" fields={fields} label={hasText(view.response.answers) ? 'Delete my answers and comments' : 'Delete my answers'} class="sm ghost dng" back={back} /><span class="m-note" style="margin:0">Deleting removes every answer from diffdevil. It doesn't take back the reward, and there's nothing to undo at Works.</span></div></>}
       </div>
     </section>}
 
-    {!view?.completed && view?.response?.state === 'draft' && !view.canAnswer && <section class="m-sec"><div class="b"><div class="m-acts"><ActionForm action="survey-delete" label="Delete my saved answers" class="sm ghost dng" back="/manage/plan/survey" /></div></div></section>}
+    {!view?.completed && view?.response?.state === 'draft' && <section class="m-sec"><div class="b"><div class="m-acts"><ActionForm action="survey-delete" fields={fields} label="Delete my saved answers" class="sm ghost dng" back={back} /></div></div></section>}
   </div>
 </ManagePage>

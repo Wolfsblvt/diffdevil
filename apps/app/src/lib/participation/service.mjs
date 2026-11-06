@@ -9,6 +9,7 @@ import { windowOf } from './campaign.mjs';
 import { missingForCompletion, surveyOf } from './survey.mjs';
 import { quoteRealDeadline, readCommercialClock, readProjectionBetaGrants, readProjectionCommercialTimeZone, sha256Hex } from '../../../../github-app/commercial-wirt.mjs';
 import { accessContains, operationDate } from './calendar.mjs';
+import { activityReadiness, audienceAllows } from './activity.mjs';
 
 const DAY = 86_400_000;
 // The same bounded backoff as Wirt reports, but a completion is never abandoned: after the last step it keeps that pace.
@@ -43,7 +44,7 @@ export function rewardFor(campaign, rewards) {
   return matching.find(reward => reward.available !== false) ?? matching[0] ?? null;
 }
 
-export function createParticipation({ store, commercial, campaign, now = () => new Date().toISOString() }) {
+export function createParticipation({ store, commercial, campaign, now = () => new Date().toISOString(), delivery = createParticipationDelivery({ store, commercial, now }) }) {
   const survey = surveyOf(campaign.survey);
   const later = seconds => new Date(Date.parse(now()) + seconds * 1000).toISOString();
 
@@ -67,30 +68,13 @@ export function createParticipation({ store, commercial, campaign, now = () => n
     return prompt.reminderDismissedAt ? null : 'remind';
   }
 
-  async function deliver(row) {
-    const outcome = await commercial.deliverParticipation({ userId: row.userId, completion: { campaign: row.campaign, version: row.version, eventId: row.eventId, completionId: row.responseId, completedAt: row.completedAt } })
-      .catch(() => ({ kind: 'unknown' }));
-    const attempts = row.attempts + 1;
-    if (ACCEPTED.has(outcome.kind)) {
-      const recorded = await store.recordAttempt(row.responseId, { state: 'accepted', outcome: outcome.kind, attempts, status: outcome.status ?? null, linkId: outcome.linkId ?? null, rewardId: outcome.reward?.id || null, receipt: outcome.reward ?? null });
-      return recorded ? outcome.kind : 'skipped';
-    }
-    if (outcome.kind === 'refused') {
-      const recorded = await store.recordAttempt(row.responseId, { state: 'refused', outcome: 'refused', attempts, status: outcome.status ?? null, linkId: outcome.linkId ?? null });
-      return recorded ? 'refused' : 'skipped';
-    }
-    const kind = RETRY.has(outcome.kind) ? outcome.kind : 'unknown';
-    const delay = BACKOFF_SECONDS[Math.min(attempts, BACKOFF_SECONDS.length) - 1];
-    const recorded = await store.recordAttempt(row.responseId, { state: 'pending', outcome: kind, attempts, nextAttemptAt: later(delay), status: outcome.status ?? null, linkId: outcome.linkId ?? null });
-    return recorded ? kind : 'skipped';
-  }
-
   return {
     campaign,
     survey,
 
     /** Everything the survey page, the invitation and Plan & funding need for one account. */
     async view({ userId, commercial: commercialStanding }) {
+      if (!audienceAllows(campaign, userId)) return { eligibility: 'not-invited', canAnswer: false, canSave: false, completed: false };
       const [response, prompt] = await Promise.all([store.response(userId, campaign), store.prompt(userId, campaign)]);
       const delivery = response?.state === 'completed' ? await store.delivery(response.responseId) : null;
       const eligibility = eligibilityOf(commercialStanding);
@@ -103,10 +87,12 @@ export function createParticipation({ store, commercial, campaign, now = () => n
       const access = betaAccessWindows(status);
       const observed = access?.some(window => accessContains(prompt?.useObservedAt, window, status?.betaTimeZone));
       const stage = eligibility === 'participant' && window === 'open' && !completed && usedEnough({ access, observed, timeZone: status?.betaTimeZone }) ? promptStage(prompt) : null;
+      const activity = eligibility === 'participant' && window === 'open' && !completed ? await activityReadiness({ campaign, store, userId, status }) : null;
       return { campaign, survey, window, eligibility, proactiveEligibility: access === null ? 'unknown' : access.length ? 'known' : 'not-beta', response, delivery, completed, invitation: stage, prompt,
         // Wirt's projected facts are the reward; its answer to our own delivery stands in only until a projection carries it.
         reward: projected ?? receipt, rewardSource: projected ? 'projection' : receipt ? 'receipt' : null,
-        canAnswer: eligibility === 'participant' && window === 'open' && !completed };
+        activity, canSave: eligibility === 'participant' && window === 'open' && !completed,
+        canAnswer: eligibility === 'participant' && window === 'open' && !completed && activity?.state === 'ready' };
     },
 
     /** Preserve use before the operational ledger is pruned, without a visit or a provider request. */
@@ -129,6 +115,7 @@ export function createParticipation({ store, commercial, campaign, now = () => n
     dismiss(userId, sessionHash) { return store.dismiss(userId, campaign, sessionHash); },
 
     async saveDraft({ userId, commercial: commercialStanding, answers, sessionHash }) {
+      if (!audienceAllows(campaign, userId)) return 'not-eligible';
       if (eligibilityOf(commercialStanding) !== 'participant') return 'not-eligible';
       if (windowOf(campaign, now()) !== 'open') return 'closed';
       return await store.saveDraft(userId, campaign, answers, sessionHash) ? 'saved' : 'already-completed';
@@ -136,10 +123,13 @@ export function createParticipation({ store, commercial, campaign, now = () => n
 
     /** Complete the survey: the response and its outbound completion fact commit together. The caller then tries delivery. */
     async complete({ userId, commercial: commercialStanding, answers, sessionHash }) {
+      if (!audienceAllows(campaign, userId)) return 'not-eligible';
       if (eligibilityOf(commercialStanding) !== 'participant') return 'not-eligible';
       if (windowOf(campaign, now()) !== 'open') return 'closed';
       if ((await store.response(userId, campaign))?.state === 'completed') return 'already-completed';
       if (missingForCompletion(survey, answers).length > 0) { await store.saveDraft(userId, campaign, answers, sessionHash); return 'incomplete'; }
+      const activity = await activityReadiness({ campaign, store, userId, status: commercialStanding?.status });
+      if (activity.state !== 'ready') { await store.saveDraft(userId, campaign, answers, sessionHash); return 'activity-unavailable'; }
       const { result } = await store.complete(userId, campaign, answers, sessionHash);
       return result;
     },
@@ -151,7 +141,14 @@ export function createParticipation({ store, commercial, campaign, now = () => n
      * answer is kept until Wirt's known lapse, or the existing real cache limit for an unknown-validity snapshot.
      * A preview reserves nothing. Rendering a page never calls this.
      */
-    async requestPreview({ userId, session, cadence }) {
+    async requestPreview({ userId, session, cadence, commercial: commercialStanding }) {
+      if (!audienceAllows(campaign, userId)) return 'not-eligible';
+      // The original reward preview has its own Works authorization. Later contributions grant quote creation
+      // only to Contributor price option, while its authenticated form is still open for this account.
+      if (campaign.survey !== 'beta-v1') {
+        if (campaign.survey !== 'quote-review-v1') return 'not-eligible';
+        if (!(await this.view({ userId, commercial: commercialStanding })).canSave) return 'not-eligible';
+      }
       const answer = await commercial.rewardQuote({ session, cadence }).catch(() => ({ available: false, reason: 'unavailable' }));
       if (!answer.available) return answer.reason === 'not-quotable' ? 'not-quotable' : 'unavailable';
       const deadline = quoteRealDeadline(answer.quote);
@@ -165,14 +162,40 @@ export function createParticipation({ store, commercial, campaign, now = () => n
     preview: (userId, cadence) => store.preview(userId, cadence),
 
     /** Deliver due completions, for one account right after its completion or for every account from maintenance. */
+    flush: options => delivery.flush(options),
+
+    exportAccount: userId => store.exportAccount(userId),
+    forgetAccount: userId => store.forgetAccount(userId)
+  };
+}
+
+/** The existing durable outbox outlives campaign configuration for admitting new responses. */
+export function createParticipationDelivery({ store, commercial, now = () => new Date().toISOString() }) {
+  async function deliver(row) {
+    const outcome = await commercial.deliverParticipation({ userId: row.userId, completion: { campaign: row.campaign, version: row.version, eventId: row.eventId, completionId: row.responseId, completedAt: row.completedAt } })
+      .catch(() => ({ kind: 'unknown' }));
+    const attempts = row.attempts + 1;
+    if (ACCEPTED.has(outcome.kind)) {
+      const recorded = await store.recordAttempt(row.responseId, { state: 'accepted', outcome: outcome.kind, attempts, status: outcome.status ?? null, linkId: outcome.linkId ?? null, rewardId: outcome.reward?.id || null, receipt: outcome.reward ?? null });
+      return recorded ? outcome.kind : 'skipped';
+    }
+    if (outcome.kind === 'refused') {
+      const recorded = await store.recordAttempt(row.responseId, { state: 'refused', outcome: 'refused', attempts, status: outcome.status ?? null, linkId: outcome.linkId ?? null });
+      return recorded ? 'refused' : 'skipped';
+    }
+    const kind = RETRY.has(outcome.kind) ? outcome.kind : 'unknown';
+    const delay = BACKOFF_SECONDS[Math.min(attempts, BACKOFF_SECONDS.length) - 1];
+    const nextAttemptAt = new Date(Date.parse(now()) + delay * 1000).toISOString();
+    const recorded = await store.recordAttempt(row.responseId, { state: 'pending', outcome: kind, attempts, nextAttemptAt, status: outcome.status ?? null, linkId: outcome.linkId ?? null });
+    return recorded ? kind : 'skipped';
+  }
+  return {
+    /** Deliver due completions for an account or scheduled maintenance, irrespective of current campaign admission. */
     async flush({ userId } = {}) {
       if (userId !== undefined) await store.wakeLinkWaits(userId).catch(() => undefined);
       const results = [];
       for (const row of await store.dueDeliveries(userId === undefined ? {} : { userId })) results.push(await deliver(row));
       return results;
-    },
-
-    exportAccount: userId => store.exportAccount(userId),
-    forgetAccount: userId => store.forgetAccount(userId)
+    }
   };
 }
