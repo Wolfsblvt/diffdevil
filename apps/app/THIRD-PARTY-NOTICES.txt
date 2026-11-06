@@ -1056,7 +1056,7 @@ SOFTWARE.
 
 -----------------------------------------------------------------------
 
-@wolfsblvt/icons 0.4.0
+@wolfsblvt/icons 0.5.0
 Declared licence: SEE LICENSE IN LICENSE.md
 
 LICENSE.md
@@ -1114,7 +1114,7 @@ Neither framework is copied into this repository. Exact resolved dependency term
 Lucide icon data
 Declared licence: ISC; the icons derived from the Feather project are MIT
 
-The App serves the website header, which renders Lucide glyphs through @wolfsblvt/icons 0.4.0 (generated from @iconify-json/lucide 1.2.133), and projects its own named Lucide glyphs through tools/app-icons.mjs (from @iconify-json/lucide 1.2.147). Neither @iconify-json package ships the licence text. This is the upstream LICENSE its metadata names, https://github.com/lucide-icons/lucide/blob/main/LICENSE (git blob 718bb3f0e44153809972abed31839375804bf652).
+The App serves the website header, which renders Lucide glyphs through @wolfsblvt/icons 0.5.0 (generated from @iconify-json/lucide 1.2.133), and projects its own named Lucide glyphs through tools/app-icons.mjs (from @iconify-json/lucide 1.2.147). Neither @iconify-json package ships the licence text. This is the upstream LICENSE its metadata names, https://github.com/lucide-icons/lucide/blob/main/LICENSE (git blob 718bb3f0e44153809972abed31839375804bf652).
 
 LICENSE
 ISC License
@@ -1167,7 +1167,7 @@ SOFTWARE.
 Simple Icons data
 Declared licence: CC0-1.0
 
-The App serves the website header, whose GitHub and Discord marks use @wolfsblvt/icons 0.4.0; Bluesky, Google Chrome and GitHub Actions marks use the shared website resolver's direct @iconify-json/simple-icons 1.2.100 input. The App also projects its own GitHub mark through tools/app-icons.mjs using that same direct Simple Icons input. Neither @iconify-json package ships the licence text. This is the upstream LICENSE.md its metadata names, https://github.com/simple-icons/simple-icons/blob/develop/LICENSE.md (git blob 70d4a7b6740c5d9b594ff2fc27d3ea7e89413185).
+The App serves the website header, whose GitHub and Discord marks use @wolfsblvt/icons 0.5.0; Bluesky, Google Chrome and GitHub Actions marks use the shared website resolver's direct @iconify-json/simple-icons 1.2.100 input. The App also projects its own GitHub mark through tools/app-icons.mjs using that same direct Simple Icons input. Neither @iconify-json package ships the licence text. This is the upstream LICENSE.md its metadata names, https://github.com/simple-icons/simple-icons/blob/develop/LICENSE.md (git blob 70d4a7b6740c5d9b594ff2fc27d3ea7e89413185).
 
 Brand names and marks remain subject to their owners' trademark rights and current brand guidelines. Catalogue inclusion means only that this project selected a source and recorded its standing; it does not imply sponsorship, affiliation, or endorsement. The CC0 dedication covers the icon data, not the owners' trademark rights.
 
