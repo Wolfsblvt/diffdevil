@@ -19,9 +19,10 @@ test('the Pro Files fixture includes a recent isolated file and positive co-chan
 });
 
 test('the analytical fixture keeps merged PRs in both current and previous rolling 30-day windows', () => {
-  const now = Date.parse(NOW);
+  const anchor = '2026-11-06T14:00:00.000Z';
+  const now = Date.parse(anchor);
   const thirtyDays = 30 * 86_400_000;
-  const merged = analyticalRecords().records.filter(record => record.repositoryId === 1001 && record.final).map(record => Date.parse(record.mergedAt));
+  const merged = analyticalRecords({ now: anchor }).records.filter(record => record.repositoryId === 1001 && record.final).map(record => Date.parse(record.mergedAt));
   const current = merged.filter(at => at > now - thirtyDays && at <= now);
   const previous = merged.filter(at => at > now - 2 * thirtyDays && at <= now - thirtyDays);
 

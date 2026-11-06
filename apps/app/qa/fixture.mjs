@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
 /**
- * One run-relative deterministic fixture for tests and local qualification: a GitHub account with four
+ * One deterministic fixture for tests and local qualification: a GitHub account with four
  * installations (each with its numeric account), seven repositories in three standings, pull
  * requests with lifecycle facts, the older pathless analyses projected through the managed
  * App's history projection, and the named analytical records the analytical data contract
@@ -12,9 +12,9 @@
 import { analyzeDiff, compilePolicy, evaluatePolicy, unwrap } from '../../../dist/lib/index.js';
 import { historyProjection } from '../../github-app/contracts.mjs';
 
-export const NOW = new Date().toISOString();
+export const NOW = '2026-10-09T14:00:00.000Z';
 const DAY = 86_400_000;
-const at = (daysAgo, hours = 0) => new Date(Date.parse(NOW) - daysAgo * DAY - hours * 3_600_000).toISOString();
+const at = (daysAgo, hours = 0, now = NOW) => new Date(Date.parse(now) - daysAgo * DAY - hours * 3_600_000).toISOString();
 
 export const USER = { id: 123, login: 'ada-sample', type: 'User', avatar_url: 'https://avatars.githubusercontent.com/u/123?v=4' };
 export const TOKEN = 'fixture-user-token-private';
@@ -115,7 +115,7 @@ const labelFor = report => ({ xs: 'size/XS', s: 'size/S', m: 'size/M', l: 'size/
 const observed = report => [{ kind: 'label.add', subject: labelFor(report), outcome: 'changed', request: 'acknowledged', readback: 'verified' }];
 
 /** Pull requests with lifecycle facts and, for most, one or more analysed heads. */
-export function pullRequests() {
+export function pullRequests(now = NOW) {
   seed = 90210; // deterministic on every call, so D1 and the GitHub double describe the same pull requests
   const out = [];
   let number = 452;
@@ -123,11 +123,11 @@ export function pullRequests() {
     const OTHERS = others();
     for (let i = 0; i < repository.weight * 4 * SCALE; i++) {
       const ageDays = i * 2.3 + rnd() * 1.5;
-      const openedAt = at(ageDays + 1 + rnd() * 3);
+      const openedAt = at(ageDays + 1 + rnd() * 3, 0, now);
       const roll = rnd();
       const state = i === 0 ? 'open' : i === 1 ? 'draft' : roll < 0.08 ? 'closed' : roll < 0.16 ? 'open' : 'merged';
-      const mergedAt = state === 'merged' ? at(ageDays) : null;
-      const closedAt = state === 'closed' ? at(ageDays) : mergedAt;
+      const mergedAt = state === 'merged' ? at(ageDays, 0, now) : null;
+      const closedAt = state === 'closed' ? at(ageDays, 0, now) : mergedAt;
       const scale = [8, 14, 36, 60, 90, 140, 210, 320, 480, 640, 900, 1300][Math.floor(rnd() ** 1.5 * 12)];
       const heads = 1 + Math.floor(rnd() * 3);
       const fileCount = Math.max(1, Math.min(SCALE === 1 ? 4 : 6, Math.round(scale / 120) + 1));
@@ -137,25 +137,25 @@ export function pullRequests() {
         const files = repository.repositoryId === 1001 && number === 452
           ? [...LONG_RETAINED_PATHS, SPINE].map(path => ({ path, modified: 1, added: 1, deleted: 0 }))
           : Array.from({ length: fileCount }, (_, f) => ({ path: f === 0 ? SPINE : OTHERS[(i * 7 + f * 3) % OTHERS.length], modified: Math.round(scale * growth * 0.4 / fileCount), added: Math.round(scale * growth * 0.4 / fileCount), deleted: Math.round(scale * growth * 0.2 / fileCount) }));
-        revisions.push({ head: sha(number * 10 + h), observedAt: at(ageDays + (heads - 1 - h) * 0.6, 1), files });
+        revisions.push({ head: sha(number * 10 + h), observedAt: at(ageDays + (heads - 1 - h) * 0.6, 1, now), files });
       }
       const analysed = !(repository.repositoryId === 1006 && i % 5 === 4) && repository.history;
       // A few merged PRs keep their lifecycle but no recovered final comparison (squash boundary not established).
       const finalRecovered = !(repository.repositoryId === 1001 && i % 9 === 5);
-      out.push({ repository, number: number--, title: `${TITLES[out.length % TITLES.length]}${out.length >= TITLES.length ? ` (${Math.floor(out.length / TITLES.length) + 1})` : ''}`, state, draft: state === 'draft', openedAt, readyAt: state === 'draft' ? null : i % 3 === 0 ? at(ageDays + 0.4) : null, mergedAt, closedAt, updatedAt: closedAt ?? at(rnd() * 2), base: sha(number * 7), headSha: revisions.at(-1).head, mergeCommitSha: mergedAt ? sha(number * 13) : null, revisions, analysed, finalRecovered, bounded: analysed && i % 7 === 3, recordedBands: repository.repositoryId === 1007 ? i % 2 === 0 : repository.repositoryId !== 1001 || i % 2 === 0 });
+      out.push({ repository, number: number--, title: `${TITLES[out.length % TITLES.length]}${out.length >= TITLES.length ? ` (${Math.floor(out.length / TITLES.length) + 1})` : ''}`, state, draft: state === 'draft', openedAt, readyAt: state === 'draft' ? null : i % 3 === 0 ? at(ageDays + 0.4, 0, now) : null, mergedAt, closedAt, updatedAt: closedAt ?? at(rnd() * 2, 0, now), base: sha(number * 7), headSha: revisions.at(-1).head, mergeCommitSha: mergedAt ? sha(number * 13) : null, revisions, analysed, finalRecovered, bounded: analysed && i % 7 === 3, recordedBands: repository.repositoryId === 1007 ? i % 2 === 0 : repository.repositoryId !== 1001 || i % 2 === 0 });
     }
     if (repository.repositoryId === 1001) {
       // A recent one-file merge makes a real zero-partner specimen in Pro Files
       // without changing the spine or its continuous size/Turnover history.
       const soloNumber = number--;
       const soloHead = sha(soloNumber * 10);
-      const mergedAt = at(6.5);
-      out.push({ repository, number: soloNumber, title: 'Add an independent parser file', state: 'merged', draft: false, openedAt: at(9), readyAt: at(8), mergedAt, closedAt: mergedAt, updatedAt: mergedAt, base: sha(soloNumber * 7), headSha: soloHead, mergeCommitSha: sha(soloNumber * 13), revisions: [{ head: soloHead, observedAt: at(7), files: [{ path: PRO_FILE_WITHOUT_PARTNERS, modified: 1, added: 1, deleted: 0 }] }], analysed: true, finalRecovered: true, bounded: false, recordedBands: true });
+      const mergedAt = at(6.5, 0, now);
+      out.push({ repository, number: soloNumber, title: 'Add an independent parser file', state: 'merged', draft: false, openedAt: at(9, 0, now), readyAt: at(8, 0, now), mergedAt, closedAt: mergedAt, updatedAt: mergedAt, base: sha(soloNumber * 7), headSha: soloHead, mergeCommitSha: sha(soloNumber * 13), revisions: [{ head: soloHead, observedAt: at(7, 0, now), files: [{ path: PRO_FILE_WITHOUT_PARTNERS, modified: 1, added: 1, deleted: 0 }] }], analysed: true, finalRecovered: true, bounded: false, recordedBands: true });
     }
   }
   // Retained closed-unmerged lifecycle with no analysed revisions: the PR reader must not claim a latest revision exists.
   out.push({ repository: REPOSITORIES[0], number: 74, title: 'Closed without a retained revision', state: 'closed', draft: false,
-    openedAt: at(4), readyAt: null, mergedAt: null, closedAt: at(2), updatedAt: at(2), base: sha(74 * 7), headSha: sha(74 * 10),
+    openedAt: at(4, 0, now), readyAt: null, mergedAt: null, closedAt: at(2, 0, now), updatedAt: at(2, 0, now), base: sha(74 * 7), headSha: sha(74 * 10),
     mergeCommitSha: null, revisions: [], analysed: true, finalRecovered: false, bounded: false, recordedBands: true });
   return out;
 }
@@ -188,8 +188,8 @@ export function projectionsFor(pull) {
  * Turnover can be exact while other files meet discontinuities. Returns records in merge order
  * together with the default-branch size observations taken after each merge.
  */
-export function analyticalRecords() {
-  const pulls = pullRequests().filter(pull => pull.repository.named);
+export function analyticalRecords({ now = NOW } = {}) {
+  const pulls = pullRequests(now).filter(pull => pull.repository.named);
   const byRepository = new Map();
   for (const pull of pulls) { if (!byRepository.has(pull.repository.repositoryId)) byRepository.set(pull.repository.repositoryId, []); byRepository.get(pull.repository.repositoryId).push(pull); }
   const records = [], observations = [];
@@ -200,7 +200,7 @@ export function analyticalRecords() {
     const merged = list.filter(pull => pull.mergedAt).sort((a, b) => a.mergedAt.localeCompare(b.mergedAt));
     const others = list.filter(pull => !pull.mergedAt);
     // Default-branch sizes observed before the first merge: the earliest size observation of each file.
-    const firstObservedAt = at(120);
+    const firstObservedAt = at(120, 0, now);
     for (const path of filePaths) observations.push({ repositoryId, path, observedAt: firstObservedAt, revision: branchHead, size: sizes.get(path) });
     const record = (pull, final) => ({ version: 1, repositoryId, pullRequest: pull.number, state: pull.state, openedAt: pull.openedAt, readyAt: pull.readyAt, mergedAt: pull.mergedAt, closedAt: pull.closedAt, updatedAt: pull.updatedAt, observedAt: pull.mergedAt ? new Date(Date.parse(pull.mergedAt) + 3_600_000).toISOString() : pull.updatedAt, currentHead: pull.headSha,
       revisions: pull.revisions.map((revision, index) => { const report = comparisonReport(revision.files, { base: pull.base, head: revision.head, comparisonId: `pr:${pull.base}:${revision.head}` }); const band = unwrap(evaluatePolicy(sizePolicy(), report)).report.bands?.size; return { base: pull.base, head: revision.head, observedAt: revision.observedAt, report, originalPolicyId: 'size-v1-fixture', originalBand: band?.status === 'resolved' ? band.id : null, desiredLabel: labelFor({ bands: { size: band } }), observedLabel: index === pull.revisions.length - 1 && pull.recordedBands ? labelFor({ bands: { size: band } }) : null }; }),
@@ -225,9 +225,9 @@ export function analyticalRecords() {
 }
 
 /** Write the fixture through the managed App's own write paths into a D1 store: lifecycle, consent, pathless history, named analytical records and sizes. */
-export async function seedStore(appStore, clock) {
+export async function seedStore(appStore, clock, { now = NOW } = {}) {
   for (const installation of INSTALLATIONS) {
-    clock.value = at(200);
+    clock.value = at(200, 0, now);
     await appStore.recordLifecycle({ installationId: installation.id, action: 'created', addedRepositories: REPOSITORIES.filter(repository => repository.installationId === installation.id).map(repository => repository.repositoryId), removedRepositories: [] });
     // What the installation's webhooks record: its numeric account and whether that is a person or an organisation.
     await appStore.recordInstallationAccount(installation.id, installation.account.id, installation.account.type === 'Organization' ? 'organization' : 'user');
@@ -238,7 +238,7 @@ export async function seedStore(appStore, clock) {
     if (repository.history) await appStore.setRepositoryConsent(repository.repositoryId, { enabled: true, retentionDays: 3660, origin: 'fixture' });
   }
   let written = 0;
-  for (const pull of pullRequests()) {
+  for (const pull of pullRequests(now)) {
     if (!pull.analysed) continue;
     for (const { identity, projection, observedAt } of projectionsFor(pull)) {
       clock.value = observedAt;
@@ -247,7 +247,7 @@ export async function seedStore(appStore, clock) {
       written++;
     }
   }
-  const { records, observations } = analyticalRecords();
+  const { records, observations } = analyticalRecords({ now });
   let retained = 0;
   for (const record of records) {
     clock.value = record.observedAt;
@@ -260,13 +260,13 @@ export async function seedStore(appStore, clock) {
     const result = await appStore.recordAnalyticalSize(observation);
     if (result.status !== 'published') throw new Error(`Fixture size observation for ${observation.path} was not published: ${result.status}`);
   }
-  clock.value = NOW;
+  clock.value = now;
   return { written, retained, observations: observations.length };
 }
 
 /** The provider's view of the fixture, served over fetch: GitHub's wire shapes, nothing more. */
-export function createFakeGitHub({ user = USER, token = TOKEN, code = CODE, clientId = 'fixture-client' } = {}) {
-  const pulls = pullRequests();
+export function createFakeGitHub({ user = USER, token = TOKEN, code = CODE, clientId = 'fixture-client', now = NOW } = {}) {
+  const pulls = pullRequests(now);
   const json = (value, status = 200, headers = {}) => new Response(JSON.stringify(value), { status, headers: { 'content-type': 'application/json', ...headers } });
   const wire = pull => ({ number: pull.number, title: pull.title, state: pull.state === 'open' || pull.state === 'draft' ? 'open' : 'closed', draft: pull.draft, created_at: pull.openedAt, merged_at: pull.mergedAt, closed_at: pull.closedAt, updated_at: pull.updatedAt, head: { sha: pull.headSha }, base: { sha: pull.base }, merge_commit_sha: pull.mergeCommitSha, html_url: `https://github.com/${pull.repository.fullName}/pull/${pull.number}` });
   const calls = [];
