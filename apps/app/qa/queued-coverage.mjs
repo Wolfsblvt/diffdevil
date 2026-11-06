@@ -4,6 +4,35 @@ import { readSigningKeys, signedHeaders } from '../../github-app/commercial-wirt
 export const QUEUED_LINK = 'qa-queued-coverage';
 export const QUEUED_KEY = 'fixture-queued-coverage-signing-key-at-least-32-bytes';
 
+/** Check that a configured local Works stand-in exposes the six existing Plan & funding destinations. */
+export async function queuedCoverageWorksAvailabilityJourney({ page, go, check, shot, ORIGIN }) {
+  await go('/manage/plan');
+  const exits = page.locator('section[data-standing] .m-exits');
+  const links = await exits.locator('a').evaluateAll(elements => elements.map(element => ({
+    label: element.innerText.trim(), href: element.getAttribute('href')
+  })));
+  const expected = [
+    ['Change plan or billing period', 'experience', 'change-plan'],
+    ['Renewal and cancellation', 'experience', 'renewal'],
+    ['Gifts and benefits', 'relationship', 'browse'],
+    ['Invoices and payments', 'invoices', 'browse'],
+    ['Payment methods', 'paymentMethods', 'browse'],
+    ['Works account and sign-in', 'account', 'browse']
+  ];
+  const destinationsMatch = links.length === expected.length && links.every((link, index) => {
+    const url = new URL(link.href, ORIGIN);
+    const [label, destination, purpose] = expected[index];
+    return link.label === label && url.origin === new URL(ORIGIN).origin && url.pathname === '/manage/depart'
+      && url.searchParams.get('to') === destination && url.searchParams.get('purpose') === purpose;
+  });
+  const unavailable = await exits.locator('.off').count();
+  const note = (await exits.innerText()).split('\n').at(-1);
+  check('queued coverage: configured Works keeps all six usable destinations', destinationsMatch
+    && unavailable === 0
+    && /local stand-in for/u.test(await exits.innerText()), JSON.stringify({ links, unavailable, note }));
+  await shot('queued-coverage-configured-works');
+}
+
 /** Synthetic signed producer messages through the real receiver, D1, session-owned status and built Manage page. */
 export async function queuedCoverageJourney({ page, go, check, shot, ORIGIN }) {
   const queued = { state: 'paid-awaiting-start', confirmed_on: '2027-03-05', funding: 'paid', tier: 'pro', cadence: 'annual',
@@ -33,7 +62,10 @@ export async function queuedCoverageJourney({ page, go, check, shot, ORIGIN }) {
   check('queued coverage: the card stays current Pro with private response headers',
     await standing().getAttribute('data-standing') === 'funded' && await standing().locator('.plan b').textContent() === 'Pro'
     && /no-store/u.test(response.headers()['cache-control'] ?? '') && !/€90 a month|No charge until then/u.test(paid));
-  check('queued coverage: configured Works exits retain their ordinary unavailable state', await standing().locator('.m-exits .off').count() === 6);
+  const exits = standing().locator('.m-exits');
+  check('queued coverage: unconfigured Works exits stay unavailable', await exits.locator('.off').count() === 6
+    && await exits.locator('a').count() === 0
+    && /Works is not configured on this deployment/u.test(await exits.innerText()));
   await shot('queued-coverage-paid');
 
   for (const [version, name, continuation, expected] of [
