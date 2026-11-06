@@ -19,6 +19,10 @@ manifest. The joined public build verifies initial HTML, referenced image bytes,
 canonical hosts and the exact discovery inventory; it retires Starlight's broader
 automatic sitemap output in favor of that selected inventory.
 
+The manual's supported build runtime is Node.js **22.23.4 or newer**. Its isolated
+dependency graph includes Astro 7.4.4, which requires that minimum; this app-local
+floor does not change the CLI, library, Action or App runtime contracts.
+
 From the repository root, use `npm ci --ignore-scripts`, then `npm run website:build`.
 This builds the engine and product site, then the website's build hook builds the
 manual and one joined Pagefind index. Output is `artifacts/website/dist` and
