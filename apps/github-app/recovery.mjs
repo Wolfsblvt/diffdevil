@@ -6,7 +6,7 @@ import { D1ManageStore } from '../app/src/lib/manage/store.mjs';
 import { D1ParticipationStore } from '../app/src/lib/participation/store.mjs';
 import { applyHealthyRecoveryState, validateHealthyRecoveryState } from './recovery-input.mjs';
 import { createAdmissionService } from './admission.mjs';
-import { hasRecoveryCoverage, RECOVERY_DUTIES, RECOVERY_MARGIN_DAYS } from './recovery-contract.mjs';
+import { hasRecoveryCoverage, isNativeRecoverySource, sameNativeRecoveryCut, RECOVERY_DUTIES, RECOVERY_MARGIN_DAYS } from './recovery-contract.mjs';
 
 const DAY = 86_400_000;
 const TYPES = new Set(['history-deleted', 'repository-deleted', 'history-disabled', 'history-retention', 'service-disconnected', 'works-disconnected',
@@ -23,6 +23,7 @@ const refuse = () => Object.assign(new TypeError('A complete, point-bound recove
  * The boundary is inclusive: duties at the point timestamp must be included when commit ordering is unknown.
  */
 export function readRecoveryInput(input, point, through) {
+  if (input?.version === 2) return readNativeRecoveryInput(input, point, through);
   if (!point || !text(point.id) || !iso(point.capturedAt) || !iso(point.supportedUntil)
     || !iso(through) || through < point.capturedAt || through > point.supportedUntil
     || input?.kind !== 'diffdevil.app-recovery-input' || input.version !== 1
@@ -66,6 +67,28 @@ export function readRecoveryInput(input, point, through) {
   return structuredClone(input);
 }
 
+/** Version 2 carries complete current state at a native cut; it cannot borrow an ISO boundary or guessed event times. */
+function readNativeRecoveryInput(input, point, through) {
+  if (through !== undefined || !text(point?.id) || input.kind !== 'diffdevil.app-recovery-input'
+    || input.point?.id !== point.id || input.point?.databaseId !== point.databaseId
+    || input.point?.capturedAt !== point.capturedAt || input.point?.supportedUntil !== point.supportedUntil
+    || input.coverage?.mode !== 'healthy-source-rollback' || input.coverage.from !== point.capturedAt
+    || input.coverage.through !== undefined || !hasRecoveryCoverage(point, input.coverage.tombstoneRetentionDays)
+    || !isNativeRecoverySource(input.currentState?.source, point)
+    || !sameNativeRecoveryCut(input.currentState.source.cut, input.coverage.cut)
+    || !Array.isArray(input.events) || input.events.length !== 0 || !Array.isArray(input.coverage.sources)) throw refuse();
+  const duties = new Set();
+  for (const source of input.coverage.sources) {
+    if (!RECOVERY_DUTIES.includes(source?.duty) || duties.has(source.duty)
+      || source.authority !== input.currentState.source.snapshotId || source.checkpoint !== input.coverage.cut.bookmark
+      || source.recoveryEvidence !== input.currentState.source.consistencyEvidence || source.through !== undefined
+      || !sameNativeRecoveryCut(source.cut, input.coverage.cut)) throw refuse();
+    duties.add(source.duty);
+  }
+  if (duties.size !== RECOVERY_DUTIES.length) throw refuse();
+  return structuredClone(input);
+}
+
 /**
  * Apply later obligations to an isolated restored D1 before any reader, Queue or maintenance consumer starts.
  * `checkpoint` must durably commit the supplied value, or reject. No input means no replay, never empty duties.
@@ -73,17 +96,22 @@ export function readRecoveryInput(input, point, through) {
  * the healthy-source route carries actual current authority and preferences from its complete protected input.
  * A receipt qualifies this input boundary only, never current provider access, artifact custody or serving.
  *
- * @param {{database: object, input: object, point: {id: string, capturedAt: string, supportedUntil: string, databaseId?: string}, through: string,
+ * @param {{database: object, input: object, point: {id: string, capturedAt: string, supportedUntil: string, databaseId?: string}, through?: string,
  * checkpoint: (receipt: object) => Promise<void>, commercial?: object}} options
  */
 export async function replayRecoveryObligations({ database, input, point, through, checkpoint, commercial }) {
+  // Sample once at attempt entry, before any asynchronous validation/output. Native callers cannot supply this clock.
+  const evaluationAt = input?.version === 2 ? new Date().toISOString() : undefined;
   const selected = readRecoveryInput(input, point, through);
+  if (evaluationAt !== undefined && (evaluationAt < selected.currentState.source.captureObservations.completedAt
+    || evaluationAt < selected.point.capturedAt || evaluationAt > selected.point.supportedUntil)) throw refuse();
+  const replayAt = evaluationAt ?? through;
   if (typeof checkpoint !== 'function') throw refuse();
   if (selected.currentState !== undefined) await validateHealthyRecoveryState(database, selected);
   else if (selected.coverage.mode === 'healthy-source-rollback') throw refuse();
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(selected)));
   const inputSha256 = [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, '0')).join('');
-  let at = through;
+  let at = replayAt;
   const now = () => at;
   const app = new D1AppStore(database, { now });
   const auth = new D1AuthorizationStore(database, { now });
@@ -96,18 +124,19 @@ export async function replayRecoveryObligations({ database, input, point, throug
     const current = await app.repositoryAdmission(repositoryId);
     if (current) await admission.update(repositoryId, { revision: current.revision, origin: 'recovery-input', ...patch });
   };
-  const receipt = { kind: 'diffdevil.app-recovery-checkpoint', version: 1, point: selected.point,
+  const receipt = { kind: 'diffdevil.app-recovery-checkpoint', version: selected.version, point: selected.point,
+    ...(evaluationAt === undefined ? {} : { evaluationAt }),
     inputSha256, coverage: selected.coverage, phase: 'applying', applied: [], commercial: null, code: null };
   const commit = () => checkpoint(structuredClone(receipt));
   // Prove the output route before touching the restored database.
   await commit();
   try {
     if (selected.currentState) {
-      await applyHealthyRecoveryState(database, selected.currentState, through);
+      await applyHealthyRecoveryState(database, selected.currentState, replayAt);
       receipt.applied.push('healthy-current-state');
       await commit();
     }
-    await works.holdRestoredLinks(through);
+    await works.holdRestoredLinks(replayAt);
     for (const event of selected.events) {
       at = event.at;
       switch (event.type) {
@@ -173,7 +202,7 @@ export async function replayRecoveryObligations({ database, input, point, throug
       receipt.applied.push(event.id);
       await commit();
     }
-    at = through;
+    at = replayAt;
     await app.expireHistory();
     await auth.maintain();
     const remaining = await database.prepare("SELECT count(*) AS count FROM commercial_links WHERE state='active'").first();
