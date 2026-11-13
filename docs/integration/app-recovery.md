@@ -5,7 +5,8 @@
 This is the product-owned input, replay and checkpoint interface for an isolated
 restored App database. It applies later deletion, expiry, history opt-out and
 service/Works disconnect facts, then uses the existing current Works reconciliation.
-The consumer and a one-time healthy-source input adapter are implemented. Recovery
+The consumer and a one-time healthy-source input adapter support both the original
+ISO barrier (version 1) and an explicit native D1 export cut (version 2). Recovery
 after loss of the authoritative current source still has no independently complete
 input producer. A configuration export cannot supply missing later facts after loss
 of the same database. A coordinated healthy-source rollback is a separate claim.
@@ -353,6 +354,115 @@ tables and cannot run alongside target consumers. The live-writer cutover rule a
 still applies after a successful replay. `coverage.mode: healthy-source-rollback` stays
 in the replay receipt and never becomes source-loss recovery proof.
 
+## Native current-source cut and a separate evaluation clock
+
+The ISO input and invocation above remain version 1, unchanged. When native export
+provides an opaque bookmark without an evidenced inverse UTC timestamp, use the
+explicit version 2 variant through the same exporter and consumer. Completeness
+means all selected committed state **at that native cut**, inclusively, rather than
+all commands completed by a guessed wall-clock instant. Post-cut changes are not
+claimed present. A bookmark's lexical order or request/response time does not
+establish an exact commit timestamp. [D091](../DECISIONS.md#d091-distinguish-a-native-recovery-cut-from-its-observation-and-evaluation-clocks)
+preserves this choice and its rejected alternative.
+
+The operating custodian must establish a genuinely current, whole consistent
+capture and a completed immutable imported copy, verify the actual whole SQL
+SHA-256, and qualify source/database identity, schema and original seal
+interpretation plus protected input custody. A historical SQL file copied again
+with a new date is not this source. Supply the actual request, first-response and
+capture-completion observations with their trustworthy operating evidence. All
+three must be ordered inside the **original** supported interval. If their actual
+bounds cannot establish that eligibility, this variant refuses admission; it does
+not replace the original point or extend either its support or later-duty clocks.
+The evidence references below are trusted custodian inputs. Shape validation binds
+them to the artifact but cannot authenticate them, verify an unprovided SQL file,
+prove completeness/custody, or turn arbitrary caller dates into observations.
+
+```js
+const input = await exportHealthyRecoveryInput({
+  database: immutableCurrentD1,
+  point: { ...originalPoint, databaseId: originalDatabaseId },
+  source: {
+    mode: 'immutable-current-native-copy', databaseId: originalDatabaseId,
+    cut: {
+      kind: 'd1-export', databaseId: originalDatabaseId,
+      bookmark: actualOpaqueExportBookmark, sqlSha256: verifiedWholeSqlSha256
+    },
+    snapshotId: immutableCopyCoordinate,
+    healthEvidence: actualAppHealthAndIdentityReceipt,
+    consistencyEvidence: wholeNativeCaptureAndCompletedImmutableImportReceipt,
+    custodyEvidence: admittedProtectedInputCustodyReceipt,
+    interpretation: {
+      source: compatibleSourceReceipt,
+      schema: compatibleSchemaAndMigrationReceipt,
+      originalSeal: originalSealInterpretationReceipt
+    },
+    captureObservations: {
+      requestedAt: actualRequestUtc,
+      firstResponseAt: actualFirstResponseUtc,
+      completedAt: actualCaptureCompletionUtc,
+      evidence: trustworthyCaptureObservationReceipt
+    }
+  },
+  checkpoint: commitProtectedInput
+});
+const receipt = await replayRecoveryObligations({
+  database: isolatedRestoredD1, input, point: input.point,
+  checkpoint: commitProtectedCheckpoint,
+  commercial: configuredAppCommercialService
+});
+```
+
+The exporter commits the version 2 `reading` checkpoint before credential-bearing
+reads, then the complete version 2 input only after the same table/column/count and
+membership reads as version 1. `currentState` retains its kind with version 2 and
+the native source above. `coverage` retains `from`, `mode`, the actual retention
+guarantee and all six duty sources, but carries `cut` instead of `through`. Each
+duty source binds that same cut, the immutable snapshot's authority, the bookmark
+as its checkpoint and the consistency receipt. There is no native
+`source.capturedAt`, `coverage.through`, duty-source `through`, or replay `through`
+argument. Such ISO substitutions refuse. Version 2 requires the complete current
+state and an empty `events` array: actual current choices, deletion tombstones and
+membership carry the obligations without inventing event times. The existing
+table projection, schema validation and replay engine serve both formats. A
+version 1 reader refuses version 2 before writes; relabeling the artifact as
+version 1 cannot make its native state supported.
+
+At entry to **each** native replay attempt, the consumer samples actual UTC once
+using its runtime clock. Callers cannot supply the evaluation instant. It must be
+no earlier than completed capture and within the original supported interval, or
+the attempt refuses before output or target mutation. The version 2 first durable
+`applying` checkpoint records `evaluationAt` along with the original point, full
+input digest and native coverage. Every subsequent checkpoint retains that same
+instant, even when asynchronous work takes time. Trustworthy runtime UTC remains
+an operating dependency; this library does not authenticate the host clock.
+
+History expiry, authorization maintenance, history-job rewind/update times and
+every restored active commercial link's hold use that frozen evaluation clock.
+Original source times, request provenance, deletion times and reapply lifetimes
+are preserved. Retrying the same protected complete input samples a fresh eligible
+clock and reapplies state, maintenance and holds; a prior acknowledgement or
+checkpoint never skips effects or extends deletion. Output refusal precedes target
+mutation. Interrupted publication records `incomplete` when possible and stays
+isolated until the same complete input can be replayed successfully. A later
+attempt outside the original support interval refuses even if an older receipt
+said `replayed`.
+
+Both current positive and negative choices and all current commercial relationships
+travel in the complete input. Every restored active link remains held for actual
+authenticated answers from its original configured Wirt producer. Unavailable or
+merely acknowledged answers stay incomplete; no credential is sent merely to
+prove recovery. Current GitHub authority remains a separate observation. The
+consumer neither reconnects a provider nor selects another producer.
+
+A non-serving capture may release live writers after capture. Serving still needs
+the complete continuously held frontier from capture through cutover, or a new
+complete barrier if it changed. Before a separately admitted serving transition,
+run fresh maintenance and current-authority reconciliation: an old evaluation
+receipt is not evidence that expiring state or provider authority is current. The
+native variant supplies healthy-current rollback, never independent input after
+loss of that current source, real capture/installation proof, or serving admission.
+
 ## What remains unavailable after database loss
 
 The current App stores deletion tombstones, history choices and service disconnects
@@ -394,6 +504,11 @@ and exercise advanced import/recalculation progress over omitted post-point
 measurements. The rewound import reacquires a missing numerical comparison through
 the ordinary job/collection path; current pauses, off/deletion and scoped requests
 remain distinct. Provider traffic is synthetic and all D1 copies are disposable.
+Native-cut regressions also exercise observation/identity/digest/custody refusals,
+complete two-link transfer, frozen and fresh attempt clocks, evaluation-time expiry
+and job rewind, output/count/partial-input refusal, interrupted publication and
+retry without shifted deletion lifetimes. Runtime UTC is controlled only by the
+test harness; the public replay API accepts no evaluation-clock override.
 Existing `commercial.test.mjs` separately
 qualifies the signed Works consumer's current/ended/unavailable answers. Neither
 proves independent production custody or a real restored HTTP App. Those remain

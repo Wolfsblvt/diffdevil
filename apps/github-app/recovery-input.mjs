@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only WITH AdditionRef-diffdevil-premium-interface-exception-1.0
 import { APP_TOMBSTONE_DAYS, D1AppStore } from './storage.mjs';
-import { hasRecoveryCoverage, RECOVERY_DUTIES } from './recovery-contract.mjs';
+import { hasRecoveryCoverage, isNativeRecoverySource, sameNativeRecoveryCut, RECOVERY_DUTIES } from './recovery-contract.mjs';
 
 // Current privacy/authority/configuration state travels together. Measurements remain on the old point;
 // their complete current logical membership below prevents a rollback resurrecting removed observations.
@@ -78,25 +78,30 @@ async function readTable(database, table, selected) {
  * `checkpoint` commits the complete protected input before it can be returned to a restore consumer.
  */
 export async function exportHealthyRecoveryInput({ database, point, source, checkpoint }) {
+  const native = source?.mode === 'immutable-current-native-copy';
   if (!text(point?.id) || !text(point?.databaseId) || !iso(point.capturedAt) || !iso(point.supportedUntil)
-    || source?.mode !== 'immutable-current-copy' || source.databaseId !== point.databaseId
+    || !hasRecoveryCoverage(point, APP_TOMBSTONE_DAYS) || typeof checkpoint !== 'function') throw fail();
+  if (native ? !isNativeRecoverySource(source, point) : (source?.mode !== 'immutable-current-copy' || source.databaseId !== point.databaseId
     || !iso(source.capturedAt) || source.capturedAt < point.capturedAt || source.capturedAt > point.supportedUntil
     || !text(source.snapshotId) || !text(source.healthEvidence) || !text(source.consistencyEvidence)
-    || !text(source.interpretation) || !hasRecoveryCoverage(point, APP_TOMBSTONE_DAYS) || typeof checkpoint !== 'function') throw fail();
-  const selectedSource = structuredClone(source), tables = [], membership = {};
+    || !text(source.interpretation))) throw fail();
+  const selectedSource = structuredClone(source), selectedPoint = structuredClone(point), tables = [], membership = {};
+  const version = native ? 2 : 1;
   // Establish the protected output path before reading credential-bearing current state.
-  await checkpoint({ kind: 'diffdevil.healthy-source-export-checkpoint', version: 1, phase: 'reading', point: structuredClone(point), source: structuredClone(selectedSource) });
+  await checkpoint({ kind: 'diffdevil.healthy-source-export-checkpoint', version, phase: 'reading', point: structuredClone(selectedPoint), source: structuredClone(selectedSource) });
   for (const name of TABLES) {
     const selected = await columns(database, name);
     const rows = await readTable(database, name, selected);
     tables.push({ name, columns: selected, rowCount: rows.length, rows });
   }
   for (const [name, selected] of Object.entries(MEMBERSHIP)) membership[name] = await readTable(database, name, selected);
-  const input = { kind: 'diffdevil.app-recovery-input', version: 1, point: structuredClone(point),
-    coverage: { from: point.capturedAt, through: selectedSource.capturedAt, mode: 'healthy-source-rollback', tombstoneRetentionDays: APP_TOMBSTONE_DAYS,
+  const boundary = native ? { cut: selectedSource.cut } : { through: selectedSource.capturedAt };
+  const input = { kind: 'diffdevil.app-recovery-input', version, point: selectedPoint,
+    coverage: { from: selectedPoint.capturedAt, ...boundary, mode: 'healthy-source-rollback', tombstoneRetentionDays: APP_TOMBSTONE_DAYS,
       sources: RECOVERY_DUTIES.map(duty => ({ duty,
-        authority: selectedSource.snapshotId, checkpoint: selectedSource.capturedAt, recoveryEvidence: selectedSource.consistencyEvidence, through: selectedSource.capturedAt })) },
-    events: [], currentState: { kind: 'diffdevil.healthy-recovery-state', version: 1, source: selectedSource, tables, membership } };
+        authority: selectedSource.snapshotId, checkpoint: native ? selectedSource.cut.bookmark : selectedSource.capturedAt,
+        recoveryEvidence: selectedSource.consistencyEvidence, ...boundary })) },
+    events: [], currentState: { kind: 'diffdevil.healthy-recovery-state', version, source: selectedSource, tables, membership } };
   await checkpoint(structuredClone(input));
   return input;
 }
@@ -104,12 +109,14 @@ export async function exportHealthyRecoveryInput({ database, point, source, chec
 /** Validate the whole projection and actual target schema before the first restored write. */
 export async function validateHealthyRecoveryState(database, input) {
   const state = input.currentState;
-  if (!state || state.kind !== 'diffdevil.healthy-recovery-state' || state.version !== 1
+  if (!state || state.kind !== 'diffdevil.healthy-recovery-state' || state.version !== input.version
     || input.coverage.mode !== 'healthy-source-rollback' || input.coverage.tombstoneRetentionDays !== APP_TOMBSTONE_DAYS || !text(input.point.databaseId)
-    || state.source?.databaseId !== input.point.databaseId || state.source?.mode !== 'immutable-current-copy'
-    || state.source?.capturedAt !== input.coverage.through || !text(state.source.snapshotId)
-    || !text(state.source.healthEvidence) || !text(state.source.consistencyEvidence) || !text(state.source.interpretation)
     || !Array.isArray(state.tables) || state.tables.length !== TABLES.length || !state.membership) throw fail();
+  if (input.version === 2) {
+    if (!isNativeRecoverySource(state.source, input.point) || !sameNativeRecoveryCut(state.source.cut, input.coverage.cut)) throw fail();
+  } else if (input.version !== 1 || state.source?.databaseId !== input.point.databaseId || state.source?.mode !== 'immutable-current-copy'
+    || state.source?.capturedAt !== input.coverage.through || !text(state.source.snapshotId)
+    || !text(state.source.healthEvidence) || !text(state.source.consistencyEvidence) || !text(state.source.interpretation)) throw fail();
   for (const [index, name] of TABLES.entries()) {
     const table = state.tables[index];
     if (table?.name !== name || JSON.stringify(table.columns) !== JSON.stringify(await columns(database, name))

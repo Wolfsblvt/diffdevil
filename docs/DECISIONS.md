@@ -12,6 +12,50 @@ CI the ordinary publication route for the public family and Playground Worker.
 
 [Plans](app-plans.md), [management](app-management.md), [dashboard](dashboard.md), [access](dashboard-access.md) and [privacy/data](PRIVACY-AND-DATA.md) own the joined maintained contracts. Private deliberation and owner transcripts are not part of this public record.
 
+## D091: Distinguish a native recovery cut from its observation and evaluation clocks
+
+**Status.** Settled by the technical/integration Lead on 2026-11-13 within the
+existing complete App/recovery implementation grant. Source support does not
+admit a real capture, installation, protected replay or serving transition.
+
+**Decision.** Preserve the ISO recovery input and consumer unchanged. Add an
+explicit native-cut variant for healthy-current rollback that binds the original
+point/database, opaque export bookmark, whole SQL digest, immutable-copy and
+source/schema/original-seal evidence, protected custody and complete selected
+current tables/counts/memberships. Actual ordered request, first-response and
+completion observations establish eligibility within the original supported
+interval; they are not native commit timestamps. Each replay attempt samples one
+fresh actual UTC evaluation instant, freezes it, validates its eligibility and
+commits it before target mutation. Expiry, authorization maintenance, history-job
+rewind/update timestamps and commercial holds use that clock. Original event and
+deletion/reapply lifetimes remain intact, including on retry.
+
+**Why.** A native consistent export can identify complete committed state without
+providing a proved inverse ISO timestamp for its bookmark. Inventing that timestamp
+would conflate completeness with temporal evaluation and make expiry/eligibility
+claims the evidence cannot support. The distinction preserves useful complete
+rollback without reducing privacy, current choices, commercial relationships,
+authority or the original recovery/custody obligation.
+
+**Rejected.** Treating an observation interval endpoint as an exact native commit
+time, continuing speculative timestamp probing as an admission requirement, or
+silently passing a bookmark through the legacy ISO fields. A genuinely proved
+provider-supported exact ISO route remains compatible with version 1.
+
+**Current consequence.** [The maintained recovery interface](integration/app-recovery.md#native-current-source-cut-and-a-separate-evaluation-clock)
+defines version 2 alongside version 1 and shares its existing validation and replay
+engine. An ineligible cut or attempt refuses before writes. Current-source loss
+still needs independent complete later-duty input. Actual commercial answers from
+the original configured producer and separate current GitHub authority remain
+required. Serving needs a continuous held frontier or new complete barrier and
+fresh maintenance/current-authority reconciliation; an older evaluation receipt
+cannot resurrect expired state. No original deadline, retention/loss policy,
+credential route, journal or store changes.
+
+**Source.** The 2026-11-13 Product implementation-contract judgment responding to
+the native export evidence and operating proposal. This record preserves the
+settled rationale without publishing private provider records or deliberation.
+
 ## D044: Version the tools people install, not the whole repository
 
 **Status:** Settled by Wolf and Nyxara, 2026-09-30. Source adoption and qualification are distinct from publishing any release.

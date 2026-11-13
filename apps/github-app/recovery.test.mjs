@@ -26,6 +26,20 @@ const healthyPoint = { ...point, databaseId: 'fixture-db' };
 const healthySource = { mode: 'immutable-current-copy', databaseId: healthyPoint.databaseId, capturedAt: through,
   snapshotId: 'fixture-current', healthEvidence: 'fixture-health', consistencyEvidence: 'fixture-immutable-copy', interpretation: 'fixture-0016' };
 const exportCurrent = database => exportHealthyRecoveryInput({ database, point: healthyPoint, source: healthySource, checkpoint: async () => {} });
+const nativeSource = () => ({ mode: 'immutable-current-native-copy', databaseId: healthyPoint.databaseId,
+  cut: { kind: 'd1-export', databaseId: healthyPoint.databaseId, bookmark: 'opaque-fixture-cut', sqlSha256: 'a'.repeat(64) },
+  snapshotId: 'fixture-native-current', healthEvidence: 'fixture-health-and-identity', consistencyEvidence: 'fixture-whole-immutable-copy',
+  custodyEvidence: 'fixture-protected-input', interpretation: { source: 'fixture-source', schema: 'fixture-0016', originalSeal: 'fixture-seal' },
+  captureObservations: { requestedAt: '2026-10-04T23:58:00.000Z', firstResponseAt: '2026-10-04T23:59:00.000Z',
+    completedAt: through, evidence: 'fixture-capture-observations' } });
+const nativeInput = () => {
+  const source = nativeSource();
+  return { kind: 'diffdevil.app-recovery-input', version: 2, point: healthyPoint,
+    coverage: { from: point.capturedAt, cut: source.cut, mode: 'healthy-source-rollback', tombstoneRetentionDays: 37,
+      sources: RECOVERY_DUTIES.map(duty => ({ duty, authority: source.snapshotId, checkpoint: source.cut.bookmark,
+        recoveryEvidence: source.consistencyEvidence, cut: source.cut })) },
+    events: [], currentState: { kind: 'diffdevil.healthy-recovery-state', version: 2, source, tables: [], membership: {} } };
+};
 function input(events = []) {
   return { kind: 'diffdevil.app-recovery-input', version: 1, point,
     coverage: { from: point.capturedAt, through, tombstoneRetentionDays: 37,
@@ -63,6 +77,168 @@ async function fixture() {
     return { runtime, database, app, auth, replay, receipts };
   } catch (error) { await runtime.dispose(); throw error; }
 }
+
+test('native input refuses unsupported evidence, ISO substitutions and ineligible clocks before source reads or target writes', async t => {
+  const mutations = [
+    value => { value.currentState.source.capturedAt = through; },
+    value => { value.currentState.source.cut.sqlSha256 = 'not-a-digest'; },
+    value => { value.currentState.source.cut.databaseId = 'wrong-database'; },
+    value => { value.currentState.source.mode = 'immutable-current-copy'; },
+    value => { value.currentState.source.custodyEvidence = ''; },
+    value => { value.currentState.source.interpretation.originalSeal = ''; },
+    value => { value.currentState.source.captureObservations.evidence = ''; },
+    value => { value.currentState.source.captureObservations.requestedAt = '2026-09-30T23:59:59.999Z'; },
+    value => { value.currentState.source.captureObservations.firstResponseAt = '2026-10-04T23:57:00.000Z'; },
+    value => { value.currentState.source.captureObservations.completedAt = '2026-11-01T00:00:00.000Z'; },
+    value => { value.coverage.through = through; },
+    value => { value.coverage.cut = { ...value.coverage.cut, bookmark: 'different-cut' }; },
+    value => { value.coverage.sources.pop(); },
+    value => { value.coverage.sources[0].cut = { ...value.coverage.cut, sqlSha256: 'b'.repeat(64) }; },
+    value => { value.coverage.sources[0].through = through; },
+    value => { value.events.push({ id: 'guessed-event', at, type: 'service-disconnected', userId: 77 }); },
+    value => { value.point = { ...healthyPoint, id: 'other-point' }; }
+  ];
+  for (const mutate of mutations) {
+    const value = nativeInput(); mutate(value);
+    assert.throws(() => readRecoveryInput(value, healthyPoint), { code: 'E_RECOVERY_INPUT' });
+  }
+  assert.throws(() => readRecoveryInput(nativeInput(), healthyPoint, through), { code: 'E_RECOVERY_INPUT' });
+  for (const mutate of mutations.slice(0, 10)) {
+    const value = nativeInput(); mutate(value);
+    let touched = false;
+    await assert.rejects(exportHealthyRecoveryInput({ database: { prepare() { touched = true; } }, point: healthyPoint,
+      source: value.currentState.source, checkpoint: async () => { touched = true; } }), { code: 'E_RECOVERY_SOURCE' });
+    assert.equal(touched, false);
+  }
+  t.mock.timers.enable({ apis: ['Date'], now: new Date('2026-10-04T23:59:59.999Z') });
+  for (const clock of ['2026-10-04T23:59:59.999Z', '2026-10-31T00:00:00.001Z']) {
+    t.mock.timers.setTime(new Date(clock).getTime());
+    let touched = false;
+    await assert.rejects(replayRecoveryObligations({ database: { prepare() { touched = true; } }, point: healthyPoint,
+      input: nativeInput(), checkpoint: async () => { touched = true; } }), { code: 'E_RECOVERY_INPUT' });
+    assert.equal(touched, false, 'an ineligible real attempt clock refuses before schema reads, output or writes');
+  }
+});
+
+test('native replay preserves complete choices and original lifetimes with a fresh frozen evaluation clock and two real holds', async t => {
+  const current = await fixture(), target = await fixture();
+  try {
+    await current.app.deleteHistory(17, { deletedAt: at, reapplyUntil: until });
+    await current.app.setRepositoryConsent(18, { enabled: false, origin: 'fixture-current-off' });
+    await current.app.setRepositoryConsent(19, { enabled: true, retentionDays: 60, origin: 'fixture-current-positive' });
+    for (const f of [current, target]) {
+      await f.app.recordAnalytical({ ...record(1), repositoryId: 20 });
+      await f.database.prepare("UPDATE analytical_pull_requests SET expires_at='2026-10-05T01:00:00.000Z' WHERE repository_id=20").run();
+    }
+    await current.database.prepare(`INSERT INTO commercial_links(link_id,product_account,works_account,state,established_at,protected_grant,updated_at)
+      VALUES ('link-2',88,'works-88','active',?,'synthetic-second-grant',?)`).bind(at, at).run();
+    await current.database.prepare("UPDATE browser_sessions SET expires_at='2026-10-05T01:00:00.000Z'").run();
+    await current.database.prepare(`INSERT INTO history_jobs(job_id,repository_id,installation_id,kind,state,sequence,scope_limit,cursor_json,progress_json,requested_by,requested_at,updated_at)
+      VALUES ('native-import',19,9,'import','running',4,100,'{"page":3}','{"recorded":2}',77,?,?)`).bind(at, at).run();
+    const commits = [];
+    const exported = await exportHealthyRecoveryInput({ database: current.database, point: healthyPoint, source: nativeSource(),
+      checkpoint: async value => { commits.push(value); } });
+    assert.equal(commits[0].phase, 'reading');
+    assert.equal(commits[0].version, 2);
+    assert.deepEqual(commits.at(-1), exported);
+    assert.equal(exported.version, 2);
+    assert.equal(exported.currentState.source.capturedAt, undefined);
+    assert.equal(exported.coverage.through, undefined);
+    assert.deepEqual(exported.coverage.cut, nativeSource().cut);
+    const copiedLinks = exported.currentState.tables.find(table => table.name === 'commercial_links');
+    assert.equal(copiedLinks.rowCount, 2);
+    const deletion = await current.database.prepare("SELECT deleted_at,reapply_until FROM deletion_tombstones WHERE scope='history:17'").first();
+    const evaluated = '2026-10-05T02:00:00.000Z';
+    t.mock.timers.enable({ apis: ['Date'], now: new Date(evaluated) });
+    let first = true;
+    const receipt = await target.replay(exported, { point: healthyPoint, through: undefined,
+      checkpoint: async value => {
+        if (first) {
+          first = false;
+          assert.equal(value.phase, 'applying');
+          assert.equal(value.evaluationAt, evaluated);
+          assert.equal((await target.database.prepare("SELECT count(*) AS n FROM commercial_links").first()).n, 1, 'checkpoint precedes target mutation');
+          t.mock.timers.setTime(new Date('2026-10-05T03:00:00.000Z').getTime());
+        }
+      }, commercial: { reconcileAfterRestore: async () => ({ current: 2, ended: 0, unavailable: 0 }) } });
+    assert.equal(receipt.version, 2);
+    assert.equal(receipt.evaluationAt, evaluated, 'asynchronous work cannot advance the attempt clock');
+    assert.equal(receipt.phase, 'incomplete', 'an acknowledgement cannot release either actual hold');
+    assert.equal(receipt.commercial.unavailable, 2);
+    const holds = await target.database.prepare('SELECT link_id,restored_at,updated_at FROM commercial_links ORDER BY link_id').all();
+    assert.deepEqual(holds.results.map(row => [row.link_id, row.restored_at, row.updated_at]), [['link-1', evaluated, evaluated], ['link-2', evaluated, evaluated]]);
+    assert.equal((await target.database.prepare('SELECT count(*) AS n FROM browser_sessions').first()).n, 0, 'auth maintenance uses evaluation, not capture completion');
+    assert.equal((await target.database.prepare('SELECT count(*) AS n FROM analytical_pull_requests WHERE repository_id=20').first()).n, 0, 'history expiry uses evaluation, not capture completion');
+    assert.equal((await target.app.historySettings(17)).enabled, false);
+    assert.equal((await target.app.historySettings(18)).enabled, false);
+    assert.equal((await target.app.historySettings(19)).retentionDays, 60, 'actual positive choices survive');
+    const job = await target.database.prepare("SELECT state,sequence,requested_at,updated_at FROM history_jobs WHERE job_id='native-import'").first();
+    assert.deepEqual(job, { state: 'queued', sequence: 5, requested_at: at, updated_at: evaluated });
+    assert.deepEqual(await target.database.prepare("SELECT deleted_at,reapply_until FROM deletion_tombstones WHERE scope='history:17'").first(), deletion);
+    const retryAt = '2026-10-05T04:00:00.000Z';
+    t.mock.timers.setTime(new Date(retryAt).getTime());
+    const retried = await target.replay(exported, { point: healthyPoint, through: undefined, commercial: { async reconcileAfterRestore() {
+      const rows = await target.database.prepare("SELECT restored_at FROM commercial_links WHERE state='active'").all();
+      assert.deepEqual(rows.results.map(row => row.restored_at), [retryAt, retryAt], 'retry reapplies the protected state and both holds');
+      await target.database.prepare("UPDATE commercial_links SET restored_at=NULL WHERE state='active'").run();
+      return { current: 2, ended: 0, unavailable: 0 };
+    } } });
+    assert.equal(retried.phase, 'replayed');
+    assert.equal(retried.evaluationAt, retryAt);
+    assert.equal(retried.inputSha256, receipt.inputSha256);
+    assert.deepEqual(await target.database.prepare("SELECT deleted_at,reapply_until FROM deletion_tombstones WHERE scope='history:17'").first(), deletion, 'retry cannot extend deletion duty');
+    assert.equal((await target.database.prepare('SELECT last_establish FROM commercial_link_attempts').first()).last_establish, 'expired');
+  } finally { await current.runtime.dispose(); await target.runtime.dispose(); }
+});
+
+test('native capture and replay preserve protected checkpoints across output refusal, partial input and interrupted publication', async t => {
+  const current = await fixture(), target = await fixture();
+  try {
+    let read = false;
+    await assert.rejects(exportHealthyRecoveryInput({ point: healthyPoint, source: nativeSource(),
+      database: { prepare() { read = true; } }, checkpoint: async () => { throw new Error('fixture output refusal'); } }), /output refusal/u);
+    assert.equal(read, false);
+    const commits = [];
+    await assert.rejects(exportHealthyRecoveryInput({ point: healthyPoint, source: nativeSource(),
+      database: { prepare(sql) {
+        if (sql === 'SELECT count(*) AS count FROM "installations"') return { first: async () => ({ count: 999 }) };
+        return current.database.prepare(sql);
+      } }, checkpoint: async value => { commits.push(value); } }), { code: 'E_RECOVERY_SOURCE' });
+    assert.deepEqual(commits.map(value => value.phase), ['reading'], 'an incomplete read never commits a consumable input');
+    await new D1CommercialStore(current.database).endLink('link-1', { source: 'fixture-current-end', endedAt: at });
+    await current.app.deleteHistory(17, { deletedAt: at, reapplyUntil: until });
+    const exported = await exportHealthyRecoveryInput({ database: current.database, point: healthyPoint, source: nativeSource(),
+      checkpoint: async value => { commits.push(value); } });
+    t.mock.timers.enable({ apis: ['Date'], now: new Date('2026-10-05T02:00:00.000Z') });
+    for (const value of [commits[0], { ...exported, currentState: { ...exported.currentState, tables: [] } }]) {
+      let written = false;
+      await assert.rejects(target.replay(value, { point: healthyPoint, through: undefined, checkpoint: async () => { written = true; } }));
+      assert.equal(written, false, 'reading and partial inputs refuse before an applying checkpoint or target mutation');
+      assert.equal((await target.app.historySettings(17)).enabled, true);
+    }
+    await assert.rejects(target.replay(exported, { point: healthyPoint, through: undefined,
+      checkpoint: async () => { throw new Error('fixture applying refusal'); } }), /applying refusal/u);
+    assert.equal((await target.app.historySettings(17)).enabled, true);
+    let insertingRepositories = false;
+    await assert.rejects(target.replay(exported, { point: healthyPoint, through: undefined, database: {
+      prepare(sql) { if (sql.startsWith('INSERT INTO "repositories"')) insertingRepositories = true; return target.database.prepare(sql); },
+      batch(statements) { if (insertingRepositories) throw new Error('fixture interrupted publication'); return target.database.batch(statements); }
+    } }), { code: 'E_RECOVERY_REPLAY' });
+    assert.equal(target.receipts.at(-1).version, 2);
+    assert.equal(target.receipts.at(-1).phase, 'incomplete');
+    assert.equal(target.receipts.at(-1).evaluationAt, '2026-10-05T02:00:00.000Z');
+    t.mock.timers.setTime(new Date('2026-10-05T03:00:00.000Z').getTime());
+    const receipt = await target.replay(exported, { point: healthyPoint, through: undefined });
+    assert.equal(receipt.phase, 'replayed');
+    assert.equal(receipt.evaluationAt, '2026-10-05T03:00:00.000Z');
+    assert.equal((await target.app.historySettings(17)).enabled, false);
+    assert.deepEqual(await target.database.prepare("SELECT deleted_at,reapply_until FROM deletion_tombstones WHERE scope='history:17'").first(),
+      { deleted_at: at, reapply_until: until });
+    t.mock.timers.setTime(new Date('2026-10-31T00:00:00.001Z').getTime());
+    await assert.rejects(target.replay(exported, { point: healthyPoint, through: undefined }), { code: 'E_RECOVERY_INPUT' });
+    assert.equal(target.receipts.at(-1).evaluationAt, receipt.evaluationAt, 'an old replay receipt cannot admit a new attempt after support ends');
+  } finally { await current.runtime.dispose(); await target.runtime.dispose(); }
+});
 
 test('history deletion rolls back every destructive row on failure, retries the original event, and survives healthy replay', async () => {
   const current = await fixture(), target = await fixture();
